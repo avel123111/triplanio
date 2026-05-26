@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker as LeafletMarker, Polyline, useMap as useLeafletMap } from 'react-leaflet';
 import L from 'leaflet';
-import { APIProvider, Map as GMap, Marker as GMarker, useMap as useGMap } from '@vis.gl/react-google-maps';
+import { APIProvider, Map as GMap, Marker as GMarker, useMap as useGMap, useApiLoadingStatus } from '@vis.gl/react-google-maps';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -275,8 +275,26 @@ function GFitBounds({ positions }) {
   return null;
 }
 
-// Google Maps inner content
-function GoogleMapInner({ pts, positions }) {
+// Google Maps inner content — also watches for Google's error overlay and calls onError
+function GoogleMapInner({ pts, positions, onError }) {
+  const map = useGMap();
+  const status = useApiLoadingStatus();
+
+  // Detect the Google Maps DOM error overlay (appears when key is invalid/restricted)
+  useEffect(() => {
+    if (status === 'FAILED') { onError(); return; }
+    if (!map) return;
+    const timer = setTimeout(() => {
+      try {
+        const div = map.getDiv?.();
+        if (div && div.querySelector('.gm-err-container, .gm-err-content')) {
+          onError();
+        }
+      } catch { /* ignore */ }
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [map, status]); // eslint-disable-line
+
   return (
     <>
       <GFitBounds positions={positions} />
@@ -302,6 +320,9 @@ function GoogleMapInner({ pts, positions }) {
 const GKEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
 function PlannerMap({ home, cities, returnCity }) {
+  // If Google Maps fails (bad key, billing, restrictions) — fall back to Leaflet
+  const [gmapFailed, setGmapFailed] = useState(false);
+
   const pts = [];
   if (home?.latitude) pts.push({ lat: home.latitude, lng: home.longitude, label: '🏠', color: '#2167e2', name: home.city_name });
   cities.forEach((c, i) => {
@@ -334,7 +355,7 @@ function PlannerMap({ home, cities, returnCity }) {
     </MapContainer>
   );
 
-  const googleMap = GKEY ? (
+  const googleMap = GKEY && !gmapFailed ? (
     <MapErrorBoundary fallback={leafletMap}>
       <APIProvider apiKey={GKEY}>
         <GMap
@@ -345,7 +366,7 @@ function PlannerMap({ home, cities, returnCity }) {
           disableDefaultUI
           mapTypeId="roadmap"
         >
-          <GoogleMapInner pts={pts} positions={positions} />
+          <GoogleMapInner pts={pts} positions={positions} onError={() => setGmapFailed(true)} />
         </GMap>
       </APIProvider>
     </MapErrorBoundary>
@@ -367,7 +388,7 @@ function PlannerMap({ home, cities, returnCity }) {
           </div>
         </div>
       ) : (
-        GKEY ? googleMap : leafletMap
+        GKEY && !gmapFailed ? googleMap : leafletMap
       )}
 
       <div style={{ padding: '10px 14px', borderTop: '1px solid var(--line-2)', background: 'var(--wash)', fontSize: 11.5, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
