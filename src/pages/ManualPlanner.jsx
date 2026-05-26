@@ -1,39 +1,17 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { APIProvider, Map as GMap, AdvancedMarker, useMap as useGMap } from '@vis.gl/react-google-maps';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { isTripInPast } from '@/lib/trip-dates';
-import { searchCities, getTimezone, countryFlag } from '@/lib/geo';
+import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/geo';
 import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
 import '../design/app.css';
 
-const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
-
 // ─── Static data ──────────────────────────────────────────────────────────────
-
-const POPULAR_HOME = [
-  { external_city_id: 'moscow',   city_name: 'Москва',           country: 'Россия',    country_code: 'RU', latitude: 55.75, longitude: 37.62, timezone: 'Europe/Moscow'    },
-  { external_city_id: 'spb',      city_name: 'Санкт-Петербург',  country: 'Россия',    country_code: 'RU', latitude: 59.94, longitude: 30.31, timezone: 'Europe/Moscow'    },
-  { external_city_id: 'tbilisi',  city_name: 'Тбилиси',          country: 'Грузия',    country_code: 'GE', latitude: 41.71, longitude: 44.79, timezone: 'Asia/Tbilisi'     },
-  { external_city_id: 'istanbul', city_name: 'Стамбул',          country: 'Турция',    country_code: 'TR', latitude: 41.01, longitude: 28.98, timezone: 'Europe/Istanbul'  },
-  { external_city_id: 'dubai',    city_name: 'Дубай',            country: 'ОАЭ',       country_code: 'AE', latitude: 25.20, longitude: 55.27, timezone: 'Asia/Dubai'       },
-];
-
-const POPULAR_DEST = [
-  { external_city_id: 'lisbon',    city_name: 'Лиссабон',  country: 'Португалия', country_code: 'PT', latitude: 38.72, longitude: -9.14, timezone: 'Europe/Lisbon',   nights: 4 },
-  { external_city_id: 'porto',     city_name: 'Порту',     country: 'Португалия', country_code: 'PT', latitude: 41.15, longitude: -8.61, timezone: 'Europe/Lisbon',   nights: 3 },
-  { external_city_id: 'barcelona', city_name: 'Барселона', country: 'Испания',    country_code: 'ES', latitude: 41.39, longitude: 2.17,  timezone: 'Europe/Madrid',   nights: 4 },
-  { external_city_id: 'madrid',    city_name: 'Мадрид',    country: 'Испания',    country_code: 'ES', latitude: 40.42, longitude: -3.70, timezone: 'Europe/Madrid',   nights: 3 },
-  { external_city_id: 'rome',      city_name: 'Рим',       country: 'Италия',     country_code: 'IT', latitude: 41.90, longitude: 12.49, timezone: 'Europe/Rome',     nights: 4 },
-  { external_city_id: 'athens',    city_name: 'Афины',     country: 'Греция',     country_code: 'GR', latitude: 37.98, longitude: 23.72, timezone: 'Europe/Athens',   nights: 3 },
-  { external_city_id: 'prague',    city_name: 'Прага',     country: 'Чехия',      country_code: 'CZ', latitude: 50.08, longitude: 14.44, timezone: 'Europe/Prague',   nights: 3 },
-  { external_city_id: 'berlin',    city_name: 'Берлин',    country: 'Германия',   country_code: 'DE', latitude: 52.52, longitude: 13.40, timezone: 'Europe/Berlin',   nights: 3 },
-];
 
 const STEPS = [
   { id: 'home',   num: 1, label: 'Откуда' },
@@ -237,65 +215,16 @@ function makeMarkerIcon(label, color, textColor = 'white') {
   });
 }
 
-// ─── Google Maps helpers ──────────────────────────────────────────────────────
-
-function GoogleFitBounds({ positions }) {
-  const map = useGMap();
-  useEffect(() => {
-    if (!map || positions.length === 0 || !window.google?.maps) return;
-    if (positions.length === 1) {
-      map.setCenter({ lat: positions[0][0], lng: positions[0][1] });
-      map.setZoom(7);
-    } else {
-      const bounds = new window.google.maps.LatLngBounds();
-      positions.forEach(([lat, lng]) => bounds.extend({ lat, lng }));
-      map.fitBounds(bounds, 48);
-    }
-  }, [map, JSON.stringify(positions)]); // eslint-disable-line
-  return null;
-}
-
-function GooglePolyline({ positions }) {
-  const map = useGMap();
-  useEffect(() => {
-    if (!map || positions.length < 2 || !window.google?.maps) return;
-    const line = new window.google.maps.Polyline({
-      path: positions.map(([lat, lng]) => ({ lat, lng })),
-      strokeColor: '#3b5bdb',
-      strokeOpacity: 0,
-      icons: [{
-        icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.8, strokeColor: '#3b5bdb', scale: 3 },
-        offset: '0',
-        repeat: '12px',
-      }],
-    });
-    line.setMap(map);
-    return () => line.setMap(null);
-  }, [map, JSON.stringify(positions)]); // eslint-disable-line
-  return null;
-}
-
-function MarkerPin({ label, color }) {
-  return (
-    <div style={{
-      background: color, color: 'white', borderRadius: '50%',
-      width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontWeight: 700, fontSize: 11, boxShadow: '0 3px 8px rgba(0,0,0,.25)',
-      border: '2px solid white', transform: 'translate(0, 0)',
-    }}>{label}</div>
-  );
-}
-
 // ─── PlannerMap ───────────────────────────────────────────────────────────────
 
 function PlannerMap({ home, cities, returnCity }) {
   const pts = [];
-  if (home?.latitude) pts.push({ lat: home.latitude, lng: home.longitude, label: '🏠', color: '#3b5bdb', name: home.city_name });
+  if (home?.latitude) pts.push({ lat: home.latitude, lng: home.longitude, label: '🏠', color: '#2167e2', name: home.city_name });
   cities.forEach((c, i) => {
-    if (c.latitude) pts.push({ lat: c.latitude, lng: c.longitude, label: String(i + 1), color: '#3b5bdb', name: c.city_name });
+    if (c.latitude) pts.push({ lat: c.latitude, lng: c.longitude, label: String(i + 1), color: '#2167e2', name: c.city_name });
   });
   if (returnCity?.latitude && returnCity.city_name !== home?.city_name) {
-    pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: '↩', color: '#e67e22', name: returnCity.city_name });
+    pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: '↩', color: '#c9603a', name: returnCity.city_name });
   }
 
   const positions = pts.map(p => [p.lat, p.lng]);
@@ -303,41 +232,18 @@ function PlannerMap({ home, cities, returnCity }) {
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-      {/* Header */}
       <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
         <Icon name="map" size={14} style={{ color: 'var(--brand)' }} />
         <span style={{ fontSize: 12.5, fontWeight: 600, flex: 1 }}>Маршрут · предпросмотр</span>
         <span style={{ fontSize: 11, color: 'var(--muted)' }}>{cities.length} городов</span>
       </div>
 
-      {/* Map or placeholder */}
       {pts.length === 0 ? (
         <div style={{ height: 320, display: 'grid', placeItems: 'center', background: 'var(--wash)', color: 'var(--muted)' }}>
           <div style={{ textAlign: 'center' }}>
             <Icon name="map" size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
             <div style={{ fontSize: 13 }}>Добавь города —<br />маршрут появится здесь</div>
           </div>
-        </div>
-      ) : GOOGLE_MAPS_KEY ? (
-        <div style={{ height: 320 }}>
-          <APIProvider apiKey={GOOGLE_MAPS_KEY}>
-            <GMap
-              defaultCenter={{ lat: positions[0][0], lng: positions[0][1] }}
-              defaultZoom={4}
-              gestureHandling="cooperative"
-              disableDefaultUI={true}
-              mapId="triplanio-planner"
-              style={{ width: '100%', height: '100%' }}
-            >
-              <GoogleFitBounds positions={positions} />
-              <GooglePolyline positions={positions} />
-              {pts.map((p, i) => (
-                <AdvancedMarker key={i} position={{ lat: p.lat, lng: p.lng }} title={p.name}>
-                  <MarkerPin label={p.label} color={p.color} />
-                </AdvancedMarker>
-              ))}
-            </GMap>
-          </APIProvider>
         </div>
       ) : (
         <MapContainer
@@ -351,29 +257,24 @@ function PlannerMap({ home, cities, returnCity }) {
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <FitBounds positions={positions} />
           {pts.map((p, i) => (
-            <Marker
-              key={i}
-              position={[p.lat, p.lng]}
-              icon={makeMarkerIcon(p.label, p.color)}
-            />
+            <Marker key={i} position={[p.lat, p.lng]} icon={makeMarkerIcon(p.label, p.color)} />
           ))}
           {positions.length >= 2 && (
-            <Polyline positions={positions} color="#3b5bdb" weight={2.5} dashArray="6 8" opacity={0.7} />
+            <Polyline positions={positions} color="#2167e2" weight={2.5} dashArray="6 8" opacity={0.7} />
           )}
         </MapContainer>
       )}
 
-      {/* Footer */}
       <div style={{ padding: '10px 14px', borderTop: '1px solid var(--line-2)', background: 'var(--wash)', fontSize: 11.5, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {home?.city_name && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#3b5bdb', display: 'inline-block' }} />
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2167e2', display: 'inline-block' }} />
             {home.city_name}
           </span>
         )}
         {cities.length > 0 && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#3b5bdb', display: 'inline-block' }} />
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2167e2', display: 'inline-block' }} />
             {cities.length} {cities.length < 5 ? 'города' : 'городов'}
           </span>
         )}
@@ -506,38 +407,32 @@ function CityRow({ idx, total, city, isDragging, isOver, onDragStart, onDragOver
 // ─── Step 1: Home ─────────────────────────────────────────────────────────────
 
 function StepHome({ home, setHome, goNext }) {
-  const [geoState, setGeoState] = useState('ask'); // ask | loading | allowed | denied
-  const [nearbyCoords, setNearbyCoords] = useState(null);
+  const [geoState, setGeoState] = useState('ask'); // ask | loading | found | denied
 
   const requestGeo = () => {
     if (!navigator.geolocation) { setGeoState('denied'); return; }
     setGeoState('loading');
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setNearbyCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setGeoState('allowed');
+      async (pos) => {
+        const city = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+        if (city) {
+          const tz = await getTimezone(city.latitude, city.longitude);
+          setHome({ ...city, timezone: tz });
+          setGeoState('found');
+        } else {
+          setGeoState('denied');
+        }
       },
       () => setGeoState('denied'),
       { timeout: 8000 }
     );
   };
 
-  // Sort POPULAR_HOME by Euclidean distance from user coords
-  const nearbyCities = useMemo(() => {
-    if (!nearbyCoords) return POPULAR_HOME;
-    const { lat, lng } = nearbyCoords;
-    return [...POPULAR_HOME].sort((a, b) => {
-      const da = Math.sqrt((lat - a.latitude) ** 2 + (lng - a.longitude) ** 2);
-      const db = Math.sqrt((lat - b.latitude) ** 2 + (lng - b.longitude) ** 2);
-      return da - db;
-    });
-  }, [nearbyCoords]);
-
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>Откуда вы вылетаете?</h1>
       <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 540 }}>
-        Это твой дом — точка старта и (обычно) возврата. Из него Triplanio покажет переезды и стоимость билетов.
+        Это твой дом — точка старта и (обычно) возврата.
       </div>
 
       <div className="field">
@@ -545,96 +440,45 @@ function StepHome({ home, setHome, goNext }) {
         <CityPicker
           value={home}
           onChange={setHome}
-          placeholder="Москва, Тбилиси, Стамбул…"
+          placeholder="Начни вводить название города…"
           autoFocus
         />
       </div>
 
-      {/* Geolocation section */}
-      <div style={{ marginTop: 22, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <span className="eyebrow" style={{ flex: 1 }}>Рядом</span>
+      <div style={{ marginTop: 18 }}>
+        {geoState === 'ask' && (
+          <button onClick={requestGeo} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '8px 14px', background: 'var(--surface)',
+            border: '1px solid var(--line)', borderRadius: 10,
+            fontSize: 13, color: 'var(--muted)', cursor: 'pointer',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.color = 'var(--brand)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)'; }}
+          >
+            <Icon name="pin" size={14} /> Определить мой город
+          </button>
+        )}
+
+        {geoState === 'loading' && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)' }}>
+            <div style={{ width: 14, height: 14, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+            Определяем местоположение…
+          </div>
+        )}
+
+        {geoState === 'found' && home?.city_name && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'var(--success-soft)', border: '1px solid var(--success)', borderRadius: 10, fontSize: 13, color: 'var(--success)' }}>
+            <Icon name="check" size={14} /> Определён: {home.city_name}
+          </div>
+        )}
+
+        {geoState === 'denied' && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)' }}>
+            <Icon name="lock" size={13} /> Геолокация недоступна — введи город вручную
+          </div>
+        )}
       </div>
-
-      {geoState === 'ask' && (
-        <div style={{ padding: 18, borderRadius: 12, border: '1.5px dashed var(--line)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-            <Icon name="pin" size={20} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>Подсказать города рядом</div>
-            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>Разреши доступ к геолокации — покажем ближайшие города-хабы. Можно отказаться и ввести вручную.</div>
-          </div>
-          <Btn variant="primary" size="sm" onClick={requestGeo}>Разрешить</Btn>
-        </div>
-      )}
-
-      {geoState === 'loading' && (
-        <div style={{ padding: 18, borderRadius: 12, border: '1.5px dashed var(--line)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 20, height: 20, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
-          <span style={{ fontSize: 13, color: 'var(--muted)' }}>Получаем координаты…</span>
-        </div>
-      )}
-
-      {geoState === 'allowed' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
-          {nearbyCities.map((p) => (
-            <button key={p.city_name} onClick={() => setHome(p)} style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
-              background: home?.city_name === p.city_name ? 'var(--brand-soft)' : 'var(--surface)',
-              border: '1.5px solid ' + (home?.city_name === p.city_name ? 'var(--brand)' : 'var(--line)'),
-              borderRadius: 11, cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
-            }}
-              onMouseEnter={e => { if (home?.city_name !== p.city_name) e.currentTarget.style.borderColor = '#dbe1ec'; }}
-              onMouseLeave={e => { if (home?.city_name !== p.city_name) e.currentTarget.style.borderColor = 'var(--line)'; }}
-            >
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                <Icon name="plane" size={14} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.city_name}</div>
-                <div className="muted" style={{ fontSize: 11.5 }}>{countryFlag(p.country_code)} {p.country}</div>
-              </div>
-              {home?.city_name === p.city_name && (
-                <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                  <Icon name="check" size={11} />
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {geoState === 'denied' && (
-        <div style={{ padding: 18, borderRadius: 12, background: 'var(--wash)', border: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--warning-soft, #fff3cd)', color: 'var(--warning, #e6a817)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-            <Icon name="lock" size={20} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>Геолокация отключена</div>
-            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>Воспользуйся поиском выше — введи название города-хаба.</div>
-          </div>
-          <Btn variant="ghost" size="sm" onClick={() => setGeoState('ask')}>Запросить снова</Btn>
-        </div>
-      )}
-
-      {/* Popular cities fallback when geo not allowed */}
-      {(geoState === 'ask' || geoState === 'denied') && (
-        <>
-          <div className="eyebrow" style={{ marginTop: 18, marginBottom: 10 }}>Популярные города вылета</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {POPULAR_HOME.map((p) => (
-              <button key={p.city_name} onClick={() => setHome(p)} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 12px', background: home?.city_name === p.city_name ? 'var(--brand-soft)' : 'var(--surface)',
-                border: '1px solid ' + (home?.city_name === p.city_name ? 'var(--brand)' : 'var(--line)'),
-                borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: home?.city_name === p.city_name ? 600 : 400, color: home?.city_name === p.city_name ? 'var(--brand)' : 'var(--ink)',
-              }}>
-                {countryFlag(p.country_code)} {p.city_name}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
 
       <FooterNav>
         <div style={{ flex: 1 }} />
@@ -737,23 +581,6 @@ function StepCities({ cities, setCities, home, goPrev, goNext }) {
           </button>
         </div>
       )}
-
-      <div className="eyebrow" style={{ marginTop: 22, marginBottom: 10 }}>Популярные направления</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {POPULAR_DEST.filter(p => !cities.find(c => c.city_name === p.city_name)).slice(0, 6).map(p => (
-          <button key={p.city_name} onClick={() => addCity(p)} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', background: 'var(--surface)', border: '1px solid var(--line)',
-            borderRadius: 999, cursor: 'pointer', fontSize: 12.5,
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.color = 'var(--brand)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = ''; }}
-          >
-            <Icon name="plus" size={11} style={{ color: 'var(--brand)' }} />
-            {countryFlag(p.country_code)} {p.city_name}
-          </button>
-        ))}
-      </div>
 
       {hasError && (
         <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--warning-soft, #fff3cd)', border: '1px solid var(--warning, #e6a817)', borderRadius: 10, fontSize: 13, color: 'var(--ink)' }}>

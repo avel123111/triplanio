@@ -69,6 +69,30 @@ export async function getTimezone(lat, lon) {
   }
 }
 
+// Reverse geocode lat/lon → city object (Nominatim reverse, no key needed)
+export async function reverseGeocode(lat, lon) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1&accept-language=ru`;
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) return null;
+    const d = await res.json();
+    const a = d.address || {};
+    const name = a.city || a.town || a.village || a.hamlet || a.suburb || a.municipality || d.name;
+    if (!name) return null;
+    return {
+      external_city_id: String(d.place_id),
+      city_name: name,
+      country: a.country || '',
+      country_code: (a.country_code || '').toUpperCase(),
+      latitude: parseFloat(d.lat),
+      longitude: parseFloat(d.lon),
+      display_name: d.display_name,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Country code → emoji flag
 export function countryFlag(code) {
   if (!code || code.length !== 2) return '🌍';
