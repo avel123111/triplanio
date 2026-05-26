@@ -101,7 +101,7 @@ export default function Login() {
   // Redirect if already logged in
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) window.location.href = '/';
+      if (session) window.location.href = '/trips';
     });
   }, []);
 
