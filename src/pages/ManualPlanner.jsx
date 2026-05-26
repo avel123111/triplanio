@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker as LeafletMarker, Polyline, useMap as useLeafletMap } from 'react-leaflet';
 import L from 'leaflet';
+import { APIProvider, Map as GMap, Marker as GMarker, useMap as useGMap } from '@vis.gl/react-google-maps';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -192,7 +193,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
 // ─── Leaflet helpers ──────────────────────────────────────────────────────────
 
 function FitBounds({ positions }) {
-  const map = useMap();
+  const map = useLeafletMap();
   useEffect(() => {
     if (positions.length === 0) return;
     if (positions.length === 1) {
@@ -215,7 +216,90 @@ function makeMarkerIcon(label, color, textColor = 'white') {
   });
 }
 
+// ─── Google Maps helpers ──────────────────────────────────────────────────────
+
+// ErrorBoundary — if Google Maps crashes, falls back to Leaflet
+class MapErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) return this.props.fallback || null;
+    return this.props.children;
+  }
+}
+
+// Draws a dashed polyline using raw Google Maps JS API
+function GPolyline({ positions }) {
+  const map = useGMap();
+  useEffect(() => {
+    if (!map || !window.google || positions.length < 2) return;
+    const line = new window.google.maps.Polyline({
+      path: positions.map(p => ({ lat: p[0], lng: p[1] })),
+      strokeColor: '#2167e2',
+      strokeOpacity: 0,
+      strokeWeight: 0,
+      icons: [{
+        icon: {
+          path: 'M 0,-1 0,1',
+          strokeOpacity: 0.7,
+          strokeColor: '#2167e2',
+          strokeWeight: 2.5,
+          scale: 4,
+        },
+        offset: '0',
+        repeat: '20px',
+      }],
+      map,
+    });
+    return () => line.setMap(null);
+  }, [map, JSON.stringify(positions)]); // eslint-disable-line
+  return null;
+}
+
+// Fit Google Map to bounds
+function GFitBounds({ positions }) {
+  const map = useGMap();
+  useEffect(() => {
+    if (!map || !window.google || positions.length === 0) return;
+    if (positions.length === 1) {
+      map.setCenter({ lat: positions[0][0], lng: positions[0][1] });
+      map.setZoom(8);
+    } else {
+      try {
+        const bounds = new window.google.maps.LatLngBounds();
+        positions.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
+        map.fitBounds(bounds);
+      } catch { /* ignore */ }
+    }
+  }, [map, JSON.stringify(positions)]); // eslint-disable-line
+  return null;
+}
+
+// Google Maps inner content
+function GoogleMapInner({ pts, positions }) {
+  return (
+    <>
+      <GFitBounds positions={positions} />
+      {pts.map((p, i) => (
+        <GMarker
+          key={i}
+          position={{ lat: p.lat, lng: p.lng }}
+          label={{
+            text: p.label,
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '11px',
+          }}
+        />
+      ))}
+      {positions.length >= 2 && <GPolyline positions={positions} />}
+    </>
+  );
+}
+
 // ─── PlannerMap ───────────────────────────────────────────────────────────────
+
+const GKEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
 function PlannerMap({ home, cities, returnCity }) {
   const pts = [];
@@ -229,6 +313,43 @@ function PlannerMap({ home, cities, returnCity }) {
 
   const positions = pts.map(p => [p.lat, p.lng]);
   const totalNights = cities.reduce((n, c) => n + (+c.nights || 0), 0);
+
+  const leafletMap = (
+    <MapContainer
+      center={positions[0] || [50, 15]}
+      zoom={4}
+      style={{ height: 320 }}
+      scrollWheelZoom={false}
+      zoomControl={false}
+      attributionControl={false}
+    >
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <FitBounds positions={positions} />
+      {pts.map((p, i) => (
+        <LeafletMarker key={i} position={[p.lat, p.lng]} icon={makeMarkerIcon(p.label, p.color)} />
+      ))}
+      {positions.length >= 2 && (
+        <Polyline positions={positions} color="#2167e2" weight={2.5} dashArray="6 8" opacity={0.7} />
+      )}
+    </MapContainer>
+  );
+
+  const googleMap = GKEY ? (
+    <MapErrorBoundary fallback={leafletMap}>
+      <APIProvider apiKey={GKEY}>
+        <GMap
+          style={{ height: 320, width: '100%' }}
+          defaultCenter={positions[0] ? { lat: positions[0][0], lng: positions[0][1] } : { lat: 50, lng: 15 }}
+          defaultZoom={4}
+          gestureHandling="cooperative"
+          disableDefaultUI
+          mapTypeId="roadmap"
+        >
+          <GoogleMapInner pts={pts} positions={positions} />
+        </GMap>
+      </APIProvider>
+    </MapErrorBoundary>
+  ) : null;
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
@@ -246,23 +367,7 @@ function PlannerMap({ home, cities, returnCity }) {
           </div>
         </div>
       ) : (
-        <MapContainer
-          center={positions[0] || [50, 15]}
-          zoom={4}
-          style={{ height: 320 }}
-          scrollWheelZoom={false}
-          zoomControl={false}
-          attributionControl={false}
-        >
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          <FitBounds positions={positions} />
-          {pts.map((p, i) => (
-            <Marker key={i} position={[p.lat, p.lng]} icon={makeMarkerIcon(p.label, p.color)} />
-          ))}
-          {positions.length >= 2 && (
-            <Polyline positions={positions} color="#2167e2" weight={2.5} dashArray="6 8" opacity={0.7} />
-          )}
-        </MapContainer>
+        GKEY ? googleMap : leafletMap
       )}
 
       <div style={{ padding: '10px 14px', borderTop: '1px solid var(--line-2)', background: 'var(--wash)', fontSize: 11.5, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -407,7 +512,8 @@ function CityRow({ idx, total, city, isDragging, isOver, onDragStart, onDragOver
 // ─── Step 1: Home ─────────────────────────────────────────────────────────────
 
 function StepHome({ home, setHome, goNext }) {
-  const [geoState, setGeoState] = useState('ask'); // ask | loading | found | denied
+  const [geoState, setGeoState] = useState('ask'); // ask | loading | allowed | denied
+  const [nearbyCity, setNearbyCity] = useState(null); // detected city from GPS
 
   const requestGeo = () => {
     if (!navigator.geolocation) { setGeoState('denied'); return; }
@@ -417,8 +523,9 @@ function StepHome({ home, setHome, goNext }) {
         const city = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
         if (city) {
           const tz = await getTimezone(city.latitude, city.longitude);
-          setHome({ ...city, timezone: tz });
-          setGeoState('found');
+          const full = { ...city, timezone: tz };
+          setNearbyCity(full);
+          setGeoState('allowed');
         } else {
           setGeoState('denied');
         }
@@ -432,53 +539,78 @@ function StepHome({ home, setHome, goNext }) {
     <div>
       <h1 style={{ marginBottom: 10 }}>Откуда вы вылетаете?</h1>
       <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 540 }}>
-        Это твой дом — точка старта и (обычно) возврата.
+        Это твой дом — точка старта и (обычно) возврата. Из него Triplanio покажет переезды и стоимость билетов.
       </div>
 
       <div className="field">
         <label className="field__label">Город старта</label>
-        <CityPicker
-          value={home}
-          onChange={setHome}
-          placeholder="Начни вводить название города…"
-          autoFocus
-        />
+        <CityPicker value={home} onChange={setHome} placeholder="Москва, Тбилиси, Стамбул…" autoFocus />
       </div>
 
-      <div style={{ marginTop: 18 }}>
-        {geoState === 'ask' && (
-          <button onClick={requestGeo} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '8px 14px', background: 'var(--surface)',
-            border: '1px solid var(--line)', borderRadius: 10,
-            fontSize: 13, color: 'var(--muted)', cursor: 'pointer',
+      {/* "Рядом" section */}
+      <div style={{ marginTop: 22, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <span className="eyebrow" style={{ flex: 1 }}>Рядом</span>
+      </div>
+
+      {geoState === 'ask' && (
+        <div style={{ padding: 18, borderRadius: 12, border: '1.5px dashed var(--line)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <Icon name="pin" size={20} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>Подсказать города рядом</div>
+            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>Разреши доступ к геолокации — определим твой город автоматически. Можно отказаться и ввести вручную.</div>
+          </div>
+          <Btn variant="primary" size="sm" onClick={requestGeo}>Разрешить</Btn>
+        </div>
+      )}
+
+      {geoState === 'loading' && (
+        <div style={{ padding: 18, borderRadius: 12, border: '1.5px dashed var(--line)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 20, height: 20, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+          <span style={{ fontSize: 13, color: 'var(--muted)' }}>Определяем местоположение…</span>
+        </div>
+      )}
+
+      {geoState === 'allowed' && nearbyCity && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+          <button onClick={() => setHome(nearbyCity)} style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+            background: home?.city_name === nearbyCity.city_name ? 'var(--brand-soft)' : 'var(--surface)',
+            border: '1.5px solid ' + (home?.city_name === nearbyCity.city_name ? 'var(--brand)' : 'var(--line)'),
+            borderRadius: 11, cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
           }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.color = 'var(--brand)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)'; }}
+            onMouseEnter={e => { if (home?.city_name !== nearbyCity.city_name) e.currentTarget.style.borderColor = '#dbe1ec'; }}
+            onMouseLeave={e => { if (home?.city_name !== nearbyCity.city_name) e.currentTarget.style.borderColor = 'var(--line)'; }}
           >
-            <Icon name="pin" size={14} /> Определить мой город
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Icon name="plane" size={14} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{nearbyCity.city_name}</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>{countryFlag(nearbyCity.country_code)} {nearbyCity.country} · ваш город</div>
+            </div>
+            {home?.city_name === nearbyCity.city_name && (
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Icon name="check" size={11} />
+              </div>
+            )}
           </button>
-        )}
+        </div>
+      )}
 
-        {geoState === 'loading' && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)' }}>
-            <div style={{ width: 14, height: 14, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
-            Определяем местоположение…
+      {geoState === 'denied' && (
+        <div style={{ padding: 18, borderRadius: 12, background: 'var(--wash)', border: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <Icon name="lock" size={20} />
           </div>
-        )}
-
-        {geoState === 'found' && home?.city_name && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'var(--success-soft)', border: '1px solid var(--success)', borderRadius: 10, fontSize: 13, color: 'var(--success)' }}>
-            <Icon name="check" size={14} /> Определён: {home.city_name}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>Геолокация отключена</div>
+            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>Воспользуйся поиском выше — введи название города-хаба или ближайший аэропорт.</div>
           </div>
-        )}
-
-        {geoState === 'denied' && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)' }}>
-            <Icon name="lock" size={13} /> Геолокация недоступна — введи город вручную
-          </div>
-        )}
-      </div>
+          <Btn variant="ghost" size="sm" onClick={() => setGeoState('ask')}>Запросить снова</Btn>
+        </div>
+      )}
 
       <FooterNav>
         <div style={{ flex: 1 }} />
@@ -522,8 +654,8 @@ function StepCities({ cities, setCities, home, goPrev, goNext }) {
       const ns = [...cs];
       const [moved] = ns.splice(fromIdx, 1);
       ns.splice(toIdx, 0, moved);
-      // Only recompute dates if first city has an anchor date — otherwise leave dates alone
-      return ns[0]?.startDate ? recomputeDates(ns) : ns;
+      // Never recompute dates on drag-drop — user set them explicitly
+      return ns;
     });
     setDragId(null);
     setOverId(null);
