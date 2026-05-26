@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +8,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Settings, LogOut, Crown, Wrench } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useT } from '@/lib/i18n/I18nContext';
 import UserAvatar from '@/components/UserAvatar';
 
@@ -17,15 +16,8 @@ export default function UserMenu({ user }) {
   const t = useT();
   const navigate = useNavigate();
 
-  const { data: isPro } = useQuery({
-    queryKey: ['my-pro-status'],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('checkSubscriptionStatus', {});
-      return !!res?.data?.isPro;
-    },
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000
-  });
+  // TODO: replace with Supabase-based subscription check once checkSubscriptionStatus is migrated
+  const isPro = false;
 
   if (!user) return null;
 
@@ -66,7 +58,12 @@ export default function UserMenu({ user }) {
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => base44.auth.logout()} className="text-destructive focus:text-destructive">
+        <DropdownMenuItem
+          onClick={async () => {
+            await supabase.auth.signOut();
+            window.location.href = '/';
+          }}
+          className="text-destructive focus:text-destructive">
           <LogOut className="w-4 h-4 mr-2" />{t('nav.logout')}
         </DropdownMenuItem>
       </DropdownMenuContent>
