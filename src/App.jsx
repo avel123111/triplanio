@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import AppErrorBoundary from '@/components/AppErrorBoundary';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -95,18 +96,20 @@ const AuthenticatedApp = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <I18nProvider>
-          <QueryClientProvider client={queryClientInstance}>
-            <Router>
-              <AuthenticatedApp />
-            </Router>
-            <Toaster />
-          </QueryClientProvider>
-        </I18nProvider>
-      </ThemeProvider>
-    </AuthProvider>
+    <AppErrorBoundary>
+      <AuthProvider>
+        <ThemeProvider>
+          <I18nProvider>
+            <QueryClientProvider client={queryClientInstance}>
+              <Router>
+                <AuthenticatedApp />
+              </Router>
+              <Toaster />
+            </QueryClientProvider>
+          </I18nProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </AppErrorBoundary>
   )
 }
 

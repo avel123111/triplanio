@@ -9,23 +9,21 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  // Prevent race condition: track which user ID is currently being loaded
+  const loadingForRef = React.useRef(null);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        loadUserProfile(session.user);
-      } else {
-        setIsLoadingAuth(false);
-        setAuthChecked(true);
-      }
-    });
-
-    // Listen to auth state changes (login, logout, token refresh)
+    // Use onAuthStateChange as the single source of truth.
+    // It fires INITIAL_SESSION on mount (with current session or null),
+    // then SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED on changes.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
+        // Deduplicate: skip if already loading/loaded for this user
+        if (loadingForRef.current === session.user.id) return;
+        loadingForRef.current = session.user.id;
         await loadUserProfile(session.user);
       } else {
+        loadingForRef.current = null;
         setUser(null);
         setIsAuthenticated(false);
         setIsLoadingAuth(false);
