@@ -18,6 +18,7 @@ import AdminHome from '@/pages/admin/AdminHome';
 import AdminNotifications from '@/pages/admin/Notifications';
 import AiTripPlanner from '@/pages/AiTripPlanner';
 import Login from '@/pages/Login';
+import DesignPreview from '@/pages/redesign/DesignPreview';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
@@ -39,6 +40,15 @@ const AuthenticatedApp = () => {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
+      </Routes>
+    );
+  }
+
+  // Design preview — accessible without auth
+  if (path === '/ui' || path.startsWith('/ui/')) {
+    return (
+      <Routes>
+        <Route path="/ui" element={<DesignPreview />} />
       </Routes>
     );
   }
