@@ -1096,13 +1096,11 @@ export default function ManualPlanner() {
       }
       const authEmail = authUser.user.email;
 
-      // 1. Create trip (no status field — it doesn't exist in schema)
-      const { data: trip, error: tripErr } = await supabase
-        .from('trips')
-        .insert({ title, created_by: authEmail, description: '' })
-        .select()
-        .single();
+      // 1. Create trip via SECURITY DEFINER RPC (bypasses RLS caching issues)
+      const { data: tripId, error: tripErr } = await supabase
+        .rpc('create_trip', { p_title: title, p_description: '' });
       if (tripErr) throw tripErr;
+      const trip = { id: tripId };
 
       // 2. Build city_visits list with full data
       const visitsToInsert = [];
