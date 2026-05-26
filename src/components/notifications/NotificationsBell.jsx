@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 // Note: Button is still used inside NotificationItem for Accept/Decline actions.
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { Link } from 'react-router-dom';
@@ -25,7 +25,13 @@ export default function NotificationsBell() {
     queryKey: ['notifications', user?.email],
     queryFn: async () => {
       if (!user?.email) return [];
-      return base44.entities.Notification.filter({ user_email: user.email }, '-created_date', 30);
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!user?.email,
     refetchInterval: 60_000,
@@ -35,36 +41,44 @@ export default function NotificationsBell() {
 
   const markAllRead = useMutation({
     mutationFn: async () => {
-      await Promise.all(
-        notifications.filter(n => !n.read).map(n => base44.entities.Notification.update(n.id, { read: true }))
-      );
+      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+      if (!unreadIds.length) return;
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .in('id', unreadIds);
+      if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
 
   const respondInvite = useMutation({
     mutationFn: async ({ memberId, action }) => {
-      const res = await base44.functions.invoke('respondTripInvite', { member_id: memberId, action });
-      return res.data;
+      const update = action === 'accept'
+        ? { status: 'active', accepted_at: new Date().toISOString() }
+        : { status: 'declined' };
+      const { error } = await supabase
+        .from('trip_members')
+        .update(update)
+        .eq('id', memberId);
+      if (error) throw error;
     },
     onSuccess: (_data, vars) => {
-      // The accept button stays "active" and the trip doesn't appear until a
-      // full page reload — fix by invalidating every cache that depends on
-      // membership state, including the per-member query used inside the
-      // dropdown to render the "Accepted" badge.
       qc.invalidateQueries({ queryKey: ['notifications'] });
       qc.invalidateQueries({ queryKey: ['trips'] });
-      qc.invalidateQueries({ queryKey: ['shared-trips'] });
       qc.invalidateQueries({ queryKey: ['trip-members'] });
       qc.invalidateQueries({ queryKey: ['trip-member', vars?.memberId] });
     },
   });
 
-  // Mark a single notification as read (called when the user clicks/interacts
-  // with it). Stays a no-op if the notification is already read.
+  // Mark a single notification as read
   const markOneRead = useMutation({
     mutationFn: async (notifId) => {
-      await base44.entities.Notification.update(notifId, { read: true });
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notifId);
+      if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
@@ -135,11 +149,19 @@ function NotificationItem({ notification: n, onRespond, onMarkRead, onClose, t, 
   // We need to know if the invite is still pending — fetch the member status
   const { data: member } = useQuery({
     queryKey: ['trip-member', n.trip_member_id],
-    queryFn: () => base44.entities.TripMember.get(n.trip_member_id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trip_members')
+        .select('*')
+        .eq('id', n.trip_member_id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
     enabled: !!isInvite,
   });
 
-  const time = n.created_date ? formatDistanceToNowStrict(new Date(n.created_date), { addSuffix: true, locale: dateLocale }) : '';
+  const time = n.created_at ? formatDistanceToNowStrict(new Date(n.created_at), { addSuffix: true, locale: dateLocale }) : '';
 
   // Translate dynamic notifications via i18n keys + params when present.
   // Falls back to the legacy pre-rendered title/message stored on the row.

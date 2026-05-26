@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams, matchPath } from 'react-rout
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Menu as MenuIcon, User as UserIcon, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
@@ -95,7 +95,7 @@ export default function AppHeader() {
           {user ?
           <UserMenu user={user} /> :
 
-          <Button size="sm" variant="ghost" onClick={() => base44.auth.redirectToLogin()}>
+          <Button size="sm" variant="ghost" onClick={() => window.location.href = '/login'}>
               <UserIcon className="w-4 h-4 mr-1.5" />{t('trips.sign_in')}
             </Button>
           }
@@ -146,7 +146,15 @@ function useBackTargetAndTitle(pathname) {
   // trip pages' own `['trip', tripId]` query satisfies this without extra HTTP.
   const { data: trip } = useQuery({
     queryKey: ['trip', tripId],
-    queryFn: () => base44.entities.Trip.get(tripId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trips')
+        .select('id, title')
+        .eq('id', tripId)
+        .single();
+      if (error) return null;
+      return data;
+    },
     enabled: !!tripId,
     staleTime: 60 * 1000
   });
