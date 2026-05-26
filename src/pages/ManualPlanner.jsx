@@ -53,10 +53,14 @@ function addDays(dateStr, days) {
 }
 
 function recomputeDates(list) {
-  if (list.length === 0) return list;
-  const first = list[0].startDate || new Date().toISOString().slice(0, 10);
-  let cursor = new Date(first + 'T00:00:00');
-  return list.map((c) => {
+  // Only recompute if the first city has an anchor date — otherwise leave dates alone
+  if (list.length === 0 || !list[0].startDate) return list;
+  let cursor = new Date(list[0].startDate + 'T00:00:00');
+  return list.map((c, i) => {
+    if (i === 0) {
+      cursor.setDate(cursor.getDate() + (+c.nights || 0));
+      return c;
+    }
     const d = new Date(cursor);
     cursor.setDate(cursor.getDate() + (+c.nights || 0));
     return { ...c, startDate: d.toISOString().slice(0, 10) };
