@@ -55,9 +55,9 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Landing page at "/" for unauthenticated visitors — show while loading too
-  // so there's no blank flash before auth resolves.
-  if (!isAuthenticated && path === '/') {
+  // Landing page at "/" for unauthenticated visitors — only show AFTER auth is resolved
+  // (not during loading) so returning OAuth users don't see a flash of the landing.
+  if (!isAuthenticated && !isLoadingAuth && path === '/') {
     return (
       <Routes>
         <Route path="/" element={<LandingPage />} />
