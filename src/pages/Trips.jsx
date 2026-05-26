@@ -12,7 +12,7 @@ import NewTripModal from '@/components/trips/NewTripModal';
 import TripFormDialog from '@/components/trips/TripFormDialog';
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
-import UserMenu from '@/components/UserMenu';
+import { Avatar } from '../design/index';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -281,6 +281,15 @@ export default function Trips() {
   const nav       = useNavigate();
   const qc        = useQueryClient();
 
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('triplanio:theme') || 'light'; } catch { return 'light'; }
+  });
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('triplanio:theme', theme); } catch { /* ignore */ }
+  }, [theme]);
+
   const [viewMode,     setViewMode]     = useState(() => {
     try { return localStorage.getItem('trips:viewMode') === 'list' ? 'list' : 'grid'; } catch { return 'grid'; }
   });
@@ -382,7 +391,28 @@ export default function Trips() {
           <span className="app-header__brand-name">Triplanio</span>
         </div>
         <div className="app-header__right">
-          <UserMenu user={user} />
+          <button
+            className="icon-btn"
+            title="Сменить тему"
+            onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+          >
+            <Icon name={theme === 'light' ? 'moon' : 'sun'} size={17} />
+          </button>
+          <button className="icon-btn" title="Настройки" onClick={() => nav('/settings')}>
+            <Icon name="settings" size={17} />
+          </button>
+          <button
+            className="icon-btn"
+            title={user?.full_name || user?.email || 'Аккаунт'}
+            onClick={() => nav('/settings')}
+            style={{ padding: '0 2px' }}
+          >
+            <Avatar
+              name={user?.full_name || user?.email || '?'}
+              photo={user?.avatar_url}
+              size="sm"
+            />
+          </button>
         </div>
       </header>
 

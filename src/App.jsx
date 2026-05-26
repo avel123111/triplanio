@@ -98,9 +98,11 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
+      {/* New design — standalone (own app-header, no Layout) */}
+      <Route path="/trips" element={<Trips />} />
+
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to="/trips" replace />} />
-        <Route path="/trips" element={<Trips />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/plan-trip-ai" element={<AiTripPlanner />} />
         <Route path="/trip/:tripId" element={<TripView />} />

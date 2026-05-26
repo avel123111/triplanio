@@ -13,22 +13,30 @@ export const AuthProvider = ({ children }) => {
   const loadingForRef = React.useRef(null);
 
   useEffect(() => {
-    // Use onAuthStateChange as the single source of truth.
-    // It fires INITIAL_SESSION on mount (with current session or null),
-    // then SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED on changes.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Primary: check session immediately — reliably handles page refresh
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        // Deduplicate: skip if already loading/loaded for this user
-        if (loadingForRef.current === session.user.id) return;
-        loadingForRef.current = session.user.id;
-        await loadUserProfile(session.user);
+        loadUserProfile(session.user);
       } else {
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+      }
+    });
+
+    // Secondary: react to subsequent auth changes (sign-in, sign-out, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        loadUserProfile(session.user);
+      } else if (event === 'SIGNED_OUT') {
         loadingForRef.current = null;
         setUser(null);
         setIsAuthenticated(false);
         setIsLoadingAuth(false);
         setAuthChecked(true);
       }
+      // TOKEN_REFRESHED: session stays valid, no profile reload needed
     });
 
     return () => subscription.unsubscribe();
