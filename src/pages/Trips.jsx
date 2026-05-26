@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,8 +18,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast } from '@/lib/trip-dates';
 import { cn } from '@/lib/utils';
 
-const PRO_STATUS_KEY = ['my-pro-status'];
-
 export default function Trips() {
   const { t } = useI18nFormat();
   const { user } = useAuth();
@@ -28,10 +26,10 @@ export default function Trips() {
 
   const handleRefresh = async () => {
     await Promise.all([
-    qc.invalidateQueries({ queryKey: ['trips'] }),
-    qc.invalidateQueries({ queryKey: ['my-memberships'] }),
-    qc.invalidateQueries({ queryKey: ['all-city-visits-by-trips'] })]
-    );
+      qc.invalidateQueries({ queryKey: ['trips'] }),
+      qc.invalidateQueries({ queryKey: ['my-memberships'] }),
+      qc.invalidateQueries({ queryKey: ['all-city-visits-by-trips'] }),
+    ]);
   };
 
   const [showNewTripModal, setShowNewTripModal] = useState(false);
@@ -53,48 +51,37 @@ export default function Trips() {
     try {localStorage.setItem('trips:viewMode', viewMode);} catch {/* ignore */}
   }, [viewMode]);
 
-  // Own trips
-  const { data: ownTrips = [], isLoading } = useQuery({
-    queryKey: ['trips', 'own', user?.email],
-    queryFn: () => user?.email ?
-    base44.entities.Trip.filter({ created_by: user.email }, '-created_date') :
-    [],
-    enabled: !!user?.email
+  // All accessible trips (RLS handles own + shared filtering via is_trip_participant)
+  const { data: allTrips = [], isLoading } = useQuery({
+    queryKey: ['trips', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
   });
 
-  // Trips shared with me
+  // Active memberships for this user (to detect shared trips and get role)
   const { data: myMemberships = [] } = useQuery({
     queryKey: ['my-memberships', user?.email],
-    queryFn: () => user?.email ?
-    base44.entities.TripMember.filter({ user_email: user.email, status: 'active' }) :
-    [],
-    enabled: !!user?.email
-  });
-
-  const { data: sharedTrips = [] } = useQuery({
-    queryKey: ['trips', 'shared', myMemberships.map((m) => m.trip_id).sort().join(',')],
     queryFn: async () => {
-      if (myMemberships.length === 0) return [];
-      const results = await Promise.all(
-        myMemberships.map(async (m) => {
-          try {
-            return await base44.entities.Trip.get(m.trip_id);
-          } catch (err) {
-            const status = err?.status ?? err?.response?.status;
-            if (status === 404 || status === 410) {
-              try {await base44.entities.TripMember.delete(m.id);} catch {/* ignore */}
-            }
-            return null;
-          }
-        })
-      );
-      return results.filter(Boolean);
+      const { data, error } = await supabase
+        .from('trip_members')
+        .select('*')
+        .eq('user_email', user.email)
+        .eq('status', 'active');
+      if (error) throw error;
+      return data || [];
     },
-    enabled: myMemberships.length > 0
+    enabled: !!user?.email,
   });
 
-  const ownIds = new Set(ownTrips.map((t) => t.id));
-  const sharedOnly = sharedTrips.filter((tr) => !ownIds.has(tr.id));
+  const ownTrips = allTrips.filter((t) => t.created_by === user?.email);
+  const sharedOnly = allTrips.filter((t) => t.created_by !== user?.email);
 
   const tripIdsKey = [...ownTrips.map((t) => t.id), ...sharedOnly.map((t) => t.id)].join(',');
   const hasAnyTrip = ownTrips.length + sharedOnly.length > 0;
@@ -104,10 +91,14 @@ export default function Trips() {
     queryFn: async () => {
       const ids = [...ownTrips.map((t) => t.id), ...sharedOnly.map((t) => t.id)];
       if (ids.length === 0) return [];
-      const lists = await Promise.all(ids.map((id) => base44.entities.CityVisit.filter({ trip_id: id })));
-      return lists.flat();
+      const { data, error } = await supabase
+        .from('city_visits')
+        .select('*')
+        .in('trip_id', ids);
+      if (error) throw error;
+      return data || [];
     },
-    enabled: hasAnyTrip
+    enabled: hasAnyTrip,
   });
 
   const visitsByTrip = useMemo(() => {
@@ -142,16 +133,8 @@ export default function Trips() {
 
   const totalCount = ownTrips.length + sharedOnly.length;
 
-  // Pro status
-  const { data: isPro = false } = useQuery({
-    queryKey: PRO_STATUS_KEY,
-    queryFn: async () => {
-      const res = await base44.functions.invoke('checkSubscriptionStatus', {});
-      return !!res?.data?.isPro;
-    },
-    staleTime: 5 * 60 * 1000,
-    enabled: !!user
-  });
+  // Pro status — derived from user profile (no separate request needed)
+  const isPro = ['pro_monthly', 'pro_yearly', 'pro_trip'].includes(user?.subscription_status);
 
   const checkLimitAndProceed = (pick, callback) => {
     const allActive = [...ownSplit.active, ...sharedSplit.active];
@@ -414,7 +397,7 @@ export default function Trips() {
           onOpenChange={setShowUpgradeDialog}
           hidePerTrip
           onUpgradeComplete={() => {
-            qc.invalidateQueries({ queryKey: PRO_STATUS_KEY });
+            qc.invalidateQueries({ queryKey: ['me'] });
             setShowUpgradeDialog(false);
           }} />
         
