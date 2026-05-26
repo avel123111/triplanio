@@ -20,12 +20,12 @@ import AdminNotifications from '@/pages/admin/Notifications';
 import AiTripPlanner from '@/pages/AiTripPlanner';
 import Login from '@/pages/Login';
 import DesignPreview from '@/pages/redesign/DesignPreview';
+import LandingPage from '@/pages/Landing/LandingPage';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
 
-  // Public read-only trip page must work WITHOUT auth — short-circuit before
-  // the auth gate redirects unauthenticated visitors to login.
+  // Public read-only trip page — no auth needed
   const path = window.location.pathname;
   if (path.startsWith('/public/trip/')) {
     return (
@@ -36,7 +36,7 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Login page is always accessible without auth
+  // Login page — always accessible
   if (path === '/login') {
     return (
       <Routes>
@@ -54,6 +54,16 @@ const AuthenticatedApp = () => {
     );
   }
 
+  // Landing page at "/" for unauthenticated visitors — show while loading too
+  // so there's no blank flash before auth resolves.
+  if (!isAuthenticated && path === '/') {
+    return (
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+      </Routes>
+    );
+  }
+
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -62,18 +72,26 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Not authenticated — send to login
+  // Not authenticated and on a non-root path — send to landing
   if (!isAuthenticated) {
-    navigateToLogin();
-    return null;
+    return (
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="*" element={<LandingPage />} />
+      </Routes>
+    );
   }
 
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      navigateToLogin();
-      return null;
+      return (
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="*" element={<LandingPage />} />
+        </Routes>
+      );
     }
   }
 
