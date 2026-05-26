@@ -1,7 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
-import { appParams } from '@/lib/app-params';
-import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { supabase } from '@/api/supabaseClient';
 
 const AuthContext = createContext();
 
@@ -9,153 +7,127 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
 
   useEffect(() => {
-    checkAppState();
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        loadUserProfile(session.user);
+      } else {
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+      }
+    });
+
+    // Listen to auth state changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        await loadUserProfile(session.user);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const checkAppState = async () => {
+  const loadUserProfile = async (authUser) => {
     try {
-      setIsLoadingPublicSettings(true);
-      setAuthError(null);
-      
-      // First, check app public settings (with token if available)
-      // This will tell us if auth is required, user not registered, etc.
-      const appClient = createAxiosClient({
-        baseURL: `/api/apps/public`,
-        headers: {
-          'X-App-Id': appParams.appId
-        },
-        token: appParams.token, // Include token if available
-        interceptResponses: true
-      });
-      
-      try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
-        setAppPublicSettings(publicSettings);
-        
-        // If we got the app public settings successfully, check if user is authenticated
-        if (appParams.token) {
-          await checkUserAuth();
-        } else {
-          setIsLoadingAuth(false);
-          setIsAuthenticated(false);
-          setAuthChecked(true);
-        }
-        setIsLoadingPublicSettings(false);
-      } catch (appError) {
-        console.error('App state check failed:', appError);
-        
-        // Handle app-level errors
-        if (appError.status === 403 && appError.data?.extra_data?.reason) {
-          const reason = appError.data.extra_data.reason;
-          if (reason === 'auth_required') {
-            setAuthError({
-              type: 'auth_required',
-              message: 'Authentication required'
-            });
-          } else if (reason === 'user_not_registered') {
-            setAuthError({
-              type: 'user_not_registered',
-              message: 'User not registered for this app'
-            });
-          } else {
-            setAuthError({
-              type: reason,
-              message: appError.message
-            });
-          }
-        } else {
-          setAuthError({
-            type: 'unknown',
-            message: appError.message || 'Failed to load app'
-          });
-        }
-        setIsLoadingPublicSettings(false);
-        setIsLoadingAuth(false);
-      }
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      setAuthError({
-        type: 'unknown',
-        message: error.message || 'An unexpected error occurred'
-      });
-      setIsLoadingPublicSettings(false);
-      setIsLoadingAuth(false);
-    }
-  };
-
-  const checkUserAuth = async () => {
-    try {
-      // Now check if the user is authenticated
       setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
-      // Backfill default avatar_url for users whose OAuth provider didn't return one.
-      if (currentUser && !currentUser.avatar_url) {
-        const seed = encodeURIComponent(currentUser.full_name || currentUser.email || 'user');
-        const defaultAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}`;
-        try {
-          await base44.auth.updateMe({ avatar_url: defaultAvatar });
-          currentUser.avatar_url = defaultAvatar;
-        } catch (e) {
-          console.warn('Failed to backfill avatar_url:', e);
-        }
+
+      // Fetch profile from public.users
+      let { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // Profile doesn't exist yet — create it (first login via Google or email)
+        const seed = encodeURIComponent(
+          authUser.user_metadata?.full_name ||
+          authUser.user_metadata?.name ||
+          authUser.email || 'user'
+        );
+        const avatarUrl = authUser.user_metadata?.avatar_url ||
+          `https://api.dicebear.com/7.x/initials/svg?seed=${seed}`;
+
+        const { data: newProfile, error: createError } = await supabase
+          .from('users')
+          .insert({
+            id: authUser.id,
+            email: authUser.email,
+            full_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
+            avatar_url: avatarUrl,
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        profile = newProfile;
+      } else if (error) {
+        throw error;
       }
-      setUser(currentUser);
+
+      // Backfill avatar if missing
+      if (profile && !profile.avatar_url) {
+        const seed = encodeURIComponent(profile.full_name || profile.email || 'user');
+        const defaultAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}`;
+        await supabase.from('users').update({ avatar_url: defaultAvatar }).eq('id', authUser.id);
+        profile.avatar_url = defaultAvatar;
+      }
+
+      setUser({ ...profile, id: authUser.id });
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
       setAuthChecked(true);
     } catch (error) {
-      console.error('User auth check failed:', error);
-      setIsLoadingAuth(false);
+      console.error('Failed to load user profile:', error);
+      setAuthError({ type: 'unknown', message: error.message });
       setIsAuthenticated(false);
+      setIsLoadingAuth(false);
       setAuthChecked(true);
-      
-      // If user auth fails, it might be an expired token
-      if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
-      }
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const checkUserAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      await loadUserProfile(session.user);
+    }
+  };
+
+  const logout = async (shouldRedirect = true) => {
+    await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);
-    
     if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
-    } else {
-      // Just remove the token without redirect
-      base44.auth.logout();
+      window.location.href = '/login';
     }
   };
 
   const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
-    base44.auth.redirectToLogin(window.location.href);
+    window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated, 
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated,
       isLoadingAuth,
-      isLoadingPublicSettings,
+      isLoadingPublicSettings: false,  // kept for interface compatibility
       authError,
-      appPublicSettings,
+      appPublicSettings: null,          // kept for interface compatibility
       authChecked,
       logout,
       navigateToLogin,
       checkUserAuth,
-      checkAppState
+      checkAppState: checkUserAuth,     // alias for interface compatibility
     }}>
       {children}
     </AuthContext.Provider>

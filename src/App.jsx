@@ -17,9 +17,10 @@ import PublicTrip from '@/pages/PublicTrip';
 import AdminHome from '@/pages/admin/AdminHome';
 import AdminNotifications from '@/pages/admin/Notifications';
 import AiTripPlanner from '@/pages/AiTripPlanner';
+import Login from '@/pages/Login';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
 
   // Public read-only trip page must work WITHOUT auth — short-circuit before
   // the auth gate redirects unauthenticated visitors to login.
@@ -33,12 +34,27 @@ const AuthenticatedApp = () => {
     );
   }
 
+  // Login page is always accessible without auth
+  if (path === '/login') {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+      </Routes>
+    );
+  }
+
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
       </div>
     );
+  }
+
+  // Not authenticated — send to login
+  if (!isAuthenticated) {
+    navigateToLogin();
+    return null;
   }
 
   if (authError) {
