@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { APIProvider, Map as GMap, AdvancedMarker, useMap as useGMap } from '@vis.gl/react-google-maps';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +11,8 @@ import { searchCities, getTimezone, countryFlag } from '@/lib/geo';
 import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
 import '../design/app.css';
+
+const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
@@ -230,6 +233,55 @@ function makeMarkerIcon(label, color, textColor = 'white') {
   });
 }
 
+// ─── Google Maps helpers ──────────────────────────────────────────────────────
+
+function GoogleFitBounds({ positions }) {
+  const map = useGMap();
+  useEffect(() => {
+    if (!map || positions.length === 0 || !window.google?.maps) return;
+    if (positions.length === 1) {
+      map.setCenter({ lat: positions[0][0], lng: positions[0][1] });
+      map.setZoom(7);
+    } else {
+      const bounds = new window.google.maps.LatLngBounds();
+      positions.forEach(([lat, lng]) => bounds.extend({ lat, lng }));
+      map.fitBounds(bounds, 48);
+    }
+  }, [map, JSON.stringify(positions)]); // eslint-disable-line
+  return null;
+}
+
+function GooglePolyline({ positions }) {
+  const map = useGMap();
+  useEffect(() => {
+    if (!map || positions.length < 2 || !window.google?.maps) return;
+    const line = new window.google.maps.Polyline({
+      path: positions.map(([lat, lng]) => ({ lat, lng })),
+      strokeColor: '#3b5bdb',
+      strokeOpacity: 0,
+      icons: [{
+        icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.8, strokeColor: '#3b5bdb', scale: 3 },
+        offset: '0',
+        repeat: '12px',
+      }],
+    });
+    line.setMap(map);
+    return () => line.setMap(null);
+  }, [map, JSON.stringify(positions)]); // eslint-disable-line
+  return null;
+}
+
+function MarkerPin({ label, color }) {
+  return (
+    <div style={{
+      background: color, color: 'white', borderRadius: '50%',
+      width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontWeight: 700, fontSize: 11, boxShadow: '0 3px 8px rgba(0,0,0,.25)',
+      border: '2px solid white', transform: 'translate(0, 0)',
+    }}>{label}</div>
+  );
+}
+
 // ─── PlannerMap ───────────────────────────────────────────────────────────────
 
 function PlannerMap({ home, cities, returnCity }) {
@@ -261,6 +313,27 @@ function PlannerMap({ home, cities, returnCity }) {
             <Icon name="map" size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
             <div style={{ fontSize: 13 }}>Добавь города —<br />маршрут появится здесь</div>
           </div>
+        </div>
+      ) : GOOGLE_MAPS_KEY ? (
+        <div style={{ height: 320 }}>
+          <APIProvider apiKey={GOOGLE_MAPS_KEY}>
+            <GMap
+              defaultCenter={{ lat: positions[0][0], lng: positions[0][1] }}
+              defaultZoom={4}
+              gestureHandling="cooperative"
+              disableDefaultUI={true}
+              mapId="triplanio-planner"
+              style={{ width: '100%', height: '100%' }}
+            >
+              <GoogleFitBounds positions={positions} />
+              <GooglePolyline positions={positions} />
+              {pts.map((p, i) => (
+                <AdvancedMarker key={i} position={{ lat: p.lat, lng: p.lng }} title={p.name}>
+                  <MarkerPin label={p.label} color={p.color} />
+                </AdvancedMarker>
+              ))}
+            </GMap>
+          </APIProvider>
         </div>
       ) : (
         <MapContainer
@@ -341,12 +414,10 @@ function CityAnchorRow({ label, city_name, country, kind }) {
 function CityRow({ idx, total, city, isDragging, isOver, onDragStart, onDragOver, onDrop, onDragEnd, onChange, onRemove, onMoveUp, onMoveDown }) {
   return (
     <div
+      className="planner-city-row"
       onDragOver={onDragOver}
       onDrop={onDrop}
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'auto auto 1fr 140px 80px auto',
-        alignItems: 'center', gap: 10,
         padding: '10px 12px',
         background: isOver ? 'var(--brand-soft)' : 'var(--surface)',
         border: '1px solid ' + (isOver ? 'var(--brand)' : 'var(--line)'),
@@ -357,6 +428,7 @@ function CityRow({ idx, total, city, isDragging, isOver, onDragStart, onDragOver
     >
       {/* Drag handle */}
       <div
+        className="planner-city-row__handle"
         draggable
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
@@ -367,27 +439,29 @@ function CityRow({ idx, total, city, isDragging, isOver, onDragStart, onDragOver
       </div>
 
       {/* Number badge */}
-      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+      <div className="planner-city-row__num" style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
         {idx + 1}
       </div>
 
       {/* City search */}
-      <CityPicker
-        value={city.city_name ? city : null}
-        onChange={(picked) => {
-          if (picked) {
-            onChange({ city_name: picked.city_name, country: picked.country, country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
-          } else {
-            onChange({ city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
-          }
-        }}
-        placeholder="Город"
-        style={{ fontSize: 13.5 }}
-      />
+      <div className="planner-city-row__picker" style={{ minWidth: 0 }}>
+        <CityPicker
+          value={city.city_name ? city : null}
+          onChange={(picked) => {
+            if (picked) {
+              onChange({ city_name: picked.city_name, country: picked.country, country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
+            } else {
+              onChange({ city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
+            }
+          }}
+          placeholder="Город"
+          style={{ fontSize: 13.5 }}
+        />
+      </div>
 
       {/* Date */}
       <input
-        className="input num"
+        className="input num planner-city-row__date"
         type="date"
         value={city.startDate || ''}
         onChange={(e) => onChange({ startDate: e.target.value })}
@@ -395,7 +469,7 @@ function CityRow({ idx, total, city, isDragging, isOver, onDragStart, onDragOver
       />
 
       {/* Nights */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div className="planner-city-row__nights" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <input
           className="input num"
           type="number" min={1} max={30}
@@ -407,7 +481,7 @@ function CityRow({ idx, total, city, isDragging, isOver, onDragStart, onDragOver
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 2 }}>
+      <div className="planner-city-row__actions" style={{ display: 'flex', gap: 2 }}>
         <button onClick={onMoveUp} disabled={idx === 0} title="Выше" style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: 'transparent', cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.3 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}>
           <Icon name="chevU" size={12} />
         </button>
@@ -429,7 +503,6 @@ function CityRow({ idx, total, city, isDragging, isOver, onDragStart, onDragOver
 
 function StepHome({ home, setHome, goNext }) {
   const [geoState, setGeoState] = useState('ask'); // ask | loading | allowed | denied
-  const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyCoords, setNearbyCoords] = useState(null);
 
   const requestGeo = () => {
@@ -445,9 +518,20 @@ function StepHome({ home, setHome, goNext }) {
     );
   };
 
+  // Sort POPULAR_HOME by Euclidean distance from user coords
+  const nearbyCities = useMemo(() => {
+    if (!nearbyCoords) return POPULAR_HOME;
+    const { lat, lng } = nearbyCoords;
+    return [...POPULAR_HOME].sort((a, b) => {
+      const da = Math.sqrt((lat - a.latitude) ** 2 + (lng - a.longitude) ** 2);
+      const db = Math.sqrt((lat - b.latitude) ** 2 + (lng - b.longitude) ** 2);
+      return da - db;
+    });
+  }, [nearbyCoords]);
+
   return (
     <div>
-      <h1 style={{ marginBottom: 10, letterSpacing: '-0.025em' }}>Откуда вы вылетаете?</h1>
+      <h1 style={{ marginBottom: 10 }}>Откуда вы вылетаете?</h1>
       <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 540 }}>
         Это твой дом — точка старта и (обычно) возврата. Из него Triplanio покажет переезды и стоимость билетов.
       </div>
@@ -489,7 +573,7 @@ function StepHome({ home, setHome, goNext }) {
 
       {geoState === 'allowed' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
-          {POPULAR_HOME.map((p) => (
+          {nearbyCities.map((p) => (
             <button key={p.city_name} onClick={() => setHome(p)} style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
               background: home?.city_name === p.city_name ? 'var(--brand-soft)' : 'var(--surface)',
@@ -590,7 +674,8 @@ function StepCities({ cities, setCities, home, goPrev, goNext }) {
       const ns = [...cs];
       const [moved] = ns.splice(fromIdx, 1);
       ns.splice(toIdx, 0, moved);
-      return recomputeDates(ns);
+      // Only recompute dates if first city has an anchor date — otherwise leave dates alone
+      return ns[0]?.startDate ? recomputeDates(ns) : ns;
     });
     setDragId(null);
     setOverId(null);
@@ -601,7 +686,7 @@ function StepCities({ cities, setCities, home, goPrev, goNext }) {
 
   return (
     <div>
-      <h1 style={{ marginBottom: 10, letterSpacing: '-0.025em' }}>Скелет трипа</h1>
+      <h1 style={{ marginBottom: 10 }}>Скелет трипа</h1>
       <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 620 }}>
         Перечисли города в порядке поездки. <b style={{ color: 'var(--ink)' }}>Перетащи</b> карточку за ручку слева — даты пересчитаются автоматически.
       </div>
@@ -631,8 +716,8 @@ function StepCities({ cities, setCities, home, goPrev, goNext }) {
               onDragEnd={onDragEnd}
               onChange={(patch) => update(c.id, patch)}
               onRemove={() => remove(c.id)}
-              onMoveUp={() => setCities(cs => { if (i === 0) return cs; const ns = [...cs]; [ns[i-1], ns[i]] = [ns[i], ns[i-1]]; return recomputeDates(ns); })}
-              onMoveDown={() => setCities(cs => { if (i === cs.length-1) return cs; const ns = [...cs]; [ns[i], ns[i+1]] = [ns[i+1], ns[i]]; return recomputeDates(ns); })}
+              onMoveUp={() => setCities(cs => { if (i === 0) return cs; const ns = [...cs]; [ns[i-1], ns[i]] = [ns[i], ns[i-1]]; return ns[0]?.startDate ? recomputeDates(ns) : ns; })}
+              onMoveDown={() => setCities(cs => { if (i === cs.length-1) return cs; const ns = [...cs]; [ns[i], ns[i+1]] = [ns[i+1], ns[i]]; return ns[0]?.startDate ? recomputeDates(ns) : ns; })}
             />
           ))}
           <button onClick={() => addCity()} style={{
@@ -698,7 +783,7 @@ function StepCities({ cities, setCities, home, goPrev, goNext }) {
 function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity, goPrev, goNext }) {
   return (
     <div>
-      <h1 style={{ marginBottom: 10, letterSpacing: '-0.025em' }}>
+      <h1 style={{ marginBottom: 10 }}>
         Куда возвращаетесь после <span style={{ color: 'var(--brand)' }}>{lastCityName}</span>?
       </h1>
       <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 540 }}>
@@ -811,7 +896,7 @@ function StepReview({ home, cities, returnCity, tripTitle, setTripTitle, saving,
 
   return (
     <div>
-      <h1 style={{ marginBottom: 10, letterSpacing: '-0.025em' }}>Финальный драфт</h1>
+      <h1 style={{ marginBottom: 10 }}>Финальный драфт</h1>
       <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 620 }}>
         Проверь, всё ли на месте. После сохранения трип появится в коллекции, и можно будет добавлять детали.
       </div>
@@ -979,16 +1064,34 @@ export default function ManualPlanner() {
   // ── Supabase save ────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!user) return;
+
+    const title = (tripTitle || autoTitle).trim();
+    // Pre-flight validation
+    if (cities.length === 0) {
+      setError('Добавь хотя бы один город маршрута.');
+      return;
+    }
+    if (!title) {
+      setError('Укажи название трипа.');
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
     try {
-      const title = (tripTitle || autoTitle).trim();
+      // RLS requires created_by = auth.jwt() ->> 'email'. The profiles table
+      // may diverge from the JWT, so always pull email straight from the JWT.
+      const { data: authUser, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authUser?.user?.email) {
+        throw new Error('Не удалось получить email из сессии. Перезайди в аккаунт.');
+      }
+      const authEmail = authUser.user.email;
 
       // 1. Create trip (no status field — it doesn't exist in schema)
       const { data: trip, error: tripErr } = await supabase
         .from('trips')
-        .insert({ title, created_by: user.email, description: '' })
+        .insert({ title, created_by: authEmail, description: '' })
         .select()
         .single();
       if (tripErr) throw tripErr;
@@ -1008,7 +1111,7 @@ export default function ManualPlanner() {
           longitude: home.longitude || null,
           timezone: home.timezone || null,
           kind: 'start',
-          created_by: user.email,
+          created_by: authEmail,
         });
       }
 
@@ -1027,7 +1130,7 @@ export default function ManualPlanner() {
           kind: 'transit',
           start_datetime: c.startDate ? c.startDate + 'T12:00:00' : null,
           end_datetime: c.startDate && c.nights ? addDays(c.startDate, +c.nights) + 'T11:00:00' : null,
-          created_by: user.email,
+          created_by: authEmail,
         });
       });
 
@@ -1043,7 +1146,7 @@ export default function ManualPlanner() {
           longitude: effectiveReturn.longitude || null,
           timezone: effectiveReturn.timezone || null,
           kind: 'end',
-          created_by: user.email,
+          created_by: authEmail,
         });
       }
 
@@ -1119,7 +1222,7 @@ export default function ManualPlanner() {
 
       {/* Body */}
       <div style={{ flex: 1, padding: '32px 24px', maxWidth: 1280, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 400px', gap: 24, alignItems: 'start' }}>
+        <div className="planner-grid">
           {/* Form column */}
           <div style={{ minWidth: 0 }}>
             {step === 'home' && (
@@ -1157,8 +1260,8 @@ export default function ManualPlanner() {
             )}
           </div>
 
-          {/* Map column — sticky */}
-          <div style={{ position: 'sticky', top: 80 }}>
+          {/* Map column — sticky on desktop, static on mobile */}
+          <div className="planner-map-col">
             <PlannerMap
               home={home}
               cities={cities}
