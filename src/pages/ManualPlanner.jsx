@@ -21,7 +21,8 @@ const STEPS = [
   { id: 'review', num: 4, label: 'Финальный драфт' },
 ];
 
-const STORAGE_KEY = 'triplanio-manual-planner-state';
+// Storage key is user-specific to prevent draft leaking between accounts
+const storageKey = (userId) => `triplanio-planner-${userId || 'guest'}`;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1007,10 +1008,11 @@ export default function ManualPlanner() {
   const [error, setError]           = useState(null);
   const [restored, setRestored]     = useState(false);
 
-  // Restore from sessionStorage on mount
+  // Restore from sessionStorage on mount — only for the current user
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
+      const key = storageKey(user?.id);
+      const raw = sessionStorage.getItem(key);
       if (raw) {
         const saved = JSON.parse(raw);
         if (saved.step) setStep(saved.step);
@@ -1022,15 +1024,15 @@ export default function ManualPlanner() {
       }
     } catch {}
     setRestored(true);
-  }, []);
+  }, [user?.id]); // re-run if user changes (e.g. account switch in same tab)
 
   // Persist to sessionStorage on every change
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle }));
+      sessionStorage.setItem(storageKey(user?.id), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle }));
     } catch {}
-  }, [step, home, cities, returnMode, returnCity, tripTitle, restored]);
+  }, [step, home, cities, returnMode, returnCity, tripTitle, restored, user?.id]);
 
   const goNext = () => {
     const i = STEPS.findIndex(s => s.id === step);
@@ -1139,7 +1141,7 @@ export default function ManualPlanner() {
         if (visitErr) throw visitErr;
       }
 
-      sessionStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(storageKey(user?.id));
       setSavedOk(true);
       setSavedTripId(trip.id);
     } catch (err) {
