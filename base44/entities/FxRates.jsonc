@@ -1,0 +1,26 @@
+{
+  "name": "FxRates",
+  "type": "object",
+  "properties": {
+    "base": {
+      "type": "string",
+      "description": "Base currency (ISO 4217), e.g. 'EUR'"
+    },
+    "rates": {
+      "type": "object",
+      "description": "Object mapping currency code -> rate relative to base (1 base = X currency)"
+    },
+    "fetched_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "string",
+      "description": "API source identifier"
+    }
+  },
+  "required": [
+    "base",
+    "rates"
+  ]
+}

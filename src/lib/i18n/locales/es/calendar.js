@@ -1,0 +1,16 @@
+export default {
+  'calendar.month': 'Mes',
+  'calendar.week': 'Semana',
+  'calendar.day': 'Día',
+  'calendar.today': 'Hoy',
+  'calendar.all_day': 'Todo el día',
+  'calendar.prev': 'Anterior',
+  'calendar.next': 'Siguiente',
+  'calendar.trip_start': 'Inicio',
+  'calendar.update_failed': 'No se pudo actualizar el evento',
+  'calendar.hotel_checkin': 'Entrada: {name}',
+  'calendar.hotel_checkout': 'Salida: {name}',
+  'calendar.hotel_cancel_deadline': 'Cancelación gratis hasta: {name}',
+  'calendar.car_pickup': 'Recogida coche: {name}',
+  'calendar.car_dropoff': 'Devolución coche: {name}',
+};

@@ -1,0 +1,47 @@
+export default {
+  'doc.tab_title': 'Документы',
+  'doc.tab_loading': 'Загрузка…',
+  'doc.tab_add': '+ Добавить документ',
+  'doc.tab_empty_title': 'Документов пока нет',
+  'doc.tab_empty_owner': 'Загрузите билеты, страховки, ваучеры или другие файлы.',
+  'doc.tab_empty_viewer': 'Владелец поездки ещё не добавил документы.',
+  'doc.tab_add_first': 'Добавить первый документ',
+  'doc.tab_delete_confirm': 'Удалить документ?',
+  'doc.tab_download_file': 'Скачать файл',
+  'doc.tab_open_link': 'Открыть ссылку',
+
+  // Секции
+  'doc.section_shared': 'Общие документы трипа',
+  'doc.section_shared_hint': 'Видят все участники',
+  'doc.section_private': 'Личные документы',
+  'doc.section_private_hint': 'Только ты их видишь',
+  'doc.shared_empty': 'Новый документ',
+  'doc.add_shared': 'Новый документ',
+  'doc.private_empty': 'Новый документ',
+  'doc.add_private': 'Новый документ',
+
+  // Карточка
+  'doc.card_files_count': '{n} файла',
+  'doc.card_no_files': '0 файлов',
+
+  // Диалог
+  'doc.dialog_new': 'Добавить документ',
+  'doc.dialog_edit': 'Редактировать документ',
+  'doc.visibility_label': 'Видимость документа',
+  'doc.visibility_shared': 'Общий',
+  'doc.visibility_shared_desc': 'Все участники трипа увидят документ',
+  'doc.visibility_private': 'Личный',
+  'doc.visibility_private_desc': 'Только ты видишь — паспорт, виза, страховка',
+  'doc.title_required': 'Название *',
+  'doc.title_placeholder': 'Например, «Виза в Испанию»',
+  'doc.notes_label': 'Заметка (опц.)',
+  'doc.notes_placeholder': 'Краткое описание, срок действия…',
+  'doc.files_label': 'Файлы',
+  'doc.link_label': 'Внешняя ссылка (опц.)',
+  'doc.link_placeholder': 'https://…',
+  'doc.btn_save': 'Сохранить',
+  'doc.btn_add': 'Сохранить',
+  'doc.view_files_label': 'Файлы',
+  'doc.view_open_link': 'Открыть ссылку',
+  'doc.view_notes': 'Заметки',
+};

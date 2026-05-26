@@ -1,0 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@500;600;700;800&display=swap');
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Triplanio — Atlantic (light) */
+    --background: 220 20% 97%;             /* #f6f7f9 — cool slate wash */
+    --foreground: 222 47% 11%;             /* #0F172A ink */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 218 77% 51%;                /* #2167e2 brand */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;              /* #f1f3f7 wash */
+    --secondary-foreground: 222 30% 18%;   /* #1f2a44 ink-2 */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 11% 42%;       /* #5a657a muted */
+    --accent: 220 80% 95%;                 /* soft brand tint */
+    --accent-foreground: 218 77% 51%;
+    --destructive: 0 75% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;                 /* #E5E7EB line */
+    --input: 220 13% 91%;
+    --ring: 218 77% 51%;
+    --chart-1: 218 77% 51%;                /* brand */
+    --chart-2: 159 64% 33%;                /* success green */
+    --chart-3: 18 56% 51%;                 /* warm terracotta */
+    --chart-4: 0 75% 50%;
+    --chart-5: 220 30% 22%;
+    --radius: 1.125rem;                    /* 18px card */
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Inter Tight', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 218 77% 51%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 222 30% 18%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 218 77% 51%;
+  }
+
+  .dark {
+    /* Triplanio — Atlantic (dark) */
+    --background: 222 47% 7%;              /* deep navy-ink */
+    --foreground: 220 14% 92%;
+    --card: 222 40% 11%;                   /* card slightly lighter */
+    --card-foreground: 220 14% 92%;
+    --popover: 222 40% 11%;
+    --popover-foreground: 220 14% 92%;
+    --primary: 218 90% 66%;                /* lighter brand for contrast */
+    --primary-foreground: 222 47% 11%;
+    --secondary: 222 28% 16%;
+    --secondary-foreground: 220 14% 92%;
+    --muted: 222 28% 16%;
+    --muted-foreground: 220 12% 64%;
+    --accent: 218 60% 22%;
+    --accent-foreground: 218 90% 80%;
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 20% 22%;
+    --input: 222 20% 22%;
+    --ring: 218 90% 66%;
+    --chart-1: 218 90% 66%;
+    --chart-2: 159 60% 50%;
+    --chart-3: 18 70% 60%;
+    --chart-4: 0 75% 60%;
+    --chart-5: 220 14% 80%;
+    --sidebar-background: 222 40% 10%;
+    --sidebar-foreground: 220 14% 92%;
+    --sidebar-primary: 218 90% 66%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 222 28% 16%;
+    --sidebar-accent-foreground: 220 14% 92%;
+    --sidebar-border: 222 20% 22%;
+    --sidebar-ring: 218 90% 66%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    overscroll-behavior: none;
+  }
+  /* Mobile-friendly: avoid accidental text selection on tappable elements. */
+  button,
+  [role="tab"],
+  .nav-link {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.022em;
+  }
+  h1 { letter-spacing: -0.035em; }
+}
+
+/* AI-filled field: tint the inner input/select trigger */
+.ai-filled input,
+.ai-filled textarea,
+.ai-filled [role="combobox"],
+.ai-filled button[role="combobox"] {
+  background-color: transparent !important;
+}
+
+/* Mobile fix: native datetime-local inputs render localized text that often
+   overflows the field on small screens (e.g. "7. 7. 2026., 12:00" in en-GB).
+   Force the input to shrink within its grid/flex parent and use slightly
+   smaller, denser typography on narrow viewports. */
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"] {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 640px) {
+  input[type="datetime-local"],
+  input[type="date"],
+  input[type="time"] {
+    font-size: 0.8125rem; /* 13px */
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  /* Align native date/time control height with other inputs (h-9 = 36px).
+     iOS Safari/Chrome rendered them ~44px+ which made forms look uneven. */
+  input[type="datetime-local"],
+  input[type="date"],
+  input[type="time"] {
+    height: 2.25rem;
+  }
+}
+
+/* Leaflet dark mode tile filter */
+.dark .leaflet-tile {
+  filter: brightness(0.7) invert(1) contrast(0.9) hue-rotate(180deg) saturate(0.6);
+}
+.leaflet-container {
+  background: hsl(var(--muted));
+  font-family: var(--font-sans);
+}
+/* Keep Leaflet below dialog overlay (Radix dialog uses z-index 50) */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 1 !important;
+}
+.leaflet-control {
+  z-index: 2 !important;
+}

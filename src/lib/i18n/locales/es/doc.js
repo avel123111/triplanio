@@ -1,0 +1,47 @@
+export default {
+  'doc.tab_title': 'Documentos',
+  'doc.tab_loading': 'Cargando…',
+  'doc.tab_add': 'Añadir documento',
+  'doc.tab_empty_title': 'Aún no hay documentos',
+  'doc.tab_empty_owner': 'Sube billetes, seguros, bonos u otros archivos.',
+  'doc.tab_empty_viewer': 'El propietario del viaje aún no ha añadido documentos.',
+  'doc.tab_add_first': 'Añadir el primer documento',
+  'doc.tab_delete_confirm': '¿Eliminar el documento?',
+  'doc.tab_download_file': 'Descargar archivo',
+  'doc.tab_open_link': 'Abrir enlace',
+
+  // Secciones
+  'doc.section_shared': 'Documentos compartidos del viaje',
+  'doc.section_shared_hint': 'Visible para todos los miembros',
+  'doc.section_private': 'Mis documentos',
+  'doc.section_private_hint': 'Solo tú puedes verlos',
+  'doc.shared_empty': 'Nuevo documento',
+  'doc.add_shared': 'Nuevo documento',
+  'doc.private_empty': 'Nuevo documento',
+  'doc.add_private': 'Nuevo documento',
+
+  // Tarjeta
+  'doc.card_files_count': '{n} archivos',
+  'doc.card_no_files': '0 archivos',
+
+  // Diálogo
+  'doc.dialog_new': 'Añadir documento',
+  'doc.dialog_edit': 'Editar documento',
+  'doc.visibility_label': 'Visibilidad del documento',
+  'doc.visibility_shared': 'Compartido',
+  'doc.visibility_shared_desc': 'Todos los miembros del viaje verán este documento',
+  'doc.visibility_private': 'Privado',
+  'doc.visibility_private_desc': 'Solo tú lo ves — pasaporte, visa, seguro',
+  'doc.title_required': 'Título *',
+  'doc.title_placeholder': 'p. ej. Póliza de seguro de viaje',
+  'doc.notes_label': 'Nota (opc.)',
+  'doc.notes_placeholder': 'Descripción breve, fecha de caducidad…',
+  'doc.files_label': 'Archivos',
+  'doc.link_label': 'Enlace externo (opc.)',
+  'doc.link_placeholder': 'https://…',
+  'doc.btn_save': 'Guardar',
+  'doc.btn_add': 'Guardar',
+  'doc.view_files_label': 'Archivos',
+  'doc.view_open_link': 'Abrir enlace',
+  'doc.view_notes': 'Notas',
+};

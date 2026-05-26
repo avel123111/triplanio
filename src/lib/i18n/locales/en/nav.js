@@ -1,0 +1,13 @@
+export default {
+  'nav.trips': 'Trips',
+  'nav.settings': 'Settings',
+  'nav.notifications': 'Notifications',
+  'nav.logout': 'Log out',
+  'nav.profile': 'Profile',
+  'nav.back_to_trip': 'Back to trip',
+  'nav.view_trip': 'View',
+  'nav.edit_trip': 'Edit',
+  'nav.budget': 'Budget',
+  'nav.pro_badge': 'Pro subscription',
+  'nav.admin_panel': 'Admin panel',
+};

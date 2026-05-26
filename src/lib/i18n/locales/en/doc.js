@@ -1,0 +1,47 @@
+export default {
+  'doc.tab_title': 'Documents',
+  'doc.tab_loading': 'Loading…',
+  'doc.tab_add': 'Add document',
+  'doc.tab_empty_title': 'No documents yet',
+  'doc.tab_empty_owner': 'Upload tickets, insurance, vouchers or any other files.',
+  'doc.tab_empty_viewer': 'The trip owner hasn\'t added any documents yet.',
+  'doc.tab_add_first': 'Add first document',
+  'doc.tab_delete_confirm': 'Delete document?',
+  'doc.tab_download_file': 'Download file',
+  'doc.tab_open_link': 'Open link',
+
+  // Sections
+  'doc.section_shared': 'Shared trip documents',
+  'doc.section_shared_hint': 'Visible to all members',
+  'doc.section_private': 'My documents',
+  'doc.section_private_hint': 'Only you can see these',
+  'doc.shared_empty': 'New document',
+  'doc.add_shared': 'New document',
+  'doc.private_empty': 'New document',
+  'doc.add_private': 'New document',
+
+  // Card
+  'doc.card_files_count': '{n} files',
+  'doc.card_no_files': '0 files',
+
+  // Dialog
+  'doc.dialog_new': 'Add document',
+  'doc.dialog_edit': 'Edit document',
+  'doc.visibility_label': 'Document visibility',
+  'doc.visibility_shared': 'Shared',
+  'doc.visibility_shared_desc': 'All trip members will see this document',
+  'doc.visibility_private': 'Private',
+  'doc.visibility_private_desc': 'Only you can see — passport, visa, insurance',
+  'doc.title_required': 'Title *',
+  'doc.title_placeholder': 'e.g. Travel insurance policy',
+  'doc.notes_label': 'Note (optional)',
+  'doc.notes_placeholder': 'Brief description, expiry date…',
+  'doc.files_label': 'Files',
+  'doc.link_label': 'External link (optional)',
+  'doc.link_placeholder': 'https://…',
+  'doc.btn_save': 'Save',
+  'doc.btn_add': 'Save',
+  'doc.view_files_label': 'Files',
+  'doc.view_open_link': 'Open link',
+  'doc.view_notes': 'Notes',
+};

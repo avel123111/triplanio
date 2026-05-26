@@ -1,0 +1,13 @@
+export default {
+  'nav.trips': 'Путешествия',
+  'nav.settings': 'Настройки',
+  'nav.notifications': 'Уведомления',
+  'nav.logout': 'Выйти',
+  'nav.profile': 'Профиль',
+  'nav.back_to_trip': 'Назад к путешествию',
+  'nav.view_trip': 'Просмотр',
+  'nav.edit_trip': 'Редактировать',
+  'nav.budget': 'Бюджет',
+  'nav.pro_badge': 'Pro-подписка',
+  'nav.admin_panel': 'Админ-панель',
+};

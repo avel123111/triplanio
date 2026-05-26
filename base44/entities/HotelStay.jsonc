@@ -1,0 +1,126 @@
+{
+  "name": "HotelStay",
+  "type": "object",
+  "properties": {
+    "city_visit_id": {
+      "type": "string"
+    },
+    "trip_id": {
+      "type": "string",
+      "description": "Denormalized for fast trip-wide queries"
+    },
+    "name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "check_in_datetime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO"
+    },
+    "check_out_datetime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO"
+    },
+    "booking_reference": {
+      "type": "string",
+      "description": "Booking confirmation number"
+    },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "paid",
+        "partial",
+        "pay_on_arrival"
+      ],
+      "description": "Payment status"
+    },
+    "price": {
+      "type": "number",
+      "description": "Total price"
+    },
+    "currency": {
+      "type": "string",
+      "description": "ISO currency code, e.g. EUR, USD. Required \u2014 used by the budget engine to aggregate trip expenses."
+    },
+    "free_cancellation": {
+      "type": "boolean",
+      "default": false
+    },
+    "free_cancellation_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO \u2014 deadline for free cancellation"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Hotel phone"
+    },
+    "email": {
+      "type": "string",
+      "description": "Hotel email"
+    },
+    "booking_url": {
+      "type": "string",
+      "description": "Link to booking"
+    },
+    "booking_platform": {
+      "type": "string",
+      "enum": [
+        "booking",
+        "airbnb",
+        "hotels",
+        "expedia",
+        "agoda",
+        "trivago",
+        "vrbo",
+        "other"
+      ],
+      "description": "Auto-detected booking platform"
+    },
+    "voucher_file_url": {
+      "type": "string",
+      "description": "[LEGACY] First uploaded voucher \u2014 kept for backward compatibility. New code uses `documents`."
+    },
+    "voucher_file_name": {
+      "type": "string",
+      "description": "[LEGACY] Original filename of the first voucher."
+    },
+    "documents": {
+      "type": "array",
+      "description": "Attached documents (vouchers, confirmations, tickets). Each item has file_url and file_name.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_url": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Markdown"
+    },
+    "details": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "city_visit_id",
+    "name",
+    "currency"
+  ],
+  "rls": {
+    "create": null,
+    "read": null,
+    "update": null,
+    "delete": null
+  }
+}

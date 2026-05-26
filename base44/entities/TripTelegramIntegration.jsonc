@@ -1,0 +1,51 @@
+{
+  "name": "TripTelegramIntegration",
+  "type": "object",
+  "description": "Per-trip Telegram binding. One row per (trip_id, user_id). telegram_chat_id is null until the user finishes the /start handshake in the bot. Writes are performed only by backend functions via service role (telegramStartLink/telegramDisconnect/telegramSetActive and telegramWebhook), so client-side RLS write rules are disabled.",
+  "properties": {
+    "trip_id": {
+      "type": "string",
+      "description": "Trip this Telegram binding belongs to"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Base44 user id of the Telegram account owner (stable across email changes)"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Denormalized owner email for fast lookups by `sendTripReminders` and access checks"
+    },
+    "telegram_chat_id": {
+      "type": "string",
+      "description": "Telegram chat id where the bot can send messages. Null until /start completes."
+    },
+    "telegram_username": {
+      "type": "string",
+      "description": "Telegram @username (without @) \u2014 used for display in trip settings"
+    },
+    "telegram_first_name": {
+      "type": "string",
+      "description": "Telegram first name \u2014 fallback display when username is empty"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "User can temporarily mute the bot for this trip without disconnecting"
+    },
+    "linked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the /start handshake successfully bound the Telegram chat"
+    }
+  },
+  "required": [
+    "trip_id",
+    "user_id"
+  ],
+  "rls": {
+    "create": null,
+    "read": null,
+    "update": null,
+    "delete": null
+  }
+}

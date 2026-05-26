@@ -1,0 +1,96 @@
+export default {
+  // Common
+  'budget.title': 'Budget',
+  'budget.spent_label': 'spent',
+  'budget.empty_hint': 'No expenses yet · tap to open',
+  'budget.collab_empty_hint': 'tap to open',
+  'budget.see_details': 'See details',
+  'budget.missing_fx_warning': 'No exchange rates for {currencies} — these expenses are not included in the total.',
+  'budget.addon_off_title': 'Enable Trip Budget',
+  'budget.addon_off_desc': 'Trip Budget is turned off for this trip. Enable it to plan and track expenses across categories, add custom costs in any currency, and get a full breakdown of your travel spending.',
+  'budget.addon_off_go_settings': 'Go to settings',
+  'budget.page_placeholder': 'Budget page is being rebuilt — coming soon.',
+
+  // System categories
+  'budget.cat_accommodation': 'Accommodation',
+  'budget.cat_transport': 'Transport',
+  'budget.cat_activities': 'Activities',
+  'budget.cat_services': 'Services',
+  // Default custom categories (used only at seed time; stored as plain text)
+  'budget.cat_food': 'Food',
+  'budget.cat_shopping': 'Shopping',
+  'budget.cat_souvenirs': 'Souvenirs',
+  'budget.cat_other': 'Other',
+  'budget.section_other': 'Other',
+
+  // Page header
+  'budget.total_label': 'Trip total',
+  'budget.fx_button': 'Exchange rates',
+  'budget.add_expense': 'Add expense',
+  'budget.add_category': 'Add category',
+  'budget.fx_warn': 'Some expenses could not be converted — check exchange rates.',
+
+  // Category block
+  'budget.no_expenses': 'No expenses',
+  'budget.category_menu_rename': 'Rename',
+  'budget.category_menu_delete': 'Delete category',
+  'budget.category_delete_confirm_title': 'Delete category?',
+  'budget.category_delete_confirm_msg': 'Category "{name}" will be deleted. All expenses inside it will be deleted too.',
+  'budget.category_delete_has_expenses': 'Category contains expenses — delete or move them first.',
+  'budget.cannot_modify_system': 'System categories cannot be modified.',
+
+  // Expense row
+  'budget.source_hotel': 'Hotel',
+  'budget.source_transfer': 'Transport',
+  'budget.source_activity': 'Activity',
+  'budget.source_service': 'Service',
+  'budget.system_expense_hint': 'System expense — edited via its source',
+  'budget.expense_delete_confirm_title': 'Delete expense?',
+  'budget.expense_delete_confirm_msg': 'Expense "{title}" will be deleted.',
+
+  // Expense dialog
+  'budget.expense_new': 'New expense',
+  'budget.expense_edit': 'Edit expense',
+  'budget.field_title': 'Title',
+  'budget.field_amount': 'Amount',
+  'budget.field_currency': 'Currency',
+  'budget.field_date': 'Date',
+  'budget.field_category': 'Category',
+  'budget.title_required': 'Enter a title',
+  'budget.amount_required': 'Enter an amount greater than 0',
+
+  // Category dialog
+  'budget.category_new': 'New category',
+  'budget.category_rename': 'Rename category',
+  'budget.category_name_placeholder': 'e.g. Gifts',
+  'budget.category_name_required': 'Enter a name',
+  'budget.icon_label': 'Icon',
+  'budget.color_label': 'Color',
+  'budget.icon_color_preview': 'Category preview',
+
+  // Budget page v4 layout
+  'budget.per_person_label': 'Per person',
+  'budget.members_count': '{n} members · split evenly',
+  'budget.fx_rates_label': 'Exchange rates',
+  'budget.fx_change': 'Edit rates',
+  'budget.fx_missing_warn_title': 'No rate for {currencies}',
+  'budget.fx_missing_warn_desc': '{n} expense(s) in {currencies} are not converted and not included in the total.',
+  'budget.fx_missing_set_manual': 'Set rate manually',
+  'budget.group_by_category': 'By category',
+  'budget.group_by_city': 'By city',
+  'budget.add_category_short': '+ Category',
+  'budget.add_expense_short': '+ Manual expense',
+  'budget.expense_auto_badge': 'auto',
+  'budget.expenses_count': '{n} expenses',
+  'budget.budget_label': 'budget',
+  'budget.city_other': 'Other',
+
+  // FX overrides dialog
+  'budget.fx_title': 'Exchange rates',
+  'budget.fx_subtitle': 'Custom rate to {currency}. Leave empty to use the live rate.',
+  'budget.fx_col_currency': 'Currency',
+  'budget.fx_col_rate': 'Rate (1 unit = X {main})',
+  'budget.fx_no_other': 'Only the main currency is used in this trip.',
+  'budget.fx_live_rate': 'Live: {rate}',
+  'budget.fx_save': 'Save',
+};

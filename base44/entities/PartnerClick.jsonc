@@ -1,0 +1,42 @@
+{
+  "name": "PartnerClick",
+  "type": "object",
+  "description": "Click log on partner referral links. One row per click. Used for partner attribution and analytics.",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Base44 user id of the clicker"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Denormalized clicker email for fast lookups"
+    },
+    "trip_id": {
+      "type": "string",
+      "description": "Trip context in which the click happened (may be empty if click was outside of a trip)"
+    },
+    "partner": {
+      "type": "string",
+      "description": "Partner identifier \u2014 which offer the user clicked (e.g. 'airalo', 'booking', 'airbnb', 'skyscanner', 'omio', 'kiwi', 'rentalcars', 'discovercars')"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "transfer",
+        "hotel",
+        "esim",
+        "carrental"
+      ],
+      "description": "Offer category \u2014 which modal/context surfaced the link"
+    },
+    "link": {
+      "type": "string",
+      "description": "Full URL the user was redirected to"
+    }
+  },
+  "required": [
+    "partner",
+    "type",
+    "link"
+  ]
+}

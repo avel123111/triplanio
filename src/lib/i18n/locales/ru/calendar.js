@@ -1,0 +1,16 @@
+export default {
+  'calendar.month': 'Месяц',
+  'calendar.week': 'Неделя',
+  'calendar.day': 'День',
+  'calendar.today': 'Сегодня',
+  'calendar.all_day': 'Весь день',
+  'calendar.prev': 'Назад',
+  'calendar.next': 'Вперёд',
+  'calendar.trip_start': 'Начало',
+  'calendar.update_failed': 'Не удалось обновить событие',
+  'calendar.hotel_checkin': 'Заезд: {name}',
+  'calendar.hotel_checkout': 'Выезд: {name}',
+  'calendar.hotel_cancel_deadline': 'Бесплатная отмена до: {name}',
+  'calendar.car_pickup': 'Получение авто: {name}',
+  'calendar.car_dropoff': 'Возврат авто: {name}',
+};

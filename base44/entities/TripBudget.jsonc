@@ -1,0 +1,27 @@
+{
+  "name": "TripBudget",
+  "type": "object",
+  "description": "Per-trip budget settings: main display currency and optional user-defined FX overrides.",
+  "properties": {
+    "trip_id": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string",
+      "description": "Main display currency for budget totals (ISO 4217, e.g. EUR)"
+    },
+    "fx_overrides": {
+      "type": "object",
+      "description": "User-defined exchange rates relative to main currency. Key=ISO currency code (non-main), value=rate where 1 unit_of_key = rate * main_currency. Example: { USD: 0.92 } means 1 USD = 0.92 EUR."
+    }
+  },
+  "required": [
+    "trip_id"
+  ],
+  "rls": {
+    "create": null,
+    "read": null,
+    "update": null,
+    "delete": null
+  }
+}

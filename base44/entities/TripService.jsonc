@@ -1,0 +1,46 @@
+{
+  "name": "TripService",
+  "type": "object",
+  "properties": {
+    "trip_id": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "esim",
+        "car_rental",
+        "insurance"
+      ],
+      "description": "Service category"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name (e.g. provider/plan/insurance package)"
+    },
+    "price": {
+      "type": "number",
+      "description": "Service price"
+    },
+    "currency": {
+      "type": "string",
+      "description": "ISO 4217 currency of the price. Required \u2014 used by the budget engine to aggregate trip expenses."
+    },
+    "details": {
+      "type": "object",
+      "description": "Service-specific fields (dates, files, references, etc.)"
+    }
+  },
+  "required": [
+    "trip_id",
+    "kind",
+    "name",
+    "currency"
+  ],
+  "rls": {
+    "create": null,
+    "read": null,
+    "update": null,
+    "delete": null
+  }
+}
