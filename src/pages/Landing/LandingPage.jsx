@@ -1410,6 +1410,7 @@ function useScrollReveal() {
 /* ── Main LandingPage ── */
 export default function LandingPage() {
   const [lang, setLangRaw] = useState(detectLang);
+  const [cssReady, setCssReady] = useState(false);
 
   const setLang = (next) => {
     setLangRaw(next);
@@ -1420,11 +1421,20 @@ export default function LandingPage() {
 
   /* Dynamically load landing CSS on mount, remove on unmount */
   useEffect(() => {
-    const link = document.createElement('link');
-    link.id = 'landing-css';
-    link.rel = 'stylesheet';
-    link.href = '/landing.css';
-    document.head.appendChild(link);
+    /* If already loaded (e.g. hot reload), mark ready immediately */
+    const existing = document.getElementById('landing-css');
+    if (existing) {
+      setCssReady(true);
+    } else {
+      const link = document.createElement('link');
+      link.id = 'landing-css';
+      link.rel = 'stylesheet';
+      link.href = '/landing.css';
+      link.addEventListener('load', () => setCssReady(true));
+      /* Fallback: if load event fires before listener (cached) */
+      if (link.sheet) setCssReady(true);
+      document.head.appendChild(link);
+    }
 
     /* Set landing theme attrs */
     document.documentElement.setAttribute('data-palette', 'atlantic');
@@ -1438,10 +1448,14 @@ export default function LandingPage() {
       document.documentElement.removeAttribute('data-type');
       document.documentElement.removeAttribute('data-density');
       document.documentElement.classList.remove('reveal--ready');
+      setCssReady(false);
     };
   }, []);
 
   useScrollReveal();
+
+  /* Don't render until landing CSS is loaded — prevents flash of unstyled content */
+  if (!cssReady) return null;
 
   return (
     <LangCtx.Provider value={lang}>
