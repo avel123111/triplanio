@@ -7,9 +7,7 @@ import { isTripInPast, computeTripRange, formatTripRange } from '@/lib/trip-date
 import { Icon } from '../design/icons';
 import '../design/app.css';
 
-// Dialog components (keep existing working ones)
-import NewTripModal from '@/components/trips/NewTripModal';
-import TripFormDialog from '@/components/trips/TripFormDialog';
+// Dialog components
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 import { Avatar } from '../design/index';
@@ -295,11 +293,10 @@ export default function Trips() {
   });
   const [filterMode,   setFilterMode]   = useState('active');
   const [search,       setSearch]       = useState('');
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [showCreate,   setShowCreate]   = useState(false);
-  const [showLimit,    setShowLimit]    = useState(false);
-  const [showUpgrade,  setShowUpgrade]  = useState(false);
-  const [pendingPick,  setPendingPick]  = useState(null);
+  const [createMenu,  setCreateMenu]  = useState(false);
+  const [showLimit,   setShowLimit]   = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [pendingPick, setPendingPick] = useState(null);
 
   React.useEffect(() => {
     try { localStorage.setItem('trips:viewMode', viewMode); } catch { /* ignore */ }
@@ -369,14 +366,14 @@ export default function Trips() {
       setPendingPick(pick); setShowLimit(true);
     } else {
       if (pick === 'ai') nav('/plan-trip-ai');
-      else { setShowCreate(true); }
+      else nav('/new-trip');
     }
   };
 
   const handleProceed = () => {
     setShowLimit(false);
     if (pendingPick === 'ai') nav('/plan-trip-ai');
-    else setShowCreate(true);
+    else nav('/new-trip');
     setPendingPick(null);
   };
 
@@ -398,8 +395,9 @@ export default function Trips() {
           >
             <Icon name={theme === 'light' ? 'moon' : 'sun'} size={17} />
           </button>
-          <button className="icon-btn" title="Настройки" onClick={() => nav('/settings')}>
-            <Icon name="settings" size={17} />
+          <button className="icon-btn" title="Уведомления" style={{ position: 'relative' }} onClick={() => nav('/settings')}>
+            <Icon name="bell" size={17} />
+            <span className="dot" />
           </button>
           <button
             className="icon-btn"
@@ -438,20 +436,61 @@ export default function Trips() {
                   {activeTrips.length} активных · {pastTrips.length} в архиве
                 </div>
               </div>
-              <button
-                onClick={() => setShowNewModal(true)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 7,
-                  padding: '11px 18px', borderRadius: 12, border: 'none',
-                  background: 'var(--brand)', color: 'white',
-                  fontWeight: 600, fontSize: 14.5, cursor: 'pointer',
-                  transition: 'background .12s, transform .12s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-600)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--brand)'; e.currentTarget.style.transform = ''; }}
-              >
-                <Icon name="plus" size={17} /> Новый трип
-              </button>
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setCreateMenu(m => !m)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '11px 18px', borderRadius: 12, border: 'none',
+                    background: 'var(--brand)', color: 'white',
+                    fontWeight: 600, fontSize: 14.5, cursor: 'pointer',
+                    transition: 'background .12s, transform .12s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = ''; }}
+                >
+                  <Icon name="plus" size={17} /> Новый трип
+                </button>
+                {createMenu && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 29 }} onClick={() => setCreateMenu(false)} />
+                    <div style={{
+                      position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 300, zIndex: 30,
+                      background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14,
+                      boxShadow: 'var(--shadow-pop)', padding: 8,
+                    }}>
+                      <button
+                        onClick={() => { setCreateMenu(false); checkLimit('manual'); }}
+                        style={{ width: '100%', textAlign: 'left', padding: '12px 14px', border: 'none', background: 'transparent', borderRadius: 10, cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'flex-start' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
+                        onMouseLeave={e => e.currentTarget.style.background = ''}
+                      >
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                          <Icon name="edit" size={18} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13.5 }}>Собрать руками</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Шаг за шагом: города, даты, отели.</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => { setCreateMenu(false); checkLimit('ai'); }}
+                        style={{ width: '100%', textAlign: 'left', padding: '12px 14px', border: 'none', background: 'transparent', borderRadius: 10, cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'flex-start' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--ai-soft)'}
+                        onMouseLeave={e => e.currentTarget.style.background = ''}
+                      >
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                          <Icon name="sparkles" size={18} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13.5 }}>Начать с ИИ</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Описать словами — получить черновик.</div>
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Filters row */}
@@ -516,7 +555,7 @@ export default function Trips() {
                 ))}
                 {filterMode === 'active' && (
                   <button
-                    onClick={() => setShowNewModal(true)}
+                    onClick={() => setCreateMenu(true)}
                     style={{
                       border: '1.5px dashed var(--line)', background: 'transparent',
                       borderRadius: 'var(--radius-card)', padding: 24,
@@ -584,13 +623,6 @@ export default function Trips() {
       </main>
 
       {/* ── Dialogs ── */}
-      <NewTripModal
-        open={showNewModal}
-        onOpenChange={setShowNewModal}
-        onManualPick={() => { setShowNewModal(false); checkLimit('manual'); }}
-        onAiPick={() => { setShowNewModal(false); checkLimit('ai'); }}
-      />
-      <TripFormDialog open={showCreate} onOpenChange={setShowCreate} />
       <TripLimitDialog
         open={showLimit}
         onOpenChange={setShowLimit}

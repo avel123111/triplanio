@@ -21,6 +21,7 @@ import AiTripPlanner from '@/pages/AiTripPlanner';
 import Login from '@/pages/Login';
 import DesignPreview from '@/pages/redesign/DesignPreview';
 import LandingPage from '@/pages/Landing/LandingPage';
+import ManualPlanner from '@/pages/ManualPlanner';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
@@ -100,6 +101,7 @@ const AuthenticatedApp = () => {
     <Routes>
       {/* New design — standalone (own app-header, no Layout) */}
       <Route path="/trips" element={<Trips />} />
+      <Route path="/new-trip" element={<ManualPlanner />} />
 
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to="/trips" replace />} />
