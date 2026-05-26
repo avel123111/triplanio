@@ -855,7 +855,7 @@ function Stat({ label, value, hint }) {
   );
 }
 
-function StepReview({ home, cities, returnCity, tripTitle, setTripTitle, saving, savedOk, savedTripId, goPrev, onSave, error }) {
+function StepReview({ home, cities, returnCity, tripTitle, setTripTitle, onStartDateChange, saving, savedOk, savedTripId, goPrev, onSave, error }) {
   const nav = useNavigate();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
   const autoTitle = cities.length === 0 ? 'Новый трип' : cities.length === 1 ? cities[0].city_name : `${cities[0]?.city_name} → ${cities[cities.length - 1]?.city_name}`;
@@ -909,8 +909,21 @@ function StepReview({ home, cities, returnCity, tripTitle, setTripTitle, saving,
             <ReviewRow icon={returnCity?.city_name === home?.city_name ? 'flag' : 'globe'} iconColor={returnCity?.city_name === home?.city_name ? 'var(--brand)' : 'var(--warm, #e67e22)'} name={returnCity?.city_name} sub={`${returnCity?.country || ''} · возврат`} muted />
           </div>
 
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-            <Stat label="Начало" value={cities[0]?.startDate || '—'} />
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <div className="eyebrow" style={{ marginBottom: 3, fontSize: 10 }}>Начало</div>
+              <input
+                className="input num"
+                type="date"
+                value={cities[0]?.startDate || ''}
+                onChange={e => onStartDateChange && onStartDateChange(e.target.value)}
+                disabled={saving}
+                style={{ fontSize: 13, padding: '5px 8px', minWidth: 130 }}
+              />
+              {!cities[0]?.startDate && (
+                <div style={{ fontSize: 10.5, color: 'var(--warning, #e6a817)', marginTop: 3 }}>Укажи дату — иначе даты не сохранятся</div>
+              )}
+            </div>
             <Stat label="Длительность" value={`${totalNights} ноч.`} />
             <Stat label="Городов" value={cities.length} />
             <Stat label="Бюджет" value="—" hint="Можно указать позже" />
@@ -1043,6 +1056,15 @@ export default function ManualPlanner() {
     if (i > 0) setStep(STEPS[i - 1].id);
   };
 
+  // Allow setting trip start date from the Review step — cascades to all cities
+  const handleStartDateChange = (dateStr) => {
+    setCities(cs => {
+      if (cs.length === 0) return cs;
+      const next = cs.map((c, i) => i === 0 ? { ...c, startDate: dateStr } : c);
+      return recomputeDates(next);
+    });
+  };
+
   const effectiveReturn = returnMode === 'home' ? home : returnCity;
   const mapHighlight = step === 'home' ? 'home' : step === 'return' ? 'return' : 'cities';
   const autoTitle = cities.length === 0 ? 'Новый трип' : cities.length === 1 ? cities[0].city_name : `${cities[0]?.city_name} → ${cities[cities.length - 1]?.city_name}`;
@@ -1097,6 +1119,7 @@ export default function ManualPlanner() {
           longitude: home.longitude || null,
           timezone: home.timezone || null,
           kind: 'start',
+          start_datetime: cities[0]?.startDate ? cities[0].startDate + 'T08:00:00' : null,
           created_by: authEmail,
         });
       }
@@ -1236,6 +1259,7 @@ export default function ManualPlanner() {
                 returnCity={effectiveReturn}
                 tripTitle={tripTitle}
                 setTripTitle={setTripTitle}
+                onStartDateChange={handleStartDateChange}
                 saving={saving}
                 savedOk={savedOk}
                 savedTripId={savedTripId}
