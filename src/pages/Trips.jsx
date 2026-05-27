@@ -6,14 +6,14 @@ import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, EmptyState } from '../design/index';
+import { Badge, Btn, EmptyState } from '../design/index';
 import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
 import PaymentFailDialog from '@/components/common/PaymentFailDialog';
-import NotificationsBell from '@/components/notifications/NotificationsBell';
+import HeaderActions from '@/components/HeaderActions';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 function strHue(str = '') {
@@ -350,18 +350,12 @@ export default function Trips() {
           <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
           <span className="app-header__brand-name">Triplanio</span>
         </div>
-        <div className="app-header__right">
-          {isPro && (
-            <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '2px 8px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em' }}>PRO</span>
-          )}
-          <button className="icon-btn" title="Сменить тему" onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}>
-            <Icon name={theme === 'light' ? 'moon' : 'sun'} size={17} />
-          </button>
-          <NotificationsBell triggerClassName="icon-btn" />
-          <button className="icon-btn" title={user?.full_name || user?.email || 'Аккаунт'} onClick={() => nav('/settings')} style={{ padding: '0 2px' }}>
-            <Avatar name={user?.full_name || user?.email || '?'} photo={user?.avatar_url} size="sm" />
-          </button>
-        </div>
+        <HeaderActions
+          user={user}
+          isPro={isPro}
+          isDark={theme === 'dark'}
+          onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+        />
       </header>
 
       {/* PAGE CONTENT */}
