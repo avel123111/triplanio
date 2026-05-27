@@ -8,7 +8,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Avatar, Btn, Badge, EmptyState, Skeleton, groupByDate, fmtDate, weekday, StreamEventRow, fmt, CityPhoto, WeatherChip } from '../design/index';
+import { Avatar, Btn, Badge, EmptyState, Skeleton, ModalHost, groupByDate, fmtDate, weekday, StreamEventRow, fmt, CityPhoto, WeatherChip } from '../design/index';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
 import '../design/app.css';
@@ -543,6 +543,167 @@ function LensStub({ lens }) {
   );
 }
 
+// ─── TripCoverStrip ──────────────────────────────────────────────────────────
+
+function TripCoverStrip({ trip, visits, members, myRole }) {
+  const [routeOpen, setRouteOpen] = useState(false);
+  const activeMemberCount = members.filter(m => m.status === 'active').length || 1;
+  const cities = visits.map(v => v.city_name).filter(Boolean);
+  const dateRange = formatTripRange(visits, '—');
+
+  return (
+    <div style={{ marginBottom: 22, borderBottom: '1px solid var(--line-2)', paddingBottom: 22 }}>
+      {/* Gradient cover */}
+      <div style={{
+        position: 'relative', marginBottom: 18, height: 160, borderRadius: 16,
+        overflow: 'hidden',
+        background: 'linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)',
+      }}>
+        <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.55 }}>
+          <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.55)" />
+          <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.32)" />
+          <circle cx="680" cy="50" r="28" fill="rgba(255,255,255,.65)" />
+        </svg>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,.38) 100%)' }} />
+        <div style={{ position: 'absolute', left: 22, right: 22, bottom: 18 }}>
+          <div style={{
+            color: 'white', fontFamily: 'var(--font-display)', fontWeight: 700,
+            fontSize: 'clamp(24px, 4vw, 36px)', letterSpacing: '-0.03em', lineHeight: 1,
+            textShadow: '0 2px 12px rgba(0,0,0,.3)',
+          }}>{trip?.title || '…'}</div>
+          {dateRange && dateRange !== '—' && (
+            <div className="num" style={{ color: 'rgba(255,255,255,.85)', fontSize: 13, marginTop: 8, fontWeight: 500 }}>
+              {dateRange}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Meta row + actions */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          {/* Cities chip */}
+          {cities.length > 0 && (
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setRouteOpen(!routeOpen)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 10px 5px 8px', borderRadius: 999,
+                  background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12)',
+                  fontSize: 12.5, color: 'var(--brand)', fontWeight: 600, cursor: 'pointer',
+                }}>
+                <Icon name="pin" size={13} />
+                {cities.length} {cities.length === 1 ? 'город' : cities.length < 5 ? 'города' : 'городов'}
+                <Icon name={routeOpen ? 'chevD' : 'chev'} size={11} />
+              </button>
+              {routeOpen && (
+                <div
+                  onClick={() => setRouteOpen(false)}
+                  style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 20,
+                    background: 'var(--surface)', border: '1px solid var(--line)',
+                    borderRadius: 12, padding: '10px 12px', boxShadow: 'var(--shadow-pop)', minWidth: 180,
+                  }}>
+                  {cities.map((c, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 13 }}>
+                      <Icon name="pin" size={12} style={{ color: 'var(--brand)', flexShrink: 0 }} />
+                      {c}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {/* Travelers chip */}
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '5px 10px 5px 8px', borderRadius: 999,
+            background: '#1f8a5b22', border: '1px solid #1f8a5b33',
+            fontSize: 12.5, color: 'var(--success)', fontWeight: 600,
+          }}>
+            <Icon name="users" size={13} />
+            {activeMemberCount} {activeMemberCount === 1 ? 'участник' : activeMemberCount < 5 ? 'участника' : 'участников'}
+          </span>
+        </div>
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {myRole !== 'viewer' && (
+            <Btn variant="ghost" size="sm" icon="edit">Редактировать</Btn>
+          )}
+          <Btn variant="ghost" size="sm" icon="share">Поделиться</Btn>
+          <Btn variant="ghost" size="sm" icon="download">Экспорт</Btn>
+          <Btn variant="ghost" size="sm" icon="more" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ContextSide ──────────────────────────────────────────────────────────────
+
+function ContextSide({ budget, budgetExpenses, members, isLoading }) {
+  const totalSpent = budgetExpenses.reduce((s, e) => s + Number(e.original_amount || 0), 0);
+  const mainCurrency = budget?.currency || 'EUR';
+  const activeMembers = members.filter(m => m.status === 'active');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 80 }}>
+      {/* Budget widget */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center' }}>
+            <Icon name="wallet" size={14} />
+          </div>
+          <span style={{ fontWeight: 600, fontSize: 13.5 }}>Бюджет</span>
+        </div>
+        {budget ? (
+          <>
+            <div className="num" style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>{fmt(totalSpent, mainCurrency)}</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>всего потрачено</div>
+            <div style={{ marginTop: 10, height: 5, borderRadius: 3, background: 'var(--wash)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: Math.min(100, totalSpent > 0 ? 65 : 0) + '%', background: 'var(--success)' }} />
+            </div>
+          </>
+        ) : (
+          <div className="muted" style={{ fontSize: 12.5 }}>Бюджет не создан</div>
+        )}
+      </div>
+
+      {/* Who's going widget */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 7, background: '#1f8a5b22', color: 'var(--success)', display: 'grid', placeItems: 'center' }}>
+            <Icon name="users" size={14} />
+          </div>
+          <span style={{ fontWeight: 600, fontSize: 13.5 }}>Кто едет</span>
+          <span className="muted" style={{ fontSize: 12, marginLeft: 'auto' }}>{activeMembers.length}</span>
+        </div>
+        {activeMembers.length === 0 && (
+          <div className="muted" style={{ fontSize: 12.5 }}>Нет участников</div>
+        )}
+        {activeMembers.slice(0, 6).map((m, i) => {
+          const name = m.user_full_name || m.user_email || '—';
+          const roleLabel = m.role === 'owner' ? 'Влад.' : m.role === 'admin' ? 'Адм.' : m.role === 'editor' ? 'Ред.' : 'Зрит.';
+          return (
+            <div key={m.id || i} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '5px 0',
+              borderBottom: i < Math.min(activeMembers.length, 6) - 1 ? '1px solid var(--line-2)' : 'none',
+            }}>
+              <Avatar name={name} size="sm" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+              </div>
+              <Badge variant="quiet" style={{ fontSize: 10, flexShrink: 0 }}>{roleLabel}</Badge>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── TripView (main export) ───────────────────────────────────────────────────
 
 export default function TripView() {
@@ -650,12 +811,28 @@ export default function TripView() {
         <TripSidebar tripId={tripId} lens={lens} onNavigate={setLens} />
         <main style={{ minWidth: 0, padding: '28px 28px 60px' }}>
           {lens === 'timeline' && (
-            <TimelineLens
-              stream={stream}
-              visits={visits}
-              trip={trip}
-              isLoading={loadingContent}
-            />
+            <>
+              <TripCoverStrip
+                trip={trip}
+                visits={visits}
+                members={members}
+                myRole={myRole}
+              />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+                <TimelineLens
+                  stream={stream}
+                  visits={visits}
+                  trip={trip}
+                  isLoading={loadingContent}
+                />
+                <ContextSide
+                  budget={budget}
+                  budgetExpenses={budgetExpenses}
+                  members={members}
+                  isLoading={loadingContent}
+                />
+              </div>
+            </>
           )}
           {lens === 'budget' && (
             <BudgetLens
@@ -664,6 +841,7 @@ export default function TripView() {
               budgetCategories={budgetCategories}
               budgetExpenses={budgetExpenses}
               members={members}
+              cityVisits={visits}
               isLoading={loadingContent}
               isPro={isPro}
               queryClient={qc}
@@ -684,6 +862,7 @@ export default function TripView() {
         </main>
       </div>
 
+      <ModalHost />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

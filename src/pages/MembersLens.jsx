@@ -34,7 +34,7 @@ const ROLES = [
   { value: 'viewer', label: 'Зритель — только чтение' },
 ];
 
-function InviteDialog({ tripId, onClose, onSaved }) {
+function InviteDialog({ tripId, onSaved }) {
   const [tab, setTab] = useState('email');
   const [role, setRole] = useState('viewer');
   const [copied, setCopied] = useState(false);
@@ -55,7 +55,7 @@ function InviteDialog({ tripId, onClose, onSaved }) {
     setSaving(false);
     if (error || data?.error) { setErr((data?.error || error?.message) || 'Ошибка'); return; }
     onSaved?.();
-    onClose();
+    window.__closeModal?.();
   }
 
   async function addOffline() {
@@ -69,13 +69,13 @@ function InviteDialog({ tripId, onClose, onSaved }) {
     setSaving(false);
     if (error || data?.error) { setErr((data?.error || error?.message) || 'Ошибка'); return; }
     onSaved?.();
-    onClose();
+    window.__closeModal?.();
   }
 
   return (
     <Dialog title="Пригласить в трип" icon="users" size=""
       foot={<>
-        <Btn variant="ghost" onClick={onClose}>Закрыть</Btn>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Закрыть</Btn>
         {tab === 'email' && <Btn variant="primary" icon="send" onClick={inviteByEmail} disabled={saving}>{saving ? 'Отправляю…' : 'Отправить приглашение'}</Btn>}
         {tab === 'offline' && <Btn variant="primary" icon="user" onClick={addOffline} disabled={saving}>{saving ? 'Добавляю…' : 'Добавить'}</Btn>}
       </>}>
@@ -151,7 +151,7 @@ function InviteDialog({ tripId, onClose, onSaved }) {
 
 // ─── ChangeRoleDialog ─────────────────────────────────────────────────────────
 
-function ChangeRoleDialog({ member, tripId, onClose, onSaved }) {
+function ChangeRoleDialog({ member, tripId, onSaved }) {
   const [role, setRole] = useState(member.role || 'viewer');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -165,13 +165,13 @@ function ChangeRoleDialog({ member, tripId, onClose, onSaved }) {
     setSaving(false);
     if (error || data?.error) { setErr((data?.error || error?.message) || 'Ошибка'); return; }
     onSaved?.();
-    onClose();
+    window.__closeModal?.();
   }
 
   return (
     <Dialog title="Изменить роль" icon="edit" size="sm"
       foot={<>
-        <Btn variant="ghost" onClick={onClose}>Отмена</Btn>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
         <Btn variant="primary" onClick={save} disabled={saving}>{saving ? 'Сохраняю…' : 'Сохранить'}</Btn>
       </>}>
       <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--muted)' }}>
@@ -209,9 +209,7 @@ function RowMenuItem({ icon, danger, onClick, children }) {
 // ─── MembersLens ──────────────────────────────────────────────────────────────
 
 export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient }) {
-  const [showInvite, setShowInvite] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
-  const [changeRoleMember, setChangeRoleMember] = useState(null);
   const [removing, setRemoving] = useState(null);
 
   const canManage = myRole === 'owner' || myRole === 'admin';
@@ -270,7 +268,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
         <h2 style={{ flex: 1, marginBottom: 0 }}>Участники · {allMembers.length}</h2>
         {canManage && (
-          <Btn variant="primary" icon="plus" onClick={() => setShowInvite(true)}>Пригласить</Btn>
+          <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>Пригласить</Btn>
         )}
       </div>
 
@@ -337,7 +335,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                       <RowMenuItem icon="send" onClick={() => resend(m.id)}>Отправить ещё раз</RowMenuItem>
                     )}
                     {m.status === 'active' && (
-                      <RowMenuItem icon="edit" onClick={() => { setOpenMenu(null); setChangeRoleMember(m); }}>Изменить роль</RowMenuItem>
+                      <RowMenuItem icon="edit" onClick={() => { setOpenMenu(null); window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />); }}>Изменить роль</RowMenuItem>
                     )}
                     <RowMenuItem icon="trash" danger onClick={() => removeMember(m.id)}>
                       {m.status === 'pending' ? 'Отменить приглашение' : 'Убрать из трипа'}
@@ -360,26 +358,10 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
             <div style={{ fontWeight: 600, marginBottom: 2 }}>Пригласить ещё участников</div>
             <div className="muted" style={{ fontSize: 12.5 }}>Отправьте приглашение по e-mail. Получатель увидит трип после регистрации.</div>
           </div>
-          <Btn variant="primary" icon="plus" onClick={() => setShowInvite(true)}>Пригласить</Btn>
+          <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>Пригласить</Btn>
         </div>
       )}
 
-      {/* Dialogs */}
-      {showInvite && (
-        <InviteDialog
-          tripId={tripId}
-          onClose={() => setShowInvite(false)}
-          onSaved={refresh}
-        />
-      )}
-      {changeRoleMember && (
-        <ChangeRoleDialog
-          member={changeRoleMember}
-          tripId={tripId}
-          onClose={() => setChangeRoleMember(null)}
-          onSaved={refresh}
-        />
-      )}
     </>
   );
 }

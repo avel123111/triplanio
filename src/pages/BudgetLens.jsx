@@ -11,7 +11,7 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Field, EmptyState, Skeleton, Severity, fmt } from '../design/index';
+import { Avatar, Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton, Severity, fmt } from '../design/index';
 
 // ─── icon helpers ─────────────────────────────────────────────────────────────
 
@@ -41,19 +41,22 @@ function catIcon(cat) {
 
 // ─── AddExpenseDialog ─────────────────────────────────────────────────────────
 
-function AddExpenseDialog({ tripId, categories, mainCurrency, onClose, onSaved }) {
+function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], onSaved }) {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState(mainCurrency || 'EUR');
   const [categoryId, setCategoryId] = useState(categories[0]?.id || '');
+  const [date, setDate] = useState('');
+  const [cityName, setCityName] = useState('');
+  const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
   async function save() {
-    if (!title.trim() || !amount || !categoryId) { setErr('Заполните все поля'); return; }
+    if (!title.trim() || !amount || !categoryId) { setErr('Заполните обязательные поля'); return; }
     setSaving(true);
     setErr('');
-    const { error } = await supabase.from('budget_expenses').insert({
+    const row = {
       trip_id: tripId,
       category_id: categoryId,
       title: title.trim(),
@@ -62,54 +65,57 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, onClose, onSaved }
       source_kind: 'manual',
       source_id: null,
       created_by: 'user',
-    });
+    };
+    if (notes.trim()) row.notes = notes.trim();
+    const { error } = await supabase.from('budget_expenses').insert(row);
     setSaving(false);
     if (error) { setErr(error.message); return; }
     onSaved?.();
-    onClose();
+    window.__closeModal?.();
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
-    }} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: 24, width: 380, boxShadow: 'var(--shadow-pop)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ flex: 1, margin: 0 }}>Ручная трата</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}>
-            <Icon name="close" size={18} />
-          </button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>Название</label>
-            <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Ужин в ресторане…" />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-            <div>
-              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>Сумма</label>
-              <input className="input" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" />
-            </div>
-            <div>
-              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>Валюта</label>
-              <input className="input" value={currency} onChange={e => setCurrency(e.target.value.toUpperCase().slice(0,3))} style={{ width: 70 }} />
-            </div>
-          </div>
-          <div>
-            <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>Категория</label>
-            <select className="select" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+    <Dialog title="Ручная трата" icon="wallet" size=""
+      foot={<>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
+        <Btn variant="primary" icon="check" onClick={save} disabled={saving}>{saving ? 'Добавляю…' : 'Добавить'}</Btn>
+      </>}>
+      <Field label="Описание">
+        <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Например, «Ужин в LX Factory»" autoFocus />
+      </Field>
+      <div className="field-row cols-2" style={{ marginTop: 14 }}>
+        <Field label="Сумма">
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input className="input num" type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex: 1 }} />
+            <select className="select" value={currency} onChange={e => setCurrency(e.target.value)} style={{ width: 80 }}>
+              <option>EUR</option><option>USD</option><option>RUB</option><option>GBP</option><option>TRY</option>
             </select>
           </div>
-          {err && <div style={{ color: 'var(--danger)', fontSize: 12.5 }}>{err}</div>}
-        </div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
-          <Btn variant="ghost" onClick={onClose}>Отмена</Btn>
-          <Btn variant="primary" onClick={save} disabled={saving}>{saving ? 'Сохраняю…' : 'Добавить'}</Btn>
-        </div>
+        </Field>
+        <Field label="Дата">
+          <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+        </Field>
       </div>
-    </div>
+      <div className="field-row cols-2" style={{ marginTop: 14 }}>
+        <Field label="Категория">
+          <select className="select" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Город">
+          <select className="select" value={cityName} onChange={e => setCityName(e.target.value)}>
+            <option value="">—</option>
+            {cities.map((c, i) => <option key={i} value={c}>{c}</option>)}
+          </select>
+        </Field>
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <Field label="Заметка (опц.)">
+          <textarea className="textarea" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Свободный текст" />
+        </Field>
+      </div>
+      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
+    </Dialog>
   );
 }
 
@@ -118,7 +124,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, onClose, onSaved }
 const CAT_COLORS = ['#e2503a','#2167e2','#6a3ee2','#1f8a5b','#e08158','#c98a1a','#c9603a','#888'];
 const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'spark', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
-function AddCategoryDialog({ tripId, existing, onClose, onSaved }) {
+function AddCategoryDialog({ tripId, existing, onSaved }) {
   const [name, setName] = useState(existing?.name || '');
   const [color, setColor] = useState(existing?.color || CAT_COLORS[0]);
   const [icon, setIcon] = useState(existing?.icon || CAT_ICONS_BUDGET[0]);
@@ -147,58 +153,45 @@ function AddCategoryDialog({ tripId, existing, onClose, onSaved }) {
     setSaving(false);
     if (error) { setErr(error.message); return; }
     onSaved?.();
-    onClose();
+    window.__closeModal?.();
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
-    }} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: 24, width: 340, boxShadow: 'var(--shadow-pop)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ flex: 1, margin: 0 }}>{existing ? 'Изменить категорию' : 'Новая категория'}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}>
-            <Icon name="close" size={18} />
-          </button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>Название</label>
-            <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="Сувениры…" />
-          </div>
-          <div>
-            <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>Цвет</label>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {CAT_COLORS.map(c => (
-                <button key={c} onClick={() => setColor(c)} style={{
-                  width: 28, height: 28, borderRadius: '50%', background: c, border: color === c ? '2.5px solid var(--ink)' : '2px solid transparent', cursor: 'pointer'
-                }} />
-              ))}
-            </div>
-          </div>
-          <div>
-            <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>Иконка</label>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {CAT_ICONS_BUDGET.map(ic => (
-                <button key={ic} onClick={() => setIcon(ic)} style={{
-                  width: 36, height: 36, borderRadius: 8,
-                  background: icon === ic ? color + '22' : 'var(--wash)',
-                  color: icon === ic ? color : 'var(--muted)',
-                  border: '1px solid ' + (icon === ic ? color : 'var(--line)'),
-                  display: 'grid', placeItems: 'center', cursor: 'pointer'
-                }}><Icon name={ic} size={16} /></button>
-              ))}
-            </div>
-          </div>
-          {err && <div style={{ color: 'var(--danger)', fontSize: 12.5 }}>{err}</div>}
-        </div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
-          <Btn variant="ghost" onClick={onClose}>Отмена</Btn>
-          <Btn variant="primary" onClick={save} disabled={saving}>{saving ? 'Сохраняю…' : existing ? 'Сохранить' : 'Добавить'}</Btn>
+    <Dialog title={existing ? 'Изменить категорию' : 'Новая категория'} icon="wallet" size="sm"
+      foot={<>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
+        <Btn variant="primary" icon="check" onClick={save} disabled={saving}>{saving ? 'Сохраняю…' : existing ? 'Сохранить' : 'Добавить'}</Btn>
+      </>}>
+      <Field label="Название">
+        <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="Сувениры…" autoFocus />
+      </Field>
+      <div style={{ marginTop: 14 }}>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>Цвет</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {CAT_COLORS.map(c => (
+            <button key={c} onClick={() => setColor(c)} style={{
+              width: 28, height: 28, borderRadius: '50%', background: c,
+              border: color === c ? '2.5px solid var(--ink)' : '2px solid transparent', cursor: 'pointer'
+            }} />
+          ))}
         </div>
       </div>
-    </div>
+      <div style={{ marginTop: 14 }}>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>Иконка</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {CAT_ICONS_BUDGET.map(ic => (
+            <button key={ic} onClick={() => setIcon(ic)} style={{
+              width: 36, height: 36, borderRadius: 8,
+              background: icon === ic ? color + '22' : 'var(--wash)',
+              color: icon === ic ? color : 'var(--muted)',
+              border: '1px solid ' + (icon === ic ? color : 'var(--line)'),
+              display: 'grid', placeItems: 'center', cursor: 'pointer'
+            }}><Icon name={ic} size={16} /></button>
+          ))}
+        </div>
+      </div>
+      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
+    </Dialog>
   );
 }
 
@@ -326,15 +319,23 @@ function CityGrouping({ cityGroups, mainCurrency, onDelete }) {
 
 // ─── BudgetLens ───────────────────────────────────────────────────────────────
 
-export default function BudgetLens({ tripId, budget, budgetCategories = [], budgetExpenses = [], members = [], isLoading, isPro, queryClient }) {
+export default function BudgetLens({ tripId, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient }) {
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);
-  const [showAddExpense, setShowAddExpense] = useState(false);
-  const [showAddCat, setShowAddCat] = useState(false);
-  const [editCat, setEditCat] = useState(null);
   const [seeding, setSeeding] = useState(false);
 
   const mainCurrency = budget?.currency || 'EUR';
+  const cityNames = cityVisits.map(v => v.city_name).filter(Boolean);
+
+  function openAddExpense() {
+    window.__openModal?.(<AddExpenseDialog tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityNames} onSaved={refresh} />);
+  }
+  function openAddCategory() {
+    window.__openModal?.(<AddCategoryDialog tripId={tripId} onSaved={refresh} />);
+  }
+  function openEditCategory(cat) {
+    window.__openModal?.(<AddCategoryDialog tripId={tripId} existing={cat} onSaved={refresh} />);
+  }
 
   // Seed budget if missing
   async function seedBudget() {
@@ -442,9 +443,9 @@ export default function BudgetLens({ tripId, budget, budgetCategories = [], budg
         </div>
         <div style={{ flex: 1 }} />
         {grouping === 'category' && (
-          <Btn variant="ghost" size="sm" icon="plus" onClick={() => { setEditCat(null); setShowAddCat(true); }}>Категория</Btn>
+          <Btn variant="ghost" size="sm" icon="plus" onClick={openAddCategory}>Категория</Btn>
         )}
-        <Btn variant="primary" size="sm" icon="plus" onClick={() => setShowAddExpense(true)}>Ручная трата</Btn>
+        <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>Ручная трата</Btn>
       </div>
 
       {grouping === 'category' ? (
@@ -464,13 +465,13 @@ export default function BudgetLens({ tripId, budget, budgetCategories = [], budg
                   <div className="muted num" style={{ fontSize: 12 }}>{fmt(activeCat.spent, mainCurrency)}</div>
                 </div>
                 {activeCat.kind === 'custom' && (
-                  <Btn variant="ghost" size="sm" icon="edit" onClick={() => { setEditCat(activeCat); setShowAddCat(true); }}>Изменить</Btn>
+                  <Btn variant="ghost" size="sm" icon="edit" onClick={() => openEditCategory(activeCat)}>Изменить</Btn>
                 )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {activeCat.items.length === 0 && (
                   <div style={{ padding: 22, textAlign: 'center', color: 'var(--muted)', border: '1.5px dashed var(--line)', borderRadius: 10 }}>
-                    Пока пусто. <a href="#" onClick={e => { e.preventDefault(); setShowAddExpense(true); }}>Добавить трату</a>
+                    Пока пусто. <a href="#" onClick={e => { e.preventDefault(); openAddExpense(); }}>Добавить трату</a>
                   </div>
                 )}
                 {activeCat.items.map(exp => (
@@ -492,24 +493,6 @@ export default function BudgetLens({ tripId, budget, budgetCategories = [], budg
           : <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} onDelete={deleteExpense} />
       )}
 
-      {/* Dialogs */}
-      {showAddExpense && (
-        <AddExpenseDialog
-          tripId={tripId}
-          categories={cats}
-          mainCurrency={mainCurrency}
-          onClose={() => setShowAddExpense(false)}
-          onSaved={refresh}
-        />
-      )}
-      {showAddCat && (
-        <AddCategoryDialog
-          tripId={tripId}
-          existing={editCat}
-          onClose={() => { setShowAddCat(false); setEditCat(null); }}
-          onSaved={refresh}
-        />
-      )}
     </>
   );
 }
