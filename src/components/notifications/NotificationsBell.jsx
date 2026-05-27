@@ -1,17 +1,27 @@
 import React, { useState } from 'react';
-import { Bell, Loader2, Check, X as XIcon, MapPin } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useNavigate, Link } from 'react-router-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-// Note: Button is still used inside NotificationItem for Accept/Decline actions.
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
-import { Link } from 'react-router-dom';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ru, es, enUS } from 'date-fns/locale';
+import { Icon } from '@/design/icons';
+import { Btn } from '@/design/index';
 
 const DATE_LOCALES = { ru, es, en: enUS };
+
+// Icon + accent colour for a notification, by type.
+export function notifMeta(type = '') {
+  const tp = String(type).toLowerCase();
+  if (tp.includes('invite')) return { icon: 'users', color: 'var(--brand)' };
+  if (tp.includes('vote') || tp.includes('hotel')) return { icon: 'vote', color: 'var(--ai)' };
+  if (tp.includes('pro') || tp.includes('subscription') || tp.includes('payment')) return { icon: 'pro', color: 'var(--warm)' };
+  if (tp.includes('join') || tp.includes('member')) return { icon: 'user', color: 'var(--success)' };
+  if (tp.includes('activity') || tp.includes('update') || tp.includes('edit')) return { icon: 'edit', color: 'var(--warm)' };
+  return { icon: 'bell', color: 'var(--brand)' };
+}
 
 export default function NotificationsBell({ triggerClassName }) {
   const t = useT();
@@ -19,6 +29,7 @@ export default function NotificationsBell({ triggerClassName }) {
   const dateLocale = DATE_LOCALES[lang] || enUS;
   const qc = useQueryClient();
   const { user } = useAuth();
+  const nav = useNavigate();
   const [open, setOpen] = useState(false);
 
   const { data: notifications = [], isLoading } = useQuery({
@@ -43,10 +54,7 @@ export default function NotificationsBell({ triggerClassName }) {
     mutationFn: async () => {
       const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
       if (!unreadIds.length) return;
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .in('id', unreadIds);
+      const { error } = await supabase.from('notifications').update({ read: true }).in('id', unreadIds);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
@@ -57,10 +65,7 @@ export default function NotificationsBell({ triggerClassName }) {
       const update = action === 'accept'
         ? { status: 'active', accepted_at: new Date().toISOString() }
         : { status: 'declined' };
-      const { error } = await supabase
-        .from('trip_members')
-        .update(update)
-        .eq('id', memberId);
+      const { error } = await supabase.from('trip_members').update(update).eq('id', memberId);
       if (error) throw error;
     },
     onSuccess: (_data, vars) => {
@@ -71,13 +76,9 @@ export default function NotificationsBell({ triggerClassName }) {
     },
   });
 
-  // Mark a single notification as read
   const markOneRead = useMutation({
     mutationFn: async (notifId) => {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', notifId);
+      const { error } = await supabase.from('notifications').update({ read: true }).eq('id', notifId);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
@@ -95,70 +96,70 @@ export default function NotificationsBell({ triggerClassName }) {
             ? `relative ${triggerClassName}`
             : 'relative inline-flex items-center justify-center h-10 w-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition'}
         >
-          <Bell className="w-5 h-5" />
-          {unread > 0 && (
-            triggerClassName
-              ? <span className="dot" />
-              : <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-                  {unread > 9 ? '9+' : unread}
-                </span>
-          )}
+          <Icon name="bell" size={17} />
+          {unread > 0 && <span className="dot" />}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-96 p-0 max-h-[80vh] overflow-y-auto">
-        <div className="px-4 py-3 border-b flex items-center justify-between sticky top-0 bg-popover">
-          <div className="font-semibold text-sm">{t('notif.title')}</div>
+      <PopoverContent align="end" sideOffset={8} className="p-0 w-[360px] max-w-[calc(100vw-16px)] overflow-hidden rounded-2xl">
+        <div className="bell-dd__head">
+          <Icon name="bell" size={16} />
+          <div style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{t('notif.title')}</div>
           {unread > 0 && (
-            <button onClick={() => markAllRead.mutate()} className="text-xs text-primary hover:underline">
+            <button onClick={() => markAllRead.mutate()}
+              style={{ background: 'transparent', border: 'none', color: 'var(--brand)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
               {t('notif.mark_all_read')}
             </button>
           )}
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
-        ) : notifications.length === 0 ? (
-          <div className="text-center py-10 px-4">
-            <Bell className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
-            <div className="text-sm text-muted-foreground">{t('notif.empty')}</div>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {notifications.map(n => (
-              <NotificationItem
+        <div className="bell-dd__list scrollbar-thin">
+          {isLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '28px 0', color: 'var(--muted)' }}>
+              <Icon name="refresh" size={16} />
+            </div>
+          ) : notifications.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--muted)' }}>
+              <Icon name="bell" size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
+              <div style={{ fontSize: 13 }}>{t('notif.empty')}</div>
+            </div>
+          ) : (
+            notifications.map(n => (
+              <NotifRow
                 key={n.id}
-                notification={n}
+                n={n}
+                t={t}
+                dateLocale={dateLocale}
+                pending={respondInvite.isPending}
                 onRespond={(action) => {
-                  // Responding to an invite implicitly marks the notification
-                  // as read — we don't need a separate click.
                   if (!n.read) markOneRead.mutate(n.id);
                   respondInvite.mutate({ memberId: n.trip_member_id, action });
                 }}
                 onMarkRead={() => { if (!n.read) markOneRead.mutate(n.id); }}
-                onClose={() => setOpen(false)}
-                t={t}
-                dateLocale={dateLocale}
-                pending={respondInvite.isPending}
+                onOpenTrip={() => { setOpen(false); }}
               />
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
+
+        <div className="bell-dd__foot">
+          <button
+            onClick={() => { setOpen(false); nav('/inbox'); }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--brand)', fontSize: 13, fontWeight: 500, cursor: 'pointer', padding: '4px 8px' }}
+          >
+            Открыть инбокс целиком →
+          </button>
+        </div>
       </PopoverContent>
     </Popover>
   );
 }
 
-function NotificationItem({ notification: n, onRespond, onMarkRead, onClose, t, dateLocale, pending }) {
+function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip }) {
   const isInvite = n.type === 'trip_invite' && n.trip_member_id;
-  // We need to know if the invite is still pending — fetch the member status
   const { data: member } = useQuery({
     queryKey: ['trip-member', n.trip_member_id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('trip_members')
-        .select('*')
-        .eq('id', n.trip_member_id)
-        .single();
+      const { data, error } = await supabase.from('trip_members').select('*').eq('id', n.trip_member_id).single();
       if (error) throw error;
       return data;
     },
@@ -166,67 +167,51 @@ function NotificationItem({ notification: n, onRespond, onMarkRead, onClose, t, 
   });
 
   const time = n.created_at ? formatDistanceToNowStrict(new Date(n.created_at), { addSuffix: true, locale: dateLocale }) : '';
-
-  // Translate dynamic notifications via i18n keys + params when present.
-  // Falls back to the legacy pre-rendered title/message stored on the row.
   const renderParams = (params = {}) => {
     const resolved = { ...params };
-    // role_key holds another translation key (e.g. notif.role_admin) — resolve it.
-    if (resolved.role_key) {
-      resolved.role = t(resolved.role_key);
-      delete resolved.role_key;
-    }
+    if (resolved.role_key) { resolved.role = t(resolved.role_key); delete resolved.role_key; }
     return resolved;
   };
-  const titleText = n.i18n_title_key
-    ? t(n.i18n_title_key, renderParams(n.i18n_params))
-    : n.title;
-  const messageText = n.i18n_message_key
-    ? t(n.i18n_message_key, renderParams(n.i18n_params))
-    : n.message;
+  const titleText = n.i18n_title_key ? t(n.i18n_title_key, renderParams(n.i18n_params)) : n.title;
+  const messageText = n.i18n_message_key ? t(n.i18n_message_key, renderParams(n.i18n_params)) : n.message;
 
-  // Clicking anywhere on the notification body marks it as read — but only
-  // when it's currently unread, to avoid extra writes. We intentionally exclude
-  // the Accept/Decline buttons (they have their own onRespond handler).
-  const handleBodyClick = () => {
-    if (!n.read) onMarkRead?.();
-  };
+  const meta = notifMeta(n.type);
+  const showPending = isInvite && member?.status === 'pending';
 
   return (
     <div
-      className={`p-3 transition-colors ${n.read ? '' : 'bg-primary/5 cursor-pointer hover:bg-primary/10'}`}
-      onClick={handleBodyClick}
+      onClick={() => { if (!n.read) onMarkRead?.(); }}
+      style={{
+        display: 'flex', gap: 10, padding: '12px 14px',
+        borderBottom: '1px solid var(--line-2)',
+        background: n.read ? 'transparent' : 'var(--brand-soft)',
+        cursor: n.read ? 'default' : 'pointer',
+      }}
     >
-      <div className="flex items-start gap-2">
-        {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" />}
-        <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm">{titleText}</div>
-          {messageText && <div className="text-xs text-muted-foreground mt-0.5">{messageText}</div>}
-          <div className="text-[10px] text-muted-foreground mt-1">{time}</div>
+      <div style={{ width: 30, height: 30, borderRadius: 8, background: `color-mix(in oklab, ${meta.color} 14%, transparent)`, color: meta.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        <Icon name={meta.icon} size={14} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12.5, lineHeight: 1.4, fontWeight: 500 }}>{titleText}</div>
+        {messageText && <div className="muted" style={{ fontSize: 11.5, marginTop: 2, lineHeight: 1.4 }}>{messageText}</div>}
+        <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{time}</div>
 
-          {isInvite && member?.status === 'pending' && (
-            <div className="flex gap-2 mt-2">
-              <Button size="sm" disabled={pending} onClick={() => onRespond('accept')} className="h-7 text-xs">
-                <Check className="w-3 h-3 mr-1" />{t('notif.accept')}
-              </Button>
-              <Button size="sm" variant="outline" disabled={pending} onClick={() => onRespond('decline')} className="h-7 text-xs">
-                <XIcon className="w-3 h-3 mr-1" />{t('notif.decline')}
-              </Button>
-            </div>
-          )}
-          {isInvite && member?.status === 'active' && (
-            <div className="text-xs text-green-600 mt-1">✓ {t('notif.accepted')}</div>
-          )}
-          {isInvite && member?.status === 'declined' && (
-            <div className="text-xs text-muted-foreground mt-1">{t('notif.declined')}</div>
-          )}
+        {showPending && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <Btn variant="primary" size="sm" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
+            <Btn variant="ghost" size="sm" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
+          </div>
+        )}
+        {isInvite && member?.status === 'active' && (
+          <div style={{ fontSize: 11.5, color: 'var(--success)', marginTop: 4 }}>✓ {t('notif.accepted')}</div>
+        )}
 
-          {n.trip_id && (member?.status === 'active' || n.type !== 'trip_invite') && (
-            <Link to={`/trip/${n.trip_id}`} onClick={onClose} className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1.5">
-              <MapPin className="w-3 h-3" />{t('notif.view_trip')}
-            </Link>
-          )}
-        </div>
+        {n.trip_id && (member?.status === 'active' || n.type !== 'trip_invite') && (
+          <Link to={`/trip/${n.trip_id}`} onClick={onOpenTrip}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: 'var(--brand)', fontWeight: 500, marginTop: 6 }}>
+            <Icon name="pin" size={12} />{t('notif.view_trip')}
+          </Link>
+        )}
       </div>
     </div>
   );

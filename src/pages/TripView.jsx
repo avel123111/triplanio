@@ -189,32 +189,11 @@ function LoadingScreen() {
               <Skeleton w={80} h={30} r={8} />
             </div>
           </div>
-          {/* Timeline + sidebar skeleton */}
+          {/* Timeline + sidebar skeleton — same building blocks as the loaded
+              layout, so nothing reshuffles when shell → content resolves. */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              {[1, 2, 3].map(g => (
-                <div key={g}>
-                  <Skeleton w={120} h={20} r={6} style={{ marginBottom: 12 }} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {[1, 2].map(i => (
-                      <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', display: 'flex', gap: 14, alignItems: 'center' }}>
-                        <Skeleton w={52} h={16} r={4} />
-                        <Skeleton w={36} h={36} r={9} />
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <Skeleton w="60%" h={13} r={4} />
-                          <Skeleton w="40%" h={11} r={4} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Skeleton w="100%" h={100} r={14} />
-              <Skeleton w="100%" h={130} r={14} />
-              <Skeleton w="100%" h={120} r={14} />
-            </div>
+            <SkeletonTimeline />
+            <RightRailSkeleton />
           </div>
         </main>
       </div>
@@ -408,6 +387,18 @@ function SkeletonTimeline() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Right-rail (budget / who's going / services) placeholder — shared by the
+// full-page LoadingScreen and ContextSide so the right column never reshuffles.
+function RightRailSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <Skeleton w="100%" h={100} r={14} />
+      <Skeleton w="100%" h={150} r={14} />
+      <Skeleton w="100%" h={120} r={14} />
     </div>
   );
 }
@@ -1040,23 +1031,32 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
 // ─── ContextSide ──────────────────────────────────────────────────────────────
 
 function ContextSide({ budget, budgetExpenses, members, services = [], user, trip, isLoading }) {
+  if (isLoading) {
+    return <div style={{ position: 'sticky', top: 80 }}><RightRailSkeleton /></div>;
+  }
   const totalSpent = budgetExpenses.reduce((s, e) => s + Number(e.original_amount || 0), 0);
   const mainCurrency = budget?.currency || trip?.main_currency || 'EUR';
 
-  // If members list is empty but we have a user/trip, synthesize owner row
-  const activeMembers = (() => {
-    // Include offline members (user_email:null, status:'offline') alongside active ones
-    const list = members.filter(m => m.status === 'active' || m.status === 'offline');
-    if (list.length === 0 && user) {
-      return [{
-        id: 'self',
-        user_full_name: user.user_metadata?.full_name || null,
-        user_email: user.email,
-        role: trip?.created_by === user.email ? 'owner' : 'viewer',
-        status: 'active',
-      }];
+  // Always show the owner first, then admins, viewers, offline, pending.
+  // The owner often isn't a trip_members row (tracked via trip.created_by), so
+  // synthesize it when missing.
+  const orderedMembers = (() => {
+    const ownerEmail = trip?.created_by || user?.email || '';
+    const all = members.filter(m => m.status !== 'declined');
+    if (ownerEmail && !all.some(m => m.role === 'owner' || m.user_email === ownerEmail)) {
+      all.unshift({ id: '__owner__', user_email: ownerEmail, user_full_name: ownerEmail, role: 'owner', status: 'active' });
     }
-    return list;
+    const rank = (m) => {
+      if (m.role === 'owner') return 0;
+      if (m.status === 'pending' || m.status === 'invited') return 4;
+      if (m.status === 'offline') return 3;
+      if (m.role === 'admin') return 1;
+      return 2; // viewer / editor
+    };
+    return all
+      .map((m, i) => ({ m, i }))
+      .sort((a, b) => rank(a.m) - rank(b.m) || a.i - b.i)
+      .map(x => x.m);
   })();
 
   return (
@@ -1099,21 +1099,25 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
           </button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {activeMembers.map((m, i) => {
+          {orderedMembers.map((m, i) => {
             const name = m.user_full_name || m.user_email || '—';
             const isOffline = m.status === 'offline';
+            const isPending = m.status === 'pending' || m.status === 'invited';
             const roleIcon = m.role === 'owner' ? 'crown' : m.role === 'admin' ? 'shield' : 'eye';
             const roleColor = m.role === 'owner' ? 'var(--warm)' : m.role === 'admin' ? 'var(--brand)' : 'var(--muted)';
-            const roleLabel = isOffline ? 'Офлайн' : m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель';
+            const roleLabel = isPending ? 'Ожидает приглашение'
+              : isOffline ? 'Офлайн'
+              : m.role === 'owner' ? 'Владелец'
+              : m.role === 'admin' ? 'Админ' : 'Зритель';
             return (
-              <div key={m.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div key={m.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (isPending || isOffline) ? 0.65 : 1 }}>
                 <Avatar name={name} size="sm" />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1.3 }}>
                     <Icon name={roleIcon} size={11} style={{ color: roleColor, flexShrink: 0 }} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
                   </div>
-                  <div className="muted" style={{ fontSize: 11, marginTop: 1 }}>{roleLabel}</div>
+                  <div style={{ fontSize: 11, marginTop: 1, color: isPending ? 'var(--warning)' : 'var(--muted)' }}>{roleLabel}</div>
                 </div>
               </div>
             );

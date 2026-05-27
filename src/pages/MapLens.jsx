@@ -5,9 +5,9 @@ import { APIProvider, Map as GMap, Marker as GMarker, useMap as useGMap, useApiL
 import { Icon } from '../design/icons';
 import { EmptyState, Skeleton, fmt } from '../design/index';
 import { parseNaive } from '@/lib/naive-time';
+import { PIN_COLOR, GROUND_COLOR, MISSING_COLOR, segmentStyle, groupMarkers, markerSvg, svgDataUri, markerPixelSize } from '@/lib/mapRoute';
 
 const GKEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
-const PIN_COLOR = '#2167e2'; // matches --brand / the Leaflet markers
 
 const TRANSPORT_ICONS = { plane: 'plane', train: 'train', bus: 'bus', car: 'car', ferry: 'ferry', walk: 'walk' };
 const TRANSPORT_LABELS = { plane: 'Перелёт', train: 'Поезд', bus: 'Автобус', car: 'Авто', ferry: 'Паром', walk: 'Пешком' };
@@ -42,14 +42,9 @@ function FitBounds({ positions }) {
   return null;
 }
 
-function markerIcon(label, active) {
-  const size = active ? 34 : 28;
-  return L.divIcon({
-    className: '',
-    html: `<div style="background:${PIN_COLOR};color:white;border-radius:50%;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${active ? 13 : 12}px;box-shadow:0 3px 8px rgba(0,0,0,.3);border:${active ? 3 : 2}px solid white;">${label}</div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  });
+function leafletIcon(labels, active) {
+  const d = markerPixelSize(active);
+  return L.divIcon({ className: '', html: markerSvg(labels, active), iconSize: [d, d], iconAnchor: [d / 2, d / 2] });
 }
 
 class MapErrorBoundary extends React.Component {
@@ -60,16 +55,26 @@ class MapErrorBoundary extends React.Component {
 
 // ─── Google helpers ─────────────────────────────────────────────────────────────
 
-function GPolyline({ positions }) {
+function GSegments({ segments }) {
   const map = useGMap();
   useEffect(() => {
-    if (!map || !window.google || positions.length < 2) return;
-    const line = new window.google.maps.Polyline({
-      path: positions.map(p => ({ lat: p[0], lng: p[1] })),
-      strokeColor: PIN_COLOR, strokeOpacity: 0.85, strokeWeight: 2.5, map,
+    if (!map || !window.google) return;
+    const lines = segments.map(s => {
+      const dashed = !!s.style.dash;
+      return new window.google.maps.Polyline({
+        path: [{ lat: s.from[0], lng: s.from[1] }, { lat: s.to[0], lng: s.to[1] }],
+        strokeColor: s.style.color,
+        strokeOpacity: dashed ? 0 : s.style.opacity,
+        strokeWeight: s.style.weight,
+        icons: dashed ? [{
+          icon: { path: 'M 0,-1 0,1', strokeColor: s.style.color, strokeOpacity: s.style.opacity, strokeWeight: s.style.weight, scale: 3 },
+          offset: '0', repeat: '14px',
+        }] : undefined,
+        map,
+      });
     });
-    return () => line.setMap(null);
-  }, [map, JSON.stringify(positions)]); // eslint-disable-line
+    return () => lines.forEach(l => l.setMap(null));
+  }, [map, JSON.stringify(segments)]); // eslint-disable-line
   return null;
 }
 
@@ -87,22 +92,14 @@ function GFitBounds({ positions }) {
   return null;
 }
 
-// Custom branded circle marker (matches the Leaflet pins) instead of the
-// default red Google pin.
-function googleIcon(active) {
+function googleIcon(labels, active) {
   const g = window.google;
   if (!g?.maps) return undefined;
-  return {
-    path: g.maps.SymbolPath.CIRCLE,
-    fillColor: PIN_COLOR,
-    fillOpacity: 1,
-    strokeColor: '#ffffff',
-    strokeWeight: active ? 3 : 2,
-    scale: active ? 16 : 13,
-  };
+  const d = markerPixelSize(active);
+  return { url: svgDataUri(markerSvg(labels, active)), scaledSize: new g.maps.Size(d, d), anchor: new g.maps.Point(d / 2, d / 2) };
 }
 
-function GoogleMapInner({ pts, positions, activeIdx, setActiveIdx, onError }) {
+function GoogleMapInner({ groups, segments, positions, activeIdx, setActiveIdx, onError }) {
   const map = useGMap();
   const status = useApiLoadingStatus();
 
@@ -121,17 +118,19 @@ function GoogleMapInner({ pts, positions, activeIdx, setActiveIdx, onError }) {
   return (
     <>
       <GFitBounds positions={positions} />
-      {pts.map((p, i) => (
-        <GMarker
-          key={i}
-          position={{ lat: p.lat, lng: p.lng }}
-          icon={googleIcon(i === activeIdx)}
-          label={{ text: p.label, color: 'white', fontWeight: 'bold', fontSize: '11px' }}
-          zIndex={i === activeIdx ? 999 : i}
-          onClick={() => setActiveIdx(i)}
-        />
-      ))}
-      {positions.length >= 2 && <GPolyline positions={positions} />}
+      <GSegments segments={segments} />
+      {groups.map((grp, i) => {
+        const active = grp.indices.includes(activeIdx);
+        return (
+          <GMarker
+            key={i}
+            position={{ lat: grp.lat, lng: grp.lng }}
+            icon={googleIcon(grp.labels, active)}
+            zIndex={active ? 999 : i}
+            onClick={() => setActiveIdx(grp.indices[0])}
+          />
+        );
+      })}
     </>
   );
 }
@@ -165,7 +164,7 @@ function RouteStepper({ pts, activeIdx, setActiveIdx }) {
               </div>
             </button>
             {i < pts.length - 1 && (
-              <div style={{ flex: 1, minWidth: 14, height: 2, marginTop: 17, borderTop: p.nextMissing ? '2px dashed var(--warning)' : '2px solid var(--brand-soft-12)' }} />
+              <div style={{ flex: 1, minWidth: 14, height: 2, marginTop: 17, borderTop: p.nextMissing ? '2px dashed var(--muted-2)' : '2px solid var(--brand-soft-12)' }} />
             )}
           </React.Fragment>
         ))}
@@ -252,6 +251,14 @@ function ActiveCityCard({ p }) {
   );
 }
 
+function LegendRow({ color, dashed, children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ width: 18, height: 0, borderTop: `${dashed ? '2px dashed' : '2px solid'} ${color}` }} /> {children}
+    </div>
+  );
+}
+
 // ─── MapLens ─────────────────────────────────────────────────────────────────
 
 export default function MapLens({ visits = [], hotels = [], activities = [], transfers = [], trip, isLoading }) {
@@ -290,7 +297,6 @@ export default function MapLens({ visits = [], hotels = [], activities = [], tra
     });
   }, [visits, hotels, activities, transfers]);
 
-  // Mark, for the stepper, which segments are missing a transfer.
   const ptsWithSeg = useMemo(() => pts.map((p, i) => ({
     ...p, nextMissing: i < pts.length - 1 ? !pts[i + 1].transfer : false,
   })), [pts]);
@@ -311,18 +317,24 @@ export default function MapLens({ visits = [], hotels = [], activities = [], tra
 
   const positions = pts.map(p => [p.lat, p.lng]);
   const totalNights = pts.reduce((n, p) => n + p.nights, 0);
+  const groups = groupMarkers(pts);
+  const segments = pts.slice(0, -1).map((p, i) => ({
+    from: positions[i],
+    to: positions[i + 1],
+    style: segmentStyle(pts[i + 1].transfer?.transport_type),
+  }));
 
   const leafletMap = (
     <MapContainer center={positions[0]} zoom={5} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
       <FitBounds positions={positions} />
-      {pts.map((p, i) => (
-        <LeafletMarker key={i} position={[p.lat, p.lng]} icon={markerIcon(p.label, i === activeIdx)}
-          eventHandlers={{ click: () => setActiveIdx(i) }} />
+      {segments.map((s, i) => (
+        <Polyline key={i} positions={[s.from, s.to]} pathOptions={{ color: s.style.color, weight: s.style.weight, opacity: s.style.opacity, dashArray: s.style.dash || undefined }} />
       ))}
-      {positions.length >= 2 && (
-        <Polyline positions={positions} color={PIN_COLOR} weight={2.5} dashArray="6 8" opacity={0.75} />
-      )}
+      {groups.map((grp, i) => (
+        <LeafletMarker key={i} position={[grp.lat, grp.lng]} icon={leafletIcon(grp.labels, grp.indices.includes(activeIdx))}
+          eventHandlers={{ click: () => setActiveIdx(grp.indices[0]) }} />
+      ))}
     </MapContainer>
   );
 
@@ -337,7 +349,7 @@ export default function MapLens({ visits = [], hotels = [], activities = [], tra
           disableDefaultUI={false}
           mapTypeId="roadmap"
         >
-          <GoogleMapInner pts={pts} positions={positions} activeIdx={activeIdx} setActiveIdx={setActiveIdx} onError={() => setGmapFailed(true)} />
+          <GoogleMapInner groups={groups} segments={segments} positions={positions} activeIdx={activeIdx} setActiveIdx={setActiveIdx} onError={() => setGmapFailed(true)} />
         </GMap>
       </APIProvider>
     </MapErrorBoundary>
@@ -370,12 +382,9 @@ export default function MapLens({ visits = [], hotels = [], activities = [], tra
         <div style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 500, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11, padding: '10px 14px', fontSize: 11.5, boxShadow: 'var(--shadow-soft)' }}>
           <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>Маршрут</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 18, height: 0, borderTop: `2px solid ${PIN_COLOR}` }} /> Города по порядку
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 18, height: 0, borderTop: '2px dashed var(--warning)' }} /> Нет переезда
-            </div>
+            <LegendRow color={PIN_COLOR}>Перелёт</LegendRow>
+            <LegendRow color={GROUND_COLOR}>Наземный</LegendRow>
+            <LegendRow color={MISSING_COLOR} dashed>Нет переезда</LegendRow>
           </div>
         </div>
       </div>

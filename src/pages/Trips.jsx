@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { Icon } from '../design/icons';
-import { Badge, Btn, EmptyState } from '../design/index';
+import { Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
@@ -198,20 +198,56 @@ function CollectionEmpty({ onManual, onAi }) {
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
+// Header row + toolbar placeholders — shown only on the very first load, so the
+// loading state mirrors the real page layout instead of a bare grid of boxes.
+function TripsHeaderSkeleton() {
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <Skeleton w={170} h={28} r={8} style={{ marginBottom: 8 }} />
+          <Skeleton w={220} h={15} r={6} />
+        </div>
+        <Skeleton w={150} h={44} r={10} />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        <Skeleton w={240} h={36} r={10} />
+        <div style={{ flex: 1 }} />
+        <Skeleton w={72} h={36} r={10} />
+      </div>
+    </>
+  );
+}
+
 function TripSkeleton({ viewMode }) {
   if (viewMode === 'list') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} style={{ height: 68, borderRadius: 12, background: 'var(--wash)', animation: 'pulse 1.4s ease-in-out infinite' }} />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 160px 120px', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
+            <Skeleton w={44} h={44} r={10} />
+            <div>
+              <Skeleton w="55%" h={14} r={5} style={{ marginBottom: 6 }} />
+              <Skeleton w="32%" h={11} r={4} />
+            </div>
+            <Skeleton w={120} h={12} r={5} />
+            <Skeleton w={84} h={12} r={5} />
+          </div>
         ))}
       </div>
     );
   }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} style={{ borderRadius: 'var(--radius-card)', background: 'var(--wash)', height: 260, animation: 'pulse 1.4s ease-in-out infinite' }} />
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} style={{ border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 'var(--radius-card)', padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Skeleton w="100%" h={120} r={12} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Skeleton w="70%" h={17} r={6} />
+            <Skeleton w="40%" h={12} r={4} />
+          </div>
+          <Skeleton w="90%" h={12} r={4} />
+        </div>
       ))}
     </div>
   );
@@ -363,7 +399,10 @@ export default function Trips() {
 
         {/* Loading skeleton — shown before we know if there are any trips */}
         {isLoadingData && allTrips.length === 0 && (
-          <TripSkeleton viewMode={viewMode} />
+          <>
+            <TripsHeaderSkeleton />
+            <TripSkeleton viewMode={viewMode} />
+          </>
         )}
 
         {/* Empty collection — only when loading is done and truly no trips */}

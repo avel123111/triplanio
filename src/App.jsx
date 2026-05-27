@@ -22,6 +22,7 @@ import Login from '@/pages/Login';
 import DesignPreview from '@/pages/redesign/DesignPreview';
 import LandingPage from '@/pages/Landing/LandingPage';
 import ManualPlanner from '@/pages/ManualPlanner';
+import Inbox from '@/pages/Inbox';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
@@ -104,6 +105,7 @@ const AuthenticatedApp = () => {
       <Route path="/new-trip" element={<ManualPlanner />} />
       <Route path="/trip/:tripId" element={<TripView />} />
       <Route path="/settings" element={<ScreenAccount />} />
+      <Route path="/inbox" element={<Inbox />} />
 
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to="/trips" replace />} />
