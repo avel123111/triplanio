@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
 import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
          fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
-         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard,
+         TripIdentityStrip } from '../../design/index';
 
 // =====================================================================
 // TRIP MAP — geographic lens (§14) — full-bleed map + scrollable sidebar

@@ -425,3 +425,390 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
     </div>
   );
 }
+
+// =====================================================================
+// SHARED TIMELINE UTILITIES — exported so all screens can use them
+// =====================================================================
+
+// ----- Utility: group event stream by date -----
+export function groupByDate(events) {
+  const groups = {};
+  for (const e of events) {
+    if (!groups[e.date]) groups[e.date] = [];
+    groups[e.date].push(e);
+  }
+  return Object.entries(groups).map(([date, items]) => ({ date, items }));
+}
+
+const _WEEKDAYS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+const _MONTHS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+
+export function fmtDate(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return `${d.getDate()} ${_MONTHS[d.getMonth()]}`;
+}
+
+export function weekday(iso) {
+  return _WEEKDAYS[new Date(iso + "T00:00:00").getDay()];
+}
+
+// ----- Mock event stream -----
+export const STREAM = [
+  { type: "hotel-deadline", id: "d1", date: "2026-07-09", time: "23:59", city: "Лиссабон", title: "Дедлайн бесплатной отмены · Memmo Alfama",
+    hotel: "Memmo Alfama", price: 880, cur: "EUR", note: "После — невозвратно. Решить сейчас, ехать ли." },
+  { type: "flight", id: "f0", date: "2026-07-12", time: "08:35", duration: "4ч 25м", title: "TAP TP 1245",
+    from: "SVO", to: "LIS", kind: "plane", carrier: "TAP Portugal", num: "TP 1245", price: 544, cur: "EUR",
+    platformUrl: "https://tap.com", depart_loc: "Шереметьево T-D", arrive_loc: "Лиссабон-Портела" },
+  { type: "hotel-checkin", id: "h1-in", date: "2026-07-12", time: "15:00", city: "Лиссабон", title: "Заезд · Memmo Alfama",
+    hotelId: "h1", hotel: "Memmo Alfama", address: "Travessa das Merceeiras 27", price: 880, cur: "EUR", nights: 4,
+    platformUrl: "https://booking.com/h/memmo", num: "BKN-72931" },
+  { type: "activity", id: "a1", date: "2026-07-13", time: "10:00", duration: "1ч", city: "Лиссабон",
+    title: "Завтрак · Pastéis de Belém", price: 24, cur: "EUR", category: "food", address: "R. de Belém 84-92" },
+  { type: "activity", id: "a2", date: "2026-07-13", time: "14:00", duration: "2ч 30м", city: "Лиссабон",
+    title: "Castelo de São Jorge", price: 30, cur: "EUR", category: "sight", address: "R. de Santa Cruz" },
+  { type: "activity", id: "a3", date: "2026-07-14", time: "10:00", duration: "8ч", city: "Sintra",
+    title: "Винный тур в Sintra", price: 145, cur: "EUR", category: "experience", address: "Sintra, Portugal · трансфер из отеля" },
+  { type: "hotel-checkout", id: "h1-out", date: "2026-07-16", time: "11:00", city: "Лиссабон", title: "Выезд · Memmo Alfama", hotelId: "h1" },
+  { type: "activity", id: "a-train-lunch", date: "2026-07-16", time: "13:00", duration: "1ч", city: "в пути",
+    title: "Обед перед поездом · Time Out Market", price: 28, cur: "EUR", category: "food", address: "Av. 24 de Julho, Lisboa" },
+  { type: "transfer", id: "t1", date: "2026-07-16", time: "14:25", duration: "3ч 15м", title: "CP IC 521",
+    from: "Lisboa Oriente", to: "Porto Campanhã", from_city: "Лиссабон", to_city: "Порту",
+    kind: "train", carrier: "Comboios CP", num: "IC 521", price: 36, cur: "EUR", platformUrl: "https://cp.pt" },
+  { type: "hotel-checkin", id: "h2-in", date: "2026-07-16", time: "18:30", city: "Порту",
+    title: "Заезд · Torel Avantgarde", hotelId: "h2", hotel: "Torel Avantgarde", address: "Rua da Restauração 336",
+    price: 720, cur: "EUR", nights: 3, platformUrl: "https://booking.com/h/torel", num: "BKN-72932" },
+  { type: "activity", id: "a4", date: "2026-07-17", time: "16:00", duration: "2ч", city: "Порту",
+    title: "Дегустация в погребе Sandeman", price: 65, cur: "EUR", category: "experience",
+    address: "Largo Miguel Bombarda, Vila Nova de Gaia" },
+  { type: "transfer-missing", id: "tm1", date: "2026-07-19", time: "?", from: "Порту", to: "Барселона",
+    title: "Нет переезда · добавить" },
+  { type: "hotel-checkout", id: "h2-out", date: "2026-07-19", time: "11:00", city: "Порту", title: "Выезд · Torel Avantgarde", hotelId: "h2" },
+  { type: "hotel-checkin", id: "h3-in", date: "2026-07-19", time: "16:00", city: "Барселона",
+    title: "Заезд · Cotton House", hotelId: "h3", hotel: "Cotton House", address: "Gran Via 670",
+    price: 1340, cur: "EUR", nights: 4, num: "—" },
+  { type: "car-pickup", id: "cp1", date: "2026-07-19", time: "17:30", city: "Барселона", title: "Получение авто · Sixt",
+    address: "Барселона аэропорт T1", platformUrl: "https://sixt.com" },
+  { type: "activity", id: "a5", date: "2026-07-20", time: "10:25", duration: "1ч 35м", city: "Барселона",
+    title: "Sagrada Família", price: 33, cur: "EUR", category: "sight", address: "C/ Mallorca 401" },
+  { type: "activity", id: "a6", date: "2026-07-21", city: "Барселона",
+    title: "Парк Гуэль", price: 18, cur: "EUR", category: "sight",
+    warning: "Не указано время — желательно поставить", address: "C/ Olot, 5" },
+  { type: "hotel-checkout", id: "h3-out", date: "2026-07-23", time: "12:00", city: "Барселона", title: "Выезд · Cotton House", hotelId: "h3" },
+  { type: "car-return", id: "cr1", date: "2026-07-23", time: "13:00", city: "Барселона", title: "Возврат авто · Sixt",
+    address: "Барселона аэропорт T1", platformUrl: "https://sixt.com" },
+  { type: "flight", id: "f1", date: "2026-07-23", time: "15:40", duration: "5ч 30м", title: "Lufthansa LH 1731",
+    from: "BCN", to: "SVO", from_city: "Барселона", to_city: "Москва",
+    kind: "plane", carrier: "Lufthansa", num: "LH 1731", price: 412, cur: "EUR",
+    platformUrl: "https://lufthansa.com" }
+];
+
+// ----- Transfer card helpers -----
+const TRANSFER_KIND_META = {
+  plane: { icon: "plane", label: "Перелёт" },
+  train: { icon: "train", label: "Поезд" },
+  bus:   { icon: "bus",   label: "Автобус" },
+  ferry: { icon: "ferry", label: "Паром" },
+  car:   { icon: "car",   label: "На авто" },
+  walk:  { icon: "walk",  label: "Пешком" },
+  foot:  { icon: "walk",  label: "Пешком" },
+  bike:  { icon: "walk",  label: "Велосипед" }
+};
+
+function _transferMeta(e) {
+  return TRANSFER_KIND_META[e.kind] || TRANSFER_KIND_META.car;
+}
+
+function _addDuration(time, dur) {
+  if (!time || !dur) return null;
+  const [h, m] = time.split(":").map(Number);
+  const hm = dur.match(/(\d+)ч/);
+  const mm = dur.match(/(\d+)м/);
+  const dh = hm ? +hm[1] : 0;
+  const dm = mm ? +mm[1] : 0;
+  let nh = h + dh, nm = m + dm;
+  nh += Math.floor(nm / 60); nm %= 60; nh %= 24;
+  return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`;
+}
+
+function TransferCardHub({ e, onClick }) {
+  const meta = _transferMeta(e);
+  const arriveTime = e.arrive_time || _addDuration(e.time, e.duration) || "—";
+  return (
+    <button onClick={onClick} style={{
+      width: "100%", display: "grid", gridTemplateColumns: "auto 1fr auto 1fr auto", gap: 14,
+      alignItems: "center", padding: "14px 16px", background: "var(--surface)",
+      border: "1px solid var(--line)", borderLeft: "3px solid var(--ev-transfer)",
+      borderRadius: 12, cursor: "pointer", textAlign: "left"
+    }}
+    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
+    onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
+      <div style={{ width: 36, height: 36, borderRadius: 9, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <Icon name={meta.icon} size={17} />
+      </div>
+      <div>
+        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{e.time}</div>
+        <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 4 }}>{e.from}</div>
+        {e.depart_loc && <div className="muted" style={{ fontSize: 11 }}>{e.depart_loc}</div>}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 80 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
+          <div style={{ height: 1, flex: 1, borderTop: "1.5px dashed var(--ev-transfer)" }} />
+          <span className="muted num" style={{ fontSize: 10.5, whiteSpace: "nowrap" }}>{e.duration}</span>
+          <div style={{ height: 1, flex: 1, borderTop: "1.5px dashed var(--ev-transfer)" }} />
+        </div>
+        <div className="muted" style={{ fontSize: 10.5, textAlign: "center" }}>
+          {e.carrier}{e.num && e.num !== "—" ? <> · <span className="num">{e.num}</span></> : null}
+        </div>
+      </div>
+      <div style={{ textAlign: "right" }}>
+        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{arriveTime}</div>
+        <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 4 }}>{e.to}</div>
+        {e.arrive_loc && <div className="muted" style={{ fontSize: 11 }}>{e.arrive_loc}</div>}
+      </div>
+      <div style={{ textAlign: "right", borderLeft: "1px solid var(--line-2)", paddingLeft: 14, minWidth: 80 }}>
+        {e.price && <div className="num" style={{ fontWeight: 600, fontSize: 15 }}>{fmt(e.price, e.cur)}</div>}
+        {e.platformUrl && <div style={{ marginTop: 4 }}><PartnerPill url={e.platformUrl} /></div>}
+      </div>
+    </button>
+  );
+}
+
+function TransferCardStrip({ e, onClick }) {
+  const meta = _transferMeta(e);
+  return (
+    <button onClick={onClick} style={{
+      width: "100%", display: "flex", alignItems: "center", gap: 14,
+      padding: "12px 14px", background: "var(--surface)",
+      border: "1px solid var(--line)", borderLeft: "3px solid var(--ev-transfer)",
+      borderRadius: 12, cursor: "pointer", textAlign: "left"
+    }}
+    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
+    onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
+      <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: "var(--ink)" }}>{e.time || "—"}</div>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <Icon name={meta.icon} size={15} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13.5, fontWeight: 600 }}>{meta.label}</span>
+          <span className="muted" style={{ fontSize: 12.5 }}>
+            {e.from_city || e.from} <Icon name="arrowR" size={10} style={{ verticalAlign: -1, color: "var(--muted-2)" }} /> {e.to_city || e.to}
+          </span>
+        </div>
+        <div className="muted" style={{ fontSize: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {e.duration && <span className="num">{e.duration}</span>}
+          {e.carrier && <span>· {e.carrier}{e.num && e.num !== "—" ? <> · <span className="num">{e.num}</span></> : null}</span>}
+          {e.platformUrl && <PartnerPill url={e.platformUrl} />}
+        </div>
+      </div>
+      {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(e.price, e.cur)}</span>}
+    </button>
+  );
+}
+
+function TransferCardStacked({ e, onClick }) {
+  const meta = _transferMeta(e);
+  const arriveTime = e.arrive_time || _addDuration(e.time, e.duration) || "—";
+  return (
+    <button onClick={onClick} style={{
+      width: "100%", display: "flex", alignItems: "center", gap: 14,
+      padding: "14px 16px", background: "var(--surface)",
+      border: "1px solid var(--line)", borderLeft: "3px solid var(--ev-transfer)",
+      borderRadius: 12, cursor: "pointer", textAlign: "left"
+    }}
+    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
+    onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
+      <div style={{ width: 44, height: 44, borderRadius: 11, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <Icon name={meta.icon} size={20} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="eyebrow" style={{ marginBottom: 4, color: "var(--ev-transfer)" }}>
+          {meta.label} · <span className="num">{e.duration}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>{e.time}</span>
+          <Icon name="arrowR" size={12} style={{ color: "var(--muted-2)" }} />
+          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>{arriveTime}</span>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>· {e.to_city || e.to}</span>
+        </div>
+        <div className="muted" style={{ fontSize: 12, marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <span>из {e.from_city || e.from}</span>
+          {e.carrier && <span>· {e.carrier}{e.num && e.num !== "—" ? <> · <span className="num">{e.num}</span></> : null}</span>}
+          {e.platformUrl && <PartnerPill url={e.platformUrl} />}
+        </div>
+      </div>
+      {e.price && <div style={{ textAlign: "right", flexShrink: 0 }}><div className="num" style={{ fontWeight: 600, fontSize: 15 }}>{fmt(e.price, e.cur)}</div></div>}
+    </button>
+  );
+}
+
+export function StreamEventRow({ e, onClick, last, editMode }) {
+  if (e.type === "transfer-missing") {
+    const [hidden, setHidden] = React.useState(false);
+    if (hidden) return null;
+    return (
+      <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--warning-soft)", border: "1.5px dashed var(--warning)", borderRadius: 12, textAlign: "left" }}>
+        <Icon name="warning" size={16} style={{ color: "var(--warning)" }} />
+        <div style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>Нет переезда · {e.from} → {e.to}</div>
+        <Btn variant="primary" size="sm" icon="plus" onClick={onClick}>Добавить переезд</Btn>
+        <button onClick={() => setHidden(true)} title="Скрыть варнинг" style={{ width: 24, height: 24, borderRadius: 6, border: "none", background: "transparent", color: "var(--warning)", cursor: "pointer", display: "grid", placeItems: "center" }}>
+          <Icon name="close" size={12} />
+        </button>
+      </div>
+    );
+  }
+  if (e.type === "flight" || e.type === "transfer") {
+    const variant = window.__transferCardVariant || "V1";
+    if (variant === "V2") return <TransferCardStrip e={e} onClick={onClick} />;
+    if (variant === "V3") return <TransferCardStacked e={e} onClick={onClick} />;
+    return <TransferCardHub e={e} onClick={onClick} />;
+  }
+  const META = {
+    "hotel-checkin":  { icon: "bed",     c: "var(--ev-hotel)",    bg: "var(--ev-hotel-soft)",    label: "Заезд" },
+    "hotel-checkout": { icon: "bed",     c: "var(--ev-hotel)",    bg: "var(--ev-hotel-soft)",    label: "Выезд" },
+    "hotel-deadline": { icon: "warning", c: "var(--ev-deadline)", bg: "var(--ev-deadline-soft)", label: "Дедлайн" },
+    "activity": {
+      icon: e.category === "food" ? "cup" : e.category === "sight" ? "cam" : "spark",
+      c: "var(--ev-activity)", bg: "var(--ev-activity-soft)"
+    },
+    "car-pickup": { icon: "car", c: "var(--ev-car)", bg: "var(--ev-car-soft)" },
+    "car-return": { icon: "car", c: "var(--ev-car)", bg: "var(--ev-car-soft)" }
+  };
+  const meta = META[e.type] || { icon: "spark", c: "var(--ink)", bg: "var(--wash)" };
+  const isCheckin = e.type === "hotel-checkin" || e.type === "hotel-checkout";
+  return (
+    <button onClick={onClick} style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left" }}
+      onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.borderLeftColor = meta.c; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
+      onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = meta.c; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
+      <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: e.time === "?" ? "var(--warning)" : "var(--ink)" }}>
+        {e.time || "—"}
+      </div>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: meta.bg, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <Icon name={meta.icon} size={15} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13.5, fontWeight: 600 }}>{e.title}</span>
+          {e.warning && <Badge variant="warning" icon="warning">Нет времени</Badge>}
+          {isCheckin && <Badge variant="success">{meta.label}</Badge>}
+        </div>
+        <div className="muted" style={{ fontSize: 12, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+          {e.duration && <span className="num">{e.duration}</span>}
+          {e.address && <span>· {e.address}</span>}
+          {e.platformUrl && <PartnerPill url={e.platformUrl} />}
+        </div>
+      </div>
+      {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(e.price, e.cur)}</span>}
+    </button>
+  );
+}
+
+// =====================================================================
+// TRIP IDENTITY STRIP — exported so all screens can use it
+// =====================================================================
+
+function _InfoChip({ icon, color, children }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 999, background: "var(--wash)", border: "1px solid var(--line-2)", fontSize: 12.5, color: "var(--ink-2)", fontWeight: 500 }}>
+      <Icon name={icon} size={13} style={{ color }} />
+      {children}
+    </span>
+  );
+}
+
+function _RoutePopover({ cities, onClose }) {
+  React.useEffect(() => {
+    const fn = () => onClose?.();
+    setTimeout(() => document.addEventListener("click", fn, { once: true }), 0);
+    return () => document.removeEventListener("click", fn);
+  }, [onClose]);
+  return (
+    <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, minWidth: 220, zIndex: 30, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "var(--shadow-pop)", padding: 10 }}>
+      <div className="eyebrow" style={{ marginBottom: 8 }}>Маршрут</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
+        <div style={{ position: "absolute", left: 10, top: 8, bottom: 8, width: 2, background: "var(--line)" }} />
+        {cities.map((c, i) => (
+          <div key={c} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 6px 6px 28px", position: "relative" }}>
+            <span style={{ position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, borderRadius: "50%", background: "var(--brand)", color: "white", fontSize: 9, fontWeight: 700, display: "grid", placeItems: "center", zIndex: 1 }}>{i + 1}</span>
+            <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{c}</div>
+          </div>
+        ))}
+      </div>
+      <button onClick={() => { onClose?.(); window.__navigate?.("map"); }} style={{ marginTop: 6, padding: "6px 10px", width: "100%", textAlign: "center", background: "var(--brand-soft)", border: "none", color: "var(--brand)", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+        Открыть на карте →
+      </button>
+    </div>
+  );
+}
+
+export function TripIdentityStrip({ compact }) {
+  const userHasSub = window.__userHasSub ?? true;
+  const tripIsPro = window.__tripIsPro ?? true;
+  const showCover = window.__tripShowCover ?? true;
+  const editMode = window.__tripEditMode ?? false;
+  const [routeOpen, setRouteOpen] = React.useState(false);
+  const cities = TRIP.cities;
+
+  return (
+    <div style={{ marginBottom: 22, borderBottom: "1px solid var(--line-2)", paddingBottom: compact ? 16 : 22, paddingTop: compact ? 0 : 4 }}>
+      {showCover && !compact && (
+        <div style={{ position: "relative", marginBottom: 18, height: 160, borderRadius: 16, overflow: "hidden", background: "linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)" }}>
+          <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.55 }}>
+            <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.55)" />
+            <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.32)" />
+            <circle cx="680" cy="50" r="28" fill="rgba(255,255,255,.65)" />
+          </svg>
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 30%, rgba(0,0,0,.35) 100%)" }} />
+          <div style={{ position: "absolute", left: 22, right: 22, bottom: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ color: "white", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(26px, 4vw, 38px)", letterSpacing: "-0.03em", lineHeight: 1, textShadow: "0 2px 12px rgba(0,0,0,.3)" }}>{TRIP.title}</div>
+              <div className="num" style={{ color: "rgba(255,255,255,.85)", fontSize: 13, marginTop: 8, fontWeight: 500 }}>{TRIP.start} → {TRIP.end} · {TRIP.year} · {TRIP.duration}</div>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              {tripIsPro && !userHasSub && <span style={{ background: "rgba(255,255,255,.92)", color: "var(--warm)", padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".04em" }}>PRO</span>}
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 18, alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div style={{ minWidth: 0, flex: "1 1 320px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: showCover ? 0 : 8, flexWrap: "wrap" }}>
+            <RoleBadge role={TRIP.role} />
+            {!tripIsPro && !userHasSub && <Badge variant="quiet">Free</Badge>}
+            {tripIsPro && !userHasSub && !showCover && <Badge variant="warm" icon="pro">Pro · этот трип</Badge>}
+          </div>
+          {!showCover && <h1 style={{ fontSize: compact ? 26 : 34, marginBottom: 6, marginTop: 4, letterSpacing: "-0.025em" }}>{TRIP.title}</h1>}
+          {!showCover && (
+            <div className="num" style={{ fontSize: 14, color: "var(--muted)", marginBottom: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <Icon name="calendar" size={13} style={{ color: "var(--muted-2)" }} />
+              <span>{TRIP.start} → {TRIP.end} · {TRIP.year}</span>
+              <span style={{ color: "var(--muted-2)" }}>·</span>
+              <span>{TRIP.duration}</span>
+            </div>
+          )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: showCover ? 14 : 0 }}>
+            <span style={{ position: "relative", display: "inline-flex" }}>
+              <button onClick={() => setRouteOpen(!routeOpen)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 999, background: "var(--brand-soft)", border: "1px solid var(--brand-soft-12)", fontSize: 12.5, color: "var(--brand)", fontWeight: 600, cursor: "pointer" }}>
+                <Icon name="pin" size={13} />
+                {cities.length} {cities.length === 1 ? "город" : cities.length < 5 ? "города" : "городов"}
+                <Icon name={routeOpen ? "chevD" : "chev"} size={11} />
+              </button>
+              {routeOpen && <_RoutePopover cities={cities} onClose={() => setRouteOpen(false)} />}
+            </span>
+            <_InfoChip icon="users" color="var(--success)">{TRIP.travelers} участника</_InfoChip>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+          {TRIP.role !== "viewer" && (
+            editMode
+              ? <Btn variant="primary" size="sm" icon="check" onClick={() => { window.__tripEditMode = false; window.dispatchEvent(new Event("__tweak")); }}>Готово</Btn>
+              : <Btn variant="ghost" size="sm" icon="edit" onClick={() => { window.__tripEditMode = true; window.dispatchEvent(new Event("__tweak")); }}>Редактировать</Btn>
+          )}
+          <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<window.ShareDialog />)}>Поделиться</Btn>
+          <Btn variant="ghost" size="sm" icon="download" onClick={() => window.__openModal?.(<window.ExportDialog />)}>Экспорт</Btn>
+          <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<window.MoreMenuDialog />)} />
+        </div>
+      </div>
+    </div>
+  );
+}

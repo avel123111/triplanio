@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
 import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
          fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
-         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard,
+         Severity, TripIdentityStrip } from '../../design/index';
 
 // =====================================================================
 // TRIP BUDGET — full breakdown (§16)
