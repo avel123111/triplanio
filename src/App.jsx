@@ -13,7 +13,7 @@ import Trips from '@/pages/Trips';
 import TripView from '@/pages/TripView';
 import TripBudget from '@/pages/TripBudget';
 import TripSettings from '@/pages/TripSettings';
-import Settings from '@/pages/Settings';
+import ScreenAccount from '@/pages/redesign/ScreenAccount';
 import PublicTrip from '@/pages/PublicTrip';
 import AdminHome from '@/pages/admin/AdminHome';
 import AdminNotifications from '@/pages/admin/Notifications';
@@ -106,7 +106,7 @@ const AuthenticatedApp = () => {
 
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to="/trips" replace />} />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/settings" element={<ScreenAccount />} />
         <Route path="/plan-trip-ai" element={<AiTripPlanner />} />
         <Route path="/trip/:tripId/budget" element={<TripBudget />} />
         <Route path="/trip/:tripId/settings" element={<TripSettings />} />
