@@ -10,8 +10,11 @@ import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
 import { Avatar, Btn, Badge, EmptyState, Skeleton, ModalHost, groupByDate, fmtDate, weekday, StreamEventRow, fmt, CityPhoto, WeatherChip } from '../design/index';
 import { sortVisits } from '@/lib/validation';
+import { DateTime } from 'luxon';
 import TransferDialog from '../components/transfers/TransferDialog';
 import HotelDialog from '../components/hotels/HotelDialog';
+import CityVisitDialog from '../components/visits/CityVisitDialog';
+import ActivityDialog from '../components/activities/ActivityDialog';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
 import CalendarLens from './CalendarLens';
@@ -335,6 +338,46 @@ function TripSidebar({ tripId, lens, onNavigate }) {
   );
 }
 
+// ─── AddDayButton — shown in edit mode after each day ────────────────────────
+function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1.5px dashed var(--line)', background: 'transparent', color: 'var(--muted)', fontSize: 13, cursor: 'pointer', transition: 'color .15s, border-color .15s' }}
+        onMouseEnter={e => { e.currentTarget.style.color = 'var(--ink)'; e.currentTarget.style.borderColor = 'var(--brand)'; }}
+        onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.borderColor = 'var(--line)'; }}
+      >
+        <Icon name="plus" size={13} /> Добавить
+      </button>
+      {open && (
+        <>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); onAddCity?.(dayKey); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
+          >
+            <Icon name="pin" size={13} style={{ color: 'var(--muted)' }} /> Добавить город
+          </button>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); onAddActivity?.(dayKey); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
+          >
+            <Icon name="sparkles" size={13} style={{ color: 'var(--muted)' }} /> Добавить активность
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── TimelineLens ─────────────────────────────────────────────────────────────
 
 function SkeletonTimeline() {
@@ -510,7 +553,7 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
   );
 }
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel }) {
+function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes }) {
   if (isLoading) return <SkeletonTimeline />;
 
   if (!trip.start_date && !trip.end_date && !visits.length) {
@@ -729,6 +772,14 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
             <Icon name="info" size={14} />
             <div style={{ flex: 1, fontSize: 12.5 }}>На этот день ничего не запланировано</div>
           </div>
+        )}
+        {/* Edit mode: add buttons */}
+        {isEditMode && (
+          <AddDayButton
+            dayKey={day}
+            onAddCity={onAddCityForDay}
+            onAddActivity={onAddActivityForDay}
+          />
         )}
       </div>
     );
@@ -1102,6 +1153,10 @@ export default function TripView() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [transferEdit, setTransferEdit] = useState({ open: false, fromVisit: null, toVisit: null, transfer: null });
   const [hotelEdit, setHotelEdit] = useState({ open: false, visit: null, hotel: null });
+  const [visitEdit, setVisitEdit] = useState({ open: false, visit: null });
+  const [newCityOpen, setNewCityOpen] = useState(false);
+  const [newCityDefaultDay, setNewCityDefaultDay] = useState(null);
+  const [activityEdit, setActivityEdit] = useState({ open: false, visit: null, activity: null, defaultStart: null });
 
   // Theme sync
   useEffect(() => {
@@ -1214,6 +1269,39 @@ export default function TripView() {
               hotel={hotelEdit.hotel}
             />
           )}
+          {/* CityVisitDialog — edit existing visit notes */}
+          {visitEdit.open && visitEdit.visit && (
+            <CityVisitDialog
+              key={`edit-visit-${visitEdit.visit.id}`}
+              open={visitEdit.open}
+              onOpenChange={(o) => setVisitEdit(s => ({ ...s, open: o }))}
+              tripId={tripId}
+              visit={visitEdit.visit}
+              trip={trip}
+              allVisits={visits}
+            />
+          )}
+          {/* CityVisitDialog — add new city */}
+          <CityVisitDialog
+            key="new-city-from-edit"
+            open={newCityOpen}
+            onOpenChange={(o) => { setNewCityOpen(o); if (!o) setNewCityDefaultDay(null); }}
+            tripId={tripId}
+            visit={null}
+            trip={newCityDefaultDay ? { ...trip, start_date: newCityDefaultDay } : trip}
+            allVisits={visits}
+          />
+          {/* ActivityDialog — add new activity in edit mode */}
+          {activityEdit.visit && (
+            <ActivityDialog
+              key={`activity-${activityEdit.visit?.id}-${activityEdit.activity?.id || 'new'}`}
+              open={activityEdit.open}
+              onOpenChange={(o) => setActivityEdit(s => ({ ...s, open: o }))}
+              visit={activityEdit.visit}
+              activity={activityEdit.activity}
+              defaultStart={activityEdit.defaultStart}
+            />
+          )}
 
           {lens === 'timeline' && (
             <>
@@ -1238,6 +1326,25 @@ export default function TripView() {
                   onAddHotel={(visit) =>
                     setHotelEdit({ open: true, visit, hotel: null })
                   }
+                  isEditMode={isEditMode}
+                  onEditVisitNotes={(v) => setVisitEdit({ open: true, visit: v })}
+                  onAddCityForDay={(dayKey) => {
+                    setNewCityDefaultDay(dayKey || null);
+                    setNewCityOpen(true);
+                  }}
+                  onAddActivityForDay={(dayKey) => {
+                    const dayVisit = visits.find(v =>
+                      v.kind === 'transit' && v.start_datetime && v.end_datetime &&
+                      naiveDayKey(v.start_datetime) <= dayKey && dayKey <= naiveDayKey(v.end_datetime)
+                    ) || visits.find(v => v.kind === 'transit' && v.start_datetime);
+                    if (dayVisit) {
+                      const tz = dayVisit.timezone || 'UTC';
+                      const defaultStart = dayKey
+                        ? DateTime.fromISO(`${dayKey}T10:00`, { zone: tz }).toUTC().toISO()
+                        : null;
+                      setActivityEdit({ open: true, visit: dayVisit, activity: null, defaultStart });
+                    }
+                  }}
                 />
                 <ContextSide
                   budget={budget}
