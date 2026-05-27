@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Check, Crown, Zap, Loader2 } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
-import ConfirmDialog from '@/components/common/ConfirmDialog';
+import { Icon } from '@/design/icons';
+import { Btn, Badge, Skeleton } from '@/design/index';
 
+/**
+ * UpgradePlanDialog — the production "Стать PRO" screen, rendered as a
+ * self-contained controlled overlay in the new design system (no shadcn).
+ * API is unchanged so every existing call site keeps working.
+ *
+ * Props: open, onOpenChange, tripId?, onUpgradeComplete?, hidePerTrip?
+ */
 export default function UpgradePlanDialog({ open, onOpenChange, tripId, onUpgradeComplete, hidePerTrip = false }) {
   const { t, lang, fmtMoney } = useI18nFormat();
   const [loading, setLoading] = useState(false);
-  const [prices, setPrices] = useState(null); // { pro_trip: {...}, pro_monthly: {...}, pro_yearly: {...} }
+  const [prices, setPrices] = useState(null);
   const [pricesLoading, setPricesLoading] = useState(false);
-  const [alertDialog, setAlertDialog] = useState({ open: false, title: '', description: '' });
-  const showAlert = (title, description) => setAlertDialog({ open: true, title, description });
+  const [picked, setPicked] = useState('pro_monthly');
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Load live prices from Stripe whenever the dialog opens (once per open).
   useEffect(() => {
@@ -26,57 +31,47 @@ export default function UpgradePlanDialog({ open, onOpenChange, tripId, onUpgrad
     return () => { cancelled = true; };
   }, [open, prices]);
 
+  // Keep the picked plan valid when per-trip is hidden.
+  useEffect(() => {
+    if (hidePerTrip && picked === 'pro_trip') setPicked('pro_monthly');
+  }, [hidePerTrip, picked]);
+
   const handleUpgrade = async (planType) => {
+    setErrorMsg('');
     try {
       setLoading(true);
-      // Iframe detection — wrap in try/catch in case cross-origin access throws.
       let isIframe = false;
       try { isIframe = window.self !== window.top; } catch { isIframe = true; }
-      if (isIframe) {
-        showAlert(t('common.notice'), t('sub.iframe_alert'));
-        setLoading(false);
-        return;
-      }
+      if (isIframe) { setErrorMsg(t('sub.iframe_alert')); setLoading(false); return; }
 
       const returnPath = window.location.pathname + window.location.search;
       const response = await supabase.functions.invoke('createStripeCheckout', { body: { tripId, planType, returnPath, locale: lang } });
       if (response.error) throw response.error;
-      if (response.data?.url) {
-        window.location.href = response.data.url;
-      }
+      if (response.data?.url) { window.location.href = response.data.url; return; }
+      setLoading(false);
     } catch (error) {
       console.error('Upgrade error:', error);
-      // If user already has an active recurring subscription, redirect them
-      // straight to the billing portal to manage / change plan instead of
-      // forcing a confusing error message.
       const code = error?.response?.data?.code;
       if (code === 'SUBSCRIPTION_ALREADY_ACTIVE') {
         try {
           const portal = await supabase.functions.invoke('createBillingPortal', { body: { returnPath: '/settings' } });
-          if (portal.data?.url) {
-            window.location.href = portal.data.url;
-            return;
-          }
+          if (portal.data?.url) { window.location.href = portal.data.url; return; }
         } catch (e) { console.error('Billing portal fallback failed:', e); }
-        showAlert(t('common.notice'), t('sub.already_active_msg'));
+        setErrorMsg(t('sub.already_active_msg'));
         setLoading(false);
         return;
       }
       if (code === 'RECENT_CHECKOUT_PENDING') {
-        showAlert(t('common.notice'), t('sub.recent_pending_msg'));
-        onOpenChange(false);
+        setErrorMsg(t('sub.recent_pending_msg'));
         setLoading(false);
         return;
       }
       const msg = error?.response?.data?.error || error.message;
-      showAlert(t('common.notice'), t('sub.upgrade_error', { message: msg }));
+      setErrorMsg(t('sub.upgrade_error', { message: msg }));
       setLoading(false);
     }
   };
 
-  // Resolve price/period from Stripe data. Returns { price, period } strings
-  // ready to render. While loading or if a price is missing we render an em-dash
-  // so the layout stays stable.
   const renderPrice = (planType) => {
     const p = prices?.[planType];
     if (!p) return { price: '—', period: '' };
@@ -88,162 +83,123 @@ export default function UpgradePlanDialog({ open, onOpenChange, tripId, onUpgrad
     return { price, period };
   };
 
-  const tripPrice = renderPrice('pro_trip');
-  const monthlyPrice = renderPrice('pro_monthly');
-  const yearlyPrice = renderPrice('pro_yearly');
-
   const allPlans = [
     {
-      type: 'pro_trip',
-      icon: <Zap className="w-5 h-5" />,
-      title: t('sub.plan_trip_title'),
-      price: tripPrice.price,
-      period: tripPrice.period,
+      type: 'pro_trip', icon: 'rocket', title: t('sub.plan_trip_title'),
       description: t('sub.plan_trip_desc'),
-      features: [
-        t('sub.plan_trip_feat_1'),
-        t('sub.plan_trip_feat_2'),
-        t('sub.plan_trip_feat_3'),
-      ],
+      features: [t('sub.plan_trip_feat_1'), t('sub.plan_trip_feat_2'), t('sub.plan_trip_feat_3')],
       badge: null,
-      highlight: false
     },
     {
-      type: 'pro_monthly',
-      icon: <Crown className="w-5 h-5" />,
-      title: t('sub.plan_monthly_title'),
-      price: monthlyPrice.price,
-      period: monthlyPrice.period,
+      type: 'pro_monthly', icon: 'crown', title: t('sub.plan_monthly_title'),
       description: t('sub.plan_monthly_desc'),
-      features: [
-        t('sub.plan_monthly_feat_1'),
-        t('sub.plan_monthly_feat_2'),
-        t('sub.plan_monthly_feat_3'),
-        t('sub.plan_monthly_feat_4'),
-      ],
-      badge: t('sub.badge_popular'),
-      highlight: true
+      features: [t('sub.plan_monthly_feat_1'), t('sub.plan_monthly_feat_2'), t('sub.plan_monthly_feat_3'), t('sub.plan_monthly_feat_4')],
+      badge: { variant: 'solid', text: t('sub.badge_popular') },
     },
     {
-      type: 'pro_yearly',
-      icon: <Crown className="w-5 h-5" />,
-      title: t('sub.plan_yearly_title'),
-      price: yearlyPrice.price,
-      period: yearlyPrice.period,
+      type: 'pro_yearly', icon: 'crown', title: t('sub.plan_yearly_title'),
       description: t('sub.plan_yearly_desc'),
-      features: [
-        t('sub.plan_yearly_feat_1'),
-        t('sub.plan_yearly_feat_2'),
-      ],
-      badge: '-33%',
-      highlight: false
-    }
+      features: [t('sub.plan_yearly_feat_1'), t('sub.plan_yearly_feat_2')],
+      badge: { variant: 'success', text: '−33%' },
+    },
   ];
 
   const plans = hidePerTrip ? allPlans.filter(p => p.type !== 'pro_trip') : allPlans;
-  const gridCols = plans.length === 2 ? 'md:grid-cols-2 max-w-2xl mx-auto' : 'md:grid-cols-3';
+
+  if (!open) return null;
+  const close = () => { if (!loading) onOpenChange?.(false); };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
-        <DialogHeader className="text-center sm:text-center">
-          <DialogTitle className="text-3xl font-bold flex items-center justify-center gap-2 text-center">
-            <span>{t('sub.upgrade_title')}</span>
-            <span>👑</span>
-          </DialogTitle>
-          <DialogDescription className="text-base mt-2 text-center">
+    <div className="dlg-backdrop" style={{ zIndex: 300 }}
+      onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
+      <div className="dlg dlg--wide">
+        <div className="dlg__head">
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <Icon name="crown" size={17} />
+          </div>
+          <h2>{t('sub.upgrade_title')}</h2>
+          <button className="icon-btn" onClick={close}><Icon name="close" size={16} /></button>
+        </div>
+
+        <div className="dlg__body">
+          <div className="muted" style={{ fontSize: 13.5, marginBottom: 18, lineHeight: 1.5 }}>
             {t('sub.upgrade_desc')}
-          </DialogDescription>
-        </DialogHeader>
+          </div>
 
-        <div className={`grid grid-cols-1 ${gridCols} gap-4 pt-8 pb-6 items-stretch`}>
-          {plans.map((plan) => (
-            <div
-              key={plan.type}
-              className={`relative rounded-2xl border-2 transition overflow-visible flex flex-col h-full
-                ${plan.highlight
-                  ? 'border-primary/50 bg-gradient-to-br from-primary/5 to-accent/5 md:scale-[1.02]'
-                  : 'border-border bg-card hover:border-primary/30'}`}
-            >
-              {plan.badge && (
-                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-semibold px-3 py-1 rounded-full z-10 whitespace-nowrap shadow-sm
-                  ${plan.badge === '-33%'
-                    ? 'bg-green-600 text-white'
-                    : 'bg-primary text-primary-foreground'}`}>
-                  {plan.badge}
-                </div>
-              )}
-
-              <div className="p-6 flex flex-col h-full">
-                {/* Header: icon + title + price aligned */}
-                <div className="flex items-start gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                    {plan.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-base leading-tight">{plan.title}</h3>
-                  </div>
-                </div>
-
-                {/* Price row */}
-                <div className="flex items-baseline gap-1 mb-2 mt-1 min-h-[2.25rem]">
-                  {pricesLoading && !prices ? (
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                  ) : (
-                    <>
-                      <span className="text-3xl font-bold">{plan.price}</span>
-                      {plan.period && <span className="text-muted-foreground text-sm">{plan.period}</span>}
-                    </>
-                  )}
-                </div>
-
-                {/* Description — fixed min-height so all cards align */}
-                <p className="text-xs text-muted-foreground mb-4 min-h-[2.5rem]">{plan.description}</p>
-
-                {/* Features — grows to push button down */}
-                <div className="space-y-2.5 border-t pt-4 flex-1">
-                  {plan.features.map((feature, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                      <span className="text-sm text-foreground leading-snug">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Button anchored at bottom — only this triggers the checkout now */}
-                <Button
-                  className="w-full mt-5"
-                  disabled={loading}
-                  variant={plan.highlight ? 'default' : 'outline'}
-                  onClick={() => !loading && handleUpgrade(plan.type)}
+          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: `repeat(${plans.length}, minmax(0, 1fr))` }}>
+            {plans.map((plan) => {
+              const { price, period } = renderPrice(plan.type);
+              const selected = picked === plan.type;
+              return (
+                <button
+                  key={plan.type}
+                  type="button"
+                  onClick={() => setPicked(plan.type)}
+                  style={{
+                    position: 'relative', textAlign: 'left', cursor: 'pointer',
+                    borderRadius: 14, padding: '18px 16px',
+                    background: selected ? 'var(--brand-soft)' : 'var(--surface)',
+                    border: selected ? '2px solid var(--brand)' : '1px solid var(--line)',
+                    boxShadow: selected ? '0 6px 20px -8px var(--brand)' : 'none',
+                    display: 'flex', flexDirection: 'column', gap: 10,
+                  }}
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {t('sub.processing')}
-                    </>
-                  ) : (
-                    t('sub.choose_plan')
+                  {plan.badge && (
+                    <span style={{ position: 'absolute', top: -10, right: 14 }}>
+                      <Badge variant={plan.badge.variant}>{plan.badge.text}</Badge>
+                    </span>
                   )}
-                </Button>
-              </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                      <Icon name={plan.icon} size={16} />
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{plan.title}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minHeight: 34 }}>
+                    {pricesLoading && !prices
+                      ? <Skeleton w={80} h={26} r={6} />
+                      : <>
+                          <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, letterSpacing: '-0.02em' }}>{price}</span>
+                          {period && <span className="muted" style={{ fontSize: 12.5 }}>{period}</span>}
+                        </>}
+                  </div>
+                  <div className="muted" style={{ fontSize: 12, minHeight: 32 }}>{plan.description}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7, borderTop: '1px solid var(--line-2)', paddingTop: 12 }}>
+                    {plan.features.map((f, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 12.5 }}>
+                        <Icon name="check" size={14} style={{ color: 'var(--success)', flexShrink: 0, marginTop: 1 }} />
+                        <span>{f}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 'auto', paddingTop: 4 }}>
+                    <Badge variant={selected ? 'success' : 'quiet'} icon={selected ? 'check' : undefined}>
+                      {selected ? 'Выбран' : 'Выбрать'}
+                    </Badge>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {errorMsg && (
+            <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 12.5, lineHeight: 1.5 }}>
+              {errorMsg}
             </div>
-          ))}
+          )}
+
+          <div className="muted" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, marginTop: 14, justifyContent: 'center' }}>
+            <Icon name="shield" size={13} /> Оплата через Stripe · отмена в любой момент
+          </div>
         </div>
 
-        <div className="flex justify-end gap-2 border-t pt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            {t('common.cancel')}
-          </Button>
+        <div className="dlg__foot">
+          <Btn variant="ghost" onClick={close} disabled={loading}>{t('common.cancel')}</Btn>
+          <Btn variant="primary" icon="card" disabled={loading} onClick={() => !loading && handleUpgrade(picked)}>
+            {loading ? t('sub.processing') : 'Перейти к оплате'}
+          </Btn>
         </div>
-      </DialogContent>
-      <ConfirmDialog
-        open={alertDialog.open}
-        onOpenChange={(o) => setAlertDialog((s) => ({ ...s, open: o }))}
-        title={alertDialog.title}
-        description={alertDialog.description}
-        singleButton
-      />
-    </Dialog>
+      </div>
+    </div>
   );
 }

@@ -1,21 +1,30 @@
 /**
  * Loads a source entity (HotelStay / Transfer / Activity / TripService) by id
- * and opens the corresponding ViewDialog. Used when the user taps a system
- * expense in the budget — to see what created it.
+ * and opens the unified EventModal (new design). Used both from the timeline
+ * (tap an event) and the budget (tap a system expense to see what created it).
  *
- * If `canEdit` is true, ViewDialog shows its Edit button which swaps the view
- * for the edit Dialog — same flow as everywhere else in the app.
+ * - View → EventModal (new design).
+ * - Edit (canEdit) → the existing create/edit Dialog for that entity.
+ * - Delete (canEdit) → confirm, delete the row, invalidate trip queries.
  */
 import React, { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import HotelViewDialog from '@/components/hotels/HotelViewDialog';
-import TransferViewDialog from '@/components/transfers/TransferViewDialog';
-import ActivityViewDialog from '@/components/activities/ActivityViewDialog';
-import ServiceViewDialog from '@/components/services/ServiceViewDialog';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { Icon } from '@/design/icons';
+import { Btn } from '@/design/index';
+import EventModal from '@/components/common/EventModal';
 import HotelDialog from '@/components/hotels/HotelDialog';
 import TransferDialog from '@/components/transfers/TransferDialog';
 import ActivityDialog from '@/components/activities/ActivityDialog';
 import ServiceDialog from '@/components/services/ServiceDialog';
+
+const TABLE_BY_KIND = {
+  hotel: 'hotel_stays',
+  transfer: 'transfers',
+  activity: 'activities',
+  service: 'trip_services',
+};
 
 async function getRow(table, id) {
   const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
@@ -23,17 +32,48 @@ async function getRow(table, id) {
   return data;
 }
 
+function ConfirmDeleteModal({ busy, onConfirm, onCancel }) {
+  return (
+    <div className="dlg-backdrop" style={{ zIndex: 280 }}
+      onClick={(e) => { if (e.target === e.currentTarget && !busy) onCancel(); }}>
+      <div className="dlg dlg--sm">
+        <div className="dlg__head">
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <Icon name="trash" size={17} />
+          </div>
+          <h2>Удалить событие?</h2>
+        </div>
+        <div className="dlg__body">
+          <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>
+            Это действие необратимо. Запись будет удалена из трипа и хронологии.
+          </div>
+        </div>
+        <div className="dlg__foot">
+          <Btn variant="ghost" onClick={onCancel} disabled={busy}>Отмена</Btn>
+          <Btn variant="danger-solid" icon="trash" onClick={onConfirm} disabled={busy}>
+            {busy ? 'Удаляем…' : 'Удалить'}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false }) {
+  const qc = useQueryClient();
   const [data, setData] = useState(null);
   const [visit, setVisit] = useState(null);
   const [fromVisit, setFromVisit] = useState(null);
   const [toVisit, setToVisit] = useState(null);
   const [editMode, setEditMode] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!open || !id) return;
     let cancelled = false;
     setEditMode(false);
+    setConfirmOpen(false);
     (async () => {
       try {
         if (kind === 'hotel') {
@@ -75,26 +115,26 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
 
   if (!open || !data) return null;
 
+  const invalidate = () => {
+    const tripId = data.trip_id;
+    if (tripId) {
+      qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) });
+      qc.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+    }
+  };
+
+  // Edit mode — swap in the existing create/edit dialog.
   if (editMode) {
     const closeEdit = (o) => {
-      if (!o) {
-        setEditMode(false);
-        onOpenChange(false);
-      }
+      if (!o) { setEditMode(false); onOpenChange(false); invalidate(); }
     };
     if (kind === 'hotel' && visit) {
       return <HotelDialog open onOpenChange={closeEdit} visit={visit} hotel={data} />;
     }
     if (kind === 'transfer' && fromVisit && toVisit) {
       return (
-        <TransferDialog
-          open
-          onOpenChange={closeEdit}
-          tripId={data.trip_id}
-          fromVisit={fromVisit}
-          toVisit={toVisit}
-          transfer={data}
-        />
+        <TransferDialog open onOpenChange={closeEdit} tripId={data.trip_id}
+          fromVisit={fromVisit} toVisit={toVisit} transfer={data} />
       );
     }
     if (kind === 'activity' && visit) {
@@ -106,21 +146,30 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     return null;
   }
 
-  const handleEdit = () => setEditMode(true);
+  const handleDelete = async () => {
+    const table = TABLE_BY_KIND[kind];
+    if (!table) return;
+    setDeleting(true);
+    const { error } = await supabase.from(table).delete().eq('id', data.id);
+    setDeleting(false);
+    if (error) { alert('Не удалось удалить: ' + error.message); return; }
+    setConfirmOpen(false);
+    onOpenChange(false);
+    invalidate();
+  };
 
-  if (kind === 'hotel') {
-    return <HotelViewDialog open={open} onOpenChange={onOpenChange} hotel={data} visit={visit} onEdit={canEdit ? handleEdit : undefined} readOnly={!canEdit} />;
-  }
-  if (kind === 'transfer') {
-    if (!fromVisit || !toVisit) return null;
-    return <TransferViewDialog open={open} onOpenChange={onOpenChange} transfer={data} fromVisit={fromVisit} toVisit={toVisit} onEdit={canEdit ? handleEdit : undefined} readOnly={!canEdit} />;
-  }
-  if (kind === 'activity') {
-    if (!visit) return null;
-    return <ActivityViewDialog open={open} onOpenChange={onOpenChange} activity={data} visit={visit} onEdit={canEdit ? handleEdit : undefined} readOnly={!canEdit} />;
-  }
-  if (kind === 'service') {
-    return <ServiceViewDialog open={open} onOpenChange={onOpenChange} service={data} onEdit={canEdit ? handleEdit : undefined} readOnly={!canEdit} />;
-  }
-  return null;
+  return (
+    <>
+      <EventModal
+        event={{ kind, entity: data, visit, fromVisit, toVisit, tripId: data.trip_id }}
+        canEdit={canEdit}
+        onClose={() => onOpenChange(false)}
+        onEdit={() => setEditMode(true)}
+        onDelete={() => setConfirmOpen(true)}
+      />
+      {confirmOpen && (
+        <ConfirmDeleteModal busy={deleting} onConfirm={handleDelete} onCancel={() => setConfirmOpen(false)} />
+      )}
+    </>
+  );
 }

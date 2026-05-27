@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
@@ -11,6 +11,8 @@ import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
+import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
+import PaymentFailDialog from '@/components/common/PaymentFailDialog';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -238,10 +240,28 @@ export default function Trips() {
   const [showLimit,   setShowLimit]   = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [pendingPick, setPendingPick] = useState(null);
+  const [payResult, setPayResult] = useState(null); // 'success' | 'fail' | null
+  const [searchParams, setSearchParams] = useSearchParams();
 
   React.useEffect(() => {
     try { localStorage.setItem('trips:viewMode', viewMode); } catch { /* ignore */ }
   }, [viewMode]);
+
+  // Handle Stripe checkout return (returnPath lands the user back here).
+  React.useEffect(() => {
+    const status = searchParams.get('stripe_status');
+    if (!status) return;
+    if (status === 'success') {
+      setPayResult('success');
+      qc.invalidateQueries({ queryKey: ['my-pro-status'] });
+      qc.invalidateQueries({ queryKey: ['me'] });
+    } else if (status === 'cancel') {
+      setPayResult('fail');
+    }
+    searchParams.delete('stripe_status');
+    searchParams.delete('session_id');
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, setSearchParams, qc]);
 
   const isPro = isProActive(user);
 
@@ -464,6 +484,12 @@ export default function Trips() {
         onOpenChange={setShowUpgrade}
         hidePerTrip
         onUpgradeComplete={() => { qc.invalidateQueries({ queryKey: ['me'] }); setShowUpgrade(false); }}
+      />
+      <PaymentSuccessDialog open={payResult === 'success'} onOpenChange={() => setPayResult(null)} />
+      <PaymentFailDialog
+        open={payResult === 'fail'}
+        onOpenChange={() => setPayResult(null)}
+        onRetry={() => { setPayResult(null); setShowUpgrade(true); }}
       />
     </div>
   );
