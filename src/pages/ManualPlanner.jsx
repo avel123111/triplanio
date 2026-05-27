@@ -1189,7 +1189,7 @@ export default function ManualPlanner() {
           <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К коллекции">
             <Icon name="back" size={14} />
           </button>
-          <div className="app-header__brand"><span className="app-header__brand-name">Triplanio</span></div>
+          <div className="app-header__brand"><img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} /><span className="app-header__brand-name">Triplanio</span></div>
         </header>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ maxWidth: 480, textAlign: 'center' }}>

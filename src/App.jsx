@@ -102,12 +102,12 @@ const AuthenticatedApp = () => {
       {/* New design — standalone (own app-header, no Layout) */}
       <Route path="/trips" element={<Trips />} />
       <Route path="/new-trip" element={<ManualPlanner />} />
+      <Route path="/trip/:tripId" element={<TripView />} />
 
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to="/trips" replace />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/plan-trip-ai" element={<AiTripPlanner />} />
-        <Route path="/trip/:tripId" element={<TripView />} />
         <Route path="/trip/:tripId/budget" element={<TripBudget />} />
         <Route path="/trip/:tripId/settings" element={<TripSettings />} />
         <Route path="/admin" element={<AdminHome />} />

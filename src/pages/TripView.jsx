@@ -8,7 +8,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Avatar, Btn, Badge, EmptyState, Skeleton, groupByDate, fmtDate, weekday, StreamEventRow, fmt } from '../design/index';
+import { Avatar, Btn, Badge, EmptyState, Skeleton, groupByDate, fmtDate, weekday, StreamEventRow, fmt, CityPhoto, WeatherChip } from '../design/index';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
 import '../design/app.css';
@@ -158,10 +158,8 @@ function TripHeader({ trip, visits, isPro, theme, setTheme, user, nav }) {
         <Icon name="back" size={15} />
       </button>
 
-      <div className="app-header__brand" onClick={() => nav('/trips')}>
-        <div className="app-header__brand-mark" style={{ background: 'var(--brand)', display: 'grid', placeItems: 'center' }}>
-          <Icon name="brand" size={18} style={{ color: 'white' }} />
-        </div>
+      <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
+        <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
         <span className="app-header__brand-name">Triplanio</span>
       </div>
 
@@ -253,29 +251,6 @@ function TripSidebar({ tripId, lens, onNavigate }) {
 
 // ─── TimelineLens ─────────────────────────────────────────────────────────────
 
-function DateHeader({ date, visits }) {
-  const city = visits.find(v => {
-    const s = naiveDayKey(v.start_datetime);
-    const e = naiveDayKey(v.end_datetime);
-    return s && e && date >= s && date <= e;
-  })?.city_name;
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, marginTop: 4 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-2)' }}>
-        {fmtDate(date)}
-        <span style={{ color: 'var(--muted-2)', fontWeight: 400, marginLeft: 5 }}>· {weekday(date)}</span>
-      </div>
-      {city && (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px 2px 6px', borderRadius: 999, background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 11.5, fontWeight: 500 }}>
-          <Icon name="pin" size={11} />
-          {city}
-        </span>
-      )}
-    </div>
-  );
-}
-
 function SkeletonTimeline() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -300,10 +275,101 @@ function SkeletonTimeline() {
   );
 }
 
+function CityHero({ city, country, dateRange, nights, hotels = [] }) {
+  return (
+    <div style={{
+      background: 'var(--surface)', border: '1px solid var(--line)',
+      borderRadius: 14, overflow: 'hidden', marginBottom: 12,
+    }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 0 }}>
+        <CityPhoto city={city} h={120} w="100%" radius={0} />
+        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+            <span className="eyebrow" style={{ color: 'var(--brand)' }}>
+              <Icon name="pin" size={11} style={{ verticalAlign: -1, marginRight: 3 }} /> {country || city}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+            <h2 style={{ marginBottom: 0, fontSize: 24 }}>{city}</h2>
+            {dateRange && <span className="muted num" style={{ fontSize: 13 }}>{dateRange}</span>}
+            {nights > 0 && (
+              <span className="muted" style={{ fontSize: 13 }}>
+                · {nights} {nights === 1 ? 'ночь' : nights < 5 ? 'ночи' : 'ночей'}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div style={{ padding: '12px 16px', borderTop: '1px solid var(--line-2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {hotels.length > 0 ? hotels.map((h, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: 10, background: 'var(--wash)', borderRadius: 10, border: '1px solid var(--line-2)',
+          }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Icon name="bed" size={18} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{h.hotel}</div>
+              <div className="muted num" style={{ fontSize: 11.5, marginTop: 2 }}>
+                {h.checkIn && `Заезд ${h.checkIn}`}
+                {h.checkOut && ` · Выезд ${h.checkOut}`}
+              </div>
+            </div>
+            {h.price && <div className="num" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(h.price, h.cur || 'EUR')}</div>}
+          </div>
+        )) : (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: 10, background: 'var(--warning-soft)', borderRadius: 10, border: '1.5px dashed var(--warning)',
+          }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(201,138,26,.2)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Icon name="warning" size={18} />
+            </div>
+            <div style={{ flex: 1, fontSize: 13, color: 'var(--warning)' }}>
+              Отель в {city} не добавлен
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Build a sorted array of all days between start and end (inclusive), 'yyyy-MM-dd'
+function buildDayList(startIso, endIso) {
+  const days = [];
+  let cur = parseNaive(startIso);
+  const end = parseNaive(endIso);
+  if (!cur || !end) return days;
+  while (cur <= end) {
+    days.push(naiveDayKey(cur.toISO()));
+    cur = cur.plus({ days: 1 });
+  }
+  return days;
+}
+
+// Find which visit a day belongs to
+function visitForDay(day, visits) {
+  return visits.find(v => {
+    const s = naiveDayKey(v.start_datetime);
+    const e = naiveDayKey(v.end_datetime);
+    return s && e && day >= s && day <= e;
+  }) || null;
+}
+
+// Count nights between two date strings 'yyyy-MM-dd'
+function nightsBetween(startDay, endDay) {
+  const s = parseNaive(startDay);
+  const e = parseNaive(endDay);
+  if (!s || !e) return 0;
+  return Math.max(0, Math.round(e.diff(s, 'days').days));
+}
+
 function TimelineLens({ stream, visits, trip, isLoading }) {
   if (isLoading) return <SkeletonTimeline />;
 
-  if (!stream.length) {
+  if (!trip.start_date && !trip.end_date && !visits.length) {
     return (
       <EmptyState
         icon="list"
@@ -313,20 +379,141 @@ function TimelineLens({ stream, visits, trip, isLoading }) {
     );
   }
 
-  const groups = groupByDate(stream);
+  // Determine timeline bounds: prefer trip dates, fall back to visit dates
+  const tripStart = trip.start_date
+    || (visits.length ? naiveDayKey(visits[0].start_datetime) : null);
+  const tripEnd = trip.end_date
+    || (visits.length ? naiveDayKey(visits[visits.length - 1].end_datetime) : null);
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {groups.map(({ date, items }) => (
-        <div key={date}>
-          <DateHeader date={date} visits={visits} />
+  if (!tripStart || !tripEnd) {
+    return (
+      <EmptyState
+        icon="list"
+        title="Даты трипа не заданы"
+        body="Укажи даты трипа, чтобы увидеть хронологию."
+      />
+    );
+  }
+
+  // Build event lookup by date
+  const eventsByDate = {};
+  for (const e of stream) {
+    if (!eventsByDate[e.date]) eventsByDate[e.date] = [];
+    eventsByDate[e.date].push(e);
+  }
+
+  // Build hotel lookup per city_visit_id from stream (hotel-checkin events)
+  const hotelsByVisit = {};
+  for (const e of stream) {
+    if (e.type === 'hotel-checkin') {
+      // find which visit this hotel belongs to by matching city name or date
+      const visit = visits.find(v => {
+        if (e.city && v.city_name === e.city) return true;
+        const vStart = naiveDayKey(v.start_datetime);
+        const vEnd = naiveDayKey(v.end_datetime);
+        return vStart && vEnd && e.date >= vStart && e.date <= vEnd;
+      });
+      if (visit) {
+        if (!hotelsByVisit[visit.id]) hotelsByVisit[visit.id] = [];
+        // avoid duplicates by hotelId
+        if (!hotelsByVisit[visit.id].find(h => h.hotelId === e.hotelId)) {
+          hotelsByVisit[visit.id].push({
+            hotel: e.hotel,
+            hotelId: e.hotelId,
+            checkIn: e.date,
+            checkOut: null, // checkout event would be separate
+            price: e.price,
+            cur: e.cur,
+            nights: e.nights,
+          });
+        }
+      }
+    }
+  }
+
+  // Add checkout dates to hotel entries
+  for (const e of stream) {
+    if (e.type === 'hotel-checkout') {
+      for (const visitId of Object.keys(hotelsByVisit)) {
+        const entry = hotelsByVisit[visitId].find(h => h.hotelId === e.hotelId);
+        if (entry) entry.checkOut = e.date;
+      }
+    }
+  }
+
+  const days = buildDayList(tripStart, tripEnd);
+
+  const rows = [];
+  let prevVisitId = null;
+
+  for (const day of days) {
+    const visit = visitForDay(day, visits);
+
+    // Inject CityHero when city changes
+    if (visit && visit.id !== prevVisitId) {
+      const vStart = naiveDayKey(visit.start_datetime);
+      const vEnd = naiveDayKey(visit.end_datetime);
+      const nights = nightsBetween(vStart, vEnd);
+      const dateRange = vStart && vEnd ? `${fmtDate(vStart)} — ${fmtDate(vEnd)}` : null;
+      const visitHotels = hotelsByVisit[visit.id] || [];
+      rows.push(
+        <CityHero
+          key={`city-${visit.id}`}
+          city={visit.city_name}
+          country={visit.country_name}
+          dateRange={dateRange}
+          nights={nights}
+          hotels={visitHotels}
+        />
+      );
+      prevVisitId = visit.id;
+    }
+
+    const dayEvents = eventsByDate[day] || [];
+
+    rows.push(
+      <div key={`day-${day}`} style={{ marginBottom: 24 }}>
+        {/* Date separator */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, marginTop: 4 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-2)' }}>
+            {fmtDate(day)}
+            <span style={{ color: 'var(--muted-2)', fontWeight: 400, marginLeft: 5 }}>· {weekday(day)}</span>
+          </div>
+          {visit && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px 2px 6px', borderRadius: 999, background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 11.5, fontWeight: 500 }}>
+              <Icon name="pin" size={11} />
+              {visit.city_name}
+            </span>
+          )}
+        </div>
+
+        {/* Events or placeholder */}
+        {dayEvents.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {items.map((e, idx) => (
-              <StreamEventRow key={e.id} e={e} last={idx === items.length - 1} onClick={() => {}} />
+            {dayEvents.map((e, idx) => (
+              <StreamEventRow key={e.id} e={e} last={idx === dayEvents.length - 1} onClick={() => {}} />
             ))}
           </div>
-        </div>
-      ))}
+        ) : (
+          <div style={{
+            padding: '10px 14px',
+            background: 'var(--wash)',
+            border: '1px dashed var(--line)',
+            borderRadius: 10,
+            fontSize: 12.5,
+            color: 'var(--muted)',
+            textAlign: 'center',
+          }}>
+            Нет событий
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {rows}
     </div>
   );
 }

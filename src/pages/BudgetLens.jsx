@@ -116,10 +116,12 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, onClose, onSaved }
 // ─── AddCategoryDialog ────────────────────────────────────────────────────────
 
 const CAT_COLORS = ['#e2503a','#2167e2','#6a3ee2','#1f8a5b','#e08158','#c98a1a','#c9603a','#888'];
+const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'spark', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
 function AddCategoryDialog({ tripId, existing, onClose, onSaved }) {
   const [name, setName] = useState(existing?.name || '');
   const [color, setColor] = useState(existing?.color || CAT_COLORS[0]);
+  const [icon, setIcon] = useState(existing?.icon || CAT_ICONS_BUDGET[0]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
@@ -129,14 +131,14 @@ function AddCategoryDialog({ tripId, existing, onClose, onSaved }) {
     setErr('');
     let error;
     if (existing) {
-      ({ error } = await supabase.from('budget_categories').update({ name: name.trim(), color }).eq('id', existing.id));
+      ({ error } = await supabase.from('budget_categories').update({ name: name.trim(), color, icon }).eq('id', existing.id));
     } else {
       ({ error } = await supabase.from('budget_categories').insert({
         trip_id: tripId,
         kind: 'custom',
         name: name.trim(),
         system_key: null,
-        icon: '💰',
+        icon,
         color,
         order_index: 99,
         created_by: 'user',
@@ -172,6 +174,20 @@ function AddCategoryDialog({ tripId, existing, onClose, onSaved }) {
                 <button key={c} onClick={() => setColor(c)} style={{
                   width: 28, height: 28, borderRadius: '50%', background: c, border: color === c ? '2.5px solid var(--ink)' : '2px solid transparent', cursor: 'pointer'
                 }} />
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>Иконка</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {CAT_ICONS_BUDGET.map(ic => (
+                <button key={ic} onClick={() => setIcon(ic)} style={{
+                  width: 36, height: 36, borderRadius: 8,
+                  background: icon === ic ? color + '22' : 'var(--wash)',
+                  color: icon === ic ? color : 'var(--muted)',
+                  border: '1px solid ' + (icon === ic ? color : 'var(--line)'),
+                  display: 'grid', placeItems: 'center', cursor: 'pointer'
+                }}><Icon name={ic} size={16} /></button>
               ))}
             </div>
           </div>

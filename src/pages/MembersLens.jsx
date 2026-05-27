@@ -9,7 +9,7 @@
 import React, { useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Skeleton } from '../design/index';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
 
@@ -35,12 +35,16 @@ const ROLES = [
 ];
 
 function InviteDialog({ tripId, onClose, onSaved }) {
-  const [email, setEmail] = useState('');
+  const [tab, setTab] = useState('email');
   const [role, setRole] = useState('viewer');
+  const [copied, setCopied] = useState(false);
+  const [email, setEmail] = useState('');
+  const [offlineName, setOfflineName] = useState('');
+  const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
-  async function invite() {
+  async function inviteByEmail() {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed.includes('@')) { setErr('Введите корректный e-mail'); return; }
     setSaving(true);
@@ -54,37 +58,94 @@ function InviteDialog({ tripId, onClose, onSaved }) {
     onClose();
   }
 
+  async function addOffline() {
+    const name = offlineName.trim();
+    if (!name) { setErr('Введите имя'); return; }
+    setSaving(true);
+    setErr('');
+    const { data, error } = await supabase.functions.invoke('addOfflineTripMember', {
+      body: { tripId, name },
+    });
+    setSaving(false);
+    if (error || data?.error) { setErr((data?.error || error?.message) || 'Ошибка'); return; }
+    onSaved?.();
+    onClose();
+  }
+
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
-    }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: 24, width: 380, boxShadow: 'var(--shadow-pop)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ flex: 1, margin: 0 }}>Пригласить участника</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}>
-            <Icon name="close" size={18} />
-          </button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>E-mail</label>
-            <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="friend@example.com" />
-          </div>
-          <div>
-            <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>Роль</label>
-            <select className="select" value={role} onChange={e => setRole(e.target.value)}>
-              {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-          </div>
-          {err && <div style={{ color: 'var(--danger)', fontSize: 12.5 }}>{err}</div>}
-        </div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
-          <Btn variant="ghost" onClick={onClose}>Отмена</Btn>
-          <Btn variant="primary" onClick={invite} disabled={saving}>{saving ? 'Отправляю…' : 'Пригласить'}</Btn>
-        </div>
+    <Dialog title="Пригласить в трип" icon="users" size=""
+      foot={<>
+        <Btn variant="ghost" onClick={onClose}>Закрыть</Btn>
+        {tab === 'email' && <Btn variant="primary" icon="send" onClick={inviteByEmail} disabled={saving}>{saving ? 'Отправляю…' : 'Отправить приглашение'}</Btn>}
+        {tab === 'offline' && <Btn variant="primary" icon="user" onClick={addOffline} disabled={saving}>{saving ? 'Добавляю…' : 'Добавить'}</Btn>}
+      </>}>
+      <div className="tweaks__seg" style={{ marginBottom: 14, display: 'flex' }}>
+        <button className={tab === 'email' ? 'active' : ''} onClick={() => setTab('email')} style={{ flex: 1 }}>
+          <Icon name="send" size={12} style={{ verticalAlign: -2, marginRight: 4 }} />По e-mail
+        </button>
+        <button className={tab === 'link' ? 'active' : ''} onClick={() => setTab('link')} style={{ flex: 1 }}>
+          <Icon name="link" size={12} style={{ verticalAlign: -2, marginRight: 4 }} />Скопировать ссылку
+        </button>
+        <button className={tab === 'offline' ? 'active' : ''} onClick={() => setTab('offline')} style={{ flex: 1 }}>
+          <Icon name="user" size={12} style={{ verticalAlign: -2, marginRight: 4 }} />Офлайн
+        </button>
       </div>
-    </div>
+
+      {tab !== 'offline' && (
+        <Field label="Роль приглашаемого">
+          <div className="tweaks__seg" style={{ display: 'flex' }}>
+            {[['viewer', 'Зритель', 'Только смотрит'], ['admin', 'Админ', 'Редактирует трип']].map(([k, lab, sub]) =>
+              <button key={k} className={role === k ? 'active' : ''} onClick={() => setRole(k)}
+                style={{ flex: 1, flexDirection: 'column', gap: 0, padding: '8px 10px' }}>
+                <div style={{ fontWeight: 500 }}>{lab}</div>
+                <div className="muted" style={{ fontSize: 10.5 }}>{sub}</div>
+              </button>
+            )}
+          </div>
+        </Field>
+      )}
+
+      {tab !== 'offline' && <hr className="hr" style={{ margin: '16px 0' }} />}
+      {tab === 'offline' && <div style={{ marginTop: 4 }} />}
+
+      {tab === 'email' && <>
+        <Field label="E-mail">
+          <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" autoFocus />
+        </Field>
+        <Field label="Сообщение (опц.)" hint="свободный текст">
+          <textarea className="textarea" value={message} onChange={e => setMessage(e.target.value)} placeholder="Поедешь со мной?" rows={3} />
+        </Field>
+        <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+          Получатель примет приглашение из инбокса в Triplanio.
+        </div>
+      </>}
+
+      {tab === 'link' && <>
+        <Field label="Ссылка для приглашения · истекает через 7 дней">
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input className="input mono" value={`https://triplanio.com/join/4f6b-${role === 'viewer' ? 'v' : 'a'}-x29a`}
+              readOnly style={{ flex: 1, fontSize: 12 }} />
+            <Btn variant="primary" icon="copy" onClick={() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+              {copied ? 'Скопировано' : 'Копировать'}
+            </Btn>
+          </div>
+        </Field>
+        <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+          Кто откроет ссылку — попадёт на страницу принятия с автоматически выбранной ролью.
+        </div>
+      </>}
+
+      {tab === 'offline' && <>
+        <Field label="Имя" hint="без аккаунта — только отображается в участниках">
+          <input className="input" value={offlineName} onChange={e => setOfflineName(e.target.value)} placeholder="Серёжа, мама и т.д." autoFocus />
+        </Field>
+        <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+          Офлайн-участник не получает уведомлений и не голосует.
+        </div>
+      </>}
+
+      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
+    </Dialog>
   );
 }
 
@@ -108,30 +169,21 @@ function ChangeRoleDialog({ member, tripId, onClose, onSaved }) {
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
-    }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: 24, width: 340, boxShadow: 'var(--shadow-pop)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ flex: 1, margin: 0 }}>Изменить роль</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}>
-            <Icon name="close" size={18} />
-          </button>
-        </div>
-        <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--muted)' }}>
-          {member.user_full_name || member.user_email}
-        </div>
+    <Dialog title="Изменить роль" icon="edit" size="sm"
+      foot={<>
+        <Btn variant="ghost" onClick={onClose}>Отмена</Btn>
+        <Btn variant="primary" onClick={save} disabled={saving}>{saving ? 'Сохраняю…' : 'Сохранить'}</Btn>
+      </>}>
+      <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--muted)' }}>
+        {member.user_full_name || member.user_email}
+      </div>
+      <Field label="Роль">
         <select className="select" value={role} onChange={e => setRole(e.target.value)}>
           {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
         </select>
-        {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
-        <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
-          <Btn variant="ghost" onClick={onClose}>Отмена</Btn>
-          <Btn variant="primary" onClick={save} disabled={saving}>{saving ? 'Сохраняю…' : 'Сохранить'}</Btn>
-        </div>
-      </div>
-    </div>
+      </Field>
+      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
+    </Dialog>
   );
 }
 

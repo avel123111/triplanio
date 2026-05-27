@@ -58,6 +58,128 @@ function groupByCity() {
   }));
 }
 
+
+const CAT_COLORS = ["#2167e2", "#c9603a", "#1f8a5b", "#6a3ee2", "#c98a1a", "#a83e6a", "#3d8aa8", "#e08158"];
+const CAT_ICONS = ["wallet", "bed", "plane", "spark", "cup", "cam", "shield", "gift", "esim", "card"];
+
+function CategoryDialog({ existing }) {
+  const [name, setName] = React.useState(existing?.name || "");
+  const [color, setColor] = React.useState(existing?.color || CAT_COLORS[0]);
+  const [icon, setIcon] = React.useState(existing?.icon || CAT_ICONS[0]);
+  return (
+    <Dialog title={existing ? "Редактировать категорию" : "Новая категория"} icon="wallet" size="sm" foot={<>
+      <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
+      <Btn variant="primary" icon="check" onClick={() => window.__closeModal?.()}>Сохранить</Btn>
+    </>}>
+      <Field label="Название">
+        <input className="input" placeholder="Например, «Сувениры»" value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+      <div style={{ marginTop: 14 }}>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>Цвет</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {CAT_COLORS.map((c) =>
+            <button key={c} onClick={() => setColor(c)} style={{
+              width: 28, height: 28, borderRadius: "50%", background: c,
+              border: "2px solid " + (color === c ? "var(--ink)" : "transparent"), cursor: "pointer"
+            }} />
+          )}
+        </div>
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>Иконка</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {CAT_ICONS.map((ic) =>
+            <button key={ic} onClick={() => setIcon(ic)} style={{
+              width: 36, height: 36, borderRadius: 8,
+              background: icon === ic ? color + "22" : "var(--wash)",
+              color: icon === ic ? color : "var(--muted)",
+              border: "1px solid " + (icon === ic ? color : "var(--line)"),
+              display: "grid", placeItems: "center", cursor: "pointer"
+            }}><Icon name={ic} size={16} /></button>
+          )}
+        </div>
+      </div>
+      {existing && (
+        <div style={{ marginTop: 16, padding: 12, background: "var(--danger-soft)", borderRadius: 8 }}>
+          <Btn variant="danger" size="sm" icon="trash">Удалить категорию</Btn>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>Расходы из этой категории перейдут в «без категории».</div>
+        </div>
+      )}
+    </Dialog>
+  );
+}
+
+function AddExpenseDialog() {
+  const [cur, setCur] = React.useState("EUR");
+  return (
+    <Dialog title="Ручная трата" icon="wallet" size=""
+      foot={<>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
+        <Btn variant="primary" icon="check" onClick={() => window.__closeModal?.()}>Добавить</Btn>
+      </>}>
+      <Field label="Описание">
+        <input className="input" placeholder="Например, «Ужин в LX Factory»" autoFocus />
+      </Field>
+      <div className="field-row cols-2" style={{ marginTop: 14 }}>
+        <Field label="Сумма">
+          <div style={{ display: "flex", gap: 6 }}>
+            <input className="input num" placeholder="0" style={{ flex: 1 }} />
+            <select className="select" value={cur} onChange={(e) => setCur(e.target.value)} style={{ width: 80 }}>
+              <option>EUR</option><option>USD</option><option>RUB</option><option>GBP</option>
+            </select>
+          </div>
+        </Field>
+        <Field label="Дата">
+          <input className="input" type="date" />
+        </Field>
+      </div>
+      <div className="field-row cols-2" style={{ marginTop: 14 }}>
+        <Field label="Категория">
+          <select className="select">
+            <option>Еда (своё)</option>
+            <option>Подарки</option>
+            <option>Проживание</option>
+            <option>Транспорт</option>
+            <option>Активности</option>
+          </select>
+        </Field>
+        <Field label="Город">
+          <select className="select">
+            <option>—</option>
+          </select>
+        </Field>
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <Field label="Заметка (опц.)">
+          <textarea className="textarea" rows={2} placeholder="Свободный текст" />
+        </Field>
+      </div>
+    </Dialog>
+  );
+}
+
+function FxRatesDialog() {
+  return (
+    <Dialog title="Курсы валют" icon="wallet" size="" foot={<>
+      <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
+      <Btn variant="primary" icon="check" onClick={() => window.__closeModal?.()}>Применить</Btn>
+    </>}>
+      <div className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>
+        Дефолтные курсы тянутся автоматически. Если автомат ошибается — поставь свой курс.
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {[{ cur: "USD", rate: "1.08" }, { cur: "RUB", rate: "94.0" }, { cur: "GBP", rate: "0.85" }].map((r, i) =>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "60px 100px 1fr", alignItems: "center", gap: 10, padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8 }}>
+            <div className="num" style={{ fontWeight: 600 }}>1 {r.cur}</div>
+            <input className="input num" defaultValue={r.rate} placeholder="0.00" />
+            <div className="muted" style={{ fontSize: 12 }}>EUR · автоматический</div>
+          </div>
+        )}
+      </div>
+    </Dialog>
+  );
+}
+
 function ScreenBudget() {
   const [active, setActive] = useState("stay");
   const [grouping, setGrouping] = useState("category"); // category | city
@@ -107,7 +229,7 @@ function ScreenBudget() {
         </div>
         <div style={{ flex: 1 }} />
         {grouping === "category" && <Btn variant="ghost" size="sm" icon="plus" onClick={() => window.__openModal?.(<CategoryDialog />)}>Категория</Btn>}
-        <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__openModal?.(<window.AddExpenseDialog />)}>Ручная трата</Btn>
+        <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__openModal?.(<AddExpenseDialog />)}>Ручная трата</Btn>
       </div>
 
       {grouping === "category" ?
@@ -217,7 +339,7 @@ function CityGrouping({ cityGroups }) {
             <h3 style={{ marginBottom: 2 }}>{cur.city}</h3>
             <div className="muted num" style={{ fontSize: 12 }}>{cur.items.length} {cur.items.length === 1 ? "трата" : "трат"} · итого {fmt(cur.total, "EUR")}</div>
           </div>
-          <Btn variant="ghost" size="sm" icon="plus" onClick={() => window.__openModal?.(<window.AddExpenseDialog />)}>Трата</Btn>
+          <Btn variant="ghost" size="sm" icon="plus" onClick={() => window.__openModal?.(<AddExpenseDialog />)}>Трата</Btn>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

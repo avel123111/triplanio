@@ -18,6 +18,84 @@ const MEMBERS_LIST = [
 { name: "Мама Лебедева", kind: "placeholder", role: "viewer", status: "offline" }];
 
 
+function InviteDialog() {
+  const [tab, setTab] = React.useState("email");
+  const [role, setRole] = React.useState("viewer");
+  const [copied, setCopied] = React.useState(false);
+  return (
+    <Dialog title="Пригласить в трип" icon="users" size=""
+      foot={<>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Закрыть</Btn>
+        {tab === "email" && <Btn variant="primary" icon="send" onClick={() => window.__closeModal?.()}>Отправить приглашение</Btn>}
+      </>}>
+      <div className="tweaks__seg" style={{ marginBottom: 14, display: "flex" }}>
+        <button className={tab === "email" ? "active" : ""} onClick={() => setTab("email")} style={{ flex: 1 }}>
+          <Icon name="send" size={12} style={{ verticalAlign: -2, marginRight: 4 }} />По e-mail
+        </button>
+        <button className={tab === "link" ? "active" : ""} onClick={() => setTab("link")} style={{ flex: 1 }}>
+          <Icon name="link" size={12} style={{ verticalAlign: -2, marginRight: 4 }} />Скопировать ссылку
+        </button>
+        <button className={tab === "offline" ? "active" : ""} onClick={() => setTab("offline")} style={{ flex: 1 }}>
+          <Icon name="user" size={12} style={{ verticalAlign: -2, marginRight: 4 }} />Офлайн
+        </button>
+      </div>
+
+      {tab !== "offline" && (
+        <Field label="Роль приглашаемого">
+          <div className="tweaks__seg" style={{ display: "flex" }}>
+            {[["viewer", "Зритель", "Только смотрит"], ["admin", "Админ", "Редактирует трип"]].map(([k, lab, sub]) =>
+              <button key={k} className={role === k ? "active" : ""} onClick={() => setRole(k)}
+                style={{ flex: 1, flexDirection: "column", gap: 0, padding: "8px 10px" }}>
+                <div style={{ fontWeight: 500 }}>{lab}</div>
+                <div className="muted" style={{ fontSize: 10.5 }}>{sub}</div>
+              </button>
+            )}
+          </div>
+        </Field>
+      )}
+
+      {tab !== "offline" && <hr className="hr" style={{ margin: "16px 0" }} />}
+      {tab === "offline" && <div style={{ marginTop: 4 }} />}
+
+      {tab === "email" && <>
+        <Field label="E-mail">
+          <input className="input" placeholder="name@example.com" autoFocus />
+        </Field>
+        <Field label="Сообщение (опц.)" hint="свободный текст">
+          <textarea className="textarea" placeholder="Поедешь со мной?" rows={3} />
+        </Field>
+        <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+          Получатель примет приглашение из инбокса в Triplanio.
+        </div>
+      </>}
+
+      {tab === "link" && <>
+        <Field label="Ссылка для приглашения · истекает через 7 дней">
+          <div style={{ display: "flex", gap: 6 }}>
+            <input className="input mono" value={`https://triplanio.com/join/4f6b-${role === "viewer" ? "v" : "a"}-x29a`}
+              readOnly style={{ flex: 1, fontSize: 12 }} />
+            <Btn variant="primary" icon="copy" onClick={() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+              {copied ? "Скопировано" : "Копировать"}
+            </Btn>
+          </div>
+        </Field>
+        <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+          Кто откроет ссылку — попадёт на страницу принятия с автоматически выбранной ролью.
+        </div>
+      </>}
+
+      {tab === "offline" && <>
+        <Field label="Имя" hint="без аккаунта — только отображается в участниках">
+          <input className="input" placeholder="Серёжа, мама и т.д." autoFocus />
+        </Field>
+        <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+          Офлайн-участник не получает уведомлений и не голосует.
+        </div>
+      </>}
+    </Dialog>
+  );
+}
+
 function ScreenMembers() {
   const [openMenu, setOpenMenu] = useState(null);
 
@@ -37,7 +115,7 @@ function ScreenMembers() {
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
         <h2 style={{ flex: 1, marginBottom: 0 }}>Участники · {MEMBERS_LIST.length}</h2>
-        <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<window.InviteDialog />)}>Пригласить</Btn>
+        <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog />)}>Пригласить</Btn>
       </div>
 
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, overflow: "visible" }}>
@@ -81,7 +159,7 @@ function ScreenMembers() {
               <div style={{ display: "flex", gap: 4, position: "relative" }} data-row-menu>
                 {/* Inline primary action for offline placeholders */}
                 {isOffline && (
-                  <Btn variant="ghost" size="sm" icon="send" onClick={() => window.__openModal?.(<window.ConvertOfflineDialog preselect={m.name} />)}>
+                  <Btn variant="ghost" size="sm" icon="send" onClick={() => window.__openModal?.(<InviteDialog />)}>
                     Пригласить
                   </Btn>
                 )}
@@ -142,7 +220,7 @@ function ScreenMembers() {
           <div style={{ fontWeight: 600, marginBottom: 2 }}>Пригласить ещё участников</div>
           <div className="muted" style={{ fontSize: 12.5 }}>Можно отправить приглашение по e-mail, скопировать ссылку или добавить офлайн-человека без аккаунта.</div>
         </div>
-        <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<window.InviteDialog />)}>Пригласить</Btn>
+        <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog />)}>Пригласить</Btn>
       </div>
     </>);
 

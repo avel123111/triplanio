@@ -322,6 +322,7 @@ export default function Trips() {
       {/* APP HEADER */}
       <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
         <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
+          <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
           <span className="app-header__brand-name">Triplanio</span>
         </div>
         <div className="app-header__right">
