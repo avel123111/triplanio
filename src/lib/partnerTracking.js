@@ -1,6 +1,6 @@
 // Logs a partner-referral click into the PartnerClick entity.
 // Fire-and-forget: failures must not block the user's navigation to the partner.
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useCallback } from 'react';
 
@@ -14,12 +14,12 @@ export function logPartnerClick({ partner, type, link, tripId, user }) {
       partner,
       type,
       link,
-      trip_id: tripId || '',
+      trip_id: tripId || null,
       user_id: user?.id || '',
       user_email: user?.email || '',
     };
     // Fire-and-forget — don't await, don't throw
-    base44.entities.PartnerClick.create(payload).catch(() => { /* ignore */ });
+    supabase.from('partner_clicks').insert(payload).then(() => {}, () => { /* ignore */ });
   } catch {
     /* ignore */
   }

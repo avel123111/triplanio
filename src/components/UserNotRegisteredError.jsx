@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { BRAND_NAME, BRAND_LOGO_URL } from '@/lib/brand';
 
@@ -22,7 +22,7 @@ const UserNotRegisteredError = () => {
           <p className="text-muted-foreground mb-6 text-sm">
             Ваш аккаунт не зарегистрирован в этом приложении. Обратитесь к администратору, чтобы получить доступ.
           </p>
-          <Button variant="outline" onClick={() => base44.auth.logout()} className="w-full">
+          <Button variant="outline" onClick={async () => { await supabase.auth.signOut(); window.location.href = '/'; }} className="w-full">
             Выйти и попробовать другой аккаунт
           </Button>
         </div>

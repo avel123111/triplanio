@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 
 /**
  * Hook: fetch FX rates with the given base currency.
@@ -9,7 +9,7 @@ export function useFxRates(base = 'EUR') {
   return useQuery({
     queryKey: ['fx-rates', base],
     queryFn: async () => {
-      const res = await base44.functions.invoke('getFxRates', { base });
+      const res = await supabase.functions.invoke('getFxRates', { body: { base } });
       return res.data;
     },
     staleTime: 24 * 60 * 60 * 1000,

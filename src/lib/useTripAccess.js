@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 
 /**
@@ -13,12 +13,14 @@ export function useTripAccess(trip) {
   const { data: membership, isLoading } = useQuery({
     queryKey: ['trip-access', trip?.id, user?.email],
     queryFn: async () => {
-      const res = await base44.entities.TripMember.filter({
-        trip_id: trip.id,
-        user_email: user.email,
-        status: 'active',
-      });
-      return res?.[0] || null;
+      const { data } = await supabase
+        .from('trip_members')
+        .select('*')
+        .eq('trip_id', trip.id)
+        .eq('user_email', user.email)
+        .eq('status', 'active')
+        .limit(1);
+      return data?.[0] || null;
     },
     enabled,
   });

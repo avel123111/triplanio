@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, ExternalLink, Check, Send } from 'lucide-react';
@@ -25,7 +25,7 @@ export default function TelegramAssistantPanel({ tripId }) {
   const { data, isLoading } = useQuery({
     queryKey: ['telegram-integration', tripId],
     queryFn: async () => {
-      const res = await base44.functions.invoke('telegramGetIntegration', { tripId });
+      const res = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
       return res.data;
     },
     enabled: !!tripId,
@@ -33,7 +33,7 @@ export default function TelegramAssistantPanel({ tripId }) {
 
   const connectMut = useMutation({
     mutationFn: async () => {
-      const res = await base44.functions.invoke('telegramStartLink', { tripId });
+      const res = await supabase.functions.invoke('telegramStartLink', { body: { tripId } });
       return res.data;
     },
     onSuccess: (d) => {
@@ -47,12 +47,12 @@ export default function TelegramAssistantPanel({ tripId }) {
   });
 
   const toggleMut = useMutation({
-    mutationFn: (isActive) => base44.functions.invoke('telegramSetActive', { tripId, isActive }),
+    mutationFn: (isActive) => supabase.functions.invoke('telegramSetActive', { body: { tripId, isActive } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['telegram-integration', tripId] }),
   });
 
   const disconnectMut = useMutation({
-    mutationFn: () => base44.functions.invoke('telegramDisconnect', { tripId }),
+    mutationFn: () => supabase.functions.invoke('telegramDisconnect', { body: { tripId } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['telegram-integration', tripId] }),
   });
 

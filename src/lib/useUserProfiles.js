@@ -8,12 +8,12 @@
 // multiple components requesting the same set don't re-fetch.
 
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 
 async function fetchProfiles(tripId, emails) {
   if (!tripId || !emails || emails.length === 0) return {};
   try {
-    const res = await base44.functions.invoke('resolveProfiles', { tripId, emails });
+    const res = await supabase.functions.invoke('resolveProfiles', { body: { tripId, emails } });
     const list = res?.data?.profiles || [];
     const map = {};
     for (const p of list) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Check, Crown, Zap, Loader2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 
@@ -19,7 +19,7 @@ export default function UpgradePlanDialog({ open, onOpenChange, tripId, onUpgrad
     if (!open || prices) return;
     let cancelled = false;
     setPricesLoading(true);
-    base44.functions.invoke('getStripePrices', {})
+    supabase.functions.invoke('getStripePrices', { body: {} })
       .then((res) => { if (!cancelled) setPrices(res.data?.prices || {}); })
       .catch((err) => { console.error('Failed to load Stripe prices:', err); })
       .finally(() => { if (!cancelled) setPricesLoading(false); });
@@ -39,8 +39,9 @@ export default function UpgradePlanDialog({ open, onOpenChange, tripId, onUpgrad
       }
 
       const returnPath = window.location.pathname + window.location.search;
-      const response = await base44.functions.invoke('createStripeCheckout', { tripId, planType, returnPath, locale: lang });
-      if (response.data.url) {
+      const response = await supabase.functions.invoke('createStripeCheckout', { body: { tripId, planType, returnPath, locale: lang } });
+      if (response.error) throw response.error;
+      if (response.data?.url) {
         window.location.href = response.data.url;
       }
     } catch (error) {
@@ -51,7 +52,7 @@ export default function UpgradePlanDialog({ open, onOpenChange, tripId, onUpgrad
       const code = error?.response?.data?.code;
       if (code === 'SUBSCRIPTION_ALREADY_ACTIVE') {
         try {
-          const portal = await base44.functions.invoke('createBillingPortal', { returnPath: '/settings' });
+          const portal = await supabase.functions.invoke('createBillingPortal', { body: { returnPath: '/settings' } });
           if (portal.data?.url) {
             window.location.href = portal.data.url;
             return;

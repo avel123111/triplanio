@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Check, Crown, Loader2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import UpgradePlanDialog from './UpgradePlanDialog';
 import { useT } from '@/lib/i18n/I18nContext';
 
@@ -50,7 +50,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
     setState(s => ({ ...s, status: 'loading' }));
     (async () => {
       try {
-        const res = await base44.functions.invoke('getActiveTrips', {});
+        const res = await supabase.functions.invoke('getActiveTrips', { body: {} });
         if (cancelled) return;
         setState({
           status: 'ready',

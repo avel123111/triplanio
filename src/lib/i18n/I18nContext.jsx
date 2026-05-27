@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { TRANSLATIONS, LANGUAGES, localeTag } from './translations';
 import {
   applyLuxonLocale,
@@ -52,7 +52,7 @@ export function I18nProvider({ children }) {
     try { localStorage.setItem(STORAGE_KEY, newLang); } catch (e) { /* ignore */ }
     // Persist on user if signed in
     if (user) {
-      try { await base44.auth.updateMe({ language: newLang }); } catch (e) { /* ignore */ }
+      try { await supabase.from('users').update({ language: newLang }).eq('email', user.email); } catch (e) { /* ignore */ }
     }
   }, [user]);
 

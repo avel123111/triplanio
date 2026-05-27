@@ -1,7 +1,7 @@
 /**
  * ChatLens — group chat tab inside TripView.
  *
- * Real-time via Supabase Realtime on trip_messages table.
+ * Real-time via Supabase Realtime on chat_messages table.
  * Supports @mention dropdown, message send/receive.
  *
  * Props:
@@ -13,6 +13,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
+import { TRIPLANIO_BOT_EMAIL } from '@/lib/triplanio';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card } from '../design/index';
 
@@ -120,7 +121,7 @@ export default function ChatLens({ tripId, members = [], myRole }) {
     queryKey: MSGS_KEY(tripId),
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('trip_messages')
+        .from('chat_messages')
         .select('*')
         .eq('trip_id', tripId)
         .order('created_at', { ascending: true })
@@ -139,7 +140,7 @@ export default function ChatLens({ tripId, members = [], myRole }) {
       .channel('chat-' + tripId)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'trip_messages', filter: `trip_id=eq.${tripId}` },
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `trip_id=eq.${tripId}` },
         payload => {
           qc.setQueryData(MSGS_KEY(tripId), (old = []) => {
             // Avoid duplicates (optimistic message already there)
@@ -171,22 +172,21 @@ export default function ChatLens({ tripId, members = [], myRole }) {
 
     // Optimistic insert
     const optimistic = {
-      id:         'opt-' + Date.now(),
-      trip_id:    tripId,
-      user_name:  myName,
-      user_email: user?.email,
-      user_id:    user?.id,
-      content,
-      created_at: new Date().toISOString(),
+      id:             'opt-' + Date.now(),
+      trip_id:        tripId,
+      user_full_name: myName,
+      user_email:     user?.email,
+      text:           content,
+      created_at:     new Date().toISOString(),
     };
     qc.setQueryData(MSGS_KEY(tripId), (old = []) => [...old, optimistic]);
 
-    const { error } = await supabase.from('trip_messages').insert({
-      trip_id:    tripId,
-      user_name:  myName,
-      user_email: user?.email,
-      user_id:    user?.id,
-      content,
+    const { error } = await supabase.from('chat_messages').insert({
+      trip_id:        tripId,
+      user_full_name: myName,
+      user_email:     user?.email,
+      text:           content,
+      created_by:     user?.email,
     });
 
     setSending(false);
@@ -234,16 +234,16 @@ export default function ChatLens({ tripId, members = [], myRole }) {
       messageRows.push(<DateDivider key={'div-' + m.id} date={dateStr} />);
     }
 
-    const isMe     = m.user_email === user?.email || m.user_id === user?.id;
-    const grouped  = prev && isSameDay(m.created_at, prev.created_at) && prev.user_id === m.user_id;
+    const isMe     = m.user_email === user?.email;
+    const grouped  = prev && isSameDay(m.created_at, prev.created_at) && prev.user_email === m.user_email;
 
     messageRows.push(
       <Msg
         key={m.id}
-        who={m.user_name || m.user_email || '—'}
+        who={m.user_full_name || m.user_email || '—'}
         isMe={isMe}
-        isAi={m.is_ai || false}
-        text={m.content || ''}
+        isAi={m.user_email === TRIPLANIO_BOT_EMAIL}
+        text={m.text || ''}
         time={fmtMsgTime(m.created_at)}
         grouped={grouped}
       />
@@ -369,7 +369,6 @@ export default function ChatLens({ tripId, members = [], myRole }) {
             <li>Отвечает всем участникам</li>
             <li>Предлагает отели, перелёты, активности</li>
             <li>Может править трип — с согласия владельца</li>
-            <li>Личный диалог — <a href="#" onClick={e => { e.preventDefault(); window.__navigate?.('ai'); }}>ИИ-помощник</a></li>
           </ul>
         </Card>
       </aside>

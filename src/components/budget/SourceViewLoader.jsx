@@ -7,7 +7,7 @@
  * for the edit Dialog — same flow as everywhere else in the app.
  */
 import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import HotelViewDialog from '@/components/hotels/HotelViewDialog';
 import TransferViewDialog from '@/components/transfers/TransferViewDialog';
 import ActivityViewDialog from '@/components/activities/ActivityViewDialog';
@@ -16,6 +16,12 @@ import HotelDialog from '@/components/hotels/HotelDialog';
 import TransferDialog from '@/components/transfers/TransferDialog';
 import ActivityDialog from '@/components/activities/ActivityDialog';
 import ServiceDialog from '@/components/services/ServiceDialog';
+
+async function getRow(table, id) {
+  const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
+  if (error) throw error;
+  return data;
+}
 
 export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false }) {
   const [data, setData] = useState(null);
@@ -31,32 +37,32 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     (async () => {
       try {
         if (kind === 'hotel') {
-          const h = await base44.entities.HotelStay.get(id);
+          const h = await getRow('hotel_stays', id);
           if (cancelled) return;
           setData(h);
           if (h?.city_visit_id) {
-            const v = await base44.entities.CityVisit.get(h.city_visit_id).catch(() => null);
+            const v = await getRow('city_visits', h.city_visit_id).catch(() => null);
             if (!cancelled) setVisit(v);
           }
         } else if (kind === 'transfer') {
-          const tr = await base44.entities.Transfer.get(id);
+          const tr = await getRow('transfers', id);
           if (cancelled) return;
           setData(tr);
           const [fv, tv] = await Promise.all([
-            tr?.from_city_visit_id ? base44.entities.CityVisit.get(tr.from_city_visit_id).catch(() => null) : null,
-            tr?.to_city_visit_id ? base44.entities.CityVisit.get(tr.to_city_visit_id).catch(() => null) : null,
+            tr?.from_city_visit_id ? getRow('city_visits', tr.from_city_visit_id).catch(() => null) : null,
+            tr?.to_city_visit_id ? getRow('city_visits', tr.to_city_visit_id).catch(() => null) : null,
           ]);
           if (!cancelled) { setFromVisit(fv); setToVisit(tv); }
         } else if (kind === 'activity') {
-          const a = await base44.entities.Activity.get(id);
+          const a = await getRow('activities', id);
           if (cancelled) return;
           setData(a);
           if (a?.city_visit_id) {
-            const v = await base44.entities.CityVisit.get(a.city_visit_id).catch(() => null);
+            const v = await getRow('city_visits', a.city_visit_id).catch(() => null);
             if (!cancelled) setVisit(v);
           }
         } else if (kind === 'service') {
-          const s = await base44.entities.TripService.get(id);
+          const s = await getRow('trip_services', id);
           if (cancelled) return;
           setData(s);
         }
