@@ -633,8 +633,8 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   }
 
   // Start anchor
-  const startCity = sortedVisits[0]?.city_name || 'Старт';
-  const endCity   = sortedVisits[sortedVisits.length - 1]?.city_name || 'Финиш';
+  const startCity = ordered[0]?.city_name || 'Старт';
+  const endCity   = ordered[ordered.length - 1]?.city_name || 'Финиш';
   rows.push(
     <StreamAnchor
       key="anchor-start"
