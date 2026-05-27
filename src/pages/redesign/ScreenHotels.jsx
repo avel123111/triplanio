@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Avatar, Badge, Btn, fmt, detectPartner, PartnerLogo, PartnerPill, TRIP } from '../../design/index';
+import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
+         fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
 
 // =====================================================================
 // HOTEL VOTING — collective decision (§26)
@@ -98,6 +100,7 @@ function ProposalCard({ p }) {
 
       {/* Actions */}
       <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
+        {/* Vote buttons — always visible when this approver hasn't voted yet (using Misha as current user) */}
         {p.approvers.find(a => a.name === "Миша Петров")?.vote === "pending" ? (
           <>
             <Btn variant="primary" size="sm" icon="thumbUp">За</Btn>
@@ -176,10 +179,7 @@ function ScreenHotels() {
   const [expanded, setExpanded] = useState({ lis: true, por: true, bcn: true, arch_lis: false, arch_por: false });
   return (
     <>
-      <div style={{marginBottom: 22, paddingBottom: 16, borderBottom: "1px solid var(--line-2)", display:"flex", alignItems:"center", gap:10}}>
-        <h2 style={{flex:1}}>{TRIP.title}</h2>
-        <span style={{fontSize:12, color:"var(--muted)"}}>12 июл → 23 июл · 2026</span>
-      </div>
+      <TripIdentityStrip compact />
 
       <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 20, padding: 16, background: "var(--brand-soft)", borderRadius: 14 }}>
         <Icon name="vote" size={20} style={{ color: "var(--brand)", marginTop: 2 }} />
@@ -187,7 +187,7 @@ function ScreenHotels() {
           <div style={{ fontWeight: 600, marginBottom: 4 }}>Совместный выбор отелей</div>
           <div className="muted" style={{ fontSize: 12.5 }}>
             Любой участник предлагает отель. Для одобрения нужны «за» всех аппруверов.
-            <a href="#" onClick={(e) => e.preventDefault()}> Управлять аппруверами →</a>
+            <a href="#" onClick={() => window.__navigate?.("trip-settings")}> Управлять аппруверами →</a>
           </div>
         </div>
         <Btn variant="primary" icon="plus">Предложить отель</Btn>

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Btn, Avatar, Badge, Card, Severity, Toggle, fmt } from '../../design/index';
+import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
+         fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
 
 // =====================================================================
 // ACCOUNT SETTINGS (§30)
@@ -13,9 +15,11 @@ const LANGS = [
 
 
 function ScreenAccount() {
-  const state = "with-sub";
+  const state = window.__accountState || "with-sub";
   // states: "with-sub" (monthly active) | "no-sub" (free) | "cancelled" (cancelled, valid until date) | "annual" (yearly active)
   const hasSub = state === "with-sub" || state === "cancelled" || state === "annual";
+  const isCancelled = state === "cancelled";
+  const isAnnual = state === "annual";
 
   const [lang, setLang] = useState("ru");
   const [langOpen, setLangOpen] = useState(false);
@@ -205,7 +209,7 @@ function ScreenAccount() {
               <div style={{ fontWeight: 600, marginBottom: 4 }}>Free тариф</div>
               <div className="muted" style={{ fontSize: 12.5 }}>1 активный трип · без ИИ-помощника, ИИ-парсера и календарной линзы.</div>
             </div>
-            <Btn variant="primary" icon="pro" onClick={() => window.__triplanioNavigate?.("pro")}>Перейти к Pro</Btn>
+            <Btn variant="primary" icon="pro" onClick={() => window.__navigate?.("pro")}>Перейти к Pro</Btn>
           </div>
           <hr className="hr" style={{ margin: "14px 0" }} />
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -255,8 +259,8 @@ function ScreenAccount() {
           </div>
         }
       </Card>
-    </div>
-  );
+    </div>);
+
 }
 
 function SettingRow({ label, desc, on, onChange, last }) {
@@ -267,8 +271,8 @@ function SettingRow({ label, desc, on, onChange, last }) {
         <div className="muted" style={{ fontSize: 12 }}>{desc}</div>
       </div>
       <Toggle on={on} onChange={onChange} />
-    </div>
-  );
+    </div>);
+
 }
 
 export default ScreenAccount;

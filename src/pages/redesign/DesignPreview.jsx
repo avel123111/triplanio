@@ -22,6 +22,7 @@ import ScreenMembers from './ScreenMembers';
 import ScreenSettings from './ScreenSettings';
 import ScreenAI from './ScreenAI';
 import ScreenForms from './ScreenForms';
+import ScreenManualPlanner from './ScreenManualPlanner';
 
 // =====================================================================
 // Navigation registry
@@ -32,7 +33,8 @@ const SCREENS = [
     { id: 'inbox',      title: 'Инбокс уведомлений', sub: '§27',              inApp: false },
     { id: 'account',    title: 'Настройки аккаунта', sub: '§30',              inApp: false },
     { id: 'pro',        title: 'Pro / выбор тарифа', sub: '§17',              inApp: false },
-    { id: 'ai-planner', title: 'ИИ-планировщик',      sub: '§20',             inApp: false },
+    { id: 'ai-planner',      title: 'ИИ-планировщик',      sub: '§20', inApp: false },
+    { id: 'manual-planner', title: 'Ручной планировщик',  sub: '§5',  inApp: false },
   ]},
   { group: 'Один трип — линзы', items: [
     { id: 'timeline', title: 'Хронология',     sub: '§7, §8', inApp: true, lens: 'timeline' },
@@ -66,6 +68,7 @@ const SCREEN_COMPONENTS = {
   account:             <ScreenAccount />,
   pro:                 <ScreenPro />,
   'ai-planner':        <ScreenAiPlanner />,
+  'manual-planner':    <ScreenManualPlanner />,
   timeline:            <ScreenTimeline />,
   budget:              <ScreenBudget />,
   calendar:            <ScreenCalendar />,

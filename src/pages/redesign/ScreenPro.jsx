@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Btn, Badge, Skeleton, fmt } from '../../design/index';
+import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
+         fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
 
 // =====================================================================
 // PRO / PRICING (§17) with multiple states
@@ -13,7 +15,7 @@ const PLANS = [
 
 
 function ScreenPro() {
-  const state = "normal";
+  const state = window.__proPricingState || "normal";
   const [picked, setPicked] = useState("month");
 
   const plans = state === "two-plans" ? PLANS.filter((p) => p.id !== "trip") : PLANS;
@@ -24,12 +26,16 @@ function ScreenPro() {
     <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 14px 8px 8px", background: "var(--brand-soft)", color: "var(--brand)", borderRadius: 999, fontSize: 13, fontWeight: 600, marginBottom: 18 }}>
-          <span style={{ width: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13 }}>T</span>
+          <img src={window.__resources?.logoMark || "assets/logo-mark.svg"} style={{ width: 18, height: 18 }} alt="" />
           <span>Triplanio Pro</span>
         </div>
         <h1 style={{ fontSize: 44, marginBottom: 10, maxWidth: 720, margin: "0 auto 10px" }}>Больше трипов, меньше работы.</h1>
         <div className="muted" style={{ fontSize: 17, maxWidth: 560, margin: "0 auto" }}>
           ИИ-планировщик с нуля, парсинг бронирований, безлимит трипов и группового планирования.
+        </div>
+        <div style={{ display: "inline-flex", gap: 8, marginTop: 18, flexWrap: "wrap", justifyContent: "center" }}>
+          <Btn variant="ghost" size="sm" onClick={() => window.__openModal?.(<window.PaymentSuccessDialog />)}>↪ Демо: успешная оплата</Btn>
+          <Btn variant="ghost" size="sm" onClick={() => window.__openModal?.(<window.PaymentFailDialog />)}>↪ Демо: ошибка оплаты</Btn>
         </div>
         {state === "two-plans" &&
         <div className="muted" style={{ fontSize: 13, marginTop: 14 }}>
@@ -130,8 +136,8 @@ function ScreenPro() {
           Тяну цены с сервера…
         </div>
       }
-    </div>
-  );
+    </div>);
+
 }
 
 export default ScreenPro;

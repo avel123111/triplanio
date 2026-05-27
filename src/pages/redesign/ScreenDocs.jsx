@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Btn, Badge, TRIP } from '../../design/index';
+import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
+         fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
 
 // =====================================================================
 // TRIP DOCUMENTS (§23) — personal + shared lists, empty states, dialogs
@@ -20,14 +22,11 @@ const PERSONAL_DOCS = [
 function ScreenDocs() {
   return (
     <>
-      <div style={{marginBottom: 22, paddingBottom: 16, borderBottom: "1px solid var(--line-2)", display:"flex", alignItems:"center", gap:10}}>
-        <h2 style={{flex:1}}>{TRIP.title}</h2>
-        <span style={{fontSize:12, color:"var(--muted)"}}>12 июл → 23 июл · 2026</span>
-      </div>
+      <TripIdentityStrip compact />
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
         <h2 style={{ flex: 1 }}>Документы трипа</h2>
-        <Btn variant="primary" icon="plus" onClick={() => {}}>Добавить документ</Btn>
+        <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<AddDocDialog />)}>Добавить документ</Btn>
       </div>
 
       {/* SHARED */}
@@ -69,7 +68,7 @@ function DocsGrid({ docs, scope }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
       {docs.map((d, i) => (
-        <button key={i} onClick={() => {}} style={{
+        <button key={i} onClick={() => window.__openModal?.(<DocDetailDialog doc={{ ...d, scope }} />)} style={{
           padding: 14, background: "var(--surface)", border: "1px solid var(--line)",
           borderRadius: 12, display: "flex", flexDirection: "column", gap: 8,
           cursor: "pointer", textAlign: "left",
@@ -97,7 +96,7 @@ function DocsGrid({ docs, scope }) {
         </button>
       ))}
 
-      <button onClick={() => {}} style={{
+      <button onClick={() => window.__openModal?.(<AddDocDialog />)} style={{
         padding: 14, background: "transparent", border: "1.5px dashed var(--line)",
         borderRadius: 12, color: "var(--muted)", cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 130,
@@ -133,7 +132,7 @@ function DocEmpty({ scope }) {
           ? "Здесь храни паспорта, визы и страховки — другие участники их не видят."
           : "Чеклисты, общие брони из почты, шаблоны — всё, что нужно всем."}
       </div>
-      <Btn variant="ghost" icon="plus" onClick={() => {}}>
+      <Btn variant="ghost" icon="plus" onClick={() => window.__openModal?.(<AddDocDialog />)}>
         Добавить {scope === "personal" ? "личный" : "общий"} документ
       </Btn>
     </div>

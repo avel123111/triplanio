@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Btn, TRIP } from '../../design/index';
+import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
+         fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
 
 // =====================================================================
 // TRIP CALENDAR — calendar lens (§15) — month + week views
@@ -45,12 +47,9 @@ function ScreenCalendar() {
 
   return (
     <>
-      <div style={{marginBottom: 22, paddingBottom: 16, borderBottom: "1px solid var(--line-2)", display:"flex", alignItems:"center", gap:10}}>
-        <h2 style={{flex:1}}>{TRIP.title}</h2>
-        <span style={{fontSize:12, color:"var(--muted)"}}>12 июл → 23 июл · 2026</span>
-      </div>
+      <TripIdentityStrip compact />
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <h2 style={{ flex: 1 }}>Июль 2026{view === "week" && <span className="muted" style={{ fontSize: 16, fontWeight: 400, marginLeft: 12 }}>· неделя 12 — 18</span>}</h2>
+        <h2 style={{ flex: 1 }}>Июль 2026{view === "week" && <span className="muted" style={{ fontSize: 16, fontWeight: 400, marginLeft: 12 }} className="num">· неделя 12 — 18</span>}</h2>
         <Btn variant="ghost" size="sm" icon="back" />
         <Btn variant="ghost" size="sm">Сегодня</Btn>
         <Btn variant="ghost" size="sm">К старту трипа</Btn>
@@ -81,7 +80,10 @@ function Legend({ color, children }) {
 }
 
 function MonthView({ cells, WD }) {
-  const openEvent = () => {};
+  const openEvent = (date) => {
+    const e = STREAM.find(s => s.date === `2026-07-${String(date).padStart(2, "0")}`);
+    if (e) window.__openModal?.(<EventModal event={e} />);
+  };
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, overflow: "hidden" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid var(--line)" }}>

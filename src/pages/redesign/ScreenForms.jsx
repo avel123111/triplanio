@@ -1,14 +1,16 @@
-import React, { useState } from 'react'
-import { Icon } from '../../design/icons'
-import { Btn, Badge, Card, Field, Severity, Avatar, TRIP } from '../../design/index'
+import React, { useState, useEffect, useRef } from 'react';
+import { Icon } from '../../design/icons';
+import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
+         fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
 
 // =====================================================================
 // FORMS — Hotel, Transfer, Activity, Fork (vendor vs manual)
 // =====================================================================
 
-// ----- Free cancellation field -----
+// ----- Free cancellation field — checkbox + conditional date input -----
 function FreeCancellationField({ ai }) {
-  const [enabled, setEnabled] = useState(true)
+  const [enabled, setEnabled] = useState(true);
   return (
     <div className={`field ${ai ? "field--ai" : ""}`} style={{ padding: 12, background: "var(--wash-2)", border: "1px solid var(--line-2)", borderRadius: 10 }}>
       <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
@@ -28,35 +30,33 @@ function FreeCancellationField({ ai }) {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // ----- Smart URL input with auto-detected partner logo -----
-function UrlField({ label, defaultValue = "", ai }) {
-  const [url, setUrl] = useState(defaultValue)
-  // Simple partner detection without design system import
-  const knownPartners = { "booking.com": "Booking", "airbnb.com": "Airbnb", "airbnb.ru": "Airbnb", "renfe.com": "Renfe", "cp.pt": "CP", "tap.com": "TAP", "sagradafamilia.org": "Official", "sixt.com": "Sixt", "thefork.com": "TheFork" }
-  const detectedLabel = Object.entries(knownPartners).find(([k]) => url.includes(k))?.[1]
+function UrlField({ label, defaultValue = "", ai, ...rest }) {
+  const [url, setUrl] = useState(defaultValue);
+  const partner = detectPartner(url);
   return (
     <div className={`field ${ai ? "field--ai" : ""}`}>
       <label className="field__label">{label}</label>
       <div style={{ position: "relative" }}>
         <div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }}>
-          <Icon name="external" size={16} style={{ color: "var(--muted)" }} />
+          <PartnerLogo url={url} size={20} />
         </div>
         <input className="input" value={url} onChange={(e) => setUrl(e.target.value)}
-          style={{ paddingLeft: 34 }} placeholder="https://…" />
-        {detectedLabel && (
-          <Badge variant="quiet" style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)" }}>
-            {detectedLabel} распознан
+        style={{ paddingLeft: 40 }} placeholder="https://…" />
+        {partner &&
+        <Badge variant="quiet" style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)" }}>
+            {partner.label} распознан
           </Badge>
-        )}
+        }
       </div>
-    </div>
-  )
+    </div>);
+
 }
 
-// ----- Date+time split input -----
+// ----- Date+time split input ----- (§31.7)
 function DateTimeField({ label, dateValue, timeValue, ai, sub, required }) {
   return (
     <div className={`field ${ai ? "field--ai" : ""}`}>
@@ -71,18 +71,18 @@ function DateTimeField({ label, dateValue, timeValue, ai, sub, required }) {
         <input className="input num" defaultValue={timeValue} placeholder="чч:мм" />
       </div>
       {sub && <span className="field__sub">{sub}</span>}
-    </div>
-  )
+    </div>);
+
 }
 
-// ----- File attach block -----
+// ----- File attach block (§31.6) -----
 function FilesAttach({ files = [] }) {
   return (
     <div>
       <div className="eyebrow" style={{ marginBottom: 8 }}>Документы</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {files.map((f, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 11px", border: "1px solid var(--line-2)", borderRadius: 8 }}>
+        {files.map((f, i) =>
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 11px", border: "1px solid var(--line-2)", borderRadius: 8 }}>
             <Icon name="file" size={14} style={{ color: "var(--muted)" }} />
             <div style={{ flex: 1, fontSize: 12.5 }}>
               <div style={{ fontWeight: 500 }}>{f.name}</div>
@@ -91,7 +91,7 @@ function FilesAttach({ files = [] }) {
             <Btn variant="quiet" size="sm" icon="download" />
             <Btn variant="quiet" size="sm" icon="trash" />
           </div>
-        ))}
+        )}
         <div style={{
           padding: 12, border: "1.5px dashed var(--line)", borderRadius: 8,
           textAlign: "center", color: "var(--muted)", fontSize: 12.5
@@ -100,19 +100,72 @@ function FilesAttach({ files = [] }) {
           Перетащи файлы или <a href="#">выбери</a>
         </div>
       </div>
-    </div>
-  )
+    </div>);
+
 }
 
-// ------ Hotel form (§10) ------
+// ------ Fork picker (§31.1) — both screen AND modal variants demonstrated ------
+function ScreenForkPartner() {
+  return (
+    <div style={{ maxWidth: 720, margin: "40px auto" }}>
+      {/* Demo control */}
+      <div style={{ marginBottom: 22, padding: 14, background: "var(--brand-soft)", border: "1px solid var(--brand-soft-12)", borderRadius: 12, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <Icon name="info" size={16} style={{ color: "var(--brand)" }} />
+        <div style={{ flex: 1, fontSize: 13, color: "var(--ink-2)", minWidth: 200 }}>
+          Эта развилка может быть и <b>отдельным экраном</b> (как сейчас), и более компактной <b>модалкой</b> — попробуй оба варианта.
+        </div>
+        <Btn variant="primary" icon="external" onClick={() => window.__openModal?.(<window.ForkPartnerModal type="hotel" />)}>Открыть как модалку</Btn>
+      </div>
+
+      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: 28, boxShadow: "var(--shadow-card)" }}>
+        <h2 style={{ marginBottom: 6 }}>Как добавить проживание?</h2>
+        <div className="muted" style={{ fontSize: 14, marginBottom: 22 }}>Этот же выбор повторится для переездов, проката авто и eSIM. Решение запоминается.</div>
+
+        <button style={{
+          width: "100%", textAlign: "left", padding: 18, border: "1px solid var(--brand-soft-12)",
+          background: "var(--brand-soft)", borderRadius: 12, cursor: "pointer",
+          display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 12
+        }} onClick={() => window.__navigate?.("hotel-form")}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--brand)", color: "white", display: "grid", placeItems: "center" }}>
+            <Icon name="edit" size={18} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Заполнить руками</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>У меня уже есть бронь — внесу название, даты, цены, контакты сам.</div>
+          </div>
+          <Icon name="chev" size={16} style={{ color: "var(--brand)", marginTop: 12 }} />
+        </button>
+
+        <div className="muted" style={{ fontSize: 12, textAlign: "center", margin: "14px 0" }}>или открыть партнёра</div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+          {[
+          ["Booking.com", "#003580", "booking.com"], ["Airbnb", "#ff385c", "airbnb"], ["Marriott", "#a8945c", "marriott"], ["Agoda", "#fe424d", "agoda"]].
+          map(([n, c, key]) =>
+          <button key={n} style={{
+            padding: 14, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10,
+            display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left"
+          }}>
+              <PartnerLogo url={`https://${key}.com`} size={28} />
+              <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{n}</div>
+              <Icon name="external" size={13} style={{ color: "var(--muted)" }} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>);
+
+}
+
+// ------ Hotel form (§10) with AI-parse states ------
 function ScreenHotelForm() {
-  const [variant] = useState("normal")
-  const ai = variant === "ai-filled"
+  const variant = window.__formVariant || "normal";
+  const ai = variant === "ai-filled";
 
   return (
     <div style={{ maxWidth: 880, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, color: "var(--muted)", fontSize: 13 }}>
-        <Btn variant="quiet" size="sm" icon="back" onClick={() => { window.__triplanioNavigate?.("timeline") }}>К трипу</Btn>
+        <Btn variant="quiet" size="sm" icon="back" onClick={() => window.__navigate?.("timeline")}>К трипу</Btn>
         <span>·</span>
         <span>Лиссабон</span>
         <span>·</span>
@@ -120,14 +173,39 @@ function ScreenHotelForm() {
       </div>
       <h1 style={{ marginBottom: 24 }}>Проживание</h1>
 
-      <div className="ai-card" style={{ padding: 14, background: "linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.06) 100%)", border: "1px dashed var(--ai-soft-12)", borderRadius: 12, marginBottom: 20, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <Icon name="sparkles" size={16} style={{ color: "var(--ai)" }} />
-        <div style={{ flex: 1, fontSize: 13, color: "var(--ink)", minWidth: 220 }}>
-          <b>Дать ИИ заполнить за тебя?</b> Загрузи PDF или скриншот подтверждения — он распознает поля.
+      {variant === "ai-uploading" &&
+      <div className="ai-card" style={{ padding: 18, background: "var(--ai-soft)", border: "1.5px solid var(--ai-soft-12)", borderRadius: 12, marginBottom: 20, display: "flex", alignItems: "center", gap: 14 }}>
+          <Avatar kind="ai" />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }} className="ai-text">ИИ читает подтверждение бронирования…</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>memmo-alfama-confirmation.pdf · 380 KB</div>
+            <div style={{ height: 4, borderRadius: 2, background: "var(--ai-soft-12)", marginTop: 8, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: "55%", background: "linear-gradient(90deg, var(--ai), #c66ce2)" }} />
+            </div>
+          </div>
+          <Btn variant="quiet">Отменить</Btn>
         </div>
-        <Badge variant="warm">Pro</Badge>
-        <Btn variant="ai" icon="upload">Загрузить подтверждение</Btn>
-      </div>
+      }
+      {variant === "ai-filled" &&
+      <div style={{ padding: 16, background: "var(--success-soft)", border: "1.5px solid var(--success)", borderRadius: 12, marginBottom: 20, display: "flex", alignItems: "center", gap: 14 }}>
+          <Avatar kind="ai" />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>ИИ заполнил 8 полей</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>Подсвечены фиолетовым. Изменишь любое — пометка ИИ уйдёт с этого поля.</div>
+          </div>
+          <Btn variant="ghost" icon="refresh">Откатить</Btn>
+        </div>
+      }
+      {variant === "normal" &&
+      <div className="ai-card" style={{ padding: 14, background: "linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.06) 100%)", border: "1px dashed var(--ai-soft-12)", borderRadius: 12, marginBottom: 20, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <Icon name="sparkles" size={16} style={{ color: "var(--ai)" }} />
+          <div style={{ flex: 1, fontSize: 13, color: "var(--ink)", minWidth: 220 }}>
+            <b>Дать ИИ заполнить за тебя?</b> Загрузи PDF или скриншот подтверждения — он распознает поля.
+          </div>
+          <Badge variant="warm">Pro</Badge>
+          <Btn variant="ai" icon="upload">Загрузить подтверждение</Btn>
+        </div>
+      }
 
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, padding: 24 }}>
         <h3 style={{ marginBottom: 14 }}>Об отеле</h3>
@@ -146,7 +224,7 @@ function ScreenHotelForm() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
           <UrlField label="Ссылка на бронирование" defaultValue="https://booking.com/hotel/pt/memmo-alfama" ai={ai} />
-          <Field label="Номер брони" ai={ai}>
+          <Field label="Номер брони" hint="из подтверждения" ai={ai}>
             <input className="input mono" defaultValue="2387491823" />
           </Field>
         </div>
@@ -169,6 +247,7 @@ function ScreenHotelForm() {
           <Field label="Валюта"><select className="select"><option>EUR</option><option>USD</option></select></Field>
           <Field label="Статус оплаты" ai={ai}><select className="select"><option>По прибытии</option><option>Оплачено</option><option>Частично</option></select></Field>
         </div>
+        {/* Free-cancellation as checkbox + conditional date */}
         <FreeCancellationField ai={ai} />
 
         <h3 style={{ marginTop: 24, marginBottom: 14 }}>Контакты и заметки</h3>
@@ -187,16 +266,86 @@ function ScreenHotelForm() {
           На 14 июля у вас уже есть вечерняя активность — заезд 15:00 даёт 6 часов «буфера».
         </Severity>
 
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--line-2)" }}>
-          <Btn variant="ghost" onClick={() => { window.__triplanioNavigate?.("timeline") }}>Отмена</Btn>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--line-2)" }}>
+          <Btn variant="danger" icon="trash" onClick={() => window.__openModal?.(<window.ConfirmDialog kind="destructive" title="Удалить проживание?" body="Запись о проживании будет удалена. Действие нельзя отменить." confirmLabel="Удалить" onConfirm={() => window.__navigate?.("timeline")} />)}>Удалить</Btn>
+          <div style={{ flex: 1 }} />
+          <Btn variant="ghost" onClick={() => window.__navigate?.("timeline")}>Отмена</Btn>
           <Btn variant="primary" icon="check">Сохранить проживание</Btn>
         </div>
       </div>
-    </div>
-  )
+    </div>);
+
 }
 
 // ------ Transfer form (§11) ------
+function ScreenTransferForm() {
+  return (
+    <div style={{ maxWidth: 880, margin: "0 auto" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, color: "var(--muted)", fontSize: 13 }}>
+        <Btn variant="quiet" size="sm" icon="back" onClick={() => window.__navigate?.("timeline")}>К трипу</Btn>
+        <span>·</span><span>Лиссабон → Барселона</span>
+      </div>
+      <h1 style={{ marginBottom: 24 }}>Переезд</h1>
+
+      <div className="ai-card" style={{ padding: 14, background: "linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.06) 100%)", border: "1px dashed var(--ai-soft-12)", borderRadius: 12, marginBottom: 20, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <Icon name="sparkles" size={16} style={{ color: "var(--ai)" }} />
+        <div style={{ flex: 1, fontSize: 13, minWidth: 200 }}>
+          <b>Многосегментный билет?</b> ИИ распознает пересадки и создаст несколько переездов.
+        </div>
+        <Badge variant="warm">Pro</Badge>
+        <Btn variant="ai" icon="upload">Загрузить билет</Btn>
+      </div>
+
+      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, padding: 24 }}>
+        <h3 style={{ marginBottom: 14 }}>Тип транспорта</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 24 }}>
+          {[
+          ["plane", "Самолёт", true], ["train", "Поезд", false], ["bus", "Автобус", false],
+          ["car", "Машина", false], ["ferry", "Паром", false], ["walk", "Пешком", false]].
+          map(([icon, label, sel]) =>
+          <button key={label} style={{
+            padding: "12px 8px", background: sel ? "var(--brand-soft)" : "var(--surface)",
+            border: "1px solid " + (sel ? "var(--brand)" : "var(--line)"),
+            borderRadius: 10, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+            color: sel ? "var(--brand)" : "var(--ink-2)"
+          }}>
+              <Icon name={icon} size={20} />
+              <span style={{ fontSize: 12, fontWeight: 500 }}>{label}</span>
+            </button>
+          )}
+        </div>
+
+        <h3 style={{ marginBottom: 14 }}>Сегменты</h3>
+        <Segment idx={1} from="Lisboa Oriente" to="Madrid Atocha" departDate="16.07" departTime="14:25" arriveDate="16.07" arriveTime="19:40" carrier="Renfe AVE" num="03051" />
+        <Segment idx={2} from="Madrid Atocha" to="Barcelona Sants" departDate="16.07" departTime="20:30" arriveDate="16.07" arriveTime="23:15" carrier="Renfe AVE" num="03127" />
+        <Btn variant="ghost" icon="plus" block style={{ marginTop: 8 }}>Добавить сегмент пересадки</Btn>
+
+        <h3 style={{ marginTop: 24, marginBottom: 14 }}>Финансы и ссылка</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 0.5fr 1fr", gap: 12, marginBottom: 12 }}>
+          <Field label="Цена"><input className="input num" defaultValue="184.00" /></Field>
+          <Field label="Валюта"><select className="select"><option>EUR</option></select></Field>
+          <Field label="Номер брони"><input className="input mono" defaultValue="RW-8AX12" /></Field>
+        </div>
+        <UrlField label="Ссылка на бронирование" defaultValue="https://renfe.com/booking/RW-8AX12" />
+
+        <Severity level="warning" title="Пересадка 50 минут — может быть мало">
+          Между прибытием в Мадрид и отправлением — 50 минут. Если первый поезд опоздает, можно не успеть.
+        </Severity>
+
+        <hr className="hr" style={{ margin: "20px 0" }} />
+        <FilesAttach files={[{ name: "renfe-ticket-RW-8AX12.pdf", size: "210 KB" }]} />
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--line-2)" }}>
+          <Btn variant="danger" icon="trash" onClick={() => window.__openModal?.(<window.ConfirmDialog kind="destructive" title="Удалить переезд?" body="Запись о переезде будет удалена. Действие нельзя отменить." confirmLabel="Удалить" onConfirm={() => window.__navigate?.("timeline")} />)}>Удалить</Btn>
+          <div style={{ flex: 1 }} />
+          <Btn variant="ghost" onClick={() => window.__navigate?.("timeline")}>Отмена</Btn>
+          <Btn variant="primary" icon="check">Сохранить переезд</Btn>
+        </div>
+      </div>
+    </div>);
+
+}
+
 function Segment({ idx, from, to, departDate, departTime, arriveDate, arriveTime, carrier, num }) {
   return (
     <div style={{ padding: 14, border: "1px solid var(--line-2)", borderRadius: 12, marginBottom: 8 }}>
@@ -223,74 +372,8 @@ function Segment({ idx, from, to, departDate, departTime, arriveDate, arriveTime
           </div>
         </div>
       </div>
-    </div>
-  )
-}
+    </div>);
 
-function ScreenTransferForm() {
-  return (
-    <div style={{ maxWidth: 880, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, color: "var(--muted)", fontSize: 13 }}>
-        <Btn variant="quiet" size="sm" icon="back" onClick={() => { window.__triplanioNavigate?.("timeline") }}>К трипу</Btn>
-        <span>·</span><span>Лиссабон → Барселона</span>
-      </div>
-      <h1 style={{ marginBottom: 24 }}>Переезд</h1>
-
-      <div className="ai-card" style={{ padding: 14, background: "linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.06) 100%)", border: "1px dashed var(--ai-soft-12)", borderRadius: 12, marginBottom: 20, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <Icon name="sparkles" size={16} style={{ color: "var(--ai)" }} />
-        <div style={{ flex: 1, fontSize: 13, minWidth: 200 }}>
-          <b>Многосегментный билет?</b> ИИ распознает пересадки и создаст несколько переездов.
-        </div>
-        <Badge variant="warm">Pro</Badge>
-        <Btn variant="ai" icon="upload">Загрузить билет</Btn>
-      </div>
-
-      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, padding: 24 }}>
-        <h3 style={{ marginBottom: 14 }}>Тип транспорта</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 24 }}>
-          {[
-            ["plane", "Самолёт", true], ["train", "Поезд", false], ["bus", "Автобус", false],
-            ["car", "Машина", false], ["ferry", "Паром", false], ["walk", "Пешком", false]
-          ].map(([icon, label, sel]) => (
-            <button key={label} style={{
-              padding: "12px 8px", background: sel ? "var(--brand-soft)" : "var(--surface)",
-              border: "1px solid " + (sel ? "var(--brand)" : "var(--line)"),
-              borderRadius: 10, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-              color: sel ? "var(--brand)" : "var(--ink-2)"
-            }}>
-              <Icon name={icon} size={20} />
-              <span style={{ fontSize: 12, fontWeight: 500 }}>{label}</span>
-            </button>
-          ))}
-        </div>
-
-        <h3 style={{ marginBottom: 14 }}>Сегменты</h3>
-        <Segment idx={1} from="Lisboa Oriente" to="Madrid Atocha" departDate="16.07" departTime="14:25" arriveDate="16.07" arriveTime="19:40" carrier="Renfe AVE" num="03051" />
-        <Segment idx={2} from="Madrid Atocha" to="Barcelona Sants" departDate="16.07" departTime="20:30" arriveDate="16.07" arriveTime="23:15" carrier="Renfe AVE" num="03127" />
-        <Btn variant="ghost" icon="plus" block style={{ marginTop: 8 }}>Добавить сегмент пересадки</Btn>
-
-        <h3 style={{ marginTop: 24, marginBottom: 14 }}>Финансы и ссылка</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 0.5fr 1fr", gap: 12, marginBottom: 12 }}>
-          <Field label="Цена"><input className="input num" defaultValue="184.00" /></Field>
-          <Field label="Валюта"><select className="select"><option>EUR</option></select></Field>
-          <Field label="Номер брони"><input className="input mono" defaultValue="RW-8AX12" /></Field>
-        </div>
-        <UrlField label="Ссылка на бронирование" defaultValue="https://renfe.com/booking/RW-8AX12" />
-
-        <Severity level="warning" title="Пересадка 50 минут — может быть мало">
-          Между прибытием в Мадрид и отправлением — 50 минут. Если первый поезд опоздает, можно не успеть.
-        </Severity>
-
-        <hr className="hr" style={{ margin: "20px 0" }} />
-        <FilesAttach files={[{ name: "renfe-ticket-RW-8AX12.pdf", size: "210 KB" }]} />
-
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--line-2)" }}>
-          <Btn variant="ghost" onClick={() => { window.__triplanioNavigate?.("timeline") }}>Отмена</Btn>
-          <Btn variant="primary" icon="check">Сохранить переезд</Btn>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // ------ Activity form (§12) ------
@@ -298,7 +381,7 @@ function ScreenActivityForm() {
   return (
     <div style={{ maxWidth: 760, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, color: "var(--muted)", fontSize: 13 }}>
-        <Btn variant="quiet" size="sm" icon="back" onClick={() => { window.__triplanioNavigate?.("timeline") }}>К трипу</Btn>
+        <Btn variant="quiet" size="sm" icon="back" onClick={() => window.__navigate?.("timeline")}>К трипу</Btn>
         <span>·</span><span>Барселона</span><span>·</span><span>Новая активность</span>
       </div>
       <h1 style={{ marginBottom: 24 }}>Активность</h1>
@@ -326,7 +409,7 @@ function ScreenActivityForm() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 0.5fr 1fr", gap: 12 }}>
           <Field label="Цена"><input className="input num" defaultValue="33.00" /></Field>
           <Field label="Валюта"><select className="select"><option>EUR</option></select></Field>
-          <Field label="Номер брони / тикета"><input className="input mono" defaultValue="SF-2026-77143" /></Field>
+          <Field label="Номер брони / тикета" hint="опц."><input className="input mono" defaultValue="SF-2026-77143" /></Field>
         </div>
 
         <UrlField label="Ссылка на билет" defaultValue="https://sagradafamilia.org/buy" />
@@ -338,97 +421,21 @@ function ScreenActivityForm() {
         <hr className="hr" />
         <FilesAttach files={[{ name: "sagrada-ticket.pdf", size: "78 KB" }]} />
 
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid var(--line-2)" }}>
-          <Btn variant="ghost" onClick={() => { window.__triplanioNavigate?.("timeline") }}>Отмена</Btn>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", paddingTop: 8, borderTop: "1px solid var(--line-2)" }}>
+          <Btn variant="danger" icon="trash" onClick={() => window.__openModal?.(<window.ConfirmDialog kind="destructive" title="Удалить активность?" body="Запись об активности будет удалена. Действие нельзя отменить." confirmLabel="Удалить" onConfirm={() => window.__navigate?.("timeline")} />)}>Удалить</Btn>
+          <div style={{ flex: 1 }} />
+          <Btn variant="ghost" onClick={() => window.__navigate?.("timeline")}>Отмена</Btn>
           <Btn variant="primary" icon="check">Сохранить активность</Btn>
         </div>
       </div>
-    </div>
-  )
+    </div>);
+
 }
 
-// ------ Fork picker (§31.1) ------
-function ScreenForkPartner() {
-  return (
-    <div style={{ maxWidth: 720, margin: "40px auto" }}>
-      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: 28, boxShadow: "var(--shadow-card)" }}>
-        <h2 style={{ marginBottom: 6 }}>Как добавить проживание?</h2>
-        <div className="muted" style={{ fontSize: 14, marginBottom: 22 }}>Этот же выбор повторится для переездов, проката авто и eSIM. Решение запоминается.</div>
-
-        <button style={{
-          width: "100%", textAlign: "left", padding: 18, border: "1px solid var(--brand-soft-12)",
-          background: "var(--brand-soft)", borderRadius: 12, cursor: "pointer",
-          display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 12
-        }} onClick={() => { window.__triplanioNavigate?.("hotel-form") }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--brand)", color: "white", display: "grid", placeItems: "center" }}>
-            <Icon name="edit" size={18} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Заполнить руками</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>У меня уже есть бронь — внесу название, даты, цены, контакты сам.</div>
-          </div>
-          <Icon name="chev" size={16} style={{ color: "var(--brand)", marginTop: 12 }} />
-        </button>
-
-        <div className="muted" style={{ fontSize: 12, textAlign: "center", margin: "14px 0" }}>или открыть партнёра</div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
-          {[
-            ["Booking.com", "#003580", "booking.com"],
-            ["Airbnb", "#ff385c", "airbnb"],
-            ["Marriott", "#a8945c", "marriott"],
-            ["Agoda", "#fe424d", "agoda"]
-          ].map(([n, c, key]) => (
-            <button key={n} style={{
-              padding: 14, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10,
-              display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left"
-            }}>
-              <div style={{ width: 28, height: 28, borderRadius: 6, background: c, display: "grid", placeItems: "center" }}>
-                <Icon name="external" size={14} style={{ color: "white" }} />
-              </div>
-              <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{n}</div>
-              <Icon name="external" size={13} style={{ color: "var(--muted)" }} />
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ---------- Main export with tab switcher ----------
-const TABS = [
-  { key: "hotel", label: "Отель" },
-  { key: "transfer", label: "Переезд" },
-  { key: "activity", label: "Активность" },
-  { key: "fork", label: "Выбор способа" },
-]
-
+// Wrapper for DesignPreview — renders the hotel form by default
 function ScreenForms() {
-  const [activeTab, setActiveTab] = useState("hotel")
-
-  return (
-    <div>
-      {/* Tab switcher */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 28, borderBottom: "1px solid var(--line-2)", paddingBottom: 0 }}>
-        {TABS.map((t) => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
-            padding: "8px 16px", border: "none", background: "transparent",
-            borderBottom: activeTab === t.key ? "2px solid var(--brand)" : "2px solid transparent",
-            marginBottom: -1,
-            fontSize: 13.5, fontWeight: activeTab === t.key ? 600 : 400,
-            color: activeTab === t.key ? "var(--brand)" : "var(--ink-2)",
-            cursor: "pointer",
-          }}>{t.label}</button>
-        ))}
-      </div>
-
-      {activeTab === "hotel" && <ScreenHotelForm />}
-      {activeTab === "transfer" && <ScreenTransferForm />}
-      {activeTab === "activity" && <ScreenActivityForm />}
-      {activeTab === "fork" && <ScreenForkPartner />}
-    </div>
-  )
+  return <ScreenHotelForm />;
 }
 
-export default ScreenForms
+export { ScreenForkPartner, ScreenHotelForm, ScreenTransferForm, ScreenActivityForm };
+export default ScreenForms;

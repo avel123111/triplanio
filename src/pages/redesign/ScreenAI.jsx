@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
-import { Icon } from '../../design/icons'
-import { Avatar, Btn, Badge, BookingSuggestionCard, TRIP } from '../../design/index'
+import React, { useState, useEffect, useRef } from 'react';
+import { Icon } from '../../design/icons';
+import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
+         fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
 
 // =====================================================================
 // PERSONAL AI ASSISTANT — §22 — 3 variants
@@ -20,7 +22,7 @@ const AI_CONV = [
     ],
     note: "Цены и времена ориентировочные — после применения ты сможешь поправить любую деталь."
   },
-]
+];
 
 const HINTS = [
   "Сделай день в Барселоне свободнее, перенеси Sagrada на вторник",
@@ -28,7 +30,7 @@ const HINTS = [
   "Раздели перелёт с пересадкой в Стамбуле",
   "Найди свободные дни без активностей",
   "Удали все вечерние активности — мы будем на ужинах",
-]
+];
 
 function AiProposalCard({ proposal, applied, onApply, onCancel, onTogglePick, picked }) {
   return (
@@ -82,7 +84,7 @@ function AiProposalCard({ proposal, applied, onApply, onCancel, onTogglePick, pi
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function ConversationBody({ applied, setApplied, picked, setPicked, compact }) {
@@ -96,7 +98,7 @@ function ConversationBody({ applied, setApplied, picked, setPicked, compact }) {
               fontSize: 13.5, borderRadius: 14, borderBottomRightRadius: 4, maxWidth: "75%",
             }}>{m.text}</div>
           </div>
-        )
+        );
         if (m.who === "ai") return (
           <div key={i} style={{ display: "flex", gap: 10 }}>
             <Avatar kind="ai" />
@@ -105,37 +107,35 @@ function ConversationBody({ applied, setApplied, picked, setPicked, compact }) {
               fontSize: 13.5, borderRadius: 14, borderBottomLeftRadius: 4, maxWidth: "75%", lineHeight: 1.5,
             }}>{m.text}</div>
           </div>
-        )
+        );
         if (m.who === "ai-proposal") return (
           <div key={i} style={{ display: "flex", gap: 10 }}>
             <Avatar kind="ai" />
             <div style={{ flex: 1, maxWidth: 720 }}>
               <AiProposalCard proposal={m} applied={applied} picked={picked}
-                onTogglePick={(idx) => { const p = [...picked]; p[idx] = !p[idx]; setPicked(p) }}
+                onTogglePick={(idx) => { const p = [...picked]; p[idx] = !p[idx]; setPicked(p); }}
                 onApply={() => setApplied(true)}
-                onCancel={() => { setPicked(picked.map(() => false)) }}
+                onCancel={() => { setPicked(picked.map(() => false)); }}
               />
             </div>
           </div>
-        )
-        return null
+        );
+        return null;
       })}
       {applied && (
         <div style={{ display: "flex", gap: 10 }}>
           <Avatar kind="ai" />
           <div style={{ padding: "9px 14px", background: "var(--success-soft)", color: "var(--ink)", fontSize: 13.5, borderRadius: 14, borderBottomLeftRadius: 4, maxWidth: "75%" }}>
-            Готово. Применил 3 изменения.{" "}
-            <a href="#" onClick={() => { window.__triplanioNavigate?.("timeline") }}>Открыть хронологию</a>{" "}
-            — посмотришь, как теперь выглядит трип.
+            Готово. Применил 3 изменения. <a href="#" onClick={() => window.__navigate?.("timeline")}>Открыть хронологию</a> — посмотришь, как теперь выглядит трип.
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function AiComposer({ size = "default" }) {
-  const [val, setVal] = useState("")
+  const [val, setVal] = useState("");
   return (
     <div style={{ borderTop: "1px solid var(--line-2)", padding: 14, background: "var(--surface)" }}>
       <div style={{ position: "relative" }}>
@@ -158,13 +158,13 @@ function AiComposer({ size = "default" }) {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 // ---- VARIANT A: Chat + live trip preview ----
 function VariantPreview() {
-  const [applied, setApplied] = useState(false)
-  const [picked, setPicked] = useState([true, true, true])
+  const [applied, setApplied] = useState(false);
+  const [picked, setPicked] = useState([true, true, true]);
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 20, height: "calc(100vh - 240px)", minHeight: 600 }}>
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -210,13 +210,13 @@ function VariantPreview() {
         </div>
       </aside>
     </div>
-  )
+  );
 }
 
 // ---- VARIANT B: Full-screen chat ----
 function VariantFull() {
-  const [applied, setApplied] = useState(false)
-  const [picked, setPicked] = useState([true, true, true])
+  const [applied, setApplied] = useState(false);
+  const [picked, setPicked] = useState([true, true, true]);
   return (
     <div style={{
       background: "var(--surface)", border: "1px solid var(--line)",
@@ -237,13 +237,13 @@ function VariantFull() {
       </div>
       <AiComposer size="lg" />
     </div>
-  )
+  );
 }
 
 // ---- VARIANT C: Sidesheet (chat docked to side, trip visible) ----
 function VariantSidesheet() {
-  const [applied, setApplied] = useState(false)
-  const [picked, setPicked] = useState([true, true, true])
+  const [applied, setApplied] = useState(false);
+  const [picked, setPicked] = useState([true, true, true]);
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 0, height: "calc(100vh - 240px)", minHeight: 600 }}>
       <div style={{ paddingRight: 20, overflow: "auto" }} className="scrollbar-thin">
@@ -295,7 +295,20 @@ function VariantSidesheet() {
         <AiComposer />
       </aside>
     </div>
-  )
+  );
+}
+
+function ScreenAi() {
+  const v = window.__aiVariant || "A";
+  return (
+    <>
+      <TripIdentityStrip compact />
+      {v === "A" && <VariantPreview />}
+      {v === "B" && <VariantFull />}
+      {v === "C" && <VariantSidesheet />}
+      {v === "D" && <VariantNoChanges />}
+    </>
+  );
 }
 
 // ---- VARIANT D: Conversational chat without proposed changes ----
@@ -358,23 +371,7 @@ function VariantNoChanges() {
       </div>
       <AiComposer size="lg" />
     </div>
-  )
+  );
 }
 
-function ScreenAI() {
-  const [variant, setVariant] = useState("A")
-  return (
-    <>
-      <div style={{ marginBottom: 22, paddingBottom: 16, borderBottom: "1px solid var(--line-2)", display: "flex", alignItems: "center", gap: 10 }}>
-        <h2 style={{ flex: 1 }}>{TRIP.title}</h2>
-        <span style={{ fontSize: 12, color: "var(--muted)" }}>12 июл → 23 июл · 2026</span>
-      </div>
-      {variant === "A" && <VariantPreview />}
-      {variant === "B" && <VariantFull />}
-      {variant === "C" && <VariantSidesheet />}
-      {variant === "D" && <VariantNoChanges />}
-    </>
-  )
-}
-
-export default ScreenAI
+export default ScreenAi;

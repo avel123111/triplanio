@@ -1,0 +1,192 @@
+/**
+ * createStripeCheckout
+ *
+ * POST body: { tripId?, planType: 'pro_trip'|'pro_monthly'|'pro_yearly', returnPath?, locale? }
+ *
+ * Security:
+ * - pro_trip: validates trip ownership (created_by === caller email)
+ * - pro_monthly/pro_yearly: blocks duplicate active subscription
+ * - Race-condition guard: rejects if a recent Stripe session is in flight
+ * - Origin validation: only PUBLIC_APP_URL (or STRIPE_TEST_ORIGIN) allowed
+ *
+ * Migrated from base44: replaced base44 SDK entity calls with Supabase queries.
+ */
+
+import { corsHeaders } from '../_shared/cors.ts';
+import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import Stripe from 'npm:stripe@17.0.0';
+
+const VALID_PLANS = ['pro_trip', 'pro_monthly', 'pro_yearly'] as const;
+type PlanType = typeof VALID_PLANS[number];
+
+const LIVE_PRODUCTS: Record<PlanType, string> = {
+  pro_trip: 'prod_UYfZZsZnknkxDj',
+  pro_monthly: 'prod_UYfZf8WvFNE3cI',
+  pro_yearly: 'prod_UYfZBYzOWrKiLu',
+};
+const TEST_PRODUCTS: Record<PlanType, string> = {
+  pro_trip: 'prod_UZnCx7GA3YlLJd',
+  pro_monthly: 'prod_UZnBPOlJL0xmue',
+  pro_yearly: 'prod_UZnBUDGL1PuyEN',
+};
+
+const SUPPORTED_LOCALES = new Set([
+  'auto','bg','cs','da','de','el','en','en-GB','es','es-419','et','fi','fil',
+  'fr','fr-CA','hr','hu','id','it','ja','ko','lt','lv','ms','mt','nb','nl',
+  'pl','pt','pt-BR','ro','ru','sk','sl','sv','th','tr','vi','zh','zh-HK','zh-TW',
+]);
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  try {
+    const user = await getRequestUser(req);
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+
+    const { tripId, planType, returnPath, locale } = await req.json();
+
+    if (!VALID_PLANS.includes(planType)) {
+      return Response.json({ error: 'Invalid plan type' }, { status: 400, headers: corsHeaders });
+    }
+
+    // ---------- Origin validation + Stripe env routing ----------
+    const prodAppUrl = (Deno.env.get('PUBLIC_APP_URL') || '').replace(/\/+$/, '');
+    if (!prodAppUrl) {
+      console.error('PUBLIC_APP_URL not configured');
+      return Response.json({ error: 'Server misconfigured: PUBLIC_APP_URL missing' }, { status: 500, headers: corsHeaders });
+    }
+    const testOrigin = (Deno.env.get('STRIPE_TEST_ORIGIN') || '').replace(/\/+$/, '');
+    const reqOrigin = (req.headers.get('origin') || '').replace(/\/+$/, '');
+    const isTestEnv = !!(testOrigin && reqOrigin === testOrigin);
+    const publicAppUrl = isTestEnv ? testOrigin : prodAppUrl;
+
+    if (reqOrigin && reqOrigin !== prodAppUrl && (!testOrigin || reqOrigin !== testOrigin)) {
+      console.error('Origin mismatch:', reqOrigin, 'vs', prodAppUrl);
+      return Response.json({ error: 'Origin not allowed' }, { status: 400, headers: corsHeaders });
+    }
+    console.log('Stripe checkout env:', isTestEnv ? 'TEST' : 'LIVE', 'origin:', reqOrigin);
+
+    // ---------- Per-trip Pro: validate trip ownership ----------
+    if (planType === 'pro_trip') {
+      if (!tripId) {
+        return Response.json({ error: 'tripId required for pro_trip' }, { status: 400, headers: corsHeaders });
+      }
+      const { data: trip } = await supabaseAdmin
+        .from('trips')
+        .select('id, created_by, is_pro_trip')
+        .eq('id', tripId)
+        .single();
+      if (!trip) {
+        return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
+      }
+      if (trip.created_by !== user.email) {
+        return Response.json({ error: 'Only the trip owner can buy Pro for this trip' }, { status: 403, headers: corsHeaders });
+      }
+      if (trip.is_pro_trip) {
+        return Response.json({ error: 'This trip is already Pro', code: 'TRIP_ALREADY_PRO' }, { status: 409, headers: corsHeaders });
+      }
+    }
+
+    // ---------- Recurring: block duplicate active subscription ----------
+    if (planType === 'pro_monthly' || planType === 'pro_yearly') {
+      const { data: subs } = await supabaseAdmin
+        .from('trip_subscriptions')
+        .select('type, status, end_date')
+        .eq('user_email', user.email!);
+
+      const now = Date.now();
+      const hasActiveRecurring = (subs ?? []).some((s) =>
+        (s.type === 'pro_monthly' || s.type === 'pro_yearly') &&
+        s.status === 'active' &&
+        s.end_date && new Date(s.end_date).getTime() > now
+      );
+      if (hasActiveRecurring) {
+        return Response.json({
+          error: 'You already have an active subscription. Use the billing portal to change plans.',
+          code: 'SUBSCRIPTION_ALREADY_ACTIVE',
+        }, { status: 409, headers: corsHeaders });
+      }
+    }
+
+    const stripeKey = isTestEnv
+      ? Deno.env.get('STRIPE_TEST_SECRET_KEY')
+      : Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeKey) {
+      console.error('Stripe secret key missing for env:', isTestEnv ? 'TEST' : 'LIVE');
+      return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
+    }
+    const stripe = new Stripe(stripeKey);
+
+    // ---------- Race-condition guard: recent checkout in flight ----------
+    if (planType === 'pro_monthly' || planType === 'pro_yearly') {
+      try {
+        const fifteenMinAgo = Math.floor(Date.now() / 1000) - 15 * 60;
+        const recent = await stripe.checkout.sessions.list({
+          limit: 10,
+          created: { gte: fifteenMinAgo },
+          customer_details: { email: user.email! },
+        }).catch(() => null);
+        const sessions = recent?.data || [];
+        const inFlight = sessions.find((s) =>
+          s.mode === 'subscription' &&
+          s.customer_email === user.email &&
+          (s.status === 'complete' || s.status === 'open')
+        );
+        if (inFlight) {
+          console.log('Recent checkout in flight for', user.email, '->', inFlight.id, inFlight.status);
+          return Response.json({
+            error: 'A recent payment is still being processed. Please wait a moment and refresh.',
+            code: 'RECENT_CHECKOUT_PENDING',
+          }, { status: 409, headers: corsHeaders });
+        }
+      } catch (e) {
+        console.error('Recent-checkout lookup failed (non-fatal):', (e as Error).message);
+      }
+    }
+
+    // Resolve active price via product.default_price
+    const productMap = isTestEnv ? TEST_PRODUCTS : LIVE_PRODUCTS;
+    const productId = productMap[planType as PlanType];
+    const product = await stripe.products.retrieve(productId, { expand: ['default_price'] });
+    let price = product.default_price;
+    if (!price || typeof price === 'string') {
+      const list = await stripe.prices.list({ product: productId, active: true, limit: 1 });
+      price = list.data[0];
+    }
+    if (!price) {
+      return Response.json({ error: `No active price for ${planType}` }, { status: 500, headers: corsHeaders });
+    }
+
+    const mode = planType === 'pro_trip' ? 'payment' : 'subscription';
+    const safeReturn = (returnPath && returnPath.startsWith('/')) ? returnPath : '/';
+    const sep = safeReturn.includes('?') ? '&' : '?';
+    const stripeLocale = SUPPORTED_LOCALES.has(locale) ? locale : 'auto';
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{ price: (price as Stripe.Price).id, quantity: 1 }],
+      mode,
+      locale: stripeLocale,
+      success_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=cancel`,
+      client_reference_id: user.id,
+      customer_email: user.email!,
+      metadata: {
+        user_id: user.id,
+        user_email: user.email!,
+        trip_id: tripId || '',
+        plan_type: planType,
+        return_path: safeReturn,
+      },
+    });
+
+    return Response.json({ url: session.url }, { headers: corsHeaders });
+
+  } catch (error) {
+    console.error('Stripe checkout error:', error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : 'Internal error' },
+      { status: 500, headers: corsHeaders },
+    );
+  }
+});

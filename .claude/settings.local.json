@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx --no-install vite build)",
+      "Bash(timeout 180 npx vite build)",
+      "Bash(npx vite *)",
+      "Bash(echo \"exit=$?\")",
+      "Read(//tmp/**)"
+    ]
+  }
+}

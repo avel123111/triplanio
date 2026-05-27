@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Avatar, Toggle, Card, Severity, Btn, Badge, Dialog, TRIP } from '../../design/index';
+import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
+         fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
 
 // =====================================================================
 // TRIP SETTINGS (§29) — icons next to features, Pro-locked, Telegram multi-account
@@ -10,7 +12,7 @@ const FEATURES = [
   { id: "cal", icon: "calendar", color: "var(--brand)", label: "Календарь",
     desc: "Те же события на сетке месяца/недели", pro: true },
   { id: "budget", icon: "wallet", color: "var(--success)", label: "Полная разбивка бюджета",
-    desc: "Категории, ручные расходы, FX-override'ы", pro: true },
+    desc: "Категории, ручные расходы, FX-override’ы", pro: true },
   { id: "chat", icon: "chat", color: "var(--ai)", label: "Групповой чат",
     desc: "Сообщения, упоминания, @assistant" },
   { id: "hotels", icon: "vote", color: "var(--warm)", label: "Совместный выбор отелей",
@@ -23,18 +25,16 @@ const FEATURES = [
     desc: "Скоро · отдельный модуль для коллекции файлов", locked: true },
 ];
 
-function ScreenSettings() {
+function ScreenTripSettings() {
   const [states, setStates] = useState({ cal: true, budget: true, chat: true, hotels: true, tg: true, ai: true, docs: false });
   const [cur, setCur] = useState("EUR");
-
-  // Hardcoded Pro flags
-  const userHasSub = true;
-  const tripIsPro = true;
+  const userHasSub = window.__userHasSub ?? true;
+  const tripIsPro = window.__tripIsPro ?? true;
   const hasPro = userHasSub || tripIsPro;
 
   const toggle = (id, pro) => {
     if (pro && !hasPro) {
-      // noop — no ProLockedDialog
+      window.__openModal?.(<ProLockedDialog feature={FEATURES.find(f => f.id === id)?.label} />);
       return;
     }
     setStates(s => ({ ...s, [id]: !s[id] }));
@@ -42,10 +42,7 @@ function ScreenSettings() {
 
   return (
     <>
-      <div style={{marginBottom: 22, paddingBottom: 16, borderBottom: "1px solid var(--line-2)", display:"flex", alignItems:"center", gap:10}}>
-        <h2 style={{flex:1}}>{TRIP.title}</h2>
-        <span style={{fontSize:12, color:"var(--muted)"}}>12 июл → 23 июл · 2026</span>
-      </div>
+      <TripIdentityStrip compact />
       <div style={{ maxWidth: 720 }}>
         <h2 style={{ marginBottom: 18 }}>Настройки трипа</h2>
 
@@ -84,7 +81,7 @@ function ScreenSettings() {
             <ApproverRow name="Анна Лебедева" role="Владелец" locked />
             <ApproverRow name="Игорь Мейзинский" role="Админ" locked />
             <ApproverRow name="Миша Петров" role="Админ" locked />
-            <ApproverRow name="Лена Краснова" role="Зритель" toggleable />
+            <ApproverRow name="Лена Краснова" role="Зритель" toggle />
           </div>
         </Card>
 
@@ -148,7 +145,7 @@ function TelegramConnectDialog() {
   const [stage, setStage] = useState("idle");
   const [countdown, setCountdown] = useState(600); // 10 minutes
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (stage !== "connecting") return;
     const id = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
     return () => clearInterval(id);
@@ -159,7 +156,7 @@ function TelegramConnectDialog() {
   return (
     <Dialog title="Привязать Telegram" icon="telegram" size=""
       foot={<>
-        <Btn variant="ghost" onClick={() => {}}>Закрыть</Btn>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Закрыть</Btn>
       </>}>
 
       <div className="muted" style={{ fontSize: 13, lineHeight: 1.55, marginBottom: 16 }}>
@@ -270,7 +267,7 @@ function TelegramConnectDialog() {
             Уведомления для этого трипа теперь будут приходить в Telegram. Настройте, какие именно — в карточке «Telegram-мост».
           </div>
 
-          <Btn variant="primary" icon="check" block onClick={() => {}}>Готово</Btn>
+          <Btn variant="primary" icon="check" block onClick={() => window.__closeModal?.()}>Готово</Btn>
         </>
       )}
     </Dialog>
@@ -296,7 +293,7 @@ function TelegramSection() {
         <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 12 }}>
           Привяжи аккаунт, чтобы получать уведомления о заселениях и переездах.
         </div>
-        <Btn variant="primary" icon="telegram" onClick={() => {}}>Привязать Telegram</Btn>
+        <Btn variant="primary" icon="telegram" onClick={() => window.__openModal?.(<TelegramConnectDialog />)}>Привязать Telegram</Btn>
       </div>
     );
   }
@@ -328,7 +325,7 @@ function TelegramSection() {
         ))}
       </div>
 
-      <Btn variant="ghost" icon="plus" onClick={() => {}}>
+      <Btn variant="ghost" icon="plus" onClick={() => window.__openModal?.(<TelegramConnectDialog />)}>
         Привязать ещё один Telegram-аккаунт
       </Btn>
 
@@ -357,7 +354,7 @@ function TelegramSection() {
   );
 }
 
-function ApproverRow({ name, role, locked, toggleable }) {
+function ApproverRow({ name, role, locked, toggle }) {
   const [on, setOn] = useState(false);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -371,4 +368,4 @@ function ApproverRow({ name, role, locked, toggleable }) {
   );
 }
 
-export default ScreenSettings;
+export default ScreenTripSettings;

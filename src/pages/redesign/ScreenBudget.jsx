@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Btn, Badge, Card, Severity, fmt, TRIP } from '../../design/index';
+import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
+         fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
 
 // =====================================================================
 // TRIP BUDGET — full breakdown (§16)
@@ -63,10 +65,7 @@ function ScreenBudget() {
 
   return (
     <>
-      <div style={{marginBottom: 22, paddingBottom: 16, borderBottom: "1px solid var(--line-2)", display:"flex", alignItems:"center", gap:10}}>
-        <h2 style={{flex:1}}>{TRIP.title}</h2>
-        <span style={{fontSize:12, color:"var(--muted)"}}>12 июл → 23 июл · 2026</span>
-      </div>
+      <TripIdentityStrip compact />
 
       {/* Top summary */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 22 }}>
@@ -91,12 +90,12 @@ function ScreenBudget() {
             1 USD ≈ 1.08 EUR<br />
             1 RUB ≈ 94 EUR
           </div>
-          <Btn variant="ghost" size="sm" icon="edit" style={{ marginTop: 8 }} onClick={() => {}}>Изменить курсы</Btn>
+          <Btn variant="ghost" size="sm" icon="edit" style={{ marginTop: 8 }} onClick={() => window.__openModal?.(<FxRatesDialog />)}>Изменить курсы</Btn>
         </Card>
       </div>
 
       <Severity level="warning" title="Курсы для TRY не получены">
-        Две траты в TRY не пересчитаны и не включены в итог. <a href="#" onClick={(e) => e.preventDefault()} style={{ fontWeight: 500 }}>Поставить курс вручную</a>
+        Две траты в TRY не пересчитаны и не включены в итог. <a href="#" onClick={(e) => {e.preventDefault();window.__openModal?.(<FxRatesDialog />);}} style={{ fontWeight: 500 }}>Поставить курс вручную</a>
       </Severity>
 
       {/* Grouping switcher */}
@@ -106,8 +105,8 @@ function ScreenBudget() {
           <button className={grouping === "city" ? "active" : ""} onClick={() => setGrouping("city")}>По городам</button>
         </div>
         <div style={{ flex: 1 }} />
-        {grouping === "category" && <Btn variant="ghost" size="sm" icon="plus" onClick={() => {}}>Категория</Btn>}
-        <Btn variant="primary" size="sm" icon="plus" onClick={() => {}}>Ручная трата</Btn>
+        {grouping === "category" && <Btn variant="ghost" size="sm" icon="plus" onClick={() => window.__openModal?.(<CategoryDialog />)}>Категория</Btn>}
+        <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__openModal?.(<window.AddExpenseDialog />)}>Ручная трата</Btn>
       </div>
 
       {grouping === "category" ?
@@ -151,7 +150,7 @@ function ScreenBudget() {
                 <div className="muted num" style={{ fontSize: 12 }}>{fmt(cat.spent, TRIP_CUR)} из {fmt(cat.planned, TRIP_CUR)}</div>
               </div>
               {!cat.system &&
-            <Btn variant="ghost" size="sm" icon="edit" onClick={() => {}}>Изменить</Btn>
+            <Btn variant="ghost" size="sm" icon="edit" onClick={() => window.__openModal?.(<CategoryDialog existing={cat} />)}>Изменить</Btn>
             }
             </div>
 
@@ -217,7 +216,7 @@ function CityGrouping({ cityGroups }) {
             <h3 style={{ marginBottom: 2 }}>{cur.city}</h3>
             <div className="muted num" style={{ fontSize: 12 }}>{cur.items.length} {cur.items.length === 1 ? "трата" : "трат"} · итого {fmt(cur.total, "EUR")}</div>
           </div>
-          <Btn variant="ghost" size="sm" icon="plus" onClick={() => {}}>Трата</Btn>
+          <Btn variant="ghost" size="sm" icon="plus" onClick={() => window.__openModal?.(<window.AddExpenseDialog />)}>Трата</Btn>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -251,10 +250,12 @@ function ExpenseRow({ it, catColor, catName, catIcon, showCategory }) {
       </div>
       {it.source === "manual" ?
       <Btn variant="quiet" size="sm" icon="edit" /> :
+
       <Badge variant="quiet" icon="link" style={{ fontSize: 10 }}>авто</Badge>
       }
       <div className="num" style={{ fontWeight: 600, fontSize: 13.5, minWidth: 64, textAlign: "right" }}>{fmt(it.amount, TRIP_CUR)}</div>
     </div>);
+
 }
 
 export default ScreenBudget;

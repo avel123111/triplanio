@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Btn, Avatar, Badge, Card, Severity, fmt } from '../../design/index';
+import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
+         fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
 
 // =====================================================================
 // INBOX (§27) — notifications center
@@ -76,7 +78,7 @@ function NotifRow({ n, last }) {
         <div style={{ fontSize: 13.5, lineHeight: 1.45 }}>
           {n.who && <><b>{n.who}</b> </>}
           {n.type === "invite" && <span>пригласил в трип <a href="#"><b>{n.trip}</b></a></span>}
-          {n.type === "vote-new" && <span>{n.text} в <a href="#" onClick={() => window.__triplanioNavigate?.("hotels")}><b>{n.trip}</b></a></span>}
+          {n.type === "vote-new" && <span>{n.text} в <a href="#" onClick={() => window.__navigate?.("hotels")}><b>{n.trip}</b></a></span>}
           {n.type === "vote-final" && <span>{n.text} в <a href="#"><b>{n.trip}</b></a></span>}
           {n.type === "vote-approved" && <span>{n.text} в <a href="#"><b>{n.trip}</b></a></span>}
           {n.type === "update" && <span>{n.text} в <a href="#"><b>{n.trip}</b></a></span>}

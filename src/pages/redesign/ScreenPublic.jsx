@@ -1,74 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
-import { Btn, Badge, Avatar, AvatarStack, TRIP, fmt } from '../../design/index';
+import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
+         fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
+         WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
 
 // =====================================================================
 // PUBLIC READ-ONLY TRIP (§19) — same chronological timeline, no CTAs
 // =====================================================================
 
-// --- Local stubs for data/helpers not yet in design system ---
-const STREAM = TRIP.stream || [];
-
-function fmtDate(d) {
-  if (!d) return "";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-}
-
-function weekday(d) {
-  if (!d) return "";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleDateString("ru-RU", { weekday: "long" });
-}
-
-function groupByDate(items) {
-  const map = {};
-  (items || []).forEach(item => {
-    const key = item.date || "unknown";
-    if (!map[key]) map[key] = { date: key, items: [] };
-    map[key].items.push(item);
-  });
-  return Object.values(map);
-}
-
-function StreamEventRow({ e, onClick }) {
-  const TYPE_ICON = { hotel: "hotel", flight: "flight", activity: "star", transfer: "car", note: "edit" };
-  return (
-    <button onClick={onClick} style={{
-      display: "flex", alignItems: "flex-start", gap: 10,
-      padding: "10px 12px", borderRadius: 10,
-      background: "var(--surface)", border: "1px solid var(--line-2)",
-      cursor: "pointer", textAlign: "left", width: "100%",
-    }}
-    onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--brand)"}
-    onMouseLeave={(e) => e.currentTarget.style.borderColor = "var(--line-2)"}>
-      <div style={{
-        width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-        background: "var(--brand-soft)", color: "var(--brand)",
-        display: "grid", placeItems: "center",
-      }}>
-        <Icon name={TYPE_ICON[e.type] || "pin"} size={15} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 13.5 }}>{e.title || e.name}</div>
-        {e.subtitle && <div className="muted" style={{ fontSize: 12 }}>{e.subtitle}</div>}
-      </div>
-    </button>
-  );
-}
-// --- end stubs ---
-
 function ScreenPublic() {
   const [lens, setLens] = useState("timeline");
   const groups = groupByDate(STREAM);
-  const openEvent = () => {};
-
+  const openEvent = (e) => window.__openModal?.(<EventModal event={e} />);
   return (
     <div style={{ background: "var(--wash)", minHeight: "100vh", paddingBottom: 60 }}>
       {/* Marketing-ish header */}
       <div style={{ background: "var(--surface)", borderBottom: "1px solid var(--line)", padding: "12px 24px", display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 22, height: 22, display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--brand)" }}>T</span>
+          <img src={window.__resources?.logoMark || "assets/logo-mark.svg"} style={{ width: 22, height: 22 }} alt="" />
           <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 16, letterSpacing: "-0.02em" }}>Triplanio</span>
         </div>
         <div style={{ flex: 1 }} />
@@ -92,7 +41,7 @@ function ScreenPublic() {
             <span>·</span>
             <span>{TRIP.duration}</span>
             <span>·</span>
-            <span>{(TRIP.cities || []).join(" → ")}</span>
+            <span>{TRIP.cities.join(" → ")}</span>
             <span>·</span>
             <span>{TRIP.travelers} участника</span>
           </div>
