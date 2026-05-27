@@ -11,6 +11,12 @@ import { Icon } from '../design/icons';
 import { Avatar, Btn, Badge, EmptyState, Skeleton, ModalHost, groupByDate, fmtDate, weekday, StreamEventRow, fmt, CityPhoto, WeatherChip } from '../design/index';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
+import CalendarLens from './CalendarLens';
+import DocsLens from './DocsLens';
+import HotelsLens from './HotelsLens';
+import SettingsLens from './SettingsLens';
+import AILens from './AILens';
+import ChatLens from './ChatLens';
 import '../design/app.css';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -858,7 +864,53 @@ export default function TripView() {
               queryClient={qc}
             />
           )}
-          {!['timeline','budget','members'].includes(lens) && <LensStub lens={lens} />}
+          {lens === 'calendar' && (
+            <CalendarLens
+              stream={stream}
+              visits={visits}
+              trip={trip}
+              isLoading={loadingContent}
+            />
+          )}
+          {lens === 'docs' && (
+            <DocsLens
+              tripId={tripId}
+              isLoading={loadingContent}
+            />
+          )}
+          {lens === 'hotels' && (
+            <HotelsLens
+              tripId={tripId}
+              visits={visits}
+              members={members}
+              myRole={myRole}
+            />
+          )}
+          {lens === 'settings' && (
+            <SettingsLens
+              tripId={tripId}
+              trip={trip}
+              members={members}
+              myRole={myRole}
+              isPro={isPro}
+              queryClient={qc}
+            />
+          )}
+          {lens === 'ai' && (
+            <AILens
+              tripId={tripId}
+              trip={trip}
+              myRole={myRole}
+            />
+          )}
+          {lens === 'chat' && (
+            <ChatLens
+              tripId={tripId}
+              members={members}
+              myRole={myRole}
+            />
+          )}
+          {lens === 'map' && <LensStub lens={lens} />}
         </main>
       </div>
 
