@@ -120,6 +120,16 @@ function GoogleMapInner({ pts, positions, onError }) {
 export default function MapLens({ visits = [], trip, isLoading }) {
   const [gmapFailed, setGmapFailed] = useState(false);
 
+  // Google calls window.gm_authFailure on any key/referrer/billing auth error.
+  // That's the reliable signal to drop the broken Google map and use Leaflet —
+  // otherwise the user just sees Google's "this page can't load Maps" overlay.
+  useEffect(() => {
+    if (!GKEY) return;
+    const prev = window.gm_authFailure;
+    window.gm_authFailure = () => setGmapFailed(true);
+    return () => { window.gm_authFailure = prev; };
+  }, []);
+
   if (isLoading) return <Skeleton w="100%" h={420} r={14} />;
 
   const geo = visits
