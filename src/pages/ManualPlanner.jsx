@@ -1215,17 +1215,17 @@ export default function ManualPlanner() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       {/* Header */}
       <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К коллекции">
-          <Icon name="back" size={14} />
-        </button>
         <div className="app-header__brand">
           <span className="app-header__brand-name">Triplanio</span>
         </div>
+      </header>
+
+      {/* Sub-header: back link + stepper */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 24px', borderBottom: '1px solid var(--line-2)', background: 'var(--surface)' }}>
+        <Btn variant="ghost" size="sm" icon="back" onClick={() => nav('/trips')}>К коллекции</Btn>
         <div style={{ flex: 1 }} />
         <Stepper currentId={step} onJump={setStep} />
-        <div style={{ flex: 1 }} />
-        <div style={{ width: 80 }} />
-      </header>
+      </div>
 
       {/* Body */}
       <div style={{ flex: 1, padding: '32px 24px', maxWidth: 1280, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>

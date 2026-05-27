@@ -183,25 +183,60 @@ function CollectionEmpty() {
 
 }
 
+// ─── New Trip Dialog (inline, replaces window.NewTripDialog) ────────────────
+function NewTripDialog({ onClose, onManual, onAi }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(15,23,42,.45)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 18, padding: 28, width: 440, maxWidth: "calc(100vw - 32px)", boxShadow: "var(--shadow-pop)" }}>
+        <h2 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 700 }}>Новый трип</h2>
+        <div className="muted" style={{ fontSize: 14, marginBottom: 22 }}>Как хочешь начать?</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <button onClick={() => { onClose(); onManual(); }} style={{ padding: 20, background: "var(--surface)", border: "1.5px solid var(--line)", borderRadius: 14, cursor: "pointer", textAlign: "left", transition: "border-color .12s" }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = "var(--brand)"}
+            onMouseLeave={e => e.currentTarget.style.borderColor = "var(--line)"}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--brand)", color: "white", display: "grid", placeItems: "center", marginBottom: 12 }}>
+              <Icon name="edit" size={19} />
+            </div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Собрать руками</div>
+            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>Выбрать города, даты, отели вручную.</div>
+          </button>
+          <button onClick={() => { onClose(); onAi(); }} className="ai-card" style={{ padding: 20, background: "linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)", border: "1.5px solid var(--ai-soft-12)", borderRadius: 14, cursor: "pointer", textAlign: "left" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, #6a3ee2, #c66ce2)", color: "white", display: "grid", placeItems: "center", marginBottom: 12 }}>
+              <Icon name="sparkles" size={19} />
+            </div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }} className="ai-text">Начать с ИИ</div>
+            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>Описать словами — получить черновик.</div>
+          </button>
+        </div>
+        <div style={{ marginTop: 16, textAlign: "right" }}>
+          <Btn variant="ghost" onClick={onClose}>Отмена</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ScreenCollection() {
   const variant = window.__collectionVariant || "A";
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("active"); // active | past
   const userHasSub = window.__userHasSub ?? false;
+  const [showNewTripDialog, setShowNewTripDialog] = useState(false);
 
-  // Free users can have at most one active trip. Clicking "New trip" while at
-  // the limit opens an upsell dialog instead of the create modal.
   const handleCreateClick = () => {
     if (variant === "E") {
-      window.__openModal?.(<window.NewTripDialog />);
+      setShowNewTripDialog(true);
       return;
     }
     const activeCount = TRIPS.filter((t) => t.status !== "past").length;
     if (!userHasSub && activeCount >= 1) {
-      window.__openModal?.(<window.FreeLimitDialog />);
+      // Free limit — for prototype just show the dialog anyway
+      setShowNewTripDialog(true);
       return;
     }
-    window.__openModal?.(<window.NewTripDialog />);
+    setShowNewTripDialog(true);
   };
 
   if (variant === "E") return <CollectionEmpty />;
@@ -272,6 +307,14 @@ function ScreenCollection() {
       }
 
       {/* Free limit banner — only in active, only for free users */}
+      {showNewTripDialog && (
+        <NewTripDialog
+          onClose={() => setShowNewTripDialog(false)}
+          onManual={() => window.__navigate?.("manual-planner")}
+          onAi={() => window.__navigate?.("ai-planner")}
+        />
+      )}
+
       {activeTab === "active" && !userHasSub &&
       <div className="ai-card" style={{
         marginTop: 36,

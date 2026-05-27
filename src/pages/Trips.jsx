@@ -123,6 +123,41 @@ const TripRow = ({ trip, onClick }) => (
   </button>
 );
 
+// ─── New Trip Dialog ─────────────────────────────────────────────────────────
+function NewTripDialog({ onClose, onManual, onAi }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 440, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
+        <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700 }}>Новый трип</h2>
+        <div style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 22 }}>Как хочешь начать?</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <button onClick={onManual} style={{ padding: 20, background: 'var(--surface)', border: '1.5px solid var(--line)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--line)'}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
+              <Icon name="edit" size={19} />
+            </div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Собрать руками</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5 }}>Выбрать города, даты, отели вручную.</div>
+          </button>
+          <button onClick={onAi} className="ai-card" style={{ padding: 20, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
+              <Icon name="sparkles" size={19} />
+            </div>
+            <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--ai)' }}>Начать с ИИ</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5 }}>Описать словами — получить черновик.</div>
+          </button>
+        </div>
+        <div style={{ marginTop: 16, textAlign: 'right' }}>
+          <Btn variant="ghost" onClick={onClose}>Отмена</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Empty state ─────────────────────────────────────────────────────────────
 function CollectionEmpty({ onManual, onAi }) {
   return (
@@ -194,6 +229,7 @@ export default function Trips() {
   });
   const [filterMode,  setFilterMode]  = useState('active');
   const [search,      setSearch]      = useState('');
+  const [showNewTrip, setShowNewTrip] = useState(false);
   const [showLimit,   setShowLimit]   = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [pendingPick, setPendingPick] = useState(null);
@@ -320,7 +356,7 @@ export default function Trips() {
                   {activeTrips.length} активных · {pastTrips.length} в архиве
                 </div>
               </div>
-              <Btn variant="primary" size="lg" icon="plus" onClick={() => checkLimit('manual')}>Новый трип</Btn>
+              <Btn variant="primary" size="lg" icon="plus" onClick={() => setShowNewTrip(true)}>Новый трип</Btn>
             </div>
 
             {/* Filters row */}
@@ -360,7 +396,7 @@ export default function Trips() {
                 ))}
                 {filterMode === 'active' && (
                   <button
-                    onClick={() => checkLimit('manual')}
+                    onClick={() => setShowNewTrip(true)}
                     style={{ border: '1.5px dashed var(--line)', background: 'transparent', borderRadius: 'var(--radius-card)', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10, cursor: 'pointer', color: 'var(--muted)', minHeight: 260 }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.color = 'var(--brand)'; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)'; }}
@@ -397,6 +433,13 @@ export default function Trips() {
       </main>
 
       {/* Dialogs */}
+      {showNewTrip && (
+        <NewTripDialog
+          onClose={() => setShowNewTrip(false)}
+          onManual={() => { setShowNewTrip(false); checkLimit('manual'); }}
+          onAi={() => { setShowNewTrip(false); checkLimit('ai'); }}
+        />
+      )}
       <TripLimitDialog
         open={showLimit}
         onOpenChange={setShowLimit}
