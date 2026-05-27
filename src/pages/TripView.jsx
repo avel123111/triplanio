@@ -6,11 +6,11 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
-import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
+import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { Icon } from '../design/icons';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
-import { Avatar, Btn, Badge, EmptyState, Skeleton, ModalHost, groupByDate, fmtDate, weekday, StreamEventRow, fmt, CityPhoto, WeatherChip } from '../design/index';
+import { Avatar, Btn, EmptyState, Skeleton, ModalHost, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
 import { sortVisits } from '@/lib/validation';
 import { DateTime } from 'luxon';
 import TransferDialog from '../components/transfers/TransferDialog';
@@ -24,6 +24,10 @@ import CalendarLens from './CalendarLens';
 import DocsLens from './DocsLens';
 import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
+import MapLens from './MapLens';
+import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
+import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
+import PaymentFailDialog from '@/components/common/PaymentFailDialog';
 import '../design/app.css';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -292,12 +296,22 @@ const MGMT_ITEMS = [
   { id: 'settings',  label: 'Настройки',     icon: 'settings' },
 ];
 
-function TripSidebar({ tripId, lens, onNavigate }) {
+// Addon-gated lenses: shown unless the trip explicitly disabled them.
+const GATED_LENS_ADDON = { calendar: 'calendar', budget: 'budget', chat: 'chat' };
+
+function isLensVisible(trip, lensId) {
+  const key = GATED_LENS_ADDON[lensId];
+  if (!key) return true;
+  return trip?.details?.addons?.[key] !== false;
+}
+
+function TripSidebar({ tripId, trip, lens, onNavigate }) {
+  const lensItems = LENS_ITEMS.filter(item => isLensVisible(trip, item.id));
   return (
     <aside className="app-side">
       <div className="app-side__group">
         <div className="app-side__group-label">Линзы трипа</div>
-        {LENS_ITEMS.map(item => (
+        {lensItems.map(item => (
           <button
             key={item.id}
             className={'app-side__item' + (lens === item.id ? ' active' : '')}
@@ -488,7 +502,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
 
 // ─── CityHero (with proper hotel warning) ────────────────────────────────────
 
-function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel, isEditMode, onEditNotes }) {
+function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel, isEditMode, onEditNotes, onDeleteCity }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--line)',
@@ -518,6 +532,16 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--muted)', fontSize: 12, cursor: 'pointer' }}
               >
                 <Icon name="edit" size={12} /> Изменить
+              </button>
+            )}
+            {isEditMode && onDeleteCity && (
+              <button
+                type="button"
+                onClick={() => onDeleteCity?.(visit)}
+                title="Удалить город"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 8, border: '1px solid var(--danger-soft)', background: 'var(--surface)', color: 'var(--danger)', fontSize: 12, cursor: 'pointer' }}
+              >
+                <Icon name="trash" size={12} /> Удалить
               </button>
             )}
           </div>
@@ -550,7 +574,7 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
   );
 }
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent }) {
+function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
   if (isLoading) return <SkeletonTimeline />;
 
   if (!trip.start_date && !trip.end_date && !visits.length) {
@@ -724,6 +748,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
           onAddHotel={onAddHotel}
           isEditMode={isEditMode}
           onEditNotes={onEditVisitNotes}
+          onDeleteCity={onDeleteCity}
         />
       );
       prevVisitId = visit.id;
@@ -797,29 +822,6 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {rows}
-    </div>
-  );
-}
-
-// ─── LensStub ─────────────────────────────────────────────────────────────────
-
-const LENS_META = {
-  map:      { icon: 'map',      label: 'Карта'        },
-  calendar: { icon: 'calendar', label: 'Календарь'    },
-  budget:   { icon: 'wallet',   label: 'Бюджет'       },
-  docs:     { icon: 'file',     label: 'Документы'    },
-  members:  { icon: 'users',    label: 'Участники'    },
-  settings: { icon: 'settings', label: 'Настройки'    },
-  chat:     { icon: 'chat',     label: 'Чат'          },
-};
-
-function LensStub({ lens }) {
-  const meta = LENS_META[lens] || { icon: 'spark', label: lens };
-  return (
-    <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>
-      <Icon name={meta.icon} size={32} style={{ marginBottom: 12, color: 'var(--muted-2)' }} />
-      <div style={{ fontSize: 16, fontWeight: 500 }}>{meta.label}</div>
-      <div style={{ fontSize: 13, marginTop: 6 }}>Скоро здесь будет контент</div>
     </div>
   );
 }
@@ -1182,6 +1184,48 @@ export default function TripView() {
   const [newCityDefaultDay, setNewCityDefaultDay] = useState(null);
   const [activityEdit, setActivityEdit] = useState({ open: false, visit: null, activity: null, defaultStart: null });
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
+  const [deleteCity, setDeleteCity] = useState({ open: false, visit: null });
+  const [deletingCity, setDeletingCity] = useState(false);
+  const [payResult, setPayResult] = useState(null); // 'success' | 'fail' | null
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  // Handle Stripe checkout return when the upgrade started from this trip page.
+  useEffect(() => {
+    const status = searchParams.get('stripe_status');
+    if (!status) return;
+    if (status === 'success') {
+      setPayResult('success');
+      qc.invalidateQueries({ queryKey: ['my-pro-status'] });
+      qc.invalidateQueries({ queryKey: ['me'] });
+    } else if (status === 'cancel') {
+      setPayResult('fail');
+    }
+    const sp = new URLSearchParams(searchParams);
+    sp.delete('stripe_status');
+    sp.delete('session_id');
+    setSearchParams(sp, { replace: true });
+  }, [searchParams, setSearchParams, qc]);
+
+  // Cascade-delete a city visit and everything inside it (hotels, activities, transfers).
+  const confirmDeleteCity = async () => {
+    const v = deleteCity.visit;
+    if (!v?.id) return;
+    setDeletingCity(true);
+    try {
+      await supabase.from('hotel_stays').delete().eq('city_visit_id', v.id);
+      await supabase.from('activities').delete().eq('city_visit_id', v.id);
+      await supabase.from('transfers').delete().or(`from_city_visit_id.eq.${v.id},to_city_visit_id.eq.${v.id}`);
+      const { error } = await supabase.from('city_visits').delete().eq('id', v.id);
+      if (error) throw error;
+      setDeleteCity({ open: false, visit: null });
+      qc.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+      qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) });
+    } catch (e) {
+      alert('Не удалось удалить город: ' + (e?.message || e));
+    } finally {
+      setDeletingCity(false);
+    }
+  };
 
   // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
   const openEventView = (e) => {
@@ -1271,6 +1315,9 @@ export default function TripView() {
 
   const isPro = isProActive(user);
 
+  // If the URL points at a lens the trip has disabled, fall back to the timeline.
+  const shownLens = isLensVisible(trip, lens) ? lens : 'timeline';
+
   if (loadingShell) return <LoadingScreen />;
   if (shellError || (!loadingShell && !trip)) return <ErrorScreen onBack={() => nav('/trips')} />;
 
@@ -1286,7 +1333,7 @@ export default function TripView() {
         nav={nav}
       />
       <div className="app-body">
-        <TripSidebar tripId={tripId} lens={lens} onNavigate={setLens} />
+        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} />
         <main style={{ minWidth: 0, padding: '28px 28px 60px' }}>
           {/* TransferDialog — opened from missing-transfer warnings or edit mode */}
           <TransferDialog
@@ -1348,7 +1395,7 @@ export default function TripView() {
             canEdit={myRole !== 'viewer'}
           />
 
-          {lens === 'timeline' && (
+          {shownLens === 'timeline' && (
             <>
               <TripCoverStrip
                 trip={trip}
@@ -1374,6 +1421,7 @@ export default function TripView() {
                   isEditMode={isEditMode}
                   onOpenEvent={openEventView}
                   onEditVisitNotes={(v) => setVisitEdit({ open: true, visit: v })}
+                  onDeleteCity={(v) => setDeleteCity({ open: true, visit: v })}
                   onAddCityForDay={(dayKey) => {
                     setNewCityDefaultDay(dayKey || null);
                     setNewCityOpen(true);
@@ -1404,7 +1452,7 @@ export default function TripView() {
               </div>
             </>
           )}
-          {lens === 'budget' && (
+          {shownLens === 'budget' && (
             <BudgetLens
               tripId={tripId}
               budget={budget}
@@ -1417,7 +1465,7 @@ export default function TripView() {
               queryClient={qc}
             />
           )}
-          {lens === 'members' && (
+          {shownLens === 'members' && (
             <MembersLens
               tripId={tripId}
               members={members}
@@ -1428,7 +1476,7 @@ export default function TripView() {
               queryClient={qc}
             />
           )}
-          {lens === 'calendar' && (
+          {shownLens === 'calendar' && (
             <CalendarLens
               stream={stream}
               visits={visits}
@@ -1436,13 +1484,13 @@ export default function TripView() {
               isLoading={loadingContent}
             />
           )}
-          {lens === 'docs' && (
+          {shownLens === 'docs' && (
             <DocsLens
               tripId={tripId}
               isLoading={loadingContent}
             />
           )}
-          {lens === 'settings' && (
+          {shownLens === 'settings' && (
             <SettingsLens
               tripId={tripId}
               trip={trip}
@@ -1452,16 +1500,52 @@ export default function TripView() {
               queryClient={qc}
             />
           )}
-          {lens === 'chat' && (
+          {shownLens === 'chat' && (
             <ChatLens
               tripId={tripId}
               members={members}
               myRole={myRole}
             />
           )}
-          {lens === 'map' && <LensStub lens={lens} />}
+          {shownLens === 'map' && <MapLens visits={visits} trip={trip} isLoading={loadingContent} />}
         </main>
       </div>
+
+      {deleteCity.open && (
+        <div className="dlg-backdrop" style={{ zIndex: 280 }}
+          onClick={(e) => { if (e.target === e.currentTarget && !deletingCity) setDeleteCity({ open: false, visit: null }); }}>
+          <div className="dlg dlg--sm">
+            <div className="dlg__head">
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Icon name="trash" size={17} />
+              </div>
+              <h2>Удалить город?</h2>
+            </div>
+            <div className="dlg__body">
+              <div style={{ fontSize: 14, marginBottom: 8 }}>
+                Удалить <b>{deleteCity.visit?.city_name || 'город'}</b>?
+              </div>
+              <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
+                Все события внутри этого города (отели, активности, переезды) также будут удалены. Действие необратимо.
+              </div>
+            </div>
+            <div className="dlg__foot">
+              <Btn variant="ghost" onClick={() => setDeleteCity({ open: false, visit: null })} disabled={deletingCity}>Отмена</Btn>
+              <Btn variant="danger-solid" icon="trash" onClick={confirmDeleteCity} disabled={deletingCity}>
+                {deletingCity ? 'Удаляем…' : 'Удалить город'}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <UpgradePlanDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} tripId={tripId} />
+      <PaymentSuccessDialog open={payResult === 'success'} onOpenChange={() => setPayResult(null)} />
+      <PaymentFailDialog
+        open={payResult === 'fail'}
+        onOpenChange={() => setPayResult(null)}
+        onRetry={() => { setPayResult(null); setUpgradeOpen(true); }}
+      />
 
       <ModalHost />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

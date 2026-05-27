@@ -13,44 +13,32 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Dialog, Field, Skeleton, Toggle } from '../design/index';
+import { Avatar, Badge, Btn, Card, Dialog, Field, Toggle } from '../design/index';
+import ProLockedDialog from '@/components/common/ProLockedDialog';
+import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
+// `addon` is the key persisted under trip.details.addons (matches TripView lens ids
+// for the gateable lenses: calendar / budget / chat).
 
 const FEATURES = [
-  { id: 'cal',    icon: 'calendar',  color: 'var(--brand)',   label: 'Календарь',                   desc: 'Те же события на сетке месяца/недели',                  pro: true  },
-  { id: 'budget', icon: 'wallet',    color: 'var(--success)', label: 'Полная разбивка бюджета',     desc: 'Категории, ручные расходы, FX-override\'ы',             pro: true  },
-  { id: 'chat',   icon: 'chat',      color: 'var(--ai)',      label: 'Групповой чат',               desc: 'Сообщения, упоминания, @assistant'                              },
-  { id: 'hotels', icon: 'vote',      color: 'var(--warm)',    label: 'Совместный выбор отелей',     desc: 'Голосование среди аппруверов'                                   },
-  { id: 'tg',     icon: 'telegram',  color: '#0088cc',        label: 'Telegram-мост',               desc: 'Напоминания в Telegram',                                pro: true  },
-  { id: 'ai',     icon: 'sparkles',  color: 'var(--ai)',      label: 'Персональный ИИ-помощник',    desc: 'Личный диалог с возможностью править трип',             pro: true  },
-  { id: 'docs',   icon: 'file',      color: 'var(--muted)',   label: 'Документы трипа',             desc: 'Паспорта, страховки, общие файлы',                      locked: true },
+  { id: 'cal',    addon: 'calendar',            icon: 'calendar',  color: 'var(--brand)',   label: 'Календарь',                   desc: 'Те же события на сетке месяца/недели',                  pro: true  },
+  { id: 'budget', addon: 'budget',              icon: 'wallet',    color: 'var(--success)', label: 'Полная разбивка бюджета',     desc: 'Категории, ручные расходы, FX-override\'ы',             pro: true  },
+  { id: 'chat',   addon: 'chat',                icon: 'chat',      color: 'var(--ai)',      label: 'Групповой чат',               desc: 'Сообщения, упоминания, @assistant',                     pro: true  },
+  { id: 'hotels', addon: 'hotels_selection',    icon: 'vote',      color: 'var(--warm)',    label: 'Совместный выбор отелей',     desc: 'Голосование среди аппруверов'                                   },
+  { id: 'tg',     addon: 'telegram_assistant',  icon: 'telegram',  color: '#0088cc',        label: 'Telegram-мост',               desc: 'Напоминания в Telegram',                                pro: true  },
+  { id: 'ai',     addon: 'ai',                  icon: 'sparkles',  color: 'var(--ai)',      label: 'Персональный ИИ-помощник',    desc: 'Личный диалог с возможностью править трип',             pro: true  },
+  { id: 'docs',   addon: 'docs',                icon: 'file',      color: 'var(--muted)',   label: 'Документы трипа',             desc: 'Паспорта, страховки, общие файлы',                      locked: true },
 ];
 
-// ─── ProLockedDialog ──────────────────────────────────────────────────────────
-
-function ProLockedDialog({ feature }) {
-  return (
-    <Dialog title="Функция Pro" icon="sparkles" size=""
-      foot={<>
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Закрыть</Btn>
-        <Btn variant="primary" icon="sparkles">Подключить Pro</Btn>
-      </>}>
-      <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
-        <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--warm-tint)', color: 'var(--warm)', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
-          <Icon name="sparkles" size={24} />
-        </div>
-        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
-          {feature || 'Функция'} доступна в Pro
-        </div>
-        <div className="muted" style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>
-          Подключи Pro-тариф для доступа к расширенным возможностям трипа.
-        </div>
-      </div>
-    </Dialog>
-  );
+// Default ON unless explicitly disabled (addons[key] === false).
+function featuresFromTrip(trip) {
+  const addons = trip?.details?.addons || {};
+  const state = {};
+  for (const f of FEATURES) state[f.id] = f.locked ? false : (addons[f.addon] !== false);
+  return state;
 }
 
 // ─── FeatureRow ───────────────────────────────────────────────────────────────
@@ -269,14 +257,15 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const [saveMsg, setSaveMsg] = useState('');
 
   const hasPro = isPro;
-  const [features, setFeatures] = useState({
-    cal: true, budget: true, chat: true, hotels: true, tg: false, ai: true, docs: false,
-  });
+  const [features, setFeatures] = useState(() => featuresFromTrip(trip));
+  const [proLocked, setProLocked] = useState({ open: false, feature: '' });
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   // Sync local state when trip prop changes
   useEffect(() => {
     if (trip?.title)        setTitle(trip.title);
     if (trip?.main_currency || trip?.currency) setCurrency(trip.main_currency || trip.currency || 'EUR');
+    setFeatures(featuresFromTrip(trip));
   }, [trip]);
 
   // Save basic settings
@@ -294,13 +283,26 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     setTimeout(() => setSaveMsg(''), 2000);
   }
 
-  // Toggle feature
-  function toggleFeature(id, pro) {
+  // Toggle feature → persist to trip.details.addons, then invalidate shell query.
+  async function toggleFeature(id, pro) {
+    const feat = FEATURES.find(f => f.id === id);
+    if (feat?.locked) return;
     if (pro && !hasPro) {
-      window.__openModal?.(<ProLockedDialog feature={FEATURES.find(f => f.id === id)?.label} />);
+      setProLocked({ open: true, feature: feat?.label || '' });
       return;
     }
-    setFeatures(s => ({ ...s, [id]: !s[id] }));
+    const newVal = !features[id];
+    setFeatures(s => ({ ...s, [id]: newVal }));  // optimistic
+    const nextAddons = { ...(trip?.details?.addons || {}), [feat.addon]: newVal };
+    const { error } = await supabase.from('trips').update({
+      details: { ...(trip?.details || {}), addons: nextAddons },
+    }).eq('id', tripId);
+    if (error) {
+      setFeatures(s => ({ ...s, [id]: !newVal }));  // revert
+      alert('Не удалось сохранить: ' + error.message);
+      return;
+    }
+    queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
   }
 
   // Leave trip
@@ -411,6 +413,14 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           )}
         </div>
       </Card>
+
+      <ProLockedDialog
+        open={proLocked.open}
+        feature={proLocked.feature}
+        onOpenChange={(o) => setProLocked(s => ({ ...s, open: o }))}
+        onUpgrade={() => setUpgradeOpen(true)}
+      />
+      <UpgradePlanDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} tripId={tripId} hidePerTrip />
     </div>
   );
 }
