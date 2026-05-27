@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Plane } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { BRAND_LOGO_URL, BRAND_NAME } from '@/lib/brand';
 import ReadOnlyTimelineView from '@/components/views/ReadOnlyTimelineView';
 import MapView from '@/components/views/MapView';
@@ -49,7 +49,8 @@ export default function PublicTrip() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['public-trip', tripId, token],
     queryFn: async () => {
-      const res = await base44.functions.invoke('getPublicTrip', { tripId, token });
+      const res = await supabase.functions.invoke('getPublicTrip', { body: { tripId, token } });
+      if (res.error) throw res.error;
       return res.data;
     },
     enabled: !!tripId && !!token,

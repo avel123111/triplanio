@@ -15,6 +15,7 @@ import TransferDialog from '../components/transfers/TransferDialog';
 import HotelDialog from '../components/hotels/HotelDialog';
 import CityVisitDialog from '../components/visits/CityVisitDialog';
 import ActivityDialog from '../components/activities/ActivityDialog';
+import SourceViewLoader from '../components/budget/SourceViewLoader';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
 import CalendarLens from './CalendarLens';
@@ -61,8 +62,8 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
         price: h.price,
         cur: h.currency,
         nights: h.nights,
-        platformUrl: h.platform_url,
-        num: h.confirmation_number,
+        platformUrl: h.booking_url,
+        num: h.booking_reference,
         _ms: parseNaive(h.check_in_datetime)?.toMillis() ?? 0,
       });
     }
@@ -106,17 +107,15 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
       id: t.id,
       date: naiveDayKey(t.start_datetime),
       time: formatNaive(t.start_datetime, 'HH:mm'),
-      title: t.carrier_name && t.flight_number
-        ? `${t.carrier_name} ${t.flight_number}`
-        : (t.carrier_name || (isPlane ? 'Перелёт' : 'Переезд')),
-      from: t.origin_name,
-      to: t.destination_name,
+      title: t.carrier || (isPlane ? 'Перелёт' : 'Переезд'),
+      from: cityForVisit(t.from_city_visit_id, visits) || t.from_address,
+      to: cityForVisit(t.to_city_visit_id, visits) || t.to_address,
       kind,
-      carrier: t.carrier_name,
-      num: t.flight_number,
+      carrier: t.carrier,
+      num: t.booking_reference,
       price: t.price,
       cur: t.currency,
-      platformUrl: t.platform_url,
+      platformUrl: t.booking_url,
       duration: t.end_datetime ? formatDuration(t.start_datetime, t.end_datetime) : null,
       _ms: parseNaive(t.start_datetime)?.toMillis() ?? 0,
     });
@@ -497,7 +496,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
 
 // ─── CityHero (with proper hotel warning) ────────────────────────────────────
 
-function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel }) {
+function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel, isEditMode, onEditNotes }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--line)',
@@ -518,6 +517,16 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
               <span className="muted" style={{ fontSize: 13 }}>
                 · {nights} {nights === 1 ? 'ночь' : nights < 5 ? 'ночи' : 'ночей'}
               </span>
+            )}
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={() => onEditNotes?.(visit)}
+                title="Редактировать город"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--muted)', fontSize: 12, cursor: 'pointer' }}
+              >
+                <Icon name="edit" size={12} /> Изменить
+              </button>
             )}
           </div>
         </div>
@@ -549,7 +558,7 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
   );
 }
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes }) {
+function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent }) {
   if (isLoading) return <SkeletonTimeline />;
 
   if (!trip.start_date && !trip.end_date && !visits.length) {
@@ -715,12 +724,14 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         <CityHero
           key={`city-${visit.id}`}
           city={visit.city_name}
-          country={visit.country_name}
+          country={visit.country || visit.country_name}
           dateRange={dateRange}
           nights={nights}
           hotels={visitHotels}
           visit={visit}
           onAddHotel={onAddHotel}
+          isEditMode={isEditMode}
+          onEditNotes={onEditVisitNotes}
         />
       );
       prevVisitId = visit.id;
@@ -753,7 +764,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         {dayEvents.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {dayEvents.map((e, idx) => (
-              <StreamEventRow key={e.id} e={e} last={idx === dayEvents.length - 1} onClick={() => {}} />
+              <StreamEventRow key={e.id} e={e} last={idx === dayEvents.length - 1} onClick={() => onOpenEvent?.(e)} />
             ))}
           </div>
         ) : !isCityHeroDay && (
@@ -1150,6 +1161,19 @@ export default function TripView() {
   const [newCityOpen, setNewCityOpen] = useState(false);
   const [newCityDefaultDay, setNewCityDefaultDay] = useState(null);
   const [activityEdit, setActivityEdit] = useState({ open: false, visit: null, activity: null, defaultStart: null });
+  const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
+
+  // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
+  const openEventView = (e) => {
+    let kind = null;
+    if (e.type === 'hotel-checkin' || e.type === 'hotel-checkout') kind = 'hotel';
+    else if (e.type === 'activity') kind = 'activity';
+    else if (e.type === 'transfer' || e.type === 'flight') kind = 'transfer';
+    if (!kind) return;
+    const id = kind === 'hotel' ? e.hotelId : e.id;
+    if (!id) return;
+    setEventView({ open: true, kind, id });
+  };
 
   // Theme sync
   useEffect(() => {
@@ -1295,6 +1319,14 @@ export default function TripView() {
               defaultStart={activityEdit.defaultStart}
             />
           )}
+          {/* SourceViewLoader — opens the read/edit dialog when a timeline event is clicked */}
+          <SourceViewLoader
+            kind={eventView.kind}
+            id={eventView.id}
+            open={eventView.open}
+            onOpenChange={(o) => setEventView(s => ({ ...s, open: o }))}
+            canEdit={myRole !== 'viewer'}
+          />
 
           {lens === 'timeline' && (
             <>
@@ -1320,6 +1352,7 @@ export default function TripView() {
                     setHotelEdit({ open: true, visit, hotel: null })
                   }
                   isEditMode={isEditMode}
+                  onOpenEvent={openEventView}
                   onEditVisitNotes={(v) => setVisitEdit({ open: true, visit: v })}
                   onAddCityForDay={(dayKey) => {
                     setNewCityDefaultDay(dayKey || null);
