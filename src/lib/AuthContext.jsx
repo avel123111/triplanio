@@ -13,22 +13,48 @@ export const AuthProvider = ({ children }) => {
   const loadingForRef = React.useRef(null);
 
   useEffect(() => {
+    // Check if this is an OAuth callback (PKCE code in URL or implicit hash token).
+    // In that case, don't clear the loading state from getSession() — wait for
+    // onAuthStateChange to fire SIGNED_IN / INITIAL_SESSION with the real session.
+    const isOAuthCallback =
+      new URLSearchParams(window.location.search).has('code') ||
+      window.location.hash.includes('access_token');
+
     // Primary: check session immediately — reliably handles page refresh
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         loadUserProfile(session.user);
-      } else {
+      } else if (!isOAuthCallback) {
+        // No session and not an OAuth callback — user is genuinely not logged in
         setUser(null);
         setIsAuthenticated(false);
         setIsLoadingAuth(false);
         setAuthChecked(true);
       }
+      // If isOAuthCallback and no session yet: code exchange is still in-flight.
+      // Keep isLoadingAuth=true and let onAuthStateChange handle it below.
     });
 
-    // Secondary: react to subsequent auth changes (sign-in, sign-out, token refresh)
+    // Secondary: react to auth changes (sign-in, sign-out, OAuth callback, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') {
-        loadUserProfile(session.user);
+        // Deduplicate: skip if already loading profile for this user
+        if (loadingForRef.current !== session.user.id) {
+          loadUserProfile(session.user);
+        }
+      } else if (event === 'INITIAL_SESSION') {
+        // Fired on page load with the resolved session (covers OAuth callback exchange)
+        if (session) {
+          if (loadingForRef.current !== session.user.id) {
+            loadUserProfile(session.user);
+          }
+        } else {
+          // Confirmed: no session — clear loading
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsLoadingAuth(false);
+          setAuthChecked(true);
+        }
       } else if (event === 'SIGNED_OUT') {
         loadingForRef.current = null;
         setUser(null);
@@ -43,6 +69,9 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const loadUserProfile = async (authUser) => {
+    // Prevent concurrent loads for the same user
+    if (loadingForRef.current === authUser.id) return;
+    loadingForRef.current = authUser.id;
     try {
       setIsLoadingAuth(true);
 
@@ -94,6 +123,7 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
     } catch (error) {
       console.error('Failed to load user profile:', error);
+      loadingForRef.current = null; // allow retry
       setAuthError({ type: 'unknown', message: error.message });
       setIsAuthenticated(false);
       setIsLoadingAuth(false);
