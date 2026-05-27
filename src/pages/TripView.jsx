@@ -8,6 +8,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
+import NotificationsBell from '@/components/notifications/NotificationsBell';
 import { Avatar, Btn, Badge, EmptyState, Skeleton, ModalHost, groupByDate, fmtDate, weekday, StreamEventRow, fmt, CityPhoto, WeatherChip } from '../design/index';
 import { sortVisits } from '@/lib/validation';
 import { DateTime } from 'luxon';
@@ -268,9 +269,7 @@ function TripHeader({ trip, visits, isPro, theme, setTheme, user, nav }) {
         <button className="icon-btn" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} title="Сменить тему">
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} />
         </button>
-        <button className="icon-btn" onClick={() => nav('/inbox')} title="Уведомления">
-          <Icon name="bell" size={16} />
-        </button>
+        <NotificationsBell />
         <button
           className="app-header__avatar"
           onClick={() => nav('/settings')}
@@ -1249,7 +1248,10 @@ export default function TripView() {
     [hotels, activities, transfers, visits],
   );
 
-  const isPro = ['pro_monthly', 'pro_yearly', 'pro_trip'].includes(user?.subscription_status);
+  // B4 fix: stripe-webhook stores subscription_status='pro'
+  const isPro = user?.subscription_status === 'pro'
+    && !!user?.subscription_end_date
+    && new Date(user.subscription_end_date) > new Date();
 
   if (loadingShell) return <LoadingScreen />;
   if (shellError || (!loadingShell && !trip)) return <ErrorScreen onBack={() => nav('/trips')} />;

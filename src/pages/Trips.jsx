@@ -238,7 +238,10 @@ export default function Trips() {
     try { localStorage.setItem('trips:viewMode', viewMode); } catch { /* ignore */ }
   }, [viewMode]);
 
-  const isPro = ['pro_monthly', 'pro_yearly', 'pro_trip'].includes(user?.subscription_status);
+  // B4 fix: stripe-webhook stores subscription_status='pro', check expiry too
+  const isPro = user?.subscription_status === 'pro'
+    && !!user?.subscription_end_date
+    && new Date(user.subscription_end_date) > new Date();
 
   // ── Fetch trips ─────────────────────────────────────────────────────────────
   const { data: allTrips = [], isLoading } = useQuery({

@@ -95,8 +95,12 @@ export default function TimelineView({
                 visit={visit}
                 hotels={hotelsByVisit[visit.id] || []}
                 activities={actsByVisit[visit.id] || []}
-                hasNextVisit={!!next}
-                hasTransferToNext={next ? transfers.some(t => t.from_city_visit_id === visit.id && t.to_city_visit_id === next.id) : false}
+                // B1 fix: warn about the INBOUND gap (prev→current), matching base44
+                // ReadOnlyTimelineView logic: skip start→city1, show cityN→end.
+                hasNextVisit={!!prev && prev.kind !== 'start'}
+                hasTransferToNext={prev && prev.kind !== 'start'
+                  ? transfers.some(t => t.from_city_visit_id === prev.id && t.to_city_visit_id === visit.id)
+                  : false}
                 onEdit={() => onEditVisit(visit)}
                 onDelete={() => onDeleteVisit(visit)}
                 onAddHotel={() => onAddHotel(visit)}

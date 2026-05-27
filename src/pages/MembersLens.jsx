@@ -8,6 +8,7 @@
  */
 import React, { useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Skeleton } from '../design/index';
 
@@ -223,7 +224,9 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   }, [openMenu]);
 
   function refresh() {
-    queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
+    // B5: invalidate both content (members list) and shell (header avatar row)
+    queryClient?.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) });
+    queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
   }
 
   async function resend(memberId) {

@@ -974,7 +974,10 @@ export default function ManualPlanner() {
   const nav = useNavigate();
   const { user } = useAuth();
 
-  const isPro = ['pro_monthly', 'pro_yearly', 'pro_trip'].includes(user?.subscription_status);
+  // B4 fix: stripe-webhook stores subscription_status='pro'
+  const isPro = user?.subscription_status === 'pro'
+    && !!user?.subscription_end_date
+    && new Date(user.subscription_end_date) > new Date();
 
   // ── Free-plan limit check ─────────────────────────────────────────────────
   const { data: allTrips = [], isLoading: checkingLimit } = useQuery({

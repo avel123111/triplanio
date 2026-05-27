@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Share2, Copy, Check, Loader2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
@@ -20,15 +20,16 @@ export default function ShareTripDialog({ open, onOpenChange, tripId }) {
     setUrl('');
     setCopied(false);
     setLoading(true);
-    base44.functions.invoke('ensureShareToken', { tripId }).
-    then((res) => {
-      const token = res?.data?.token;
-      if (token) {
-        setUrl(`${window.location.origin}/public/trip/${tripId}?t=${token}`);
-      }
-    }).
-    catch(console.error).
-    finally(() => setLoading(false));
+    supabase.functions.invoke('ensureShareToken', { body: { tripId } })
+      .then(({ data, error }) => {
+        if (error) { console.error('ensureShareToken error:', error); return; }
+        const token = data?.token;
+        if (token) {
+          setUrl(`${window.location.origin}/public/trip/${tripId}?t=${token}`);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [open, tripId]);
 
   const handleCopy = async () => {
