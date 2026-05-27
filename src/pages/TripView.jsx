@@ -9,6 +9,9 @@ import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
 import { Avatar, Btn, Badge, EmptyState, Skeleton, ModalHost, groupByDate, fmtDate, weekday, StreamEventRow, fmt, CityPhoto, WeatherChip } from '../design/index';
+import { sortVisits } from '@/lib/validation';
+import TransferDialog from '../components/transfers/TransferDialog';
+import HotelDialog from '../components/hotels/HotelDialog';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
 import CalendarLens from './CalendarLens';
@@ -406,7 +409,7 @@ function StreamAnchor({ label, sub, color, icon }) {
 
 // ─── MissingHotelWarning ──────────────────────────────────────────────────────
 
-function MissingHotelWarning({ city }) {
+function MissingHotelWarning({ city, onAdd }) {
   const [open, setOpen] = useState(true);
   if (!open) return null;
   return (
@@ -421,7 +424,7 @@ function MissingHotelWarning({ city }) {
         <div style={{ fontSize: 13, fontWeight: 600 }}>Нет бронирования в {city}</div>
         <div className="muted" style={{ fontSize: 11.5 }}>Добавь отель или место проживания</div>
       </div>
-      <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__navigate?.('hotels')}>Добавить</Btn>
+      <Btn variant="primary" size="sm" icon="plus" onClick={onAdd}>Добавить</Btn>
       <button onClick={() => setOpen(false)} style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
         <Icon name="close" size={12} />
       </button>
@@ -431,7 +434,7 @@ function MissingHotelWarning({ city }) {
 
 // ─── MissingTransferWarning ───────────────────────────────────────────────────
 
-function MissingTransferWarning({ from, to }) {
+function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
   const [hidden, setHidden] = useState(false);
   if (hidden) return null;
   return (
@@ -445,7 +448,7 @@ function MissingTransferWarning({ from, to }) {
       <div style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>
         Нет переезда · {from} → {to}
       </div>
-      <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__navigate?.('timeline')}>Добавить переезд</Btn>
+      <Btn variant="primary" size="sm" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>Добавить переезд</Btn>
       <button onClick={() => setHidden(true)} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--warning)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
         <Icon name="close" size={12} />
       </button>
@@ -455,7 +458,7 @@ function MissingTransferWarning({ from, to }) {
 
 // ─── CityHero (with proper hotel warning) ────────────────────────────────────
 
-function CityHero({ city, country, dateRange, nights, hotels = [] }) {
+function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--line)',
@@ -500,14 +503,14 @@ function CityHero({ city, country, dateRange, nights, hotels = [] }) {
             {h.price && <div className="num" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(h.price, h.cur || 'EUR')}</div>}
           </div>
         )) : (
-          <MissingHotelWarning city={city} />
+          <MissingHotelWarning city={city} onAdd={() => onAddHotel?.(visit)} />
         )}
       </div>
     </div>
   );
 }
 
-function TimelineLens({ stream, visits, trip, isLoading }) {
+function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel }) {
   if (isLoading) return <SkeletonTimeline />;
 
   if (!trip.start_date && !trip.end_date && !visits.length) {
@@ -580,38 +583,37 @@ function TimelineLens({ stream, visits, trip, isLoading }) {
 
   const days = buildDayList(tripStart, tripEnd);
 
-  // Determine city transitions to detect missing transfers
-  // Map each visit to sorted adjacent visits for missing-transfer detection
-  const sortedVisits = [...visits].sort((a, b) => {
-    const aStart = naiveDayKey(a.start_datetime) || '';
-    const bStart = naiveDayKey(b.start_datetime) || '';
-    return aStart < bStart ? -1 : aStart > bStart ? 1 : 0;
-  });
+  // Sort visits using kind field (start anchor → transit cities → end anchor),
+  // matching base44's sortVisits logic from validation.js
+  const ordered = sortVisits(visits);
 
-  // Build set of (fromCity, toCity) pairs that have a transfer event
-  const transferPairs = new Set();
-  for (const e of stream) {
-    if (e.type === 'transfer' || e.type === 'flight') {
-      if (e.from && e.to) transferPairs.add(`${e.from}|${e.to}`);
-      // also check city-level
-      const fromC = e.from_city || e.from;
-      const toC   = e.to_city   || e.to;
-      if (fromC && toC) transferPairs.add(`${fromC}|${toC}`);
+  // Build inbound transfer lookup: toVisitId → [transfer, ...]
+  const inboundByVisit = {};
+  for (const tr of (transfers || [])) {
+    const tid = tr.to_city_visit_id;
+    if (tid) {
+      if (!inboundByVisit[tid]) inboundByVisit[tid] = [];
+      inboundByVisit[tid].push(tr);
     }
   }
 
-  // Build missing-transfer warnings: when consecutive visits have no transfer between them
-  const missingTransfers = [];
-  for (let i = 0; i < sortedVisits.length - 1; i++) {
-    const fromCity = sortedVisits[i].city_name;
-    const toCity   = sortedVisits[i + 1].city_name;
-    const transitionDay = naiveDayKey(sortedVisits[i + 1].start_datetime);
-    if (fromCity && toCity && fromCity !== toCity) {
-      const hasTransfer = transferPairs.has(`${fromCity}|${toCity}`)
-        || [...transferPairs].some(p => p.endsWith(`|${toCity}`));
-      if (!hasTransfer) {
-        missingTransfers.push({ fromCity, toCity, transitionDay });
-      }
+  // Build missing-transfer map using base44's kind-based logic:
+  //   - Always skip: start anchor → first transit city (no transfer needed)
+  //   - Always show: last transit city → end anchor (transfer IS needed)
+  //   - Check by visit ID pairs, not city names
+  const missingTransferByVisitId = {};
+  for (let i = 0; i < ordered.length; i++) {
+    const v = ordered[i];
+    const prev = ordered[i - 1];
+    if (!prev) continue;
+    if (v.kind === 'start') continue;
+    // No warning when departing from start anchor to a transit city
+    if (prev.kind === 'start' && v.kind !== 'end') continue;
+    const inboundFromPrev = (inboundByVisit[v.id] || []).filter(
+      tr => tr.from_city_visit_id === prev.id
+    );
+    if (inboundFromPrev.length === 0) {
+      missingTransferByVisitId[v.id] = { fromVisit: prev, toVisit: v };
     }
   }
 
@@ -647,12 +649,19 @@ function TimelineLens({ stream, visits, trip, isLoading }) {
     const visit = visitForDay(day, visits);
     const isCityHeroDay = cityHeroDays.has(day);
 
-    // Inject missing transfer warning before city change
+    // Inject missing transfer warning before city change (kind-based, visit-ID-based)
     if (visit && visit.id !== prevVisitId && prevVisitId) {
-      const mt = missingTransfers.find(m => m.transitionDay === day);
+      const mt = missingTransferByVisitId[visit.id];
       if (mt) {
         rows.push(
-          <MissingTransferWarning key={`mt-${day}`} from={mt.fromCity} to={mt.toCity} />
+          <MissingTransferWarning
+            key={`mt-${visit.id}`}
+            from={mt.fromVisit.city_name}
+            to={mt.toVisit.city_name}
+            fromVisit={mt.fromVisit}
+            toVisit={mt.toVisit}
+            onAdd={onAddTransfer}
+          />
         );
       }
     }
@@ -672,6 +681,8 @@ function TimelineLens({ stream, visits, trip, isLoading }) {
           dateRange={dateRange}
           nights={nights}
           hotels={visitHotels}
+          visit={visit}
+          onAddHotel={onAddHotel}
         />
       );
       prevVisitId = visit.id;
@@ -823,7 +834,7 @@ function MoreMenuDialog({ tripId }) {
 
 // ─── TripCoverStrip ──────────────────────────────────────────────────────────
 
-function TripCoverStrip({ trip, visits, members, myRole }) {
+function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdit }) {
   const [routeOpen, setRouteOpen] = useState(false);
   const activeMemberCount = members.filter(m => m.status === 'active').length || 1;
   const cities = visits.map(v => v.city_name).filter(Boolean);
@@ -907,7 +918,9 @@ function TripCoverStrip({ trip, visits, members, myRole }) {
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           {myRole !== 'viewer' && (
-            <Btn variant="ghost" size="sm" icon="edit" onClick={() => window.__navigate?.('settings')}>Редактировать</Btn>
+            isEditMode
+              ? <Btn variant="primary" size="sm" icon="check" onClick={onToggleEdit}>Готово</Btn>
+              : <Btn variant="ghost" size="sm" icon="edit" onClick={onToggleEdit}>Редактировать</Btn>
           )}
           <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>Поделиться</Btn>
           <Btn variant="ghost" size="sm" icon="download" onClick={() => window.print()}>Экспорт</Btn>
@@ -1086,6 +1099,9 @@ export default function TripView() {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('triplanio:theme') || 'light'; } catch { return 'light'; }
   });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [transferEdit, setTransferEdit] = useState({ open: false, fromVisit: null, toVisit: null, transfer: null });
+  const [hotelEdit, setHotelEdit] = useState({ open: false, visit: null, hotel: null });
 
   // Theme sync
   useEffect(() => {
@@ -1180,6 +1196,25 @@ export default function TripView() {
       <div className="app-body">
         <TripSidebar tripId={tripId} lens={lens} onNavigate={setLens} />
         <main style={{ minWidth: 0, padding: '28px 28px 60px' }}>
+          {/* TransferDialog — opened from missing-transfer warnings or edit mode */}
+          <TransferDialog
+            open={transferEdit.open}
+            onOpenChange={(open) => setTransferEdit(s => ({ ...s, open }))}
+            tripId={tripId}
+            fromVisit={transferEdit.fromVisit}
+            toVisit={transferEdit.toVisit}
+            transfer={transferEdit.transfer}
+          />
+          {/* HotelDialog — opened from missing-hotel warnings or edit mode */}
+          {hotelEdit.visit && (
+            <HotelDialog
+              open={hotelEdit.open}
+              onOpenChange={(open) => setHotelEdit(s => ({ ...s, open }))}
+              visit={hotelEdit.visit}
+              hotel={hotelEdit.hotel}
+            />
+          )}
+
           {lens === 'timeline' && (
             <>
               <TripCoverStrip
@@ -1187,13 +1222,22 @@ export default function TripView() {
                 visits={visits}
                 members={members}
                 myRole={myRole}
+                isEditMode={isEditMode}
+                onToggleEdit={() => setIsEditMode(m => !m)}
               />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
                 <TimelineLens
                   stream={stream}
                   visits={visits}
+                  transfers={transfers}
                   trip={trip}
                   isLoading={loadingContent}
+                  onAddTransfer={(fromVisit, toVisit) =>
+                    setTransferEdit({ open: true, fromVisit, toVisit, transfer: null })
+                  }
+                  onAddHotel={(visit) =>
+                    setHotelEdit({ open: true, visit, hotel: null })
+                  }
                 />
                 <ContextSide
                   budget={budget}
