@@ -12,6 +12,7 @@ import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/ge
 import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
 import HeaderActions from '@/components/HeaderActions';
+import { groupMarkers, markerSvg, svgDataUri, markerPixelSize, MISSING_COLOR } from '@/lib/mapRoute';
 import '../design/app.css';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
@@ -210,15 +211,6 @@ function FitBounds({ positions }) {
   return null;
 }
 
-function makeMarkerIcon(label, color, textColor = 'white') {
-  return L.divIcon({
-    className: '',
-    html: `<div style="background:${color};color:${textColor};border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;box-shadow:0 3px 8px rgba(0,0,0,.25);border:2px solid white;white-space:nowrap;">${label}</div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-  });
-}
-
 // ─── Google Maps helpers ──────────────────────────────────────────────────────
 
 // ErrorBoundary — if Google Maps crashes, falls back to Leaflet
@@ -238,19 +230,19 @@ function GPolyline({ positions }) {
     if (!map || !window.google || positions.length < 2) return;
     const line = new window.google.maps.Polyline({
       path: positions.map(p => ({ lat: p[0], lng: p[1] })),
-      strokeColor: '#2167e2',
+      strokeColor: MISSING_COLOR,
       strokeOpacity: 0,
       strokeWeight: 0,
       icons: [{
         icon: {
           path: 'M 0,-1 0,1',
-          strokeOpacity: 0.7,
-          strokeColor: '#2167e2',
-          strokeWeight: 2.5,
-          scale: 4,
+          strokeOpacity: 0.55,
+          strokeColor: MISSING_COLOR,
+          strokeWeight: 2,
+          scale: 3,
         },
         offset: '0',
-        repeat: '20px',
+        repeat: '14px',
       }],
       map,
     });
@@ -278,8 +270,15 @@ function GFitBounds({ positions }) {
   return null;
 }
 
+function gIcon(labels) {
+  const g = window.google;
+  if (!g?.maps) return undefined;
+  const d = markerPixelSize(false);
+  return { url: svgDataUri(markerSvg(labels, false)), scaledSize: new g.maps.Size(d, d), anchor: new g.maps.Point(d / 2, d / 2) };
+}
+
 // Google Maps inner content — also watches for Google's error overlay and calls onError
-function GoogleMapInner({ pts, positions, onError }) {
+function GoogleMapInner({ groups, positions, onError }) {
   const map = useGMap();
   const status = useApiLoadingStatus();
 
@@ -301,17 +300,8 @@ function GoogleMapInner({ pts, positions, onError }) {
   return (
     <>
       <GFitBounds positions={positions} />
-      {pts.map((p, i) => (
-        <GMarker
-          key={i}
-          position={{ lat: p.lat, lng: p.lng }}
-          label={{
-            text: p.label,
-            color: 'white',
-            fontWeight: 'bold',
-            fontSize: '11px',
-          }}
-        />
+      {groups.map((grp, i) => (
+        <GMarker key={i} position={{ lat: grp.lat, lng: grp.lng }} icon={gIcon(grp.labels)} />
       ))}
       {positions.length >= 2 && <GPolyline positions={positions} />}
     </>
@@ -336,6 +326,7 @@ function PlannerMap({ home, cities, returnCity }) {
   }
 
   const positions = pts.map(p => [p.lat, p.lng]);
+  const groups = groupMarkers(pts);
   const totalNights = cities.reduce((n, c) => n + (+c.nights || 0), 0);
 
   const leafletMap = (
@@ -349,12 +340,14 @@ function PlannerMap({ home, cities, returnCity }) {
     >
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <FitBounds positions={positions} />
-      {pts.map((p, i) => (
-        <LeafletMarker key={i} position={[p.lat, p.lng]} icon={makeMarkerIcon(p.label, p.color)} />
-      ))}
       {positions.length >= 2 && (
-        <Polyline positions={positions} color="#2167e2" weight={2.5} dashArray="6 8" opacity={0.7} />
+        <Polyline positions={positions} pathOptions={{ color: MISSING_COLOR, weight: 2, dashArray: '5 7', opacity: 0.55 }} />
       )}
+      {groups.map((grp, i) => {
+        const d = markerPixelSize(false);
+        const icon = L.divIcon({ className: '', html: markerSvg(grp.labels, false), iconSize: [d, d], iconAnchor: [d / 2, d / 2] });
+        return <LeafletMarker key={i} position={[grp.lat, grp.lng]} icon={icon} />;
+      })}
     </MapContainer>
   );
 
@@ -369,7 +362,7 @@ function PlannerMap({ home, cities, returnCity }) {
           disableDefaultUI
           mapTypeId="roadmap"
         >
-          <GoogleMapInner pts={pts} positions={positions} onError={() => setGmapFailed(true)} />
+          <GoogleMapInner groups={groups} positions={positions} onError={() => setGmapFailed(true)} />
         </GMap>
       </APIProvider>
     </MapErrorBoundary>
