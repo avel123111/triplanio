@@ -194,9 +194,8 @@ export default function ChatLens({ tripId, members = [], myRole }) {
       console.error('Chat send error:', error);
       // Remove optimistic on error
       qc.setQueryData(MSGS_KEY(tripId), (old = []) => old.filter(m => m.id !== optimistic.id));
-    } else {
-      qc.invalidateQueries({ queryKey: MSGS_KEY(tripId) });
     }
+    // Realtime subscription handles adding the real message — no invalidateQueries needed.
   }
 
   function handleKey(e) {
@@ -251,7 +250,20 @@ export default function ChatLens({ tripId, members = [], myRole }) {
     );
   }
 
-  const activeMembers = members.filter(m => m.status === 'active');
+  // Build active members list; if empty (owner has no trip_members row), show current user as owner
+  const activeMembers = (() => {
+    const list = members.filter(m => m.status === 'active');
+    if (list.length === 0 && user) {
+      return [{
+        id: 'self',
+        user_full_name: user.user_metadata?.full_name || null,
+        user_email: user.email,
+        role: myRole || 'owner',
+        status: 'active',
+      }];
+    }
+    return list;
+  })();
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20, height: 'calc(100vh - 300px)', minHeight: 500 }}>

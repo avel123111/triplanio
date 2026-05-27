@@ -341,13 +341,18 @@ export default function Trips() {
       {/* PAGE CONTENT */}
       <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
-        {/* Empty collection */}
+        {/* Loading skeleton — shown before we know if there are any trips */}
+        {isLoadingData && allTrips.length === 0 && (
+          <TripSkeleton viewMode={viewMode} />
+        )}
+
+        {/* Empty collection — only when loading is done and truly no trips */}
         {!isLoadingData && allTrips.length === 0 && (
           <CollectionEmpty onManual={() => checkLimit('manual')} onAi={() => checkLimit('ai')} />
         )}
 
-        {/* Normal view */}
-        {(isLoadingData || allTrips.length > 0) && (
+        {/* Normal view — only when we have at least some trips data */}
+        {allTrips.length > 0 && (
           <>
             {/* Header row */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>

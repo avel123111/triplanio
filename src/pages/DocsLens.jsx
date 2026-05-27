@@ -7,8 +7,9 @@
  *
  * Reads/writes trip_documents table directly via Supabase client.
  * visibility: 'shared' = all members see it; 'private' = only the creator.
+ * Files are uploaded to Supabase Storage bucket 'documents'.
  */
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
@@ -26,10 +27,37 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
   const [notes,      setNotes]      = useState('');
   const [linkUrl,    setLinkUrl]    = useState('');
   const [visibility, setVisibility] = useState(defaultVisibility);
-  const [saving, setSaving] = useState(false);
-  const [err,    setErr]    = useState('');
+  const [documents,  setDocuments]  = useState([]); // [{ file_url, file_name, storage_path }]
+  const [saving,     setSaving]     = useState(false);
+  const [uploading,  setUploading]  = useState(false);
+  const [err,        setErr]        = useState('');
+  const fileInputRef = useRef(null);
   const qc   = useQueryClient();
   const { user } = useAuth();
+
+  async function uploadFiles(files) {
+    if (!files?.length) return;
+    setUploading(true);
+    setErr('');
+    try {
+      const uploaded = [];
+      for (const file of Array.from(files)) {
+        if (file.size > 10 * 1024 * 1024) {
+          setErr(`Файл «${file.name}» слишком большой (макс. 10 МБ)`);
+          continue;
+        }
+        const path = `${tripId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+        const { error: uploadErr } = await supabase.storage.from('documents').upload(path, file);
+        if (uploadErr) { setErr(uploadErr.message); continue; }
+        const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);
+        uploaded.push({ file_url: urlData?.signedUrl || '', file_name: file.name, storage_path: path });
+      }
+      if (uploaded.length) setDocuments(prev => [...prev, ...uploaded]);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
 
   async function save() {
     if (!title.trim()) { setErr('Введи название документа'); return; }
@@ -39,6 +67,7 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
       title:      title.trim(),
       notes:      notes.trim()   || null,
       link_url:   linkUrl.trim() || null,
+      documents:  documents.length ? documents : null,
       visibility,
       created_by: user?.id ?? null,
     });
@@ -52,30 +81,123 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
     <Dialog title="Новый документ" icon="file" size=""
       foot={<>
         <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
-        <Btn variant="primary" loading={saving} onClick={save}>Сохранить</Btn>
+        <Btn variant="primary" loading={saving} disabled={uploading} onClick={save}>Сохранить</Btn>
       </>}>
-      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginBottom: 10 }}>{err}</div>}
-      <Field label="Название">
+
+      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
+
+      {/* Visibility — two card buttons, as in base44 */}
+      <div style={{ marginBottom: 16 }}>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>Доступ</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {[
+            { value: 'shared',  icon: 'users', label: 'Общий',   desc: 'Виден всем участникам' },
+            { value: 'private', icon: 'lock',  label: 'Личный',  desc: 'Только ты его видишь' },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setVisibility(opt.value)}
+              style={{
+                border: `2px solid ${visibility === opt.value ? 'var(--brand)' : 'var(--line)'}`,
+                background: visibility === opt.value ? 'var(--brand-soft)' : 'transparent',
+                borderRadius: 12, padding: '10px 12px', textAlign: 'left', cursor: 'pointer',
+                transition: 'border-color .15s, background .15s',
+              }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+                <Icon name={opt.icon} size={13} style={{ color: visibility === opt.value ? 'var(--brand)' : 'var(--muted)' }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: visibility === opt.value ? 'var(--brand)' : 'var(--ink)' }}>
+                  {opt.label}
+                </span>
+              </div>
+              <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{opt.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Title */}
+      <Field label="Название *">
         <input className="input" autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Паспорт, Страховка, Чеклист…" />
       </Field>
-      <div style={{ marginTop: 14 }}>
-        <Field label="Доступ">
-          <select className="select" value={visibility} onChange={e => setVisibility(e.target.value)}>
-            <option value="shared">Общий — виден всем участникам</option>
-            <option value="private">Личный — виден только мне</option>
-          </select>
-        </Field>
-      </div>
-      <div style={{ marginTop: 14 }}>
-        <Field label="Ссылка (опц.)">
-          <input className="input" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://…" />
-        </Field>
-      </div>
+
+      {/* Notes */}
       <div style={{ marginTop: 14 }}>
         <Field label="Заметки (опц.)">
           <textarea className="textarea" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Покрытие, даты, номер подтверждения…" />
         </Field>
       </div>
+
+      {/* Link */}
+      <div style={{ marginTop: 14 }}>
+        <Field label="Ссылка (опц.)">
+          <input className="input" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://…" />
+        </Field>
+      </div>
+
+      {/* File upload */}
+      <div style={{ marginTop: 16 }}>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>
+          <Icon name="paperclip" size={12} style={{ marginRight: 4, verticalAlign: -1, color: 'var(--brand)' }} />
+          Файлы
+          {documents.length > 0 && <span className="muted" style={{ fontWeight: 400, marginLeft: 6 }}>· {documents.length}</span>}
+        </div>
+
+        {/* Uploaded file list */}
+        {documents.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+            {documents.map((d, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'var(--wash)', borderRadius: 8, border: '1px solid var(--line-2)' }}>
+                <Icon name="file" size={13} style={{ color: 'var(--brand)', flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.file_name}</span>
+                <button
+                  type="button"
+                  onClick={() => setDocuments(prev => prev.filter((_, j) => j !== i))}
+                  style={{ width: 20, height: 20, border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', display: 'grid', placeItems: 'center', borderRadius: 4, flexShrink: 0 }}>
+                  <Icon name="close" size={11} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Drop zone */}
+        <div
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          onDragOver={e => e.preventDefault()}
+          onDrop={e => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
+          style={{
+            border: '1.5px dashed var(--line)', borderRadius: 10, padding: '18px 14px',
+            textAlign: 'center', cursor: uploading ? 'default' : 'pointer',
+            background: 'var(--wash)', transition: 'border-color .15s',
+          }}
+          onMouseEnter={e => { if (!uploading) e.currentTarget.style.borderColor = 'var(--brand)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".pdf,image/*,.doc,.docx,.xls,.xlsx"
+            style={{ display: 'none' }}
+            onChange={e => uploadFiles(e.target.files)}
+          />
+          {uploading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--brand)', fontSize: 13 }}>
+              <div style={{ width: 14, height: 14, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+              Загрузка…
+            </div>
+          ) : (
+            <div style={{ color: 'var(--muted)', fontSize: 13 }}>
+              <Icon name="upload" size={16} style={{ display: 'block', margin: '0 auto 6px' }} />
+              {documents.length === 0
+                ? 'Загрузить файлы (PDF / фото) — до 10 МБ каждый'
+                : 'Добавить ещё файлы'}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </Dialog>
   );
 }
