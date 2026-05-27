@@ -13,8 +13,8 @@
  */
 import React, { useState } from 'react';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card } from '../design/index';
-import { detectPartner, fmt, fmtDate, naiveDayKey } from '../design/index';
+import { Avatar, Badge, Btn, Card, detectPartner, fmt, fmtDate } from '../design/index';
+import { naiveDayKey } from '@/lib/naive-time';
 
 // ─── Mock proposals (shown when no real data yet) ──────────────────────────────
 
