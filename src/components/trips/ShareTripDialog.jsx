@@ -23,7 +23,7 @@ export default function ShareTripDialog({ open, onOpenChange, tripId }) {
     supabase.functions.invoke('ensureShareToken', { body: { tripId } })
       .then(({ data, error }) => {
         if (error) { console.error('ensureShareToken error:', error); return; }
-        const token = data?.token;
+        const token = data?.shareToken || data?.token;
         if (token) {
           setUrl(`${window.location.origin}/public/trip/${tripId}?t=${token}`);
         }

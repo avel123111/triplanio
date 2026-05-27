@@ -7,6 +7,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { isTripInPast } from '@/lib/trip-dates';
+import { isProActive } from '@/lib/subscription';
 import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/geo';
 import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
@@ -974,10 +975,7 @@ export default function ManualPlanner() {
   const nav = useNavigate();
   const { user } = useAuth();
 
-  // B4 fix: stripe-webhook stores subscription_status='pro'
-  const isPro = user?.subscription_status === 'pro'
-    && !!user?.subscription_end_date
-    && new Date(user.subscription_end_date) > new Date();
+  const isPro = isProActive(user);
 
   // ── Free-plan limit check ─────────────────────────────────────────────────
   const { data: allTrips = [], isLoading: checkingLimit } = useQuery({
