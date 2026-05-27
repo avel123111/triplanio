@@ -4,6 +4,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
+import { isProActive } from '@/lib/subscription';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, EmptyState } from '../design/index';
 import '../design/app.css';
@@ -242,10 +243,7 @@ export default function Trips() {
     try { localStorage.setItem('trips:viewMode', viewMode); } catch { /* ignore */ }
   }, [viewMode]);
 
-  // B4 fix: stripe-webhook stores subscription_status='pro', check expiry too
-  const isPro = user?.subscription_status === 'pro'
-    && !!user?.subscription_end_date
-    && new Date(user.subscription_end_date) > new Date();
+  const isPro = isProActive(user);
 
   // ── Fetch trips ─────────────────────────────────────────────────────────────
   const { data: allTrips = [], isLoading } = useQuery({

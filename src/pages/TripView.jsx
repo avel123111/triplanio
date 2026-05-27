@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
+import { isProActive } from '@/lib/subscription';
 import { Icon } from '../design/icons';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
 import { Avatar, Btn, Badge, EmptyState, Skeleton, ModalHost, groupByDate, fmtDate, weekday, StreamEventRow, fmt, CityPhoto, WeatherChip } from '../design/index';
@@ -826,9 +827,34 @@ function LensStub({ lens }) {
 // ─── Share / More dialogs ─────────────────────────────────────────────────────
 
 function ShareDialog({ trip }) {
-  const shareUrl = `${window.location.origin}/trip/${trip?.id}`;
+  const [shareUrl, setShareUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!trip?.id) return;
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+    supabase.functions.invoke('ensureShareToken', { body: { tripId: trip.id } })
+      .then(({ data, error: invokeErr }) => {
+        if (cancelled) return;
+        if (invokeErr) { console.error('ensureShareToken error:', invokeErr); setError('Не удалось создать ссылку'); return; }
+        const token = data?.shareToken || data?.token;
+        if (token) {
+          setShareUrl(`${window.location.origin}/public/trip/${trip.id}?t=${token}`);
+        } else {
+          setError('Не удалось создать ссылку');
+        }
+      })
+      .catch(err => { if (!cancelled) { console.error('ensureShareToken error:', err); setError('Не удалось создать ссылку'); } })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [trip?.id]);
+
   function copyLink() {
+    if (!shareUrl) return;
     navigator.clipboard?.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -839,11 +865,12 @@ function ShareDialog({ trip }) {
       onClick={() => window.__closeModal?.()}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 420, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
         <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>Поделиться трипом</h2>
-        <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>Скопируй ссылку и отправь участникам</div>
+        <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>Скопируй ссылку и отправь участникам — она откроется без входа в аккаунт</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input className="input" readOnly value={shareUrl} style={{ flex: 1, fontSize: 12.5 }} onClick={e => e.target.select()} />
-          <Btn variant="primary" icon="check" onClick={copyLink}>{copied ? 'Скопировано!' : 'Копировать'}</Btn>
+          <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? 'Генерируем ссылку…' : ''} style={{ flex: 1, fontSize: 12.5 }} onClick={e => e.target.select()} />
+          <Btn variant="primary" icon="check" onClick={copyLink} disabled={loading || !shareUrl}>{copied ? 'Скопировано!' : 'Копировать'}</Btn>
         </div>
+        {error && <div style={{ color: 'var(--danger, #dc2626)', fontSize: 12.5, marginTop: 10 }}>{error}</div>}
         <div style={{ marginTop: 18, textAlign: 'right' }}>
           <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Закрыть</Btn>
         </div>
@@ -1242,10 +1269,7 @@ export default function TripView() {
     [hotels, activities, transfers, visits],
   );
 
-  // B4 fix: stripe-webhook stores subscription_status='pro'
-  const isPro = user?.subscription_status === 'pro'
-    && !!user?.subscription_end_date
-    && new Date(user.subscription_end_date) > new Date();
+  const isPro = isProActive(user);
 
   if (loadingShell) return <LoadingScreen />;
   if (shellError || (!loadingShell && !trip)) return <ErrorScreen onBack={() => nav('/trips')} />;
