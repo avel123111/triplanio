@@ -650,8 +650,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     const prev = ordered[i - 1];
     if (!prev) continue;
     if (v.kind === 'start') continue;
-    // No warning when departing from start anchor to a transit city
-    if (prev.kind === 'start' && v.kind !== 'end') continue;
+    // Show warning for ALL pairs including start→city1 and cityN→end
     const inboundFromPrev = (inboundByVisit[v.id] || []).filter(
       tr => tr.from_city_visit_id === prev.id
     );
