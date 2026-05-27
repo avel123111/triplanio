@@ -9,7 +9,7 @@ import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { Icon } from '../design/icons';
-import NotificationsBell from '@/components/notifications/NotificationsBell';
+import HeaderActions from '@/components/HeaderActions';
 import { Avatar, Btn, EmptyState, Skeleton, ModalHost, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
 import { sortVisits } from '@/lib/validation';
 import { DateTime } from 'luxon';
@@ -261,21 +261,18 @@ function TripHeader({ trip, visits, isPro, theme, setTheme, user, nav }) {
           {dateRange && dateRange !== '—' && (
             <span className="app-header__crumb-dates">{dateRange}</span>
           )}
-          {isPro && (
+          {trip?.is_pro_trip && !isPro && (
             <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '2px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', flexShrink: 0 }}>PRO</span>
           )}
         </div>
       </div>
 
-      <div className="app-header__right">
-        <button className="icon-btn" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} title="Сменить тему">
-          <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} />
-        </button>
-        <NotificationsBell triggerClassName="icon-btn" />
-        <button className="icon-btn" title={user?.full_name || user?.email || 'Настройки'} onClick={() => nav('/settings')} style={{ padding: '0 2px' }}>
-          <Avatar name={user?.full_name || user?.email || '?'} photo={user?.avatar_url} size="sm" />
-        </button>
-      </div>
+      <HeaderActions
+        user={user}
+        isPro={isPro}
+        isDark={theme === 'dark'}
+        onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+      />
     </header>
   );
 }
@@ -305,8 +302,9 @@ function isLensVisible(trip, lensId) {
   return trip?.details?.addons?.[key] !== false;
 }
 
-function TripSidebar({ tripId, trip, lens, onNavigate }) {
+function TripSidebar({ tripId, trip, lens, onNavigate, isPro, onUpgrade }) {
   const lensItems = LENS_ITEMS.filter(item => isLensVisible(trip, item.id));
+  const showUpgrade = !trip?.is_pro_trip && !isPro;
   return (
     <aside className="app-side">
       <div className="app-side__group">
@@ -335,6 +333,15 @@ function TripSidebar({ tripId, trip, lens, onNavigate }) {
           </button>
         ))}
       </div>
+      {showUpgrade && (
+        <div style={{ margin: '10px 6px 0', padding: 12, borderRadius: 10, background: 'var(--warm-tint)' }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warm)', marginBottom: 4 }}>Free-трип</div>
+          <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginBottom: 8, lineHeight: 1.45 }}>
+            Календарь, бюджет-разбивка, ИИ и чат закрыты Pro.
+          </div>
+          <Btn variant="primary" size="sm" block icon="pro" onClick={onUpgrade}>Апгрейд трипа</Btn>
+        </div>
+      )}
     </aside>
   );
 }
@@ -661,10 +668,10 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     }
   }
 
-  // Build missing-transfer map using base44's kind-based logic:
-  //   - Always skip: start anchor → first transit city (no transfer needed)
-  //   - Always show: last transit city → end anchor (transfer IS needed)
-  //   - Check by visit ID pairs, not city names
+  // Build missing-transfer map (by visit-ID pairs, not city names):
+  //   - Warn for every consecutive pair lacking an inbound transfer, INCLUDING
+  //     start→first-city and last-city→finish.
+  //   - Only the start anchor itself has nothing before it, so it's skipped.
   const missingTransferByVisitId = {};
   for (let i = 0; i < ordered.length; i++) {
     const v = ordered[i];
@@ -682,6 +689,9 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
 
   const rows = [];
   let prevVisitId = null;
+  // Missing-transfer warnings already emitted inside the day loop (keyed by
+  // destination visit id) — so we don't render anchor cities' warnings twice.
+  const renderedMissing = new Set();
   // Track which days have a city hero (to avoid showing "empty day" for them)
   const cityHeroDays = new Set();
 
@@ -712,8 +722,10 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     const visit = visitForDay(day, visits);
     const isCityHeroDay = cityHeroDays.has(day);
 
-    // Inject missing transfer warning before city change (kind-based, visit-ID-based)
-    if (visit && visit.id !== prevVisitId && prevVisitId) {
+    // Inject missing transfer warning before city change (kind-based, visit-ID-based).
+    // Note: no `prevVisitId` guard — the start→first-city warning must show even
+    // when the start anchor city has no days of its own.
+    if (visit && visit.id !== prevVisitId) {
       const mt = missingTransferByVisitId[visit.id];
       if (mt) {
         rows.push(
@@ -726,6 +738,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
             onAdd={onAddTransfer}
           />
         );
+        renderedMissing.add(visit.id);
       }
     }
 
@@ -806,6 +819,24 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         )}
       </div>
     );
+  }
+
+  // Any missing-transfer warnings not emitted in the day loop (e.g. into the
+  // finish anchor city, which has no days of its own) — render before the end.
+  for (const v of ordered) {
+    const mt = missingTransferByVisitId[v.id];
+    if (mt && !renderedMissing.has(v.id)) {
+      rows.push(
+        <MissingTransferWarning
+          key={`mt-tail-${v.id}`}
+          from={mt.fromVisit.city_name}
+          to={mt.toVisit.city_name}
+          fromVisit={mt.fromVisit}
+          toVisit={mt.toVisit}
+          onAdd={onAddTransfer}
+        />
+      );
+    }
   }
 
   // End anchor
@@ -1333,7 +1364,7 @@ export default function TripView() {
         nav={nav}
       />
       <div className="app-body">
-        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} />
+        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={isPro} onUpgrade={() => setUpgradeOpen(true)} />
         <main style={{ minWidth: 0, padding: '28px 28px 60px' }}>
           {/* TransferDialog — opened from missing-transfer warnings or edit mode */}
           <TransferDialog
@@ -1507,7 +1538,7 @@ export default function TripView() {
               myRole={myRole}
             />
           )}
-          {shownLens === 'map' && <MapLens visits={visits} trip={trip} isLoading={loadingContent} />}
+          {shownLens === 'map' && <MapLens visits={visits} hotels={hotels} activities={activities} transfers={transfers} trip={trip} isLoading={loadingContent} />}
         </main>
       </div>
 

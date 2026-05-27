@@ -11,6 +11,7 @@ import { isProActive } from '@/lib/subscription';
 import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/geo';
 import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
+import HeaderActions from '@/components/HeaderActions';
 import '../design/app.css';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
@@ -977,6 +978,14 @@ export default function ManualPlanner() {
 
   const isPro = isProActive(user);
 
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('triplanio:theme') || 'light'; } catch { return 'light'; }
+  });
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('triplanio:theme', theme); } catch { /* ignore */ }
+  }, [theme]);
+
   // ── Free-plan limit check ─────────────────────────────────────────────────
   const { data: allTrips = [], isLoading: checkingLimit } = useQuery({
     queryKey: ['trips-limit-check', user?.id],
@@ -1190,7 +1199,13 @@ export default function ManualPlanner() {
           <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К коллекции">
             <Icon name="back" size={14} />
           </button>
-          <div className="app-header__brand"><img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} /><span className="app-header__brand-name">Triplanio</span></div>
+          <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}><img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} /><span className="app-header__brand-name">Triplanio</span></div>
+          <HeaderActions
+            user={user}
+            isPro={isPro}
+            isDark={theme === 'dark'}
+            onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+          />
         </header>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ maxWidth: 480, textAlign: 'center' }}>
@@ -1216,14 +1231,27 @@ export default function ManualPlanner() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       {/* Header */}
       <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <div className="app-header__brand">
+        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К коллекции">
+          <Icon name="back" size={14} />
+        </button>
+        <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
+          <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
           <span className="app-header__brand-name">Triplanio</span>
         </div>
+        <div className="app-header__crumb">
+          <span className="app-header__crumb-sep">/</span>
+          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>Новый трип</span>
+        </div>
+        <HeaderActions
+          user={user}
+          isPro={isPro}
+          isDark={theme === 'dark'}
+          onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+        />
       </header>
 
-      {/* Sub-header: back link + stepper */}
+      {/* Sub-header: stepper */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 24px', borderBottom: '1px solid var(--line-2)', background: 'var(--surface)' }}>
-        <Btn variant="ghost" size="sm" icon="back" onClick={() => nav('/trips')}>К коллекции</Btn>
         <div style={{ flex: 1 }} />
         <Stepper currentId={step} onJump={setStep} />
       </div>
