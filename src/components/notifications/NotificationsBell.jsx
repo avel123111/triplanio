@@ -13,7 +13,7 @@ import { ru, es, enUS } from 'date-fns/locale';
 
 const DATE_LOCALES = { ru, es, en: enUS };
 
-export default function NotificationsBell() {
+export default function NotificationsBell({ triggerClassName }) {
   const t = useT();
   const { lang } = useI18n();
   const dateLocale = DATE_LOCALES[lang] || enUS;
@@ -91,13 +91,17 @@ export default function NotificationsBell() {
         <button
           type="button"
           aria-label={t('notif.title')}
-          className="relative inline-flex items-center justify-center h-10 w-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition"
+          className={triggerClassName
+            ? `relative ${triggerClassName}`
+            : 'relative inline-flex items-center justify-center h-10 w-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition'}
         >
           <Bell className="w-5 h-5" />
           {unread > 0 && (
-            <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-              {unread > 9 ? '9+' : unread}
-            </span>
+            triggerClassName
+              ? <span className="dot" />
+              : <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                  {unread > 9 ? '9+' : unread}
+                </span>
           )}
         </button>
       </PopoverTrigger>

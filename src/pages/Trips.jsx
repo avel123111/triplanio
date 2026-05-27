@@ -10,6 +10,7 @@ import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
+import NotificationsBell from '@/components/notifications/NotificationsBell';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 function strHue(str = '') {
@@ -34,7 +35,10 @@ function normalizeTrip(trip, visits = [], role = 'member', isPro = false) {
     days:      formatTripRange(visits, '—'),
     scope:     scopeLabel(visits),
     role,
-    pro:       isPro,
+    // Badge shows only for trips purchased individually as Pro trip.
+    // User subscription (isPro) unlocks features but doesn't badge every trip.
+    pro:       !!trip.is_pro_trip,
+    userIsPro: isPro,
     status:    isTripInPast(visits) ? 'past' : 'active',
   };
 }
@@ -329,12 +333,13 @@ export default function Trips() {
           <span className="app-header__brand-name">Triplanio</span>
         </div>
         <div className="app-header__right">
+          {isPro && (
+            <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '2px 8px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em' }}>PRO</span>
+          )}
           <button className="icon-btn" title="Сменить тему" onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}>
             <Icon name={theme === 'light' ? 'moon' : 'sun'} size={17} />
           </button>
-          <button className="icon-btn" title="Уведомления" style={{ position: 'relative' }} onClick={() => nav('/inbox')}>
-            <Icon name="bell" size={17} />
-          </button>
+          <NotificationsBell triggerClassName="icon-btn" />
           <button className="icon-btn" title={user?.full_name || user?.email || 'Аккаунт'} onClick={() => nav('/settings')} style={{ padding: '0 2px' }}>
             <Avatar name={user?.full_name || user?.email || '?'} photo={user?.avatar_url} size="sm" />
           </button>

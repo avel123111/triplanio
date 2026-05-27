@@ -235,9 +235,6 @@ function ErrorScreen({ onBack }) {
 
 function TripHeader({ trip, visits, isPro, theme, setTheme, user, nav }) {
   const dateRange = formatTripRange(visits, '—');
-  const initials = user?.full_name
-    ? user.full_name.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase()
-    : (user?.email?.[0] || '?').toUpperCase();
 
   return (
     <header className="app-header">
@@ -269,14 +266,9 @@ function TripHeader({ trip, visits, isPro, theme, setTheme, user, nav }) {
         <button className="icon-btn" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} title="Сменить тему">
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} />
         </button>
-        <NotificationsBell />
-        <button
-          className="app-header__avatar"
-          onClick={() => nav('/settings')}
-          title="Настройки"
-          style={{ cursor: 'pointer', border: 'none' }}
-        >
-          {initials}
+        <NotificationsBell triggerClassName="icon-btn" />
+        <button className="icon-btn" title={user?.full_name || user?.email || 'Настройки'} onClick={() => nav('/settings')} style={{ padding: '0 2px' }}>
+          <Avatar name={user?.full_name || user?.email || '?'} photo={user?.avatar_url} size="sm" />
         </button>
       </div>
     </header>
@@ -993,7 +985,8 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
 
   // If members list is empty but we have a user/trip, synthesize owner row
   const activeMembers = (() => {
-    const list = members.filter(m => m.status === 'active');
+    // Include offline members (user_email:null, status:'offline') alongside active ones
+    const list = members.filter(m => m.status === 'active' || m.status === 'offline');
     if (list.length === 0 && user) {
       return [{
         id: 'self',
@@ -1048,9 +1041,10 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {activeMembers.map((m, i) => {
             const name = m.user_full_name || m.user_email || '—';
+            const isOffline = m.status === 'offline';
             const roleIcon = m.role === 'owner' ? 'crown' : m.role === 'admin' ? 'shield' : 'eye';
             const roleColor = m.role === 'owner' ? 'var(--warm)' : m.role === 'admin' ? 'var(--brand)' : 'var(--muted)';
-            const roleLabel = m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель';
+            const roleLabel = isOffline ? 'Офлайн' : m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель';
             return (
               <div key={m.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Avatar name={name} size="sm" />
