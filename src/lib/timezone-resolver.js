@@ -1,4 +1,4 @@
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 
 /**
  * Resolve IANA timezone for given coordinates via Google TimeZone API.
@@ -11,10 +11,12 @@ export async function resolveTimezoneFromCoords(lat, lng) {
   if (typeof lat !== 'number' || typeof lng !== 'number') return null;
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   try {
-    const res = await base44.functions.invoke('placesAutocomplete', {
-      action: 'timezone',
-      lat,
-      lng,
+    const res = await supabase.functions.invoke('placesAutocomplete', {
+      body: {
+        action: 'timezone',
+        lat,
+        lng,
+      },
     });
     return res?.data?.timeZoneId || null;
   } catch {

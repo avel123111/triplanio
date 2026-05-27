@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { BedDouble, MoreVertical, Trash2, Plus, AlertTriangle } from 'lucide-react';
 import { formatInTz } from '@/lib/time';
 import { hotelWarnings } from '@/lib/validation';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import BookingLinkButton from '@/components/hotels/BookingLinkButton';
@@ -16,7 +16,10 @@ export default function HotelTimeline({ visit, hotels, onAdd, onEdit, onView }) 
   const qc = useQueryClient();
   const [confirmDel, setConfirmDel] = useState({ open: false, hotel: null });
   const del = useMutation({
-    mutationFn: (id) => base44.entities.HotelStay.delete(id),
+    mutationFn: async (id) => {
+      const { error } = await supabase.from('hotel_stays').delete().eq('id', id);
+      if (error) throw error;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['hotels', visit.trip_id] }),
   });
 

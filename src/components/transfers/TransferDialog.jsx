@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
 import { transferWarnings, MAX_TRANSFER_SEGMENTS } from '@/lib/validation';
@@ -85,6 +86,7 @@ function defaultsForNew(fromVisit, toVisit, startTz, endTz) {
 export default function TransferDialog({ open, onOpenChange, tripId, fromVisit, toVisit, transfer = null }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { t, plural } = useI18nFormat();
   const isEdit = !!transfer;
 
@@ -109,10 +111,10 @@ export default function TransferDialog({ open, onOpenChange, tripId, fromVisit, 
     setIsOwner(false);
     const checkPro = async () => {
       try {
-        const res = await base44.functions.invoke('checkSubscriptionStatus', { tripId });
+        const res = await supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } });
         if (!cancelled) {
-          setIsPro(!!res.data.isPro);
-          setIsOwner(!!res.data.isOwner);
+          setIsPro(!!res.data?.isPro);
+          setIsOwner(!!res.data?.isOwner);
         }
       } catch (e) {
         console.error(e);
@@ -262,12 +264,26 @@ export default function TransferDialog({ open, onOpenChange, tripId, fromVisit, 
           voucher_file_name: '',
         });
       }
-      if (transfer) return base44.entities.Transfer.update(transfer.id, payload);
-      const created = await base44.entities.Transfer.create(payload);
+      if (transfer) {
+        const { data, error } = await supabase
+          .from('transfers')
+          .update(payload)
+          .eq('id', transfer.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+      const { data: created, error: createErr } = await supabase
+        .from('transfers')
+        .insert({ ...payload, created_by: user?.email })
+        .select()
+        .single();
+      if (createErr) throw createErr;
       // If AI returned additional segments, create them as separate Transfer rows.
       for (const s of extraSegments) {
         if (!s.start_datetime || !s.end_datetime) continue;
-        await base44.entities.Transfer.create({
+        const { error: segErr } = await supabase.from('transfers').insert({
           trip_id: tripId,
           from_city_visit_id: fromVisit.id,
           to_city_visit_id: toVisit.id,
@@ -284,7 +300,9 @@ export default function TransferDialog({ open, onOpenChange, tripId, fromVisit, 
           // currency is required on the entity — always fall back to EUR.
           currency: s.currency || 'EUR',
           details: {},
+          created_by: user?.email,
         });
+        if (segErr) throw segErr;
       }
       return created;
     },

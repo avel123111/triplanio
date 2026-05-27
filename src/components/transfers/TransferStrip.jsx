@@ -6,7 +6,7 @@ import { transferWarnings } from '@/lib/validation';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { MoreVertical, Trash2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import BookingChoiceDialog from '@/components/bookings/BookingChoiceDialog';
@@ -27,7 +27,10 @@ export default function TransferStrip({ fromVisit, toVisit, transfer, tripId, on
   const qc = useQueryClient();
   const [confirmDel, setConfirmDel] = useState(false);
   const del = useMutation({
-    mutationFn: (id) => base44.entities.Transfer.delete(id),
+    mutationFn: async (id) => {
+      const { error } = await supabase.from('transfers').delete().eq('id', id);
+      if (error) throw error;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['transfers', tripId] })
   });
 

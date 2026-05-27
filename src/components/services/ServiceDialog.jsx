@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ export default function ServiceDialog({ open, onOpenChange, tripId, kind, servic
 function SimpleServiceDialog({ open, onOpenChange, tripId, kind, service }) {
   const { t } = useI18nFormat();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const isEdit = !!service;
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -44,7 +46,7 @@ function SimpleServiceDialog({ open, onOpenChange, tripId, kind, service }) {
   };
 
   const saveMut = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const payload = {
         trip_id: tripId,
         kind,
@@ -52,14 +54,32 @@ function SimpleServiceDialog({ open, onOpenChange, tripId, kind, service }) {
         price: price === '' ? null : Number(price),
         currency: currency || 'EUR',
       };
-      if (isEdit) return base44.entities.TripService.update(service.id, payload);
-      return base44.entities.TripService.create(payload);
+      if (isEdit) {
+        const { data, error } = await supabase
+          .from('trip_services')
+          .update(payload)
+          .eq('id', service.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+      const { data, error } = await supabase
+        .from('trip_services')
+        .insert({ ...payload, created_by: user?.email })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => { invalidate(); onOpenChange(false); },
   });
 
   const deleteMut = useMutation({
-    mutationFn: () => base44.entities.TripService.delete(service.id),
+    mutationFn: async () => {
+      const { error } = await supabase.from('trip_services').delete().eq('id', service.id);
+      if (error) throw error;
+    },
     onSuccess: () => { invalidate(); onOpenChange(false); },
   });
 

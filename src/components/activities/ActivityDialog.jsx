@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
 import { activityWarnings } from '@/lib/validation';
@@ -22,6 +23,7 @@ import { invalidateTripData, optimisticContentUpdate } from '@/lib/trip-data';
 export default function ActivityDialog({ open, onOpenChange, visit, activity = null, defaultStart = null }) {
   const t = useT();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const isEdit = !!activity;
   const tz = visit?.timezone || 'UTC';
   const [uploading, setUploading] = useState(false);
@@ -100,8 +102,23 @@ export default function ActivityDialog({ open, onOpenChange, visit, activity = n
         notes: form.notes,
         details: {},
       };
-      if (activity) return base44.entities.Activity.update(activity.id, payload);
-      return base44.entities.Activity.create(payload);
+      if (activity) {
+        const { data, error } = await supabase
+          .from('activities')
+          .update(payload)
+          .eq('id', activity.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+      const { data, error } = await supabase
+        .from('activities')
+        .insert({ ...payload, created_by: user?.email })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     },
     onMutate: () => {
       // Close immediately — optimistic update will show the new item right away

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { Paperclip, Upload, X, Loader2, Plus } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -50,10 +50,20 @@ export default function DocumentsField({
     try {
       const uploaded = [];
       for (const file of toUpload) {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        uploaded.push({ file_url, file_name: file.name });
+        const uid = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const path = `attachments/${uid}/${file.name}`;
+        const { error: upErr } = await supabase.storage.from('documents').upload(path, file);
+        if (upErr) {
+          toast({ title: 'Не удалось загрузить файл', description: upErr.message, variant: 'destructive' });
+          continue;
+        }
+        // Long-lived signed URL (10 years) — matches the documents lens convention.
+        const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);
+        uploaded.push({ file_url: urlData?.signedUrl || '', file_name: file.name, storage_path: path });
       }
-      onChange([...docs, ...uploaded]);
+      if (uploaded.length) onChange([...docs, ...uploaded]);
     } finally {
       setUploadingWithCb(false);
       if (inputRef.current) inputRef.current.value = '';

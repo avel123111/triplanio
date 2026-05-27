@@ -8,7 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import AiField from '@/components/ui/AiField';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
 import { hotelWarnings } from '@/lib/validation';
@@ -79,6 +80,7 @@ function defaultFormForNew(visit, tz) {
 export default function HotelDialog({ open, onOpenChange, visit, hotel = null, otherHotels = [] }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { t, locale, fmtCountry } = useI18nFormat();
   const isEdit = !!hotel;
   const tz = visit?.timezone || 'UTC';
@@ -99,10 +101,10 @@ export default function HotelDialog({ open, onOpenChange, visit, hotel = null, o
     setIsOwner(false);
     const checkPro = async () => {
       try {
-        const res = await base44.functions.invoke('checkSubscriptionStatus', { tripId: visit?.trip_id });
+        const res = await supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId: visit?.trip_id } });
         if (!cancelled) {
-          setIsPro(!!res.data.isPro);
-          setIsOwner(!!res.data.isOwner);
+          setIsPro(!!res.data?.isPro);
+          setIsOwner(!!res.data?.isOwner);
         }
       } catch (e) {
         console.error(e);
@@ -267,8 +269,23 @@ export default function HotelDialog({ open, onOpenChange, visit, hotel = null, o
         notes: form.notes,
         details: {},
       };
-      if (hotel) return base44.entities.HotelStay.update(hotel.id, payload);
-      return base44.entities.HotelStay.create(payload);
+      if (hotel) {
+        const { data, error } = await supabase
+          .from('hotel_stays')
+          .update(payload)
+          .eq('id', hotel.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+      const { data, error } = await supabase
+        .from('hotel_stays')
+        .insert({ ...payload, created_by: user?.email })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['hotels', visit.trip_id] });

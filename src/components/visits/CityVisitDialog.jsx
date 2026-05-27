@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTimezone, countryFlag } from '@/lib/geo';
 import { localToUtc, utcToLocalInput, dayKey } from '@/lib/time';
@@ -21,6 +22,7 @@ import { invalidateTripData, optimisticContentUpdate } from '@/lib/trip-data';
 export default function CityVisitDialog({ open, onOpenChange, tripId, visit = null, previousVisit = null, trip = null, allVisits = [], onCreated }) {
   const t = useT();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const isEdit = !!visit;
   const [picked, setPicked] = useState(null);
   const [tz, setTz] = useState('UTC');
@@ -118,8 +120,23 @@ export default function CityVisitDialog({ open, onOpenChange, tripId, visit = nu
         end_datetime: isAnchor ? null : endUtc,
         notes: form.notes,
       };
-      if (visit) return base44.entities.CityVisit.update(visit.id, payload);
-      return base44.entities.CityVisit.create(payload);
+      if (visit) {
+        const { data, error } = await supabase
+          .from('city_visits')
+          .update(payload)
+          .eq('id', visit.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+      const { data, error } = await supabase
+        .from('city_visits')
+        .insert({ ...payload, created_by: user?.email })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     },
     onMutate: () => {
       onOpenChange(false);

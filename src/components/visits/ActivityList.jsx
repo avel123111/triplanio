@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { formatInTz } from '@/lib/time';
 import { activityWarnings } from '@/lib/validation';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -23,7 +23,10 @@ export default function ActivityList({ visit, activities, onAdd, onEdit, onView,
   const qc = useQueryClient();
   const [confirmDel, setConfirmDel] = useState({ open: false, activity: null });
   const del = useMutation({
-    mutationFn: (id) => base44.entities.Activity.delete(id),
+    mutationFn: async (id) => {
+      const { error } = await supabase.from('activities').delete().eq('id', id);
+      if (error) throw error;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['activities', visit.trip_id] }),
   });
 

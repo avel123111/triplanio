@@ -19,9 +19,7 @@ import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
 import CalendarLens from './CalendarLens';
 import DocsLens from './DocsLens';
-import HotelsLens from './HotelsLens';
 import SettingsLens from './SettingsLens';
-import AILens from './AILens';
 import ChatLens from './ChatLens';
 import '../design/app.css';
 
@@ -294,15 +292,13 @@ const LENS_ITEMS = [
   { id: 'map',       label: 'Карта',         icon: 'map'      },
   { id: 'calendar',  label: 'Календарь',     icon: 'calendar' },
   { id: 'budget',    label: 'Бюджет',        icon: 'wallet'   },
-  { id: 'hotels',    label: 'Отели',         icon: 'vote'     },
   { id: 'docs',      label: 'Документы',     icon: 'file'     },
+  { id: 'chat',      label: 'Чат',           icon: 'chat'     },
 ];
 
 const MGMT_ITEMS = [
   { id: 'members',   label: 'Участники',     icon: 'users'    },
   { id: 'settings',  label: 'Настройки',     icon: 'settings' },
-  { id: 'ai',        label: 'ИИ-помощник',   icon: 'sparkles' },
-  { id: 'chat',      label: 'Чат',           icon: 'chat'     },
 ];
 
 function TripSidebar({ tripId, lens, onNavigate }) {
@@ -808,11 +804,9 @@ const LENS_META = {
   map:      { icon: 'map',      label: 'Карта'        },
   calendar: { icon: 'calendar', label: 'Календарь'    },
   budget:   { icon: 'wallet',   label: 'Бюджет'       },
-  hotels:   { icon: 'vote',     label: 'Отели'        },
   docs:     { icon: 'file',     label: 'Документы'    },
   members:  { icon: 'users',    label: 'Участники'    },
   settings: { icon: 'settings', label: 'Настройки'    },
-  ai:       { icon: 'sparkles', label: 'ИИ-помощник'  },
   chat:     { icon: 'chat',     label: 'Чат'          },
 };
 
@@ -1168,7 +1162,7 @@ export default function TripView() {
     window.__navigate = (target) => {
       if (target === 'collection') { nav('/trips'); return; }
       if (target === 'ai-planner') { nav('/plan-trip-ai'); return; }
-      const lensIds = ['timeline', 'map', 'calendar', 'budget', 'hotels', 'docs', 'members', 'settings', 'ai', 'chat'];
+      const lensIds = ['timeline', 'map', 'calendar', 'budget', 'docs', 'members', 'settings', 'chat'];
       if (lensIds.includes(target)) {
         const sp = new URLSearchParams(searchParams);
         if (target === 'timeline') sp.delete('lens'); else sp.set('lens', target);
@@ -1395,14 +1389,6 @@ export default function TripView() {
               isLoading={loadingContent}
             />
           )}
-          {lens === 'hotels' && (
-            <HotelsLens
-              tripId={tripId}
-              visits={visits}
-              members={members}
-              myRole={myRole}
-            />
-          )}
           {lens === 'settings' && (
             <SettingsLens
               tripId={tripId}
@@ -1411,13 +1397,6 @@ export default function TripView() {
               myRole={myRole}
               isPro={isPro}
               queryClient={qc}
-            />
-          )}
-          {lens === 'ai' && (
-            <AILens
-              tripId={tripId}
-              trip={trip}
-              myRole={myRole}
             />
           )}
           {lens === 'chat' && (

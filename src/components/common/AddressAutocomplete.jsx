@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Loader2, MapPin } from 'lucide-react';
@@ -57,11 +57,13 @@ export default function AddressAutocomplete({
     setLoading(true);
     try {
       const sessionToken = ensureSessionToken();
-      const res = await base44.functions.invoke('placesAutocomplete', {
-        action: 'autocomplete',
-        input: q.trim(),
-        language: effectiveLang,
-        sessionToken,
+      const res = await supabase.functions.invoke('placesAutocomplete', {
+        body: {
+          action: 'autocomplete',
+          input: q.trim(),
+          language: effectiveLang,
+          sessionToken,
+        },
       });
       // Ignore stale responses
       if (lastQueryRef.current !== q) return;
@@ -92,11 +94,13 @@ export default function AddressAutocomplete({
     if (onPlaceSelected) {
       try {
         const sessionToken = sessionTokenRef.current;
-        const res = await base44.functions.invoke('placesAutocomplete', {
-          action: 'details',
-          place_id: p.place_id,
-          sessionToken,
-          language: effectiveLang,
+        const res = await supabase.functions.invoke('placesAutocomplete', {
+          body: {
+            action: 'details',
+            place_id: p.place_id,
+            sessionToken,
+            language: effectiveLang,
+          },
         });
         if (res?.data && !res.data.error) {
           onPlaceSelected({

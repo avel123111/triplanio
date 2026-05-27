@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -81,6 +82,7 @@ function serviceToForm(svc) {
 export default function CarRentalDialog({ open, onOpenChange, tripId, service }) {
   const { t } = useI18nFormat();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const isEdit = !!service;
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState(() => serviceToForm(service));
@@ -121,7 +123,7 @@ export default function CarRentalDialog({ open, onOpenChange, tripId, service })
   };
 
   const saveMut = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       // When "return to a different location" is OFF — dropoff inherits pickup
       // address / coords / timezone. This keeps a single source of truth and
       // makes reminders/timeline consistent.
@@ -161,14 +163,32 @@ export default function CarRentalDialog({ open, onOpenChange, tripId, service })
         currency: form.currency || 'EUR',
         details,
       };
-      if (isEdit) return base44.entities.TripService.update(service.id, payload);
-      return base44.entities.TripService.create(payload);
+      if (isEdit) {
+        const { data, error } = await supabase
+          .from('trip_services')
+          .update(payload)
+          .eq('id', service.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+      const { data, error } = await supabase
+        .from('trip_services')
+        .insert({ ...payload, created_by: user?.email })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => { invalidate(); onOpenChange(false); },
   });
 
   const deleteMut = useMutation({
-    mutationFn: () => base44.entities.TripService.delete(service.id),
+    mutationFn: async () => {
+      const { error } = await supabase.from('trip_services').delete().eq('id', service.id);
+      if (error) throw error;
+    },
     onSuccess: () => { invalidate(); onOpenChange(false); },
   });
 
