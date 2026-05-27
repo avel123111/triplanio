@@ -3,7 +3,7 @@ import { Icon } from '../../design/icons';
 import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
          fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
          WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard,
-         TripIdentityStrip } from '../../design/index';
+         TripIdentityStrip, detectPartner } from '../../design/index';
 
 // =====================================================================
 // HOTEL VOTING — collective decision (§26)

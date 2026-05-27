@@ -3,7 +3,7 @@ import { Icon } from '../../design/icons';
 import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
          fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
          WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard,
-         Severity } from '../../design/index';
+         Severity, detectPartner } from '../../design/index';
 
 // =====================================================================
 // FORMS — Hotel, Transfer, Activity, Fork (vendor vs manual)
