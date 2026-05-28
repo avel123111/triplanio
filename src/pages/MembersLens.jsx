@@ -9,6 +9,7 @@
 import React, { useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { useUserProfiles } from '@/lib/useUserProfiles';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Skeleton } from '../design/index';
 
@@ -214,6 +215,10 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   const [removing, setRemoving] = useState(null);
 
   const canManage = myRole === 'owner' || myRole === 'admin';
+  // Resolve display names from profiles so the row shows real names on top
+  // and email below — without falling back to "email twice" when no name is
+  // stored on the membership row itself.
+  const profiles = useUserProfiles(members.map(m => m.user_email), tripId);
 
   // Close menu on outside click
   React.useEffect(() => {
@@ -283,7 +288,13 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
           const isOwner = m.role === 'owner';
           const showMenu = openMenu === i;
           const isRemoving = removing === m.id;
-          const name = m.user_full_name || m.user_email || '—';
+          const profile = profiles[m.user_email];
+          // Display name = real name when known, else fall back to the email.
+          // hasRealName lets us hide the redundant email line below when
+          // there's no separate name to put on top.
+          const realName = profile?.full_name || m.user_full_name || '';
+          const name = realName || m.user_email || '—';
+          const hasRealName = !!realName;
 
           return (
             <div key={m.id || i} style={{
@@ -302,7 +313,9 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                   {name}
                   {m.user_email === user?.email && <Badge variant="quiet" style={{ fontSize: 10 }}>Вы</Badge>}
                 </div>
-                <div className="muted" style={{ fontSize: 12.5 }}>{m.user_email}</div>
+                {hasRealName && (
+                  <div className="muted" style={{ fontSize: 12.5 }}>{m.user_email}</div>
+                )}
               </div>
 
               <div><RoleBadge role={m.role} /></div>
