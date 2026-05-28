@@ -30,6 +30,9 @@ import ChatLens from './ChatLens';
 import ScreenMap from '@/pages/redesign/ScreenMap';
 import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
 import PaymentFailDialog from '@/components/common/PaymentFailDialog';
+import TripFormDialog from '@/components/trips/TripFormDialog';
+import { useCityImageForVisits } from '@/lib/city-image';
+import { getGradientById } from '@/lib/trip-gradients';
 import '../design/app.css';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -972,24 +975,44 @@ function ShareDialog({ trip }) {
   );
 }
 
-function MoreMenuDialog({ tripId }) {
+function MoreMenuDialog({ trip, visits }) {
+  // Opening the edit form unmounts this sheet (the host swaps to the form
+  // dialog). When the form closes we navigate back to the trip view rather
+  // than reopening the sheet — matching the pattern of other action sheets.
+  const openEditMetadata = () => {
+    window.__closeModal?.();
+    window.__openModal?.(
+      <TripFormDialog
+        open={true}
+        onOpenChange={(o) => { if (!o) window.__closeModal?.(); }}
+        trip={trip}
+        visits={visits}
+      />,
+    );
+  };
+  const itemStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 14, color: 'var(--ink)' };
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
       onClick={() => window.__closeModal?.()}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 20, width: 320, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <button onClick={() => { window.__closeModal?.(); window.__navigate?.('settings'); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 14, color: 'var(--ink)' }}
+          <button onClick={openEditMetadata} style={itemStyle}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <Icon name="edit" size={16} style={{ color: 'var(--muted)' }} /> Редактировать метаданные
+          </button>
+          <button onClick={() => { window.__closeModal?.(); window.__navigate?.('settings'); }} style={itemStyle}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
             <Icon name="settings" size={16} style={{ color: 'var(--muted)' }} /> Настройки трипа
           </button>
-          <button onClick={() => { window.__closeModal?.(); window.__navigate?.('members'); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 14, color: 'var(--ink)' }}
+          <button onClick={() => { window.__closeModal?.(); window.__navigate?.('members'); }} style={itemStyle}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
             <Icon name="users" size={16} style={{ color: 'var(--muted)' }} /> Участники
           </button>
           <div style={{ height: 1, background: 'var(--line-2)', margin: '6px 0' }} />
-          <button onClick={() => window.__closeModal?.()} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 14, color: 'var(--muted)' }}>
+          <button onClick={() => window.__closeModal?.()} style={{ ...itemStyle, color: 'var(--muted)' }}>
             <Icon name="close" size={16} /> Закрыть
           </button>
         </div>
@@ -1006,19 +1029,41 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
   const cities = visits.map(v => v.city_name).filter(Boolean);
   const dateRange = formatTripRange(visits, '—');
 
+  // Cover priority: uploaded photo → preset gradient → Wikipedia city image
+  // → default HSL gradient + SVG waves (the original prototype look).
+  const cityImg = useCityImageForVisits(visits);
+  const gradient = getGradientById(trip?.cover_gradient);
+  const hasPhoto = !!trip?.cover_image_url;
+  const hasGradient = !hasPhoto && !!gradient;
+  const hasCityImg = !hasPhoto && !hasGradient && !!cityImg;
+  const useDefault = !hasPhoto && !hasGradient && !hasCityImg;
+  const coverBg = hasGradient
+    ? gradient.css
+    : useDefault
+      ? 'linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)'
+      : 'var(--wash)';
+
   return (
     <div style={{ marginBottom: 22, borderBottom: '1px solid var(--line-2)', paddingBottom: 22 }}>
-      {/* Gradient cover */}
+      {/* Cover */}
       <div style={{
         position: 'relative', marginBottom: 18, height: 160, borderRadius: 16,
         overflow: 'hidden',
-        background: 'linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)',
+        background: coverBg,
       }}>
-        <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.55 }}>
-          <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.55)" />
-          <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.32)" />
-          <circle cx="680" cy="50" r="28" fill="rgba(255,255,255,.65)" />
-        </svg>
+        {hasPhoto && (
+          <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+        )}
+        {hasCityImg && (
+          <img src={cityImg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+        )}
+        {useDefault && (
+          <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.55 }}>
+            <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.55)" />
+            <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.32)" />
+            <circle cx="680" cy="50" r="28" fill="rgba(255,255,255,.65)" />
+          </svg>
+        )}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,.38) 100%)' }} />
         <div style={{ position: 'absolute', left: 22, right: 22, bottom: 18 }}>
           <div style={{
@@ -1090,7 +1135,7 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
           )}
           <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>Поделиться</Btn>
           <Btn variant="ghost" size="sm" icon="download" onClick={() => window.print()}>Экспорт</Btn>
-          <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog tripId={trip?.id} />)} />
+          <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} />)} />
         </div>
       </div>
     </div>

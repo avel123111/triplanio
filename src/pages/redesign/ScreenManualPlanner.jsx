@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../design/icons';
+import TripCoverPicker from '@/components/trips/TripCoverPicker';
+import { getGradientById } from '@/lib/trip-gradients';
 import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
          fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
          WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard,
@@ -75,6 +77,7 @@ function ScreenManualPlanner() {
   ]);
   const [returnCity, setReturnCity] = useState({ city: "Москва", country: "🇷🇺 Россия", airport: "SVO", lat: 55.75, lng: 37.62 });
   const [returnMode, setReturnMode] = useState("home");
+  const [cover, setCover] = useState({ cover_image_url: "", cover_gradient: "" });
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
 
@@ -125,7 +128,7 @@ function ScreenManualPlanner() {
           {step === "home" && <StepHome home={home} setHome={setHome} goNext={goNext} />}
           {step === "cities" && <StepCities cities={cities} setCities={setCities} home={home} goPrev={goPrev} goNext={goNext} />}
           {step === "return" && <StepReturn home={home} lastCity={lastCity} returnMode={returnMode} setReturnMode={setReturnMode} returnCity={returnCity} setReturnCity={setReturnCity} goPrev={goPrev} goNext={goNext} />}
-          {step === "review" && <StepReview home={home} cities={cities} returnCity={effectiveReturn} saving={saving} savedOk={savedOk} goPrev={goPrev} onSave={save} />}
+          {step === "review" && <StepReview home={home} cities={cities} returnCity={effectiveReturn} cover={cover} setCover={setCover} saving={saving} savedOk={savedOk} goPrev={goPrev} onSave={save} />}
         </div>
 
         {/* Live map */}
@@ -805,11 +808,20 @@ function StepReturn({ home, lastCity, returnMode, setReturnMode, returnCity, set
 // ======================================================================
 // STEP 4: REVIEW
 // ======================================================================
-function StepReview({ home, cities, returnCity, saving, savedOk, goPrev, onSave }) {
+function StepReview({ home, cities, returnCity, cover, setCover, saving, savedOk, goPrev, onSave }) {
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
   const allCities = [home.city, ...cities.map(c => c.city), returnCity.city];
   const startDate = cities[0]?.startDate || "—";
   const tripTitle = cities.length === 1 ? cities[0].city : `${cities[0]?.city} → ${cities[cities.length - 1]?.city}`;
+
+  const gradient = getGradientById(cover.cover_gradient);
+  const hasPhoto = !!cover.cover_image_url;
+  const hasGradient = !hasPhoto && !!gradient;
+  const heroBg = hasGradient
+    ? gradient.css
+    : !hasPhoto
+      ? "linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)"
+      : "var(--wash)";
 
   // Saved success state
   if (savedOk) {
@@ -845,15 +857,17 @@ function StepReview({ home, cities, returnCity, saving, savedOk, goPrev, onSave 
         overflow: "hidden",
         marginBottom: 16,
       }}>
-        <div style={{
-          height: 120,
-          background: "linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)",
-          position: "relative",
-        }}>
-          <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.5 }}>
-            <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.5)" />
-            <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.3)" />
-          </svg>
+        <div style={{ height: 120, background: heroBg, position: "relative" }}>
+          {hasPhoto && (
+            <img src={cover.cover_image_url} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          )}
+          {!hasPhoto && !hasGradient && (
+            <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.5 }}>
+              <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.5)" />
+              <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.3)" />
+            </svg>
+          )}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 40%, rgba(0,0,0,.35) 100%)" }} />
           <div style={{ position: "absolute", left: 20, bottom: 14, color: "white", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 26, letterSpacing: "-0.03em", textShadow: "0 2px 12px rgba(0,0,0,.3)" }}>
             {tripTitle}
           </div>
@@ -881,6 +895,14 @@ function StepReview({ home, cities, returnCity, saving, savedOk, goPrev, onSave 
           </div>
         </div>
       </div>
+
+      <Field label="Обложка трипа">
+        <TripCoverPicker
+          coverImageUrl={cover.cover_image_url}
+          coverGradient={cover.cover_gradient}
+          onChange={setCover}
+        />
+      </Field>
 
       <Field label="Название трипа">
         <input className="input" defaultValue={tripTitle} disabled={saving} />
