@@ -15,6 +15,8 @@ import { Btn } from '../design/index';
 import HeaderActions from '@/components/HeaderActions';
 import { groupMarkers, markerSvg, svgDataUri, markerPixelSize, MISSING_COLOR } from '@/lib/mapRoute';
 import { fetchOsrmRoute, isFlightTransport, isRoadTransport } from '@/lib/routing';
+import TripCoverPicker from '@/components/trips/TripCoverPicker';
+import { getGradientById } from '@/lib/trip-gradients';
 import '../design/app.css';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
@@ -1126,11 +1128,20 @@ function Stat({ label, value, hint }) {
   );
 }
 
-function StepReview({ home, cities, returnCity, tripTitle, setTripTitle, onStartDateChange, saving, savedOk, savedTripId, goPrev, onReset, onSave, error }) {
+function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setTripTitle, onStartDateChange, saving, savedOk, savedTripId, goPrev, onReset, onSave, error }) {
   const nav = useNavigate();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
   const autoTitle = cities.length === 0 ? 'Новый трип' : cities.length === 1 ? cities[0].city_name : `${cities[0]?.city_name} → ${cities[cities.length - 1]?.city_name}`;
   const displayTitle = tripTitle || autoTitle;
+
+  const gradient = cover?.cover_gradient ? getGradientById(cover.cover_gradient) : null;
+  const hasPhoto = !!cover?.cover_image_url;
+  const hasGradient = !hasPhoto && !!gradient;
+  const heroBg = hasGradient
+    ? gradient.css
+    : !hasPhoto
+      ? 'linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)'
+      : 'var(--wash)';
 
   if (savedOk) {
     return (
@@ -1159,11 +1170,17 @@ function StepReview({ home, cities, returnCity, tripTitle, setTripTitle, onStart
 
       {/* Trip card preview */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>
-        <div style={{ height: 120, background: 'linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)', position: 'relative' }}>
-          <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.5 }}>
-            <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.5)" />
-            <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.3)" />
-          </svg>
+        <div style={{ height: 120, background: heroBg, position: 'relative' }}>
+          {hasPhoto && (
+            <img src={cover.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          )}
+          {!hasPhoto && !hasGradient && (
+            <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.5 }}>
+              <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.5)" />
+              <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.3)" />
+            </svg>
+          )}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(0,0,0,.35) 100%)' }} />
           <div style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', fontWeight: 700, fontSize: 26, letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
             {displayTitle}
           </div>
@@ -1202,6 +1219,15 @@ function StepReview({ home, cities, returnCity, tripTitle, setTripTitle, onStart
             <Stat label="Бюджет" value="—" hint="Можно указать позже" />
           </div>
         </div>
+      </div>
+
+      <div className="field">
+        <label className="field__label">Обложка трипа</label>
+        <TripCoverPicker
+          coverImageUrl={cover?.cover_image_url || ''}
+          coverGradient={cover?.cover_gradient || ''}
+          onChange={setCover}
+        />
       </div>
 
       <div className="field">
@@ -1293,6 +1319,7 @@ export default function ManualPlanner() {
   const [finalPoint, setFinalPoint] = useState(false); // last city is the finish — skip "return"
   const [transport, setTransport]   = useState({});    // legId -> { kind }
   const [tripTitle, setTripTitle]   = useState('');
+  const [cover, setCover]           = useState({ cover_image_url: '', cover_gradient: '' });
   const [saving, setSaving]         = useState(false);
   const [savedOk, setSavedOk]       = useState(false);
   const [savedTripId, setSavedTripId] = useState(null);
@@ -1315,6 +1342,7 @@ export default function ManualPlanner() {
         if (saved.finalPoint) setFinalPoint(!!saved.finalPoint);
         if (saved.transport) setTransport(saved.transport);
         if (saved.startDate) setStartDateRaw(saved.startDate);
+        if (saved.cover) setCover(saved.cover);
       }
     } catch {}
     setRestored(true);
@@ -1324,9 +1352,9 @@ export default function ManualPlanner() {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(storageKey(user?.id), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport, startDate }));
+      sessionStorage.setItem(storageKey(user?.id), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport, startDate, cover }));
     } catch {}
-  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport, startDate, restored, user?.id]);
+  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport, startDate, cover, restored, user?.id]);
 
   // setStartDate also cascades to cities (first city anchors all subsequent dates).
   const setStartDate = (dateStr) => {
@@ -1361,6 +1389,7 @@ export default function ManualPlanner() {
     setTransport({});
     setStartDateRaw('');
     setTripTitle('');
+    setCover({ cover_image_url: '', cover_gradient: '' });
     setSavedOk(false);
     setSavedTripId(null);
     setError(null);
@@ -1414,6 +1443,19 @@ export default function ManualPlanner() {
         .rpc('create_trip', { p_title: title, p_description: '' });
       if (tripErr) throw tripErr;
       const trip = { id: tripId };
+
+      // 1b. Persist cover (gradient or uploaded image). The RPC doesn't accept
+      // cover fields, so update the row immediately after creation.
+      if (cover?.cover_gradient || cover?.cover_image_url) {
+        const { error: coverErr } = await supabase
+          .from('trips')
+          .update({
+            cover_image_url: cover.cover_image_url || null,
+            cover_gradient: cover.cover_gradient || null,
+          })
+          .eq('id', trip.id);
+        if (coverErr) console.error('Failed to set cover:', coverErr);
+      }
 
       // 2. Build city_visits list with full data
       const visitsToInsert = [];
@@ -1635,6 +1677,8 @@ export default function ManualPlanner() {
                 home={home}
                 cities={cities}
                 returnCity={effectiveReturn}
+                cover={cover}
+                setCover={setCover}
                 tripTitle={tripTitle}
                 setTripTitle={setTripTitle}
                 onStartDateChange={handleStartDateChange}
