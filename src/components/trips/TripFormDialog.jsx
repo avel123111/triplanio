@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { isTripInPast } from '@/lib/trip-dates';
@@ -33,7 +34,11 @@ export default function TripFormDialog({ open, onOpenChange, trip = null, visits
 
   const mutation = useMutation({
     mutationFn: async (data) => {
-      if (trip) return base44.entities.Trip.update(trip.id, data);
+      if (trip) {
+        const { error } = await supabase.from('trips').update(data).eq('id', trip.id);
+        if (error) throw error;
+        return;
+      }
       return base44.entities.Trip.create(data);
     },
     onSuccess: () => {

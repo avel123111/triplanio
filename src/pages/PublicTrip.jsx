@@ -9,7 +9,6 @@ import MapView from '@/components/views/MapView';
 import EventModal from '@/components/common/EventModal';
 import { computeTripRange, latestEventDate } from '@/lib/trip-dates';
 import { uniqueCityCount } from '@/lib/trip-cities';
-import { useCityImageForVisits } from '@/lib/city-image';
 import { getGradientById } from '@/lib/trip-gradients';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
@@ -63,11 +62,10 @@ export default function PublicTrip() {
   const visitsById = useMemo(() => Object.fromEntries(visits.map(v => [v.id, v])), [visits]);
   const range = useMemo(() => computeTripRange(visits), [visits]);
   const subtitle = useMemo(() => buildSubtitle(range, visits), [range, visits, buildSubtitle]);
-  // Cover priority: uploaded photo → preset gradient → Wikipedia city image.
-  const cityImg = useCityImageForVisits(visits);
+  // Cover priority: uploaded photo → preset gradient.
   const gradient = getGradientById(trip?.cover_gradient);
   const useGradient = !trip?.cover_image_url && !!gradient;
-  const coverImg = trip?.cover_image_url || (!useGradient ? cityImg : null);
+  const coverImg = trip?.cover_image_url || null;
 
   if (!token) {
     return <NotFound message={t('public.invalid_link')} />;

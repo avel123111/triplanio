@@ -3,31 +3,43 @@ import { Icon } from '../../design/icons';
 import { Avatar, AvatarStack, Badge, Btn, Card, Field, EmptyState, Skeleton, Toggle,
          fmt, TRIP, TRIPS, ModalHost, Dialog, PartnerLogo, PartnerPill, CityPhoto,
          WeatherChip, RoleBadge, DismissibleSeverity, BookingSuggestionCard } from '../../design/index';
+import { getGradientById } from '@/lib/trip-gradients';
 
 // =====================================================================
 // COLLECTION — Dashboard (§6)
 // =====================================================================
 
 const CollectionTripCover = ({ trip }) => {
+  const gradient = trip.cover_gradient ? getGradientById(trip.cover_gradient) : null;
+  const hasPhoto = !!trip.cover_image_url;
+  const hasGradient = !hasPhoto && !!gradient;
+
+  // Fallback: hue-based gradient for trips without a cover set
   const hue = trip.coverHue ?? 210;
   const accentHue = trip.accentHue ?? 18;
   const isDark = document.documentElement.dataset.theme === "dark";
-  const bg = `linear-gradient(135deg,
+  const fallbackBg = `linear-gradient(135deg,
     hsl(${hue}, 60%, ${isDark ? 28 : 70}%) 0%,
     hsl(${(hue + accentHue) % 360}, 55%, ${isDark ? 22 : 60}%) 70%,
     hsl(${accentHue}, 70%, ${isDark ? 35 : 65}%) 100%)`;
+
   return (
     <div style={{
       aspectRatio: "16/9",
-      background: bg,
+      background: hasGradient ? gradient.css : fallbackBg,
       borderRadius: "var(--radius-card)",
       position: "relative",
       overflow: "hidden"
     }}>
-      <svg viewBox="0 0 200 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.45 }}>
-        <path d={`M0 ${60 + trip.id.length % 20} Q 50 ${30 + trip.id.length % 10} 100 ${50 + trip.id.length % 15} T 200 ${40 + trip.id.length % 12}`}
-        stroke="white" strokeWidth="1" fill="none" strokeDasharray="2 3" />
-      </svg>
+      {hasPhoto && (
+        <img src={trip.cover_image_url} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+      )}
+      {!hasPhoto && (
+        <svg viewBox="0 0 200 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.45 }}>
+          <path d={`M0 ${60 + trip.id.length % 20} Q 50 ${30 + trip.id.length % 10} 100 ${50 + trip.id.length % 15} T 200 ${40 + trip.id.length % 12}`}
+          stroke="white" strokeWidth="1" fill="none" strokeDasharray="2 3" />
+        </svg>
+      )}
       <div style={{ position: "absolute", top: 12, right: 12, display: "flex", gap: 6 }}>
         {trip.pro &&
         <div style={{
