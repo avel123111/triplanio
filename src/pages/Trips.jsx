@@ -8,6 +8,7 @@ import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
 import { Badge, Btn, EmptyState, Skeleton } from '../design/index';
+import { getGradientById } from '@/lib/trip-gradients';
 import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
@@ -48,19 +49,30 @@ function normalizeTrip(trip, visits = [], role = 'member', isPro = false) {
 
 // ─── Trip cover gradient ──────────────────────────────────────────────────────
 const CollectionTripCover = ({ trip }) => {
+  const gradient = trip.cover_gradient ? getGradientById(trip.cover_gradient) : null;
+  const hasPhoto = !!trip.cover_image_url;
+  const hasGradient = !hasPhoto && !!gradient;
+
+  // Fallback: hue-based procedural gradient for trips without a cover set
   const hue      = trip.coverHue ?? 210;
   const accent   = trip.accentHue ?? 18;
   const isDark   = document.documentElement.dataset.theme === 'dark';
-  const bg = `linear-gradient(135deg,
+  const fallbackBg = `linear-gradient(135deg,
     hsl(${hue}, 60%, ${isDark ? 28 : 70}%) 0%,
     hsl(${(hue + accent) % 360}, 55%, ${isDark ? 22 : 60}%) 70%,
     hsl(${accent}, 70%, ${isDark ? 35 : 65}%) 100%)`;
+
   return (
-    <div style={{ aspectRatio: '16/9', background: bg, borderRadius: 'var(--radius-card)', position: 'relative', overflow: 'hidden' }}>
-      <svg viewBox="0 0 200 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.45 }}>
-        <path d={`M0 ${60 + trip.id.length % 20} Q 50 ${30 + trip.id.length % 10} 100 ${50 + trip.id.length % 15} T 200 ${40 + trip.id.length % 12}`}
-          stroke="white" strokeWidth="1" fill="none" strokeDasharray="2 3" />
-      </svg>
+    <div style={{ aspectRatio: '16/9', background: hasGradient ? gradient.css : fallbackBg, borderRadius: 'var(--radius-card)', position: 'relative', overflow: 'hidden' }}>
+      {hasPhoto && (
+        <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+      )}
+      {!hasPhoto && (
+        <svg viewBox="0 0 200 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.45 }}>
+          <path d={`M0 ${60 + trip.id.length % 20} Q 50 ${30 + trip.id.length % 10} 100 ${50 + trip.id.length % 15} T 200 ${40 + trip.id.length % 12}`}
+            stroke="white" strokeWidth="1" fill="none" strokeDasharray="2 3" />
+        </svg>
+      )}
       <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 6 }}>
         {trip.pro && (
           <div style={{ background: 'rgba(255,255,255,.92)', color: 'var(--warm)', fontSize: 11, fontWeight: 700, letterSpacing: '.05em', padding: '3px 8px', borderRadius: 999 }}>Pro</div>

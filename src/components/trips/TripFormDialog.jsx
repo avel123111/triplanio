@@ -44,6 +44,13 @@ export default function TripFormDialog({ open, onOpenChange, trip = null, visits
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['trips'] });
       qc.invalidateQueries({ queryKey: ['trip', trip?.id] });
+      if (trip?.id) {
+        qc.invalidateQueries({ queryKey: ['trip-shell', trip.id] });
+        qc.setQueryData(['trip-shell', trip.id], (old) => {
+          if (!old?.trip) return old;
+          return { ...old, trip: { ...old.trip, ...form, cover_image_url: form.cover_image_url || null, cover_gradient: form.cover_gradient || null } };
+        });
+      }
       onOpenChange(false);
     },
   });
