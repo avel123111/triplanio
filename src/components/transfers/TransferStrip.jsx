@@ -9,8 +9,7 @@ import { MoreVertical, Trash2 } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
-import BookingChoiceDialog from '@/components/bookings/BookingChoiceDialog';
-import { transferPlatforms } from '@/components/bookings/buildBookingPlatforms';
+import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 
@@ -137,16 +136,15 @@ function EmptyTransferStrip({ fromVisit, toVisit, onAdd }) {
         </span>
         <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />
       </button>
-      <BookingChoiceDialog
+      <ForkPartnerModal
         open={choiceOpen}
         onOpenChange={setChoiceOpen}
-        title={t('transfer.add_dialog_title')}
-        description={`${fromVisit.city_name} → ${toVisit.city_name}`}
-        manualLabel={t('transfer.manual_short')}
-        manualHint={t('transfer.manual_hint_tickets')}
+        type="transfer"
+        fromVisit={fromVisit}
+        toVisit={toVisit}
+        tripId={fromVisit?.trip_id || toVisit?.trip_id}
         onManual={() => onAdd(fromVisit, toVisit)}
-        platforms={transferPlatforms(fromVisit, toVisit)} />
-      
+      />
     </>);
 
 }

@@ -1,4 +1,4 @@
-// Helpers that build platform option lists for BookingChoiceDialog.
+// Helpers that build platform option lists for ForkPartnerModal.
 // Keeps the dialog itself generic and avoids duplicating URL-builders.
 //
 // All builders accept an optional `t` translator (from useI18nFormat) so that
@@ -122,6 +122,29 @@ export function esimPlatforms(visits, t) {
       logo: 'https://yesim.app/favicon.ico',
       color: 'border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-teal-900/40',
       url: yesimUrl,
+    },
+  ];
+}
+
+// INSURANCE: SafetyWing (nomad health insurance) + World Nomads (adventure)
+// TODO: replace direct URLs with affiliate links when available.
+export function insurancePlatforms(t) {
+  return [
+    {
+      key: 'safetywing',
+      label: bookOn(t, 'SafetyWing'),
+      hint: t ? t('service.insurance_safetywing_hint') : 'Nomad insurance · from $45/mo',
+      logo: platformLogoUrl('safetywing'),
+      color: 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/40',
+      url: 'https://safetywing.com/nomad-insurance/',
+    },
+    {
+      key: 'worldnomads',
+      label: bookOn(t, 'World Nomads'),
+      hint: t ? t('service.insurance_worldnomads_hint') : 'Adventure travel & extreme sports',
+      logo: platformLogoUrl('worldnomads'),
+      color: 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/40',
+      url: 'https://www.worldnomads.com/',
     },
   ];
 }

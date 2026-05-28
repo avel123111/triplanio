@@ -19,6 +19,8 @@ import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import CityVisitDialog from '../components/visits/CityVisitDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
+import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
+import ServiceDialog from '@/components/services/ServiceDialog';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
 import CalendarLens from './CalendarLens';
@@ -1097,7 +1099,7 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
 
 // ─── ContextSide ──────────────────────────────────────────────────────────────
 
-function ContextSide({ budget, budgetExpenses, members, services = [], user, trip, isLoading }) {
+function ContextSide({ budget, budgetExpenses, members, services = [], user, trip, isLoading, onAddService }) {
   // Resolve display names from profiles so the widget shows real names, not
   // emails. Include the trip owner (often missing from trip_members) and the
   // current user so the synthetic owner row and the current user resolve.
@@ -1215,14 +1217,14 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
       </div>
 
       {/* Services widget */}
-      <ServicesWidget services={services} />
+      <ServicesWidget services={services} onAddService={onAddService} />
     </div>
   );
 }
 
 // ─── ServicesWidget ───────────────────────────────────────────────────────────
 
-function ServicesWidget({ services = [] }) {
+function ServicesWidget({ services = [], onAddService }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const activeServices = services.filter(s => s.status === 'active' || s.status === 'booked');
   const pendingServices = services.filter(s => !s.status || s.status === 'pending');
@@ -1232,10 +1234,10 @@ function ServicesWidget({ services = [] }) {
       <h3 style={{ marginBottom: 10, fontSize: 14 }}>Сервисы</h3>
       {activeServices.length === 0 && pendingServices.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <ServiceRowEmpty icon="esim" name="eSIM" desc="Связь за рубежом" />
-          <ServiceRowEmpty icon="car" name="Прокат авто" desc="Аренда в пункте назначения" />
+          <ServiceRowEmpty icon="esim" name="eSIM" desc="Связь за рубежом" onClick={() => onAddService?.('esim')} />
+          <ServiceRowEmpty icon="car" name="Прокат авто" desc="Аренда в пункте назначения" onClick={() => onAddService?.('car_rental')} />
           {moreOpen
-            ? <ServiceRowEmpty icon="shield" name="Страховка" desc="Не подключена" />
+            ? <ServiceRowEmpty icon="shield" name="Страховка" desc="Не подключена" onClick={() => onAddService?.('insurance')} />
             : <button onClick={() => setMoreOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: 12, cursor: 'pointer' }}>
                 <Icon name="more" size={12} />
                 <span>Ещё: страховка и др.</span>
@@ -1264,9 +1266,9 @@ function ServicesWidget({ services = [] }) {
   );
 }
 
-function ServiceRowEmpty({ icon, name, desc }) {
+function ServiceRowEmpty({ icon, name, desc, onClick }) {
   return (
-    <button style={{
+    <button onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 9, padding: '8px 8px',
       background: 'transparent', border: '1.5px dashed var(--line)', borderRadius: 8,
       cursor: 'pointer', textAlign: 'left', color: 'var(--ink)', width: '100%',
@@ -1301,6 +1303,15 @@ export default function TripView() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [transferEdit, setTransferEdit] = useState({ open: false, fromVisit: null, toVisit: null, transfer: null });
   const [hotelEdit, setHotelEdit] = useState({ open: false, visit: null, hotel: null });
+  // Choice dialogs (ForkPartnerModal) — sit between the warning button and the
+  // edit form so the user can pick a partner before falling back to manual entry.
+  const [hotelChoice, setHotelChoice] = useState({ open: false, visit: null });
+  const [transferChoice, setTransferChoice] = useState({ open: false, fromVisit: null, toVisit: null });
+  // Right-rail service add — opens ForkPartnerModal for the chosen kind, then
+  // routes to the right edit dialog when the user picks "Manual".
+  const [serviceChoice, setServiceChoice] = useState({ open: false, type: null });
+  const [serviceEditCar, setServiceEditCar] = useState({ open: false });
+  const [serviceEditSimple, setServiceEditSimple] = useState({ open: false, kind: null });
   const [visitEdit, setVisitEdit] = useState({ open: false, visit: null });
   const [newCityOpen, setNewCityOpen] = useState(false);
   const [newCityDefaultDay, setNewCityDefaultDay] = useState(null);
@@ -1478,6 +1489,70 @@ export default function TripView() {
               entity={hotelEdit.hotel}
             />
           )}
+          {/* Hotel choice — sits between the warning button and the edit form */}
+          <ForkPartnerModal
+            open={hotelChoice.open}
+            onOpenChange={(o) => setHotelChoice(s => ({ ...s, open: o }))}
+            type="hotel"
+            visit={hotelChoice.visit}
+            tripId={tripId}
+            onManual={() => setHotelEdit({ open: true, visit: hotelChoice.visit, hotel: null })}
+          />
+          {/* Transfer choice — sits between the warning button and the edit form */}
+          <ForkPartnerModal
+            open={transferChoice.open}
+            onOpenChange={(o) => setTransferChoice(s => ({ ...s, open: o }))}
+            type="transfer"
+            fromVisit={transferChoice.fromVisit}
+            toVisit={transferChoice.toVisit}
+            tripId={tripId}
+            onManual={() =>
+              setTransferEdit({
+                open: true,
+                fromVisit: transferChoice.fromVisit,
+                toVisit: transferChoice.toVisit,
+                transfer: null,
+              })
+            }
+          />
+          {/* Service choice — opened from the right-rail ServicesWidget */}
+          <ForkPartnerModal
+            open={serviceChoice.open}
+            onOpenChange={(o) => setServiceChoice(s => ({ ...s, open: o }))}
+            type={serviceChoice.type || 'esim'}
+            visits={visits}
+            trip={trip}
+            tripId={tripId}
+            onManual={() => {
+              const type = serviceChoice.type;
+              setServiceChoice({ open: false, type: null });
+              if (type === 'car_rental') {
+                setServiceEditCar({ open: true });
+              } else if (type === 'esim' || type === 'insurance') {
+                setServiceEditSimple({ open: true, kind: type });
+              }
+            }}
+          />
+          {/* Car rental edit — opened from the service ForkPartnerModal */}
+          {serviceEditCar.open && (
+            <EventEditDialog
+              open={serviceEditCar.open}
+              onOpenChange={(o) => setServiceEditCar({ open: o })}
+              kind="service"
+              tripId={tripId}
+              entity={null}
+            />
+          )}
+          {/* eSIM / Insurance edit — opened from the service ForkPartnerModal */}
+          {serviceEditSimple.open && serviceEditSimple.kind && (
+            <ServiceDialog
+              open={serviceEditSimple.open}
+              onOpenChange={(o) => setServiceEditSimple(s => ({ ...s, open: o }))}
+              tripId={tripId}
+              kind={serviceEditSimple.kind}
+              service={null}
+            />
+          )}
           {/* CityVisitDialog — edit existing visit notes */}
           {visitEdit.open && visitEdit.visit && (
             <CityVisitDialog
@@ -1539,10 +1614,10 @@ export default function TripView() {
                   trip={trip}
                   isLoading={loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>
-                    setTransferEdit({ open: true, fromVisit, toVisit, transfer: null })
+                    setTransferChoice({ open: true, fromVisit, toVisit })
                   }
                   onAddHotel={(visit) =>
-                    setHotelEdit({ open: true, visit, hotel: null })
+                    setHotelChoice({ open: true, visit })
                   }
                   isEditMode={isEditMode}
                   onOpenEvent={openEventView}
@@ -1574,6 +1649,7 @@ export default function TripView() {
                   user={user}
                   trip={trip}
                   isLoading={loadingContent}
+                  onAddService={(type) => setServiceChoice({ open: true, type })}
                 />
               </div>
             </>
