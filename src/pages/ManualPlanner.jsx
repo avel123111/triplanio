@@ -549,13 +549,19 @@ function CityAnchorRow({ label, city_name, country, kind }) {
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
 function CityRow({ idx, total, city, isDragging, isOver, isLast, finalPoint, onToggleFinalPoint, onDragStart, onDragOver, onDrop, onDragEnd, onChange, onRemove, onMoveUp, onMoveDown }) {
+  // When the last city is also the final point, the card switches to an
+  // "end-anchor" look — warm orange tones, flag icon, and the date/nights
+  // inputs disappear (the end visit is computed, not entered).
+  const isFinalAnchor = isLast && finalPoint;
+  const accentColor = isFinalAnchor ? 'var(--warm, #c9603a)' : 'var(--brand)';
+  const accentSoft = isFinalAnchor ? 'var(--warm-tint, color-mix(in oklab, var(--warm, #c9603a) 14%, transparent))' : 'var(--brand-soft)';
   return (
     <div
       onDragOver={onDragOver}
       onDrop={onDrop}
       style={{
-        background: isOver ? 'var(--brand-soft)' : 'var(--surface)',
-        border: '1px solid ' + (isOver ? 'var(--brand)' : 'var(--line)'),
+        background: isOver ? 'var(--brand-soft)' : isFinalAnchor ? accentSoft : 'var(--surface)',
+        border: '1px solid ' + (isOver ? 'var(--brand)' : isFinalAnchor ? accentColor : 'var(--line)'),
         borderRadius: 12,
         opacity: isDragging ? 0.45 : 1,
         transition: 'background .15s, border-color .15s, opacity .15s',
@@ -575,9 +581,9 @@ function CityRow({ idx, total, city, isDragging, isOver, isLast, finalPoint, onT
         <Icon name="drag" size={14} />
       </div>
 
-      {/* Number badge */}
-      <div className="planner-city-row__num" style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
-        {idx + 1}
+      {/* Number badge — flag icon when this is the final anchor */}
+      <div className="planner-city-row__num" style={{ width: 28, height: 28, borderRadius: '50%', background: accentColor, color: 'white', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+        {isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}
       </div>
 
       {/* City search */}
@@ -596,26 +602,31 @@ function CityRow({ idx, total, city, isDragging, isOver, isLast, finalPoint, onT
         />
       </div>
 
-      {/* Date */}
-      <input
-        className="input num planner-city-row__date"
-        type="date"
-        value={city.startDate || ''}
-        onChange={(e) => onChange({ startDate: e.target.value })}
-        style={{ fontSize: 12.5 }}
-      />
-
-      {/* Nights */}
-      <div className="planner-city-row__nights" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      {/* Date — hidden when this is the final anchor (its date is computed
+          from the previous city, not entered) */}
+      {!isFinalAnchor && (
         <input
-          className="input num"
-          type="number" min={1} max={30}
-          value={city.nights || ''}
-          onChange={(e) => onChange({ nights: Math.max(1, +e.target.value || 1) })}
-          style={{ width: 50, padding: '8px 10px', fontSize: 12.5, textAlign: 'center' }}
+          className="input num planner-city-row__date"
+          type="date"
+          value={city.startDate || ''}
+          onChange={(e) => onChange({ startDate: e.target.value })}
+          style={{ fontSize: 12.5 }}
         />
-        <span className="muted" style={{ fontSize: 11 }}>ноч</span>
-      </div>
+      )}
+
+      {/* Nights — hidden for the final anchor */}
+      {!isFinalAnchor && (
+        <div className="planner-city-row__nights" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <input
+            className="input num"
+            type="number" min={1} max={30}
+            value={city.nights || ''}
+            onChange={(e) => onChange({ nights: Math.max(1, +e.target.value || 1) })}
+            style={{ width: 50, padding: '8px 10px', fontSize: 12.5, textAlign: 'center' }}
+          />
+          <span className="muted" style={{ fontSize: 11 }}>ноч</span>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="planner-city-row__actions" style={{ display: 'flex', gap: 2 }}>
@@ -635,7 +646,7 @@ function CityRow({ idx, total, city, isDragging, isOver, isLast, finalPoint, onT
     </div>
     {isLast && (
       <div style={{
-        borderTop: '1px dashed var(--line-2)',
+        borderTop: '1px dashed ' + (isFinalAnchor ? accentColor : 'var(--line-2)'),
         padding: '12px 14px',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
@@ -647,7 +658,7 @@ function CityRow({ idx, total, city, isDragging, isOver, isLast, finalPoint, onT
           style={{
             width: 36, height: 20, borderRadius: 999,
             border: 'none', cursor: 'pointer', padding: 2,
-            background: finalPoint ? 'var(--brand)' : 'var(--line)',
+            background: finalPoint ? accentColor : 'var(--line)',
             transition: 'background .15s', flexShrink: 0,
             display: 'inline-flex', alignItems: 'center',
           }}
@@ -662,7 +673,7 @@ function CityRow({ idx, total, city, isDragging, isOver, isLast, finalPoint, onT
         </button>
         <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.4 }}>
           <span style={{ fontWeight: 600 }}>
-            <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: 'var(--brand)' }} />
+            <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: accentColor }} />
             Это финальная точка трипа
           </span>
           <span className="muted" style={{ marginLeft: 6 }}>
@@ -1421,9 +1432,14 @@ export default function ManualPlanner() {
         });
       }
 
-      // Transit cities → kind: 'transit'
-      cities.forEach((c) => {
+      // Transit cities → kind: 'transit'. If finalPoint is on, the LAST
+      // city is the trip's finish anchor → save as kind:'end' with no
+      // end_datetime; its start_datetime is just the day the user reaches
+      // it (recomputeDates already filled c.startDate from the previous
+      // city's startDate + nights).
+      cities.forEach((c, i) => {
         if (!c.city_name) return;
+        const isFinalAnchor = finalPoint && i === cities.length - 1;
         visitsToInsert.push({
           trip_id: trip.id,
           external_city_id: c.external_city_id || null,
@@ -1433,9 +1449,9 @@ export default function ManualPlanner() {
           latitude: c.latitude || null,
           longitude: c.longitude || null,
           timezone: c.timezone || null,
-          kind: 'transit',
+          kind: isFinalAnchor ? 'end' : 'transit',
           start_datetime: c.startDate ? c.startDate + 'T12:00:00' : null,
-          end_datetime: c.startDate && c.nights ? addDays(c.startDate, +c.nights) + 'T11:00:00' : null,
+          end_datetime: isFinalAnchor ? null : (c.startDate && c.nights ? addDays(c.startDate, +c.nights) + 'T11:00:00' : null),
           created_by: authEmail,
         });
       });

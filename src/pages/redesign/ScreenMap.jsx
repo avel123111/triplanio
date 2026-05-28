@@ -157,6 +157,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
           {activeVisit ? (
             <ActiveCityCard
               visit={activeVisit}
+              prevVisit={activeIdx > 0 ? route[activeIdx - 1] : null}
               transfers={transfers}
               hotels={hotels}
               activities={activities}
@@ -285,7 +286,8 @@ const KIND_META = {
   ferry: { icon: 'ferry', label: 'Паром' },
 };
 
-function ActiveCityCard({ visit, transfers, hotels, activities, activeIdx }) {
+function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activeIdx, canEdit }) {
+  const [moreOpen, setMoreOpen] = useState(false);
   // Per-city slices of the trip data.
   const cityHotels = hotels.filter(h => h.city_visit_id === visit?.id);
   const cityActivities = activities
@@ -301,10 +303,6 @@ function ActiveCityCard({ visit, transfers, hotels, activities, activeIdx }) {
   const showHotel = !isStart && !isEnd;
 
   const nights = nightsBetween(visit?.start_datetime, visit?.end_datetime);
-  const dateRange = visit?.start_datetime && visit?.end_datetime
-    ? `${fmtShortDate(visit.start_datetime)} — ${fmtShortDate(visit.end_datetime)}`
-    : null;
-
   const primaryHotel = cityHotels[0] || null;
 
   return (
@@ -318,21 +316,21 @@ function ActiveCityCard({ visit, transfers, hotels, activities, activeIdx }) {
         background: 'linear-gradient(135deg, var(--brand-soft) 0%, var(--wash) 100%)',
         borderBottom: '1px solid var(--line-2)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 10,
+            width: 44, height: 44, borderRadius: 10,
             background: isStart || isEnd ? 'var(--ink-2)' : 'var(--brand)',
             color: 'white',
             display: 'grid', placeItems: 'center',
-            fontSize: 14, fontWeight: 700, flexShrink: 0,
+            fontSize: 17, fontWeight: 700, flexShrink: 0,
           }}>
-            {isStart || isEnd ? <Icon name={isStart ? 'flag' : 'check'} size={15} /> : (activeIdx + 1)}
+            {isStart || isEnd ? <Icon name={isStart ? 'flag' : 'check'} size={18} /> : (activeIdx + 1)}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 18, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
               {visit?.city_name}
             </div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
               {countryFlag(visit?.country_code)} {visit?.country || ''}
               {isStart && <> · старт</>}
               {isEnd && <> · финиш</>}
@@ -341,32 +339,27 @@ function ActiveCityCard({ visit, transfers, hotels, activities, activeIdx }) {
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {nights > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999, fontSize: 11.5, fontWeight: 500 }}>
-              <Icon name="moon" size={11} style={{ color: 'var(--muted)' }} /> {nights} {nights === 1 ? 'ночь' : nights < 5 ? 'ночи' : 'ночей'}
-            </span>
-          )}
-          {dateRange && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999, fontSize: 11.5, fontWeight: 500 }}>
-              <Icon name="calendar" size={11} style={{ color: 'var(--muted)' }} /> <span className="num">{dateRange}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
+              <Icon name="moon" size={12} style={{ color: 'var(--muted)' }} /> {nights} {nights === 1 ? 'ночь' : nights < 5 ? 'ночи' : 'ночей'}
             </span>
           )}
           {cityActivities.length > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999, fontSize: 11.5, fontWeight: 500 }}>
-              <Icon name="cam" size={11} style={{ color: 'var(--warm)' }} /> {cityActivities.length} активн.
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
+              <Icon name="cam" size={12} style={{ color: 'var(--warm)' }} /> {cityActivities.length} активн.
             </span>
           )}
         </div>
       </div>
 
-      {/* Transfer row (compact) — real transfer or "missing" warning */}
-      {showTransfer && <TransferRow transfer={transferIn} cityName={visit?.city_name} />}
+      {/* Transfer row — real "From → To" or "Нет переезда" warning */}
+      {showTransfer && <TransferRow transfer={transferIn} prevVisit={prevVisit} toCity={visit} />}
 
-      {/* Hotel row */}
+      {/* Hotel row — real hotel or "Нет отеля" warning */}
       {showHotel && <HotelRow hotel={primaryHotel} />}
 
       {/* Activities */}
       {cityActivities.length > 0 && (
-        <div style={{ padding: '12px 16px' }}>
+        <div style={{ padding: '14px 16px 4px' }}>
           <div className="eyebrow" style={{ marginBottom: 10 }}>В этом городе</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
             <div style={{ position: 'absolute', left: 11, top: 6, bottom: 6, width: 2, background: 'var(--line-2)' }} />
@@ -385,11 +378,11 @@ function ActiveCityCard({ visit, transfers, hotels, activities, activeIdx }) {
                   <Icon name="cam" size={11} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.35 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.35 }}>
                     {a.title}
                   </div>
                   {a.start_datetime && (
-                    <div className="muted num" style={{ fontSize: 11, marginTop: 1 }}>{fmtShortDate(a.start_datetime)}</div>
+                    <div className="muted num" style={{ fontSize: 11.5, marginTop: 2 }}>{fmtShortDate(a.start_datetime)}{a.start_datetime?.slice(11, 16) ? ` · ${a.start_datetime.slice(11, 16)}` : ''}</div>
                   )}
                 </div>
               </div>
@@ -397,108 +390,188 @@ function ActiveCityCard({ visit, transfers, hotels, activities, activeIdx }) {
           </div>
         </div>
       )}
+
+      {/* Footer — "+ Активность" primary + "..." menu */}
+      {!isStart && !isEnd && (
+        <div style={{
+          display: 'flex', gap: 6, alignItems: 'center',
+          padding: '10px 12px',
+          borderTop: '1px solid var(--line-2)',
+          background: 'var(--wash)',
+          position: 'relative',
+        }}>
+          <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__navigate?.('activity-form')} style={{ flex: 1 }} disabled={!canEdit}>
+            Активность
+          </Btn>
+          <button onClick={() => setMoreOpen(!moreOpen)} className="icon-btn" style={{
+            background: moreOpen ? 'var(--brand-soft)' : 'var(--surface)',
+            color: moreOpen ? 'var(--brand)' : 'var(--muted)',
+            border: '1px solid ' + (moreOpen ? 'var(--brand)' : 'var(--line)'),
+            width: 32, height: 32,
+          }} title="Ещё">
+            <Icon name="more" size={15} />
+          </button>
+          {moreOpen && (
+            <div style={{
+              position: 'absolute', bottom: 'calc(100% + 6px)', right: 12,
+              width: 220,
+              background: 'var(--surface)', border: '1px solid var(--line)',
+              borderRadius: 11, boxShadow: 'var(--shadow-pop)',
+              padding: 6, zIndex: 10,
+            }}>
+              <MenuItem icon="bed" onClick={() => { setMoreOpen(false); window.__navigate?.('hotel-form'); }}>Добавить отель</MenuItem>
+              <MenuItem icon="plane" onClick={() => { setMoreOpen(false); window.__navigate?.('transfer-form'); }}>Добавить переезд</MenuItem>
+              <MenuItem icon="edit" onClick={() => setMoreOpen(false)}>Редактировать город</MenuItem>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function TransferRow({ transfer, cityName }) {
+function MenuItem({ icon, onClick, children, danger }) {
+  return (
+    <button onClick={onClick} style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      width: '100%', padding: '8px 10px',
+      background: 'transparent', border: 'none',
+      borderRadius: 7, cursor: 'pointer', textAlign: 'left',
+      fontSize: 13, color: danger ? 'var(--danger)' : 'var(--ink)',
+    }}
+    onMouseEnter={(e) => e.currentTarget.style.background = danger ? 'var(--danger-soft)' : 'var(--wash)'}
+    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+      <Icon name={icon} size={14} />
+      {children}
+    </button>
+  );
+}
+
+function TransferRow({ transfer, prevVisit, toCity }) {
+  const fromName = prevVisit?.city_name || 'Предыдущий город';
+  const toName = toCity?.city_name || '';
+
   if (!transfer) {
-    // No inbound transfer — show warning.
+    // No inbound transfer — show warning row with "+ Найти" CTA.
     return (
-      <div style={{
+      <button style={{
         display: 'flex', alignItems: 'center', gap: 12,
-        padding: '12px 16px',
-        borderBottom: '1px solid var(--line-2)',
-        borderLeft: '3px solid var(--warning)',
-        background: 'var(--warning-soft)',
-      }}>
+        width: '100%', padding: '14px 16px',
+        background: 'transparent', cursor: 'pointer', textAlign: 'left',
+        borderTop: 'none', borderLeft: '3px solid var(--warning)',
+        borderRight: 'none', borderBottom: '1px solid var(--line-2)',
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
         <div style={{
-          width: 36, height: 36, borderRadius: 9,
+          width: 40, height: 40, borderRadius: 9,
           background: 'var(--warning-soft)', color: 'var(--warning)',
           display: 'grid', placeItems: 'center', flexShrink: 0,
         }}>
-          <Icon name="warning" size={16} />
+          <Icon name="warning" size={18} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>Нет переезда</div>
-          <div className="muted" style={{ fontSize: 11.5, marginTop: 1 }}>
-            До «{cityName}» — добавить
+          <div style={{ fontSize: 14, fontWeight: 600 }}>Нет переезда</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>
+            Из «{fromName}» — добавить
           </div>
         </div>
-      </div>
+        <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
+      </button>
     );
   }
 
   const meta = KIND_META[transfer.transport_type] || KIND_META.car;
+  const subtitle = [
+    meta.label,
+    transfer.duration,
+    transfer.carrier,
+  ].filter(Boolean).join(' · ') || '—';
+
   return (
-    <div style={{
+    <button style={{
       display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 16px',
-      borderBottom: '1px solid var(--line-2)',
-      borderLeft: '3px solid var(--ev-transfer)',
-    }}>
+      width: '100%', padding: '14px 16px',
+      background: 'transparent', cursor: 'pointer', textAlign: 'left',
+      borderTop: 'none', borderLeft: '3px solid var(--ev-transfer)',
+      borderRight: 'none', borderBottom: '1px solid var(--line-2)',
+    }}
+    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
+    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
       <div style={{
-        width: 36, height: 36, borderRadius: 9,
+        width: 40, height: 40, borderRadius: 9,
         background: 'var(--ev-transfer-soft)', color: 'var(--ev-transfer)',
         display: 'grid', placeItems: 'center', flexShrink: 0,
       }}>
-        <Icon name={meta.icon} size={16} />
+        <Icon name={meta.icon} size={18} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>{meta.label}</div>
-        <div className="muted num" style={{ fontSize: 11.5, marginTop: 1 }}>
-          {[transfer.carrier, transfer.booking_reference].filter(Boolean).join(' · ') || '—'}
+        <div style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span>{fromName}</span>
+          <Icon name="arrowR" size={12} style={{ color: 'var(--muted-2)' }} />
+          <span>{toName}</span>
         </div>
+        <div className="muted num" style={{ fontSize: 12, marginTop: 2 }}>{subtitle}</div>
       </div>
-    </div>
+      <Icon name="chev" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
+    </button>
   );
 }
 
 function HotelRow({ hotel }) {
   if (!hotel) {
     return (
-      <div style={{
+      <button style={{
         display: 'flex', alignItems: 'center', gap: 12,
-        padding: '12px 16px',
-        borderBottom: '1px solid var(--line-2)',
-        borderLeft: '3px solid var(--warning)',
-      }}>
+        width: '100%', padding: '14px 16px',
+        background: 'transparent', cursor: 'pointer', textAlign: 'left',
+        borderTop: 'none', borderLeft: '3px solid var(--warning)',
+        borderRight: 'none', borderBottom: '1px solid var(--line-2)',
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
         <div style={{
-          width: 36, height: 36, borderRadius: 9,
+          width: 40, height: 40, borderRadius: 9,
           background: 'var(--warning-soft)', color: 'var(--warning)',
           display: 'grid', placeItems: 'center', flexShrink: 0,
         }}>
-          <Icon name="warning" size={16} />
+          <Icon name="warning" size={18} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>Нет отеля</div>
-          <div className="muted" style={{ fontSize: 11.5, marginTop: 1 }}>Не забронирован — нужно выбрать</div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>Нет отеля</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>Не забронирован — нужно выбрать</div>
         </div>
-      </div>
+        <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
+      </button>
     );
   }
   return (
-    <div style={{
+    <button style={{
       display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 16px',
-      borderBottom: '1px solid var(--line-2)',
-    }}>
+      width: '100%', padding: '14px 16px',
+      background: 'transparent', cursor: 'pointer', textAlign: 'left',
+      borderTop: 'none', borderLeft: '3px solid transparent',
+      borderRight: 'none', borderBottom: '1px solid var(--line-2)',
+    }}
+    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
+    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
       <div style={{
-        width: 36, height: 36, borderRadius: 9,
+        width: 40, height: 40, borderRadius: 9,
         background: 'var(--ev-hotel-soft)', color: 'var(--ev-hotel)',
         display: 'grid', placeItems: 'center', flexShrink: 0,
       }}>
-        <Icon name="bed" size={16} />
+        <Icon name="bed" size={18} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {hotel.name}
         </div>
-        <div className="muted num" style={{ fontSize: 11.5, marginTop: 1 }}>
+        <div className="muted num" style={{ fontSize: 12, marginTop: 2 }}>
           {[fmtShortDate(hotel.check_in_datetime), fmtShortDate(hotel.check_out_datetime)].filter(Boolean).join(' → ') || 'Заезд → выезд'}
         </div>
       </div>
-    </div>
+      <Icon name="chev" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
+    </button>
   );
 }
 

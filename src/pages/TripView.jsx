@@ -8,6 +8,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
+import { useUserProfiles } from '@/lib/useUserProfiles';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
@@ -1047,6 +1048,9 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
 // ─── ContextSide ──────────────────────────────────────────────────────────────
 
 function ContextSide({ budget, budgetExpenses, members, services = [], user, trip, isLoading }) {
+  // Resolve display names from profiles so the widget shows real names, not
+  // emails. We hoist this above the early-return so hooks order stays stable.
+  const profiles = useUserProfiles((members || []).map(m => m.user_email), trip?.id);
   if (isLoading) {
     return <div style={{ position: 'sticky', top: 80 }}><RightRailSkeleton /></div>;
   }
@@ -1116,7 +1120,8 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {orderedMembers.map((m, i) => {
-            const name = m.user_full_name || m.user_email || '—';
+            const profile = profiles[m.user_email];
+            const name = profile?.full_name || m.user_full_name || m.user_email || '—';
             const isOffline = m.status === 'offline';
             const isPending = m.status === 'pending' || m.status === 'invited';
             const roleIcon = m.role === 'owner' ? 'crown' : m.role === 'admin' ? 'shield' : 'eye';

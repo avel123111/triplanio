@@ -14,6 +14,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_EMAIL } from '@/lib/triplanio';
+import { useUserProfiles } from '@/lib/useUserProfiles';
 import { Avatar, Btn, Card } from '../design/index';
 
 // ─── Query key ────────────────────────────────────────────────────────────────
@@ -115,6 +116,14 @@ export default function ChatLens({ tripId, members = [], myRole }) {
 
   const myName = user?.user_metadata?.full_name || user?.email || 'Я';
 
+  // Resolve participant display names (full_name) from the profiles service.
+  // Used to render real names on message bubbles instead of bare emails.
+  const profiles = useUserProfiles(members.map(m => m.user_email), tripId);
+  const nameFor = (email) => profiles[email]?.full_name
+    || members.find(mm => mm.user_email === email)?.user_full_name
+    || email
+    || '—';
+
   // ── Load initial messages ──
   const { data: msgs = [], isLoading } = useQuery({
     queryKey: MSGS_KEY(tripId),
@@ -214,11 +223,14 @@ export default function ChatLens({ tripId, members = [], myRole }) {
     { name: 'ИИ-помощник', desc: '@assistant — отвечает всем', ai: true, handle: 'assistant' },
     ...members
       .filter(m => m.status === 'active')
-      .map(m => ({
-        name:   m.user_full_name || m.user_email || '—',
-        desc:   m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель',
-        handle: (m.user_full_name || m.user_email || 'user').split(/[\s@]/)[0],
-      })),
+      .map(m => {
+        const resolved = nameFor(m.user_email);
+        return {
+          name:   resolved,
+          desc:   m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель',
+          handle: resolved.split(/[\s@]/)[0],
+        };
+      }),
   ];
 
   // Render messages with date dividers
@@ -239,7 +251,7 @@ export default function ChatLens({ tripId, members = [], myRole }) {
     messageRows.push(
       <Msg
         key={m.id}
-        who={m.user_full_name || m.user_email || '—'}
+        who={nameFor(m.user_email)}
         isMe={isMe}
         isAi={m.user_email === TRIPLANIO_BOT_EMAIL}
         text={m.text || ''}
