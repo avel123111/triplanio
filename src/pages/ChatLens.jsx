@@ -14,8 +14,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_EMAIL } from '@/lib/triplanio';
-import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card } from '../design/index';
+import { Avatar, Btn, Card } from '../design/index';
 
 // ─── Query key ────────────────────────────────────────────────────────────────
 
@@ -266,7 +265,7 @@ export default function ChatLens({ tripId, members = [], myRole }) {
   })();
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20, height: 'calc(100vh - 300px)', minHeight: 500 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20, height: 'calc(100vh - 144px)', minHeight: 0 }}>
       {/* Chat area */}
       <div style={{
         background: 'var(--surface)', border: '1px solid var(--line)',
@@ -343,7 +342,7 @@ export default function ChatLens({ tripId, members = [], myRole }) {
       </div>
 
       {/* Right sidebar */}
-      <aside style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <aside className="scrollbar-thin" style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto', minHeight: 0 }}>
         <Card title="Участники чата">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {activeMembers.length === 0 ? (

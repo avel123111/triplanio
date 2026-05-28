@@ -8,6 +8,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
+import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
 import { Avatar, Btn, EmptyState, Skeleton, ModalHost, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
@@ -217,7 +218,7 @@ function ErrorScreen({ onBack }) {
 
 // ─── TripHeader ───────────────────────────────────────────────────────────────
 
-function TripHeader({ trip, visits, isPro, theme, setTheme, user, nav }) {
+function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
   const dateRange = formatTripRange(visits, '—');
 
   return (
@@ -246,12 +247,7 @@ function TripHeader({ trip, visits, isPro, theme, setTheme, user, nav }) {
         </div>
       </div>
 
-      <HeaderActions
-        user={user}
-        isPro={isPro}
-        isDark={theme === 'dark'}
-        onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-      />
+      <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={onToggleTheme} />
     </header>
   );
 }
@@ -683,18 +679,6 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // Missing-transfer warnings already emitted inside the day loop (keyed by
   // destination visit id) — so we don't render anchor cities' warnings twice.
   const renderedMissing = new Set();
-  // Track which days have a city hero (to avoid showing "empty day" for them)
-  const cityHeroDays = new Set();
-
-  // First pass: mark days where city heroes will appear
-  let tmpPrevVisitId = null;
-  for (const day of days) {
-    const visit = visitForDay(day, visits);
-    if (visit && visit.id !== tmpPrevVisitId) {
-      cityHeroDays.add(day);
-      tmpPrevVisitId = visit.id;
-    }
-  }
 
   // Start anchor
   const startCity = ordered[0]?.city_name || 'Старт';
@@ -711,36 +695,21 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
 
   for (const day of days) {
     const visit = visitForDay(day, visits);
-    const isCityHeroDay = cityHeroDays.has(day);
+    // Arrival day = first day this city's visit appears. The CityHero and the
+    // "no transfer" warning belong to THIS day (rendered under its header),
+    // not floating between the previous day and this one.
+    const isArrival = !!(visit && visit.id !== prevVisitId);
+    const mt = isArrival ? missingTransferByVisitId[visit.id] : null;
+    if (mt) renderedMissing.add(visit.id);
 
-    // Inject missing transfer warning before city change (kind-based, visit-ID-based).
-    // Note: no `prevVisitId` guard — the start→first-city warning must show even
-    // when the start anchor city has no days of its own.
-    if (visit && visit.id !== prevVisitId) {
-      const mt = missingTransferByVisitId[visit.id];
-      if (mt) {
-        rows.push(
-          <MissingTransferWarning
-            key={`mt-${visit.id}`}
-            from={mt.fromVisit.city_name}
-            to={mt.toVisit.city_name}
-            fromVisit={mt.fromVisit}
-            toVisit={mt.toVisit}
-            onAdd={onAddTransfer}
-          />
-        );
-        renderedMissing.add(visit.id);
-      }
-    }
-
-    // Inject CityHero when city changes
-    if (visit && visit.id !== prevVisitId) {
+    let cityHero = null;
+    if (isArrival) {
       const vStart = naiveDayKey(visit.start_datetime);
       const vEnd = naiveDayKey(visit.end_datetime);
       const nights = nightsBetween(vStart, vEnd);
       const dateRange = vStart && vEnd ? `${fmtDate(vStart)} — ${fmtDate(vEnd)}` : null;
       const visitHotels = hotelsByVisit[visit.id] || [];
-      rows.push(
+      cityHero = (
         <CityHero
           key={`city-${visit.id}`}
           city={visit.city_name}
@@ -755,7 +724,6 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
           onDeleteCity={onDeleteCity}
         />
       );
-      prevVisitId = visit.id;
     }
 
     const dayEvents = eventsByDate[day] || [];
@@ -781,15 +749,29 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
           <div style={{ flex: 1, borderBottom: '1px solid var(--line-2)', marginBottom: 6 }} />
         </div>
 
-        {/* Events or placeholder */}
+        {/* Arrival into this city: missing-transfer warning + city hero */}
+        {mt && (
+          <div style={{ marginBottom: 8 }}>
+            <MissingTransferWarning
+              from={mt.fromVisit.city_name}
+              to={mt.toVisit.city_name}
+              fromVisit={mt.fromVisit}
+              toVisit={mt.toVisit}
+              onAdd={onAddTransfer}
+            />
+          </div>
+        )}
+        {cityHero}
+
+        {/* Events or placeholder — never show the empty-day placeholder on an
+            arrival day (the city hero already fills it). */}
         {dayEvents.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {dayEvents.map((e, idx) => (
               <StreamEventRow key={e.id} e={e} last={idx === dayEvents.length - 1} onClick={() => onOpenEvent?.(e)} />
             ))}
           </div>
-        ) : !isCityHeroDay && (
-          /* Only show "empty day" if no CityHero was shown for this day */
+        ) : !isArrival && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
             padding: '10px 14px',
@@ -810,6 +792,8 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         )}
       </div>
     );
+
+    if (isArrival) prevVisitId = visit.id;
   }
 
   // Any missing-transfer warnings not emitted in the day loop (e.g. into the
@@ -1035,7 +1019,7 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
     return <div style={{ position: 'sticky', top: 80 }}><RightRailSkeleton /></div>;
   }
   const totalSpent = budgetExpenses.reduce((s, e) => s + Number(e.original_amount || 0), 0);
-  const mainCurrency = budget?.currency || trip?.main_currency || 'EUR';
+  const mainCurrency = budget?.currency || trip?.details?.main_currency || trip?.main_currency || 'EUR';
 
   // Always show the owner first, then admins, viewers, offline, pending.
   // The owner often isn't a trip_members row (tracked via trip.created_by), so
@@ -1208,9 +1192,7 @@ export default function TripView() {
   const { user } = useAuth();
   const lens = searchParams.get('lens') || 'timeline';
 
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('triplanio:theme') || 'light'; } catch { return 'light'; }
-  });
+  const { isDark, toggle: toggleTheme } = useTheme();
   const [isEditMode, setIsEditMode] = useState(false);
   const [transferEdit, setTransferEdit] = useState({ open: false, fromVisit: null, toVisit: null, transfer: null });
   const [hotelEdit, setHotelEdit] = useState({ open: false, visit: null, hotel: null });
@@ -1273,12 +1255,6 @@ export default function TripView() {
     if (!id) return;
     setEventView({ open: true, kind, id });
   };
-
-  // Theme sync
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    try { localStorage.setItem('triplanio:theme', theme); } catch {}
-  }, [theme]);
 
   // Wire window.__navigate so Screen components can navigate
   useEffect(() => {
@@ -1362,8 +1338,8 @@ export default function TripView() {
         trip={trip}
         visits={visits}
         isPro={isPro}
-        theme={theme}
-        setTheme={setTheme}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
         user={user}
         nav={nav}
       />

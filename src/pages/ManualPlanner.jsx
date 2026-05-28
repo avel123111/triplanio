@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { isTripInPast } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
+import { useTheme } from '@/lib/ThemeContext';
 import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/geo';
 import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
@@ -970,14 +971,7 @@ export default function ManualPlanner() {
   const { user } = useAuth();
 
   const isPro = isProActive(user);
-
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('triplanio:theme') || 'light'; } catch { return 'light'; }
-  });
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    try { localStorage.setItem('triplanio:theme', theme); } catch { /* ignore */ }
-  }, [theme]);
+  const { isDark, toggle: toggleTheme } = useTheme();
 
   // ── Free-plan limit check ─────────────────────────────────────────────────
   const { data: allTrips = [], isLoading: checkingLimit } = useQuery({
@@ -1196,8 +1190,8 @@ export default function ManualPlanner() {
           <HeaderActions
             user={user}
             isPro={isPro}
-            isDark={theme === 'dark'}
-            onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+            isDark={isDark}
+            onToggleTheme={toggleTheme}
           />
         </header>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -1238,8 +1232,8 @@ export default function ManualPlanner() {
         <HeaderActions
           user={user}
           isPro={isPro}
-          isDark={theme === 'dark'}
-          onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
         />
       </header>
 
