@@ -963,12 +963,19 @@ function buildServicePayload(form, tripId, t) {
   const dropoffLat = useSame ? form.pickup_latitude  : form.dropoff_latitude;
   const dropoffLng = useSame ? form.pickup_longitude : form.dropoff_longitude;
   const dropoffTz  = useSame ? form.pickup_timezone  : form.dropoff_timezone;
+  const pickupTz   = form.pickup_timezone || 'UTC';
   return {
     trip_id: tripId,
     kind: 'car_rental',
     name: form.name.trim() || t('service.car_default_name'),
     price: form.price === '' ? null : Number(form.price),
     currency: form.currency || 'EUR',
+    // Top-level UTC columns mirror details.pickup_at_local/dropoff_at_local —
+    // used by get_pending_reminders to query upcoming car rentals without
+    // scanning JSONB. Legacy *_at_local stays in details for backward
+    // compatibility with older records and existing display paths.
+    pickup_datetime:  form.pickup_at_local  ? localToUtc(form.pickup_at_local,  pickupTz)              : null,
+    dropoff_datetime: form.dropoff_at_local ? localToUtc(form.dropoff_at_local, dropoffTz || pickupTz) : null,
     details: {
       pickup_at_local: form.pickup_at_local || undefined,
       pickup_address: form.pickup_address || undefined,

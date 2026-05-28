@@ -19,6 +19,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/api/supabaseClient';
 import { parseNaive } from '@/lib/naive-time';
+import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { BOOKING_PLATFORMS, platformLogoUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import {
@@ -223,12 +224,20 @@ function ServiceBody({ entity, accent }) {
   const sameLocation = !d.dropoff_address || d.dropoff_address === d.pickup_address;
   const price = entity.price ?? d.price;
   const cur = entity.currency || d.currency;
+  // Prefer top-level UTC columns added with get_pending_reminders; fall back
+  // to the legacy *_at_local fields for records written before the migration.
+  const pickupDisplay = entity.pickup_datetime
+    ? utcToLocalInput(entity.pickup_datetime, d.pickup_timezone)
+    : d.pickup_at_local;
+  const dropoffDisplay = entity.dropoff_datetime
+    ? utcToLocalInput(entity.dropoff_datetime, d.dropoff_timezone || d.pickup_timezone)
+    : d.dropoff_at_local;
   return (
     <>
       <Section title="Получение" accent={accent}>
         <div className="grid grid-cols-2 gap-3">
           <KV label="Где"><div className="leading-snug">{d.pickup_address}</div></KV>
-          <KV label="Когда">{fmtDT(d.pickup_at_local)}</KV>
+          <KV label="Когда">{fmtDT(pickupDisplay)}</KV>
         </div>
       </Section>
       <Section title={sameLocation ? 'Возврат' : 'Возврат — в другом месте'} accent={accent}>
@@ -240,7 +249,7 @@ function ServiceBody({ entity, accent }) {
               <div className="leading-snug">{d.dropoff_address}</div>
             )}
           </KV>
-          <KV label="Когда">{fmtDT(d.dropoff_at_local)}</KV>
+          <KV label="Когда">{fmtDT(dropoffDisplay)}</KV>
         </div>
       </Section>
       <Section title="Финансы и бронь" accent={accent}>
@@ -336,8 +345,14 @@ export default function EventModal(props) {
     if (visit?.city_name) metaItems.push({ icon: MapIcon, text: visit.city_name });
   } else if (kind === 'service') {
     const d = entity.details || {};
-    if (d.pickup_at_local && d.dropoff_at_local) {
-      metaItems.push({ icon: Calendar, text: `${fmtDT(d.pickup_at_local)} → ${fmtDate(d.dropoff_at_local)}` });
+    const pickupMeta = entity.pickup_datetime
+      ? utcToLocalInput(entity.pickup_datetime, d.pickup_timezone)
+      : d.pickup_at_local;
+    const dropoffMeta = entity.dropoff_datetime
+      ? utcToLocalInput(entity.dropoff_datetime, d.dropoff_timezone || d.pickup_timezone)
+      : d.dropoff_at_local;
+    if (pickupMeta && dropoffMeta) {
+      metaItems.push({ icon: Calendar, text: `${fmtDT(pickupMeta)} → ${fmtDate(dropoffMeta)}` });
     }
   }
   const priceText = fmtPrice(price, cur);
