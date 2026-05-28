@@ -119,10 +119,13 @@ export default function ChatLens({ tripId, members = [], myRole }) {
   // Resolve participant display names (full_name) from the profiles service.
   // Used to render real names on message bubbles instead of bare emails.
   const profiles = useUserProfiles(members.map(m => m.user_email), tripId);
-  const nameFor = (email) => profiles[email]?.full_name
-    || members.find(mm => mm.user_email === email)?.user_full_name
-    || email
-    || '—';
+  const nameFor = (email) => {
+    const lower = (email || '').toLowerCase();
+    return profiles[lower]?.full_name
+      || members.find(mm => mm.user_email?.toLowerCase() === lower)?.user_full_name
+      || email
+      || '—';
+  };
 
   // ── Load initial messages ──
   const { data: msgs = [], isLoading } = useQuery({

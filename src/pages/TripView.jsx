@@ -597,11 +597,16 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     );
   }
 
-  // Determine timeline bounds: prefer trip dates, fall back to visit dates
-  const tripStart = trip.start_date
-    || (visits.length ? naiveDayKey(visits[0].start_datetime) : null);
-  const tripEnd = trip.end_date
-    || (visits.length ? naiveDayKey(visits[visits.length - 1].end_datetime) : null);
+  // Determine timeline bounds. Start/end anchors are pure markers and have
+  // no datetimes — derive the trip range from the first/last TRANSIT visit
+  // (the cities the user actually stays in). Falls back to trip.start_date /
+  // trip.end_date when there are no transits with dates.
+  const datedTransits = sortVisits(visits)
+    .filter(v => v.kind !== 'start' && v.kind !== 'end' && v.start_datetime && v.end_datetime);
+  const transitStart = datedTransits.length ? naiveDayKey(datedTransits[0].start_datetime) : null;
+  const transitEnd = datedTransits.length ? naiveDayKey(datedTransits[datedTransits.length - 1].end_datetime) : null;
+  const tripStart = transitStart || trip.start_date || null;
+  const tripEnd = transitEnd || trip.end_date || null;
 
   if (!tripStart || !tripEnd) {
     return (
@@ -1059,12 +1064,21 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
 
   // Always show the owner first, then admins, viewers, offline, pending.
   // The owner often isn't a trip_members row (tracked via trip.created_by), so
-  // synthesize it when missing.
+  // synthesize it when missing. Use the authenticated user's own name when the
+  // owner row is the current user — otherwise leave user_full_name empty and
+  // let the profile resolver fill it in.
   const orderedMembers = (() => {
     const ownerEmail = trip?.created_by || user?.email || '';
     const all = members.filter(m => m.status !== 'declined');
     if (ownerEmail && !all.some(m => m.role === 'owner' || m.user_email === ownerEmail)) {
-      all.unshift({ id: '__owner__', user_email: ownerEmail, user_full_name: ownerEmail, role: 'owner', status: 'active' });
+      const isMeOwner = user?.email && ownerEmail.toLowerCase() === user.email.toLowerCase();
+      all.unshift({
+        id: '__owner__',
+        user_email: ownerEmail,
+        user_full_name: isMeOwner ? (user?.full_name || '') : '',
+        role: 'owner',
+        status: 'active',
+      });
     }
     const rank = (m) => {
       if (m.role === 'owner') return 0;
@@ -1120,7 +1134,7 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {orderedMembers.map((m, i) => {
-            const profile = profiles[m.user_email];
+            const profile = profiles[(m.user_email || '').toLowerCase()];
             const name = profile?.full_name || m.user_full_name || m.user_email || '—';
             const isOffline = m.status === 'offline';
             const isPending = m.status === 'pending' || m.status === 'invited';

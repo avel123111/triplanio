@@ -288,7 +288,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
           const isOwner = m.role === 'owner';
           const showMenu = openMenu === i;
           const isRemoving = removing === m.id;
-          const profile = profiles[m.user_email];
+          const profile = profiles[(m.user_email || '').toLowerCase()];
           // Display name = real name when known, else fall back to the email.
           // hasRealName lets us hide the redundant email line below when
           // there's no separate name to put on top.
