@@ -25,7 +25,7 @@ import CalendarLens from './CalendarLens';
 import DocsLens from './DocsLens';
 import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
-import MapLens from './MapLens';
+import MapView from '@/components/views/MapView';
 import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
 import PaymentFailDialog from '@/components/common/PaymentFailDialog';
@@ -1518,7 +1518,13 @@ export default function TripView() {
               myRole={myRole}
             />
           )}
-          {shownLens === 'map' && <MapLens visits={visits} hotels={hotels} activities={activities} transfers={transfers} trip={trip} isLoading={loadingContent} />}
+          {shownLens === 'map' && (
+            <MapView
+              visits={visits}
+              transfers={transfers}
+              visitsById={Object.fromEntries(visits.map(v => [v.id, v]))}
+            />
+          )}
         </main>
       </div>
 
