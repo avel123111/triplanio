@@ -372,6 +372,18 @@ h3 {
   padding: var(--hero-top) 0 var(--hero-bot);
   overflow: hidden;
 }
+/* On desktop the hero fills the viewport and the content block is
+   centred vertically, so the H1 + CTAs sit in the middle of the screen
+   on first open. Mobile keeps the simpler stacked layout from the
+   media query below. */
+@media (min-width: 981px) {
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+  }
+  .hero > .container { width: 100%; }
+}
 .hero::before {
   content: "";
   position: absolute;
@@ -383,10 +395,7 @@ h3 {
   display: grid;
   grid-template-columns: 1fr 1.05fr;
   gap: 64px;
-  /* Top-align the left copy so the H1 + CTAs sit above the fold even on
-     short viewports; the tall device mockup on the right used to vertically
-     center the row, pushing the buttons below the visible area. */
-  align-items: start;
+  align-items: center;
 }
 .hero__copy { max-width: 560px; }
 .hero h1 .break { display: block; }

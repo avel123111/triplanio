@@ -1383,15 +1383,15 @@ function LandingFooter({ lang, setLang }) {
 }
 
 /* ── Scroll reveal ──
-   The old implementation relied on document.timeline.currentTime moving
-   between two rAFs and a single reveal() pass after that. On some loads
-   the page would render with reveal--ready applied (everything hidden)
-   but reveal() ran before layout settled and never re-fired, leaving the
-   page blank until the user scrolled. Replacing with IntersectionObserver
-   fixes that — it watches each .reveal element and fires the moment it
-   actually enters the viewport, regardless of when layout settles. */
-function useScrollReveal() {
+   Runs only AFTER cssReady — earlier we kicked the effect off at mount
+   with [] deps, which meant LandingPage was still in its `return null`
+   path: querySelectorAll('.reveal') found nothing, the IntersectionObserver
+   was left observing zero elements, and below-the-fold sections never
+   revealed. Gating on `ready` (passed from cssReady) guarantees the DOM
+   already contains the .reveal nodes. */
+function useScrollReveal(ready) {
   useEffect(() => {
+    if (!ready) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (typeof IntersectionObserver === 'undefined') return;
     document.documentElement.classList.add('reveal--ready');
@@ -1403,13 +1403,9 @@ function useScrollReveal() {
         }
       }
     }, { rootMargin: '0px 0px -10% 0px', threshold: 0.01 });
-    const observeAll = () => {
-      document.querySelectorAll('.reveal:not(.is-in)').forEach(el => io.observe(el));
-    };
-    observeAll();
-    // Safety net: if anything is still in the viewport after layout
-    // settles (fonts/images), force-show it. Prevents the "blank until
-    // first scroll" failure mode if IO misses a fast layout shift.
+    document.querySelectorAll('.reveal:not(.is-in)').forEach(el => io.observe(el));
+    // Safety net: force-show anything already in the viewport after
+    // layout settles (fonts/images), in case IO misses a fast shift.
     const flush = () => {
       const vh = window.innerHeight;
       document.querySelectorAll('.reveal:not(.is-in)').forEach(el => {
@@ -1423,7 +1419,7 @@ function useScrollReveal() {
       io.disconnect();
       document.documentElement.classList.remove('reveal--ready');
     };
-  }, []);
+  }, [ready]);
 }
 
 /* ── Main LandingPage ── */
@@ -1471,7 +1467,7 @@ export default function LandingPage() {
     };
   }, []);
 
-  useScrollReveal();
+  useScrollReveal(cssReady);
 
   /* Don't render until landing CSS is loaded — prevents flash of unstyled content */
   if (!cssReady) return null;
