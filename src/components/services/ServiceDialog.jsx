@@ -7,22 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Trash2 } from 'lucide-react';
-import CarRentalDialog from './CarRentalDialog';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { invalidateTripData } from '@/lib/trip-data';
 
+// Simple name + price dialog for non-car-rental service kinds (esim, insurance).
+// Car-rental services now go through the unified EventEditDialog at the call sites.
 export default function ServiceDialog({ open, onOpenChange, tripId, kind, service }) {
-  // Car rental has its own large dialog with detailed fields.
-  const effectiveKind = service?.kind || kind;
-  if (effectiveKind === 'car_rental') {
-    return <CarRentalDialog open={open} onOpenChange={onOpenChange} tripId={tripId} service={service} />;
-  }
-  return <SimpleServiceDialog open={open} onOpenChange={onOpenChange} tripId={tripId} kind={kind} service={service} />;
-}
-
-function SimpleServiceDialog({ open, onOpenChange, tripId, kind, service }) {
   const { t } = useI18nFormat();
   const qc = useQueryClient();
   const { user } = useAuth();

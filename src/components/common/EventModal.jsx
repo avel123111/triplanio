@@ -1,23 +1,31 @@
-import React, { useState } from 'react';
-import { supabase } from '@/api/supabaseClient';
-import { Icon } from '@/design/icons';
-import { Btn, Badge, fmt } from '@/design/index';
-import { parseNaive } from '@/lib/naive-time';
-import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
-
 /**
  * EventModal — unified, new-design read view for a timeline event
- * (hotel, transfer/flight, activity, car rental). Self-contained controlled
- * overlay; no ModalHost dependency.
+ * (hotel / transfer / activity / car rental). Wraps a shadcn Dialog so it
+ * composes cleanly inside ordinary React trees.
  *
- * Props:
- *   event    — { kind, entity, visit?, fromVisit?, toVisit?, tripId? }
- *              kind ∈ 'hotel' | 'transfer' | 'activity' | 'service'
- *   canEdit  — boolean (hide Edit/Delete for viewers)
- *   onClose  — () => void
- *   onEdit   — () => void
- *   onDelete — () => void   (parent owns the confirm + delete + refetch)
+ * Accepts TWO call shapes so the migration is incremental:
+ *
+ *   New (preferred):
+ *     <EventModal open onOpenChange entity kind visit fromVisit toVisit onEdit readOnly />
+ *
+ *   Legacy (still used by SourceViewLoader + a few proto screens):
+ *     <EventModal event={{ kind, entity, visit, fromVisit, toVisit }}
+ *                 canEdit onClose onEdit onDelete />
+ *
+ * Visual reference: designer prototype `event-view.jsx`.
  */
+import React, { useState } from 'react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/api/supabaseClient';
+import { parseNaive } from '@/lib/naive-time';
+import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
+import { BOOKING_PLATFORMS, platformLogoUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
+import {
+  X, Edit2, Trash2, ExternalLink, Map as MapIcon, Calendar, FileText,
+  Bed, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Camera, Upload,
+  RefreshCw,
+} from 'lucide-react';
 
 const TABLE_BY_KIND = {
   hotel: 'hotel_stays',
@@ -26,91 +34,316 @@ const TABLE_BY_KIND = {
   service: 'trip_services',
 };
 
-const TRANSPORT_ICONS = { plane: 'plane', train: 'train', bus: 'bus', car: 'car', ferry: 'ferry', walk: 'walk' };
+const TRANSPORT_ICONS = {
+  plane: Plane, train: Train, bus: Bus, car: CarIcon, taxi: CarIcon,
+  ferry: Ship, walk: Footprints, own_transport: CarIcon, other: CarIcon,
+};
+
+function eventTheme(kind, entity) {
+  if (kind === 'hotel') {
+    return { color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', Icon: Bed, label: 'Проживание' };
+  }
+  if (kind === 'activity') {
+    const Icon = entity?.category === 'food' ? Camera : entity?.category === 'sight' ? Camera : Camera;
+    return { color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', Icon, label: 'Активность' };
+  }
+  if (kind === 'service') {
+    return { color: 'var(--ev-car)', soft: 'var(--ev-car-soft)', Icon: CarIcon, label: 'Аренда авто' };
+  }
+  // transfer
+  const tt = entity?.transport_type;
+  const Icon = TRANSPORT_ICONS[tt] || Plane;
+  return {
+    color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)',
+    Icon, label: tt === 'plane' ? 'Перелёт' : 'Переезд',
+  };
+}
 
 function fmtDT(iso) {
   const d = parseNaive(iso);
   return d ? d.setLocale('ru').toFormat('d MMM, HH:mm') : '';
 }
-
-function eventTheme(event) {
-  const { kind, entity } = event;
-  if (kind === 'hotel') return { color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', icon: 'bed', label: 'Проживание' };
-  if (kind === 'activity') {
-    const icon = entity?.category === 'food' ? 'cup' : entity?.category === 'sight' ? 'cam' : 'spark';
-    return { color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', icon, label: 'Активность' };
+function fmtDate(iso) {
+  const d = parseNaive(iso);
+  return d ? d.setLocale('ru').toFormat('d MMM') : '';
+}
+function fmtTime(iso) {
+  const d = parseNaive(iso);
+  return d ? d.toFormat('HH:mm') : '';
+}
+function fmtPrice(price, cur) {
+  if (price == null || price === '') return '';
+  const c = cur || 'EUR';
+  try {
+    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: c, maximumFractionDigits: 0 }).format(Number(price));
+  } catch {
+    return `${price} ${c}`;
   }
-  if (kind === 'service') return { color: 'var(--ev-car)', soft: 'var(--ev-car-soft)', icon: 'car', label: 'Аренда авто' };
-  // transfer / flight
-  const tt = entity?.transport_type;
-  const isFlight = tt === 'plane';
-  return {
-    color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)',
-    icon: TRANSPORT_ICONS[tt] || 'car', label: isFlight ? 'Перелёт' : 'Переезд',
-  };
 }
 
-function Section({ icon, color, title, children }) {
+// ─────────────────────────────────────────────────────────────────────────────
+//  Section primitives (3px accent bar + body)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Section({ title, accent, count, children, first }) {
   return (
-    <div style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 14, background: 'var(--surface)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13, marginBottom: 10 }}>
-        {icon && <Icon name={icon} size={15} style={{ color }} />}{title}
+    <div className={first ? 'mt-3' : 'mt-4 pt-4 border-t'}>
+      <div className="flex items-center gap-2 mb-2.5">
+        <div style={{ width: 3, height: 12, background: accent, borderRadius: 2 }} />
+        <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground flex-1">{title}</span>
+        {count != null && count > 0 && (
+          <span className="text-xs text-muted-foreground">{count}</span>
+        )}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{children}</div>
+      {children}
     </div>
   );
 }
 
-function Row({ label, value, mono }) {
-  if (value === undefined || value === null || value === '') return null;
+function KV({ label, children, mono }) {
+  if (children == null || children === '') return null;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, fontSize: 13, alignItems: 'baseline' }}>
-      <div className="muted" style={{ fontSize: 12 }}>{label}</div>
-      <div className={mono ? 'mono' : ''} style={{ minWidth: 0, wordBreak: 'break-word', fontSize: mono ? 12.5 : 13 }}>{value}</div>
+    <div>
+      <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-0.5">{label}</div>
+      <div className={`text-sm leading-tight ${mono ? 'font-mono text-xs' : ''}`}>{children}</div>
     </div>
   );
 }
 
-export default function EventModal({ event, canEdit = false, onClose, onEdit, onDelete }) {
-  const { kind, entity, visit, fromVisit, toVisit } = event || {};
-  const isService = kind === 'service';
-  const details = isService ? (entity?.details || {}) : null;
+// ─────────────────────────────────────────────────────────────────────────────
+//  Per-kind body
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const [docs, setDocs] = useState(() =>
-    isService ? getDetailsDocuments(details) : getEntityDocuments(entity));
+function HotelBody({ entity, accent }) {
+  return (
+    <>
+      {entity.address && (
+        <div className="mt-3 p-3 rounded-lg bg-secondary/40 flex items-start gap-2.5">
+          <MapIcon className="w-4 h-4 mt-0.5 shrink-0" style={{ color: accent }} />
+          <div className="text-sm leading-snug">{entity.address}</div>
+        </div>
+      )}
+      <Section title="Заезд и выезд" accent={accent}>
+        <div className="grid grid-cols-2 gap-3">
+          <KV label="Заезд">{fmtDT(entity.check_in_datetime)}</KV>
+          <KV label="Выезд">{fmtDT(entity.check_out_datetime)}</KV>
+        </div>
+      </Section>
+      <Section title="Финансы и отмена" accent={accent}>
+        <div className="grid grid-cols-2 gap-3">
+          <KV label="Сумма">{fmtPrice(entity.price, entity.currency)}</KV>
+          <KV label="Статус оплаты">{paymentLabel(entity.payment_status)}</KV>
+          {entity.free_cancellation && entity.free_cancellation_until && (
+            <KV label="Бесплатная отмена до">{fmtDT(entity.free_cancellation_until)}</KV>
+          )}
+          <KV label="Номер брони" mono>{entity.booking_reference}</KV>
+        </div>
+      </Section>
+      {(entity.phone || entity.email) && (
+        <Section title="Контакты" accent={accent}>
+          <div className="grid grid-cols-2 gap-3">
+            <KV label="Телефон">{entity.phone}</KV>
+            <KV label="E-mail">{entity.email ? <a href={`mailto:${entity.email}`} className="text-primary hover:underline">{entity.email}</a> : null}</KV>
+          </div>
+        </Section>
+      )}
+    </>
+  );
+}
+
+function paymentLabel(status) {
+  if (status === 'paid') return 'Оплачено';
+  if (status === 'partial') return 'Частично';
+  if (status === 'pay_on_arrival') return 'По прибытии';
+  return status || null;
+}
+
+function TransferBody({ entity, fromVisit, toVisit, accent }) {
+  const fromCity = fromVisit?.city_name || '';
+  const toCity = toVisit?.city_name || '';
+  const ttIcon = TRANSPORT_ICONS[entity.transport_type] || Plane;
+  const Ic = ttIcon;
+  return (
+    <>
+      <div className="mt-3 p-4 rounded-xl bg-secondary/40 grid items-center gap-3" style={{ gridTemplateColumns: '1fr auto 1fr' }}>
+        <div>
+          <div className="font-display font-bold text-2xl leading-tight">{fmtTime(entity.start_datetime)}</div>
+          {fromCity && <div className="text-sm font-semibold mt-1">{fromCity}</div>}
+          {entity.from_address && (
+            <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{entity.from_address}</div>
+          )}
+        </div>
+        <div className="text-center">
+          <Ic className="w-5 h-5 mx-auto" style={{ color: accent }} />
+        </div>
+        <div className="text-right">
+          <div className="font-display font-bold text-2xl leading-tight">{fmtTime(entity.end_datetime)}</div>
+          {toCity && <div className="text-sm font-semibold mt-1">{toCity}</div>}
+          {entity.to_address && (
+            <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{entity.to_address}</div>
+          )}
+        </div>
+      </div>
+      <Section title="Перевозчик и бронь" accent={accent}>
+        <div className="grid grid-cols-2 gap-3">
+          <KV label="Перевозчик">{entity.carrier}</KV>
+          <KV label="Номер рейса" mono>{entity.flight_number}</KV>
+          <KV label="Сумма">{fmtPrice(entity.price, entity.currency)}</KV>
+          <KV label="Номер брони" mono>{entity.booking_reference}</KV>
+        </div>
+      </Section>
+    </>
+  );
+}
+
+function ActivityBody({ entity, accent }) {
+  return (
+    <>
+      {entity.location_address && (
+        <div className="mt-3 p-3 rounded-lg bg-secondary/40 flex items-start gap-2.5">
+          <MapIcon className="w-4 h-4 mt-0.5 shrink-0" style={{ color: accent }} />
+          <div className="text-sm leading-snug">{entity.location_address}</div>
+        </div>
+      )}
+      <Section title="Когда" accent={accent}>
+        <div className="grid grid-cols-2 gap-3">
+          <KV label="Начало">{fmtDT(entity.start_datetime)}</KV>
+          <KV label="Конец">{fmtDT(entity.end_datetime)}</KV>
+        </div>
+      </Section>
+      <Section title="Стоимость" accent={accent}>
+        <KV label="Сумма">{fmtPrice(entity.price, entity.currency)}</KV>
+      </Section>
+    </>
+  );
+}
+
+function ServiceBody({ entity, accent }) {
+  const d = entity.details || {};
+  const sameLocation = !d.dropoff_address || d.dropoff_address === d.pickup_address;
+  const price = entity.price ?? d.price;
+  const cur = entity.currency || d.currency;
+  return (
+    <>
+      <Section title="Получение" accent={accent}>
+        <div className="grid grid-cols-2 gap-3">
+          <KV label="Где"><div className="leading-snug">{d.pickup_address}</div></KV>
+          <KV label="Когда">{fmtDT(d.pickup_at_local)}</KV>
+        </div>
+      </Section>
+      <Section title={sameLocation ? 'Возврат' : 'Возврат — в другом месте'} accent={accent}>
+        <div className="grid grid-cols-2 gap-3">
+          <KV label="Где">
+            {sameLocation ? (
+              <span className="text-xs text-muted-foreground">Возврат в том же месте, что и получение</span>
+            ) : (
+              <div className="leading-snug">{d.dropoff_address}</div>
+            )}
+          </KV>
+          <KV label="Когда">{fmtDT(d.dropoff_at_local)}</KV>
+        </div>
+      </Section>
+      <Section title="Финансы и бронь" accent={accent}>
+        <div className="grid grid-cols-2 gap-3">
+          <KV label="Сумма">{fmtPrice(price, cur)}</KV>
+          <KV label="Номер брони" mono>{d.booking_reference}</KV>
+        </div>
+      </Section>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Main component
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function EventModal(props) {
+  // Adapt the two call shapes into a single internal shape.
+  const legacy = !!props.event;
+  const kind = legacy ? props.event.kind : props.kind;
+  const entity = legacy ? props.event.entity : props.entity;
+  const visit = legacy ? props.event.visit : props.visit;
+  const fromVisit = legacy ? props.event.fromVisit : props.fromVisit;
+  const toVisit = legacy ? props.event.toVisit : props.toVisit;
+  const canEdit = legacy ? !!props.canEdit : !props.readOnly;
+  const onEdit = props.onEdit;
+  const onDelete = legacy ? props.onDelete : undefined;
+
+  // Open/close: new API uses open/onOpenChange; legacy uses onClose.
+  // When no `open` is passed (some legacy proto callers conditionally mount
+  // the modal), default to true.
+  const controlled = typeof props.open !== 'undefined';
+  const open = controlled ? !!props.open : true;
+  const setOpen = (next) => {
+    if (controlled) {
+      props.onOpenChange?.(next);
+    } else if (!next) {
+      props.onClose?.();
+    }
+  };
+
+  const [docs, setDocs] = useState(() => {
+    if (!entity) return [];
+    return kind === 'service' ? getDetailsDocuments(entity.details || {}) : getEntityDocuments(entity);
+  });
   const [uploading, setUploading] = useState(false);
 
-  if (!event || !entity) return null;
-  const theme = eventTheme(event);
-  const cur = (isService ? (entity.currency || details?.currency) : entity.currency) || 'EUR';
-  const price = isService ? (entity.price ?? details?.price) : entity.price;
+  // Re-sync docs when the entity prop changes (e.g. dialog re-opens with a
+  // different event).
+  React.useEffect(() => {
+    if (!entity) return;
+    setDocs(kind === 'service' ? getDetailsDocuments(entity.details || {}) : getEntityDocuments(entity));
+  }, [entity?.id, kind]); // eslint-disable-line
 
+  if (!entity || !kind) return null;
+  const theme = eventTheme(kind, entity);
+
+  // Title + meta strip values
   const title = kind === 'hotel' ? entity.name
     : kind === 'activity' ? entity.title
     : kind === 'service' ? entity.name
-    : (entity.carrier || theme.label);
+    : (entity.carrier || (entity.flight_number ? `Рейс ${entity.flight_number}` : theme.label));
 
-  const subtitle = kind === 'hotel' ? entity.address
-    : kind === 'activity' ? [entity.location_name, entity.location_address].filter(Boolean).join(' · ')
-    : kind === 'transfer' ? `${fromVisit?.city_name || entity.from_address || '—'} → ${toVisit?.city_name || entity.to_address || '—'}`
-    : (details?.pickup_address || '');
+  const cur = (kind === 'service' ? (entity.currency || entity.details?.currency) : entity.currency) || 'EUR';
+  const price = kind === 'service' ? (entity.price ?? entity.details?.price) : entity.price;
 
-  const close = () => onClose?.();
+  const bookingUrl = kind === 'service' ? entity.details?.booking_url : entity.booking_url;
+  const bookingPlatform = kind === 'service' ? entity.details?.booking_platform : entity.booking_platform;
+  const platformInfo = bookingPlatform ? BOOKING_PLATFORMS[bookingPlatform] : null;
+  const platformLogo = platformLogoUrl(bookingPlatform, bookingUrl);
 
-  async function persistDocs(next) {
-    const table = TABLE_BY_KIND[kind];
-    if (!table || !entity.id) return;
-    if (isService) {
-      await supabase.from(table).update({ details: { ...details, documents: next } }).eq('id', entity.id);
-    } else {
-      await supabase.from(table).update({ documents: next }).eq('id', entity.id);
+  // Date / route summary for the meta strip
+  const metaItems = [];
+  if (kind === 'hotel') {
+    if (entity.check_in_datetime && entity.check_out_datetime) {
+      metaItems.push({ icon: Calendar, text: `${fmtDate(entity.check_in_datetime)} → ${fmtDate(entity.check_out_datetime)}` });
+    }
+  } else if (kind === 'transfer') {
+    if (entity.start_datetime) metaItems.push({ icon: Calendar, text: fmtDT(entity.start_datetime) });
+    const route = [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ');
+    if (route) metaItems.push({ icon: MapIcon, text: route });
+  } else if (kind === 'activity') {
+    if (entity.start_datetime) metaItems.push({ icon: Calendar, text: fmtDT(entity.start_datetime) });
+    if (visit?.city_name) metaItems.push({ icon: MapIcon, text: visit.city_name });
+  } else if (kind === 'service') {
+    const d = entity.details || {};
+    if (d.pickup_at_local && d.dropoff_at_local) {
+      metaItems.push({ icon: Calendar, text: `${fmtDT(d.pickup_at_local)} → ${fmtDate(d.dropoff_at_local)}` });
     }
   }
+  const priceText = fmtPrice(price, cur);
 
+  // "Show on map" address per kind
+  const mapAddress = kind === 'hotel' ? entity.address
+    : kind === 'transfer' ? (entity.from_address || entity.to_address)
+    : kind === 'activity' ? entity.location_address
+    : entity.details?.pickup_address;
+
+  // Upload more files inline (only when editable).
   async function uploadFiles(fileList) {
     const files = Array.from(fileList || []);
     if (!files.length || !canEdit) return;
-    const tooBig = files.find(f => f.size > 10 * 1024 * 1024);
+    const tooBig = files.find((f) => f.size > 10 * 1024 * 1024);
     if (tooBig) { alert('Файл слишком большой (макс. 10 МБ)'); return; }
     setUploading(true);
     try {
@@ -126,162 +359,186 @@ export default function EventModal({ event, canEdit = false, onClose, onEdit, on
       if (uploaded.length) {
         const next = [...docs, ...uploaded];
         setDocs(next);
-        await persistDocs(next);
+        const table = TABLE_BY_KIND[kind];
+        if (table && entity.id) {
+          if (kind === 'service') {
+            await supabase.from(table).update({ details: { ...(entity.details || {}), documents: next } }).eq('id', entity.id);
+          } else {
+            await supabase.from(table).update({ documents: next }).eq('id', entity.id);
+          }
+        }
       }
     } finally {
       setUploading(false);
     }
   }
 
-  const bookingUrl = isService ? details?.booking_url : entity.booking_url;
-  const bookingRef = isService ? details?.booking_reference : entity.booking_reference;
-
   return (
-    <div className="dlg-backdrop" style={{ zIndex: 260 }}
-      onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <div className="dlg">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="p-0 max-w-xl max-h-[90vh] overflow-y-auto gap-0 w-[calc(100%-1rem)] sm:w-full">
+        {/* 4px colour stripe */}
+        <div style={{ height: 4, background: theme.color }} />
+
         {/* Header */}
-        <div className="dlg__head">
-          <div style={{ width: 40, height: 40, borderRadius: 11, background: theme.soft, color: theme.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-            <Icon name={theme.icon} size={19} />
+        <div
+          className="border-b"
+          style={{ padding: '16px 22px 14px', background: theme.soft, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}
+        >
+          <div
+            style={{
+              width: 40, height: 40, borderRadius: 10,
+              background: theme.color, color: 'white',
+              display: 'grid', placeItems: 'center', flexShrink: 0,
+            }}
+          >
+            <theme.Icon className="w-5 h-5" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ fontSize: 19, lineHeight: 1.2 }}>{title || theme.label}</h2>
-            {subtitle && <div className="muted" style={{ fontSize: 12.5, marginTop: 2, wordBreak: 'break-word' }}>{subtitle}</div>}
+            <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{theme.label}</div>
+            <h2 className="font-display text-xl leading-tight" style={{ letterSpacing: '-0.02em' }}>{title || theme.label}</h2>
           </div>
-          <button className="icon-btn" onClick={close}><Icon name="close" size={16} /></button>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="w-8 h-8 rounded-md grid place-items-center hover:bg-white/40 transition"
+            aria-label="Закрыть"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Key meta strip */}
+        {(metaItems.length > 0 || priceText || platformInfo) && (
+          <div
+            className="border-b bg-secondary/30 text-xs text-muted-foreground"
+            style={{ padding: '10px 22px', display: 'flex', flexWrap: 'wrap', columnGap: 16, rowGap: 6, alignItems: 'center' }}
+          >
+            {metaItems.map((m, i) => {
+              const Ic = m.icon;
+              return (
+                <span key={i} className="inline-flex items-center gap-1.5">
+                  <Ic className="w-3 h-3" />{m.text}
+                </span>
+              );
+            })}
+            {priceText && (
+              <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
+                {priceText}
+              </span>
+            )}
+            {platformInfo && (
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium ${platformInfo.color}`}>
+                {platformLogo && <img src={platformLogo} alt="" className="w-3.5 h-3.5 rounded-sm" />}
+                {platformInfo.label}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div style={{ padding: '12px 22px', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          {bookingUrl && (
+            <Button
+              size="sm"
+              onClick={() => window.open(normalizeExternalUrl(bookingUrl), '_blank', 'noopener,noreferrer')}
+              style={{ background: theme.color, borderColor: theme.color }}
+            >
+              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />Посмотреть бронирование
+            </Button>
+          )}
+          {mapAddress && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`, '_blank', 'noopener,noreferrer')}
+            >
+              <MapIcon className="w-3.5 h-3.5 mr-1.5" />Показать на карте
+            </Button>
+          )}
         </div>
 
         {/* Body */}
-        <div className="dlg__body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Badge variant="" >{theme.label}</Badge>
-            {price !== undefined && price !== null && price !== '' && (
-              <span className="num" style={{ marginLeft: 'auto', fontWeight: 700, fontSize: 16 }}>{fmt(price, cur)}</span>
-            )}
-          </div>
-
-          {/* Dates */}
-          {kind === 'hotel' && (
-            <Section icon="calendar" color={theme.color} title="Даты проживания">
-              <Row label="Заезд" value={fmtDT(entity.check_in_datetime)} />
-              <Row label="Выезд" value={fmtDT(entity.check_out_datetime)} />
-            </Section>
-          )}
-          {(kind === 'transfer') && (
-            <Section icon="calendar" color={theme.color} title="Время в пути">
-              <Row label="Отправление" value={fmtDT(entity.start_datetime)} />
-              <Row label="Прибытие" value={fmtDT(entity.end_datetime)} />
-              <Row label="Перевозчик" value={entity.carrier} />
-            </Section>
-          )}
-          {kind === 'activity' && (
-            <Section icon="calendar" color={theme.color} title="Время">
-              <Row label="Начало" value={fmtDT(entity.start_datetime)} />
-              <Row label="Конец" value={fmtDT(entity.end_datetime)} />
-            </Section>
-          )}
-          {isService && (
-            <Section icon="calendar" color={theme.color} title="Аренда">
-              <Row label="Получение" value={fmtDT(details?.pickup_at_local)} />
-              <Row label="Возврат" value={fmtDT(details?.dropoff_at_local)} />
-              <Row label="Где забрать" value={details?.pickup_address} />
-              <Row label="Куда вернуть" value={details?.dropoff_address} />
-            </Section>
-          )}
-
-          {/* Booking / payment */}
-          {(bookingUrl || bookingRef || (kind === 'hotel' && entity.payment_status)) && (
-            <Section icon="card" color={theme.color} title="Бронь и оплата">
-              <Row label="Номер брони" value={bookingRef} mono />
-              {kind === 'hotel' && <Row label="Оплата" value={entity.payment_status} />}
-              {bookingUrl && (
-                <a href={bookingUrl} target="_blank" rel="noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--brand)', fontSize: 13, fontWeight: 500 }}>
-                  <Icon name="external" size={14} /> Открыть бронь
-                </a>
-              )}
-            </Section>
-          )}
-
-          {/* Contacts (hotel) */}
-          {kind === 'hotel' && (entity.phone || entity.email) && (
-            <Section icon="user" color={theme.color} title="Контакты">
-              <Row label="Телефон" value={entity.phone} />
-              <Row label="Email" value={entity.email} />
-            </Section>
-          )}
-
-          {/* Notes */}
-          {(entity.notes || details?.notes) && (
-            <Section icon="file" color={theme.color} title="Заметки">
-              <div style={{ fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{entity.notes || details?.notes}</div>
-            </Section>
-          )}
+        <div style={{ padding: '0 22px 22px' }}>
+          {kind === 'hotel' && <HotelBody entity={entity} accent={theme.color} />}
+          {kind === 'transfer' && <TransferBody entity={entity} fromVisit={fromVisit} toVisit={toVisit} accent={theme.color} />}
+          {kind === 'activity' && <ActivityBody entity={entity} accent={theme.color} />}
+          {kind === 'service' && <ServiceBody entity={entity} accent={theme.color} />}
 
           {/* Documents */}
-          <Section icon="paperclip" color={theme.color} title={`Документы${docs.length ? ` · ${docs.length}` : ''}`}>
-            {docs.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Section title="Документы" accent={theme.color} count={docs.length}>
+            {docs.length > 0 ? (
+              <div className="flex flex-col gap-1.5">
                 {docs.map((d, i) => (
-                  <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer"
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--wash)', fontSize: 12.5, color: 'var(--brand)' }}>
-                    <Icon name="file" size={14} style={{ flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0, wordBreak: 'break-all' }}>{d.file_name || 'Файл'}</span>
-                    <Icon name="external" size={12} style={{ opacity: 0.7 }} />
+                  <a
+                    key={`${d.file_url}-${i}`}
+                    href={d.file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2.5 px-2.5 py-2 border rounded-md text-sm hover:bg-secondary/50 transition"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <span className="flex-1 truncate">{d.file_name || 'Файл'}</span>
+                    <ExternalLink className="w-3 h-3 text-muted-foreground" />
                   </a>
                 ))}
               </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">Документов пока нет</div>
             )}
             {canEdit && (
               <label
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-                style={{ display: 'block', cursor: uploading ? 'default' : 'pointer', border: '1.5px dashed var(--line)', borderRadius: 10, padding: 14, textAlign: 'center', color: 'var(--muted)', fontSize: 12.5 }}>
-                <input type="file" multiple accept=".pdf,image/*" style={{ display: 'none' }}
-                  onChange={(e) => uploadFiles(e.target.files)} disabled={uploading} />
-                {uploading
-                  ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="refresh" size={14} /> Загрузка…</span>
-                  : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="upload" size={14} /> Перетащи или выбери файлы (PDF / фото)</span>}
+                className="mt-2 block cursor-pointer border-2 border-dashed rounded-md py-3 px-3 text-center text-xs text-muted-foreground hover:border-primary/60 transition"
+              >
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,image/*"
+                  className="hidden"
+                  onChange={(e) => uploadFiles(e.target.files)}
+                  disabled={uploading}
+                />
+                {uploading ? (
+                  <span className="inline-flex items-center gap-2"><RefreshCw className="w-3.5 h-3.5 animate-spin" />Загрузка…</span>
+                ) : (
+                  <span className="inline-flex items-center gap-2"><Upload className="w-3.5 h-3.5" />Перетащи или выбери файлы</span>
+                )}
               </label>
-            )}
-            {!canEdit && docs.length === 0 && (
-              <div className="muted" style={{ fontSize: 12.5 }}>Документов нет</div>
             )}
           </Section>
 
-          {/* AI assistant */}
-          <div style={{ border: '1px solid var(--ai-soft, var(--line))', borderRadius: 12, padding: 14, background: 'var(--ai-soft, var(--wash))' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--ai, var(--brand))', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                <Icon name="ai" size={15} />
-              </div>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>Спросить ассистента</div>
-            </div>
-            <div className="muted" style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>
-              Нужна помощь по этой брони — что взять с собой, как добраться, что рядом? Спроси в чате трипа.
-            </div>
-            <Btn variant="ghost" size="sm" icon="chat" onClick={() => { close(); window.__navigate?.('chat'); }}>
-              Открыть чат с ассистентом
-            </Btn>
-          </div>
+          {/* Notes */}
+          {(entity.notes || entity.details?.notes) && (
+            <Section title="Заметки" accent={theme.color}>
+              <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">{entity.notes || entity.details?.notes}</div>
+            </Section>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="dlg__foot" style={{ justifyContent: 'space-between' }}>
-          <div>
-            {canEdit && onDelete && (
-              <Btn variant="danger" icon="trash" onClick={onDelete}>Удалить</Btn>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn variant="ghost" onClick={close}>Закрыть</Btn>
-            {canEdit && onEdit && (
-              <Btn variant="primary" icon="edit" onClick={onEdit}>Редактировать</Btn>
-            )}
-          </div>
+        <div
+          className="border-t bg-secondary/30"
+          style={{ padding: '12px 22px', display: 'flex', alignItems: 'center', gap: 8 }}
+        >
+          {canEdit && onDelete && (
+            <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive">
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />Удалить
+            </Button>
+          )}
+          <div style={{ flex: 1 }} />
+          <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Закрыть</Button>
+          {canEdit && onEdit && (
+            <Button
+              size="sm"
+              onClick={onEdit}
+              style={{ background: theme.color, borderColor: theme.color }}
+            >
+              <Edit2 className="w-3.5 h-3.5 mr-1.5" />Редактировать
+            </Button>
+          )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

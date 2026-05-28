@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Sparkles, Smartphone, Car, ShieldCheck, ChevronRight, Plus, ChevronDown } from 'lucide-react';
 import { DateTime } from 'luxon';
 import ServiceDialog from '@/components/services/ServiceDialog';
-import ServiceViewDialog from '@/components/services/ServiceViewDialog';
+import EventEditDialog from '@/components/common/EventEditDialog';
+import EventModal from '@/components/common/EventModal';
 import BookingChoiceDialog from '@/components/bookings/BookingChoiceDialog';
 import { carRentalPlatforms, esimPlatforms } from '@/components/bookings/buildBookingPlatforms';
 import { BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
@@ -208,21 +209,35 @@ export default function TripServicesCard({ tripId, trip = null, readOnly = false
         }
       </div>
 
-      <ServiceDialog
-        open={editDialog.open}
-        onOpenChange={(o) => setEditDialog((d) => ({ ...d, open: o }))}
-        tripId={tripId}
-        kind={editDialog.kind}
-        service={editDialog.service} />
-      
+      {/* Edit: car_rental gets the unified rich dialog; other service kinds
+          (esim, insurance) stay on the simple name+price ServiceDialog. */}
+      {editDialog.kind === 'car_rental' ? (
+        <EventEditDialog
+          open={editDialog.open}
+          onOpenChange={(o) => setEditDialog((d) => ({ ...d, open: o }))}
+          kind="service"
+          tripId={tripId}
+          entity={editDialog.service}
+        />
+      ) : (
+        <ServiceDialog
+          open={editDialog.open}
+          onOpenChange={(o) => setEditDialog((d) => ({ ...d, open: o }))}
+          tripId={tripId}
+          kind={editDialog.kind}
+          service={editDialog.service}
+        />
+      )}
 
-      <ServiceViewDialog
+      <EventModal
         open={viewDialog.open}
         onOpenChange={(o) => setViewDialog((d) => ({ ...d, open: o }))}
-        service={viewDialog.service}
-        onEdit={openEditFromView}
-        readOnly={readOnly} />
-      
+        entity={viewDialog.service}
+        kind="service"
+        onEdit={readOnly ? undefined : openEditFromView}
+        readOnly={readOnly}
+      />
+
 
       <BookingChoiceDialog
         open={carChoiceOpen}
