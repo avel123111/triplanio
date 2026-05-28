@@ -16,10 +16,8 @@ import HeaderActions from '@/components/HeaderActions';
 import { Avatar, Btn, EmptyState, Skeleton, ModalHost, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
 import { sortVisits } from '@/lib/validation';
 import { DateTime } from 'luxon';
-import TransferDialog from '../components/transfers/TransferDialog';
-import HotelDialog from '../components/hotels/HotelDialog';
+import EventEditDialog from '@/components/common/EventEditDialog';
 import CityVisitDialog from '../components/visits/CityVisitDialog';
-import ActivityDialog from '../components/activities/ActivityDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
@@ -1412,22 +1410,26 @@ export default function TripView() {
           height: shownLens === 'map' ? 'calc(100vh - 56px)' : undefined,
           overflow: shownLens === 'map' ? 'hidden' : undefined,
         }}>
-          {/* TransferDialog — opened from missing-transfer warnings or edit mode */}
-          <TransferDialog
-            open={transferEdit.open}
-            onOpenChange={(open) => setTransferEdit(s => ({ ...s, open }))}
-            tripId={tripId}
-            fromVisit={transferEdit.fromVisit}
-            toVisit={transferEdit.toVisit}
-            transfer={transferEdit.transfer}
-          />
-          {/* HotelDialog — opened from missing-hotel warnings or edit mode */}
+          {/* Transfer — opened from missing-transfer warnings or edit mode */}
+          {transferEdit.fromVisit && transferEdit.toVisit && (
+            <EventEditDialog
+              open={transferEdit.open}
+              onOpenChange={(open) => setTransferEdit(s => ({ ...s, open }))}
+              kind="transfer"
+              tripId={tripId}
+              fromVisit={transferEdit.fromVisit}
+              toVisit={transferEdit.toVisit}
+              entity={transferEdit.transfer}
+            />
+          )}
+          {/* Hotel — opened from missing-hotel warnings or edit mode */}
           {hotelEdit.visit && (
-            <HotelDialog
+            <EventEditDialog
               open={hotelEdit.open}
               onOpenChange={(open) => setHotelEdit(s => ({ ...s, open }))}
+              kind="hotel"
               visit={hotelEdit.visit}
-              hotel={hotelEdit.hotel}
+              entity={hotelEdit.hotel}
             />
           )}
           {/* CityVisitDialog — edit existing visit notes */}
@@ -1452,14 +1454,15 @@ export default function TripView() {
             trip={newCityDefaultDay ? { ...trip, start_date: newCityDefaultDay } : trip}
             allVisits={visits}
           />
-          {/* ActivityDialog — add new activity in edit mode */}
+          {/* Activity — add new activity in edit mode */}
           {activityEdit.visit && (
-            <ActivityDialog
+            <EventEditDialog
               key={`activity-${activityEdit.visit?.id}-${activityEdit.activity?.id || 'new'}`}
               open={activityEdit.open}
               onOpenChange={(o) => setActivityEdit(s => ({ ...s, open: o }))}
+              kind="activity"
               visit={activityEdit.visit}
-              activity={activityEdit.activity}
+              entity={activityEdit.activity}
               defaultStart={activityEdit.defaultStart}
             />
           )}

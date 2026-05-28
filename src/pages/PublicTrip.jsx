@@ -6,10 +6,7 @@ import { supabase } from '@/api/supabaseClient';
 import { BRAND_LOGO_URL, BRAND_NAME } from '@/lib/brand';
 import ReadOnlyTimelineView from '@/components/views/ReadOnlyTimelineView';
 import MapView from '@/components/views/MapView';
-import HotelViewDialog from '@/components/hotels/HotelViewDialog';
-import TransferViewDialog from '@/components/transfers/TransferViewDialog';
-import ActivityViewDialog from '@/components/activities/ActivityViewDialog';
-import CarRentalViewDialog from '@/components/services/CarRentalViewDialog';
+import EventModal from '@/components/common/EventModal';
 import { computeTripRange, latestEventDate } from '@/lib/trip-dates';
 import { uniqueCityCount } from '@/lib/trip-cities';
 import { getCityFallbackImage } from '@/lib/city-image';
@@ -41,10 +38,8 @@ export default function PublicTrip() {
   const token = searchParams.get('t') || '';
 
   const [tab, setTab] = useState('timeline');
-  const [hotelView, setHotelView] = useState({ open: false, hotel: null });
-  const [transferView, setTransferView] = useState({ open: false, transfer: null });
-  const [activityView, setActivityView] = useState({ open: false, activity: null });
-  const [carRentalView, setCarRentalView] = useState({ open: false, service: null });
+  // Single unified view-modal state — one of { kind, data } when open.
+  const [viewing, setViewing] = useState(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['public-trip', tripId, token],
@@ -143,10 +138,10 @@ export default function PublicTrip() {
             activities={activities}
             transfers={transfers}
             carRentals={carRentals}
-            onClickHotel={(h) => setHotelView({ open: true, hotel: h })}
-            onClickTransfer={(t) => setTransferView({ open: true, transfer: t })}
-            onClickActivity={(a) => setActivityView({ open: true, activity: a })}
-            onClickCarRental={(s) => setCarRentalView({ open: true, service: s })}
+            onClickHotel={(h) => setViewing({ kind: 'hotel', data: h })}
+            onClickTransfer={(t) => setViewing({ kind: 'transfer', data: t })}
+            onClickActivity={(a) => setViewing({ kind: 'activity', data: a })}
+            onClickCarRental={(s) => setViewing({ kind: 'service', data: s })}
             canEdit={false}
           />
         )}
@@ -155,33 +150,17 @@ export default function PublicTrip() {
         )}
       </main>
 
-      {/* View-only dialogs (no Edit button) */}
-      <HotelViewDialog
-        open={hotelView.open}
-        onOpenChange={(o) => setHotelView(s => ({ ...s, open: o }))}
-        hotel={hotelView.hotel}
-        visit={hotelView.hotel ? visitsById[hotelView.hotel.city_visit_id] : null}
-        readOnly
-      />
-      <TransferViewDialog
-        open={transferView.open}
-        onOpenChange={(o) => setTransferView(s => ({ ...s, open: o }))}
-        transfer={transferView.transfer}
-        fromVisit={transferView.transfer ? visitsById[transferView.transfer.from_city_visit_id] : null}
-        toVisit={transferView.transfer ? visitsById[transferView.transfer.to_city_visit_id] : null}
-        readOnly
-      />
-      <ActivityViewDialog
-        open={activityView.open}
-        onOpenChange={(o) => setActivityView(s => ({ ...s, open: o }))}
-        activity={activityView.activity}
-        visit={activityView.activity ? visitsById[activityView.activity.city_visit_id] : null}
-        readOnly
-      />
-      <CarRentalViewDialog
-        open={carRentalView.open}
-        onOpenChange={(o) => setCarRentalView(s => ({ ...s, open: o }))}
-        service={carRentalView.service}
+      {/* Unified read-only event modal — kind dispatches to the right body. */}
+      <EventModal
+        open={!!viewing}
+        onOpenChange={(o) => { if (!o) setViewing(null); }}
+        entity={viewing?.data}
+        kind={viewing?.kind}
+        visit={viewing?.kind === 'hotel' || viewing?.kind === 'activity'
+          ? visitsById[viewing?.data?.city_visit_id]
+          : null}
+        fromVisit={viewing?.kind === 'transfer' ? visitsById[viewing?.data?.from_city_visit_id] : null}
+        toVisit={viewing?.kind === 'transfer' ? visitsById[viewing?.data?.to_city_visit_id] : null}
         readOnly
       />
     </div>

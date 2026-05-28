@@ -14,9 +14,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
 import EventModal from '@/components/common/EventModal';
-import HotelDialog from '@/components/hotels/HotelDialog';
-import TransferDialog from '@/components/transfers/TransferDialog';
-import ActivityDialog from '@/components/activities/ActivityDialog';
+import EventEditDialog from '@/components/common/EventEditDialog';
 import ServiceDialog from '@/components/services/ServiceDialog';
 
 const TABLE_BY_KIND = {
@@ -123,25 +121,32 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     }
   };
 
-  // Edit mode — swap in the existing create/edit dialog.
+  // Edit mode — swap in the unified create/edit dialog. Non-car-rental
+  // services (esim, insurance) stay on the simple ServiceDialog since the
+  // unified one only models the rich car-rental shape.
   if (editMode) {
     const closeEdit = (o) => {
       if (!o) { setEditMode(false); onOpenChange(false); invalidate(); }
     };
-    if (kind === 'hotel' && visit) {
-      return <HotelDialog open onOpenChange={closeEdit} visit={visit} hotel={data} />;
-    }
-    if (kind === 'transfer' && fromVisit && toVisit) {
-      return (
-        <TransferDialog open onOpenChange={closeEdit} tripId={data.trip_id}
-          fromVisit={fromVisit} toVisit={toVisit} transfer={data} />
-      );
-    }
-    if (kind === 'activity' && visit) {
-      return <ActivityDialog open onOpenChange={closeEdit} visit={visit} activity={data} />;
-    }
-    if (kind === 'service') {
+    if (kind === 'service' && data.kind && data.kind !== 'car_rental') {
       return <ServiceDialog open onOpenChange={closeEdit} tripId={data.trip_id} kind={data.kind} service={data} />;
+    }
+    if ((kind === 'hotel' && visit)
+        || (kind === 'transfer' && fromVisit && toVisit)
+        || (kind === 'activity' && visit)
+        || kind === 'service') {
+      return (
+        <EventEditDialog
+          open
+          onOpenChange={closeEdit}
+          kind={kind}
+          tripId={data.trip_id}
+          entity={data}
+          visit={visit}
+          fromVisit={fromVisit}
+          toVisit={toVisit}
+        />
+      );
     }
     return null;
   }
