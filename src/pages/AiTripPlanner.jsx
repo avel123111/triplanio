@@ -10,7 +10,6 @@ import { searchCities, getTimezone } from '@/lib/geo';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
 import AiTripDraftPreview from '@/components/trips/AiTripDraftPreview';
-import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -36,7 +35,6 @@ export default function AiTripPlanner() {
   const [history, setHistory] = useState([]);
   const [saveError, setSaveError] = useState(null);
   const [isPro, setIsPro] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [loadingCheck, setLoadingCheck] = useState(true);
   const [showLimitDialog, setShowLimitDialog] = useState(false);
   const [activeCount, setActiveCount] = useState(0);
@@ -356,8 +354,6 @@ export default function AiTripPlanner() {
           </div>
         </div>
       </div>
-
-      <UpgradePlanDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} hidePerTrip />
 
       <TripLimitDialog
         open={showLimitDialog}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +27,6 @@ import { useToast } from '@/components/ui/use-toast';
 import DocumentsField from '@/components/common/DocumentsField';
 import AddressAutocomplete from '@/components/common/AddressAutocomplete';
 import { getEntityDocuments } from '@/lib/documents';
-import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { invalidateTripData } from '@/lib/trip-data';
 
@@ -93,7 +93,8 @@ export default function HotelDialog({ open, onOpenChange, visit, hotel = null, o
   const [uploading, setUploading] = useState(false);
   const [isPro, setIsPro] = useState(null); // null = checking
   const [isOwner, setIsOwner] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const nav = useNavigate();
+  const openUpgrade = () => { onOpenChange?.(false); nav(`/pro?tripId=${visit?.trip_id || ''}`); };
 
   useEffect(() => {
     let cancelled = false;
@@ -324,7 +325,7 @@ export default function HotelDialog({ open, onOpenChange, visit, hotel = null, o
           {!isEdit && !aiOpen && (
             <button
               type="button"
-              onClick={() => (isPro ? setAiOpen(true) : setUpgradeOpen(true))}
+              onClick={() => (isPro ? setAiOpen(true) : openUpgrade())}
               disabled={isPro === null}
               className="group w-full rounded-xl px-5 py-4 text-white font-semibold flex items-center gap-3
                 bg-gradient-to-r from-primary via-chart-1 to-chart-3 shadow-card
@@ -571,12 +572,6 @@ export default function HotelDialog({ open, onOpenChange, visit, hotel = null, o
         </DialogFooter>
       </DialogContent>
     </Dialog>
-
-    <UpgradePlanDialog
-      open={upgradeOpen}
-      onOpenChange={setUpgradeOpen}
-      tripId={visit?.trip_id}
-    />
     </>
   );
 }

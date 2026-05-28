@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Loader2, SlidersHorizontal, Sparkles, Wallet, Calendar as CalendarIcon, Hotel as HotelIcon, Send, MessageSquare } from 'lucide-react';
@@ -9,7 +9,6 @@ import TripAccessDenied from '@/components/TripAccessDenied';
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import AddonRow from '@/components/settings/AddonRow';
 import TelegramAssistantPanel from '@/components/settings/TelegramAssistantPanel';
-import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 import { ADDON_KEYS, getAddons } from '@/lib/tripAddons';
 import TripShell from '@/components/trips/TripShell';
 import TripHeader from '@/components/trips/TripHeader';
@@ -69,7 +68,8 @@ export default function TripSettings() {
     return { loading: false, allowed: !!me, role: me?.role || null };
   }, [trip, user, members, membersLoading]);
 
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const nav = useNavigate();
+  const openUpgrade = () => nav(`/pro?tripId=${tripId}`);
 
   // Mutations
   // Optimistic update: write the new `details` into both ['trip', tripId] and
@@ -144,7 +144,7 @@ export default function TripSettings() {
 
   const handleAddonToggle = (key, proOnly, value) => {
     if (proOnly && !proUnlocked && value === true) {
-      setUpgradeOpen(true);
+      openUpgrade();
       return;
     }
     const nextAddons = { ...addons, [key]: value };
@@ -213,7 +213,7 @@ export default function TripSettings() {
             enabled={addons[ADDON_KEYS.BUDGET]}
             proOnly
             proLocked={!proUnlocked && !addons[ADDON_KEYS.BUDGET]}
-            onProLockedClick={() => setUpgradeOpen(true)}
+            onProLockedClick={openUpgrade}
             onToggle={(v) => handleAddonToggle(ADDON_KEYS.BUDGET, true, v)}
             disabled={updateTripMut.isPending}
           />
@@ -233,7 +233,7 @@ export default function TripSettings() {
             enabled={addons[ADDON_KEYS.TELEGRAM_ASSISTANT]}
             proOnly
             proLocked={!proUnlocked && !addons[ADDON_KEYS.TELEGRAM_ASSISTANT]}
-            onProLockedClick={() => setUpgradeOpen(true)}
+            onProLockedClick={openUpgrade}
             onToggle={(v) => handleAddonToggle(ADDON_KEYS.TELEGRAM_ASSISTANT, true, v)}
             disabled={updateTripMut.isPending}
             expandableContent={<TelegramAssistantPanel tripId={tripId} />}
@@ -245,24 +245,12 @@ export default function TripSettings() {
             enabled={addons[ADDON_KEYS.CHAT]}
             proOnly
             proLocked={!proUnlocked && !addons[ADDON_KEYS.CHAT]}
-            onProLockedClick={() => setUpgradeOpen(true)}
+            onProLockedClick={openUpgrade}
             onToggle={(v) => handleAddonToggle(ADDON_KEYS.CHAT, true, v)}
             disabled={updateTripMut.isPending}
           />
         </div>
       </div>
-
-      <UpgradePlanDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        tripId={tripId}
-        onUpgradeComplete={() => {
-          qc.invalidateQueries({ queryKey: ['my-pro-status'] });
-          qc.invalidateQueries({ queryKey: ['trip-pro', tripId] });
-          qc.invalidateQueries({ queryKey: ['trip', tripId] });
-          setUpgradeOpen(false);
-        }}
-      />
 
     </div>
     </TripShell>

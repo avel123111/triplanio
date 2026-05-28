@@ -11,7 +11,6 @@ import { Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
-import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
 import PaymentFailDialog from '@/components/common/PaymentFailDialog';
 import HeaderActions from '@/components/HeaderActions';
@@ -269,7 +268,7 @@ export default function Trips() {
   const [search,      setSearch]      = useState('');
   const [showNewTrip, setShowNewTrip] = useState(false);
   const [showLimit,   setShowLimit]   = useState(false);
-  const [showUpgrade, setShowUpgrade] = useState(false);
+  const openUpgrade = () => nav('/pro?hidePerTrip=1');
   const [pendingPick, setPendingPick] = useState(null);
   const [payResult, setPayResult] = useState(null); // 'success' | 'fail' | null
   const [searchParams, setSearchParams] = useSearchParams();
@@ -480,7 +479,7 @@ export default function Trips() {
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>На Free доступен 1 активный трип</div>
                   <div className="muted" style={{ fontSize: 12.5 }}>Pro — безлимит трипов, ИИ-планировщик и парсинг бронирований.</div>
                 </div>
-                <Btn variant="primary" onClick={() => setShowUpgrade(true)}>Перейти к Pro</Btn>
+                <Btn variant="primary" onClick={openUpgrade}>Перейти к Pro</Btn>
               </div>
             )}
           </>
@@ -502,17 +501,11 @@ export default function Trips() {
         activeCount={activeTrips.length}
         isPro={isPro}
       />
-      <UpgradePlanDialog
-        open={showUpgrade}
-        onOpenChange={setShowUpgrade}
-        hidePerTrip
-        onUpgradeComplete={() => { qc.invalidateQueries({ queryKey: ['me'] }); setShowUpgrade(false); }}
-      />
       <PaymentSuccessDialog open={payResult === 'success'} onOpenChange={() => setPayResult(null)} />
       <PaymentFailDialog
         open={payResult === 'fail'}
         onOpenChange={() => setPayResult(null)}
-        onRetry={() => { setPayResult(null); setShowUpgrade(true); }}
+        onRetry={() => { setPayResult(null); openUpgrade(); }}
       />
     </div>
   );

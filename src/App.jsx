@@ -23,6 +23,7 @@ import DesignPreview from '@/pages/redesign/DesignPreview';
 import LandingPage from '@/pages/Landing/LandingPage';
 import ManualPlanner from '@/pages/ManualPlanner';
 import Inbox from '@/pages/Inbox';
+import Pro from '@/pages/Pro';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
@@ -109,6 +110,7 @@ const AuthenticatedApp = () => {
       <Route path="/trip/:tripId" element={<TripView />} />
       <Route path="/settings" element={<ScreenAccount />} />
       <Route path="/inbox" element={<Inbox />} />
+      <Route path="/pro" element={<Pro />} />
 
       <Route element={<Layout />}>
         <Route path="/plan-trip-ai" element={<AiTripPlanner />} />

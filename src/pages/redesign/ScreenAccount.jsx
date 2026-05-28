@@ -8,7 +8,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { supabase } from '@/api/supabaseClient';
-import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 import '../../design/app.css';
 
 // ─── Avatar helpers (inline so we can render directly into the 76×76 circle) ──
@@ -229,7 +228,7 @@ export default function ScreenAccount() {
   const [savedFlash, setSavedFlash] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const openUpgrade = () => nav('/pro?hidePerTrip=1');
   const [errorMsg, setErrorMsg] = useState(null);
 
   // Delete account flow: null | 'confirm' | 'blocked'
@@ -595,7 +594,7 @@ export default function ScreenAccount() {
           awaitingWebhook={awaitingWebhook}
           portalLoading={portalLoading}
           locale={locale}
-          onUpgrade={() => setUpgradeOpen(true)}
+          onUpgrade={openUpgrade}
           onManage={handleManageSubscription}
         />
 
@@ -689,9 +688,6 @@ export default function ScreenAccount() {
         </Card>
 
       </main>
-
-      {/* Upgrade dialog */}
-      <UpgradePlanDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} hidePerTrip />
     </div>
   );
 }

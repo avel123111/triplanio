@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { base44 } from '@/api/base44Client';
@@ -13,7 +13,6 @@ import { Loader2, Upload, User as UserIcon, Languages, Palette, BellRing, Shield
 import { useQueryClient } from '@tanstack/react-query';
 import UserAvatar from '@/components/UserAvatar';
 import ProBadge from '@/components/subscriptions/ProBadge';
-import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 
 export default function Settings() {
@@ -119,10 +118,10 @@ export default function Settings() {
     }
   };
 
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const nav = useNavigate();
 
   const handleUpgrade = () => {
-    setUpgradeOpen(true);
+    nav('/pro?hidePerTrip=1');
   };
 
   const flashSaved = () => {
@@ -364,12 +363,6 @@ export default function Settings() {
           </div>
         )}
       </section>
-
-      <UpgradePlanDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        hidePerTrip
-      />
 
       {/* Notifications */}
       <section className="rounded-2xl border bg-card p-4 space-y-3">

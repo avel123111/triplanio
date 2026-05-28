@@ -229,13 +229,16 @@ export default function MapView({
   transfers,
   visitsById,
   showStartEnd = true,
-  colorScheme = 'LIGHT',
+  colorScheme: colorSchemeProp,
   onCityClick,
   children,
 }) {
   const t = useT();
   const [apiKey, setApiKey] = useState(null);
   const [keyError, setKeyError] = useState(null);
+  // Local light/dark toggle for the map — independent of the page theme so the
+  // user can pick the look they prefer for the map specifically.
+  const [mapTheme, setMapTheme] = useState(colorSchemeProp === 'DARK' ? 'DARK' : 'LIGHT');
 
   useEffect(() => {
     let alive = true;
@@ -259,23 +262,28 @@ export default function MapView({
     return ordered.map(v => `${v.id}:${v.latitude.toFixed(5)},${v.longitude.toFixed(5)}`).join('|');
   }, [ordered]);
 
+  const isDarkMap = mapTheme === 'DARK';
+
   return (
     <div className="relative">
-      <div className="w-full h-[600px] rounded-2xl overflow-hidden border border-border">
+      <div className="w-full h-[600px] rounded-2xl overflow-hidden border border-border" style={{ position: 'relative' }}>
         {apiKey ? (
           <APIProvider apiKey={apiKey}>
             <GoogleMap
-              key={colorScheme}
+              key={mapTheme}
               mapId={MAP_ID}
-              colorScheme={colorScheme}
+              colorScheme={mapTheme}
               defaultCenter={{ lat: 20, lng: 0 }}
               defaultZoom={2}
               gestureHandling="cooperative"
-              disableDefaultUI={false}
+              disableDefaultUI={true}
               clickableIcons={false}
+              zoomControl={true}
               streetViewControl={false}
               mapTypeControl={false}
-              fullscreenControl={false}>
+              fullscreenControl={false}
+              rotateControl={false}
+              scaleControl={false}>
               <CityMarkers ordered={ordered} onCityClick={onCityClick} />
               <RoutesLayer ordered={ordered} transfers={transfers} visitsSignature={visitsSignature} />
             </GoogleMap>
@@ -284,6 +292,29 @@ export default function MapView({
           <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
             {keyError ? `Map error: ${keyError}` : <div className="w-6 h-6 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin" />}
           </div>
+        )}
+        {apiKey && (
+          <button
+            type="button"
+            onClick={() => setMapTheme(isDarkMap ? 'LIGHT' : 'DARK')}
+            title={isDarkMap ? 'Светлая карта' : 'Тёмная карта'}
+            style={{
+              position: 'absolute', top: 12, right: 12, zIndex: 5,
+              width: 36, height: 36, borderRadius: 8,
+              background: isDarkMap ? '#1f2937' : 'white',
+              color: isDarkMap ? '#fbbf24' : '#475569',
+              border: '1px solid ' + (isDarkMap ? '#374151' : '#e2e8f0'),
+              boxShadow: '0 2px 6px rgba(0,0,0,.15)',
+              display: 'grid', placeItems: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {isDarkMap
+                ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></>
+                : <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />}
+            </svg>
+          </button>
         )}
       </div>
       <div className="mt-2 text-xs text-muted-foreground text-center">
