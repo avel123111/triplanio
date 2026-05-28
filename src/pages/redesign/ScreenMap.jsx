@@ -3,6 +3,7 @@ import { Icon } from '../../design/icons';
 import { Btn } from '../../design/index';
 import MapView from '@/components/views/MapView';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
+import EventEditDialog from '@/components/common/EventEditDialog';
 import { sortVisits } from '@/lib/validation';
 import { countryFlag } from '@/lib/geo';
 
@@ -289,7 +290,7 @@ const KIND_META = {
 };
 
 function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activeIdx, canEdit, openEvent }) {
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [activityCreateOpen, setActivityCreateOpen] = useState(false);
   // Per-city slices of the trip data.
   const cityHotels = hotels.filter(h => h.city_visit_id === visit?.id);
   const cityActivities = activities
@@ -414,64 +415,37 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
         </div>
       )}
 
-      {/* Footer — "+ Активность" primary + "..." menu */}
+      {/* Footer — "+ Активность" opens EventEditDialog in activity-create mode */}
       {!isStart && !isEnd && (
         <div style={{
           display: 'flex', gap: 6, alignItems: 'center',
           padding: '10px 12px',
           borderTop: '1px solid var(--line-2)',
           background: 'var(--wash)',
-          position: 'relative',
         }}>
-          <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__navigate?.('activity-form')} style={{ flex: 1 }} disabled={!canEdit}>
+          <Btn variant="primary" size="sm" icon="plus" onClick={() => setActivityCreateOpen(true)} style={{ flex: 1 }} disabled={!canEdit}>
             Активность
           </Btn>
-          <button onClick={() => setMoreOpen(!moreOpen)} className="icon-btn" style={{
-            background: moreOpen ? 'var(--brand-soft)' : 'var(--surface)',
-            color: moreOpen ? 'var(--brand)' : 'var(--muted)',
-            border: '1px solid ' + (moreOpen ? 'var(--brand)' : 'var(--line)'),
-            width: 32, height: 32,
-          }} title="Ещё">
-            <Icon name="more" size={15} />
-          </button>
-          {moreOpen && (
-            <div style={{
-              position: 'absolute', bottom: 'calc(100% + 6px)', right: 12,
-              width: 220,
-              background: 'var(--surface)', border: '1px solid var(--line)',
-              borderRadius: 11, boxShadow: 'var(--shadow-pop)',
-              padding: 6, zIndex: 10,
-            }}>
-              <MenuItem icon="bed" onClick={() => { setMoreOpen(false); window.__navigate?.('hotel-form'); }}>Добавить отель</MenuItem>
-              <MenuItem icon="plane" onClick={() => { setMoreOpen(false); window.__navigate?.('transfer-form'); }}>Добавить переезд</MenuItem>
-              <MenuItem icon="edit" onClick={() => setMoreOpen(false)}>Редактировать город</MenuItem>
-            </div>
-          )}
         </div>
+      )}
+
+      {visit && (
+        <EventEditDialog
+          open={activityCreateOpen}
+          onOpenChange={setActivityCreateOpen}
+          kind="activity"
+          visit={visit}
+          tripId={visit.trip_id}
+          entity={null}
+        />
       )}
     </div>
   );
 }
 
-function MenuItem({ icon, onClick, children, danger }) {
-  return (
-    <button onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      width: '100%', padding: '8px 10px',
-      background: 'transparent', border: 'none',
-      borderRadius: 7, cursor: 'pointer', textAlign: 'left',
-      fontSize: 13, color: danger ? 'var(--danger)' : 'var(--ink)',
-    }}
-    onMouseEnter={(e) => e.currentTarget.style.background = danger ? 'var(--danger-soft)' : 'var(--wash)'}
-    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-      <Icon name={icon} size={14} />
-      {children}
-    </button>
-  );
-}
-
 function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const fromName = prevVisit?.city_name || 'Предыдущий город';
   const toName = toCity?.city_name || '';
 
@@ -510,14 +484,26 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
           <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
         </button>
         {canFork && (
-          <ForkPartnerModal
-            open={modalOpen}
-            onOpenChange={setModalOpen}
-            type="transfer"
-            fromVisit={prevVisit}
-            toVisit={toCity}
-            tripId={prevVisit?.trip_id || toCity?.trip_id}
-          />
+          <>
+            <ForkPartnerModal
+              open={modalOpen}
+              onOpenChange={setModalOpen}
+              type="transfer"
+              fromVisit={prevVisit}
+              toVisit={toCity}
+              tripId={prevVisit?.trip_id || toCity?.trip_id}
+              onManual={() => setCreateOpen(true)}
+            />
+            <EventEditDialog
+              open={createOpen}
+              onOpenChange={setCreateOpen}
+              kind="transfer"
+              fromVisit={prevVisit}
+              toVisit={toCity}
+              tripId={prevVisit?.trip_id || toCity?.trip_id}
+              entity={null}
+            />
+          </>
         )}
       </>
     );
@@ -567,6 +553,7 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
 
 function HotelRow({ hotel, visit, onOpen }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   if (!hotel) {
     const canFork = !!visit;
     return (
@@ -599,13 +586,24 @@ function HotelRow({ hotel, visit, onOpen }) {
           <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
         </button>
         {canFork && (
-          <ForkPartnerModal
-            open={modalOpen}
-            onOpenChange={setModalOpen}
-            type="hotel"
-            visit={visit}
-            tripId={visit?.trip_id}
-          />
+          <>
+            <ForkPartnerModal
+              open={modalOpen}
+              onOpenChange={setModalOpen}
+              type="hotel"
+              visit={visit}
+              tripId={visit?.trip_id}
+              onManual={() => setCreateOpen(true)}
+            />
+            <EventEditDialog
+              open={createOpen}
+              onOpenChange={setCreateOpen}
+              kind="hotel"
+              visit={visit}
+              tripId={visit?.trip_id}
+              entity={null}
+            />
+          </>
         )}
       </>
     );

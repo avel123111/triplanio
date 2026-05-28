@@ -91,6 +91,9 @@ export default {
   // Form dialog
   'trip.form_edit': 'Editar viaje',
   'trip.form_new': 'Nuevo viaje',
+  'trip.edit_metadata': 'Editar detalles',
+  'trip.cover_too_large': 'Imagen demasiado grande (máx. 4 MB).',
+  'trip.cover_upload_failed': 'Error al subir. Inténtalo de nuevo.',
   'trip.form_readonly': 'Solo lectura',
   'trip.form_title_required': 'Título *',
   'trip.form_title_placeholder': 'Verano en Europa',

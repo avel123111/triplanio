@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, MapPin, Clock, Activity, Loader2 } from 'lucide-react';
 import { useT } from '@/lib/i18n/I18nContext';
+import { getGradientById } from '@/lib/trip-gradients';
 
 /**
  * Read-only preview of an AI-generated trip draft.
@@ -40,14 +41,35 @@ export default function AiTripDraftPreview({ draft, loading }) {
 
   if (!draft) return null;
 
+  const gradient = getGradientById(draft.cover_gradient);
+  const useGradient = !draft.cover_image_url && !!gradient;
+  const showCover = !!draft.cover_image_url || useGradient;
+
   return (
     <div className="space-y-4">
       {/* Trip header */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <h3 className="font-semibold text-lg mb-1">{draft.title || t('ai_plan.default_trip_title')}</h3>
-        {draft.description && (
-          <p className="text-sm text-muted-foreground">{draft.description}</p>
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        {showCover && (
+          <div
+            className="relative h-32"
+            style={useGradient ? { background: gradient.css } : undefined}
+          >
+            {draft.cover_image_url && (
+              <img
+                src={draft.cover_image_url}
+                alt={draft.title || ''}
+                className="w-full h-full object-cover"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          </div>
         )}
+        <div className="p-4">
+          <h3 className="font-semibold text-lg mb-1">{draft.title || t('ai_plan.default_trip_title')}</h3>
+          {draft.description && (
+            <p className="text-sm text-muted-foreground">{draft.description}</p>
+          )}
+        </div>
       </div>
 
       {/* Cities timeline */}
