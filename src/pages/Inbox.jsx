@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTheme } from '@/lib/ThemeContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
@@ -37,14 +38,7 @@ export default function Inbox() {
   const dateLocale = DATE_LOCALES[lang] || enUS;
   const qc = useQueryClient();
   const isPro = isProActive(user);
-
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('triplanio:theme') || 'light'; } catch { return 'light'; }
-  });
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    try { localStorage.setItem('triplanio:theme', theme); } catch { /* ignore */ }
-  }, [theme]);
+  const { isDark, toggle: toggleTheme } = useTheme();
 
   const [filter, setFilter] = useState('all');
 
@@ -118,7 +112,7 @@ export default function Inbox() {
           <span className="app-header__crumb-sep">/</span>
           <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>Инбокс</span>
         </div>
-        <HeaderActions user={user} isPro={isPro} isDark={theme === 'dark'} onToggleTheme={() => setTheme(t2 => t2 === 'light' ? 'dark' : 'light')} />
+        <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
       </header>
 
       <main style={{ flex: 1, padding: '32px 24px', maxWidth: 760, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>

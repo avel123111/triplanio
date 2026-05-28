@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import AppErrorBoundary from '@/components/AppErrorBoundary';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -101,6 +101,9 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       {/* New design — standalone (own app-header, no Layout) */}
+      {/* Logged-in users can still view the landing at "/" (no auto-redirect);
+          the landing's CTA takes them into the app. */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/trips" element={<Trips />} />
       <Route path="/new-trip" element={<ManualPlanner />} />
       <Route path="/trip/:tripId" element={<TripView />} />
@@ -108,7 +111,6 @@ const AuthenticatedApp = () => {
       <Route path="/inbox" element={<Inbox />} />
 
       <Route element={<Layout />}>
-        <Route path="/" element={<Navigate to="/trips" replace />} />
         <Route path="/plan-trip-ai" element={<AiTripPlanner />} />
         <Route path="/trip/:tripId/budget" element={<TripBudget />} />
         <Route path="/trip/:tripId/settings" element={<TripSettings />} />

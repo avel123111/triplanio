@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
+import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
 import { Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import '../design/app.css';
@@ -259,13 +260,7 @@ export default function Trips() {
   const nav       = useNavigate();
   const qc        = useQueryClient();
 
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('triplanio:theme') || 'light'; } catch { return 'light'; }
-  });
-  React.useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    try { localStorage.setItem('triplanio:theme', theme); } catch { /* ignore */ }
-  }, [theme]);
+  const { isDark, toggle: toggleTheme } = useTheme();
 
   const [viewMode,    setViewMode]    = useState(() => {
     try { return localStorage.getItem('trips:viewMode') === 'list' ? 'list' : 'grid'; } catch { return 'grid'; }
@@ -386,12 +381,7 @@ export default function Trips() {
           <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
           <span className="app-header__brand-name">Triplanio</span>
         </div>
-        <HeaderActions
-          user={user}
-          isPro={isPro}
-          isDark={theme === 'dark'}
-          onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
-        />
+        <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
       </header>
 
       {/* PAGE CONTENT */}

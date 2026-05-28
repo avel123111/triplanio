@@ -7,6 +7,7 @@ import React, {
   useContext,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
 
 /* =========================================================
    Landing page — ported from triplanio_landing static site.
@@ -738,6 +739,8 @@ const NAV = [
 function LandingHeader({ lang, setLang }) {
   const t = useT();
   const nav = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const ctaTarget = isAuthenticated ? '/trips' : APP_URL;
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -766,7 +769,7 @@ function LandingHeader({ lang, setLang }) {
           </nav>
           <div className="header__right">
             <LangDropdown value={lang} onChange={setLang} />
-            <button className="btn btn--primary" onClick={() => nav(APP_URL)}>{t('header.cta')}</button>
+            <button className="btn btn--primary" onClick={() => nav(ctaTarget)}>{t('header.cta')}</button>
             <button className="hamburger" aria-label={t('lang.label')} aria-expanded={drawerOpen}
               onClick={() => setDrawerOpen(v => !v)}>
               <Icon name={drawerOpen ? 'close' : 'menu'} />
@@ -841,6 +844,8 @@ function HeroMockup() {
 function Hero() {
   const t = useT();
   const nav = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const ctaTarget = isAuthenticated ? '/trips' : APP_URL;
   return (
     <section className="hero" id="top">
       <div className="container">
@@ -849,7 +854,7 @@ function Hero() {
             <h1>{t('hero.h1_a')}<span className="break"><span className="accent">{t('hero.h1_b_accent')}</span> {t('hero.h1_c')}</span></h1>
             <p className="hero__lede">{t('hero.lede')}</p>
             <div className="hero__ctas">
-              <button className="btn btn--primary btn--lg" onClick={() => nav(APP_URL)}>{t('hero.cta_primary')} <Icon name="arrowRight" size={16} className="chev"/></button>
+              <button className="btn btn--primary btn--lg" onClick={() => nav(ctaTarget)}>{t('hero.cta_primary')} <Icon name="arrowRight" size={16} className="chev"/></button>
               <a className="btn btn--ghost btn--lg" href="#how">{t('hero.cta_secondary')}</a>
             </div>
             <div className="hero__trust">
@@ -1314,12 +1319,14 @@ function FAQ() {
 function FinalCTA() {
   const t = useT();
   const nav = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const ctaTarget = isAuthenticated ? '/trips' : APP_URL;
   return (
     <section className="banner">
       <div className="reveal" style={{position:'relative',zIndex:1}}>
         <h2>{t('finalcta.h2')}</h2>
         <p>{t('finalcta.lede')}</p>
-        <button className="btn btn--white btn--lg" style={{marginTop:32}} onClick={() => nav(APP_URL)}>
+        <button className="btn btn--white btn--lg" style={{marginTop:32}} onClick={() => nav(ctaTarget)}>
           {t('finalcta.cta')} <Icon name="arrowRight" size={16} className="chev"/>
         </button>
       </div>

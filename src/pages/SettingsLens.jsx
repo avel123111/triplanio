@@ -252,7 +252,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const nav = useNavigate();
 
   const [title,   setTitle]   = useState(trip?.title        || '');
-  const [currency, setCurrency] = useState(trip?.main_currency || trip?.currency || 'EUR');
+  const [currency, setCurrency] = useState(trip?.details?.main_currency || trip?.main_currency || 'EUR');
   const [saving,  setSaving]  = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
 
@@ -264,7 +264,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   // Sync local state when trip prop changes
   useEffect(() => {
     if (trip?.title)        setTitle(trip.title);
-    if (trip?.main_currency || trip?.currency) setCurrency(trip.main_currency || trip.currency || 'EUR');
+    if (trip?.details?.main_currency || trip?.main_currency) setCurrency(trip.details?.main_currency || trip.main_currency || 'EUR');
     setFeatures(featuresFromTrip(trip));
   }, [trip]);
 
@@ -274,7 +274,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     setSaving(true);
     const { error } = await supabase.from('trips').update({
       title: title.trim(),
-      main_currency: currency,
+      details: { ...(trip?.details || {}), main_currency: currency },
     }).eq('id', tripId);
     setSaving(false);
     if (error) { setSaveMsg('Ошибка: ' + error.message); return; }
