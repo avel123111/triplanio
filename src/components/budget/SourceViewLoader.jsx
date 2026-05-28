@@ -11,8 +11,6 @@ import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
-import { Icon } from '@/design/icons';
-import { Btn } from '@/design/index';
 import EventModal from '@/components/common/EventModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import ServiceDialog from '@/components/services/ServiceDialog';
@@ -30,33 +28,6 @@ async function getRow(table, id) {
   return data;
 }
 
-function ConfirmDeleteModal({ busy, onConfirm, onCancel }) {
-  return (
-    <div className="dlg-backdrop" style={{ zIndex: 280 }}
-      onClick={(e) => { if (e.target === e.currentTarget && !busy) onCancel(); }}>
-      <div className="dlg dlg--sm">
-        <div className="dlg__head">
-          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-            <Icon name="trash" size={17} />
-          </div>
-          <h2>Удалить событие?</h2>
-        </div>
-        <div className="dlg__body">
-          <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>
-            Это действие необратимо. Запись будет удалена из трипа и хронологии.
-          </div>
-        </div>
-        <div className="dlg__foot">
-          <Btn variant="ghost" onClick={onCancel} disabled={busy}>Отмена</Btn>
-          <Btn variant="danger-solid" icon="trash" onClick={onConfirm} disabled={busy}>
-            {busy ? 'Удаляем…' : 'Удалить'}
-          </Btn>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false }) {
   const qc = useQueryClient();
   const [data, setData] = useState(null);
@@ -64,14 +35,11 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
   const [fromVisit, setFromVisit] = useState(null);
   const [toVisit, setToVisit] = useState(null);
   const [editMode, setEditMode] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!open || !id) return;
     let cancelled = false;
     setEditMode(false);
-    setConfirmOpen(false);
     (async () => {
       try {
         if (kind === 'hotel') {
@@ -154,27 +122,19 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
   const handleDelete = async () => {
     const table = TABLE_BY_KIND[kind];
     if (!table) return;
-    setDeleting(true);
     const { error } = await supabase.from(table).delete().eq('id', data.id);
-    setDeleting(false);
-    if (error) { alert('Не удалось удалить: ' + error.message); return; }
-    setConfirmOpen(false);
+    if (error) { alert('Не удалось удалить: ' + error.message); throw error; }
     onOpenChange(false);
     invalidate();
   };
 
   return (
-    <>
-      <EventModal
-        event={{ kind, entity: data, visit, fromVisit, toVisit, tripId: data.trip_id }}
-        canEdit={canEdit}
-        onClose={() => onOpenChange(false)}
-        onEdit={() => setEditMode(true)}
-        onDelete={() => setConfirmOpen(true)}
-      />
-      {confirmOpen && (
-        <ConfirmDeleteModal busy={deleting} onConfirm={handleDelete} onCancel={() => setConfirmOpen(false)} />
-      )}
-    </>
+    <EventModal
+      event={{ kind, entity: data, visit, fromVisit, toVisit, tripId: data.trip_id }}
+      canEdit={canEdit}
+      onClose={() => onOpenChange(false)}
+      onEdit={() => setEditMode(true)}
+      onDelete={handleDelete}
+    />
   );
 }

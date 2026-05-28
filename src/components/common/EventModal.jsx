@@ -287,6 +287,15 @@ export default function EventModal(props) {
     return kind === 'service' ? getDetailsDocuments(entity.details || {}) : getEntityDocuments(entity);
   });
   const [uploading, setUploading] = useState(false);
+  // Inline delete-confirm state — same UX as EventEditDialog so the user
+  // sees one consistent confirm flow regardless of where they hit Delete.
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Reset confirm state when the modal closes so the next open starts fresh.
+  React.useEffect(() => {
+    if (!open) { setConfirmDel(false); setDeleting(false); }
+  }, [open]);
 
   // Re-sync docs when the entity prop changes (e.g. dialog re-opens with a
   // different event).
@@ -449,7 +458,22 @@ export default function EventModal(props) {
           )}
         </div>
 
-        {/* Body */}
+        {/* Body — either the inline delete confirm or the normal sections. */}
+        {confirmDel ? (
+          <div style={{ padding: 22 }}>
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-destructive/15 text-destructive grid place-items-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-display font-semibold text-base">Удалить {theme.label.toLowerCase()}?</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  Это действие необратимо. Запись будет удалена из трипа и хронологии.
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div style={{ padding: '0 22px 22px' }}>
           {kind === 'hotel' && <HotelBody entity={entity} accent={theme.color} />}
           {kind === 'transfer' && <TransferBody entity={entity} fromVisit={fromVisit} toVisit={toVisit} accent={theme.color} />}
@@ -506,27 +530,63 @@ export default function EventModal(props) {
             </Section>
           )}
         </div>
+        )}
 
         {/* Footer */}
         <div
           className="border-t bg-secondary/30"
           style={{ padding: '12px 22px', display: 'flex', alignItems: 'center', gap: 8 }}
         >
-          {canEdit && onDelete && (
-            <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive">
-              <Trash2 className="w-3.5 h-3.5 mr-1.5" />Удалить
-            </Button>
-          )}
-          <div style={{ flex: 1 }} />
-          <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Закрыть</Button>
-          {canEdit && onEdit && (
-            <Button
-              size="sm"
-              onClick={onEdit}
-              style={{ background: theme.color, borderColor: theme.color }}
-            >
-              <Edit2 className="w-3.5 h-3.5 mr-1.5" />Редактировать
-            </Button>
+          {confirmDel ? (
+            <>
+              <div style={{ flex: 1 }} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmDel(false)}
+                disabled={deleting}
+              >
+                Отмена
+              </Button>
+              <Button
+                size="sm"
+                disabled={deleting}
+                onClick={async () => {
+                  if (!onDelete) return;
+                  try {
+                    setDeleting(true);
+                    await onDelete();
+                  } finally {
+                    // Parent should close the modal; if it doesn't (error),
+                    // restore the view so the user isn't stuck on the confirm.
+                    setDeleting(false);
+                    setConfirmDel(false);
+                  }
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />{deleting ? 'Удаляем…' : 'Удалить'}
+              </Button>
+            </>
+          ) : (
+            <>
+              {canEdit && onDelete && (
+                <Button variant="ghost" size="sm" onClick={() => setConfirmDel(true)} className="text-destructive hover:text-destructive">
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />Удалить
+                </Button>
+              )}
+              <div style={{ flex: 1 }} />
+              <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Закрыть</Button>
+              {canEdit && onEdit && (
+                <Button
+                  size="sm"
+                  onClick={onEdit}
+                  style={{ background: theme.color, borderColor: theme.color }}
+                >
+                  <Edit2 className="w-3.5 h-3.5 mr-1.5" />Редактировать
+                </Button>
+              )}
+            </>
           )}
         </div>
       </DialogContent>
