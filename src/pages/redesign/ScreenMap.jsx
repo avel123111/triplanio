@@ -26,7 +26,7 @@ function nightsBetween(a, b) {
   return Math.max(0, Math.round((e - s) / 86_400_000));
 }
 
-function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities = [], canEdit = false }) {
+function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities = [], canEdit = false, openEvent }) {
   const [theme, setTheme] = useState('auto');
   const [anchorsOff, setAnchorsOff] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -163,6 +163,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
               activities={activities}
               activeIdx={activeIdx}
               canEdit={canEdit}
+              openEvent={openEvent}
             />
           ) : (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted)' }}>
@@ -286,7 +287,7 @@ const KIND_META = {
   ferry: { icon: 'ferry', label: 'Паром' },
 };
 
-function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activeIdx, canEdit }) {
+function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activeIdx, canEdit, openEvent }) {
   const [moreOpen, setMoreOpen] = useState(false);
   // Per-city slices of the trip data.
   const cityHotels = hotels.filter(h => h.city_visit_id === visit?.id);
@@ -352,10 +353,22 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
       </div>
 
       {/* Transfer row — real "From → To" or "Нет переезда" warning */}
-      {showTransfer && <TransferRow transfer={transferIn} prevVisit={prevVisit} toCity={visit} />}
+      {showTransfer && (
+        <TransferRow
+          transfer={transferIn}
+          prevVisit={prevVisit}
+          toCity={visit}
+          onOpen={transferIn && openEvent ? () => openEvent('transfer', transferIn.id) : undefined}
+        />
+      )}
 
       {/* Hotel row — real hotel or "Нет отеля" warning */}
-      {showHotel && <HotelRow hotel={primaryHotel} />}
+      {showHotel && (
+        <HotelRow
+          hotel={primaryHotel}
+          onOpen={primaryHotel && openEvent ? () => openEvent('hotel', primaryHotel.id) : undefined}
+        />
+      )}
 
       {/* Activities */}
       {cityActivities.length > 0 && (
@@ -364,10 +377,18 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
             <div style={{ position: 'absolute', left: 11, top: 6, bottom: 6, width: 2, background: 'var(--line-2)' }} />
             {cityActivities.map(a => (
-              <div key={a.id} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 12,
-                padding: '8px 0', position: 'relative', zIndex: 1,
-              }}>
+              <button
+                key={a.id}
+                type="button"
+                onClick={openEvent ? () => openEvent('activity', a.id) : undefined}
+                disabled={!openEvent}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 12,
+                  padding: '8px 0', position: 'relative', zIndex: 1,
+                  background: 'transparent', border: 'none', textAlign: 'left',
+                  cursor: openEvent ? 'pointer' : 'default', width: '100%',
+                }}
+              >
                 <div style={{
                   width: 24, height: 24, borderRadius: '50%',
                   background: 'var(--surface)',
@@ -385,7 +406,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
                     <div className="muted num" style={{ fontSize: 11.5, marginTop: 2 }}>{fmtShortDate(a.start_datetime)}{a.start_datetime?.slice(11, 16) ? ` · ${a.start_datetime.slice(11, 16)}` : ''}</div>
                   )}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -447,7 +468,7 @@ function MenuItem({ icon, onClick, children, danger }) {
   );
 }
 
-function TransferRow({ transfer, prevVisit, toCity }) {
+function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
   const fromName = prevVisit?.city_name || 'Предыдущий город';
   const toName = toCity?.city_name || '';
 
@@ -489,15 +510,20 @@ function TransferRow({ transfer, prevVisit, toCity }) {
   ].filter(Boolean).join(' · ') || '—';
 
   return (
-    <button style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      width: '100%', padding: '14px 16px',
-      background: 'transparent', cursor: 'pointer', textAlign: 'left',
-      borderTop: 'none', borderLeft: '3px solid var(--ev-transfer)',
-      borderRight: 'none', borderBottom: '1px solid var(--line-2)',
-    }}
-    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
-    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+    <button
+      type="button"
+      onClick={onOpen}
+      disabled={!onOpen}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        width: '100%', padding: '14px 16px',
+        background: 'transparent', cursor: onOpen ? 'pointer' : 'default', textAlign: 'left',
+        borderTop: 'none', borderLeft: '3px solid var(--ev-transfer)',
+        borderRight: 'none', borderBottom: '1px solid var(--line-2)',
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+    >
       <div style={{
         width: 40, height: 40, borderRadius: 9,
         background: 'var(--ev-transfer-soft)', color: 'var(--ev-transfer)',
@@ -518,7 +544,7 @@ function TransferRow({ transfer, prevVisit, toCity }) {
   );
 }
 
-function HotelRow({ hotel }) {
+function HotelRow({ hotel, onOpen }) {
   if (!hotel) {
     return (
       <button style={{
@@ -546,15 +572,20 @@ function HotelRow({ hotel }) {
     );
   }
   return (
-    <button style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      width: '100%', padding: '14px 16px',
-      background: 'transparent', cursor: 'pointer', textAlign: 'left',
-      borderTop: 'none', borderLeft: '3px solid transparent',
-      borderRight: 'none', borderBottom: '1px solid var(--line-2)',
-    }}
-    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
-    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+    <button
+      type="button"
+      onClick={onOpen}
+      disabled={!onOpen}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        width: '100%', padding: '14px 16px',
+        background: 'transparent', cursor: onOpen ? 'pointer' : 'default', textAlign: 'left',
+        borderTop: 'none', borderLeft: '3px solid transparent',
+        borderRight: 'none', borderBottom: '1px solid var(--line-2)',
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+    >
       <div style={{
         width: 40, height: 40, borderRadius: 9,
         background: 'var(--ev-hotel-soft)', color: 'var(--ev-hotel)',

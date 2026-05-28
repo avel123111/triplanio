@@ -841,7 +841,10 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
 
   const update = (id, patch) => setCities(cs => {
     const next = cs.map(c => c.id === id ? { ...c, ...patch } : c);
-    if ('nights' in patch || ('startDate' in patch && cs[0]?.id === id)) {
+    // Always cascade from the first city's anchor whenever nights or any
+    // city's startDate changes — so city[i+1].start always equals city[i].end
+    // and you can't end up with a gap or overlap between consecutive cities.
+    if ('nights' in patch || 'startDate' in patch) {
       return recomputeDates(next);
     }
     return next;
