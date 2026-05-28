@@ -713,7 +713,10 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     // Arrival day = first day this city's visit appears. The CityHero and the
     // "no transfer" warning belong to THIS day (rendered under its header),
     // not floating between the previous day and this one.
-    const isArrival = !!(visit && visit.id !== prevVisitId);
+    // Start and end anchors get their own StreamAnchor (top/bottom of timeline) —
+    // never render CityHero or arrival warning for them.
+    const isAnchor = visit && (visit.kind === 'start' || visit.kind === 'end');
+    const isArrival = !!(visit && visit.id !== prevVisitId && !isAnchor);
     const mt = isArrival ? missingTransferByVisitId[visit.id] : null;
     if (mt) renderedMissing.add(visit.id);
 
