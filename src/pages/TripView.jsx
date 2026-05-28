@@ -26,7 +26,6 @@ import DocsLens from './DocsLens';
 import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
 import MapView from '@/components/views/MapView';
-import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
 import PaymentFailDialog from '@/components/common/PaymentFailDialog';
 import '../design/app.css';
@@ -109,10 +108,26 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
   for (const t of transfers) {
     const kind = t.transport_type || t.kind || 'car';
     const isPlane = kind === 'plane';
+    // If the transfer has no explicit start_datetime (e.g. created via the
+    // ManualPlanner transport step), anchor it to the arrival day of the
+    // to-visit so it still appears in the timeline above the city header.
+    const explicitDate = naiveDayKey(t.start_datetime);
+    const toVisit = visits.find(v => v.id === t.to_city_visit_id);
+    const fromVisit = visits.find(v => v.id === t.from_city_visit_id);
+    // For dateless transfers anchor to the to-visit's arrival day, or — for
+    // legs into a dateless end anchor — to the from-visit's end day.
+    const fallbackDate = (toVisit && naiveDayKey(toVisit.start_datetime))
+      || (fromVisit && naiveDayKey(fromVisit.end_datetime))
+      || null;
+    const eventDate = explicitDate || fallbackDate;
+    const eventMs = parseNaive(t.start_datetime)?.toMillis()
+      ?? parseNaive(toVisit?.start_datetime)?.toMillis()
+      ?? parseNaive(fromVisit?.end_datetime)?.toMillis()
+      ?? 0;
     events.push({
       type: isPlane ? 'flight' : 'transfer',
       id: t.id,
-      date: naiveDayKey(t.start_datetime),
+      date: eventDate,
       time: formatNaive(t.start_datetime, 'HH:mm'),
       title: t.carrier || (isPlane ? 'Перелёт' : 'Переезд'),
       from: cityForVisit(t.from_city_visit_id, visits) || t.from_address,
@@ -124,7 +139,7 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
       cur: t.currency,
       platformUrl: t.booking_url,
       duration: t.end_datetime ? formatDuration(t.start_datetime, t.end_datetime) : null,
-      _ms: parseNaive(t.start_datetime)?.toMillis() ?? 0,
+      _ms: eventMs,
     });
   }
 
@@ -876,7 +891,21 @@ function ShareDialog({ trip }) {
         <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>Скопируй ссылку и отправь участникам — она откроется без входа в аккаунт</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? 'Генерируем ссылку…' : ''} style={{ flex: 1, fontSize: 12.5 }} onClick={e => e.target.select()} />
-          <Btn variant="primary" icon="check" onClick={copyLink} disabled={loading || !shareUrl}>{copied ? 'Скопировано!' : 'Копировать'}</Btn>
+          {loading ? (
+            <Btn variant="primary" disabled>
+              <span className="spin-mini" style={{
+                display: 'inline-block', width: 14, height: 14,
+                border: '2px solid currentColor', borderRightColor: 'transparent',
+                borderRadius: '50%', animation: 'spin .7s linear infinite',
+                marginRight: 6, verticalAlign: -2,
+              }} />
+              Генерируем…
+            </Btn>
+          ) : (
+            <Btn variant="primary" icon="check" onClick={copyLink} disabled={!shareUrl}>
+              {copied ? 'Скопировано!' : 'Копировать'}
+            </Btn>
+          )}
         </div>
         {error && <div style={{ color: 'var(--danger, #dc2626)', fontSize: 12.5, marginTop: 10 }}>{error}</div>}
         <div style={{ marginTop: 18, textAlign: 'right' }}>
@@ -1204,7 +1233,7 @@ export default function TripView() {
   const [deleteCity, setDeleteCity] = useState({ open: false, visit: null });
   const [deletingCity, setDeletingCity] = useState(false);
   const [payResult, setPayResult] = useState(null); // 'success' | 'fail' | null
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const openUpgrade = () => nav(`/pro?tripId=${tripId}`);
 
   // Handle Stripe checkout return when the upgrade started from this trip page.
   useEffect(() => {
@@ -1344,7 +1373,7 @@ export default function TripView() {
         nav={nav}
       />
       <div className="app-body">
-        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={isPro} onUpgrade={() => setUpgradeOpen(true)} />
+        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={isPro} onUpgrade={openUpgrade} />
         <main style={{ minWidth: 0, padding: '28px 28px 60px' }}>
           {/* TransferDialog — opened from missing-transfer warnings or edit mode */}
           <TransferDialog
@@ -1556,12 +1585,11 @@ export default function TripView() {
         </div>
       )}
 
-      <UpgradePlanDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} tripId={tripId} />
       <PaymentSuccessDialog open={payResult === 'success'} onOpenChange={() => setPayResult(null)} />
       <PaymentFailDialog
         open={payResult === 'fail'}
         onOpenChange={() => setPayResult(null)}
-        onRetry={() => { setPayResult(null); setUpgradeOpen(true); }}
+        onRetry={() => { setPayResult(null); openUpgrade(); }}
       />
 
       <ModalHost />

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Check, Crown, Loader2 } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
-import UpgradePlanDialog from './UpgradePlanDialog';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
@@ -24,7 +24,8 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
     ? { status: 'ready', activeCount: activeCountProp, isPro: isProProp }
     : { status: 'idle', activeCount: 0, isPro: false }
   );
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const nav = useNavigate();
+  const openUpgrade = () => { onOpenChange?.(false); nav('/pro?hidePerTrip=1'); };
   // Guard so we never fire onProceed twice (e.g. on a re-render)
   const proceededRef = useRef(false);
 
@@ -145,19 +146,13 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {t('sub.go_to_trips')}
             </Button>
-            <Button onClick={() => setUpgradeOpen(true)}>
+            <Button onClick={openUpgrade}>
               <Crown className="w-4 h-4 mr-2" />
               {t('sub.go_pro')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <UpgradePlanDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        hidePerTrip
-      />
     </>
   );
 }

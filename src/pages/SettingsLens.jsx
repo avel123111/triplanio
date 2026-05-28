@@ -17,7 +17,6 @@ import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, Toggle } from '../design/index';
 import ProLockedDialog from '@/components/common/ProLockedDialog';
-import UpgradePlanDialog from '@/components/subscriptions/UpgradePlanDialog';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
 // `addon` is the key persisted under trip.details.addons (matches TripView lens ids
@@ -259,7 +258,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const hasPro = isPro;
   const [features, setFeatures] = useState(() => featuresFromTrip(trip));
   const [proLocked, setProLocked] = useState({ open: false, feature: '' });
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const openUpgrade = () => nav(`/pro?tripId=${tripId}&hidePerTrip=1`);
 
   // Sync local state when trip prop changes
   useEffect(() => {
@@ -418,9 +417,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         open={proLocked.open}
         feature={proLocked.feature}
         onOpenChange={(o) => setProLocked(s => ({ ...s, open: o }))}
-        onUpgrade={() => setUpgradeOpen(true)}
+        onUpgrade={openUpgrade}
       />
-      <UpgradePlanDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} tripId={tripId} hidePerTrip />
     </div>
   );
 }
