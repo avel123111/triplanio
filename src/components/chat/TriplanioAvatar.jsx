@@ -1,38 +1,31 @@
 import React from 'react';
-import { Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { TRIPLANIO_BOT_EMAIL } from '@/lib/triplanio';
 
 /**
  * Avatar for the Triplanio AI assistant. Renders the bot's uploaded avatar
- * if available, otherwise falls back to a branded robot icon on a
- * primary-tinted circle.
+ * if available, otherwise falls back to a branded robot SVG on a gradient circle.
  *
  * Props:
  *   - size:      'xs' | 'sm' | 'md'  (default 'sm')
- *   - ring:      boolean — adds a soft ring around the avatar
- *   - tripId:    trip context for the avatar lookup (passed to resolveProfiles)
- *   - avatarUrl: optional pre-resolved URL — if provided, skips the lookup.
- *                Pass this when the parent already has the bot profile cached
- *                so multiple avatars don't fire duplicate resolveProfiles
- *                calls (which caused intermittent "blank" renders due to
- *                race conditions between separate React Query subscriptions).
+ *   - ring:      boolean — adds a soft ring
+ *   - tripId:    trip context for the avatar lookup
+ *   - avatarUrl: optional pre-resolved URL — skips the lookup
  *   - className: extra classes for the outer element
  */
 const SIZE_CLASSES = {
-  xs: 'w-5 h-5 text-[10px]',
-  sm: 'w-7 h-7 text-xs',
-  md: 'w-9 h-9 text-sm',
+  xs: 'w-5 h-5',
+  sm: 'w-7 h-7',
+  md: 'w-9 h-9',
 };
 
-const ICON_SIZE = {
-  xs: 'w-3 h-3',
-  sm: 'w-4 h-4',
-  md: 'w-5 h-5',
+const SVG_SIZE = {
+  xs: 14,
+  sm: 18,
+  md: 22,
 };
 
-// Internal: only fetches when no pre-resolved avatarUrl was provided.
 function useBotAvatar(tripId, providedUrl) {
   const shouldFetch = providedUrl == null;
   const profiles = useUserProfiles(shouldFetch ? [TRIPLANIO_BOT_EMAIL] : [], tripId);
@@ -48,9 +41,9 @@ export default function TriplanioAvatar({
   className = '',
 }) {
   const avatarUrl = useBotAvatar(tripId, providedAvatarUrl);
-
-  const sizeCls = SIZE_CLASSES[size] || SIZE_CLASSES.sm;
-  const ringCls = ring ? 'ring-2 ring-primary/30' : '';
+  const sizeCls   = SIZE_CLASSES[size] || SIZE_CLASSES.sm;
+  const ringCls   = ring ? 'ring-2 ring-primary/30' : '';
+  const svgPx     = SVG_SIZE[size] || SVG_SIZE.sm;
 
   if (avatarUrl) {
     return (
@@ -64,15 +57,22 @@ export default function TriplanioAvatar({
 
   return (
     <div
-      className={cn(
-        'rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0',
-        sizeCls,
-        ringCls,
-        className,
-      )}
+      className={cn('rounded-full flex items-center justify-center shrink-0', sizeCls, ringCls, className)}
+      style={{ background: 'linear-gradient(135deg, #2167e2 0%, #8b3dff 100%)' }}
       aria-label="Triplanio"
     >
-      <Bot className={ICON_SIZE[size] || ICON_SIZE.sm} />
+      <svg width={svgPx} height={svgPx} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* antenna */}
+        <path d="M24 7V12" stroke="white" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="24" cy="6" r="2.6" fill="white" />
+        {/* head */}
+        <rect x="9" y="13" width="30" height="26" rx="9" fill="white" />
+        {/* eyes */}
+        <circle cx="18.5" cy="25" r="3" fill="#8b3dff" />
+        <circle cx="29.5" cy="25" r="3" fill="#8b3dff" />
+        {/* smile */}
+        <path d="M19 32 Q24 35.5 29 32" stroke="#8b3dff" strokeWidth="2.6" strokeLinecap="round" fill="none" />
+      </svg>
     </div>
   );
 }

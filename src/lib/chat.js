@@ -1,142 +1,165 @@
 // Helpers for the trip chat: queries, read-markers, unread counters.
 //
-// Architecture:
-// - ChatMessage entity holds the messages (one row per message).
-// - ChatRead entity holds a per-user "last seen" timestamp (one row per user per trip).
-// - Unread count = number of messages with created_date > my_last_read_at AND created_by != me.
-//
-// We use React Query for caching + a live `subscribe` on the ChatMessage entity to
-// invalidate the cache when new messages arrive.
+// All queries pivot on chat_id (from the chats table — one "group" chat per
+// trip) and on user_id (uuid) rather than user_email. The old trip_id /
+// user_email columns are still written for backward compat.
 
 import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 
 export const CHAT_MESSAGES_KEY = (tripId) => ['chat-messages', tripId];
-export const CHAT_READ_KEY = (tripId, email) => ['chat-read', tripId, email];
+export const CHAT_READ_KEY     = (tripId, userId) => ['chat-read', tripId, userId];
+export const CHAT_ID_KEY       = (tripId) => ['chat-id', tripId];
 
-/** Fetch all messages for a trip, ascending by created_date.
- *  refetchOnMount=always guarantees that the counter is recomputed every time
- *  the user navigates to a TripView (so opening a trip shows the badge for
- *  messages that arrived while the user was on /trips or another trip).
- *  Real-time updates come from useChatLiveSubscription — no polling needed
- *  (polling caused 429 rate-limit errors).
- */
-export function useChatMessages(tripId, { enabled = true } = {}) {
-  return useQuery({
-    queryKey: CHAT_MESSAGES_KEY(tripId),
-    queryFn: () => base44.entities.ChatMessage.filter({ trip_id: tripId }, 'created_date'),
-    enabled: !!tripId && enabled,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-  });
-}
+// ── Resolve group chat id from tripId ─────────────────────────────────────────
 
-/** Fetch the current user's read marker for this trip (or null). */
-export function useMyChatRead(tripId, { enabled = true } = {}) {
-  const { user } = useAuth();
+export function useChatId(tripId, { enabled = true } = {}) {
   return useQuery({
-    queryKey: CHAT_READ_KEY(tripId, user?.email),
+    queryKey: CHAT_ID_KEY(tripId),
     queryFn: async () => {
-      const rows = await base44.entities.ChatRead.filter({ trip_id: tripId, user_email: user.email });
-      return rows[0] || null;
+      const { data, error } = await supabase
+        .from('chats')
+        .select('id')
+        .eq('trip_id', tripId)
+        .eq('type', 'group')
+        .single();
+      if (error) throw error;
+      return data?.id || null;
     },
-    enabled: !!tripId && !!user?.email && enabled,
-    refetchOnMount: 'always',
+    enabled: !!tripId && enabled,
+    staleTime: Infinity,
   });
 }
 
-/** Parse a timestamp string as UTC. Base44 sometimes returns ISO strings without
- *  a "Z" suffix for freshly created records (e.g. "2026-05-23T21:37:49.496000"),
- *  which `new Date()` interprets as LOCAL time. We always want UTC, so we
- *  append "Z" when no timezone designator is present. */
+// ── Timestamp helpers ─────────────────────────────────────────────────────────
+
 function parseUtcMs(s) {
   if (!s) return 0;
   if (s instanceof Date) return s.getTime();
   let str = String(s);
-  // If the string ends with a "Z" or has a +HH:MM/-HH:MM offset, leave it alone.
-  if (!/[zZ]$/.test(str) && !/[+-]\d{2}:?\d{2}$/.test(str)) {
-    str = str + 'Z';
-  }
+  if (!/[zZ]$/.test(str) && !/[+-]\d{2}:?\d{2}$/.test(str)) str += 'Z';
   const t = new Date(str).getTime();
   return Number.isFinite(t) ? t : 0;
 }
 
-/** Normalize an ISO timestamp so it always carries a UTC designator.
- *  Ensures we write consistent values into the DB (always with "Z"). */
 function toUtcIso(s) {
   if (!s) return new Date().toISOString();
   const ms = parseUtcMs(s);
   return ms ? new Date(ms).toISOString() : new Date().toISOString();
 }
 
-/** Count messages newer than `lastReadAt` and not authored by me. */
-export function countUnread(messages, lastReadAt, myEmail) {
+// ── Count unread ──────────────────────────────────────────────────────────────
+
+export function countUnread(messages, lastReadAt, myUserId) {
   if (!Array.isArray(messages) || messages.length === 0) return 0;
   const cutoff = parseUtcMs(lastReadAt);
   let n = 0;
   for (const m of messages) {
-    if (m.user_email === myEmail) continue;
-    const t = parseUtcMs(m.created_date);
+    if (m.user_id === myUserId) continue;
+    const t = parseUtcMs(m.created_at);
     if (t > cutoff) n += 1;
   }
   return n;
 }
 
-/** Hook: returns the current unread count for the trip chat.
- *  Activates a live subscription on ChatMessage so the counter updates in real
- *  time even when the user is on another tab (timeline/map/etc.).
- */
+// ── Fetch messages ────────────────────────────────────────────────────────────
+
+export function useChatMessages(tripId, { enabled = true } = {}) {
+  const { data: chatId } = useChatId(tripId, { enabled: !!tripId && enabled });
+  return useQuery({
+    queryKey: CHAT_MESSAGES_KEY(tripId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('chat_id', chatId)
+        .order('created_at', { ascending: true })
+        .limit(200);
+      if (error) throw error;
+      // created_date shim — TripChatTab reads this field
+      return (data || []).map((m) => ({ ...m, created_date: m.created_at }));
+    },
+    enabled: !!chatId && enabled,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+  });
+}
+
+// ── Fetch my read marker ──────────────────────────────────────────────────────
+
+export function useMyChatRead(tripId, { enabled = true } = {}) {
+  const { user } = useAuth();
+  const { data: chatId } = useChatId(tripId, { enabled: !!tripId && !!user?.id && enabled });
+  return useQuery({
+    queryKey: CHAT_READ_KEY(tripId, user?.id),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('chat_reads')
+        .select('*')
+        .eq('chat_id', chatId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      return data || null;
+    },
+    enabled: !!chatId && !!user?.id && enabled,
+    refetchOnMount: 'always',
+  });
+}
+
+// ── Unread count ──────────────────────────────────────────────────────────────
+
 export function useUnreadChatCount(tripId, { enabled = true } = {}) {
   const { user } = useAuth();
   const { data: messages, isLoading: messagesLoading } = useChatMessages(tripId, { enabled });
-  const { data: read, isLoading: readLoading } = useMyChatRead(tripId, { enabled });
-  // Live-subscribe at the TripView level so the badge updates without opening the tab.
+  const { data: read, isLoading: readLoading }         = useMyChatRead(tripId, { enabled });
   useChatLiveSubscription(tripId, { enabled });
   return useMemo(() => {
-    // Don't show a transient "all messages are unread" badge while the read
-    // marker is still loading — the messages query usually resolves first and
-    // counting against an undefined cutoff falsely lights up the icon for
-    // ~1s on every TripView open.
     if (messagesLoading || readLoading) return 0;
-    return countUnread(messages || [], read?.last_read_at, user?.email);
-  }, [messages, read, user?.email, messagesLoading, readLoading]);
+    return countUnread(messages || [], read?.last_read_at, user?.id);
+  }, [messages, read, user?.id, messagesLoading, readLoading]);
 }
 
-/**
- * Subscribe to ChatMessage create/update/delete and invalidate the messages
- * cache for the given trip whenever a relevant event arrives.
- * Returns nothing — meant to be called inside a useEffect.
- */
+// ── Live subscription ─────────────────────────────────────────────────────────
+
 export function useChatLiveSubscription(tripId, { enabled = true } = {}) {
+  const { data: chatId } = useChatId(tripId, { enabled: !!tripId && enabled });
   const qc = useQueryClient();
   useEffect(() => {
-    if (!tripId || !enabled) return undefined;
-    const unsub = base44.entities.ChatMessage.subscribe((event) => {
-      const row = event?.data;
-      if (row && row.trip_id !== tripId) return;
-      qc.invalidateQueries({ queryKey: CHAT_MESSAGES_KEY(tripId) });
-    });
-    return () => { try { unsub?.(); } catch { /* ignore */ } };
-  }, [tripId, enabled, qc]);
+    if (!chatId || !enabled) return undefined;
+    const channel = supabase
+      .channel(`chat-lib-${chatId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `chat_id=eq.${chatId}`,
+      }, () => {
+        qc.invalidateQueries({ queryKey: CHAT_MESSAGES_KEY(tripId) });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [chatId, tripId, enabled, qc]);
 }
 
-/**
- * Upsert the current user's read marker to `now` (or to a specific timestamp).
- * Safe to call repeatedly — no-op if already up-to-date.
- */
+// ── Mark read ─────────────────────────────────────────────────────────────────
+
 export async function markChatRead(tripId, userEmail, lastReadAt) {
-  // Always normalize to a UTC ISO string with "Z" — both for writing into the
-  // DB and for the timestamp comparison below. Mixing naive and Z-suffixed
-  // strings caused the badge to never clear (the comparison was done across
-  // different timezones).
   const ts = toUtcIso(lastReadAt);
-  const existing = await base44.entities.ChatRead.filter({ trip_id: tripId, user_email: userEmail });
-  if (existing.length > 0) {
-    const cur = existing[0];
-    if (cur.last_read_at && parseUtcMs(cur.last_read_at) >= parseUtcMs(ts)) return cur;
-    return base44.entities.ChatRead.update(cur.id, { last_read_at: ts });
-  }
-  return base44.entities.ChatRead.create({ trip_id: tripId, user_email: userEmail, last_read_at: ts });
+  const [{ data: chat }, { data: userRow }] = await Promise.all([
+    supabase.from('chats').select('id').eq('trip_id', tripId).eq('type', 'group').single(),
+    supabase.from('users').select('id').eq('email', userEmail).single(),
+  ]);
+  if (!chat?.id || !userRow?.id) return null;
+  const { data, error } = await supabase
+    .from('chat_reads')
+    .upsert(
+      { chat_id: chat.id, user_id: userRow.id, trip_id: tripId, user_email: userEmail, last_read_at: ts },
+      { onConflict: 'chat_id,user_id' },
+    )
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }

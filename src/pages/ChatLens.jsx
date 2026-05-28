@@ -1,26 +1,46 @@
 /**
  * ChatLens — group chat tab inside TripView.
  *
- * Real-time via Supabase Realtime on chat_messages table.
- * Supports @mention dropdown, message send/receive.
+ * Real-time via Supabase Realtime on chat_messages (filtered by chat_id).
+ * Supports @Triplanio AI trigger, mention dropdown, thinking state.
  *
  * Props:
  *   tripId  — string
  *   members — array of trip member rows (for @mention list)
  *   myRole  — string
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
-import { TRIPLANIO_BOT_EMAIL } from '@/lib/triplanio';
+import { TRIPLANIO_BOT_EMAIL, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
+import ChatMarkdown from '@/components/chat/ChatMarkdown';
+import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
 import { Avatar, Btn, Card } from '../design/index';
 
-// ─── Query key ────────────────────────────────────────────────────────────────
+// ─── Query keys ───────────────────────────────────────────────────────────────
 
-const MSGS_KEY = (tripId) => ['trip-messages', tripId];
+const CHAT_ID_KEY = (tripId) => ['chat-id', tripId];
+const MSGS_KEY    = (chatId)  => ['chat-messages-lens', chatId];
+
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+
+function fmtMsgTime(isoStr) {
+  try { return new Date(isoStr).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }); }
+  catch { return ''; }
+}
+
+function fmtMsgDate(isoStr) {
+  try { return new Date(isoStr).toLocaleDateString('ru', { day: 'numeric', month: 'long' }); }
+  catch { return ''; }
+}
+
+function isSameDay(a, b) {
+  if (!a || !b) return false;
+  return new Date(a).toDateString() === new Date(b).toDateString();
+}
 
 // ─── DateDivider ──────────────────────────────────────────────────────────────
 
@@ -35,72 +55,56 @@ function DateDivider({ date }) {
 // ─── Msg ──────────────────────────────────────────────────────────────────────
 
 function Msg({ who, isMe, isAi, text, time, grouped }) {
-  // Parse @mentions and **bold** from text
-  const html = text
-    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
-    .replace(/@(\S+)/g, '<span style="color:var(--brand);font-weight:500">@$1</span>');
+  const bubbleBg    = isMe ? 'var(--brand)' : isAi ? 'var(--ai-soft)' : 'var(--wash)';
+  const bubbleColor = isMe ? '#fff' : 'var(--ink)';
+  const nameColor   = isAi ? 'var(--ai)' : 'var(--ink)';
+  const radius      = isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px';
 
   return (
-    <div style={{ display: 'flex', gap: 10, marginTop: grouped ? 2 : 0 }}>
-      <div style={{ width: 30, flexShrink: 0 }}>
-        {!grouped && <Avatar name={who} kind={isAi ? 'ai' : undefined} />}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 2 : 0 }}>
+      {!grouped && !isMe && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, paddingLeft: 2 }}>
+          {isAi && <TriplanioAvatar size="xs" />}
+          {!isAi && <Avatar name={who} size="sm" />}
+          <span style={{ fontWeight: 600, fontSize: 12, color: nameColor }}>{who}</span>
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>{time}</span>
+        </div>
+      )}
+      <div style={{
+        padding: '8px 12px',
+        background: bubbleBg,
+        color: bubbleColor,
+        fontSize: 13.5,
+        borderRadius: radius,
+        maxWidth: '78%',
+        lineHeight: 1.45,
+        wordBreak: 'break-word',
+      }}>
+        <ChatMarkdown
+          text={text}
+          mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
+          linkClassName={isMe ? 'underline' : 'underline text-primary'}
+        />
       </div>
-      <div style={{ flex: 1 }}>
-        {!grouped && (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 3 }}>
-            <span style={{ fontWeight: 600, fontSize: 13, color: isAi ? 'var(--ai)' : 'var(--ink)' }}>{who}</span>
-            <span className="muted" style={{ fontSize: 11 }}>{time}</span>
-          </div>
-        )}
-        <div style={{
-          display: 'inline-block', padding: '8px 12px',
-          background: isMe ? 'var(--brand-soft)' : isAi ? 'var(--ai-soft)' : 'var(--wash)',
-          color: 'var(--ink)', fontSize: 13.5, borderRadius: 10, maxWidth: '78%', lineHeight: 1.45,
-        }} dangerouslySetInnerHTML={{ __html: html }} />
-      </div>
+      {isMe && !grouped && (
+        <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2, paddingRight: 2 }}>{time}</div>
+      )}
     </div>
   );
 }
 
 // ─── ChatMember ───────────────────────────────────────────────────────────────
 
-function ChatMember({ name, role, online, ai }) {
+function ChatMember({ name, role, ai }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <div style={{ position: 'relative' }}>
-        <Avatar name={name} kind={ai ? 'ai' : undefined} size="sm" />
-        {online && (
-          <span style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', border: '2px solid var(--surface)' }} />
-        )}
-      </div>
+      {ai ? <TriplanioAvatar size="sm" /> : <Avatar name={name} size="sm" />}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
         <div className="muted" style={{ fontSize: 11 }}>{role}</div>
       </div>
     </div>
   );
-}
-
-// ─── Helper: format time ──────────────────────────────────────────────────────
-
-function fmtMsgTime(isoStr) {
-  try {
-    const d = new Date(isoStr);
-    return d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
-  } catch { return ''; }
-}
-
-function fmtMsgDate(isoStr) {
-  try {
-    const d = new Date(isoStr);
-    return d.toLocaleDateString('ru', { day: 'numeric', month: 'long' });
-  } catch { return ''; }
-}
-
-function isSameDay(a, b) {
-  if (!a || !b) return false;
-  const da = new Date(a), db = new Date(b);
-  return da.toDateString() === db.toDateString();
 }
 
 // ─── ChatLens (main export) ───────────────────────────────────────────────────
@@ -114,13 +118,28 @@ export default function ChatLens({ tripId, members = [], myRole }) {
   const [text,        setText]        = useState('');
   const [sending,     setSending]     = useState(false);
   const [showMention, setShowMention] = useState(false);
+  const [failedAiIds, setFailedAiIds] = useState(() => new Set());
 
-  const myName = user?.user_metadata?.full_name || user?.email || 'Я';
+  const myName = user?.user_metadata?.full_name || user?.full_name || user?.email || 'Я';
 
-  // Resolve participant display names (full_name) from the profiles service.
-  // Pull profiles for: every member, every message author, AND the current
-  // user (who often isn't in trip_members when they're the owner) — otherwise
-  // their own messages render as bare email.
+  // ── Resolve chatId for this trip ──
+  const { data: chatId } = useQuery({
+    queryKey: CHAT_ID_KEY(tripId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('chats')
+        .select('id')
+        .eq('trip_id', tripId)
+        .eq('type', 'group')
+        .single();
+      if (error) throw error;
+      return data?.id || null;
+    },
+    enabled: !!tripId,
+    staleTime: Infinity,
+  });
+
+  // ── Resolve participant display names ──
   const profileEmails = [
     ...members.map(m => m.user_email),
     user?.email,
@@ -139,44 +158,48 @@ export default function ChatLens({ tripId, members = [], myRole }) {
     return displayName(email, real);
   };
 
-  // ── Load initial messages ──
+  // ── Load messages ──
   const { data: msgs = [], isLoading } = useQuery({
-    queryKey: MSGS_KEY(tripId),
+    queryKey: MSGS_KEY(chatId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .eq('trip_id', tripId)
+        .eq('chat_id', chatId)
         .order('created_at', { ascending: true })
         .limit(200);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!tripId,
+    enabled: !!chatId,
   });
 
-  // ── Realtime subscription ──
+  // ── Realtime subscription (deduplicated) ──
   useEffect(() => {
-    if (!tripId) return;
-
+    if (!chatId) return;
     const channel = supabase
-      .channel('chat-' + tripId)
+      .channel('chat-lens-' + chatId)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `trip_id=eq.${tripId}` },
-        payload => {
-          qc.setQueryData(MSGS_KEY(tripId), (old = []) => {
-            // Avoid duplicates (optimistic message already there)
-            if (old.find(m => m.id === payload.new.id)) return old;
-            return [...old, payload.new];
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `chat_id=eq.${chatId}` },
+        (payload) => {
+          const msg = payload.new;
+          qc.setQueryData(MSGS_KEY(chatId), (old = []) => {
+            // already present
+            if (old.find((m) => m.id === msg.id)) return old;
+            // remove optimistic from same user
+            const filtered = old.filter((m) => {
+              if (!String(m.id).startsWith('opt-')) return true;
+              return m.user_id !== msg.user_id && m.user_email !== msg.user_email;
+            });
+            return [...filtered, msg];
           });
-        }
+        },
       )
       .subscribe();
-
     channelRef.current = channel;
     return () => { supabase.removeChannel(channel); };
-  }, [tripId, qc]);
+  }, [chatId, qc]);
 
   // ── Auto-scroll ──
   useEffect(() => {
@@ -185,40 +208,70 @@ export default function ChatLens({ tripId, members = [], myRole }) {
     }
   }, [msgs]);
 
+  // ── Thinking state ──
+  const isThinking = useMemo(() => {
+    if (!msgs.length) return false;
+    const last = msgs[msgs.length - 1];
+    if (!last) return false;
+    if (last.user_email === TRIPLANIO_BOT_EMAIL) return false;
+    if (failedAiIds.has(last.id)) return false;
+    return /@triplanio\b/i.test(last.text || '');
+  }, [msgs, failedAiIds]);
+
   // ── Send message ──
   async function sendMessage() {
     const content = text.trim();
-    if (!content || sending) return;
+    if (!content || sending || !chatId) return;
     setText('');
     setShowMention(false);
     setSending(true);
 
-    // Optimistic insert
+    const optId = 'opt-' + Date.now();
     const optimistic = {
-      id:             'opt-' + Date.now(),
+      id:             optId,
+      chat_id:        chatId,
       trip_id:        tripId,
+      user_id:        user?.id,
       user_full_name: myName,
       user_email:     user?.email,
       text:           content,
       created_at:     new Date().toISOString(),
+      __pending:      true,
     };
-    qc.setQueryData(MSGS_KEY(tripId), (old = []) => [...old, optimistic]);
+    qc.setQueryData(MSGS_KEY(chatId), (old = []) => [...old, optimistic]);
 
-    const { error } = await supabase.from('chat_messages').insert({
-      trip_id:        tripId,
-      user_full_name: myName,
-      user_email:     user?.email,
-      text:           content,
-      created_by:     user?.email,
-    });
+    const { data: created, error } = await supabase
+      .from('chat_messages')
+      .insert({
+        chat_id:        chatId,
+        trip_id:        tripId,
+        user_id:        user?.id,
+        user_full_name: myName,
+        user_email:     user?.email,
+        text:           content,
+        created_by:     user?.email,
+      })
+      .select('id')
+      .single();
 
     setSending(false);
+
     if (error) {
       console.error('Chat send error:', error);
-      // Remove optimistic on error
-      qc.setQueryData(MSGS_KEY(tripId), (old = []) => old.filter(m => m.id !== optimistic.id));
+      qc.setQueryData(MSGS_KEY(chatId), (old = []) => old.filter((m) => m.id !== optId));
+      return;
     }
-    // Realtime subscription handles adding the real message — no invalidateQueries needed.
+
+    // Trigger Triplanio AI if mention anywhere in message
+    if (/@triplanio\b/i.test(content)) {
+      const realId = created?.id;
+      supabase.functions
+        .invoke('callTriplanioAi', { body: { chat_id: chatId, user_message: content } })
+        .catch((err) => {
+          console.error('callTriplanioAi failed', err);
+          if (realId) setFailedAiIds((prev) => new Set([...prev, realId]));
+        });
+    }
   }
 
   function handleKey(e) {
@@ -228,67 +281,54 @@ export default function ChatLens({ tripId, members = [], myRole }) {
   function handleTextChange(e) {
     const v = e.target.value;
     setText(v);
-    const last = v.slice(-1);
-    if (last === '@') setShowMention(true);
-    else if (last === ' ' || v === '') setShowMention(false);
+    if (v.slice(-1) === '@') setShowMention(true);
+    else if (v.slice(-1) === ' ' || v === '') setShowMention(false);
   }
 
-  // Build mention list from members + AI
+  // Mention list — Triplanio first
   const mentionList = [
-    { name: 'ИИ-помощник', desc: '@assistant — отвечает всем', ai: true, handle: 'assistant' },
+    { name: 'Triplanio', desc: '@Triplanio — отвечает всем', ai: true, handle: 'Triplanio' },
     ...members
-      .filter(m => m.status === 'active')
-      .map(m => {
+      .filter((m) => m.status === 'active')
+      .map((m) => {
         const resolved = nameFor(m.user_email);
         return {
           name:   resolved,
           desc:   m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель',
           handle: resolved.split(/[\s@]/)[0],
+          ai:     false,
         };
       }),
   ];
 
-  // Render messages with date dividers
+  // Build message rows with date dividers
   const messageRows = [];
-  let prevDate = null;
   for (let i = 0; i < msgs.length; i++) {
-    const m = msgs[i];
+    const m    = msgs[i];
     const prev = i > 0 ? msgs[i - 1] : null;
-    const dateStr = fmtMsgDate(m.created_at);
-
     if (!isSameDay(m.created_at, prev?.created_at)) {
-      messageRows.push(<DateDivider key={'div-' + m.id} date={dateStr} />);
+      messageRows.push(<DateDivider key={'div-' + m.id} date={fmtMsgDate(m.created_at)} />);
     }
-
-    const isMe     = m.user_email === user?.email;
-    const grouped  = prev && isSameDay(m.created_at, prev.created_at) && prev.user_email === m.user_email;
-
+    const isMe    = m.user_id === user?.id || m.user_email === user?.email;
+    const grouped = prev && isSameDay(m.created_at, prev.created_at) && prev.user_email === m.user_email;
     messageRows.push(
       <Msg
         key={m.id}
-        who={nameFor(m.user_email)}
+        who={m.user_email === TRIPLANIO_BOT_EMAIL ? TRIPLANIO_BOT_NAME : nameFor(m.user_email)}
         isMe={isMe}
         isAi={m.user_email === TRIPLANIO_BOT_EMAIL}
         text={m.text || ''}
         time={fmtMsgTime(m.created_at)}
         grouped={grouped}
-      />
+      />,
     );
   }
 
-  // Build active members list; if empty (owner has no trip_members row), show current user as owner.
-  // Pull the real name from the auth profile (public.users) — user.user_metadata
-  // is the supabase auth blob and doesn't normally carry our app's full_name.
+  // Active members for sidebar
   const activeMembers = (() => {
-    const list = members.filter(m => m.status === 'active');
+    const list = members.filter((m) => m.status === 'active');
     if (list.length === 0 && user) {
-      return [{
-        id: 'self',
-        user_full_name: user.full_name || '',
-        user_email: user.email,
-        role: myRole || 'owner',
-        status: 'active',
-      }];
+      return [{ id: 'self', user_full_name: user.full_name || '', user_email: user.email, role: myRole || 'owner', status: 'active' }];
     }
     return list;
   })();
@@ -312,7 +352,7 @@ export default function ChatLens({ tripId, members = [], myRole }) {
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {isLoading ? (
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>Загружаем сообщения…</div>
           ) : msgs.length === 0 ? (
@@ -324,9 +364,32 @@ export default function ChatLens({ tripId, members = [], myRole }) {
           ) : messageRows}
         </div>
 
+        {/* Thinking strip */}
+        {isThinking && (
+          <div style={{
+            padding: '6px 14px',
+            background: 'var(--ai-soft)',
+            borderTop: '1px solid var(--line-2)',
+            display: 'flex', alignItems: 'center', gap: 8,
+            fontSize: 12, color: 'var(--ai)',
+          }}>
+            {/* shimmer bar */}
+            <div style={{
+              position: 'absolute', left: 0, right: 0, top: 0, height: 2,
+              background: 'linear-gradient(90deg, transparent 0%, var(--ai) 50%, transparent 100%)',
+              backgroundSize: '200% 100%',
+              animation: 'shimmer 1.4s linear infinite',
+            }} />
+            <TriplanioAvatar size="xs" />
+            <span style={{ fontWeight: 500 }}>Triplanio печатает</span>
+            <span className="ai-dots" style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <span /><span /><span />
+            </span>
+          </div>
+        )}
+
         {/* Input */}
         <div style={{ borderTop: '1px solid var(--line-2)', padding: 12, position: 'relative' }}>
-          {/* @mention dropdown */}
           {showMention && (
             <div style={{
               position: 'absolute', bottom: 'calc(100% + 4px)', left: 12,
@@ -336,15 +399,17 @@ export default function ChatLens({ tripId, members = [], myRole }) {
             }}>
               <div className="eyebrow" style={{ padding: '6px 10px 8px' }}>Упомянуть</div>
               {mentionList.map((m, i) => (
-                <button key={i}
+                <button
+                  key={i}
                   onClick={() => {
-                    setText(t => t.replace(/@$/, '@' + m.handle + ' '));
+                    setText((t) => t.replace(/@$/, '@' + m.handle + ' '));
                     setShowMention(false);
                   }}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', width: '100%', border: 'none', background: 'transparent', borderRadius: 7, cursor: 'pointer', textAlign: 'left' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <Avatar name={m.name} kind={m.ai ? 'ai' : undefined} size="sm" />
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {m.ai ? <TriplanioAvatar size="sm" /> : <Avatar name={m.name} size="sm" />}
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 500, color: m.ai ? 'var(--ai)' : 'var(--ink)' }}>{m.name}</div>
                     <div className="muted" style={{ fontSize: 11.5 }}>{m.desc}</div>
@@ -363,36 +428,35 @@ export default function ChatLens({ tripId, members = [], myRole }) {
               onKeyDown={handleKey}
               style={{ minHeight: 38, maxHeight: 120, flex: 1, padding: '8px 12px' }}
             />
-            <Btn variant="primary" icon="send" onClick={sendMessage} disabled={sending || !text.trim()}>
+            <Btn variant="primary" icon="send" onClick={sendMessage} disabled={sending || !text.trim() || !chatId}>
               Отправить
             </Btn>
           </div>
         </div>
       </div>
 
-      {/* Right sidebar */}
+      {/* Sidebar */}
       <aside className="scrollbar-thin" style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto', minHeight: 0 }}>
         <Card title="Участники чата">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {activeMembers.length === 0 ? (
               <div className="muted" style={{ fontSize: 12.5 }}>Нет участников</div>
             ) : (
-              activeMembers.map(m => (
+              activeMembers.map((m) => (
                 <ChatMember
                   key={m.id}
                   name={nameFor(m.user_email)}
                   role={m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель'}
-                  online
                 />
               ))
             )}
             <div style={{ borderTop: '1px solid var(--line-2)', paddingTop: 8, marginTop: 4 }}>
-              <ChatMember name="ИИ-помощник" role="@assistant — общий" ai />
+              <ChatMember name="Triplanio" role="@Triplanio — общий" ai />
             </div>
           </div>
         </Card>
 
-        <Card variant="soft" title="Что умеет @assistant">
+        <Card variant="soft" title="Что умеет @Triplanio">
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 12.5, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <li>Отвечает всем участникам</li>
             <li>Предлагает отели, перелёты, активности</li>
