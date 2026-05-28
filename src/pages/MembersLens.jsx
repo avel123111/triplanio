@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { useUserProfiles } from '@/lib/useUserProfiles';
+import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Skeleton } from '../design/index';
 
@@ -215,10 +216,14 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   const [removing, setRemoving] = useState(null);
 
   const canManage = myRole === 'owner' || myRole === 'admin';
-  // Resolve display names from profiles so the row shows real names on top
-  // and email below — without falling back to "email twice" when no name is
-  // stored on the membership row itself.
-  const profiles = useUserProfiles(members.map(m => m.user_email), tripId);
+  // Resolve display names from profiles. Include the trip owner — they often
+  // have no trip_members row, so members.map alone misses them and the owner
+  // ends up showing the email twice.
+  const profileEmails = [
+    ...members.map(m => m.user_email),
+    trip?.created_by,
+  ].filter(Boolean);
+  const profiles = useUserProfiles(profileEmails, tripId);
 
   // Close menu on outside click
   React.useEffect(() => {
@@ -256,16 +261,19 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     );
   }
 
-  // Add trip owner as first "member" if not already in list
+  // Add trip owner as first "member" if not already in list. Don't seed
+  // user_full_name with the email — leave it empty so the profile resolver
+  // (or the auth user's own name when they are the owner) wins the fallback.
   const ownerEmail = trip?.created_by || '';
   const allMembers = [...members];
   const hasOwner = allMembers.some(m => m.user_email === ownerEmail || m.role === 'owner');
   if (!hasOwner && ownerEmail) {
+    const isMeOwner = user?.email && ownerEmail.toLowerCase() === user.email.toLowerCase();
     allMembers.unshift({
       id: '__owner__',
       trip_id: tripId,
       user_email: ownerEmail,
-      user_full_name: ownerEmail,
+      user_full_name: isMeOwner ? (user?.full_name || '') : '',
       role: 'owner',
       status: 'active',
     });
@@ -289,11 +297,14 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
           const showMenu = openMenu === i;
           const isRemoving = removing === m.id;
           const profile = profiles[(m.user_email || '').toLowerCase()];
-          // Display name = real name when known, else fall back to the email.
-          // hasRealName lets us hide the redundant email line below when
-          // there's no separate name to put on top.
-          const realName = profile?.full_name || m.user_full_name || '';
-          const name = realName || m.user_email || '—';
+          // Display name = real name when known. When nothing is recorded,
+          // displayName() returns a Title-cased email local-part so the row
+          // never shows the same email twice. The email line below is only
+          // rendered when we actually have a separate name to put on top.
+          const realName = profile?.full_name || m.user_full_name
+            || (m.user_email && user?.email && m.user_email.toLowerCase() === user.email.toLowerCase() ? user.full_name : '')
+            || '';
+          const name = displayName(m.user_email, realName);
           const hasRealName = !!realName;
 
           return (

@@ -15,6 +15,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_EMAIL } from '@/lib/triplanio';
 import { useUserProfiles } from '@/lib/useUserProfiles';
+import { displayName } from '@/lib/displayName';
 import { Avatar, Btn, Card } from '../design/index';
 
 // ─── Query key ────────────────────────────────────────────────────────────────
@@ -117,14 +118,25 @@ export default function ChatLens({ tripId, members = [], myRole }) {
   const myName = user?.user_metadata?.full_name || user?.email || 'Я';
 
   // Resolve participant display names (full_name) from the profiles service.
-  // Used to render real names on message bubbles instead of bare emails.
-  const profiles = useUserProfiles(members.map(m => m.user_email), tripId);
+  // Pull profiles for: every member, every message author, AND the current
+  // user (who often isn't in trip_members when they're the owner) — otherwise
+  // their own messages render as bare email.
+  const profileEmails = [
+    ...members.map(m => m.user_email),
+    user?.email,
+  ].filter(Boolean);
+  const profiles = useUserProfiles(profileEmails, tripId);
   const nameFor = (email) => {
     const lower = (email || '').toLowerCase();
-    return profiles[lower]?.full_name
-      || members.find(mm => mm.user_email?.toLowerCase() === lower)?.user_full_name
-      || email
-      || '—';
+    let real = profiles[lower]?.full_name;
+    if (!real) {
+      const mm = members.find(m => m.user_email?.toLowerCase() === lower);
+      real = mm?.user_full_name || '';
+    }
+    if (!real && user?.email && lower === user.email.toLowerCase()) {
+      real = user.full_name || '';
+    }
+    return displayName(email, real);
   };
 
   // ── Load initial messages ──
@@ -264,13 +276,15 @@ export default function ChatLens({ tripId, members = [], myRole }) {
     );
   }
 
-  // Build active members list; if empty (owner has no trip_members row), show current user as owner
+  // Build active members list; if empty (owner has no trip_members row), show current user as owner.
+  // Pull the real name from the auth profile (public.users) — user.user_metadata
+  // is the supabase auth blob and doesn't normally carry our app's full_name.
   const activeMembers = (() => {
     const list = members.filter(m => m.status === 'active');
     if (list.length === 0 && user) {
       return [{
         id: 'self',
-        user_full_name: user.user_metadata?.full_name || null,
+        user_full_name: user.full_name || '',
         user_email: user.email,
         role: myRole || 'owner',
         status: 'active',
@@ -366,7 +380,7 @@ export default function ChatLens({ tripId, members = [], myRole }) {
               activeMembers.map(m => (
                 <ChatMember
                   key={m.id}
-                  name={m.user_full_name || m.user_email || '—'}
+                  name={nameFor(m.user_email)}
                   role={m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель'}
                   online
                 />
