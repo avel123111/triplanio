@@ -118,23 +118,29 @@ export default function Inbox() {
       <main style={{ flex: 1, padding: '32px 24px', maxWidth: 760, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
           <h1 style={{ flex: 1, marginBottom: 0 }}>Инбокс</h1>
-          {unreadCount > 0 && <Btn variant="ghost" size="sm" onClick={() => markAllRead.mutate()}>Пометить всё прочитанным</Btn>}
+          {notifications.length > 0 && unreadCount > 0 && (
+            <Btn variant="ghost" size="sm" onClick={() => markAllRead.mutate()}>Пометить всё прочитанным</Btn>
+          )}
         </div>
 
-        <div className="tweaks__seg" style={{ marginBottom: 18, display: 'inline-flex' }}>
-          {TABS.map(([k, l]) => (
-            <button key={k} className={filter === k ? 'active' : ''} onClick={() => setFilter(k)}>{l}</button>
-          ))}
-        </div>
+        {notifications.length > 0 && (
+          <div className="tweaks__seg" style={{ marginBottom: 18, display: 'inline-flex' }}>
+            {TABS.map(([k, l]) => (
+              <button key={k} className={filter === k ? 'active' : ''} onClick={() => setFilter(k)}>{l}</button>
+            ))}
+          </div>
+        )}
 
         {isLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[1, 2, 3, 4].map(i => <Skeleton key={i} w="100%" h={64} r={12} />)}
           </div>
+        ) : notifications.length === 0 ? (
+          <InboxEmpty onCollection={() => nav('/trips')} onAi={() => nav('/plan-trip-ai')} />
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--muted)' }}>
-            <Icon name="bell" size={32} style={{ opacity: 0.4, marginBottom: 10 }} />
-            <div style={{ fontSize: 14 }}>{t('notif.empty')}</div>
+          <div style={{ textAlign: 'center', padding: '36px 24px', color: 'var(--muted)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14 }}>
+            <Icon name="bell" size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
+            <div style={{ fontSize: 13.5 }}>В этом фильтре пусто</div>
           </div>
         ) : (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
@@ -159,6 +165,73 @@ export default function Inbox() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function InboxEmpty({ onCollection, onAi }) {
+  const hints = [
+    { icon: 'users', title: 'Приглашения', desc: 'когда кто-то зовёт в трип' },
+    { icon: 'vote',  title: 'Голосования', desc: 'новые отели и активности' },
+    { icon: 'edit',  title: 'Обновления',  desc: 'правки в общих трипах' },
+  ];
+  return (
+    <div style={{
+      background: 'var(--surface)',
+      border: '1px solid var(--line)',
+      borderRadius: 14,
+      padding: '56px 28px',
+      textAlign: 'center',
+    }}>
+      <div style={{
+        width: 84, height: 84, margin: '0 auto 22px', borderRadius: 22,
+        background: 'linear-gradient(135deg, var(--brand-soft), var(--wash))',
+        color: 'var(--brand)',
+        display: 'grid', placeItems: 'center', position: 'relative',
+      }}>
+        <Icon name="bell" size={36} />
+        <span style={{
+          position: 'absolute', bottom: 4, right: 4,
+          width: 26, height: 26, borderRadius: '50%',
+          background: 'var(--success)', color: 'white',
+          display: 'grid', placeItems: 'center',
+          border: '3px solid var(--surface)',
+        }}>
+          <Icon name="check" size={13} />
+        </span>
+      </div>
+      <h2 style={{ marginBottom: 8, fontSize: 22, letterSpacing: '-0.02em' }}>Инбокс пуст</h2>
+      <div className="muted" style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 420, margin: '0 auto 22px' }}>
+        Никаких приглашений, голосований и обновлений. Когда кто-то добавит тебя в трип, проголосует за отель или внесёт правку — увидишь здесь.
+      </div>
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10,
+        maxWidth: 460, margin: '0 auto', textAlign: 'left',
+      }}>
+        {hints.map((h) => (
+          <div key={h.title} style={{
+            padding: '12px 14px',
+            background: 'var(--wash)',
+            border: '1px solid var(--line-2)',
+            borderRadius: 10,
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: 'var(--brand-soft)', color: 'var(--brand)',
+              display: 'grid', placeItems: 'center',
+              marginBottom: 6,
+            }}>
+              <Icon name={h.icon} size={14} />
+            </div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>{h.title}</div>
+            <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.45 }}>{h.desc}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 26, display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <Btn variant="primary" icon="plus" onClick={onCollection}>К коллекции</Btn>
+        <Btn variant="ghost" icon="sparkles" onClick={onAi}>Начать с ИИ</Btn>
+      </div>
     </div>
   );
 }

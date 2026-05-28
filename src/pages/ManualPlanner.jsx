@@ -19,16 +19,51 @@ import '../design/app.css';
 // ─── Static data ──────────────────────────────────────────────────────────────
 
 const STEPS = [
-  { id: 'home',   num: 1, label: 'Откуда' },
-  { id: 'cities', num: 2, label: 'Скелет трипа' },
-  { id: 'return', num: 3, label: 'Возврат' },
-  { id: 'review', num: 4, label: 'Финальный драфт' },
+  { id: 'home',      num: 1, label: 'Откуда' },
+  { id: 'cities',    num: 2, label: 'Скелет трипа' },
+  { id: 'return',    num: 3, label: 'Возврат' },
+  { id: 'transport', num: 4, label: 'Транспорт' },
+  { id: 'review',    num: 5, label: 'Финальный драфт' },
 ];
+
+// Transport kinds for the per-leg picker.
+const TRANSPORT_KINDS = [
+  { id: 'plane', icon: 'plane', label: 'Самолёт' },
+  { id: 'train', icon: 'train', label: 'Поезд'   },
+  { id: 'bus',   icon: 'bus',   label: 'Автобус' },
+  { id: 'ferry', icon: 'ferry', label: 'Паром'   },
+  { id: 'car',   icon: 'car',   label: 'На авто' },
+  { id: 'walk',  icon: 'walk',  label: 'Пешком'  },
+];
+
+// Crude default — long international hops → plane, else train.
+function defaultKindFor(fromName, toName) {
+  const longHaul = ['Москва','Санкт-Петербург','Дубай','Тбилиси','Стамбул','Минск','Хельсинки','Токио','Нью-Йорк','Лондон'];
+  if (longHaul.includes(fromName) || longHaul.includes(toName)) return 'plane';
+  return 'train';
+}
 
 // Storage key is user-specific to prevent draft leaking between accounts
 const storageKey = (userId) => `triplanio-planner-${userId || 'guest'}`;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// Build ordered legs for the transport step and save function.
+function computeLegs(home, cities, effectiveReturn, finalPoint) {
+  const stops = [];
+  if (home?.city_name) stops.push(home);
+  cities.forEach(c => stops.push(c));
+  // If not finalPoint and there's a meaningful return city, append it
+  const lastCity = cities[cities.length - 1];
+  if (!finalPoint && effectiveReturn?.city_name && effectiveReturn.city_name !== lastCity?.city_name) {
+    stops.push(effectiveReturn);
+  }
+  const legs = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    legs.push({ id: `leg_${i}`, from: stops[i], to: stops[i + 1] });
+  }
+  return legs;
+}
 
 function addDays(dateStr, days) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -53,12 +88,15 @@ function recomputeDates(list) {
 
 // ─── Stepper ─────────────────────────────────────────────────────────────────
 
-function Stepper({ currentId, onJump }) {
+function Stepper({ currentId, onJump, finalPoint }) {
+  const visibleSteps = finalPoint ? STEPS.filter(s => s.id !== 'return') : STEPS;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-      {STEPS.map((s, i) => {
+      {visibleSteps.map((s, i) => {
         const isCurrent = s.id === currentId;
-        const isPast = STEPS.findIndex(x => x.id === currentId) > i;
+        const myIdx = STEPS.findIndex(x => x.id === s.id);
+        const curIdx = STEPS.findIndex(x => x.id === currentId);
+        const isPast = curIdx > myIdx;
         return (
           <React.Fragment key={s.id}>
             <button
@@ -85,7 +123,7 @@ function Stepper({ currentId, onJump }) {
                 {s.label}
               </span>
             </button>
-            {i < STEPS.length - 1 && (
+            {i < visibleSteps.length - 1 && (
               <div style={{ width: 16, height: 2, background: isPast ? 'var(--success)' : 'var(--line)', margin: '0 2px' }} />
             )}
           </React.Fragment>
@@ -640,7 +678,7 @@ function StepHome({ home, setHome, goNext }) {
 
 // ─── Step 2: Cities ───────────────────────────────────────────────────────────
 
-function StepCities({ cities, setCities, home, goPrev, goNext }) {
+function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, goPrev, goNext }) {
   const [hasError, setHasError] = useState(false);
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
@@ -750,6 +788,32 @@ function StepCities({ cities, setCities, home, goPrev, goNext }) {
         </div>
       )}
 
+      {cities.length > 0 && (
+        <label style={{
+          marginTop: 14, display: 'flex', alignItems: 'center', gap: 14,
+          padding: '14px 16px', background: finalPoint ? 'var(--success-soft, #d4edda)' : 'var(--surface)',
+          border: '1.5px solid ' + (finalPoint ? 'var(--success, #27ae60)' : 'var(--line)'),
+          borderRadius: 12, cursor: 'pointer', transition: 'all .15s',
+        }}>
+          <div style={{
+            width: 20, height: 20, borderRadius: 4, border: '2px solid ' + (finalPoint ? 'var(--success, #27ae60)' : 'var(--muted-2)'),
+            background: finalPoint ? 'var(--success, #27ae60)' : 'transparent',
+            display: 'grid', placeItems: 'center', flexShrink: 0, transition: 'all .15s',
+          }}>
+            {finalPoint && <Icon name="check" size={11} style={{ color: 'white' }} />}
+          </div>
+          <input type="checkbox" checked={finalPoint} onChange={e => setFinalPoint(e.target.checked)} style={{ display: 'none' }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600 }}>
+              Финальная точка — {cities[cities.length - 1]?.city_name || 'последний город'}
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+              Трип заканчивается здесь. Шаг «Возврат» будет пропущен.
+            </div>
+          </div>
+        </label>
+      )}
+
       <FooterNav>
         <Btn variant="ghost" onClick={goPrev}>← Назад</Btn>
         <div style={{ flex: 1 }} />
@@ -825,7 +889,87 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
   );
 }
 
-// ─── Step 4: Review ───────────────────────────────────────────────────────────
+// ─── Step 4: Transport ────────────────────────────────────────────────────────
+
+function StepTransport({ home, cities, effectiveReturn, finalPoint, transport, setTransport, goPrev, goNext, onReset }) {
+  const legs = computeLegs(home, cities, effectiveReturn, finalPoint);
+
+  const setLegKind = (legId, kind) => {
+    setTransport(t => ({ ...t, [legId]: { kind } }));
+  };
+
+  return (
+    <div>
+      <h1 style={{ marginBottom: 10 }}>Транспорт</h1>
+      <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 540 }}>
+        Выбери, как добираться между городами. Это обновит маршрут на карте и поможет посчитать бюджет.
+      </div>
+
+      {legs.length === 0 ? (
+        <div style={{ padding: 28, textAlign: 'center', color: 'var(--muted)', border: '1.5px dashed var(--line)', borderRadius: 12 }}>
+          Нет переездов для выбора транспорта.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {legs.map((leg, i) => {
+            const chosen = transport[leg.id]?.kind;
+            return (
+              <div key={leg.id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--line-2)', background: 'var(--wash)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                    {i + 1}
+                  </div>
+                  <span style={{ fontSize: 13.5, fontWeight: 600 }}>{leg.from.city_name}</span>
+                  <Icon name="chev" size={12} style={{ color: 'var(--muted-2)' }} />
+                  <span style={{ fontSize: 13.5, fontWeight: 600 }}>{leg.to.city_name}</span>
+                  {chosen && (
+                    <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--success, #27ae60)', fontWeight: 500 }}>
+                      {TRANSPORT_KINDS.find(k => k.id === chosen)?.label}
+                    </span>
+                  )}
+                </div>
+                <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {TRANSPORT_KINDS.map(k => {
+                    const isSelected = chosen === k.id;
+                    return (
+                      <button
+                        key={k.id}
+                        onClick={() => setLegKind(leg.id, k.id)}
+                        style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                          padding: '12px 8px', borderRadius: 10, cursor: 'pointer',
+                          background: isSelected ? 'var(--brand-soft)' : 'var(--wash)',
+                          border: '1.5px solid ' + (isSelected ? 'var(--brand)' : 'var(--line-2)'),
+                          color: isSelected ? 'var(--brand)' : 'var(--ink-2)',
+                          fontWeight: isSelected ? 700 : 500, fontSize: 12,
+                          transition: 'all .12s',
+                        }}
+                        onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.color = 'var(--brand)'; } }}
+                        onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.borderColor = 'var(--line-2)'; e.currentTarget.style.color = 'var(--ink-2)'; } }}
+                      >
+                        <Icon name={k.icon} size={20} />
+                        {k.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <FooterNav>
+        <Btn variant="ghost" onClick={onReset} icon="refresh">Сбросить</Btn>
+        <Btn variant="ghost" onClick={goPrev}>← Назад</Btn>
+        <div style={{ flex: 1 }} />
+        <Btn variant="primary" onClick={goNext}>Дальше →</Btn>
+      </FooterNav>
+    </div>
+  );
+}
+
+// ─── Step 5: Review ───────────────────────────────────────────────────────────
 
 function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
   return (
@@ -895,14 +1039,16 @@ function StepReview({ home, cities, returnCity, tripTitle, setTripTitle, onStart
         </div>
 
         <div style={{ padding: 18 }}>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>Маршрут · {2 + cities.length} точек</div>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>Маршрут · {(home ? 1 : 0) + cities.length + (returnCity ? 1 : 0)} точек</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
             <div style={{ position: 'absolute', left: 13, top: 14, bottom: 14, width: 2, background: 'var(--line-2)' }} />
             <ReviewRow icon="flag" iconColor="var(--brand)" name={home?.city_name} sub={`${home?.country || ''} · старт`} muted />
             {cities.map((c, i) => (
               <ReviewRow key={c.id} num={i + 1} name={c.city_name} sub={`${c.country || '—'} · ${c.nights} ${c.nights == 1 ? 'ночь' : c.nights < 5 ? 'ночи' : 'ночей'}${c.startDate ? ` · с ${c.startDate}` : ''}`} />
             ))}
-            <ReviewRow icon={returnCity?.city_name === home?.city_name ? 'flag' : 'globe'} iconColor={returnCity?.city_name === home?.city_name ? 'var(--brand)' : 'var(--warm, #e67e22)'} name={returnCity?.city_name} sub={`${returnCity?.country || ''} · возврат`} muted />
+            {returnCity?.city_name && (
+              <ReviewRow icon={returnCity.city_name === home?.city_name ? 'flag' : 'globe'} iconColor={returnCity.city_name === home?.city_name ? 'var(--brand)' : 'var(--warm, #e67e22)'} name={returnCity.city_name} sub={`${returnCity.country || ''} · возврат`} muted />
+            )}
           </div>
 
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -1011,6 +1157,8 @@ export default function ManualPlanner() {
   const [cities, setCities]         = useState([]);
   const [returnMode, setReturnMode] = useState('home');
   const [returnCity, setReturnCity] = useState(null);
+  const [finalPoint, setFinalPoint] = useState(false); // last city is the finish — skip "return"
+  const [transport, setTransport]   = useState({});    // legId -> { kind }
   const [tripTitle, setTripTitle]   = useState('');
   const [saving, setSaving]         = useState(false);
   const [savedOk, setSavedOk]       = useState(false);
@@ -1031,6 +1179,8 @@ export default function ManualPlanner() {
         if (saved.returnMode) setReturnMode(saved.returnMode);
         if (saved.returnCity) setReturnCity(saved.returnCity);
         if (saved.tripTitle) setTripTitle(saved.tripTitle);
+        if (saved.finalPoint) setFinalPoint(!!saved.finalPoint);
+        if (saved.transport) setTransport(saved.transport);
       }
     } catch {}
     setRestored(true);
@@ -1040,17 +1190,36 @@ export default function ManualPlanner() {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(storageKey(user?.id), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle }));
+      sessionStorage.setItem(storageKey(user?.id), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport }));
     } catch {}
-  }, [step, home, cities, returnMode, returnCity, tripTitle, restored, user?.id]);
+  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport, restored, user?.id]);
 
+  // Skip "return" step when the last city is marked as the finish point.
   const goNext = () => {
+    if (step === 'cities' && finalPoint) { setStep('transport'); return; }
     const i = STEPS.findIndex(s => s.id === step);
     if (i < STEPS.length - 1) setStep(STEPS[i + 1].id);
   };
   const goPrev = () => {
+    if (step === 'transport' && finalPoint) { setStep('cities'); return; }
     const i = STEPS.findIndex(s => s.id === step);
     if (i > 0) setStep(STEPS[i - 1].id);
+  };
+
+  // Reset draft and go back to step 1
+  const resetToStart = () => {
+    setStep('home');
+    setHome(null);
+    setCities([]);
+    setReturnMode('home');
+    setReturnCity(null);
+    setFinalPoint(false);
+    setTransport({});
+    setTripTitle('');
+    setSavedOk(false);
+    setSavedTripId(null);
+    setError(null);
+    try { sessionStorage.removeItem(storageKey(user?.id)); } catch { /* ignore */ }
   };
 
   // Allow setting trip start date from the Review step — cascades to all cities
@@ -1062,8 +1231,10 @@ export default function ManualPlanner() {
     });
   };
 
-  const effectiveReturn = returnMode === 'home' ? home : returnCity;
-  const mapHighlight = step === 'home' ? 'home' : step === 'return' ? 'return' : 'cities';
+  // When the user marked the last city as the finish, there's no separate
+  // return city — the trip ends at the last transit city.
+  const effectiveReturn = finalPoint ? null : (returnMode === 'home' ? home : returnCity);
+  const mapHighlight = step === 'home' ? 'home' : step === 'return' ? 'return' : step === 'transport' ? 'all' : 'cities';
   const autoTitle = cities.length === 0 ? 'Новый трип' : cities.length === 1 ? cities[0].city_name : `${cities[0]?.city_name} → ${cities[cities.length - 1]?.city_name}`;
 
   // ── Supabase save ────────────────────────────────────────────────────────
@@ -1154,9 +1325,36 @@ export default function ManualPlanner() {
         });
       }
 
+      let insertedVisits = [];
       if (visitsToInsert.length > 0) {
-        const { error: visitErr } = await supabase.from('city_visits').insert(visitsToInsert);
+        const { data: vd, error: visitErr } = await supabase.from('city_visits').insert(visitsToInsert).select('id');
         if (visitErr) throw visitErr;
+        insertedVisits = vd || [];
+      }
+
+      // 3. Create transfers for legs that have a transport kind selected
+      if (insertedVisits.length >= 2) {
+        const legs = computeLegs(home, cities, effectiveReturn, finalPoint);
+        const transfersToInsert = legs
+          .map((leg, i) => {
+            const kind = transport[leg.id]?.kind;
+            if (!kind) return null;
+            const fromVisit = insertedVisits[i];
+            const toVisit = insertedVisits[i + 1];
+            if (!fromVisit || !toVisit) return null;
+            return {
+              trip_id: trip.id,
+              from_city_visit_id: fromVisit.id,
+              to_city_visit_id: toVisit.id,
+              transport_type: kind,
+              created_by: authEmail,
+            };
+          })
+          .filter(Boolean);
+        if (transfersToInsert.length > 0) {
+          const { error: transferErr } = await supabase.from('transfers').insert(transfersToInsert);
+          if (transferErr) console.error('Failed to create transfers:', transferErr);
+        }
       }
 
       sessionStorage.removeItem(storageKey(user?.id));
@@ -1237,10 +1435,21 @@ export default function ManualPlanner() {
         />
       </header>
 
-      {/* Sub-header: stepper */}
+      {/* Sub-header: stepper + reset */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 24px', borderBottom: '1px solid var(--line-2)', background: 'var(--surface)' }}>
+        {(step !== 'home' || home || cities.length > 0) && (
+          <button
+            onClick={resetToStart}
+            title="Сбросить драфт"
+            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6 }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger, #e74c3c)'; e.currentTarget.style.background = 'var(--danger-soft, #fde8e8)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'transparent'; }}
+          >
+            <Icon name="refresh" size={12} /> Сбросить
+          </button>
+        )}
         <div style={{ flex: 1 }} />
-        <Stepper currentId={step} onJump={setStep} />
+        <Stepper currentId={step} onJump={setStep} finalPoint={finalPoint} />
       </div>
 
       {/* Body */}
@@ -1252,7 +1461,20 @@ export default function ManualPlanner() {
               <StepHome home={home} setHome={setHome} goNext={goNext} />
             )}
             {step === 'cities' && (
-              <StepCities cities={cities} setCities={setCities} home={home} goPrev={goPrev} goNext={goNext} />
+              <StepCities cities={cities} setCities={setCities} home={home} finalPoint={finalPoint} setFinalPoint={setFinalPoint} goPrev={goPrev} goNext={goNext} />
+            )}
+            {step === 'transport' && (
+              <StepTransport
+                home={home}
+                cities={cities}
+                effectiveReturn={effectiveReturn}
+                finalPoint={finalPoint}
+                transport={transport}
+                setTransport={setTransport}
+                goPrev={goPrev}
+                goNext={goNext}
+                onReset={resetToStart}
+              />
             )}
             {step === 'return' && (
               <StepReturn

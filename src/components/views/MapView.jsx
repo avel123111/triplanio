@@ -6,7 +6,7 @@ import {
   useMap,
   useMapsLibrary,
 } from '@vis.gl/react-google-maps';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { countryFlag } from '@/lib/geo';
 import { fetchOsrmRoute, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import { sortVisits } from '@/lib/validation';
@@ -239,12 +239,12 @@ export default function MapView({
 
   useEffect(() => {
     let alive = true;
-    base44.functions.invoke('getMapsApiKey', {})
+    supabase.functions.invoke('getMapsApiKey')
       .then((res) => {
         if (!alive) return;
         const key = res?.data?.apiKey;
         if (key) setApiKey(key);
-        else setKeyError(res?.data?.error || 'No API key');
+        else setKeyError(res?.data?.error || res?.error?.message || 'No API key');
       })
       .catch((e) => alive && setKeyError(e.message || 'Failed to load API key'));
     return () => { alive = false; };
