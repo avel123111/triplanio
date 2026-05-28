@@ -1427,16 +1427,16 @@ export default function ManualPlanner() {
           longitude: home.longitude || null,
           timezone: home.timezone || null,
           kind: 'start',
-          start_datetime: (cities[0]?.startDate || startDate) ? ((cities[0]?.startDate || startDate) + 'T08:00:00') : null,
+          start_datetime: null,
+          end_datetime: null,
           created_by: authEmail,
         });
       }
 
-      // Transit cities → kind: 'transit'. If finalPoint is on, the LAST
-      // city is the trip's finish anchor → save as kind:'end' with no
-      // end_datetime; its start_datetime is just the day the user reaches
-      // it (recomputeDates already filled c.startDate from the previous
-      // city's startDate + nights).
+      // Transit cities → kind:'transit'. When finalPoint is on, the LAST
+      // city is the trip's finish anchor → save as kind:'end' with NO
+      // dates at all. start/end anchors are pure markers; trip dates are
+      // derived from the first/last transit city's datetimes.
       cities.forEach((c, i) => {
         if (!c.city_name) return;
         const isFinalAnchor = finalPoint && i === cities.length - 1;
@@ -1450,7 +1450,7 @@ export default function ManualPlanner() {
           longitude: c.longitude || null,
           timezone: c.timezone || null,
           kind: isFinalAnchor ? 'end' : 'transit',
-          start_datetime: c.startDate ? c.startDate + 'T12:00:00' : null,
+          start_datetime: isFinalAnchor ? null : (c.startDate ? c.startDate + 'T12:00:00' : null),
           end_datetime: isFinalAnchor ? null : (c.startDate && c.nights ? addDays(c.startDate, +c.nights) + 'T11:00:00' : null),
           created_by: authEmail,
         });

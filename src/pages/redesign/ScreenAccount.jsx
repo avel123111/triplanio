@@ -7,7 +7,9 @@ import {
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
+import { isProActive } from '@/lib/subscription';
 import { supabase } from '@/api/supabaseClient';
+import HeaderActions from '@/components/HeaderActions';
 import '../../design/app.css';
 
 // ─── Avatar helpers (inline so we can render directly into the 76×76 circle) ──
@@ -46,6 +48,30 @@ function fmtDate(iso, locale) {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
+function LegalRow({ icon, title, desc, href, last }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0',
+        borderBottom: last ? 'none' : '1px solid var(--line-2)',
+        textDecoration: 'none', color: 'inherit',
+      }}
+    >
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--wash)', color: 'var(--muted)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        <Icon name={icon} size={14} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 500, fontSize: 13.5 }}>{title}</div>
+        <div className="muted" style={{ fontSize: 12 }}>{desc}</div>
+      </div>
+      <Icon name="external" size={13} style={{ color: 'var(--muted-2)' }} />
+    </a>
+  );
+}
 
 function SettingRow({ label, desc, on, onChange, last }) {
   return (
@@ -402,47 +428,51 @@ export default function ScreenAccount() {
 
   const currentLang = LANGS.find(l => l.code === lang) || LANGS[0];
 
+  const isPro = isProActive(user);
+  const isDark = theme === 'dark';
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       <ModalHost />
 
-      {/* ── APP HEADER (new design) ──────────────────────────────────────── */}
+      {/* ── APP HEADER — standard pattern (back / brand / crumb / actions) ── */}
       <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
+        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К коллекции">
+          <Icon name="back" size={14} />
+        </button>
         <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
           <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
           <span className="app-header__brand-name">Triplanio</span>
         </div>
-        <div className="app-header__right">
-          <button
-            className="icon-btn"
-            title="Сменить тему"
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-          >
-            <Icon name={theme === 'light' ? 'moon' : 'sun'} size={17} />
-          </button>
-          <button
-            className="icon-btn"
-            title="Выйти из аккаунта"
-            onClick={logout}
-            style={{ width: 'auto', padding: '0 12px', gap: 6, display: 'flex', alignItems: 'center', fontSize: 13, fontWeight: 500 }}
-          >
-            <Icon name="arrow" size={15} style={{ transform: 'scaleX(-1)' }} />
-            <span>Выйти</span>
-          </button>
+        <div className="app-header__crumb">
+          <span className="app-header__crumb-sep">/</span>
+          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>Настройки аккаунта</span>
         </div>
+        <HeaderActions
+          user={user}
+          isPro={isPro}
+          isDark={isDark}
+          onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        />
       </header>
 
       {/* ── PAGE CONTENT ────────────────────────────────────────────────── */}
       <main style={{ flex: 1, padding: '32px 28px', maxWidth: 760, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
-        {/* Page title */}
+        {/* Page title row — Cancel + Save sit here, matching the design */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22, flexWrap: 'wrap' }}>
-          <h1 style={{ flex: 1 }}>Настройки аккаунта</h1>
+          <h1 style={{ flex: 1, marginBottom: 0 }}>
+            Настройки аккаунта
+            {planState === 'with-sub'  && <Badge variant="warm" icon="pro" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>Pro · подписка</Badge>}
+            {planState === 'annual'    && <Badge variant="warm" icon="pro" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>Pro · годовая</Badge>}
+            {planState === 'cancelled' && <Badge variant="quiet" icon="warning" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>Pro · отменена</Badge>}
+          </h1>
           {savedFlash && <Badge variant="success" icon="check">Сохранено</Badge>}
-          {planState === 'with-sub'  && <Badge variant="warm"  icon="pro">Pro · подписка</Badge>}
-          {planState === 'annual'    && <Badge variant="warm"  icon="pro">Pro · годовая</Badge>}
-          {planState === 'cancelled' && <Badge variant="quiet" icon="warning">Pro · отменена</Badge>}
+          <Btn variant="ghost" onClick={() => nav('/trips')} disabled={saving}>Отмена</Btn>
+          <Btn variant="primary" icon={saving ? undefined : 'check'} disabled={saving} onClick={handleSave}>
+            {saving ? 'Сохранение…' : 'Сохранить'}
+          </Btn>
         </div>
 
         {/* Identity */}
@@ -617,13 +647,6 @@ export default function ScreenAccount() {
           </div>
         </Card>
 
-        {/* Save */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 24 }}>
-          <Btn variant="primary" icon={saving ? undefined : 'check'} disabled={saving} onClick={handleSave}>
-            {saving ? 'Сохранение…' : 'Сохранить изменения'}
-          </Btn>
-        </div>
-
         {/* Error banner */}
         {errorMsg && (
           <div style={{ marginBottom: 16 }}>
@@ -634,6 +657,59 @@ export default function ScreenAccount() {
             </Severity>
           </div>
         )}
+
+        {/* Support */}
+        <Card title="Поддержка" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Icon name="chat" size={16} />
+            </div>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Напиши нам</div>
+              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+                <a href="mailto:support@triplanio.com" style={{ color: 'var(--brand)' }}>support@triplanio.com</a>
+                {' '}— отвечаем в течение суток.
+              </div>
+            </div>
+            <Btn variant="ghost" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>
+              Написать
+            </Btn>
+          </div>
+        </Card>
+
+        {/* Legal */}
+        <Card title="Правовая информация" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <LegalRow
+              icon="shield"
+              title="Политика конфиденциальности"
+              desc="Как мы обрабатываем твои данные."
+              href="/privacy"
+            />
+            <LegalRow
+              icon="file"
+              title="Условия использования"
+              desc="Правила сервиса, ответственность, оплата."
+              href="/terms"
+              last
+            />
+          </div>
+        </Card>
+
+        {/* Session */}
+        <Card title="Сессия" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Выйти из аккаунта</div>
+              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+                Тебе придётся снова войти, чтобы открыть свои трипы. Локальные черновики сохранятся.
+              </div>
+            </div>
+            <Btn variant="ghost" icon="arrow" onClick={logout}>
+              Выйти
+            </Btn>
+          </div>
+        </Card>
 
         {/* Danger zone */}
         <Card title="Опасная зона" style={{ borderColor: 'var(--danger-soft)' }}>
