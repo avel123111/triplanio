@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import AiField from '@/components/ui/AiField';
 import {
-  Loader2, X, Sparkles, Lock, Trash2, ExternalLink, AlertTriangle,
+  Loader2, Sparkles, Trash2, ExternalLink, AlertTriangle,
   Bed, Plane, Camera, Car as CarIcon, Train, Bus, Ship, Footprints,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
@@ -46,9 +46,7 @@ import DateTimeInput from '@/components/common/DateTimeInput';
 import TimezoneHint from '@/components/common/TimezoneHint';
 import DocumentsField from '@/components/common/DocumentsField';
 import AddressAutocomplete from '@/components/common/AddressAutocomplete';
-import ConfirmDialog from '@/components/common/ConfirmDialog';
-import HotelAiUpload from '@/components/hotels/HotelAiUpload';
-import TransferAiUpload from '@/components/transfers/TransferAiUpload';
+import EventAiBlock from '@/components/common/EventAiBlock';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Type metadata — colours, icons, copy
@@ -343,7 +341,10 @@ export default function EventEditDialog({
     buildInitialForm(initialKind || 'hotel', entity, { visit, fromVisit, toVisit, defaultStart })
   );
   const [aiFields, setAiFields] = useState(new Set());
-  const [aiOpen, setAiOpen] = useState(false);
+  // Six-state AI flow per the prototype: locked / available / idle /
+  // uploaded / parsing / parsed. Starts as 'available' for Pro users once
+  // checkSubscriptionStatus resolves; non-Pro lands in 'locked'.
+  const [aiState, setAiState] = useState('available');
 
   // Pro state: null = checking, true/false = resolved.
   const [isPro, setIsPro] = useState(null);
@@ -369,7 +370,6 @@ export default function EventEditDialog({
     setCurrentKind(k);
     setForm(buildInitialForm(k, entity, { visit, fromVisit, toVisit, defaultStart }));
     setAiFields(new Set());
-    setAiOpen(false);
     setExtraSegments([]);
     setTimeMissing({});
   }, [open, entity?.id, initialKind]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -385,6 +385,15 @@ export default function EventEditDialog({
       .catch((e) => { console.error(e); if (!cancelled) setIsPro(false); });
     return () => { cancelled = true; };
   }, [open, tripId]);
+
+  // Sync AI block to Pro state — only when not mid-flow (idle/uploaded/parsing/parsed).
+  useEffect(() => {
+    if (isPro === null) return;
+    setAiState((prev) => {
+      if (prev === 'idle' || prev === 'uploaded' || prev === 'parsing' || prev === 'parsed') return prev;
+      return isPro ? 'available' : 'locked';
+    });
+  }, [isPro]);
 
   // Auto-detect booking platform when URL changes.
   useEffect(() => {
@@ -413,7 +422,6 @@ export default function EventEditDialog({
     setCurrentKind(k);
     setForm(buildInitialForm(k, null, { visit, fromVisit, toVisit, defaultStart }));
     setAiFields(new Set());
-    setAiOpen(false);
     setExtraSegments([]);
     setTimeMissing({});
   };
@@ -621,7 +629,7 @@ export default function EventEditDialog({
     }
     setForm(upd);
     setAiFields(filled);
-    setAiOpen(false);
+    setAiState('parsed');
   };
 
   const handleTransferExtract = (data, fileUrl, fileName) => {
@@ -670,7 +678,7 @@ export default function EventEditDialog({
     })));
     setForm(upd);
     setAiFields(filled);
-    setAiOpen(false);
+    setAiState('parsed');
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -703,35 +711,42 @@ export default function EventEditDialog({
                 {isEdit ? meta.titleEdit : meta.titleNew}
               </h2>
             </div>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="w-8 h-8 rounded-md grid place-items-center hover:bg-white/40 transition"
-              aria-label="Закрыть"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
 
-          {/* Body */}
+          {/* Inline delete-confirm view — replaces the form when active to
+              avoid nesting Radix modals (which would intercept pointer
+              events on the inner buttons). */}
+          {confirmDel ? (
+            <div style={{ padding: 22 }}>
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-destructive/15 text-destructive grid place-items-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display font-semibold text-base">Удалить {meta.label.toLowerCase()}?</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Это действие необратимо. Запись будет удалена из трипа и хронологии.
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+          /* Body */
           <div style={{ padding: 22 }}>
-            {!isEdit && <TypeSwitcher current={currentKind} onChange={switchKind} />}
-
             {/* AI block — only for hotel & transfer (the kinds with parsers). */}
             {(currentKind === 'hotel' || currentKind === 'transfer') && (
               <EventAiBlock
                 kind={currentKind}
-                isPro={isPro}
-                aiOpen={aiOpen}
-                setAiOpen={setAiOpen}
-                meta={meta}
+                state={aiState}
+                setState={setAiState}
+                onExtract={currentKind === 'hotel' ? handleHotelExtract : handleTransferExtract}
                 onUpgrade={openUpgrade}
-                onHotelExtract={handleHotelExtract}
-                onTransferExtract={handleTransferExtract}
+                parsedFieldCount={aiFields.size}
+                onReset={() => { setAiFields(new Set()); setExtraSegments([]); }}
               />
             )}
 
-            <fieldset disabled={aiOpen} className={aiOpen ? 'opacity-50 pointer-events-none select-none' : ''}>
+            <fieldset disabled={aiState === 'parsing'} className={aiState === 'parsing' ? 'opacity-50 pointer-events-none select-none' : ''}>
               {currentKind === 'hotel' && (
                 <HotelFields
                   form={form}
@@ -795,46 +810,56 @@ export default function EventEditDialog({
               )}
             </fieldset>
           </div>
+          )}
 
           {/* Footer */}
           <div
             className="border-t bg-secondary/30"
             style={{ padding: '12px 22px', display: 'flex', alignItems: 'center', gap: 8 }}
           >
-            {isEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmDel(true)}
-                disabled={deleteMut.isPending}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="w-3.5 h-3.5 mr-1.5" />Удалить
-              </Button>
+            {confirmDel ? (
+              <>
+                <div style={{ flex: 1 }} />
+                <Button variant="outline" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>
+                  Отмена
+                </Button>
+                <Button
+                  onClick={() => deleteMut.mutate()}
+                  disabled={deleteMut.isPending}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleteMut.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />Удалить
+                </Button>
+              </>
+            ) : (
+              <>
+                {isEdit && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmDel(true)}
+                    disabled={deleteMut.isPending}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />Удалить
+                  </Button>
+                )}
+                <div style={{ flex: 1 }} />
+                <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
+                <Button
+                  onClick={() => saveMut.mutate()}
+                  disabled={!canSave || saveMut.isPending}
+                  style={{ background: meta.color, borderColor: meta.color }}
+                >
+                  {saveMut.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+                  {isEdit ? 'Сохранить' : 'Создать'}
+                </Button>
+              </>
             )}
-            <div style={{ flex: 1 }} />
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
-            <Button
-              onClick={() => saveMut.mutate()}
-              disabled={!canSave || saveMut.isPending}
-              style={{ background: meta.color, borderColor: meta.color }}
-            >
-              {saveMut.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
-              {isEdit ? 'Сохранить' : 'Создать'}
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
-
-      <ConfirmDialog
-        open={confirmDel}
-        onOpenChange={setConfirmDel}
-        title="Удалить событие?"
-        description="Это действие необратимо."
-        confirmLabel="Удалить"
-        variant="destructive"
-        onConfirm={() => { deleteMut.mutate(); setConfirmDel(false); }}
-      />
     </>
   );
 }
@@ -968,149 +993,6 @@ function buildServicePayload(form, tripId, t) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  TypeSwitcher — the 4-pill row at the top in create mode
-// ─────────────────────────────────────────────────────────────────────────────
-
-function TypeSwitcher({ current, onChange }) {
-  return (
-    <div
-      className="border bg-secondary/30 rounded-lg"
-      style={{ margin: '-4px 0 18px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}
-    >
-      <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">Тип</span>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-        {Object.entries(TYPE_META).map(([k, m]) => {
-          const active = k === current;
-          const Ic = m.Icon;
-          return (
-            <button
-              key={k}
-              type="button"
-              onClick={() => onChange(k)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '6px 12px',
-                background: active ? m.soft : 'transparent',
-                color: active ? m.color : 'inherit',
-                border: '1.5px solid ' + (active ? m.color : 'var(--border, hsl(var(--border)))'),
-                borderRadius: 999, cursor: 'pointer',
-                fontSize: 12.5, fontWeight: active ? 600 : 500,
-              }}
-            >
-              <Ic className="w-3 h-3" />{m.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  EventAiBlock — wraps the existing HotelAiUpload / TransferAiUpload uploaders
-//  with the new collapsed / locked / parsed visual states.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function EventAiBlock({ kind, isPro, aiOpen, setAiOpen, meta, onUpgrade, onHotelExtract, onTransferExtract }) {
-  // While Pro is being checked, render the collapsed pill in a disabled style.
-  const checking = isPro === null;
-
-  if (aiOpen) {
-    return (
-      <div className="mb-4">
-        {kind === 'hotel' && <HotelAiUpload onExtract={onHotelExtract} onCancel={() => setAiOpen(false)} />}
-        {kind === 'transfer' && <TransferAiUpload onExtract={onTransferExtract} onCancel={() => setAiOpen(false)} />}
-      </div>
-    );
-  }
-
-  // Locked — show the upgrade prompt.
-  if (isPro === false) {
-    return (
-      <div
-        className="mb-4 rounded-xl border"
-        style={{
-          position: 'relative', padding: '14px 16px',
-          background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)',
-          borderColor: 'var(--ai-soft-12)',
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-        }}
-      >
-        <div
-          style={{
-            width: 32, height: 32, borderRadius: 8,
-            background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white',
-            display: 'grid', placeItems: 'center', flexShrink: 0, position: 'relative', filter: 'saturate(.7)',
-          }}
-        >
-          <Sparkles className="w-4 h-4" />
-          <span
-            style={{
-              position: 'absolute', bottom: -3, right: -3,
-              width: 18, height: 18, borderRadius: '50%',
-              background: 'var(--ai)', color: 'white',
-              border: '2px solid var(--background, white)',
-              display: 'grid', placeItems: 'center',
-            }}
-          >
-            <Lock className="w-2.5 h-2.5" />
-          </span>
-        </div>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div className="text-sm font-semibold">Заполнить через ИИ <span className="ml-1 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Pro</span></div>
-          <div className="text-xs text-muted-foreground mt-0.5">
-            Доступно на Pro · вставь текст или загрузи файл — поля заполнятся сами.
-          </div>
-        </div>
-        <Button size="sm" onClick={onUpgrade} className="bg-gradient-to-r from-primary via-chart-1 to-chart-3">
-          <Sparkles className="w-3.5 h-3.5 mr-1.5" />Перейти к Pro
-        </Button>
-      </div>
-    );
-  }
-
-  // Available (collapsed) — clickable pill that opens the uploader.
-  return (
-    <button
-      type="button"
-      onClick={() => !checking && setAiOpen(true)}
-      disabled={checking}
-      className="mb-4 w-full text-left rounded-xl border transition disabled:opacity-70"
-      style={{
-        padding: '12px 16px',
-        background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.06) 100%)',
-        borderColor: 'var(--ai-soft-12)',
-        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-      }}
-    >
-      <div
-        style={{
-          width: 32, height: 32, borderRadius: 8,
-          background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white',
-          display: 'grid', placeItems: 'center', flexShrink: 0,
-        }}
-      >
-        <Sparkles className="w-4 h-4" />
-      </div>
-      <div style={{ flex: 1, minWidth: 180 }}>
-        <div className="text-sm font-semibold">
-          Заполнить через ИИ <span className="ml-1 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Pro</span>
-        </div>
-        <div className="text-xs text-muted-foreground mt-0.5">
-          Вставь текст подтверждения или загрузи файл — поля заполнятся сами.
-        </div>
-      </div>
-      {checking ? (
-        <Loader2 className="w-4 h-4 animate-spin opacity-60" />
-      ) : (
-        <span className="text-xs font-semibold" style={{ color: 'var(--ai)' }}>
-          Раскрыть →
-        </span>
-      )}
-    </button>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Section heading + colored-bar variant used inside the field groups

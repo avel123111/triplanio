@@ -85,6 +85,22 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
         _ms: parseNaive(h.check_out_datetime)?.toMillis() ?? 0,
       });
     }
+    // Free-cancellation deadline — point event styled by StreamEventRow's
+    // `hotel-deadline` branch (rose accent + warning icon).
+    if (h.free_cancellation && h.free_cancellation_until) {
+      events.push({
+        type: 'hotel-deadline',
+        id: 'h-cancel-' + h.id,
+        date: naiveDayKey(h.free_cancellation_until),
+        time: formatNaive(h.free_cancellation_until, 'HH:mm'),
+        city,
+        title: 'Дедлайн бесплатной отмены · ' + h.name,
+        hotelId: h.id,
+        price: h.price,
+        cur: h.currency,
+        _ms: parseNaive(h.free_cancellation_until)?.toMillis() ?? 0,
+      });
+    }
   }
 
   for (const a of activities) {
@@ -511,7 +527,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
 
 // ─── CityHero (with proper hotel warning) ────────────────────────────────────
 
-function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel, isEditMode, onEditNotes, onDeleteCity }) {
+function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel, isEditMode, onEditNotes, onDeleteCity, onOpenEvent }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--line)',
@@ -558,10 +574,18 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
       </div>
       <div style={{ padding: '12px 16px', borderTop: '1px solid var(--line-2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {hotels.length > 0 ? hotels.map((h, i) => (
-          <div key={i} style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: 10, background: 'var(--wash)', borderRadius: 10, border: '1px solid var(--line-2)',
-          }}>
+          <button
+            key={i}
+            type="button"
+            onClick={() => onOpenEvent?.({ type: 'hotel-checkin', hotelId: h.hotelId })}
+            disabled={!onOpenEvent || !h.hotelId}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: 10, background: 'var(--wash)', borderRadius: 10, border: '1px solid var(--line-2)',
+              cursor: onOpenEvent && h.hotelId ? 'pointer' : 'default',
+              width: '100%', textAlign: 'left',
+            }}
+          >
             <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="bed" size={18} />
             </div>
@@ -574,7 +598,7 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
               </div>
             </div>
             {h.price && <div className="num" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(h.price, h.cur || 'EUR')}</div>}
-          </div>
+          </button>
         )) : (
           <MissingHotelWarning city={city} onAdd={() => onAddHotel?.(visit)} />
         )}
@@ -745,11 +769,24 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
           isEditMode={isEditMode}
           onEditNotes={onEditVisitNotes}
           onDeleteCity={onDeleteCity}
+          onOpenEvent={onOpenEvent}
         />
       );
     }
 
-    const dayEvents = eventsByDate[day] || [];
+    // On an arrival day, inbound transfers (to this visit) belong ABOVE
+    // the city hero, not in the day's general event list — so the user
+    // sees "we travelled to X" before X's city banner.
+    const allDayEvents = eventsByDate[day] || [];
+    const inboundTransferEvents = isArrival
+      ? allDayEvents.filter(e => {
+          if (e.type !== 'transfer' && e.type !== 'flight') return false;
+          const tr = (transfers || []).find(t => t.id === e.id);
+          return tr?.to_city_visit_id === visit.id;
+        })
+      : [];
+    const inboundIds = new Set(inboundTransferEvents.map(e => e.id));
+    const dayEvents = allDayEvents.filter(e => !inboundIds.has(e.id));
 
     rows.push(
       <div key={`day-${day}`} style={{ marginBottom: 24 }}>
@@ -772,7 +809,9 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
           <div style={{ flex: 1, borderBottom: '1px solid var(--line-2)', marginBottom: 6 }} />
         </div>
 
-        {/* Arrival into this city: missing-transfer warning + city hero */}
+        {/* Arrival into this city: missing-transfer warning, then any
+            inbound transfers (so they read as "we travelled here"), then
+            the city hero itself. */}
         {mt && (
           <div style={{ marginBottom: 8 }}>
             <MissingTransferWarning
@@ -782,6 +821,13 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
               toVisit={mt.toVisit}
               onAdd={onAddTransfer}
             />
+          </div>
+        )}
+        {inboundTransferEvents.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+            {inboundTransferEvents.map(e => (
+              <StreamEventRow key={e.id} e={e} onClick={() => onOpenEvent?.(e)} />
+            ))}
           </div>
         )}
         {cityHero}
@@ -1306,7 +1352,7 @@ export default function TripView() {
   // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
   const openEventView = (e) => {
     let kind = null;
-    if (e.type === 'hotel-checkin' || e.type === 'hotel-checkout') kind = 'hotel';
+    if (e.type === 'hotel-checkin' || e.type === 'hotel-checkout' || e.type === 'hotel-deadline') kind = 'hotel';
     else if (e.type === 'activity') kind = 'activity';
     else if (e.type === 'transfer' || e.type === 'flight') kind = 'transfer';
     if (!kind) return;
@@ -1595,6 +1641,7 @@ export default function TripView() {
               hotels={hotels ?? []}
               activities={activities ?? []}
               canEdit={myRole === 'owner' || myRole === 'editor' || myRole === 'admin'}
+              openEvent={(kind, id) => setEventView({ open: true, kind, id })}
             />
           )}
         </main>

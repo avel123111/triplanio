@@ -17,7 +17,7 @@ export default function DocumentsField({
   maxFiles = null,
   label = 'Документы',
   iconColor = 'text-primary',
-  accept = '.pdf,image/*',
+  accept = '*',
   maxFileSizeMb = 10,
 }) {
   const { toast } = useToast();
@@ -138,7 +138,7 @@ export default function DocumentsField({
               {docs.length === 0 ? (
                 <>
                   <Upload className="w-4 h-4" />
-                  <span>Загрузить файлы (PDF / фото) • до {maxFileSizeMb}MB каждый</span>
+                  <span>Загрузить файлы • до {maxFileSizeMb}MB каждый</span>
                 </>
               ) : (
                 <>

@@ -159,7 +159,7 @@ export default function AddressAutocomplete({
         <PopoverContent
           align="start"
           sideOffset={4}
-          className="p-0 w-[--radix-popover-trigger-width] max-h-72 overflow-y-auto"
+          className="p-0 w-[--radix-popover-trigger-width] max-h-72 overflow-y-auto bg-popover text-popover-foreground"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <ul className="py-1">
@@ -169,13 +169,13 @@ export default function AddressAutocomplete({
                   type="button"
                   onClick={() => selectPrediction(p)}
                   onMouseEnter={() => setHighlighted(i)}
-                  className={`w-full text-left px-3 py-2 flex items-start gap-2 text-sm hover:bg-secondary ${
+                  className={`w-full text-left px-3 py-2 flex items-start gap-2 text-sm text-foreground hover:bg-secondary ${
                     highlighted === i ? 'bg-secondary' : ''
                   }`}
                 >
                   <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate">{p.main_text}</div>
+                    <div className="font-medium truncate text-foreground">{p.main_text || p.description}</div>
                     {p.secondary_text && (
                       <div className="text-xs text-muted-foreground truncate">{p.secondary_text}</div>
                     )}

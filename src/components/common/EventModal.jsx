@@ -22,7 +22,7 @@ import { parseNaive } from '@/lib/naive-time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { BOOKING_PLATFORMS, platformLogoUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import {
-  X, Edit2, Trash2, ExternalLink, Map as MapIcon, Calendar, FileText,
+  Edit2, Trash2, ExternalLink, Map as MapIcon, Calendar, FileText,
   Bed, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Camera, Upload,
   RefreshCw,
 } from 'lucide-react';
@@ -397,14 +397,6 @@ export default function EventModal(props) {
             <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{theme.label}</div>
             <h2 className="font-display text-xl leading-tight" style={{ letterSpacing: '-0.02em' }}>{title || theme.label}</h2>
           </div>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="w-8 h-8 rounded-md grid place-items-center hover:bg-white/40 transition"
-            aria-label="Закрыть"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Key meta strip */}
@@ -494,7 +486,6 @@ export default function EventModal(props) {
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,image/*"
                   className="hidden"
                   onChange={(e) => uploadFiles(e.target.files)}
                   disabled={uploading}
