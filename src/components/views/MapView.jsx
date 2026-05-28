@@ -10,7 +10,6 @@ import { supabase } from '@/api/supabaseClient';
 import { countryFlag } from '@/lib/geo';
 import { fetchOsrmRoute, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import { sortVisits } from '@/lib/validation';
-import { useT } from '@/lib/i18n/I18nContext';
 
 const MARKER_COLOR = 'hsl(243 75% 59%)';
 const ROUTE_COLOR = '#5b6cff';
@@ -229,14 +228,12 @@ export default function MapView({
   transfers,
   visitsById,
   showStartEnd = true,
-  colorScheme: colorSchemeProp = 'LIGHT',
+  colorScheme = 'LIGHT',
   onCityClick,
   children,
 }) {
-  const t = useT();
   const [apiKey, setApiKey] = useState(null);
   const [keyError, setKeyError] = useState(null);
-  const [mapTheme, setMapTheme] = useState(colorSchemeProp);
 
   useEffect(() => {
     let alive = true;
@@ -260,57 +257,36 @@ export default function MapView({
     return ordered.map(v => `${v.id}:${v.latitude.toFixed(5)},${v.longitude.toFixed(5)}`).join('|');
   }, [ordered]);
 
+  // MapView is now a pure map surface — ScreenMap (or any wrapper) supplies
+  // chrome (theme toggle, hints, overlays). The map fills its parent
+  // container 100% × 100%, so the parent must give it explicit dimensions.
   return (
-    <div className="relative">
-      <div className="w-full h-[600px] rounded-2xl overflow-hidden border border-border">
-        {apiKey ? (
-          <APIProvider apiKey={apiKey}>
-            <GoogleMap
-              key={mapTheme}
-              mapId={MAP_ID}
-              colorScheme={mapTheme}
-              defaultCenter={{ lat: 20, lng: 0 }}
-              defaultZoom={2}
-              gestureHandling="cooperative"
-              disableDefaultUI={false}
-              clickableIcons={false}
-              streetViewControl={false}
-              mapTypeControl={false}
-              keyboardShortcuts={false}
-              fullscreenControl={false}>
-              <CityMarkers ordered={ordered} onCityClick={onCityClick} />
-              <RoutesLayer ordered={ordered} transfers={transfers} visitsSignature={visitsSignature} />
-            </GoogleMap>
-          </APIProvider>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-            {keyError ? `Map error: ${keyError}` : <div className="w-6 h-6 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin" />}
-          </div>
-        )}
-      </div>
-      <div className="mt-2 text-xs text-muted-foreground" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <span>{t('view.map_zoom_hint')}</span>
-        <button
-          type="button"
-          onClick={() => setMapTheme(mapTheme === 'DARK' ? 'LIGHT' : 'DARK')}
-          title={mapTheme === 'DARK' ? 'Светлая карта' : 'Тёмная карта'}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '4px 10px', borderRadius: 6,
-            border: '1px solid var(--line)', background: 'var(--surface)',
-            color: 'var(--ink-2)', cursor: 'pointer', fontSize: 12,
-          }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {mapTheme === 'DARK'
-              ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></>
-              : <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />}
-          </svg>
-          {mapTheme === 'DARK' ? 'Светлая' : 'Тёмная'}
-        </button>
-      </div>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      {apiKey ? (
+        <APIProvider apiKey={apiKey}>
+          <GoogleMap
+            key={colorScheme}
+            mapId={MAP_ID}
+            colorScheme={colorScheme}
+            defaultCenter={{ lat: 20, lng: 0 }}
+            defaultZoom={2}
+            gestureHandling="cooperative"
+            disableDefaultUI={false}
+            clickableIcons={false}
+            streetViewControl={false}
+            mapTypeControl={false}
+            keyboardShortcuts={false}
+            fullscreenControl={false}>
+            <CityMarkers ordered={ordered} onCityClick={onCityClick} />
+            <RoutesLayer ordered={ordered} transfers={transfers} visitsSignature={visitsSignature} />
+          </GoogleMap>
+        </APIProvider>
+      ) : (
+        <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', fontSize: 13, color: 'var(--muted)' }}>
+          {keyError ? `Map error: ${keyError}` : <div style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
+        </div>
+      )}
       {children}
-      {visits.length === 0 && <div className="text-sm text-muted-foreground mt-3 text-center">{t('view.map_empty')}</div>}
     </div>
   );
 }
