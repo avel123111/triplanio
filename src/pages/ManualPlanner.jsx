@@ -1319,7 +1319,7 @@ export default function ManualPlanner() {
   const [finalPoint, setFinalPoint] = useState(false); // last city is the finish — skip "return"
   const [transport, setTransport]   = useState({});    // legId -> { kind }
   const [tripTitle, setTripTitle]   = useState('');
-  const [cover, setCover]           = useState({ cover_image_url: '', cover_gradient: '' });
+  const [cover, setCover]           = useState({ cover_image_url: '', cover_gradient: 'gradient_1' });
   const [saving, setSaving]         = useState(false);
   const [savedOk, setSavedOk]       = useState(false);
   const [savedTripId, setSavedTripId] = useState(null);
@@ -1389,7 +1389,7 @@ export default function ManualPlanner() {
     setTransport({});
     setStartDateRaw('');
     setTripTitle('');
-    setCover({ cover_image_url: '', cover_gradient: '' });
+    setCover({ cover_image_url: '', cover_gradient: 'gradient_1' });
     setSavedOk(false);
     setSavedTripId(null);
     setError(null);

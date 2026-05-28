@@ -395,9 +395,12 @@ export default function EventEditDialog({
     });
   }, [isPro]);
 
-  // Auto-detect booking platform when URL changes.
+  // Auto-detect booking platform when URL changes; clear it when URL is removed.
   useEffect(() => {
-    if (!form.booking_url) return;
+    if (!form.booking_url) {
+      if (form.booking_platform) setForm((prev) => ({ ...prev, booking_platform: '' }));
+      return;
+    }
     const p = detectPlatformFromUrl(form.booking_url);
     if (p && p !== form.booking_platform) {
       setForm((prev) => ({ ...prev, booking_platform: p }));
@@ -900,8 +903,8 @@ function buildHotelPayload(form, visit, tz) {
       : null,
     phone: form.phone || undefined,
     email: form.email || undefined,
-    booking_url: form.booking_url || undefined,
-    booking_platform: form.booking_platform || undefined,
+    booking_url: form.booking_url || null,
+    booking_platform: form.booking_platform || null,
     documents: Array.isArray(form.documents) ? form.documents : [],
     voucher_file_url: '',
     voucher_file_name: '',
@@ -927,8 +930,8 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
     to_latitude: form.to_latitude ?? null,
     to_longitude: form.to_longitude ?? null,
     booking_reference: form.booking_reference || undefined,
-    booking_url: form.booking_url || undefined,
-    booking_platform: form.booking_platform || undefined,
+    booking_url: form.booking_url || null,
+    booking_platform: form.booking_platform || null,
     price: form.price === '' ? null : Number(form.price),
     currency: form.currency || 'EUR',
     documents: Array.isArray(form.documents) ? form.documents : [],
@@ -988,8 +991,8 @@ function buildServicePayload(form, tripId, t) {
       dropoff_longitude: dropoffLng ?? undefined,
       dropoff_timezone: dropoffTz || undefined,
       booking_reference: form.booking_reference || undefined,
-      booking_url: form.booking_url || undefined,
-      booking_platform: form.booking_platform || undefined,
+      booking_url: form.booking_url || null,
+      booking_platform: form.booking_platform || null,
       documents: Array.isArray(form.documents) ? form.documents : [],
       voucher_file_url: undefined,
       voucher_file_name: undefined,
