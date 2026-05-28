@@ -9,7 +9,8 @@ import MapView from '@/components/views/MapView';
 import EventModal from '@/components/common/EventModal';
 import { computeTripRange, latestEventDate } from '@/lib/trip-dates';
 import { uniqueCityCount } from '@/lib/trip-cities';
-import { getCityFallbackImage } from '@/lib/city-image';
+import { useCityImageForVisits } from '@/lib/city-image';
+import { getGradientById } from '@/lib/trip-gradients';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
 function useTripSubtitle() {
@@ -62,7 +63,11 @@ export default function PublicTrip() {
   const visitsById = useMemo(() => Object.fromEntries(visits.map(v => [v.id, v])), [visits]);
   const range = useMemo(() => computeTripRange(visits), [visits]);
   const subtitle = useMemo(() => buildSubtitle(range, visits), [range, visits, buildSubtitle]);
-  const coverImg = trip?.cover_image_url || getCityFallbackImage(visits);
+  // Cover priority: uploaded photo → preset gradient → Wikipedia city image.
+  const cityImg = useCityImageForVisits(visits);
+  const gradient = getGradientById(trip?.cover_gradient);
+  const useGradient = !trip?.cover_image_url && !!gradient;
+  const coverImg = trip?.cover_image_url || (!useGradient ? cityImg : null);
 
   if (!token) {
     return <NotFound message={t('public.invalid_link')} />;
@@ -97,9 +102,14 @@ export default function PublicTrip() {
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         {/* Cover */}
-        {coverImg && (
-          <div className="relative aspect-[16/6] sm:aspect-[16/5] rounded-2xl overflow-hidden mb-5 bg-secondary">
-            <img src={coverImg} alt={trip.title} className="absolute inset-0 w-full h-full object-cover" />
+        {(coverImg || useGradient) && (
+          <div
+            className="relative aspect-[16/6] sm:aspect-[16/5] rounded-2xl overflow-hidden mb-5 bg-secondary"
+            style={useGradient ? { background: gradient.css } : undefined}
+          >
+            {coverImg && (
+              <img src={coverImg} alt={trip.title} className="absolute inset-0 w-full h-full object-cover" />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
           </div>
         )}

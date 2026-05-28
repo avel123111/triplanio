@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, Calendar, MapPin, StickyNote } from 'lucide-react';
+import { Pencil, Trash2, Calendar, MapPin, StickyNote, MoreHorizontal } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import TripFormDialog from './TripFormDialog';
@@ -9,7 +15,8 @@ import { countryFlag } from '@/lib/geo';
 import ReactMarkdown from 'react-markdown';
 import { formatTripRange } from '@/lib/trip-dates';
 import { uniqueCityCount } from '@/lib/trip-cities';
-import { getCityFallbackImage } from '@/lib/city-image';
+import { useCityImageForVisits } from '@/lib/city-image';
+import { getGradientById } from '@/lib/trip-gradients';
 import { base44 } from '@/api/base44Client';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
@@ -33,18 +40,57 @@ export default function TripHeader({ trip, visits = [] }) {
   const uniqueCountries = [...new Set(cities.map(c => c.country_code).filter(Boolean))];
   const dateRange = formatTripRange(events, t('trip.no_dates'));
   const cityCount = uniqueCityCount(cities);
-  const coverImg = trip.cover_image_url || getCityFallbackImage(visits);
+
+  // Cover priority: uploaded photo → preset gradient → Wikipedia city image →
+  // globe emoji. The Wikipedia hook is always fired (rules of hooks), but the
+  // value is only used when no photo and no gradient are set.
+  const cityImg = useCityImageForVisits(visits);
+  const gradient = getGradientById(trip.cover_gradient);
+  const useGradient = !trip.cover_image_url && !!gradient;
+
+  const handleDelete = () => {
+    if (window.confirm(t('trip.delete_trip_confirm'))) del.mutate();
+  };
 
   return (
     <div className="mb-6">
       <div className="rounded-2xl overflow-hidden border border-border bg-card">
-        <div className="relative h-48 sm:h-56 bg-gradient-to-br from-primary/30 via-accent/20 to-primary/10">
-          {coverImg ? (
-            <img src={coverImg} alt={trip.title} className="w-full h-full object-cover" />
-          ) : (
+        <div
+          className="relative h-48 sm:h-56 bg-gradient-to-br from-primary/30 via-accent/20 to-primary/10"
+          style={useGradient ? { background: gradient.css } : undefined}
+        >
+          {trip.cover_image_url ? (
+            <img src={trip.cover_image_url} alt={trip.title} className="w-full h-full object-cover" />
+          ) : !useGradient && cityImg ? (
+            <img src={cityImg} alt={trip.title} className="w-full h-full object-cover" />
+          ) : !useGradient ? (
             <div className="w-full h-full flex items-center justify-center text-7xl opacity-30">🌍</div>
-          )}
+          ) : null}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+          <div className="absolute top-3 right-3 z-10">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 bg-black/30 hover:bg-black/50 text-white border-0 rounded-full"
+                >
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditing(true)}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  {t('trip.edit_metadata')}
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive" onClick={handleDelete}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {t('trip.delete')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
             <div className="flex items-center gap-3">

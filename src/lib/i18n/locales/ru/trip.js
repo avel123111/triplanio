@@ -92,6 +92,9 @@ export default {
   // Form dialog
   'trip.form_edit': 'Редактировать поездку',
   'trip.form_new': 'Новая поездка',
+  'trip.edit_metadata': 'Редактировать метаданные',
+  'trip.cover_too_large': 'Файл слишком большой (макс. 4 МБ).',
+  'trip.cover_upload_failed': 'Не удалось загрузить. Попробуйте ещё раз.',
   'trip.form_readonly': 'Только чтение',
   'trip.form_title_required': 'Название *',
   'trip.form_title_placeholder': 'Лето в Европе',

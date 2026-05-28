@@ -91,6 +91,9 @@ export default {
   // Form dialog
   'trip.form_edit': 'Edit trip',
   'trip.form_new': 'New trip',
+  'trip.edit_metadata': 'Edit details',
+  'trip.cover_too_large': 'Image too large (max 4 MB).',
+  'trip.cover_upload_failed': 'Upload failed. Please try again.',
   'trip.form_readonly': 'Read-only',
   'trip.form_title_required': 'Title *',
   'trip.form_title_placeholder': 'Summer in Europe',
