@@ -38,7 +38,7 @@
 
   --sect-pad: 96px;
   --card-pad: 28px;
-  --hero-top: 152px;
+  --hero-top: 96px;
   --hero-bot: 80px;
 
   --font-display: "Inter Tight", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -112,7 +112,7 @@
 :root[data-density="spacious"] {
   --sect-pad: 128px;
   --card-pad: 36px;
-  --hero-top: 184px;
+  --hero-top: 120px;
   --hero-bot: 112px;
   --container: 1220px;
 }
@@ -383,7 +383,10 @@ h3 {
   display: grid;
   grid-template-columns: 1fr 1.05fr;
   gap: 64px;
-  align-items: center;
+  /* Top-align the left copy so the H1 + CTAs sit above the fold even on
+     short viewports; the tall device mockup on the right used to vertically
+     center the row, pushing the buttons below the visible area. */
+  align-items: start;
 }
 .hero__copy { max-width: 560px; }
 .hero h1 .break { display: block; }

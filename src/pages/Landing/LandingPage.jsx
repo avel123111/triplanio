@@ -1382,35 +1382,47 @@ function LandingFooter({ lang, setLang }) {
   );
 }
 
-/* ── Scroll reveal ── */
+/* ── Scroll reveal ──
+   The old implementation relied on document.timeline.currentTime moving
+   between two rAFs and a single reveal() pass after that. On some loads
+   the page would render with reveal--ready applied (everything hidden)
+   but reveal() ran before layout settled and never re-fired, leaving the
+   page blank until the user scrolled. Replacing with IntersectionObserver
+   fixes that — it watches each .reveal element and fires the moment it
+   actually enters the viewport, regardless of when layout settles. */
 function useScrollReveal() {
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let timelineLive = false;
-    const t0 = document.timeline?.currentTime ?? 0;
-    requestAnimationFrame(() => {
-      const t1 = document.timeline?.currentTime ?? 0;
-      timelineLive = t1 > t0;
-      if (!timelineLive) return;
-      document.documentElement.classList.add('reveal--ready');
-      const reveal = () => {
-        const vh = window.innerHeight;
-        document.querySelectorAll('.reveal:not(.is-in)').forEach(el => {
-          const r = el.getBoundingClientRect();
-          if (r.top < vh * 0.9 && r.bottom > 0) el.classList.add('is-in');
-        });
-      };
-      let raf = 0;
-      const onScroll = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; reveal(); }); };
-      reveal();
-      window.addEventListener('scroll', onScroll, { passive:true });
-      window.addEventListener('resize', onScroll);
-      return () => {
-        window.removeEventListener('scroll', onScroll);
-        window.removeEventListener('resize', onScroll);
-        document.documentElement.classList.remove('reveal--ready');
-      };
-    });
+    if (typeof IntersectionObserver === 'undefined') return;
+    document.documentElement.classList.add('reveal--ready');
+    const io = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-in');
+          io.unobserve(entry.target);
+        }
+      }
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.01 });
+    const observeAll = () => {
+      document.querySelectorAll('.reveal:not(.is-in)').forEach(el => io.observe(el));
+    };
+    observeAll();
+    // Safety net: if anything is still in the viewport after layout
+    // settles (fonts/images), force-show it. Prevents the "blank until
+    // first scroll" failure mode if IO misses a fast layout shift.
+    const flush = () => {
+      const vh = window.innerHeight;
+      document.querySelectorAll('.reveal:not(.is-in)').forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.top < vh && r.bottom > 0) el.classList.add('is-in');
+      });
+    };
+    const timers = [setTimeout(flush, 50), setTimeout(flush, 300), setTimeout(flush, 1200)];
+    return () => {
+      timers.forEach(clearTimeout);
+      io.disconnect();
+      document.documentElement.classList.remove('reveal--ready');
+    };
   }, []);
 }
 

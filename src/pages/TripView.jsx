@@ -9,6 +9,7 @@ import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { useUserProfiles } from '@/lib/useUserProfiles';
+import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
@@ -1054,8 +1055,14 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
 
 function ContextSide({ budget, budgetExpenses, members, services = [], user, trip, isLoading }) {
   // Resolve display names from profiles so the widget shows real names, not
-  // emails. We hoist this above the early-return so hooks order stays stable.
-  const profiles = useUserProfiles((members || []).map(m => m.user_email), trip?.id);
+  // emails. Include the trip owner (often missing from trip_members) and the
+  // current user so the synthetic owner row and the current user resolve.
+  const profileEmails = [
+    ...((members || []).map(m => m.user_email)),
+    trip?.created_by,
+    user?.email,
+  ].filter(Boolean);
+  const profiles = useUserProfiles(profileEmails, trip?.id);
   if (isLoading) {
     return <div style={{ position: 'sticky', top: 80 }}><RightRailSkeleton /></div>;
   }
@@ -1135,7 +1142,10 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {orderedMembers.map((m, i) => {
             const profile = profiles[(m.user_email || '').toLowerCase()];
-            const name = profile?.full_name || m.user_full_name || m.user_email || '—';
+            const resolved = profile?.full_name || m.user_full_name
+              || (m.user_email && user?.email && m.user_email.toLowerCase() === user.email.toLowerCase() ? user.full_name : '')
+              || '';
+            const name = displayName(m.user_email, resolved);
             const isOffline = m.status === 'offline';
             const isPending = m.status === 'pending' || m.status === 'invited';
             const roleIcon = m.role === 'owner' ? 'crown' : m.role === 'admin' ? 'shield' : 'eye';
