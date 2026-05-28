@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Icon } from '../../design/icons';
 import { Btn } from '../../design/index';
 import MapView from '@/components/views/MapView';
+import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import { sortVisits } from '@/lib/validation';
 import { countryFlag } from '@/lib/geo';
 
@@ -366,6 +367,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
       {showHotel && (
         <HotelRow
           hotel={primaryHotel}
+          visit={visit}
           onOpen={primaryHotel && openEvent ? () => openEvent('hotel', primaryHotel.id) : undefined}
         />
       )}
@@ -469,36 +471,55 @@ function MenuItem({ icon, onClick, children, danger }) {
 }
 
 function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
+  const [modalOpen, setModalOpen] = useState(false);
   const fromName = prevVisit?.city_name || 'Предыдущий город';
   const toName = toCity?.city_name || '';
 
   if (!transfer) {
-    // No inbound transfer — show warning row with "+ Найти" CTA.
+    const canFork = !!(prevVisit && toCity);
+    // No inbound transfer — show warning row that opens ForkPartnerModal.
     return (
-      <button style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        width: '100%', padding: '14px 16px',
-        background: 'transparent', cursor: 'pointer', textAlign: 'left',
-        borderTop: 'none', borderLeft: '3px solid var(--warning)',
-        borderRight: 'none', borderBottom: '1px solid var(--line-2)',
-      }}
-      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
-      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 9,
-          background: 'var(--warning-soft)', color: 'var(--warning)',
-          display: 'grid', placeItems: 'center', flexShrink: 0,
-        }}>
-          <Icon name="warning" size={18} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Нет переезда</div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>
-            Из «{fromName}» — добавить
+      <>
+        <button
+          type="button"
+          onClick={canFork ? () => setModalOpen(true) : undefined}
+          disabled={!canFork}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            width: '100%', padding: '14px 16px',
+            background: 'transparent', cursor: canFork ? 'pointer' : 'default', textAlign: 'left',
+            borderTop: 'none', borderLeft: '3px solid var(--warning)',
+            borderRight: 'none', borderBottom: '1px solid var(--line-2)',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <div style={{
+            width: 40, height: 40, borderRadius: 9,
+            background: 'var(--warning-soft)', color: 'var(--warning)',
+            display: 'grid', placeItems: 'center', flexShrink: 0,
+          }}>
+            <Icon name="warning" size={18} />
           </div>
-        </div>
-        <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
-      </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>Нет переезда</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>
+              Из «{fromName}» — добавить
+            </div>
+          </div>
+          <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
+        </button>
+        {canFork && (
+          <ForkPartnerModal
+            open={modalOpen}
+            onOpenChange={setModalOpen}
+            type="transfer"
+            fromVisit={prevVisit}
+            toVisit={toCity}
+            tripId={prevVisit?.trip_id || toCity?.trip_id}
+          />
+        )}
+      </>
     );
   }
 
@@ -544,31 +565,49 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
   );
 }
 
-function HotelRow({ hotel, onOpen }) {
+function HotelRow({ hotel, visit, onOpen }) {
+  const [modalOpen, setModalOpen] = useState(false);
   if (!hotel) {
+    const canFork = !!visit;
     return (
-      <button style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        width: '100%', padding: '14px 16px',
-        background: 'transparent', cursor: 'pointer', textAlign: 'left',
-        borderTop: 'none', borderLeft: '3px solid var(--warning)',
-        borderRight: 'none', borderBottom: '1px solid var(--line-2)',
-      }}
-      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
-      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 9,
-          background: 'var(--warning-soft)', color: 'var(--warning)',
-          display: 'grid', placeItems: 'center', flexShrink: 0,
-        }}>
-          <Icon name="warning" size={18} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Нет отеля</div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>Не забронирован — нужно выбрать</div>
-        </div>
-        <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
-      </button>
+      <>
+        <button
+          type="button"
+          onClick={canFork ? () => setModalOpen(true) : undefined}
+          disabled={!canFork}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            width: '100%', padding: '14px 16px',
+            background: 'transparent', cursor: canFork ? 'pointer' : 'default', textAlign: 'left',
+            borderTop: 'none', borderLeft: '3px solid var(--warning)',
+            borderRight: 'none', borderBottom: '1px solid var(--line-2)',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--wash)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <div style={{
+            width: 40, height: 40, borderRadius: 9,
+            background: 'var(--warning-soft)', color: 'var(--warning)',
+            display: 'grid', placeItems: 'center', flexShrink: 0,
+          }}>
+            <Icon name="warning" size={18} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>Нет отеля</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>Не забронирован — нужно выбрать</div>
+          </div>
+          <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
+        </button>
+        {canFork && (
+          <ForkPartnerModal
+            open={modalOpen}
+            onOpenChange={setModalOpen}
+            type="hotel"
+            visit={visit}
+            tripId={visit?.trip_id}
+          />
+        )}
+      </>
     );
   }
   return (

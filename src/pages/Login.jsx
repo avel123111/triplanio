@@ -3,6 +3,8 @@ import { supabase } from '@/api/supabaseClient';
 import { BRAND_NAME, BRAND_LOGO_URL } from '@/lib/brand';
 import './login.css';
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
 // ── Password strength scorer ──────────────────────────────────────────────────
 function scorePassword(pw) {
   if (!pw) return 0;
@@ -122,6 +124,52 @@ export default function Login() {
     });
     if (error) { setError(error.message); setIsLoading(false); }
   };
+
+  // Google One Tap credential handler — exchanges the Google JWT for a
+  // Supabase session via signInWithIdToken. AuthContext picks up SIGNED_IN
+  // and handles profile creation + redirect to /trips.
+  const handleOneTapCredential = async (response) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: response.credential,
+      });
+      if (error) {
+        setError(error.message);
+        setIsLoading(false);
+      }
+    } catch (err) {
+      setError(err.message);
+      setIsLoading(false);
+    }
+  };
+
+  // Load Google Identity Services script on demand and show the One Tap
+  // prompt. Scoped to this page so other routes don't pay the cost.
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      window.google?.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleOneTapCredential,
+        itp_support: true,
+      });
+      window.google?.accounts.id.prompt();
+    };
+    document.head.appendChild(script);
+    return () => {
+      window.google?.accounts.id.cancel();
+      const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existing) existing.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleApple = async () => {
     setIsLoading(true); setError(null);
