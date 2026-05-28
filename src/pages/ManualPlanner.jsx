@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker as LeafletMarker, Polyline, useMap as useLeafletMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -14,6 +14,7 @@ import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
 import HeaderActions from '@/components/HeaderActions';
 import { groupMarkers, markerSvg, svgDataUri, markerPixelSize, MISSING_COLOR } from '@/lib/mapRoute';
+import { fetchOsrmRoute, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import '../design/app.css';
 
 // ─── Static data ──────────────────────────────────────────────────────────────
@@ -262,32 +263,101 @@ class MapErrorBoundary extends React.Component {
   }
 }
 
-// Draws a dashed polyline using raw Google Maps JS API
-function GPolyline({ positions }) {
+// Per-leg route renderer for the PlannerMap. Each leg gets a polyline whose
+// style depends on the chosen transport: dashed pale when no transport,
+// curved geodesic for a flight, road-following for ground transport, solid
+// straight for everything else (ferry, walk, etc.).
+const PLANNER_ROUTE_COLOR = '#5b6cff';
+
+function GLegRoutes({ legs, transport }) {
   const map = useGMap();
+  const legsSig = legs.map(l => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
+
   useEffect(() => {
-    if (!map || !window.google || positions.length < 2) return;
-    const line = new window.google.maps.Polyline({
-      path: positions.map(p => ({ lat: p[0], lng: p[1] })),
-      strokeColor: MISSING_COLOR,
-      strokeOpacity: 0,
-      strokeWeight: 0,
-      icons: [{
-        icon: {
-          path: 'M 0,-1 0,1',
-          strokeOpacity: 0.55,
-          strokeColor: MISSING_COLOR,
-          strokeWeight: 2,
-          scale: 3,
-        },
-        offset: '0',
-        repeat: '14px',
-      }],
-      map,
-    });
-    return () => line.setMap(null);
-  }, [map, JSON.stringify(positions)]); // eslint-disable-line
+    if (!map || !window.google) return;
+    const gmaps = window.google.maps;
+    let cancelled = false;
+    const polylines = [];
+
+    const dashedIconBase = {
+      icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 },
+      offset: '0',
+      repeat: '14px',
+    };
+    const addDashed = (path, opacity = 0.4, weight = 2, color = MISSING_COLOR) => {
+      const pl = new gmaps.Polyline({
+        path, geodesic: false, strokeOpacity: 0, strokeWeight: weight, strokeColor: color,
+        icons: [{ ...dashedIconBase, icon: { ...dashedIconBase.icon, strokeOpacity: opacity, strokeColor: color, strokeWeight: weight } }],
+        map,
+      });
+      polylines.push(pl);
+      return pl;
+    };
+    const addGeodesic = (path) => {
+      const pl = new gmaps.Polyline({ path, geodesic: true, strokeOpacity: 1, strokeColor: PLANNER_ROUTE_COLOR, strokeWeight: 3.5, map });
+      polylines.push(pl);
+      return pl;
+    };
+    const addSolid = (path) => {
+      const pl = new gmaps.Polyline({ path, geodesic: false, strokeOpacity: 1, strokeColor: PLANNER_ROUTE_COLOR, strokeWeight: 3.5, map });
+      polylines.push(pl);
+      return pl;
+    };
+
+    for (const leg of legs) {
+      if (!leg.from?.latitude || !leg.to?.latitude) continue;
+      const straight = [
+        { lat: leg.from.latitude, lng: leg.from.longitude },
+        { lat: leg.to.latitude, lng: leg.to.longitude },
+      ];
+      const kind = transport[leg.id]?.kind;
+      if (!kind) { addDashed(straight, 0.4, 2); continue; }
+      if (isFlightTransport(kind)) { addGeodesic(straight); continue; }
+
+      const placeholder = addDashed(straight, 0.6, 2.5, PLANNER_ROUTE_COLOR);
+      if (isRoadTransport(kind)) {
+        (async () => {
+          try {
+            const route = await fetchOsrmRoute(leg.from.latitude, leg.from.longitude, leg.to.latitude, leg.to.longitude, kind);
+            if (cancelled) return;
+            placeholder.setMap(null);
+            const path = route && route.length > 1 ? route.map(([lat, lng]) => ({ lat, lng })) : straight;
+            addSolid(path);
+          } catch { /* keep placeholder */ }
+        })();
+      } else {
+        placeholder.setMap(null);
+        addSolid(straight);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      polylines.forEach((p) => p.setMap(null));
+    };
+  }, [map, legsSig]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return null;
+}
+
+// Leaflet-side per-leg renderer used as a fallback when Google Maps isn't
+// available. Only knows two styles — dashed (no transport) vs solid — so the
+// signal "transport is picked" still reads on the map without OSRM fetching.
+function LeafletLegRoutes({ legs, transport }) {
+  return (
+    <>
+      {legs.map((leg, i) => {
+        if (!leg.from?.latitude || !leg.to?.latitude) return null;
+        const path = [
+          [leg.from.latitude, leg.from.longitude],
+          [leg.to.latitude, leg.to.longitude],
+        ];
+        const kind = transport[leg.id]?.kind;
+        if (!kind) return <Polyline key={i} positions={path} pathOptions={{ color: MISSING_COLOR, weight: 2, dashArray: '5 7', opacity: 0.55 }} />;
+        return <Polyline key={i} positions={path} pathOptions={{ color: PLANNER_ROUTE_COLOR, weight: 3, opacity: 1 }} />;
+      })}
+    </>
+  );
 }
 
 // Fit Google Map to bounds
@@ -317,7 +387,7 @@ function gIcon(labels) {
 }
 
 // Google Maps inner content — also watches for Google's error overlay and calls onError
-function GoogleMapInner({ groups, positions, onError }) {
+function GoogleMapInner({ groups, positions, legs, transport, onError }) {
   const map = useGMap();
   const status = useApiLoadingStatus();
 
@@ -342,7 +412,7 @@ function GoogleMapInner({ groups, positions, onError }) {
       {groups.map((grp, i) => (
         <GMarker key={i} position={{ lat: grp.lat, lng: grp.lng }} icon={gIcon(grp.labels)} />
       ))}
-      {positions.length >= 2 && <GPolyline positions={positions} />}
+      {legs?.length > 0 && <GLegRoutes legs={legs} transport={transport} />}
     </>
   );
 }
@@ -351,7 +421,7 @@ function GoogleMapInner({ groups, positions, onError }) {
 
 const GKEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
-function PlannerMap({ home, cities, returnCity }) {
+function PlannerMap({ home, cities, returnCity, transport = {}, finalPoint = false }) {
   // If Google Maps fails (bad key, billing, restrictions) — fall back to Leaflet
   const [gmapFailed, setGmapFailed] = useState(false);
 
@@ -367,6 +437,9 @@ function PlannerMap({ home, cities, returnCity }) {
   const positions = pts.map(p => [p.lat, p.lng]);
   const groups = groupMarkers(pts);
   const totalNights = cities.reduce((n, c) => n + (+c.nights || 0), 0);
+  // Legs match the IDs used by StepTransport so the picker's choice maps to
+  // the right polyline. computeLegs already knows how to handle finalPoint.
+  const legs = computeLegs(home, cities, returnCity, finalPoint);
 
   const leafletMap = (
     <MapContainer
@@ -379,9 +452,7 @@ function PlannerMap({ home, cities, returnCity }) {
     >
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <FitBounds positions={positions} />
-      {positions.length >= 2 && (
-        <Polyline positions={positions} pathOptions={{ color: MISSING_COLOR, weight: 2, dashArray: '5 7', opacity: 0.55 }} />
-      )}
+      <LeafletLegRoutes legs={legs} transport={transport} />
       {groups.map((grp, i) => {
         const d = markerPixelSize(false);
         const icon = L.divIcon({ className: '', html: markerSvg(grp.labels, false), iconSize: [d, d], iconAnchor: [d / 2, d / 2] });
@@ -401,7 +472,7 @@ function PlannerMap({ home, cities, returnCity }) {
           disableDefaultUI
           mapTypeId="roadmap"
         >
-          <GoogleMapInner groups={groups} positions={positions} onError={() => setGmapFailed(true)} />
+          <GoogleMapInner groups={groups} positions={positions} legs={legs} transport={transport} onError={() => setGmapFailed(true)} />
         </GMap>
       </APIProvider>
     </MapErrorBoundary>
@@ -477,21 +548,21 @@ function CityAnchorRow({ label, city_name, country, kind }) {
 
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
-function CityRow({ idx, total, city, isDragging, isOver, onDragStart, onDragOver, onDrop, onDragEnd, onChange, onRemove, onMoveUp, onMoveDown }) {
+function CityRow({ idx, total, city, isDragging, isOver, isLast, finalPoint, onToggleFinalPoint, onDragStart, onDragOver, onDrop, onDragEnd, onChange, onRemove, onMoveUp, onMoveDown }) {
   return (
     <div
-      className="planner-city-row"
       onDragOver={onDragOver}
       onDrop={onDrop}
       style={{
-        padding: '10px 12px',
         background: isOver ? 'var(--brand-soft)' : 'var(--surface)',
         border: '1px solid ' + (isOver ? 'var(--brand)' : 'var(--line)'),
         borderRadius: 12,
         opacity: isDragging ? 0.45 : 1,
         transition: 'background .15s, border-color .15s, opacity .15s',
+        overflow: 'hidden',
       }}
     >
+    <div className="planner-city-row" style={{ padding: '10px 12px' }}>
       {/* Drag handle */}
       <div
         className="planner-city-row__handle"
@@ -562,14 +633,62 @@ function CityRow({ idx, total, city, isDragging, isOver, onDragStart, onDragOver
         </button>
       </div>
     </div>
+    {isLast && (
+      <div style={{
+        borderTop: '1px dashed var(--line-2)',
+        padding: '12px 14px',
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={!!finalPoint}
+          onClick={() => onToggleFinalPoint?.(!finalPoint)}
+          style={{
+            width: 36, height: 20, borderRadius: 999,
+            border: 'none', cursor: 'pointer', padding: 2,
+            background: finalPoint ? 'var(--brand)' : 'var(--line)',
+            transition: 'background .15s', flexShrink: 0,
+            display: 'inline-flex', alignItems: 'center',
+          }}
+        >
+          <span style={{
+            width: 16, height: 16, borderRadius: '50%',
+            background: 'white',
+            transform: `translateX(${finalPoint ? 16 : 0}px)`,
+            transition: 'transform .15s',
+            boxShadow: '0 1px 2px rgba(0,0,0,.15)',
+          }} />
+        </button>
+        <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.4 }}>
+          <span style={{ fontWeight: 600 }}>
+            <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: 'var(--brand)' }} />
+            Это финальная точка трипа
+          </span>
+          <span className="muted" style={{ marginLeft: 6 }}>
+            — возврат не нужен, шаг «Возврат» будет пропущен
+          </span>
+        </div>
+      </div>
+    )}
+    </div>
   );
 }
 
 // ─── Step 1: Home ─────────────────────────────────────────────────────────────
 
-function StepHome({ home, setHome, goNext }) {
+function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
   const [geoState, setGeoState] = useState('ask'); // ask | loading | allowed | denied
   const [nearbyCity, setNearbyCity] = useState(null); // detected city from GPS
+
+  const startDateLabel = useMemo(() => {
+    if (!startDate) return null;
+    try {
+      const d = new Date(startDate + 'T00:00:00');
+      return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric', weekday: 'short' })
+        .replace(',', ' ·');
+    } catch { return null; }
+  }, [startDate]);
 
   const requestGeo = () => {
     if (!navigator.geolocation) { setGeoState('denied'); return; }
@@ -598,9 +717,28 @@ function StepHome({ home, setHome, goNext }) {
         Это твой дом — точка старта и (обычно) возврата. Из него Triplanio покажет переезды и стоимость билетов.
       </div>
 
-      <div className="field">
-        <label className="field__label">Город старта</label>
-        <CityPicker value={home} onChange={setHome} placeholder="Москва, Тбилиси, Стамбул…" autoFocus />
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 200px)', gap: 14, alignItems: 'start' }}>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label className="field__label">Город старта</label>
+          <CityPicker value={home} onChange={setHome} placeholder="Москва, Тбилиси, Стамбул…" autoFocus />
+        </div>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label className="field__label">Дата вылета</label>
+          <div style={{ position: 'relative' }}>
+            <Icon name="calendar" size={15}
+              style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: startDate ? 'var(--brand)' : 'var(--muted-2)', pointerEvents: 'none' }} />
+            <input
+              className="input num"
+              type="date"
+              value={startDate || ''}
+              onChange={e => setStartDate?.(e.target.value)}
+              style={{ paddingLeft: 36, fontSize: 14, width: '100%' }}
+            />
+          </div>
+          {startDateLabel && (
+            <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{startDateLabel}</div>
+          )}
+        </div>
       </div>
 
       {/* "Рядом" section */}
@@ -678,14 +816,14 @@ function StepHome({ home, setHome, goNext }) {
 
 // ─── Step 2: Cities ───────────────────────────────────────────────────────────
 
-function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, goPrev, goNext }) {
+function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startDate, goPrev, goNext, onReset }) {
   const [hasError, setHasError] = useState(false);
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
 
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
-    setCities(cs => recomputeDates([...cs, { id: Date.now(), ...base, startDate: cs[0]?.startDate || '', nights: preset?.nights || 3 }]));
+    setCities(cs => recomputeDates([...cs, { id: Date.now(), ...base, startDate: cs[0]?.startDate || startDate || '', nights: preset?.nights || 3 }]));
   };
 
   const remove = (id) => setCities(cs => recomputeDates(cs.filter(c => c.id !== id)));
@@ -746,6 +884,9 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, goPrev
               city={c}
               isDragging={dragId === c.id}
               isOver={overId === c.id && dragId !== c.id}
+              isLast={i === cities.length - 1}
+              finalPoint={finalPoint}
+              onToggleFinalPoint={setFinalPoint}
               onDragStart={onDragStart(c.id)}
               onDragOver={onDragOver(c.id)}
               onDrop={onDrop(c.id)}
@@ -788,34 +929,9 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, goPrev
         </div>
       )}
 
-      {cities.length > 0 && (
-        <label style={{
-          marginTop: 14, display: 'flex', alignItems: 'center', gap: 14,
-          padding: '14px 16px', background: finalPoint ? 'var(--success-soft, #d4edda)' : 'var(--surface)',
-          border: '1.5px solid ' + (finalPoint ? 'var(--success, #27ae60)' : 'var(--line)'),
-          borderRadius: 12, cursor: 'pointer', transition: 'all .15s',
-        }}>
-          <div style={{
-            width: 20, height: 20, borderRadius: 4, border: '2px solid ' + (finalPoint ? 'var(--success, #27ae60)' : 'var(--muted-2)'),
-            background: finalPoint ? 'var(--success, #27ae60)' : 'transparent',
-            display: 'grid', placeItems: 'center', flexShrink: 0, transition: 'all .15s',
-          }}>
-            {finalPoint && <Icon name="check" size={11} style={{ color: 'white' }} />}
-          </div>
-          <input type="checkbox" checked={finalPoint} onChange={e => setFinalPoint(e.target.checked)} style={{ display: 'none' }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600 }}>
-              Финальная точка — {cities[cities.length - 1]?.city_name || 'последний город'}
-            </div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-              Трип заканчивается здесь. Шаг «Возврат» будет пропущен.
-            </div>
-          </div>
-        </label>
-      )}
-
       <FooterNav>
         <Btn variant="ghost" onClick={goPrev}>← Назад</Btn>
+        <Btn variant="ghost" icon="refresh" onClick={onReset}>Сбросить</Btn>
         <div style={{ flex: 1 }} />
         <Btn variant="primary" onClick={() => { if (cities.length === 0) { setHasError(true); return; } goNext(); }}>Дальше →</Btn>
       </FooterNav>
@@ -825,7 +941,7 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, goPrev
 
 // ─── Step 3: Return ───────────────────────────────────────────────────────────
 
-function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity, goPrev, goNext }) {
+function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity, goPrev, goNext, onReset }) {
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>
@@ -882,6 +998,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 
       <FooterNav>
         <Btn variant="ghost" onClick={goPrev}>← Назад</Btn>
+        <Btn variant="ghost" icon="refresh" onClick={onReset}>Сбросить</Btn>
         <div style={{ flex: 1 }} />
         <Btn variant="primary" onClick={goNext}>Дальше →</Btn>
       </FooterNav>
@@ -960,8 +1077,8 @@ function StepTransport({ home, cities, effectiveReturn, finalPoint, transport, s
       )}
 
       <FooterNav>
-        <Btn variant="ghost" onClick={onReset} icon="refresh">Сбросить</Btn>
         <Btn variant="ghost" onClick={goPrev}>← Назад</Btn>
+        <Btn variant="ghost" icon="refresh" onClick={onReset}>Сбросить</Btn>
         <div style={{ flex: 1 }} />
         <Btn variant="primary" onClick={goNext}>Дальше →</Btn>
       </FooterNav>
@@ -995,7 +1112,7 @@ function Stat({ label, value, hint }) {
   );
 }
 
-function StepReview({ home, cities, returnCity, tripTitle, setTripTitle, onStartDateChange, saving, savedOk, savedTripId, goPrev, onSave, error }) {
+function StepReview({ home, cities, returnCity, tripTitle, setTripTitle, onStartDateChange, saving, savedOk, savedTripId, goPrev, onReset, onSave, error }) {
   const nav = useNavigate();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
   const autoTitle = cities.length === 0 ? 'Новый трип' : cities.length === 1 ? cities[0].city_name : `${cities[0]?.city_name} → ${cities[cities.length - 1]?.city_name}`;
@@ -1099,6 +1216,7 @@ function StepReview({ home, cities, returnCity, tripTitle, setTripTitle, onStart
 
       <FooterNav>
         <Btn variant="ghost" onClick={goPrev} disabled={saving}>← Назад</Btn>
+        <Btn variant="ghost" icon="refresh" onClick={onReset} disabled={saving}>Сбросить</Btn>
         <div style={{ flex: 1 }} />
         {saving ? (
           <Btn variant="primary" disabled>Сохраняем…</Btn>
@@ -1154,6 +1272,7 @@ export default function ManualPlanner() {
   // ── Wizard state ─────────────────────────────────────────────────────────
   const [step, setStep]             = useState('home');
   const [home, setHome]             = useState(null);
+  const [startDate, setStartDateRaw] = useState(''); // YYYY-MM-DD, departure date from home
   const [cities, setCities]         = useState([]);
   const [returnMode, setReturnMode] = useState('home');
   const [returnCity, setReturnCity] = useState(null);
@@ -1181,6 +1300,7 @@ export default function ManualPlanner() {
         if (saved.tripTitle) setTripTitle(saved.tripTitle);
         if (saved.finalPoint) setFinalPoint(!!saved.finalPoint);
         if (saved.transport) setTransport(saved.transport);
+        if (saved.startDate) setStartDateRaw(saved.startDate);
       }
     } catch {}
     setRestored(true);
@@ -1190,9 +1310,19 @@ export default function ManualPlanner() {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(storageKey(user?.id), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport }));
+      sessionStorage.setItem(storageKey(user?.id), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport, startDate }));
     } catch {}
-  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport, restored, user?.id]);
+  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport, startDate, restored, user?.id]);
+
+  // setStartDate also cascades to cities (first city anchors all subsequent dates).
+  const setStartDate = (dateStr) => {
+    setStartDateRaw(dateStr);
+    setCities(cs => {
+      if (cs.length === 0) return cs;
+      const next = cs.map((c, i) => i === 0 ? { ...c, startDate: dateStr } : c);
+      return recomputeDates(next);
+    });
+  };
 
   // Skip "return" step when the last city is marked as the finish point.
   const goNext = () => {
@@ -1215,6 +1345,7 @@ export default function ManualPlanner() {
     setReturnCity(null);
     setFinalPoint(false);
     setTransport({});
+    setStartDateRaw('');
     setTripTitle('');
     setSavedOk(false);
     setSavedTripId(null);
@@ -1285,7 +1416,7 @@ export default function ManualPlanner() {
           longitude: home.longitude || null,
           timezone: home.timezone || null,
           kind: 'start',
-          start_datetime: cities[0]?.startDate ? cities[0].startDate + 'T08:00:00' : null,
+          start_datetime: (cities[0]?.startDate || startDate) ? ((cities[0]?.startDate || startDate) + 'T08:00:00') : null,
           created_by: authEmail,
         });
       }
@@ -1309,8 +1440,10 @@ export default function ManualPlanner() {
         });
       });
 
-      // Return city → kind: 'end' (only if different from home)
-      if (effectiveReturn?.city_name && effectiveReturn.city_name !== home?.city_name) {
+      // Return city → kind: 'end'. Created even when returnMode === 'home'
+      // (home equals return), so the cityN → end leg always exists in the
+      // timeline and the "no transfer" warning / route shows up correctly.
+      if (effectiveReturn?.city_name) {
         visitsToInsert.push({
           trip_id: trip.id,
           external_city_id: effectiveReturn.external_city_id || null,
@@ -1435,19 +1568,8 @@ export default function ManualPlanner() {
         />
       </header>
 
-      {/* Sub-header: stepper + reset */}
+      {/* Sub-header: stepper */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 24px', borderBottom: '1px solid var(--line-2)', background: 'var(--surface)' }}>
-        {(step !== 'home' || home || cities.length > 0) && (
-          <button
-            onClick={resetToStart}
-            title="Сбросить драфт"
-            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6 }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger, #e74c3c)'; e.currentTarget.style.background = 'var(--danger-soft, #fde8e8)'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'transparent'; }}
-          >
-            <Icon name="refresh" size={12} /> Сбросить
-          </button>
-        )}
         <div style={{ flex: 1 }} />
         <Stepper currentId={step} onJump={setStep} finalPoint={finalPoint} />
       </div>
@@ -1458,10 +1580,10 @@ export default function ManualPlanner() {
           {/* Form column */}
           <div style={{ minWidth: 0 }}>
             {step === 'home' && (
-              <StepHome home={home} setHome={setHome} goNext={goNext} />
+              <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} goNext={goNext} />
             )}
             {step === 'cities' && (
-              <StepCities cities={cities} setCities={setCities} home={home} finalPoint={finalPoint} setFinalPoint={setFinalPoint} goPrev={goPrev} goNext={goNext} />
+              <StepCities cities={cities} setCities={setCities} home={home} startDate={startDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} goPrev={goPrev} goNext={goNext} onReset={resetToStart} />
             )}
             {step === 'transport' && (
               <StepTransport
@@ -1486,6 +1608,7 @@ export default function ManualPlanner() {
                 setReturnCity={setReturnCity}
                 goPrev={goPrev}
                 goNext={goNext}
+                onReset={resetToStart}
               />
             )}
             {step === 'review' && (
@@ -1500,6 +1623,7 @@ export default function ManualPlanner() {
                 savedOk={savedOk}
                 savedTripId={savedTripId}
                 goPrev={goPrev}
+                onReset={resetToStart}
                 onSave={handleSave}
                 error={error}
               />
@@ -1512,6 +1636,8 @@ export default function ManualPlanner() {
               home={home}
               cities={cities}
               returnCity={effectiveReturn}
+              transport={transport}
+              finalPoint={finalPoint}
             />
           </div>
         </div>
