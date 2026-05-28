@@ -31,7 +31,6 @@ import ScreenMap from '@/pages/redesign/ScreenMap';
 import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
 import PaymentFailDialog from '@/components/common/PaymentFailDialog';
 import TripFormDialog from '@/components/trips/TripFormDialog';
-import { useCityImageForVisits } from '@/lib/city-image';
 import { getGradientById } from '@/lib/trip-gradients';
 import '../design/app.css';
 
@@ -975,20 +974,9 @@ function ShareDialog({ trip }) {
   );
 }
 
-function MoreMenuDialog({ trip, visits }) {
-  // Opening the edit form unmounts this sheet (the host swaps to the form
-  // dialog). When the form closes we navigate back to the trip view rather
-  // than reopening the sheet — matching the pattern of other action sheets.
+function MoreMenuDialog({ trip, visits, onEditMetadata }) {
   const openEditMetadata = () => {
-    window.__closeModal?.();
-    window.__openModal?.(
-      <TripFormDialog
-        open={true}
-        onOpenChange={(o) => { if (!o) window.__closeModal?.(); }}
-        trip={trip}
-        visits={visits}
-      />,
-    );
+    onEditMetadata?.();
   };
   const itemStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 14, color: 'var(--ink)' };
   return (
@@ -1025,18 +1013,16 @@ function MoreMenuDialog({ trip, visits }) {
 
 function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdit }) {
   const [routeOpen, setRouteOpen] = useState(false);
+  const [editingMetadata, setEditingMetadata] = useState(false);
   const activeMemberCount = members.filter(m => m.status === 'active').length || 1;
   const cities = visits.map(v => v.city_name).filter(Boolean);
   const dateRange = formatTripRange(visits, '—');
 
-  // Cover priority: uploaded photo → preset gradient → Wikipedia city image
-  // → default HSL gradient + SVG waves (the original prototype look).
-  const cityImg = useCityImageForVisits(visits);
+  // Cover priority: uploaded photo → preset gradient → default HSL gradient + SVG waves.
   const gradient = getGradientById(trip?.cover_gradient);
   const hasPhoto = !!trip?.cover_image_url;
   const hasGradient = !hasPhoto && !!gradient;
-  const hasCityImg = !hasPhoto && !hasGradient && !!cityImg;
-  const useDefault = !hasPhoto && !hasGradient && !hasCityImg;
+  const useDefault = !hasPhoto && !hasGradient;
   const coverBg = hasGradient
     ? gradient.css
     : useDefault
@@ -1053,9 +1039,6 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
       }}>
         {hasPhoto && (
           <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-        )}
-        {hasCityImg && (
-          <img src={cityImg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
         )}
         {useDefault && (
           <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.55 }}>
@@ -1078,6 +1061,13 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
           )}
         </div>
       </div>
+
+      <TripFormDialog
+        open={editingMetadata}
+        onOpenChange={setEditingMetadata}
+        trip={trip}
+        visits={visits}
+      />
 
       {/* Meta row + actions */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1135,7 +1125,7 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
           )}
           <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>Поделиться</Btn>
           <Btn variant="ghost" size="sm" icon="download" onClick={() => window.print()}>Экспорт</Btn>
-          <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} />)} />
+          <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
         </div>
       </div>
     </div>
