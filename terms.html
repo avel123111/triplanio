@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Terms of Use — Triplanio</title>
+<meta name="description" content="Triplanio Terms of Use — the rules that govern your use of Triplanio, the collaborative travel-planning Service." />
+<meta name="robots" content="index,follow" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="styles.css" />
+
+<style>
+  /* ============ Legal page — local styles ============ */
+  body { background: #fff; color: var(--ink); font-family: var(--font-body); }
+
+  .legal-top {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: saturate(140%) blur(10px);
+    -webkit-backdrop-filter: saturate(140%) blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .legal-top__inner {
+    max-width: var(--container);
+    margin: 0 auto;
+    padding: 14px var(--gutter);
+    display: flex; align-items: center; gap: 16px;
+  }
+  .legal-top a.brand {
+    display: inline-flex; align-items: center; gap: 10px;
+    text-decoration: none; color: var(--ink); font-weight: 700;
+    font-family: var(--font-display); letter-spacing: var(--display-tracking);
+    font-size: 18px;
+  }
+  .legal-top a.brand img { display: block; height: 26px; width: 26px; }
+  .legal-top .spacer { flex: 1 1 auto; }
+  .legal-top a.back {
+    display: inline-flex; align-items: center; gap: 6px;
+    text-decoration: none; color: var(--muted);
+    font-size: 14px; font-weight: 500;
+  }
+  .legal-top a.back:hover { color: var(--brand); }
+  .legal-top a.back svg { width: 14px; height: 14px; }
+
+  main.legal {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 56px var(--gutter) 80px;
+  }
+  main.legal .legal__eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--brand);
+    margin-bottom: 12px;
+  }
+  main.legal h1 {
+    font-family: var(--font-display);
+    font-size: clamp(34px, 4.4vw, 48px);
+    letter-spacing: var(--h1-tracking);
+    line-height: 1.08;
+    margin: 0 0 10px;
+    color: var(--ink);
+  }
+  main.legal .legal__meta {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 36px;
+  }
+  main.legal h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    line-height: 1.25;
+    margin: 40px 0 12px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  main.legal h3 {
+    font-family: var(--font-display);
+    font-size: 16px;
+    line-height: 1.3;
+    margin: 24px 0 8px;
+    color: var(--ink);
+  }
+  main.legal p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--ink-2);
+    margin: 0 0 14px;
+  }
+  main.legal ul {
+    margin: 6px 0 16px;
+    padding-left: 22px;
+  }
+  main.legal li {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--ink-2);
+    margin-bottom: 8px;
+  }
+  main.legal a {
+    color: var(--brand);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+  main.legal a:hover { color: var(--brand-700); }
+
+  .legal__toc {
+    background: var(--wash);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    padding: 22px 24px;
+    margin: 24px 0 40px;
+  }
+  .legal__toc h4 {
+    margin: 0 0 10px;
+    font-size: 12px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .legal__toc ol {
+    margin: 0; padding-left: 22px;
+    columns: 2; column-gap: 32px;
+  }
+  .legal__toc li { margin-bottom: 6px; font-size: 14px; }
+  .legal__toc a { color: var(--ink-2); text-decoration: none; }
+  .legal__toc a:hover { color: var(--brand); }
+  @media (max-width: 640px) {
+    .legal__toc ol { columns: 1; }
+  }
+
+  footer.legal__footer {
+    border-top: 1px solid var(--line);
+    padding: 28px var(--gutter);
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  footer.legal__footer a { color: var(--muted); text-decoration: none; margin: 0 10px; }
+  footer.legal__footer a:hover { color: var(--brand); }
+</style>
+</head>
+<body>
+
+<header class="legal-top">
+  <div class="legal-top__inner">
+    <a class="brand" href="index.html" aria-label="Triplanio — home">
+      <img src="logo.svg" alt="" />
+      <span>Triplanio</span>
+    </a>
+    <span class="spacer"></span>
+    <a class="back" href="index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>
+      </svg>
+      Back to home
+    </a>
+  </div>
+</header>
+
+<main class="legal">
+  <div class="legal__eyebrow">Legal</div>
+  <h1>Terms of Use</h1>
+  <p class="legal__meta">Triplanio &middot; Effective date: May 24, 2026</p>
+
+  <p>Please read these Terms of Use (&ldquo;Terms&rdquo;) carefully before using Triplanio (the &ldquo;Service&rdquo;). The Service is operated by Triplanio, based in Madrid, Spain (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;). By creating an account, accessing or using the Service, you agree to be bound by these Terms. If you do not agree, you must not use the Service.</p>
+
+  <nav class="legal__toc" aria-label="Table of contents">
+    <h4>Contents</h4>
+    <ol>
+      <li><a href="#s1">About the Service</a></li>
+      <li><a href="#s2">Eligibility</a></li>
+      <li><a href="#s3">Your Account</a></li>
+      <li><a href="#s4">Acceptable Use</a></li>
+      <li><a href="#s5">Your Content and Trips</a></li>
+      <li><a href="#s6">Collaboration, Invitations and Public Sharing</a></li>
+      <li><a href="#s7">Pro Subscriptions and Payments</a></li>
+      <li><a href="#s8">AI-Assisted Trip Planning</a></li>
+      <li><a href="#s9">Third-Party Services and Content</a></li>
+      <li><a href="#s10">Intellectual Property</a></li>
+      <li><a href="#s11">Feedback</a></li>
+      <li><a href="#s12">Suspension and Termination</a></li>
+      <li><a href="#s13">Disclaimers</a></li>
+      <li><a href="#s14">Limitation of Liability</a></li>
+      <li><a href="#s15">Indemnification</a></li>
+      <li><a href="#s16">Changes to the Service and to these Terms</a></li>
+      <li><a href="#s17">Governing Law and Disputes</a></li>
+      <li><a href="#s18">Miscellaneous</a></li>
+      <li><a href="#s19">Contact</a></li>
+    </ol>
+  </nav>
+
+  <h2 id="s1">1. About the Service</h2>
+  <p>Triplanio is a collaborative travel-planning web application. It lets you create trips, add cities, hotels, transfers and activities, manage a shared trip budget with expense splitting, invite other travellers to plan together, generate trip ideas with an AI-assisted planner, optionally share trips by a public read-only link, and upgrade individual trips or your account to a &ldquo;Pro&rdquo; plan.</p>
+  <p>The Service is provided &ldquo;as-is&rdquo; as an organisational tool. We do not sell, broker, or guarantee any travel services, accommodations, transport, tours, or other third-party offerings that you may research, link to, or book outside of the Service.</p>
+
+  <h2 id="s2">2. Eligibility</h2>
+  <p>You may use the Service only if you are at least 16 years old and capable of entering into a binding agreement under the laws applicable to you. By using the Service you represent that you meet these requirements. If you use the Service on behalf of another person or organisation, you represent that you are authorised to bind that person or organisation to these Terms.</p>
+
+  <h2 id="s3">3. Your Account</h2>
+  <p>To use most features of the Service you must create an account. Account creation relies on a sign-in method offered in the Service (for example, an email-based or third-party identity provider). You are responsible for safeguarding your credentials and for all activity that occurs under your account. You agree to provide accurate information, keep it up to date, and notify us at <a href="mailto:info@triplanio.com">info@triplanio.com</a> if you suspect unauthorised access.</p>
+  <p>We may suspend or close accounts that we reasonably believe are inactive, fraudulent, abusive, or in breach of these Terms.</p>
+
+  <h2 id="s4">4. Acceptable Use</h2>
+  <p>When you use the Service, you agree not to:</p>
+  <ul>
+    <li>Use the Service for any unlawful purpose, or in violation of any applicable law, sanction, or regulation.</li>
+    <li>Upload, share, or promote content that is illegal, infringing, defamatory, harassing, hateful, sexually explicit, or that depicts or sexualises minors.</li>
+    <li>Impersonate any person or misrepresent your affiliation with any person or entity, including by inviting people to a trip under a false identity.</li>
+    <li>Attempt to access accounts, trips, share links, or data that are not intended for you, including by guessing share tokens, invitation tokens, or other identifiers.</li>
+    <li>Interfere with or disrupt the Service, our infrastructure, or the networks that host the Service, including by sending automated traffic at a rate that materially exceeds normal interactive use.</li>
+    <li>Reverse-engineer, scrape, or systematically extract data from the Service, except to the extent this restriction is prohibited by applicable law.</li>
+    <li>Use the AI-assisted planner to generate content that is unlawful, that infringes the rights of others, or that you do not have the right to produce.</li>
+    <li>Resell, sublicense, or commercially exploit the Service or any part of it, other than for your own internal trip-planning use, without our prior written consent.</li>
+  </ul>
+
+  <h2 id="s5">5. Your Content and Trips</h2>
+  <p>The Service lets you create and store content such as trip titles and descriptions, notes, city visits, hotels, transfers, activities, documents you attach, budget categories and expenses, hotel proposals and votes, comments, and the names and emails of people you invite to collaborate (&ldquo;Your Content&rdquo;). You retain all rights you already have in Your Content.</p>
+  <p>You grant us a worldwide, non-exclusive, royalty-free licence to host, store, transmit, copy, display, and process Your Content solely for the purpose of operating, securing, and improving the Service and providing it to you and the other trip members you have invited. This licence ends when you delete Your Content or your account, except where we are required to retain it for legal, security, or backup-rotation reasons.</p>
+  <p>You are responsible for Your Content and for making sure you have the rights necessary to upload and share it. You should not upload content that contains sensitive personal information about yourself or other people unless you genuinely need to (for example, scans of passports or other documents in the trip &ldquo;documents&rdquo; section).</p>
+
+  <h2 id="s6">6. Collaboration, Invitations and Public Sharing</h2>
+  <p>A trip you create can have multiple members with different roles (owner, admin, viewer). When you invite someone to a trip, the information you have entered in that trip (including names, emails, dates, places, hotels, transfers, activities, comments, budget items, expense shares, hotel proposals and votes) becomes visible to that trip&rsquo;s members in accordance with their role. You are responsible for choosing whom to invite.</p>
+  <p>You may generate a public read-only share link for a trip. While a share link is active, any person who knows or guesses the link can view the read-only trip content without signing in. You can revoke the share link at any time from the trip settings; previously cached copies on third-party services may persist for a period outside our control.</p>
+  <p>If you add an &ldquo;offline&rdquo; placeholder member to a trip (a member without an email or account), you are responsible for any personal data you enter on their behalf, and you should not enter sensitive information about them.</p>
+
+  <h2 id="s7">7. Pro Subscriptions and Payments</h2>
+  <p>The Service offers paid &ldquo;Pro&rdquo; features through three plan types: a one-time per-trip upgrade (&ldquo;Pro Trip&rdquo;), a monthly recurring subscription (&ldquo;Pro Monthly&rdquo;), and a yearly recurring subscription (&ldquo;Pro Yearly&rdquo;). The exact features included in each plan are described in the Service at the time of purchase.</p>
+  <p>Payments are processed by Stripe, Inc. (&ldquo;Stripe&rdquo;). When you start a purchase, you are redirected to Stripe Checkout and your payment-card details are collected and handled by Stripe under its own terms. We do not see or store your full payment-card number. We rely on Stripe webhooks to learn whether your payment succeeded and to grant or revoke Pro entitlements accordingly.</p>
+  <p>Recurring subscriptions renew automatically at the then-current price for the same billing period (monthly or yearly) until you cancel. You can cancel a recurring subscription at any time from the Stripe billing portal, which is available from the Service settings. Cancellation stops future renewals; the Pro features remain available until the end of the period you have already paid for.</p>
+
+  <h3>No-refund policy</h3>
+  <p>All payments are final. We do not offer refunds, prorated refunds, or credits for partial billing periods, unused Pro time, one-time Pro Trip purchases, accidental purchases, or feature changes, except where a refund is mandatory under applicable consumer-protection law. If you believe a charge is incorrect (for example, a duplicate charge or a charge after a confirmed cancellation), please contact us at <a href="mailto:info@triplanio.com">info@triplanio.com</a> and we will review it in good faith.</p>
+  <p>Prices, plans, and the features included in each plan may change. Where a change affects a recurring subscription you already hold, we will give you reasonable advance notice in the Service or by email and you may cancel before the change takes effect.</p>
+
+  <h2 id="s8">8. AI-Assisted Trip Planning</h2>
+  <p>The Service includes an AI-assisted trip planner. When you use it, the text of your prompt, your prior conversation with the planner in the same session, and the current draft trip (if any) are sent to a third-party large-language-model provider through our hosting platform in order to generate a suggested itinerary. The AI may also consult publicly available context from the internet.</p>
+  <p>AI output is generated automatically. It can be incomplete, inaccurate, outdated, or unsafe. In particular, opening hours, transport schedules, visa or entry requirements, prices, distances, and the existence or status of specific places or businesses may be wrong. You are responsible for verifying any AI-generated suggestion independently before relying on it for travel decisions or for any booking. We make no warranty that AI output is fit for any purpose.</p>
+  <p>Do not include in your AI prompts any sensitive personal data (yours or anyone else&rsquo;s) that you do not want sent to the AI provider.</p>
+
+  <h2 id="s9">9. Third-Party Services and Content</h2>
+  <p>The Service relies on a number of third-party services to function, including (without limitation):</p>
+  <ul>
+    <li><strong>Base44</strong> &mdash; our hosting platform, identity provider, and database.</li>
+    <li><strong>Stripe</strong> &mdash; payment processing and the customer billing portal.</li>
+    <li>A third-party large-language-model provider, accessed through Base44, for the AI planner.</li>
+    <li><strong>Google Maps Platform</strong> (including Places) &mdash; for location autocomplete, geocoding, and maps.</li>
+    <li><strong>Wikipedia / Wikimedia</strong> &mdash; for city cover images and brief descriptions.</li>
+    <li><strong>Frankfurter</strong> &mdash; for currency exchange rates used in the trip budget.</li>
+    <li><strong>Telegram</strong> &mdash; optional integration to receive trip notifications in a Telegram chat.</li>
+    <li>An email-delivery provider &mdash; for invitations, account-related emails, and trip reminders.</li>
+  </ul>
+  <p>Your use of these third-party services through the Service is also subject to their own terms and privacy policies. We do not control them and are not responsible for their content, availability, accuracy, or practices. Links to third-party websites or content do not constitute an endorsement.</p>
+
+  <h2 id="s10">10. Intellectual Property</h2>
+  <p>Other than Your Content, the Service &mdash; including its design, source code, look and feel, name, logos, and other materials &mdash; is owned by Triplanio or its licensors and is protected by applicable intellectual-property laws. Subject to your compliance with these Terms, you are granted a limited, non-exclusive, non-transferable, revocable licence to use the Service for your own personal, non-commercial trip-planning purposes (or, in the case of group or family trips, for the trip members you have invited).</p>
+  <p>You may not remove or alter any copyright, trademark, or other proprietary notices. All rights not expressly granted are reserved.</p>
+
+  <h2 id="s11">11. Feedback</h2>
+  <p>If you send us feedback, ideas, or suggestions about the Service, you grant us a perpetual, irrevocable, worldwide, royalty-free licence to use them without restriction or compensation. You confirm that the feedback does not contain confidential information of any third party.</p>
+
+  <h2 id="s12">12. Suspension and Termination</h2>
+  <p>You may stop using the Service and delete your account at any time from the in-app account-deletion flow. Account deletion permanently removes the trips you own and most of your associated data, subject to the Privacy Notice.</p>
+  <p>We may suspend or terminate your access to the Service, in whole or in part, at any time, with or without notice, if we reasonably believe that you have breached these Terms, that your use poses a security or legal risk, or if we are required to do so by law. We may also discontinue all or part of the Service at our discretion.</p>
+  <p>Sections that by their nature should survive termination (including ownership, disclaimers, limitation of liability, indemnity, and dispute resolution) will survive.</p>
+
+  <h2 id="s13">13. Disclaimers</h2>
+  <p>The Service is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo;, without any warranties of any kind, whether express, implied, or statutory, including warranties of merchantability, fitness for a particular purpose, non-infringement, accuracy, completeness, uninterrupted operation, security, or that defects will be corrected. We do not warrant that any place, hotel, transport option, activity, price, schedule, or other travel information shown or suggested in the Service is accurate, available, or safe.</p>
+  <p>You are solely responsible for the travel decisions you make based on the Service and for complying with all visa, customs, health, insurance, and other legal requirements applicable to your travel.</p>
+
+  <h2 id="s14">14. Limitation of Liability</h2>
+  <p>To the maximum extent permitted by applicable law, in no event shall Triplanio, its contractors, or its service providers be liable for any indirect, incidental, special, consequential, exemplary, or punitive damages, or for any loss of profits, revenues, data, goodwill, or other intangible losses, arising out of or in connection with the Service, your use of or inability to use it, any conduct or content of any third party, or any trip, booking, or expense you make based on information from the Service &mdash; whether based on warranty, contract, tort (including negligence), or any other legal theory, and whether or not we have been advised of the possibility of such damages.</p>
+  <p>To the maximum extent permitted by applicable law, our aggregate liability to you for all claims arising out of or relating to the Service in any twelve-month period shall not exceed the greater of (a) the amount you paid us for the Service in that period or (b) USD 50.</p>
+  <p>Nothing in these Terms limits any liability that cannot lawfully be limited, including liability for death or personal injury caused by negligence, for fraud, or for any mandatory statutory consumer rights.</p>
+
+  <h2 id="s15">15. Indemnification</h2>
+  <p>You agree to defend, indemnify, and hold harmless Triplanio from and against any claims, damages, liabilities, costs, and expenses (including reasonable legal fees) arising out of or relating to: (a) Your Content; (b) your use of the Service in breach of these Terms or of applicable law; (c) your infringement of the rights of any third party; or (d) any travel decision you make based on information obtained through the Service.</p>
+
+  <h2 id="s16">16. Changes to the Service and to these Terms</h2>
+  <p>We may modify the Service at any time, including adding, changing, or removing features. We may also revise these Terms from time to time. The most current version will always be posted at <a href="https://triplanio.com">https://triplanio.com</a> and the &ldquo;Effective date&rdquo; at the top will be updated. If a change is material, we will use reasonable efforts to give you notice through the Service or by email before it takes effect. Your continued use of the Service after the new Terms take effect constitutes your acceptance of them. If you do not agree, you must stop using the Service and may delete your account.</p>
+
+  <h2 id="s17">17. Governing Law and Disputes</h2>
+  <p>These Terms and any dispute arising out of or in connection with them or with the Service are governed by the laws of Spain, without regard to its conflict-of-laws rules. Subject to any mandatory consumer-protection rights you may have in your country of residence, the courts of Madrid, Spain shall have exclusive jurisdiction.</p>
+
+  <h2 id="s18">18. Miscellaneous</h2>
+  <p>These Terms (together with the Privacy Notice and any other policies referenced in the Service) constitute the entire agreement between you and us regarding the Service and supersede any prior agreements. If any provision is held to be unenforceable, the remaining provisions will remain in full effect. Our failure to enforce a right is not a waiver of that right. You may not assign or transfer these Terms without our prior written consent; we may assign them in connection with a merger, acquisition, or sale of assets, or by operation of law.</p>
+
+  <h2 id="s19">19. Contact</h2>
+  <p>If you have questions about these Terms, please contact us at <a href="mailto:info@triplanio.com">info@triplanio.com</a>.</p>
+</main>
+
+<footer class="legal__footer">
+  <span>&copy; 2026 Triplanio</span>
+  <a href="index.html">Home</a>
+  <a href="privacy.html">Privacy Notice</a>
+</footer>
+
+</body>
+</html>
