@@ -64,4 +64,11 @@ export default {
   'service.esim_choice_manual_hint': 'If you already have an eSIM',
   'service.esim_choice_airalo_hint': 'eSIM for your destination',
   'service.esim_choice_yesim_hint': 'eSIM for your destination',
+  // Insurance choice dialog
+  'service.insurance_choice_title': 'Add insurance',
+  'service.insurance_choice_desc': 'Enter a policy manually or get one from a partner.',
+  'service.insurance_choice_manual': 'Add policy manually',
+  'service.insurance_choice_manual_hint': "If you've already arranged insurance",
+  'service.insurance_safetywing_hint': 'Nomad insurance · from $45/mo',
+  'service.insurance_worldnomads_hint': 'Adventure travel & extreme sports',
 };

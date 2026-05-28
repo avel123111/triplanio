@@ -70,4 +70,11 @@ export default {
   'service.esim_choice_manual_hint': 'Если eSIM уже куплен',
   'service.esim_choice_airalo_hint': 'eSIM для вашей страны',
   'service.esim_choice_yesim_hint': 'eSIM для вашей страны',
+  // Insurance choice dialog
+  'service.insurance_choice_title': 'Добавить страховку',
+  'service.insurance_choice_desc': 'Внесите полис вручную или оформите у партнёра.',
+  'service.insurance_choice_manual': 'Добавить полис вручную',
+  'service.insurance_choice_manual_hint': 'Если страховка уже оформлена',
+  'service.insurance_safetywing_hint': 'Номадская страховка · от $45/мес',
+  'service.insurance_worldnomads_hint': 'Активный туризм и экстремальный спорт',
 };

@@ -64,4 +64,11 @@ export default {
   'service.esim_choice_manual_hint': 'Si ya tienes una eSIM',
   'service.esim_choice_airalo_hint': 'eSIM para tu destino',
   'service.esim_choice_yesim_hint': 'eSIM para tu destino',
+  // Insurance choice dialog
+  'service.insurance_choice_title': 'Añadir seguro',
+  'service.insurance_choice_desc': 'Introduce la póliza manualmente o contrata con un socio.',
+  'service.insurance_choice_manual': 'Añadir póliza manualmente',
+  'service.insurance_choice_manual_hint': 'Si el seguro ya está contratado',
+  'service.insurance_safetywing_hint': 'Seguro nómada · desde $45/mes',
+  'service.insurance_worldnomads_hint': 'Viajes de aventura y deportes extremos',
 };

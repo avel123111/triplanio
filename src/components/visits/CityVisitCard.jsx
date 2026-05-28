@@ -7,8 +7,7 @@ import { countryFlag } from '@/lib/geo';
 import HotelTimeline from './HotelTimeline';
 import ActivityList from './ActivityList';
 import CityWeather from './CityWeather';
-import BookingChoiceDialog from '@/components/bookings/BookingChoiceDialog';
-import { hotelPlatforms } from '@/components/bookings/buildBookingPlatforms';
+import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import CityNotesBlock from '@/components/views/CityNotesBlock';
 import { parseNaive } from '@/lib/naive-time';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -163,15 +162,13 @@ function EmptyHotel({ onAdd, visit }) {
           <span className="font-medium text-foreground">{visit.city_name}</span>
         </span>
       </button>
-      <BookingChoiceDialog
+      <ForkPartnerModal
         open={choiceOpen}
         onOpenChange={setChoiceOpen}
-        title={t('hotel.choice_title')}
-        description={t('hotel.choice_description')}
-        manualLabel={t('hotel.choice_manual')}
-        manualHint={t('hotel.choice_manual_hint')}
+        type="hotel"
+        visit={visit}
+        tripId={visit?.trip_id}
         onManual={onAdd}
-        platforms={hotelPlatforms(visit)}
       />
     </>
   );

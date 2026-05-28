@@ -6,18 +6,15 @@ import { DateTime } from 'luxon';
 import ServiceDialog from '@/components/services/ServiceDialog';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import EventModal from '@/components/common/EventModal';
-import BookingChoiceDialog from '@/components/bookings/BookingChoiceDialog';
-import { carRentalPlatforms, esimPlatforms } from '@/components/bookings/buildBookingPlatforms';
+import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import { BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
-import { usePartnerLogger } from '@/lib/partnerTracking';
 
 const KIND_IDS = ['esim', 'car_rental', 'insurance'];
 const KIND_ICONS = { esim: Smartphone, car_rental: Car, insurance: ShieldCheck };
 
 export default function TripServicesCard({ tripId, trip = null, readOnly = false, noFrame = false, hideHeader = false }) {
   const { t } = useI18nFormat();
-  const logClick = usePartnerLogger(tripId);
   const KINDS = KIND_IDS.map((id) => ({
     id,
     Icon: KIND_ICONS[id],
@@ -29,6 +26,7 @@ export default function TripServicesCard({ tripId, trip = null, readOnly = false
   const [viewDialog, setViewDialog] = useState({ open: false, service: null });
   const [carChoiceOpen, setCarChoiceOpen] = useState(false);
   const [esimChoiceOpen, setEsimChoiceOpen] = useState(false);
+  const [insuranceChoiceOpen, setInsuranceChoiceOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
   const { data: services = [] } = useQuery({
@@ -66,6 +64,10 @@ export default function TripServicesCard({ tripId, trip = null, readOnly = false
     }
     if (kindId === 'esim') {
       setEsimChoiceOpen(true);
+      return;
+    }
+    if (kindId === 'insurance') {
+      setInsuranceChoiceOpen(true);
       return;
     }
     setEditDialog({ open: true, kind: kindId, service: null });
@@ -239,28 +241,32 @@ export default function TripServicesCard({ tripId, trip = null, readOnly = false
       />
 
 
-      <BookingChoiceDialog
+      <ForkPartnerModal
         open={carChoiceOpen}
         onOpenChange={setCarChoiceOpen}
-        title={t('service.car_choice_title')}
-        description={t('service.car_choice_desc')}
-        manualLabel={t('service.car_choice_manual')}
-        manualHint={t('service.car_choice_manual_hint')}
+        type="car_rental"
+        trip={trip}
+        tripId={tripId}
         onManual={() => setEditDialog({ open: true, kind: 'car_rental', service: null })}
-        onPlatformClick={(p) => logClick({ partner: p.key, type: 'carrental', link: p.url })}
-        platforms={carRentalPlatforms(trip, t)} />
+      />
 
-      <BookingChoiceDialog
+      <ForkPartnerModal
         open={esimChoiceOpen}
         onOpenChange={setEsimChoiceOpen}
-        title={t('service.esim_choice_title')}
-        description={t('service.esim_choice_desc')}
-        manualLabel={t('service.esim_choice_manual')}
-        manualHint={t('service.esim_choice_manual_hint')}
+        type="esim"
+        visits={visits}
+        tripId={tripId}
         onManual={() => setEditDialog({ open: true, kind: 'esim', service: null })}
-        onPlatformClick={(p) => logClick({ partner: p.key, type: 'esim', link: p.url })}
-        platforms={esimPlatforms(visits, t)} />
-      
+      />
+
+      <ForkPartnerModal
+        open={insuranceChoiceOpen}
+        onOpenChange={setInsuranceChoiceOpen}
+        type="insurance"
+        tripId={tripId}
+        onManual={() => setEditDialog({ open: true, kind: 'insurance', service: null })}
+      />
+
     </Wrapper>);
 
 }
