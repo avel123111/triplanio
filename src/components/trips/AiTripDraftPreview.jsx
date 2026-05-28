@@ -99,9 +99,6 @@ export default function AiTripDraftPreview({ draft, loading }) {
                             {activity.start_time}
                           </span>
                         )}
-                        {activity.location_name && (
-                          <span className="truncate">{activity.location_name}</span>
-                        )}
                       </div>
                     </div>
                   </div>

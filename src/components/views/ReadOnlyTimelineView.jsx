@@ -748,7 +748,6 @@ function DayEventRow({ event, visitsById = {}, onClickTransfer, onClickActivity,
             title={a.title}
             subtitle={[
               a.end_datetime ? t('view.until_time', { time: formatNaive(a.end_datetime, 'HH:mm') }) : null,
-              a.location_name,
             ].filter(Boolean).join(' · ')}
           />
         </EventShell>

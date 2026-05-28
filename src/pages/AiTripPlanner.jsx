@@ -171,7 +171,6 @@ export default function AiTripPlanner() {
             title: a.title,
             start_datetime: startDt.toUTC().toISO(),
             end_datetime: (endDt.isValid ? endDt : startDt.plus({ hours: 2 })).toUTC().toISO(),
-            location_name: a.location_name || '',
             location_address: a.location_address || '',
             currency: 'EUR',
           });
