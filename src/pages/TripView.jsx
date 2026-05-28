@@ -25,7 +25,7 @@ import CalendarLens from './CalendarLens';
 import DocsLens from './DocsLens';
 import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
-import MapView from '@/components/views/MapView';
+import ScreenMap from '@/pages/redesign/ScreenMap';
 import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
 import PaymentFailDialog from '@/components/common/PaymentFailDialog';
 import '../design/app.css';
@@ -1377,7 +1377,12 @@ export default function TripView() {
       />
       <div className="app-body">
         <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={isPro} onUpgrade={openUpgrade} />
-        <main style={{ minWidth: 0, padding: '28px 28px 60px' }}>
+        <main style={{
+          minWidth: 0,
+          padding: shownLens === 'map' ? 0 : '28px 28px 60px',
+          height: shownLens === 'map' ? 'calc(100vh - 56px)' : undefined,
+          overflow: shownLens === 'map' ? 'hidden' : undefined,
+        }}>
           {/* TransferDialog — opened from missing-transfer warnings or edit mode */}
           <TransferDialog
             open={transferEdit.open}
@@ -1551,10 +1556,13 @@ export default function TripView() {
             />
           )}
           {shownLens === 'map' && (
-            <MapView
-              visits={visits}
-              transfers={transfers}
-              visitsById={Object.fromEntries(visits.map(v => [v.id, v]))}
+            <ScreenMap
+              trip={trip}
+              visits={visits ?? []}
+              transfers={transfers ?? []}
+              hotels={hotels ?? []}
+              activities={activities ?? []}
+              canEdit={myRole === 'owner' || myRole === 'editor' || myRole === 'admin'}
             />
           )}
         </main>
