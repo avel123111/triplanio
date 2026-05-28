@@ -14,8 +14,6 @@ export default {
   'activity.start_tz': 'Inicio ({tz})',
   'activity.end_tz': 'Fin ({tz})',
   'activity.date_order_error': 'La hora final debe ser posterior a la inicial.',
-  'activity.location_name': 'Nombre del lugar',
-  'activity.location_name_ph': 'Torre Eiffel',
   'activity.address_ph': 'Campo de Marte, París',
   'activity.documents_label': 'Documentos',
   'activity.price': 'Precio',

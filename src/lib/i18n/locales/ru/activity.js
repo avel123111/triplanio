@@ -15,8 +15,6 @@ export default {
   'activity.start_tz': 'Начало ({tz})',
   'activity.end_tz': 'Окончание ({tz})',
   'activity.date_order_error': 'Время окончания должно быть позже начала.',
-  'activity.location_name': 'Название места',
-  'activity.location_name_ph': 'Эйфелева башня',
   'activity.address_ph': 'Шан-де-Марс, Париж',
   'activity.documents_label': 'Документы',
   'activity.price': 'Стоимость',

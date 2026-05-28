@@ -14,8 +14,6 @@ export default {
   'activity.start_tz': 'Start ({tz})',
   'activity.end_tz': 'End ({tz})',
   'activity.date_order_error': 'End time must be after start time.',
-  'activity.location_name': 'Location name',
-  'activity.location_name_ph': 'Eiffel Tower',
   'activity.address_ph': 'Champ de Mars, Paris',
   'activity.documents_label': 'Documents',
   'activity.price': 'Price',

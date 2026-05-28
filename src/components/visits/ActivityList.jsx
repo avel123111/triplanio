@@ -54,7 +54,6 @@ export default function ActivityList({ visit, activities, onAdd, onEdit, onView,
               </div>
               <div className="text-[11px] text-muted-foreground flex items-center gap-2">
                 <span>{formatInTz(a.start_datetime, tz, 'd LLL')} · {formatInTz(a.start_datetime, tz, 'HH:mm')} - {formatInTz(a.end_datetime, tz, 'HH:mm')}</span>
-                {a.location_name && <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{a.location_name}</span>}
               </div>
             </div>
             <div onClick={(e) => e.stopPropagation()}>

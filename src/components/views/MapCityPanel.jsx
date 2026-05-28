@@ -249,7 +249,6 @@ function VisitBlock({
                           <div className="text-xs font-medium truncate">{a.title}</div>
                           <div className="text-[10px] text-muted-foreground truncate">
                             {formatInTz(a.start_datetime, null, 'd LLL HH:mm')}
-                            {a.location_name ? ` · ${a.location_name}` : ''}
                           </div>
                         </div>
                       </li>
