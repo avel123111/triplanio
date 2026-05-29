@@ -95,12 +95,12 @@ const TRANSPORT_KINDS = [
 //  Empty form factories — one per kind. Edit mode hydrates from the entity.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function emptyHotelForm() {
+function emptyHotelForm(defCur = 'EUR') {
   return {
     name: '', address: '',
     latitude: null, longitude: null,
     checkInLocal: '', checkOutLocal: '',
-    booking_reference: '', payment_status: '', price: '', currency: 'EUR',
+    booking_reference: '', payment_status: '', price: '', currency: defCur,
     free_cancellation: false, free_cancellation_until_local: '',
     phone: '', email: '',
     booking_url: '', booking_platform: '',
@@ -108,7 +108,7 @@ function emptyHotelForm() {
   };
 }
 
-function emptyTransferForm() {
+function emptyTransferForm(defCur = 'EUR') {
   return {
     transport_type: 'plane',
     startLocal: '', endLocal: '',
@@ -118,24 +118,24 @@ function emptyTransferForm() {
     flight_number: '',
     booking_reference: '',
     booking_url: '', booking_platform: '',
-    price: '', currency: 'EUR',
+    price: '', currency: defCur,
     documents: [], notes: '',
   };
 }
 
-function emptyActivityForm() {
+function emptyActivityForm(defCur = 'EUR') {
   return {
     title: '',
     startLocal: '', endLocal: '',
     location_address: '',
     location_latitude: null,
     location_longitude: null,
-    price: '', currency: 'EUR',
+    price: '', currency: defCur,
     documents: [], notes: '',
   };
 }
 
-function emptyServiceForm() {
+function emptyServiceForm(defCur = 'EUR') {
   return {
     name: '',
     pickup_at_local: '',
@@ -149,7 +149,7 @@ function emptyServiceForm() {
     return_different_location: false,
     booking_reference: '',
     booking_url: '', booking_platform: '',
-    price: '', currency: 'EUR',
+    price: '', currency: defCur,
     documents: [], notes: '',
   };
 }
@@ -240,21 +240,21 @@ function serviceToForm(svc) {
 }
 
 // New-mode date defaults — same logic as the legacy dialogs.
-function defaultsForNewHotel(visit, tz) {
-  if (!visit?.start_datetime || !visit?.end_datetime) return emptyHotelForm();
+function defaultsForNewHotel(visit, tz, defCur = 'EUR') {
+  if (!visit?.start_datetime || !visit?.end_datetime) return emptyHotelForm(defCur);
   const vs = DateTime.fromISO(visit.start_datetime, { zone: 'utc' }).setZone(tz);
   const ve = DateTime.fromISO(visit.end_datetime, { zone: 'utc' }).setZone(tz);
   const ci = vs.set({ hour: Math.max(vs.hour, 15), minute: 0 });
   let co = ve.set({ hour: Math.min(ve.hour, 11), minute: 0 });
   if (co <= ci) co = ci.plus({ hours: 1 });
   return {
-    ...emptyHotelForm(),
+    ...emptyHotelForm(defCur),
     checkInLocal: ci.toFormat("yyyy-LL-dd'T'HH:mm"),
     checkOutLocal: co.toFormat("yyyy-LL-dd'T'HH:mm"),
   };
 }
 
-function defaultsForNewTransfer(fromVisit, toVisit, startTz, endTz) {
+function defaultsForNewTransfer(fromVisit, toVisit, startTz, endTz, defCur = 'EUR') {
   const baseStart = fromVisit?.end_datetime || toVisit?.start_datetime;
   const baseEnd = toVisit?.start_datetime || fromVisit?.end_datetime;
   const startDt = baseStart
@@ -264,14 +264,14 @@ function defaultsForNewTransfer(fromVisit, toVisit, startTz, endTz) {
     ? DateTime.fromISO(baseEnd, { zone: 'utc' }).setZone(endTz).set({ hour: 15, minute: 0 })
     : null;
   return {
-    ...emptyTransferForm(),
+    ...emptyTransferForm(defCur),
     startLocal: startDt ? startDt.toFormat("yyyy-LL-dd'T'HH:mm") : '',
     endLocal: endDt ? endDt.toFormat("yyyy-LL-dd'T'HH:mm") : '',
   };
 }
 
-function defaultsForNewActivity(visit, tz, defaultStart) {
-  if (!visit?.start_datetime) return emptyActivityForm();
+function defaultsForNewActivity(visit, tz, defaultStart, defCur = 'EUR') {
+  if (!visit?.start_datetime) return emptyActivityForm(defCur);
   const visitStart = DateTime.fromISO(visit.start_datetime, { zone: 'utc' }).setZone(tz);
   const proposed = defaultStart
     ? DateTime.fromISO(defaultStart, { zone: 'utc' }).setZone(tz)
@@ -279,14 +279,15 @@ function defaultsForNewActivity(visit, tz, defaultStart) {
   const start = proposed < visitStart ? visitStart : proposed;
   const end = start.plus({ hours: 2 });
   return {
-    ...emptyActivityForm(),
+    ...emptyActivityForm(defCur),
     startLocal: start.toFormat("yyyy-LL-dd'T'HH:mm"),
     endLocal: end.toFormat("yyyy-LL-dd'T'HH:mm"),
   };
 }
 
 function buildInitialForm(kind, entity, ctx) {
-  const { visit, fromVisit, toVisit, defaultStart } = ctx;
+  const { visit, fromVisit, toVisit, defaultStart, defaultCurrency } = ctx;
+  const defCur = defaultCurrency || 'EUR';
   const tz = visit?.timezone || 'UTC';
   const startTz = fromVisit?.timezone || 'UTC';
   const endTz = toVisit?.timezone || 'UTC';
@@ -296,10 +297,10 @@ function buildInitialForm(kind, entity, ctx) {
     if (kind === 'activity') return activityToForm(entity, tz);
     if (kind === 'service') return serviceToForm(entity);
   }
-  if (kind === 'hotel') return defaultsForNewHotel(visit, tz);
-  if (kind === 'transfer') return defaultsForNewTransfer(fromVisit, toVisit, startTz, endTz);
-  if (kind === 'activity') return defaultsForNewActivity(visit, tz, defaultStart);
-  return emptyServiceForm();
+  if (kind === 'hotel') return defaultsForNewHotel(visit, tz, defCur);
+  if (kind === 'transfer') return defaultsForNewTransfer(fromVisit, toVisit, startTz, endTz, defCur);
+  if (kind === 'activity') return defaultsForNewActivity(visit, tz, defaultStart, defCur);
+  return emptyServiceForm(defCur);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -316,6 +317,7 @@ export default function EventEditDialog({
   toVisit,
   entity = null,
   defaultStart = null,
+  defaultCurrency = 'EUR',
 }) {
   const { t } = useI18nFormat();
   const { user } = useAuth();
@@ -338,7 +340,7 @@ export default function EventEditDialog({
   const endTz = toVisit?.timezone || 'UTC';
 
   const [form, setForm] = useState(() =>
-    buildInitialForm(initialKind || 'hotel', entity, { visit, fromVisit, toVisit, defaultStart })
+    buildInitialForm(initialKind || 'hotel', entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency })
   );
   const [aiFields, setAiFields] = useState(new Set());
   // Six-state AI flow per the prototype: locked / available / idle /
@@ -368,7 +370,7 @@ export default function EventEditDialog({
     if (!open) return;
     const k = initialKind || 'hotel';
     setCurrentKind(k);
-    setForm(buildInitialForm(k, entity, { visit, fromVisit, toVisit, defaultStart }));
+    setForm(buildInitialForm(k, entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
     setAiFields(new Set());
     setExtraSegments([]);
     setTimeMissing({});
@@ -423,7 +425,7 @@ export default function EventEditDialog({
   const switchKind = (k) => {
     if (isEdit) return;
     setCurrentKind(k);
-    setForm(buildInitialForm(k, null, { visit, fromVisit, toVisit, defaultStart }));
+    setForm(buildInitialForm(k, null, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
     setAiFields(new Set());
     setExtraSegments([]);
     setTimeMissing({});

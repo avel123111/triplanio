@@ -12,6 +12,8 @@ import { useUnreadChatCount } from '@/lib/chat';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
+import { useFxRates } from '@/lib/fx';
+import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
 import { Avatar, Btn, EmptyState, Skeleton, ModalHost, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
@@ -1142,7 +1144,12 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
 
 // ─── ContextSide ──────────────────────────────────────────────────────────────
 
-function ContextSide({ budget, budgetExpenses, members, services = [], user, trip, isLoading, onAddService }) {
+function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, services = [], user, trip, isLoading, onAddService }) {
+  const mainCurrencyCtx = trip?.details?.main_currency || budget?.currency || 'EUR';
+  const { data: fxCtx } = useFxRates(mainCurrencyCtx);
+  const overridesCtx = budget?.fx_overrides || {};
+  const moneyCtx = (v) => fmtMoney(v, mainCurrencyCtx, 'ru-RU');
+  const convCtx = (e) => toMainCur(e.original_amount, e.original_currency || mainCurrencyCtx, mainCurrencyCtx, fxCtx, overridesCtx);
   // Resolve display names from profiles so the widget shows real names, not
   // emails. Include the trip owner (often missing from trip_members) and the
   // current user so the synthetic owner row and the current user resolve.
@@ -1155,8 +1162,24 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
   if (isLoading) {
     return <div style={{ position: 'sticky', top: 80 }}><RightRailSkeleton /></div>;
   }
-  const totalSpent = budgetExpenses.reduce((s, e) => s + Number(e.original_amount || 0), 0);
-  const mainCurrency = budget?.currency || trip?.details?.main_currency || trip?.main_currency || 'EUR';
+  const mainCurrency = mainCurrencyCtx;
+
+  // Per-category breakdown (converted to main currency). Drives the segmented
+  // bar + legend. Only convertible expenses are summed.
+  const catBreakdown = (budgetCategories || [])
+    .map(cat => {
+      const items = (budgetExpenses || []).filter(e => e.category_id === cat.id);
+      const spent = items.reduce((s, e) => { const r = convCtx(e); return s + (r.ok ? r.value : 0); }, 0);
+      return { id: cat.id, name: cat.name, color: cat.color || 'var(--muted)', spent };
+    })
+    .filter(c => c.spent > 0)
+    .sort((a, b) => b.spent - a.spent);
+  const totalSpent = catBreakdown.reduce((s, c) => s + c.spent, 0);
+
+  // Any expense whose currency can't be converted → warning indicator.
+  const hasMissingRate = (budgetExpenses || []).some(
+    e => e.original_currency && e.original_currency !== mainCurrency && !convCtx(e).ok
+  );
 
   // Always show the owner first, then admins, viewers, offline, pending.
   // The owner often isn't a trip_members row (tracked via trip.created_by), so
@@ -1205,12 +1228,38 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
         {budget ? (
           <>
             <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600 }}>
-              {fmt(totalSpent, mainCurrency)}
-              <span className="muted" style={{ fontSize: 13, fontWeight: 500 }}> / {fmt(budget.planned_amount || 0, mainCurrency)}</span>
+              {moneyCtx(totalSpent)}
             </div>
-            <div style={{ height: 6, borderRadius: 3, background: 'var(--wash)', overflow: 'hidden', marginTop: 10, marginBottom: 4 }}>
-              <div style={{ height: '100%', width: Math.min(100, budget.planned_amount > 0 ? totalSpent / budget.planned_amount * 100 : 0) + '%', background: 'var(--brand)' }} />
+            {hasMissingRate && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: 11.5, color: 'var(--warning)' }}>
+                <Icon name="warning" size={12} />
+                <span>Часть трат не пересчитана — нет курса</span>
+              </div>
+            )}
+            {/* Segmented bar — one segment per category */}
+            <div style={{ height: 8, borderRadius: 4, background: 'var(--wash)', overflow: 'hidden', marginTop: 10, marginBottom: 10, display: 'flex' }}>
+              {catBreakdown.map(c => (
+                <div key={c.id} title={c.name} style={{
+                  height: '100%',
+                  width: (totalSpent > 0 ? (c.spent / totalSpent) * 100 : 0) + '%',
+                  background: c.color,
+                }} />
+              ))}
             </div>
+            {/* Legend */}
+            {catBreakdown.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {catBreakdown.map(c => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                    <span className="num" style={{ fontWeight: 600 }}>{moneyCtx(c.spent)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="muted" style={{ fontSize: 12 }}>Пока нет ни одной траты</div>
+            )}
           </>
         ) : (
           <div className="muted" style={{ fontSize: 12.5 }}>Бюджет не создан</div>
@@ -1520,6 +1569,7 @@ export default function TripView() {
               fromVisit={transferEdit.fromVisit}
               toVisit={transferEdit.toVisit}
               entity={transferEdit.transfer}
+              defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
           {/* Hotel — opened from missing-hotel warnings or edit mode */}
@@ -1530,6 +1580,7 @@ export default function TripView() {
               kind="hotel"
               visit={hotelEdit.visit}
               entity={hotelEdit.hotel}
+              defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
           {/* Hotel choice — sits between the warning button and the edit form */}
@@ -1584,6 +1635,7 @@ export default function TripView() {
               kind="service"
               tripId={tripId}
               entity={null}
+              defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
           {/* eSIM / Insurance edit — opened from the service ForkPartnerModal */}
@@ -1628,6 +1680,7 @@ export default function TripView() {
               visit={activityEdit.visit}
               entity={activityEdit.activity}
               defaultStart={activityEdit.defaultStart}
+              defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
           {/* SourceViewLoader — opens the read/edit dialog when a timeline event is clicked */}
@@ -1687,6 +1740,7 @@ export default function TripView() {
                 <ContextSide
                   budget={budget}
                   budgetExpenses={budgetExpenses}
+                  budgetCategories={budgetCategories}
                   members={members}
                   services={services}
                   user={user}

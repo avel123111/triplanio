@@ -17,6 +17,7 @@ import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, Toggle } from '../design/index';
 import ProLockedDialog from '@/components/common/ProLockedDialog';
+import CurrencySelect from '@/components/budget/CurrencySelect';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
 // `addon` is the key persisted under trip.details.addons (matches TripView lens ids
@@ -340,13 +341,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           </Field>
           <Field label="Основная валюта отображения">
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <select className="select" value={currency} onChange={e => setCurrency(e.target.value)} style={{ maxWidth: 200 }}>
-                <option value="EUR">EUR</option>
-                <option value="USD">USD</option>
-                <option value="RUB">RUB</option>
-                <option value="GBP">GBP</option>
-                <option value="TRY">TRY</option>
-              </select>
+              <CurrencySelect value={currency} onChange={setCurrency} width={200} />
               <Btn variant="primary" loading={saving} onClick={saveSettings}>Сохранить</Btn>
               {saveMsg && <span style={{ fontSize: 12.5, color: 'var(--success)', alignSelf: 'center' }}>{saveMsg}</span>}
             </div>
