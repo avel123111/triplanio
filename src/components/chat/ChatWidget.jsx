@@ -2,12 +2,12 @@
  * ChatWidget — floating chat button + collapsible panel.
  *
  * Mounted by TripView on every lens *except* the dedicated chat lens.
- * Uses dock CSS classes (.dock, .dock-panel, .dock-panel__tabs, etc.).
+ * Design matches DockedChat from the reference prototype (dock.jsx).
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageCircle, X, ExternalLink } from 'lucide-react';
+import { MessageCircle, X, ExternalLink, Sparkles } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_EMAIL, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
@@ -156,11 +156,27 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
   // ── Closed: floating button ──
   if (!open) {
     return (
-      <button className="dock" onClick={() => setOpen(true)} aria-label="Открыть чат">
+      <button
+        className="dock"
+        onClick={() => setOpen(true)}
+        aria-label="Открыть чат"
+        style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, #6a3ee2 100%)' }}
+      >
         <MessageCircle size={22} />
         {unread > 0 && (
           <div className="dock__count">{unread > 99 ? '99+' : unread}</div>
         )}
+        {/* Sparkles sub-badge */}
+        <span style={{
+          position: 'absolute', bottom: -3, right: -3,
+          width: 22, height: 22, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white',
+          border: '2px solid var(--surface)',
+          display: 'grid', placeItems: 'center',
+          pointerEvents: 'none',
+        }}>
+          <Sparkles size={11} />
+        </span>
       </button>
     );
   }
@@ -168,10 +184,10 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
   // ── Open: panel ──
   return (
     <div className="dock-panel">
-      {/* Tab bar */}
+      {/* Tab bar — matches dock.jsx reference */}
       <div className="dock-panel__tabs">
-        <button className="dock-panel__tab active" style={{ flex: 1, justifyContent: 'flex-start' }}>
-          <MessageCircle size={13} />
+        <button className="dock-panel__tab active">
+          <MessageCircle size={14} />
           Чат группы
           {unread > 0 && (
             <span style={{
@@ -182,42 +198,43 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
             }}>{unread > 99 ? '99+' : unread}</span>
           )}
         </button>
-        <button
-          className="icon-btn"
-          style={{ width: 30, height: 30, marginBottom: 4 }}
-          onClick={() => navigate(`/trips/${tripId}?lens=chat`)}
-          aria-label="Открыть полный чат"
-          title="Открыть полный чат"
-        >
-          <ExternalLink size={13} />
+        <button className="dock-panel__tab" style={{ opacity: 0.6, cursor: 'default' }} tabIndex={-1}>
+          <Sparkles size={14} style={{ color: 'var(--ai)' }} />
+          <span className="ai-text">ИИ-помощник</span>
         </button>
         <button
           className="icon-btn"
-          style={{ width: 30, height: 30, marginBottom: 4 }}
+          style={{ width: 32, height: 32, flexShrink: 0, marginBottom: 6 }}
           onClick={() => setOpen(false)}
           aria-label="Закрыть"
         >
-          <X size={13} />
+          <X size={14} />
         </button>
       </div>
 
-      {/* Head: members strip */}
+      {/* Head: member avatars + trip name + navigate to full chat */}
       <div className="dock-panel__head">
         <div style={{ display: 'flex' }}>
-          {activeMembers.slice(0, 3).map((m, i) => (
+          {activeMembers.slice(0, 4).map((m, i) => (
             <Avatar
               key={m.id || i}
               name={nameFor(m.user_email)}
-              style={{ width: 24, height: 24, fontSize: 10, marginLeft: i === 0 ? 0 : -6, border: '1.5px solid var(--surface)', borderRadius: '50%' }}
+              size="sm"
+              style={{ marginLeft: i === 0 ? 0 : -8, border: '1.5px solid var(--surface)', borderRadius: '50%', zIndex: 4 - i }}
             />
           ))}
-          <span style={{ marginLeft: activeMembers.length > 0 ? -6 : 0, border: '1.5px solid var(--surface)', borderRadius: '50%', display: 'inline-block' }}>
-            <TriplanioAvatar size="xs" />
-          </span>
         </div>
-        <span style={{ fontSize: 12, fontWeight: 500, flex: 1 }}>
-          {tripTitle ? <><b>{tripTitle}</b>{' · '}</> : ''}{activeMembers.length + 1} участников
-        </span>
+        <div style={{ flex: 1, fontSize: 12.5 }}>
+          {tripTitle ? <><b>{tripTitle}</b>{' · '}</> : ''}{activeMembers.length} {activeMembers.length === 1 ? 'человек' : 'человека'}
+        </div>
+        <button
+          className="icon-btn"
+          style={{ width: 30, height: 30 }}
+          onClick={() => navigate(`/trips/${tripId}?lens=chat`)}
+          aria-label="Открыть полный чат"
+        >
+          <ExternalLink size={14} />
+        </button>
       </div>
 
       {/* Thinking shimmer bar */}
@@ -299,6 +316,21 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
                 <div style={{ fontSize: 11, color: 'var(--muted)' }}>@Triplanio — отвечает всем</div>
               </div>
             </button>
+            {activeMembers.map((m, i) => {
+              const n = nameFor(m.user_email);
+              return (
+                <button
+                  key={i}
+                  onClick={() => { setText((t) => t.replace(/@$/, '@' + n.split(/\s/)[0] + ' ')); setShowMention(false); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', width: '100%', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <Avatar name={n} style={{ width: 22, height: 22, fontSize: 10 }} />
+                  <div style={{ fontSize: 12.5, fontWeight: 500 }}>{n}</div>
+                </button>
+              );
+            })}
           </div>
         )}
         <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
