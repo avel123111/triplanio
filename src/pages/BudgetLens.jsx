@@ -404,8 +404,16 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   }
 
   // Build enriched categories with converted totals.
+  // Order: the four canonical system categories first (fixed order matching
+  // base44), then all custom categories — including "food", which was demoted
+  // from system to custom and must sit with the other custom categories.
   const cats = useMemo(() => {
-    const sorted = [...budgetCategories].sort((a, b) => (a.order_index ?? 99) - (b.order_index ?? 99));
+    const SYSTEM_ORDER = ['accommodation', 'transport', 'activities', 'services'];
+    const rank = (cat) => {
+      const i = SYSTEM_ORDER.indexOf(cat.system_key);
+      return i === -1 ? SYSTEM_ORDER.length + (cat.order_index ?? 99) : i;
+    };
+    const sorted = [...budgetCategories].sort((a, b) => rank(a) - rank(b));
     return sorted.map(cat => {
       const items = budgetExpenses.filter(e => e.category_id === cat.id);
       const spent = items.reduce((s, e) => { const r = conv(e); return s + (r.ok ? r.value : 0); }, 0);
@@ -611,7 +619,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {activeCat.items.length === 0 && (
                   <div style={{ padding: 22, textAlign: 'center', color: 'var(--muted)', border: '1.5px dashed var(--line)', borderRadius: 10 }}>
-                    В категории «{activeCat.name}» пока пусто. <a href="#" onClick={e => { e.preventDefault(); openAddExpense(); }}>Добавить первую трату</a>
+                    <Icon name={catIcon(activeCat)} size={20} style={{ color: activeCat.color, marginBottom: 6 }} />
+                    <div>В категории «{activeCat.name}» пока пусто. <a href="#" onClick={e => { e.preventDefault(); openAddExpense(); }}>Добавить первую трату</a></div>
                   </div>
                 )}
                 {activeCat.items.map(exp => {
