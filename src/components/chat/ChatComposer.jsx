@@ -16,7 +16,7 @@ const MAX_LEN = 4000;
 // glyph-for-glyph aligned with the visible overlay text (any weight mismatch
 // between the two layers caused the caret to drift).
 const FIELD_CLS =
-  'flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-medium shadow-sm placeholder:text-muted-foreground placeholder:font-normal focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none min-h-[40px] max-h-32 leading-relaxed whitespace-pre-wrap break-words';
+  'flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-bold shadow-sm placeholder:text-muted-foreground placeholder:font-normal focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none min-h-[40px] max-h-32 leading-relaxed whitespace-pre-wrap break-words';
 
 /**
  * Bottom composer for the chat tab. Sends on Cmd/Ctrl+Enter or button click.
@@ -177,7 +177,7 @@ export default function ChatComposer({ onSend, disabled, sending, tripId, botAva
       // the whole textarea font-medium already provides the "bold-ish" look
       // the user expects without introducing per-glyph width differences.
       out.push(
-        <span key={start} className="text-primary">{text.slice(start, end)}</span>
+        <span key={start} style={{ color: 'var(--ai)' }}>{text.slice(start, end)}</span>
       );
       lastIndex = end;
     }

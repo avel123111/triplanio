@@ -8,6 +8,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
+import { isAddonEnabled, ADDON_KEYS } from '@/lib/tripAddons';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
@@ -1794,8 +1795,8 @@ export default function TripView() {
         onRetry={() => { setPayResult(null); openUpgrade(); }}
       />
 
-      {isLensVisible(trip, 'chat') && shownLens !== 'chat' && (
-        <ChatWidget tripId={tripId} members={members} />
+      {isAddonEnabled(trip, ADDON_KEYS.CHAT) && shownLens !== 'chat' && (
+        <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} />
       )}
 
       <ModalHost />
