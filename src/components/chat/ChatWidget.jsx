@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageCircle, X, ExternalLink } from 'lucide-react';
+import { MessageCircle, X, ExternalLink, Sparkles } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_EMAIL, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
@@ -171,11 +171,23 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
         className="dock"
         onClick={() => setOpen(true)}
         aria-label="Открыть чат"
+        style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, #6a3ee2 100%)' }}
       >
         <MessageCircle size={22} />
         {unread > 0 && (
           <div className="dock__count">{unread > 99 ? '99+' : unread}</div>
         )}
+        {/* Sparkles sub-badge — purely decorative, signals AI is part of the chat */}
+        <span style={{
+          position: 'absolute', bottom: -3, right: -3,
+          width: 22, height: 22, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white',
+          border: '2px solid var(--surface)',
+          display: 'grid', placeItems: 'center',
+          pointerEvents: 'none',
+        }}>
+          <Sparkles size={11} />
+        </span>
       </button>
     );
   }
