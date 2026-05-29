@@ -65,11 +65,13 @@ export default function Inbox() {
 
   const respondInvite = useMutation({
     mutationFn: async ({ memberId, action }) => {
-      const update = action === 'accept'
-        ? { status: 'active', accepted_at: new Date().toISOString() }
-        : { status: 'declined' };
-      const { error } = await supabase.from('trip_members').update(update).eq('id', memberId);
-      if (error) throw error;
+      // Use the edge function: it sets user_id on the member (so the accepter
+      // becomes a recognized participant under RLS), notifies the inviter, and
+      // marks the invite notification read — none of which a raw update does.
+      const { data, error } = await supabase.functions.invoke('respondTripInvite', {
+        body: { member_id: memberId, action },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message || 'Failed');
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ['notifications'] });

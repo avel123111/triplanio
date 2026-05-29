@@ -1,5 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { signN8nJwt } from '../_shared/n8nAuth.ts';
 
 const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/group-chat';
 
@@ -62,9 +63,10 @@ Deno.serve(async (req) => {
     const n8nSecret = Deno.env.get('N8N_SECRET');
     if (!n8nSecret) return Response.json({ error: 'N8N_SECRET not configured' }, { status: 500, headers: corsHeaders });
 
+    const n8nJwt = await signN8nJwt(n8nSecret);
     const res = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${n8nSecret}` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${n8nJwt}` },
       body: JSON.stringify({ payload }),
     });
 

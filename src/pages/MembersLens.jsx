@@ -53,7 +53,7 @@ function InviteDialog({ tripId, onSaved }) {
     setSaving(true);
     setErr('');
     const { data, error } = await supabase.functions.invoke('inviteTripMember', {
-      body: { tripId, email: trimmed, role },
+      body: { trip_id: tripId, email: trimmed, role },
     });
     setSaving(false);
     if (error || data?.error) { setErr((data?.error || error?.message) || 'Ошибка'); return; }
@@ -163,7 +163,7 @@ function ChangeRoleDialog({ member, tripId, onSaved }) {
     setSaving(true);
     setErr('');
     const { data, error } = await supabase.functions.invoke('updateTripMemberRole', {
-      body: { tripId, memberId: member.id, role },
+      body: { member_id: member.id, role },
     });
     setSaving(false);
     if (error || data?.error) { setErr((data?.error || error?.message) || 'Ошибка'); return; }
@@ -241,14 +241,14 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
 
   async function resend(memberId) {
     setOpenMenu(null);
-    await supabase.functions.invoke('resendTripInvite', { body: { tripId, memberId } });
+    await supabase.functions.invoke('resendTripInvite', { body: { member_id: memberId } });
   }
 
   async function removeMember(memberId) {
     if (!window.confirm('Убрать участника из трипа?')) return;
     setOpenMenu(null);
     setRemoving(memberId);
-    await supabase.functions.invoke('removeTripMember', { body: { tripId, memberId } });
+    await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });
     setRemoving(null);
     refresh();
   }
