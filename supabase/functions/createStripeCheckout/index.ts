@@ -7,7 +7,10 @@
  * - pro_trip: validates trip ownership (created_by === caller email)
  * - pro_monthly/pro_yearly: blocks duplicate active subscription
  * - Race-condition guard: rejects if a recent Stripe session is in flight
- * - Origin validation: only PUBLIC_APP_URL (or STRIPE_TEST_ORIGIN) allowed
+ * - Origin validation: only PUBLIC_APP_URL allowed
+ *
+ * Stripe mode (test/live) is auto-detected from STRIPE_SECRET_KEY — one mode
+ * per Supabase project (live in prod, test in dev).
  *
  * Migrated from base44: replaced base44 SDK entity calls with Supabase queries.
  */
@@ -49,22 +52,27 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid plan type' }, { status: 400, headers: corsHeaders });
     }
 
-    // ---------- Origin validation + Stripe env routing ----------
-    const prodAppUrl = (Deno.env.get('PUBLIC_APP_URL') || '').replace(/\/+$/, '');
-    if (!prodAppUrl) {
+    // ---------- Origin validation ----------
+    const publicAppUrl = (Deno.env.get('PUBLIC_APP_URL') || '').replace(/\/+$/, '');
+    if (!publicAppUrl) {
       console.error('PUBLIC_APP_URL not configured');
       return Response.json({ error: 'Server misconfigured: PUBLIC_APP_URL missing' }, { status: 500, headers: corsHeaders });
     }
-    const testOrigin = (Deno.env.get('STRIPE_TEST_ORIGIN') || '').replace(/\/+$/, '');
     const reqOrigin = (req.headers.get('origin') || '').replace(/\/+$/, '');
-    const isTestEnv = !!(testOrigin && reqOrigin === testOrigin);
-    const publicAppUrl = isTestEnv ? testOrigin : prodAppUrl;
-
-    if (reqOrigin && reqOrigin !== prodAppUrl && (!testOrigin || reqOrigin !== testOrigin)) {
-      console.error('Origin mismatch:', reqOrigin, 'vs', prodAppUrl);
+    if (reqOrigin && reqOrigin !== publicAppUrl) {
+      console.error('Origin mismatch:', reqOrigin, 'vs', publicAppUrl);
       return Response.json({ error: 'Origin not allowed' }, { status: 400, headers: corsHeaders });
     }
-    console.log('Stripe checkout env:', isTestEnv ? 'TEST' : 'LIVE', 'origin:', reqOrigin);
+
+    // ---------- Stripe mode auto-detected from the secret key ----------
+    // One mode per project: sk_test_… → test products, sk_live_… → live products.
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeKey) {
+      console.error('STRIPE_SECRET_KEY missing');
+      return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
+    }
+    const isTestEnv = stripeKey.includes('_test_');
+    console.log('Stripe checkout mode:', isTestEnv ? 'TEST' : 'LIVE', 'origin:', reqOrigin);
 
     // ---------- Per-trip Pro: validate trip ownership ----------
     if (planType === 'pro_trip') {
@@ -108,13 +116,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    const stripeKey = isTestEnv
-      ? Deno.env.get('STRIPE_TEST_SECRET_KEY')
-      : Deno.env.get('STRIPE_SECRET_KEY');
-    if (!stripeKey) {
-      console.error('Stripe secret key missing for env:', isTestEnv ? 'TEST' : 'LIVE');
-      return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
-    }
     const stripe = new Stripe(stripeKey);
 
     // ---------- Race-condition guard: recent checkout in flight ----------

@@ -542,30 +542,29 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
 
 // ─── CityHero (with proper hotel warning) ────────────────────────────────────
 
-// Small weather chip for the city header — forecast for the arrival day
-// (Open-Meteo only returns up to ~16 days out; past/unknown → nothing shown).
-function CityWeather({ visit }) {
-  const [w, setW] = useState(null);
+// Fetch daily weather for all transit visits → { [dayKey]: { icon, temp } }.
+// Open-Meteo returns up to ~16 days ahead; past days yield nothing.
+function useWeatherByDay(visits) {
+  const [weatherByDay, setWeatherByDay] = useState({});
   useEffect(() => {
+    const transit = (visits || []).filter(v => v.kind !== 'start' && v.kind !== 'end' && v.latitude && v.longitude && v.start_datetime && v.end_datetime);
+    if (transit.length === 0) { setWeatherByDay({}); return; }
     let cancelled = false;
-    const lat = visit?.latitude, lon = visit?.longitude;
-    const start = visit?.start_datetime, end = visit?.end_datetime || visit?.start_datetime;
-    if (lat == null || lon == null || !start) return;
-    getWeather(lat, lon, start, end).then((res) => {
-      if (cancelled || !res || res.historical || !res.daily) return;
-      const code = res.daily.weather_code?.[0];
-      const tmax = res.daily.temperature_2m_max?.[0];
-      if (code == null || tmax == null) return;
-      setW({ icon: weatherInfo(code).icon, temp: Math.round(tmax) });
-    }).catch(() => {});
+    (async () => {
+      const map = {};
+      for (const v of transit) {
+        const res = await getWeather(v.latitude, v.longitude, naiveDayKey(v.start_datetime), naiveDayKey(v.end_datetime)).catch(() => null);
+        if (cancelled || !res?.daily) continue;
+        const { time, weather_code, temperature_2m_max } = res.daily;
+        (time || []).forEach((d, i) => {
+          map[d] = { icon: weatherInfo(weather_code?.[i]).icon, temp: Math.round(temperature_2m_max?.[i] ?? 0) };
+        });
+      }
+      if (!cancelled) setWeatherByDay(map);
+    })();
     return () => { cancelled = true; };
-  }, [visit?.latitude, visit?.longitude, visit?.start_datetime, visit?.end_datetime]);
-  if (!w) return null;
-  return (
-    <span className="num" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, padding: '2px 9px', borderRadius: 999, background: 'var(--wash)', color: 'var(--ink)', lineHeight: 1 }}>
-      <span>{w.icon}</span><span>{w.temp}°</span>
-    </span>
-  );
+  }, [visits]); // eslint-disable-line react-hooks/exhaustive-deps
+  return weatherByDay;
 }
 
 function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel, isEditMode, onEditNotes, onDeleteCity, onOpenEvent }) {
@@ -584,7 +583,6 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
             <h2 style={{ marginBottom: 0, fontSize: 24 }}>{city}</h2>
-            <CityWeather visit={visit} />
             {dateRange && <span className="muted num" style={{ fontSize: 13 }}>{dateRange}</span>}
             {nights > 0 && (
               <span className="muted" style={{ fontSize: 13 }}>
@@ -650,6 +648,7 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
 }
 
 function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
+  const weatherByDay = useWeatherByDay(visits);  // hook must run before any early return
   if (isLoading) return <SkeletonTimeline />;
 
   if (!trip.start_date && !trip.end_date && !visits.length) {
@@ -846,6 +845,11 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px 2px 6px', borderRadius: 999, background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 11.5, fontWeight: 500, marginBottom: 2 }}>
               <Icon name="pin" size={11} />
               {visit.city_name}
+            </span>
+          )}
+          {weatherByDay[day] && (
+            <span className="num" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 999, background: 'var(--wash)', color: 'var(--ink)', fontSize: 11.5, fontWeight: 500, marginBottom: 2 }}>
+              <span>{weatherByDay[day].icon}</span><span>{weatherByDay[day].temp}°</span>
             </span>
           )}
           <div style={{ flex: 1, borderBottom: '1px solid var(--line-2)', marginBottom: 6 }} />

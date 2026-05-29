@@ -3,11 +3,11 @@
  *
  * GET/POST — no body required.
  *
- * Returns live Stripe default prices for our 3 plan types so the frontend
+ * Returns Stripe default prices for our 3 plan types so the frontend
  * renders amounts/currency from Stripe Dashboard (no hardcoded prices).
  *
- * Routes between LIVE and TEST Stripe based on STRIPE_TEST_ORIGIN env var:
- * if the request comes from that origin, uses test keys + test product IDs.
+ * Stripe mode (test/live) is auto-detected from STRIPE_SECRET_KEY — one mode
+ * per Supabase project (live in prod, test in dev).
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
@@ -32,17 +32,12 @@ Deno.serve(async (req) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
-    const testOrigin = (Deno.env.get('STRIPE_TEST_ORIGIN') || '').replace(/\/+$/, '');
-    const reqOrigin = (req.headers.get('origin') || '').replace(/\/+$/, '');
-    const isTestEnv = !!(testOrigin && reqOrigin === testOrigin);
-
-    const stripeKey = isTestEnv
-      ? Deno.env.get('STRIPE_TEST_SECRET_KEY')
-      : Deno.env.get('STRIPE_SECRET_KEY');
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!stripeKey) {
-      console.error('Stripe secret key missing for env:', isTestEnv ? 'TEST' : 'LIVE');
+      console.error('STRIPE_SECRET_KEY missing');
       return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
     }
+    const isTestEnv = stripeKey.includes('_test_');
 
     const stripe = new Stripe(stripeKey);
     const productIds = isTestEnv ? TEST_PRODUCT_IDS : LIVE_PRODUCT_IDS;

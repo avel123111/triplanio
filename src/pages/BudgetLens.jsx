@@ -526,15 +526,23 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         </Severity>
       )}
 
-      {/* No-expenses banner */}
+      {/* No-expenses hero — horizontal dashed banner (matches design) */}
       {noExpenses && (
-        <div style={{ marginTop: missingCurrencies.length > 0 ? 14 : 0 }}>
-          <EmptyState
-            icon="wallet"
-            title="Расходов пока нет"
-            body="Брони отелей, переезды и активности появятся здесь автоматически. Свои траты — еду, такси, сувениры — добавляй вручную."
-            action={<Btn variant="primary" icon="plus" onClick={openAddExpense}>Первая трата</Btn>}
-          />
+        <div style={{
+          marginTop: missingCurrencies.length > 0 ? 14 : 4, marginBottom: 18, padding: 24,
+          background: 'var(--surface)', border: '1.5px dashed var(--line)', borderRadius: 14,
+          display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap',
+        }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <Icon name="wallet" size={24} />
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Расходов пока нет</div>
+            <div className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
+              Брони отелей, переезды и активности появятся здесь автоматически. Свои траты — еду, такси, сувениры — добавляй вручную.
+            </div>
+          </div>
+          <Btn variant="primary" icon="plus" onClick={openAddExpense}>Первая трата</Btn>
         </div>
       )}
 
@@ -577,7 +585,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                     <div className="muted" style={{ fontSize: 11 }}>{empty ? 'пусто' : `${c.itemCount} ${c.itemCount === 1 ? 'трата' : 'трат'}`}</div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div className="num" style={{ fontWeight: 600, fontSize: 13 }}>{money(c.spent, mainCurrency)}</div>
+                    <div className="num" style={{ fontWeight: 600, fontSize: 13, color: empty ? 'var(--muted-2)' : 'var(--ink)' }}>{money(c.spent, mainCurrency)}</div>
+                    <div className="muted num" style={{ fontSize: 10 }}>/ {money(c.planned_amount || 0, mainCurrency)}</div>
                   </div>
                 </button>
               );
@@ -593,7 +602,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                 </div>
                 <div style={{ flex: 1 }}>
                   <h3 style={{ marginBottom: 2 }}>{activeCat.name}</h3>
-                  <div className="muted num" style={{ fontSize: 12 }}>{money(activeCat.spent, mainCurrency)}</div>
+                  <div className="muted num" style={{ fontSize: 12 }}>{money(activeCat.spent, mainCurrency)} из {money(activeCat.planned_amount || 0, mainCurrency)}</div>
                 </div>
                 {activeCat.kind === 'custom' && (
                   <Btn variant="ghost" size="sm" icon="edit" onClick={() => openEditCategory(activeCat)}>Изменить</Btn>

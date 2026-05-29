@@ -20,22 +20,17 @@ Deno.serve(async (req) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
-    // ---------- Origin validation + Stripe env routing ----------
-    const prodAppUrl = (Deno.env.get('PUBLIC_APP_URL') || '').replace(/\/+$/, '');
-    if (!prodAppUrl) {
+    // ---------- Origin validation ----------
+    const publicAppUrl = (Deno.env.get('PUBLIC_APP_URL') || '').replace(/\/+$/, '');
+    if (!publicAppUrl) {
       console.error('PUBLIC_APP_URL not configured');
       return Response.json({ error: 'Server misconfigured: PUBLIC_APP_URL missing' }, { status: 500, headers: corsHeaders });
     }
-    const testOrigin = (Deno.env.get('STRIPE_TEST_ORIGIN') || '').replace(/\/+$/, '');
     const reqOrigin = (req.headers.get('origin') || '').replace(/\/+$/, '');
-    const isTestEnv = !!(testOrigin && reqOrigin === testOrigin);
-    const publicAppUrl = isTestEnv ? testOrigin : prodAppUrl;
-
-    if (reqOrigin && reqOrigin !== prodAppUrl && (!testOrigin || reqOrigin !== testOrigin)) {
-      console.error('Origin mismatch:', reqOrigin, 'vs', prodAppUrl);
+    if (reqOrigin && reqOrigin !== publicAppUrl) {
+      console.error('Origin mismatch:', reqOrigin, 'vs', publicAppUrl);
       return Response.json({ error: 'Origin not allowed' }, { status: 400, headers: corsHeaders });
     }
-    console.log('Billing portal env:', isTestEnv ? 'TEST' : 'LIVE');
 
     const { returnPath } = await req.json().catch(() => ({}));
     const safeReturn = (returnPath && returnPath.startsWith('/')) ? returnPath : '/settings';
@@ -56,11 +51,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No active subscription found' }, { status: 404, headers: corsHeaders });
     }
 
-    const stripeKey = isTestEnv
-      ? Deno.env.get('STRIPE_TEST_SECRET_KEY')
-      : Deno.env.get('STRIPE_SECRET_KEY');
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!stripeKey) {
-      console.error('Stripe secret key missing for env:', isTestEnv ? 'TEST' : 'LIVE');
+      console.error('STRIPE_SECRET_KEY missing');
       return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
     }
     const stripe = new Stripe(stripeKey);

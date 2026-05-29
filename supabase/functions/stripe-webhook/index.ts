@@ -5,7 +5,8 @@
  * customer.subscription.updated, customer.subscription.deleted.
  *
  * Security:
- * - Dual-env signature verification: tries live secret first, falls back to test.
+ * - Signature verified with this project's STRIPE_WEBHOOK_SECRET.
+ *   One Stripe mode per Supabase project (live in prod, test in dev).
  * - Idempotency: records processed events in stripe_events table.
  *
  * Migrated from base44: replaced all base44 SDK entity calls with Supabase queries.
@@ -20,37 +21,21 @@ Deno.serve(async (req) => {
     const body = await req.text();
     const signature = req.headers.get('stripe-signature');
 
-    // ---------- Dual-env signature verification ----------
-    // Accepts events from BOTH live and test Stripe endpoints via a single URL.
-    // Try live first; on failure fall back to test.
-    const liveSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
-    const testSecret = Deno.env.get('STRIPE_TEST_WEBHOOK_SECRET');
-
-    // Use placeholder key just for signature verification (no API calls needed here)
-    const verifier = new Stripe(liveSecret || testSecret || 'sk_placeholder');
+    // ---------- Signature verification ----------
+    // One Stripe mode per Supabase project: STRIPE_WEBHOOK_SECRET matches exactly
+    // one Stripe webhook endpoint (live in prod, test in dev).
+    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
+    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
 
     let event: Stripe.Event;
-    let isTestEvent = false;
     try {
-      event = await verifier.webhooks.constructEventAsync(body, signature!, liveSecret!);
-    } catch {
-      try {
-        event = await verifier.webhooks.constructEventAsync(body, signature!, testSecret!);
-        isTestEvent = true;
-      } catch (testErr) {
-        console.error('Webhook signature verification failed:', (testErr as Error).message);
-        return Response.json({ error: 'Invalid signature' }, { status: 400 });
-      }
+      event = await stripe.webhooks.constructEventAsync(body, signature!, webhookSecret);
+    } catch (err) {
+      console.error('Webhook signature verification failed:', (err as Error).message);
+      return Response.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
-    // Re-init Stripe with the correct API key for this event's mode
-    const stripe = new Stripe(
-      isTestEvent
-        ? Deno.env.get('STRIPE_TEST_SECRET_KEY')!
-        : Deno.env.get('STRIPE_SECRET_KEY')!
-    );
-
-    console.log('Stripe webhook received:', event.type, event.id, 'mode:', isTestEvent ? 'TEST' : 'LIVE');
+    console.log('Stripe webhook received:', event.type, event.id);
 
     // ---------- Idempotency: skip already-processed events ----------
     try {

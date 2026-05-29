@@ -22,6 +22,7 @@ import { supabase } from '@/api/supabaseClient';
 import { parseNaive } from '@/lib/naive-time';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
+import { optimisticContentUpdate } from '@/lib/trip-data';
 import { BOOKING_PLATFORMS, platformLogoUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import {
   Edit2, Trash2, ExternalLink, Map as MapIcon, Calendar, FileText,
@@ -392,11 +393,16 @@ export default function EventModal(props) {
           } else {
             await supabase.from(table).update({ documents: next }).eq('id', entity.id);
           }
-          // Refresh app-wide trip data so the underlying entity (and a re-open
-          // of this modal) reflects the new document immediately.
+          // Patch the trip-content cache OPTIMISTICALLY so a re-open of this
+          // modal reads the fresh entity immediately. An invalidate here would
+          // trigger an async refetch; reopening before it lands shows the stale
+          // (doc-less) entity — the "appears → gone → appears" flicker.
           if (entity.trip_id) {
-            qc.invalidateQueries({ queryKey: ['trip-content', entity.trip_id] });
-            qc.invalidateQueries({ queryKey: ['trip-shell', entity.trip_id] });
+            const COLL = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' }[kind];
+            const patch = kind === 'service'
+              ? { id: entity.id, details: { ...(entity.details || {}), documents: next } }
+              : { id: entity.id, documents: next };
+            if (COLL) optimisticContentUpdate(qc, entity.trip_id, COLL, 'update', patch);
           }
         }
       }
