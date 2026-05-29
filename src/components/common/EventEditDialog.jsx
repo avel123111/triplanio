@@ -39,6 +39,14 @@ import { detectPlatformFromUrl, BOOKING_PLATFORMS, platformLogoUrl } from '@/lib
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { invalidateTripData, optimisticContentUpdate } from '@/lib/trip-data';
 import { resolveTimezoneFromCoords } from '@/lib/timezone-resolver';
+
+// Ensure a user-entered URL like "booking.com" opens absolutely (otherwise the
+// browser treats it as relative and prepends the current app path → /trip/.../booking.com).
+const withScheme = (u) => {
+  if (!u) return u;
+  const s = String(u).trim();
+  return /^https?:\/\//i.test(s) ? s : `https://${s}`;
+};
 import { useToast } from '@/components/ui/use-toast';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
@@ -1164,7 +1172,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
                 {platformInfo.label}
               </span>
               {form.booking_url && (
-                <a href={form.booking_url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
+                <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
                   <ExternalLink className="w-3 h-3" />Открыть
                 </a>
               )}
@@ -1349,7 +1357,7 @@ function TransferFields({ form, setField, aiFields, fromVisit, toVisit, startTz,
                 {platformInfo.label}
               </span>
               {form.booking_url && (
-                <a href={form.booking_url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
+                <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
                   <ExternalLink className="w-3 h-3" />Открыть
                 </a>
               )}
@@ -1623,7 +1631,7 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
                 {platformInfo.label}
               </span>
               {form.booking_url && (
-                <a href={form.booking_url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
+                <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
                   <ExternalLink className="w-3 h-3" />Открыть
                 </a>
               )}

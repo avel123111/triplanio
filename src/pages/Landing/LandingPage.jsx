@@ -768,7 +768,7 @@ function LandingHeader({ lang, setLang }) {
             {NAV.map(n => <a key={n.href} href={n.href}>{t(n.tkey)}</a>)}
           </nav>
           <div className="header__right">
-            <LangDropdown value={lang} onChange={setLang} />
+            <span className="header__lang"><LangDropdown value={lang} onChange={setLang} /></span>
             <button className="btn btn--primary" onClick={() => nav(ctaTarget)}>{t('header.cta')}</button>
             <button className="hamburger" aria-label={t('lang.label')} aria-expanded={drawerOpen}
               onClick={() => setDrawerOpen(v => !v)}>
@@ -1426,6 +1426,15 @@ function useScrollReveal(ready) {
 export default function LandingPage() {
   const [lang, setLangRaw] = useState(detectLang);
   const [cssReady, setCssReady] = useState(false);
+
+  // Landing has only a light theme. A dark theme stored from the authed app sets
+  // `.dark` / [data-theme=dark] on <html>, which leaked dark TEXT colors onto the
+  // always-light landing. Force light here.
+  useEffect(() => {
+    const r = document.documentElement;
+    r.classList.remove('dark');
+    r.setAttribute('data-theme', 'light');
+  }, []);
 
   const setLang = (next) => {
     setLangRaw(next);

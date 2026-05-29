@@ -30,15 +30,17 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     if (action === 'autocomplete') {
-      const { input, sessionToken } = body;
+      const { input, sessionToken, types, language } = body;
       if (!input) return Response.json({ error: 'input is required' }, { status: 400, headers: corsHeaders });
 
       const params = new URLSearchParams({
         input,
         key: apiKey,
-        language: 'en',
-        types: '(cities)',
+        language: language || 'en',
       });
+      // Only restrict result types when the caller asks (e.g. types:'(cities)'
+      // for a city picker). Address fields send nothing → full street/POI results.
+      if (types) params.set('types', types);
       if (sessionToken) params.set('sessiontoken', sessionToken);
 
       const res = await fetch(`${BASE_MAPS}/place/autocomplete/json?${params}`);

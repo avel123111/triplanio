@@ -1299,3 +1299,8 @@ html.reveal--ready .reveal.is-in { animation: revealIn .6s ease both; }
   color: var(--ink-2);
 }
 .footer .langdd__btn:hover { background: #fff; }
+
+/* Hide header language switcher on mobile (it stays available in the drawer). */
+@media (max-width: 880px) {
+  .header__lang { display: none !important; }
+}
