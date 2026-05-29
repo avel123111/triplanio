@@ -112,10 +112,11 @@ const AuthenticatedApp = () => {
       <Route path="/inbox" element={<Inbox />} />
       <Route path="/pro" element={<Pro />} />
 
+      <Route path="/plan-trip-ai" element={<AiTripPlanner />} />
+      <Route path="/trip/:tripId/budget" element={<TripBudget />} />
+      <Route path="/trip/:tripId/settings" element={<TripSettings />} />
+
       <Route element={<Layout />}>
-        <Route path="/plan-trip-ai" element={<AiTripPlanner />} />
-        <Route path="/trip/:tripId/budget" element={<TripBudget />} />
-        <Route path="/trip/:tripId/settings" element={<TripSettings />} />
         <Route path="/admin" element={<AdminHome />} />
         <Route path="/admin/notifications" element={<AdminNotifications />} />
       </Route>

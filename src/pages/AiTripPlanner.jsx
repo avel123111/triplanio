@@ -1,45 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { Sparkles, Info, AlertTriangle, ChevronDown } from 'lucide-react';
-import { MapContainer, TileLayer, Marker as LeafletMarker, Polyline, useMap as useLeafletMap } from 'react-leaflet';
-import L from 'leaflet';
-import { APIProvider, Map as GMap, Marker as GMarker, useMap as useGMap } from '@vis.gl/react-google-maps';
+import { APIProvider, Map as GMap, Marker as GMarker, useMap as useGMap, useApiIsLoaded } from '@vis.gl/react-google-maps';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
+import { isProActive } from '@/lib/subscription';
+import { isTripInPast } from '@/lib/trip-dates';
 import { searchCities, getTimezone } from '@/lib/geo';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Icon } from '../design/icons';
 import { Btn } from '@/design/index';
 import HeaderActions from '@/components/HeaderActions';
+import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
+import TriplanioAvatar from '@/components/chat/TriplanioAvatar';
 import { groupMarkers, markerSvg, svgDataUri, markerPixelSize, MISSING_COLOR } from '@/lib/mapRoute';
 import '../design/app.css';
 
 const GKEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
 // ── Map helpers ───────────────────────────────────────────────────────────────
-
-class MapErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false }; }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  render() {
-    if (this.state.hasError) return this.props.fallback || null;
-    return this.props.children;
-  }
-}
-
-function LeafletFitBounds({ positions }) {
-  const map = useLeafletMap();
-  useEffect(() => {
-    if (positions.length === 0) return;
-    if (positions.length === 1) { map.setView(positions[0], 7, { animate: true }); return; }
-    try { map.fitBounds(L.latLngBounds(positions).pad(0.35), { maxZoom: 7, animate: true }); } catch {}
-  }, [JSON.stringify(positions)]); // eslint-disable-line
-  return null;
-}
 
 function GFitBounds({ positions }) {
   const map = useGMap();
@@ -60,6 +43,16 @@ function gIcon(labels) {
   if (!g?.maps) return undefined;
   const d = markerPixelSize(false);
   return { url: svgDataUri(markerSvg(labels, false)), scaledSize: new g.maps.Size(d, d), anchor: new g.maps.Point(d / 2, d / 2) };
+}
+
+// Markers are deferred until the Maps JS API is fully loaded — otherwise
+// gIcon() runs before window.google exists and the pins never appear.
+function GMarkersLayer({ groups }) {
+  const isLoaded = useApiIsLoaded();
+  if (!isLoaded) return null;
+  return groups.map((grp, i) => (
+    <GMarker key={i} position={{ lat: grp.lat, lng: grp.lng }} icon={gIcon(grp.labels)} />
+  ));
 }
 
 function GDashedLines({ pts }) {
@@ -85,7 +78,6 @@ function GDashedLines({ pts }) {
 
 function AiPlannerMap({ cities }) {
   const [pts, setPts] = useState([]);
-  const [gmapFailed, setGmapFailed] = useState(false);
   const citiesKey = cities.map(c => c.city_name).join(',');
 
   useEffect(() => {
@@ -119,42 +111,21 @@ function AiPlannerMap({ cities }) {
   const positions = pts.map(p => [p.lat, p.lng]);
   const groups = groupMarkers(pts);
 
-  const leafletMap = (
-    <MapContainer center={positions[0]} zoom={4} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} zoomControl={false} attributionControl={false}>
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-      <LeafletFitBounds positions={positions} />
-      {pts.slice(0, -1).map((p, i) => (
-        <Polyline key={i} positions={[[p.lat, p.lng], [pts[i + 1].lat, pts[i + 1].lng]]} pathOptions={{ color: MISSING_COLOR, weight: 2, dashArray: '5 7', opacity: 0.55 }} />
-      ))}
-      {groups.map((grp, i) => {
-        const d = markerPixelSize(false);
-        const icon = L.divIcon({ className: '', html: markerSvg(grp.labels, false), iconSize: [d, d], iconAnchor: [d / 2, d / 2] });
-        return <LeafletMarker key={i} position={[grp.lat, grp.lng]} icon={icon} />;
-      })}
-    </MapContainer>
-  );
-
-  if (!GKEY || gmapFailed) return leafletMap;
-
   return (
-    <MapErrorBoundary fallback={leafletMap}>
-      <APIProvider apiKey={GKEY}>
-        <GMap
-          style={{ height: '100%', width: '100%' }}
-          defaultCenter={{ lat: positions[0][0], lng: positions[0][1] }}
-          defaultZoom={4}
-          gestureHandling="cooperative"
-          disableDefaultUI
-          mapTypeId="roadmap"
-        >
-          <GFitBounds positions={positions} />
-          {groups.map((grp, i) => (
-            <GMarker key={i} position={{ lat: grp.lat, lng: grp.lng }} icon={gIcon(grp.labels)} />
-          ))}
-          <GDashedLines pts={pts} />
-        </GMap>
-      </APIProvider>
-    </MapErrorBoundary>
+    <APIProvider apiKey={GKEY}>
+      <GMap
+        style={{ height: '100%', width: '100%' }}
+        defaultCenter={{ lat: positions[0][0], lng: positions[0][1] }}
+        defaultZoom={4}
+        gestureHandling="cooperative"
+        disableDefaultUI
+        mapTypeId="roadmap"
+      >
+        <GFitBounds positions={positions} />
+        <GMarkersLayer groups={groups} />
+        <GDashedLines pts={pts} />
+      </GMap>
+    </APIProvider>
   );
 }
 
@@ -181,6 +152,39 @@ export default function AiTripPlanner() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { isDark, toggle: toggleTheme } = useTheme();
+
+  const isPro = isProActive(user);
+
+  // ── Free-plan limit check (same pattern as ManualPlanner) ──────────────────
+  const { data: allTrips = [], isLoading: checkingLimit } = useQuery({
+    queryKey: ['trips-limit-check', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('trips').select('id').eq('created_by', user.email);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id && !isPro,
+  });
+
+  const { data: allVisits = [] } = useQuery({
+    queryKey: ['trips-limit-visits', user?.id, allTrips.length],
+    queryFn: async () => {
+      const ids = allTrips.map(t => t.id);
+      if (ids.length === 0) return [];
+      const { data, error } = await supabase.from('city_visits').select('*').in('trip_id', ids);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !isPro && allTrips.length > 0,
+  });
+
+  const visitsByTrip = allVisits.reduce((acc, v) => {
+    if (!acc[v.trip_id]) acc[v.trip_id] = [];
+    acc[v.trip_id].push(v);
+    return acc;
+  }, {});
+  const activeTrips = allTrips.filter(tr => !isTripInPast(visitsByTrip[tr.id] || []));
+  const isOverLimit = !isPro && !checkingLimit && activeTrips.length >= 1;
 
   const [prompt, setPrompt]       = useState('');
   const [draft, setDraft]         = useState(null);
@@ -224,18 +228,23 @@ export default function AiTripPlanner() {
     },
   });
 
-  // ── Save draft as a real Trip (+CityVisits +Activities) ──────────────────
+  // ── Save draft as a real Trip (+CityVisits +Activities) via Supabase ──────
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!draft) throw new Error(t('ai_plan.no_draft_error'));
+
+      // RLS requires created_by = auth.jwt() ->> 'email'. Always pull email
+      // straight from the JWT (profiles table may diverge).
+      const { data: authUser, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authUser?.user?.email) throw new Error('Не удалось получить email из сессии');
+      const authEmail = authUser.user.email;
+
       const cities = draft.cities || [];
 
-      // 1. Create trip via base44 entity layer (kept untouched per spec)
-      const { base44 } = await import('@/api/base44Client');
-      const trip = await base44.entities.Trip.create({
-        title: draft.title || t('ai_plan.default_trip_title'),
-        description: draft.description || '',
-      });
+      // 1. Create trip via SECURITY DEFINER RPC (bypasses RLS caching issues)
+      const { data: tripId, error: tripErr } = await supabase
+        .rpc('create_trip', { p_title: draft.title || t('ai_plan.default_trip_title'), p_description: draft.description || '' });
+      if (tripErr) throw tripErr;
 
       // 2. Resolve each city's coordinates + timezone
       const resolved = await Promise.all(cities.map(async (c) => {
@@ -251,62 +260,69 @@ export default function AiTripPlanner() {
         }
       }));
 
-      // 3. Create city visits
-      const createdVisits = [];
-      for (const { c, best, tz } of resolved) {
+      // 3. Batch insert city_visits
+      const visitsToInsert = resolved.map(({ c, best, tz }) => {
         const kind = (c.kind === 'start' || c.kind === 'end') ? c.kind : 'transit';
-        const start = DateTime.fromISO(c.start_date, { zone: tz || 'UTC' })
-          .set({ hour: 12, minute: 0 });
-        const end = DateTime.fromISO(c.end_date, { zone: tz || 'UTC' })
-          .set({ hour: 12, minute: 0 });
-        const visit = await base44.entities.CityVisit.create({
-          trip_id: trip.id,
-          external_city_id: best?.external_city_id || '',
-          city_name: c.city_name,
-          country: c.country || best?.country || '',
-          country_code: (c.country_code || best?.country_code || '').toUpperCase(),
-          latitude: best?.latitude || 0,
-          longitude: best?.longitude || 0,
-          timezone: tz || 'UTC',
-          start_datetime: start.isValid ? start.toUTC().toISO() : undefined,
-          end_datetime: end.isValid ? end.toUTC().toISO() : undefined,
+        const start = DateTime.fromISO(c.start_date, { zone: tz }).set({ hour: 12, minute: 0 });
+        const end   = DateTime.fromISO(c.end_date,   { zone: tz }).set({ hour: 12, minute: 0 });
+        return {
+          trip_id:          tripId,
+          external_city_id: best?.external_city_id || null,
+          city_name:        c.city_name,
+          country:          c.country || best?.country || '',
+          country_code:     (c.country_code || best?.country_code || '').toUpperCase(),
+          latitude:         best?.latitude  || 0,
+          longitude:        best?.longitude || 0,
+          timezone:         tz,
+          start_datetime:   start.isValid ? start.toUTC().toISO() : null,
+          end_datetime:     end.isValid   ? end.toUTC().toISO()   : null,
           kind,
-        });
-        createdVisits.push({ visit, source: c, tz: tz || 'UTC' });
-      }
+          created_by:       authEmail,
+        };
+      });
 
-      // 4. Create activities
-      for (const { visit, source, tz } of createdVisits) {
-        for (const a of (source.activities || [])) {
-          const time = (a.start_time && /^\d{1,2}:\d{2}/.test(a.start_time))
-            ? a.start_time.padStart(5, '0').slice(0, 5)
-            : '10:00';
-          const endTime = (a.end_time && /^\d{1,2}:\d{2}/.test(a.end_time))
-            ? a.end_time.padStart(5, '0').slice(0, 5)
-            : null;
+      const { data: insertedVisits, error: visitErr } = await supabase
+        .from('city_visits').insert(visitsToInsert).select('id');
+      if (visitErr) throw visitErr;
+
+      // 4. Batch insert activities
+      const activitiesToInsert = [];
+      resolved.forEach(({ c, tz }, idx) => {
+        const visitId = insertedVisits[idx]?.id;
+        if (!visitId) return;
+        for (const a of (c.activities || [])) {
+          const time    = (a.start_time && /^\d{1,2}:\d{2}/.test(a.start_time)) ? a.start_time.padStart(5, '0').slice(0, 5) : '10:00';
+          const endTime = (a.end_time   && /^\d{1,2}:\d{2}/.test(a.end_time))   ? a.end_time.padStart(5, '0').slice(0, 5)   : null;
           const startDt = DateTime.fromISO(`${a.date}T${time}`, { zone: tz });
           if (!startDt.isValid) continue;
           const endDt = endTime
             ? DateTime.fromISO(`${a.date}T${endTime}`, { zone: tz })
             : startDt.plus({ hours: 2 });
-          await base44.entities.Activity.create({
-            trip_id: trip.id,
-            city_visit_id: visit.id,
-            title: a.title,
-            start_datetime: startDt.toUTC().toISO(),
-            end_datetime: (endDt.isValid ? endDt : startDt.plus({ hours: 2 })).toUTC().toISO(),
-            location_address: a.location_address || '',
-            currency: 'EUR',
+          activitiesToInsert.push({
+            trip_id:          tripId,
+            city_visit_id:    visitId,
+            title:            a.title,
+            start_datetime:   startDt.toUTC().toISO(),
+            end_datetime:     (endDt.isValid ? endDt : startDt.plus({ hours: 2 })).toUTC().toISO(),
+            location_address: a.location_address || null,
+            currency:         'EUR',
+            details:          {},
+            created_by:       authEmail,
           });
         }
+      });
+
+      if (activitiesToInsert.length > 0) {
+        const { error: actErr } = await supabase.from('activities').insert(activitiesToInsert);
+        if (actErr) throw actErr;
       }
 
-      return trip;
+      return tripId;
     },
     onMutate: () => { setState('saving'); setSaveError(null); },
-    onSuccess: (trip) => {
+    onSuccess: (tripId) => {
       qc.invalidateQueries({ queryKey: ['trips'] });
-      nav(`/trip/${trip.id}`);
+      nav(`/trip/${tripId}`);
     },
     onError: (err) => {
       setSaveError(err?.message || t('ai_plan.error_save'));
@@ -334,6 +350,35 @@ export default function AiTripPlanner() {
   else if (state === 'saving')     aiBlockText = t('ai_plan.status_saving');
   else                             aiBlockText = aiComment || t('ai_plan.status_ready');
 
+  // ── Limit guards ───────────────────────────────────────────────────────────
+  if (!isPro && checkingLimit) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 32, height: 32, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+      </div>
+    );
+  }
+
+  if (isOverLimit) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
+        <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
+          <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К трипам"><Icon name="back" size={14} /></button>
+          <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
+            <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
+            <span className="app-header__brand-name">Triplanio</span>
+          </div>
+          <div className="app-header__crumb">
+            <span className="app-header__crumb-sep">/</span>
+            <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{t('ai_plan.page_title')}</span>
+          </div>
+          <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
+        </header>
+        <TripLimitDialog open onOpenChange={(v) => { if (!v) nav('/trips'); }} activeCount={activeTrips.length} isPro={isPro} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       {/* Header — same structure as ManualPlanner */}
@@ -350,7 +395,7 @@ export default function AiTripPlanner() {
           <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{t('ai_plan.page_title')}</span>
         </div>
         <Btn variant="ghost" icon="refresh" onClick={resetAll} style={{ marginRight: 4 }}>{t('ai_plan.restart')}</Btn>
-        <HeaderActions user={user} isPro={false} isDark={isDark} onToggleTheme={toggleTheme} />
+        <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
       </header>
 
       {/* Body */}
@@ -364,7 +409,7 @@ export default function AiTripPlanner() {
               padding: 16,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg, var(--ai), #c66ce2)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700 }}>AI</div>
+                <TriplanioAvatar size="sm" />
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai)' }}>{t('ai_plan.assistant_label')}</div>
                 <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto' }}>{t('ai_plan.assistant_hint')}</span>
               </div>
@@ -407,7 +452,7 @@ export default function AiTripPlanner() {
               minHeight: 100, display: 'flex', flexDirection: 'column', gap: 8,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg, var(--ai), #c66ce2)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 700 }}>AI</div>
+                <TriplanioAvatar size="xs" />
                 <b style={{ color: aiBlockNote }}>{t('ai_plan.assistant_label')}</b>
                 {state === 'generating' && (
                   <span className="ai-dots" style={{ marginLeft: 'auto', color: 'var(--ai)' }}><span /><span /><span /></span>
@@ -495,7 +540,7 @@ export default function AiTripPlanner() {
             </div>
 
             {/* Body — list area */}
-            <div className="scrollbar-thin" style={{ flex: 1, padding: 14, overflow: 'auto', minHeight: 320, maxHeight: 480, display: 'flex', flexDirection: 'column' }}>
+            <div className="scrollbar-thin" style={{ flex: 1, padding: 14, overflow: 'auto', minHeight: 0, maxHeight: 480, display: 'flex', flexDirection: 'column' }}>
               {state === 'empty' && (
                 <div style={{ flex: 1, minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted-2)', textAlign: 'center' }}>
                   <div>
@@ -561,6 +606,12 @@ export default function AiTripPlanner() {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+function fmtDraftDate(iso) {
+  if (!iso) return '';
+  const dt = DateTime.fromISO(iso);
+  return dt.isValid ? dt.toFormat('d LLL') : iso;
+}
+
 function SkeletonBar({ width = '60%', height = 12 }) {
   return (
     <div style={{
@@ -588,7 +639,7 @@ function DraftCityCard({ city, num, startCollapsed }) {
 
   const nights = city.nights ?? city.n ?? 0;
   const datesLabel = city.start_date && city.end_date
-    ? `${city.start_date} → ${city.end_date}`
+    ? `${fmtDraftDate(city.start_date)} → ${fmtDraftDate(city.end_date)}`
     : (city.dates || '');
 
   return (
@@ -617,7 +668,7 @@ function DraftCityCard({ city, num, startCollapsed }) {
         <div style={{ padding: '8px 14px 12px' }}>
           {days.map((d) => (
             <div key={d} style={{ marginTop: 8 }}>
-              <div className="eyebrow" style={{ fontSize: 10.5, marginBottom: 6 }}>{d}</div>
+              <div className="eyebrow" style={{ fontSize: 10.5, marginBottom: 6 }}>{fmtDraftDate(d)}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
                 <div style={{ position: 'absolute', left: 32, top: 8, bottom: 8, width: 2, background: 'var(--line-2)' }} />
                 {byDay[d].map((a, j) => (
