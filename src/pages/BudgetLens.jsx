@@ -11,6 +11,7 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
+import { useFxRates, convert } from '@/lib/fx';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton, Severity, fmt } from '../design/index';
 
@@ -69,6 +70,8 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], onSav
       created_by: user?.id,
     };
     if (notes.trim()) row.notes = notes.trim();
+    if (date) row.spent_on = date;
+    if (cityName) row.city_name = cityName;
     const { error } = await supabase.from('budget_expenses').insert(row);
     setSaving(false);
     if (error) { setErr(error.message); return; }
@@ -322,12 +325,18 @@ function CityGrouping({ cityGroups, mainCurrency, onDelete }) {
 
 // ─── BudgetLens ───────────────────────────────────────────────────────────────
 
-export default function BudgetLens({ tripId, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient }) {
+export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient }) {
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);
   const [seeding, setSeeding] = useState(false);
 
-  const mainCurrency = budget?.currency || 'EUR';
+  // Main display currency comes from trip settings (trips.details.main_currency,
+  // default EUR); trip_budgets.currency is a fallback for legacy trips.
+  const mainCurrency = trip?.details?.main_currency || budget?.currency || 'EUR';
+  const { data: fx } = useFxRates(mainCurrency);
+  // Convert an expense to the main currency (best-effort: fall back to the raw
+  // amount if a rate is unavailable so totals are never silently zeroed).
+  const toMain = (e) => convert(e.original_amount, e.original_currency || mainCurrency, mainCurrency, fx) ?? Number(e.original_amount || 0);
   const cityNames = cityVisits.map(v => v.city_name).filter(Boolean);
 
   function openAddExpense() {
@@ -363,10 +372,10 @@ export default function BudgetLens({ tripId, budget, budgetCategories = [], budg
     const sorted = [...budgetCategories].sort((a, b) => (a.order_index ?? 99) - (b.order_index ?? 99));
     return sorted.map(cat => {
       const items = budgetExpenses.filter(e => e.category_id === cat.id);
-      const spent = items.reduce((s, e) => s + Number(e.original_amount || 0), 0);
+      const spent = items.reduce((s, e) => s + toMain(e), 0);
       return { ...cat, items, spent, itemCount: items.length, mainCur: mainCurrency };
     });
-  }, [budgetCategories, budgetExpenses, mainCurrency]);
+  }, [budgetCategories, budgetExpenses, mainCurrency, fx]);
 
   const activeCat = cats.find(c => c.id === (activeCatId || cats[0]?.id)) || cats[0];
 
@@ -386,10 +395,10 @@ export default function BudgetLens({ tripId, budget, budgetCategories = [], budg
     }
     return Object.entries(cityMap).map(([city, items]) => ({
       city,
-      total: items.reduce((s, it) => s + Number(it.original_amount || 0), 0),
+      total: items.reduce((s, it) => s + toMain(it), 0),
       items,
     }));
-  }, [cats]);
+  }, [cats, fx]);
 
   // Skeleton
   if (isLoading) {

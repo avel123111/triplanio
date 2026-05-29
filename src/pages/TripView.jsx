@@ -1700,6 +1700,7 @@ export default function TripView() {
           {shownLens === 'budget' && (
             <BudgetLens
               tripId={tripId}
+              trip={trip}
               budget={budget}
               budgetCategories={budgetCategories}
               budgetExpenses={budgetExpenses}

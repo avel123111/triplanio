@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     // Verify trip exists
     const { data: trip } = await supabaseAdmin
       .from('trips')
-      .select('id, created_by')
+      .select('id, created_by, details')
       .eq('id', tripId)
       .single();
 
@@ -65,6 +65,8 @@ Deno.serve(async (req) => {
 
     // created_by must be a uuid — prefer the trip owner, fall back to caller id.
     const ownerId = trip.created_by || callerId;
+    // Main currency comes from trip settings (default EUR), not a hardcoded value.
+    const mainCurrency = (trip.details && trip.details.main_currency) || 'EUR';
 
     // --- Ensure trip_budgets row ---
     const { data: existingBudget } = await supabaseAdmin
@@ -78,7 +80,7 @@ Deno.serve(async (req) => {
         .from('trip_budgets')
         .insert({
           trip_id: tripId,
-          currency: 'USD',
+          currency: mainCurrency,
           fx_overrides: {},
           created_by: ownerId,
         });
