@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/AuthContext';
 export const CHAT_MESSAGES_KEY = (tripId) => ['chat-messages', tripId];
 export const CHAT_READ_KEY     = (tripId, userId) => ['chat-read', tripId, userId];
 export const CHAT_ID_KEY       = (tripId) => ['chat-id', tripId];
+export const CHAT_UNREAD_KEY   = (tripId, userId) => ['chat-unread', tripId, userId];
 
 // ── Resolve group chat id from tripId ─────────────────────────────────────────
 
@@ -50,7 +51,7 @@ function toUtcIso(s) {
   return ms ? new Date(ms).toISOString() : new Date().toISOString();
 }
 
-// ── Count unread ──────────────────────────────────────────────────────────────
+// ── Count unread (used by tests / local computation) ─────────────────────────
 
 export function countUnread(messages, lastReadAt, myUserId) {
   if (!Array.isArray(messages) || messages.length === 0) return 0;
@@ -78,7 +79,6 @@ export function useChatMessages(tripId, { enabled = true } = {}) {
         .order('created_at', { ascending: true })
         .limit(200);
       if (error) throw error;
-      // created_date shim — TripChatTab reads this field
       return (data || []).map((m) => ({ ...m, created_date: m.created_at }));
     },
     enabled: !!chatId && enabled,
@@ -109,16 +109,40 @@ export function useMyChatRead(tripId, { enabled = true } = {}) {
 }
 
 // ── Unread count ──────────────────────────────────────────────────────────────
+//
+// Direct COUNT-query against the DB — independent of any chat-messages cache.
+// Different views (ChatLens, ChatWidget, etc.) load messages under their own
+// query keys; we don't want the badge to depend on which view is mounted.
 
 export function useUnreadChatCount(tripId, { enabled = true } = {}) {
   const { user } = useAuth();
-  const { data: messages, isLoading: messagesLoading } = useChatMessages(tripId, { enabled });
-  const { data: read, isLoading: readLoading }         = useMyChatRead(tripId, { enabled });
-  useChatLiveSubscription(tripId, { enabled });
-  return useMemo(() => {
-    if (messagesLoading || readLoading) return 0;
-    return countUnread(messages || [], read?.last_read_at, user?.id);
-  }, [messages, read, user?.id, messagesLoading, readLoading]);
+  const { data: chatId } = useChatId(tripId, { enabled: !!tripId && enabled });
+  useChatLiveSubscription(tripId, { enabled: !!chatId && enabled });
+  const q = useQuery({
+    queryKey: CHAT_UNREAD_KEY(tripId, user?.id),
+    queryFn: async () => {
+      if (!chatId || !user?.id) return 0;
+      const { data: read } = await supabase
+        .from('chat_reads')
+        .select('last_read_at')
+        .eq('chat_id', chatId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const lastReadAt = read?.last_read_at || null;
+      let query = supabase
+        .from('chat_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('chat_id', chatId)
+        .neq('user_id', user.id);
+      if (lastReadAt) query = query.gt('created_at', lastReadAt);
+      const { count } = await query;
+      return count || 0;
+    },
+    enabled: !!chatId && !!user?.id && enabled,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+  });
+  return q.data || 0;
 }
 
 // ── Live subscription ─────────────────────────────────────────────────────────
@@ -137,6 +161,7 @@ export function useChatLiveSubscription(tripId, { enabled = true } = {}) {
         filter: `chat_id=eq.${chatId}`,
       }, () => {
         qc.invalidateQueries({ queryKey: CHAT_MESSAGES_KEY(tripId) });
+        qc.invalidateQueries({ queryKey: ['chat-unread', tripId] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
