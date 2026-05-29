@@ -8,6 +8,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
+import { useUnreadChatCount } from '@/lib/chat';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
@@ -316,6 +317,7 @@ function isLensVisible(trip, lensId) {
 function TripSidebar({ tripId, trip, lens, onNavigate, isPro, onUpgrade }) {
   const lensItems = LENS_ITEMS.filter(item => isLensVisible(trip, item.id));
   const showUpgrade = !trip?.is_pro_trip && !isPro;
+  const chatUnread = useUnreadChatCount(tripId);
   return (
     <aside className="app-side">
       <div className="app-side__group">
@@ -328,6 +330,11 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, onUpgrade }) {
           >
             <Icon name={item.icon} size={15} />
             {item.label}
+            {item.id === 'chat' && chatUnread > 0 && (
+              <span className="app-side__item-badge" style={{ marginLeft: 'auto', background: 'var(--warm)', color: '#fff', borderRadius: 999, fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
+                {chatUnread > 99 ? '99+' : chatUnread}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -1743,6 +1750,7 @@ export default function TripView() {
               tripId={tripId}
               members={members}
               myRole={myRole}
+              ownerEmail={trip?.created_by}
             />
           )}
           {shownLens === 'map' && (
@@ -1795,7 +1803,7 @@ export default function TripView() {
       />
 
       {isLensVisible(trip, 'chat') && shownLens !== 'chat' && (
-        <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} />
+        <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerEmail={trip?.created_by} />
       )}
 
       <ModalHost />

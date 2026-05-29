@@ -18,7 +18,9 @@ import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
-import { Avatar, Btn, Card } from '../design/index';
+import { Avatar, Card } from '../design/index';
+import { Icon } from '../design/icons';
+import { chatParticipants, pluralPeople } from '@/lib/chat';
 
 // ─── Query keys ───────────────────────────────────────────────────────────────
 
@@ -126,7 +128,7 @@ function ChatMember({ name, role, ai }) {
 
 // ─── ChatLens (main export) ───────────────────────────────────────────────────
 
-export default function ChatLens({ tripId, members = [], myRole }) {
+export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const scrollRef  = useRef(null);
@@ -225,6 +227,16 @@ export default function ChatLens({ tripId, members = [], myRole }) {
     }
   }, [msgs]);
 
+  // ── Mark read while viewing (and after each new message) ──
+  useEffect(() => {
+    if (!chatId || !user?.id) return;
+    supabase.from('chat_reads').upsert(
+      { chat_id: chatId, user_id: user.id, trip_id: tripId, user_email: user.email, last_read_at: new Date().toISOString() },
+      { onConflict: 'chat_id,user_id' },
+    ).then(() => qc.invalidateQueries({ queryKey: ['chat-unread', tripId] }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId, user?.id, msgs.length]);
+
   // ── Thinking state ──
   const isThinking = useMemo(() => {
     if (!msgs.length) return false;
@@ -298,25 +310,38 @@ export default function ChatLens({ tripId, members = [], myRole }) {
   function handleTextChange(e) {
     const v = e.target.value;
     setText(v);
-    if (v.slice(-1) === '@') setShowMention(true);
-    else if (v.slice(-1) === ' ' || v === '') setShowMention(false);
+    // Show the mention popup whenever the text ends with an @token
+    // (`@`, `@t`, `@tri`, …) at the start or after whitespace.
+    setShowMention(/(^|\s)@(\w*)$/.test(v));
   }
 
-  // Mention list — Triplanio first
+  // Active @token being typed (used to filter + replace on select).
+  const mentionToken = (/(^|\s)@(\w*)$/.exec(text)?.[2] || '').toLowerCase();
+
+  function applyMention(handle) {
+    // Replace the trailing @token (even a partial one like "@tri") with the
+    // full handle, so picking the suggestion always completes the name.
+    setText((t) => t.replace(/@(\w*)$/, '@' + handle + ' '));
+    setShowMention(false);
+  }
+
+  // Mention list — Triplanio first, then participants (owner + admins + viewers)
   const mentionList = [
     { name: 'Triplanio', desc: '@Triplanio — отвечает всем', ai: true, handle: 'Triplanio' },
-    ...members
-      .filter((m) => m.status === 'active')
-      .map((m) => {
-        const resolved = nameFor(m.user_email);
-        return {
-          name:   resolved,
-          desc:   m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель',
-          handle: resolved.split(/[\s@]/)[0],
-          ai:     false,
-        };
-      }),
+    ...chatParticipants(members, ownerEmail).map((m) => {
+      const resolved = nameFor(m.user_email);
+      return {
+        name:   resolved,
+        desc:   m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель',
+        handle: resolved.split(/[\s@]/)[0],
+        ai:     false,
+      };
+    }),
   ];
+  const filteredMentionList = mentionToken
+    ? mentionList.filter((m) =>
+        m.handle.toLowerCase().startsWith(mentionToken) || m.name.toLowerCase().startsWith(mentionToken))
+    : mentionList;
 
   // Build message rows with date dividers
   const messageRows = [];
@@ -341,9 +366,9 @@ export default function ChatLens({ tripId, members = [], myRole }) {
     );
   }
 
-  // Active members for sidebar
+  // Chat participants = owner + active admins/viewers (excl. offline/pending).
   const activeMembers = (() => {
-    const list = members.filter((m) => m.status === 'active');
+    const list = chatParticipants(members, ownerEmail);
     if (list.length === 0 && user) {
       return [{ id: 'self', user_full_name: user.full_name || '', user_email: user.email, role: myRole || 'owner', status: 'active' }];
     }
@@ -363,7 +388,7 @@ export default function ChatLens({ tripId, members = [], myRole }) {
           {activeMembers.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success)', fontSize: 12 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} />
-              {activeMembers.length} участников
+              {pluralPeople(activeMembers.length)}
             </div>
           )}
         </div>
@@ -415,13 +440,10 @@ export default function ChatLens({ tripId, members = [], myRole }) {
               width: 280, zIndex: 5,
             }}>
               <div className="eyebrow" style={{ padding: '6px 10px 8px' }}>Упомянуть</div>
-              {mentionList.map((m, i) => (
+              {filteredMentionList.map((m, i) => (
                 <button
                   key={i}
-                  onClick={() => {
-                    setText((t) => t.replace(/@$/, '@' + m.handle + ' '));
-                    setShowMention(false);
-                  }}
+                  onMouseDown={(e) => { e.preventDefault(); applyMention(m.handle); }}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', width: '100%', border: 'none', background: 'transparent', borderRadius: 7, cursor: 'pointer', textAlign: 'left' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -438,19 +460,22 @@ export default function ChatLens({ tripId, members = [], myRole }) {
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <div style={{ flex: 1, position: 'relative' }}>
+              {/* Overlay (visible) sits BEHIND a transparent-text textarea: the
+                  overlay renders the full text with @Triplanio in bold purple,
+                  the textarea shows only the caret — no double glyphs. */}
               <div
                 aria-hidden="true"
                 style={{
                   position: 'absolute', inset: 0,
-                  padding: '8px 12px',
-                  font: 'inherit', fontSize: 13.5, lineHeight: 1.5,
+                  padding: '11px 14px',
+                  font: 'inherit', fontSize: 13.5, lineHeight: 1.4,
                   whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  color: 'transparent',
+                  color: 'var(--ink)',
                   pointerEvents: 'none',
-                  borderRadius: 8,
+                  borderRadius: 10,
                   overflow: 'hidden',
                 }}
-                dangerouslySetInnerHTML={{ __html: highlightMentions(text) }}
+                dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
               />
               <textarea
                 className="textarea"
@@ -461,15 +486,22 @@ export default function ChatLens({ tripId, members = [], myRole }) {
                 style={{
                   position: 'relative', zIndex: 1,
                   background: 'transparent',
-                  minHeight: 38, maxHeight: 120, width: '100%',
-                  padding: '8px 12px', fontSize: 13.5, lineHeight: 1.5,
+                  color: 'transparent', caretColor: 'var(--ink)',
+                  height: 44, minHeight: 44, maxHeight: 120, width: '100%',
+                  padding: '11px 14px', fontSize: 13.5, lineHeight: 1.4,
                   resize: 'none',
                 }}
               />
             </div>
-            <Btn variant="primary" icon="send" onClick={sendMessage} disabled={sending || !text.trim() || !chatId}>
-              Отправить
-            </Btn>
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={sendMessage}
+              disabled={sending || !text.trim() || !chatId}
+              style={{ height: 44, flexShrink: 0, padding: '0 18px' }}
+            >
+              <Icon name="send" size={16} /> Отправить
+            </button>
           </div>
         </div>
       </div>

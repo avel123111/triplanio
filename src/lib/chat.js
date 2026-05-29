@@ -34,6 +34,33 @@ export function useChatId(tripId, { enabled = true } = {}) {
   });
 }
 
+// ── Participant helpers ───────────────────────────────────────────────────────
+//
+// Chat participants = trip owner + every *active* member (admins + viewers),
+// excluding offline / pending / declined rows. The owner often isn't a
+// trip_members row (it's tracked on trips.created_by), so synthesize it when
+// missing. The AI assistant is shown separately and is NOT counted here.
+
+export function chatParticipants(members = [], ownerEmail = '') {
+  const list = (members || []).filter((m) => m.status === 'active');
+  const oe = (ownerEmail || '').toLowerCase();
+  if (oe && !list.some((m) => m.role === 'owner' || (m.user_email || '').toLowerCase() === oe)) {
+    list.unshift({ id: '__owner__', user_email: ownerEmail, role: 'owner', status: 'active' });
+  }
+  return list;
+}
+
+// Russian pluralization for "человек" / "человека".
+export function pluralPeople(n) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  let word;
+  if (mod10 === 1 && mod100 !== 11) word = 'человек';
+  else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) word = 'человека';
+  else word = 'человек';
+  return `${n} ${word}`;
+}
+
 // ── Timestamp helpers ─────────────────────────────────────────────────────────
 
 function parseUtcMs(s) {

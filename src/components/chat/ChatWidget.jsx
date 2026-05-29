@@ -7,11 +7,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageCircle, X, ExternalLink, Sparkles } from 'lucide-react';
+import { MessageCircle, X, ExternalLink } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_EMAIL, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
-import { useChatId, useUnreadChatCount } from '@/lib/chat';
+import { useChatId, useUnreadChatCount, chatParticipants, pluralPeople } from '@/lib/chat';
 import TriplanioAvatar from './TriplanioAvatar';
 import ChatMarkdown from './ChatMarkdown';
 import { Avatar } from '@/design/index';
@@ -26,7 +26,7 @@ function highlightMentions(val) {
     .replace(/@triplanio\b/gi, '<b style="color:var(--ai);font-weight:700">$&</b>');
 }
 
-export default function ChatWidget({ tripId, members = [], tripTitle }) {
+export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -151,7 +151,18 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
     }
   }
 
-  const activeMembers = members.filter((m) => m.status === 'active');
+  const activeMembers = chatParticipants(members, ownerEmail);
+
+  // Active @token being typed, and the helper that completes it on select.
+  const mentionToken = (/(^|\s)@(\w*)$/.exec(text)?.[2] || '').toLowerCase();
+  function applyMention(handle) {
+    setText((t) => t.replace(/@(\w*)$/, '@' + handle + ' '));
+    setShowMention(false);
+  }
+  const mentionMembers = mentionToken
+    ? activeMembers.filter((m) => (nameFor(m.user_email) || '').toLowerCase().startsWith(mentionToken))
+    : activeMembers;
+  const triplanioMatches = !mentionToken || 'triplanio'.startsWith(mentionToken);
 
   // ── Closed: floating button ──
   if (!open) {
@@ -160,23 +171,11 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
         className="dock"
         onClick={() => setOpen(true)}
         aria-label="Открыть чат"
-        style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, #6a3ee2 100%)' }}
       >
         <MessageCircle size={22} />
         {unread > 0 && (
           <div className="dock__count">{unread > 99 ? '99+' : unread}</div>
         )}
-        {/* Sparkles sub-badge */}
-        <span style={{
-          position: 'absolute', bottom: -3, right: -3,
-          width: 22, height: 22, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white',
-          border: '2px solid var(--surface)',
-          display: 'grid', placeItems: 'center',
-          pointerEvents: 'none',
-        }}>
-          <Sparkles size={11} />
-        </span>
       </button>
     );
   }
@@ -184,9 +183,9 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
   // ── Open: panel ──
   return (
     <div className="dock-panel">
-      {/* Tab bar — matches dock.jsx reference */}
+      {/* Tab bar — single "group chat" tab + close */}
       <div className="dock-panel__tabs">
-        <button className="dock-panel__tab active">
+        <button className="dock-panel__tab active" style={{ flex: 1, justifyContent: 'flex-start' }}>
           <MessageCircle size={14} />
           Чат группы
           {unread > 0 && (
@@ -197,10 +196,6 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
               padding: '0 4px',
             }}>{unread > 99 ? '99+' : unread}</span>
           )}
-        </button>
-        <button className="dock-panel__tab" style={{ opacity: 0.6, cursor: 'default' }} tabIndex={-1}>
-          <Sparkles size={14} style={{ color: 'var(--ai)' }} />
-          <span className="ai-text">ИИ-помощник</span>
         </button>
         <button
           className="icon-btn"
@@ -225,12 +220,12 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
           ))}
         </div>
         <div style={{ flex: 1, fontSize: 12.5 }}>
-          {tripTitle ? <><b>{tripTitle}</b>{' · '}</> : ''}{activeMembers.length} {activeMembers.length === 1 ? 'человек' : 'человека'}
+          {tripTitle ? <><b>{tripTitle}</b>{' · '}</> : ''}{pluralPeople(activeMembers.length)}
         </div>
         <button
           className="icon-btn"
           style={{ width: 30, height: 30 }}
-          onClick={() => navigate(`/trips/${tripId}?lens=chat`)}
+          onClick={() => navigate(`/trip/${tripId}?lens=chat`)}
           aria-label="Открыть полный чат"
         >
           <ExternalLink size={14} />
@@ -304,24 +299,26 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
             borderRadius: 10, boxShadow: 'var(--shadow-pop)', padding: 4,
             width: 240, zIndex: 5,
           }}>
-            <button
-              onClick={() => { setText((t) => t.replace(/@$/, '@Triplanio ')); setShowMention(false); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', width: '100%', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <TriplanioAvatar size="xs" />
-              <div>
-                <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>@Triplanio — отвечает всем</div>
-              </div>
-            </button>
-            {activeMembers.map((m, i) => {
+            {triplanioMatches && (
+              <button
+                onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', width: '100%', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <TriplanioAvatar size="xs" />
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>@Triplanio — отвечает всем</div>
+                </div>
+              </button>
+            )}
+            {mentionMembers.map((m, i) => {
               const n = nameFor(m.user_email);
               return (
                 <button
                   key={i}
-                  onClick={() => { setText((t) => t.replace(/@$/, '@' + n.split(/\s/)[0] + ' ')); setShowMention(false); }}
+                  onMouseDown={(e) => { e.preventDefault(); applyMention(n.split(/[\s@]/)[0]); }}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', width: '100%', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -339,12 +336,12 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
               aria-hidden="true"
               style={{
                 position: 'absolute', inset: 0,
-                padding: '7px 10px', font: 'inherit', fontSize: 13, lineHeight: 1.5,
+                padding: '8px 10px', font: 'inherit', fontSize: 13, lineHeight: 1.4,
                 whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                color: 'transparent', pointerEvents: 'none',
+                color: 'var(--ink)', pointerEvents: 'none',
                 borderRadius: 8, overflow: 'hidden',
               }}
-              dangerouslySetInnerHTML={{ __html: highlightMentions(text) }}
+              dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
             />
             <textarea
               className="textarea"
@@ -353,14 +350,14 @@ export default function ChatWidget({ tripId, members = [], tripTitle }) {
               onChange={(e) => {
                 const v = e.target.value;
                 setText(v);
-                if (v.slice(-1) === '@') setShowMention(true);
-                else if (!v.includes('@')) setShowMention(false);
+                setShowMention(/(^|\s)@(\w*)$/.test(v));
               }}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
               style={{
                 position: 'relative', zIndex: 1, background: 'transparent',
-                minHeight: 36, maxHeight: 100, width: '100%',
-                padding: '7px 10px', fontSize: 13, lineHeight: 1.5, resize: 'none',
+                color: 'transparent', caretColor: 'var(--ink)',
+                height: 38, minHeight: 38, maxHeight: 100, width: '100%',
+                padding: '8px 10px', fontSize: 13, lineHeight: 1.4, resize: 'none',
               }}
             />
           </div>
