@@ -1,14 +1,164 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
-import { Sparkles, RefreshCw, Map as MapIcon, Info, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Sparkles, Info, AlertTriangle, ChevronDown } from 'lucide-react';
+import { MapContainer, TileLayer, Marker as LeafletMarker, Polyline, useMap as useLeafletMap } from 'react-leaflet';
+import L from 'leaflet';
+import { APIProvider, Map as GMap, Marker as GMarker, useMap as useGMap } from '@vis.gl/react-google-maps';
 import { supabase } from '@/api/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
+import { useTheme } from '@/lib/ThemeContext';
 import { searchCities, getTimezone } from '@/lib/geo';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
+import { Icon } from '../design/icons';
 import { Btn } from '@/design/index';
-import AiTripMiniMap from '@/components/trips/AiTripMiniMap';
+import HeaderActions from '@/components/HeaderActions';
+import { groupMarkers, markerSvg, svgDataUri, markerPixelSize, MISSING_COLOR } from '@/lib/mapRoute';
+import '../design/app.css';
+
+const GKEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+
+// ── Map helpers ───────────────────────────────────────────────────────────────
+
+class MapErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) return this.props.fallback || null;
+    return this.props.children;
+  }
+}
+
+function LeafletFitBounds({ positions }) {
+  const map = useLeafletMap();
+  useEffect(() => {
+    if (positions.length === 0) return;
+    if (positions.length === 1) { map.setView(positions[0], 7, { animate: true }); return; }
+    try { map.fitBounds(L.latLngBounds(positions).pad(0.35), { maxZoom: 7, animate: true }); } catch {}
+  }, [JSON.stringify(positions)]); // eslint-disable-line
+  return null;
+}
+
+function GFitBounds({ positions }) {
+  const map = useGMap();
+  useEffect(() => {
+    if (!map || !window.google || positions.length === 0) return;
+    if (positions.length === 1) { map.setCenter({ lat: positions[0][0], lng: positions[0][1] }); map.setZoom(7); return; }
+    try {
+      const bounds = new window.google.maps.LatLngBounds();
+      positions.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
+      map.fitBounds(bounds);
+    } catch {}
+  }, [map, JSON.stringify(positions)]); // eslint-disable-line
+  return null;
+}
+
+function gIcon(labels) {
+  const g = window.google;
+  if (!g?.maps) return undefined;
+  const d = markerPixelSize(false);
+  return { url: svgDataUri(markerSvg(labels, false)), scaledSize: new g.maps.Size(d, d), anchor: new g.maps.Point(d / 2, d / 2) };
+}
+
+function GDashedLines({ pts }) {
+  const map = useGMap();
+  const ptsKey = pts.map(p => `${p.lat},${p.lng}`).join('|');
+  useEffect(() => {
+    if (!map || !window.google || pts.length < 2) return;
+    const gmaps = window.google.maps;
+    const polylines = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const pl = new gmaps.Polyline({
+        path: [{ lat: pts[i].lat, lng: pts[i].lng }, { lat: pts[i + 1].lat, lng: pts[i + 1].lng }],
+        geodesic: false, strokeOpacity: 0, strokeWeight: 2,
+        icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.45, scale: 3, strokeColor: MISSING_COLOR, strokeWeight: 2 }, offset: '0', repeat: '14px' }],
+        map,
+      });
+      polylines.push(pl);
+    }
+    return () => polylines.forEach(p => p.setMap(null));
+  }, [map, ptsKey]); // eslint-disable-line
+  return null;
+}
+
+function AiPlannerMap({ cities }) {
+  const [pts, setPts] = useState([]);
+  const [gmapFailed, setGmapFailed] = useState(false);
+  const citiesKey = cities.map(c => c.city_name).join(',');
+
+  useEffect(() => {
+    if (!cities.length) { setPts([]); return; }
+    let cancelled = false;
+    (async () => {
+      const resolved = await Promise.all(cities.map(async (c, i) => {
+        try {
+          const results = await searchCities(`${c.city_name}${c.country ? ', ' + c.country : ''}`);
+          const best = results[0];
+          if (!best?.latitude) return null;
+          return { lat: best.latitude, lng: best.longitude, label: String(i + 1), color: '#2167e2', name: c.city_name };
+        } catch { return null; }
+      }));
+      if (!cancelled) setPts(resolved.filter(Boolean));
+    })();
+    return () => { cancelled = true; };
+  }, [citiesKey]); // eslint-disable-line
+
+  if (!pts.length) {
+    return (
+      <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', background: 'var(--wash)', color: 'var(--muted-2)' }}>
+        <div style={{ textAlign: 'center', fontSize: 12.5 }}>
+          <Icon name="map" size={22} style={{ marginBottom: 6, opacity: 0.4 }} />
+          <div>Загрузка…</div>
+        </div>
+      </div>
+    );
+  }
+
+  const positions = pts.map(p => [p.lat, p.lng]);
+  const groups = groupMarkers(pts);
+
+  const leafletMap = (
+    <MapContainer center={positions[0]} zoom={4} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} zoomControl={false} attributionControl={false}>
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <LeafletFitBounds positions={positions} />
+      {pts.slice(0, -1).map((p, i) => (
+        <Polyline key={i} positions={[[p.lat, p.lng], [pts[i + 1].lat, pts[i + 1].lng]]} pathOptions={{ color: MISSING_COLOR, weight: 2, dashArray: '5 7', opacity: 0.55 }} />
+      ))}
+      {groups.map((grp, i) => {
+        const d = markerPixelSize(false);
+        const icon = L.divIcon({ className: '', html: markerSvg(grp.labels, false), iconSize: [d, d], iconAnchor: [d / 2, d / 2] });
+        return <LeafletMarker key={i} position={[grp.lat, grp.lng]} icon={icon} />;
+      })}
+    </MapContainer>
+  );
+
+  if (!GKEY || gmapFailed) return leafletMap;
+
+  return (
+    <MapErrorBoundary fallback={leafletMap}>
+      <APIProvider apiKey={GKEY}>
+        <GMap
+          style={{ height: '100%', width: '100%' }}
+          defaultCenter={{ lat: positions[0][0], lng: positions[0][1] }}
+          defaultZoom={4}
+          gestureHandling="cooperative"
+          disableDefaultUI
+          mapTypeId="roadmap"
+        >
+          <GFitBounds positions={positions} />
+          {groups.map((grp, i) => (
+            <GMarker key={i} position={{ lat: grp.lat, lng: grp.lng }} icon={gIcon(grp.labels)} />
+          ))}
+          <GDashedLines pts={pts} />
+        </GMap>
+      </APIProvider>
+    </MapErrorBoundary>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 /**
  * AI trip planner — Layout L3 from src/pages/redesign/ScreenAiPlanner.jsx.
@@ -29,6 +179,8 @@ export default function AiTripPlanner() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { isDark, toggle: toggleTheme } = useTheme();
 
   const [prompt, setPrompt]       = useState('');
   const [draft, setDraft]         = useState(null);
@@ -177,26 +329,32 @@ export default function AiTripPlanner() {
   const aiBlockBg   = state === 'saving' ? 'var(--brand-soft)' : 'var(--ai-soft)';
   const aiBlockNote = state === 'saving' ? 'var(--brand)' : 'var(--ai)';
   let aiBlockText;
-  if (state === 'empty')       aiBlockText = t('ai_plan.status_waiting');
+  if (state === 'empty')           aiBlockText = t('ai_plan.status_waiting');
   else if (state === 'generating') aiBlockText = t('ai_plan.status_generating');
   else if (state === 'saving')     aiBlockText = t('ai_plan.status_saving');
-  else                              aiBlockText = aiComment || t('ai_plan.status_ready');
+  else                             aiBlockText = aiComment || t('ai_plan.status_ready');
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, var(--ai), #c66ce2)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-            <Sparkles size={22} />
-          </div>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>{t('ai_plan.page_title')}</h1>
-            <div className="muted" style={{ fontSize: 14 }}>{t('ai_plan.page_desc')}</div>
-          </div>
-          <Btn variant="ghost" icon="refresh" onClick={resetAll}>{t('ai_plan.restart')}</Btn>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
+      {/* Header — same structure as ManualPlanner */}
+      <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
+        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К трипам">
+          <Icon name="back" size={14} />
+        </button>
+        <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
+          <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
+          <span className="app-header__brand-name">Triplanio</span>
         </div>
+        <div className="app-header__crumb">
+          <span className="app-header__crumb-sep">/</span>
+          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{t('ai_plan.page_title')}</span>
+        </div>
+        <Btn variant="ghost" icon="refresh" onClick={resetAll} style={{ marginRight: 4 }}>{t('ai_plan.restart')}</Btn>
+        <HeaderActions user={user} isPro={false} isDark={isDark} onToggleTheme={toggleTheme} />
+      </header>
 
+      {/* Body */}
+      <div style={{ flex: 1, padding: '32px 24px', maxWidth: 1280, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         {/* 50/50 shell — identical across all four states */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }} className="ai-planner-grid">
           {/* ── LEFT — prompt + AI status + chips/hint ── */}
@@ -293,12 +451,12 @@ export default function AiTripPlanner() {
             {state === 'empty' && (
               <div style={{
                 height: 224, background: 'var(--wash)',
-                display: 'grid', placeItems: 'center',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 borderBottom: '1px solid var(--line-2)',
                 color: 'var(--muted-2)',
               }}>
                 <div style={{ textAlign: 'center', fontSize: 13 }}>
-                  <MapIcon size={28} style={{ marginBottom: 6 }} />
+                  <Icon name="map" size={28} style={{ marginBottom: 6, opacity: 0.4 }} />
                   <div>{t('ai_plan.map_placeholder')}</div>
                 </div>
               </div>
@@ -314,8 +472,8 @@ export default function AiTripPlanner() {
               </div>
             )}
             {hasDraft && (
-              <div style={{ height: 224, borderBottom: '1px solid var(--line-2)' }}>
-                <AiTripMiniMap cities={cities} />
+              <div style={{ height: 224, borderBottom: '1px solid var(--line-2)', overflow: 'hidden' }}>
+                <AiPlannerMap cities={cities} />
               </div>
             )}
 
@@ -337,9 +495,9 @@ export default function AiTripPlanner() {
             </div>
 
             {/* Body — list area */}
-            <div className="scrollbar-thin" style={{ flex: 1, padding: 14, overflow: 'auto', minHeight: 320, maxHeight: 480 }}>
+            <div className="scrollbar-thin" style={{ flex: 1, padding: 14, overflow: 'auto', minHeight: 320, maxHeight: 480, display: 'flex', flexDirection: 'column' }}>
               {state === 'empty' && (
-                <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--muted-2)', textAlign: 'center' }}>
+                <div style={{ flex: 1, minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted-2)', textAlign: 'center' }}>
                   <div>
                     <Sparkles size={28} style={{ color: 'var(--ai)', marginBottom: 6 }} />
                     <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--muted)' }}>{t('ai_plan.draft_placeholder')}</div>
