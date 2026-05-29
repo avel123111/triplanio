@@ -42,6 +42,21 @@ function isSameDay(a, b) {
   return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
+// HTML-escape user input, then wrap @triplanio in a colored bold span. Used in
+// the input overlay only — never inside dangerouslySetInnerHTML on user-facing
+// content that's been roundtripped through the DB.
+function highlightMentions(val) {
+  const escaped = (val || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br/>');
+  return escaped.replace(
+    /@triplanio\b/gi,
+    '<b style="color:var(--ai);font-weight:700">$&</b>',
+  );
+}
+
 // ─── DateDivider ──────────────────────────────────────────────────────────────
 
 function DateDivider({ date }) {
@@ -98,7 +113,9 @@ function Msg({ who, isMe, isAi, text, time, grouped }) {
 function ChatMember({ name, role, ai }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      {ai ? <TriplanioAvatar size="sm" /> : <Avatar name={name} size="sm" />}
+      {ai
+        ? <TriplanioAvatar size="sm" />
+        : <Avatar name={name} className="w-7 h-7" style={{ width: 28, height: 28, fontSize: 11 }} />}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
         <div className="muted" style={{ fontSize: 11 }}>{role}</div>
@@ -334,7 +351,7 @@ export default function ChatLens({ tripId, members = [], myRole }) {
   })();
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20, height: 'calc(100vh - 144px)', minHeight: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20, height: '100%', minHeight: 0 }}>
       {/* Chat area */}
       <div style={{
         background: 'var(--surface)', border: '1px solid var(--line)',
@@ -420,14 +437,36 @@ export default function ChatLens({ tripId, members = [], myRole }) {
           )}
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <textarea
-              className="textarea"
-              placeholder="Напиши сообщение — @ открывает упоминание"
-              value={text}
-              onChange={handleTextChange}
-              onKeyDown={handleKey}
-              style={{ minHeight: 38, maxHeight: 120, flex: 1, padding: '8px 12px' }}
-            />
+            <div style={{ flex: 1, position: 'relative' }}>
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute', inset: 0,
+                  padding: '8px 12px',
+                  font: 'inherit', fontSize: 13.5, lineHeight: 1.5,
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  color: 'transparent',
+                  pointerEvents: 'none',
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                }}
+                dangerouslySetInnerHTML={{ __html: highlightMentions(text) }}
+              />
+              <textarea
+                className="textarea"
+                placeholder="Напиши сообщение — @ открывает упоминание"
+                value={text}
+                onChange={handleTextChange}
+                onKeyDown={handleKey}
+                style={{
+                  position: 'relative', zIndex: 1,
+                  background: 'transparent',
+                  minHeight: 38, maxHeight: 120, width: '100%',
+                  padding: '8px 12px', fontSize: 13.5, lineHeight: 1.5,
+                  resize: 'none',
+                }}
+              />
+            </div>
             <Btn variant="primary" icon="send" onClick={sendMessage} disabled={sending || !text.trim() || !chatId}>
               Отправить
             </Btn>

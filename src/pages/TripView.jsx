@@ -27,6 +27,7 @@ import CalendarLens from './CalendarLens';
 import DocsLens from './DocsLens';
 import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
+import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/redesign/ScreenMap';
 import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
 import PaymentFailDialog from '@/components/common/PaymentFailDialog';
@@ -1498,9 +1499,9 @@ export default function TripView() {
         <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={isPro} onUpgrade={openUpgrade} />
         <main style={{
           minWidth: 0,
-          padding: shownLens === 'map' ? 0 : '28px 28px 60px',
-          height: shownLens === 'map' ? 'calc(100vh - 56px)' : undefined,
-          overflow: shownLens === 'map' ? 'hidden' : undefined,
+          padding: shownLens === 'map' ? 0 : shownLens === 'chat' ? '28px 28px 28px' : '28px 28px 60px',
+          height: (shownLens === 'map' || shownLens === 'chat') ? 'calc(100vh - 56px)' : undefined,
+          overflow: (shownLens === 'map' || shownLens === 'chat') ? 'hidden' : undefined,
         }}>
           {/* Transfer — opened from missing-transfer warnings or edit mode */}
           {transferEdit.fromVisit && transferEdit.toVisit && (
@@ -1792,6 +1793,10 @@ export default function TripView() {
         onOpenChange={() => setPayResult(null)}
         onRetry={() => { setPayResult(null); openUpgrade(); }}
       />
+
+      {isLensVisible(trip, 'chat') && shownLens !== 'chat' && (
+        <ChatWidget tripId={tripId} members={members} />
+      )}
 
       <ModalHost />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
