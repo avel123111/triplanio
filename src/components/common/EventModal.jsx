@@ -15,6 +15,7 @@
  * Visual reference: designer prototype `event-view.jsx`.
  */
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/api/supabaseClient';
@@ -291,6 +292,7 @@ export default function EventModal(props) {
     }
   };
 
+  const qc = useQueryClient();
   const [docs, setDocs] = useState(() => {
     if (!entity) return [];
     return kind === 'service' ? getDetailsDocuments(entity.details || {}) : getEntityDocuments(entity);
@@ -389,6 +391,12 @@ export default function EventModal(props) {
             await supabase.from(table).update({ details: { ...(entity.details || {}), documents: next } }).eq('id', entity.id);
           } else {
             await supabase.from(table).update({ documents: next }).eq('id', entity.id);
+          }
+          // Refresh app-wide trip data so the underlying entity (and a re-open
+          // of this modal) reflects the new document immediately.
+          if (entity.trip_id) {
+            qc.invalidateQueries({ queryKey: ['trip-content', entity.trip_id] });
+            qc.invalidateQueries({ queryKey: ['trip-shell', entity.trip_id] });
           }
         }
       }

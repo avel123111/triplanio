@@ -512,7 +512,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               })}
             </div>
           )}
-          <Btn variant="ghost" size="sm" icon="edit" style={{ marginTop: 8 }} onClick={openFxDialog}>Изменить курсы</Btn>
+          {foreignCurrencies.length > 0 && (
+            <Btn variant="ghost" size="sm" icon="edit" style={{ marginTop: 8 }} onClick={openFxDialog}>Изменить курсы</Btn>
+          )}
         </Card>
       </div>
 
@@ -536,22 +538,20 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         </div>
       )}
 
-      {/* Grouping controls */}
-      {!noExpenses && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: missingCurrencies.length > 0 ? 22 : 0, marginBottom: 14, flexWrap: 'wrap' }}>
-          <div className="tweaks__seg">
-            <button className={grouping === 'category' ? 'active' : ''} onClick={() => setGrouping('category')}>По категориям</button>
-            <button className={grouping === 'city' ? 'active' : ''} onClick={() => setGrouping('city')}>По городам</button>
-          </div>
-          <div style={{ flex: 1 }} />
-          {grouping === 'category' && (
-            <Btn variant="ghost" size="sm" icon="plus" onClick={openAddCategory}>Категория</Btn>
-          )}
-          <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>Ручная трата</Btn>
+      {/* Grouping controls — always shown (categories exist even before any expense) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 22, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div className="tweaks__seg">
+          <button className={grouping === 'category' ? 'active' : ''} onClick={() => setGrouping('category')}>По категориям</button>
+          <button className={grouping === 'city' ? 'active' : ''} onClick={() => setGrouping('city')}>По городам</button>
         </div>
-      )}
+        <div style={{ flex: 1 }} />
+        {grouping === 'category' && (
+          <Btn variant="ghost" size="sm" icon="plus" onClick={openAddCategory}>Категория</Btn>
+        )}
+        <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>Ручная трата</Btn>
+      </div>
 
-      {!noExpenses && (grouping === 'category' ? (
+      {grouping === 'category' ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 18 }}>
           {/* Left: categories */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -626,7 +626,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         </div>
       ) : (
         <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} conv={conv} onOpen={openExpense} onAdd={openAddExpense} />
-      ))}
+      )}
 
       {/* Source event view (clicking a system expense) */}
       <SourceViewLoader
