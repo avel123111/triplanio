@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from './icons';
+import { useIsMobile } from '../hooks/use-mobile';
 
 // =====================================================================
 // Shared components + mock data — converted from global scripts to ES modules
@@ -642,7 +643,94 @@ function TransferCardStacked({ e, onClick }) {
   );
 }
 
+// ── Per-event color / icon / label (shared by desktop + mobile renderers) ──────
+function _evMeta(e) {
+  if (e.type === "flight" || e.type === "transfer") {
+    const tm = _transferMeta(e);
+    return { c: "var(--ev-transfer)", soft: "var(--ev-transfer-soft)", icon: tm.icon, label: tm.label };
+  }
+  const MAP = {
+    "hotel-checkin":  { c: "var(--ev-hotel)",    soft: "var(--ev-hotel-soft)",    icon: "bed",     label: "Заезд" },
+    "hotel-checkout": { c: "var(--ev-hotel)",    soft: "var(--ev-hotel-soft)",    icon: "bed",     label: "Выезд" },
+    "hotel-deadline": { c: "var(--ev-deadline)", soft: "var(--ev-deadline-soft)", icon: "warning", label: "Дедлайн отмены" },
+    "car-pickup":     { c: "var(--ev-car)",      soft: "var(--ev-car-soft)",      icon: "car",     label: "Получение авто" },
+    "car-return":     { c: "var(--ev-car)",      soft: "var(--ev-car-soft)",      icon: "car",     label: "Возврат авто" },
+    "activity": {
+      c: "var(--ev-activity)", soft: "var(--ev-activity-soft)",
+      icon: e.category === "food" ? "cup" : e.category === "sight" ? "cam" : "spark",
+      label: e.category === "food" ? "Еда" : e.category === "sight" ? "Достопримечательность" : "Активность",
+    },
+  };
+  return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "spark", label: "" };
+}
+
+// ── Mobile transfer row — stacked with a vertical departure→arrival scale ──────
+function EventRowMobileTransfer({ e, onClick }) {
+  const meta = _evMeta(e);
+  const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "—";
+  return (
+    <button onClick={onClick} style={{ width: "100%", display: "flex", alignItems: "stretch", gap: 11, padding: "13px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left" }}>
+      <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--ink)", minWidth: 42, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
+        <span style={{ whiteSpace: "nowrap" }}>{e.time || "—"}</span>
+        {e.duration && <span className="muted" style={{ fontSize: 10, fontWeight: 500 }}>{e.duration}</span>}
+        <span style={{ whiteSpace: "nowrap" }}>{arrive}</span>
+      </div>
+      <div style={{ width: 22, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", paddingTop: 3, paddingBottom: 3, flexShrink: 0 }}>
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.c }} />
+        <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
+        <span style={{ width: 24, height: 24, borderRadius: "50%", background: meta.soft, color: meta.c, display: "grid", placeItems: "center", border: `2px solid ${meta.c}` }}>
+          <Icon name={meta.icon} size={12} />
+        </span>
+        <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.c, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px " + meta.c }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 5 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "—"}</div>
+        <div className="muted" style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em" }}>{meta.label}</span>
+          {e.carrier ? <> · {e.carrier}</> : null}
+        </div>
+        <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "—"}</div>
+        {(e.price || e.platformUrl) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
+            {e.price ? <span className="num" style={{ fontWeight: 600, fontSize: 13 }}>{fmt(e.price, e.cur)}</span> : null}
+            {e.platformUrl && <PartnerPill url={e.platformUrl} />}
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ── Mobile row — stacked layout for hotel / activity / car / deadline events ───
+function EventRowMobile({ e, onClick }) {
+  if (e.type === "flight" || e.type === "transfer") return <EventRowMobileTransfer e={e} onClick={onClick} />;
+  const meta = _evMeta(e);
+  return (
+    <button onClick={onClick} style={{ width: "100%", padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", minWidth: 42, flexShrink: 0 }}>{e.time || "—"}</span>
+        <div style={{ width: 30, height: 30, borderRadius: 8, background: meta.soft, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
+          <Icon name={meta.icon} size={15} />
+        </div>
+        <span style={{ flex: 1, fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta.label}</span>
+        {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 13.5, flexShrink: 0 }}>{fmt(e.price, e.cur)}</span>}
+      </div>
+      <div>
+        <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.3, textWrap: "pretty" }}>{e.title}</div>
+        {(e.address || e.duration) && (
+          <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+            {e.duration ? <span className="num">{e.duration}</span> : null}{e.duration && e.address ? " · " : ""}{e.address || ""}
+          </div>
+        )}
+      </div>
+      {e.platformUrl && <div><PartnerPill url={e.platformUrl} /></div>}
+    </button>
+  );
+}
+
 export function StreamEventRow({ e, onClick, last, editMode }) {
+  const isMobile = useIsMobile();
   if (e.type === "transfer-missing") {
     const [hidden, setHidden] = React.useState(false);
     if (hidden) return null;
@@ -657,6 +745,8 @@ export function StreamEventRow({ e, onClick, last, editMode }) {
       </div>
     );
   }
+  // Mobile: stacked, phone-friendly rows for every event type.
+  if (isMobile) return <EventRowMobile e={e} onClick={onClick} />;
   if (e.type === "flight" || e.type === "transfer") {
     const variant = window.__transferCardVariant || "V1";
     if (variant === "V2") return <TransferCardStrip e={e} onClick={onClick} />;
