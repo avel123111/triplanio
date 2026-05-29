@@ -36,8 +36,8 @@ export default function TripMembersCard({ trip, readOnly = false, noFrame = fals
 
   const ownerEntry = trip ? {
     id: `owner-${trip.id}`,
-    user_email: trip.created_by,
-    user_full_name: trip.created_by === user?.email ? (user?.full_name || '') : '',
+    user_id: trip.created_by,
+    user_full_name: trip.created_by === user?.id ? (user?.full_name || '') : '',
     role: 'owner',
     status: 'active',
     isVirtual: true,
@@ -47,10 +47,10 @@ export default function TripMembersCard({ trip, readOnly = false, noFrame = fals
   const visible = allMembers.filter(m => m.status === 'active' || m.status === 'offline');
   const pending = members.filter(m => m.status === 'pending');
 
-  const profiles = useUserProfiles(allMembers.map(m => m.user_email), trip?.id);
+  const profiles = useUserProfiles(allMembers.map(m => m.user_id), trip?.id);
 
-  const isOwner = trip?.created_by === user?.email;
-  const myMember = members.find(m => m.user_email === user?.email && m.status === 'active');
+  const isOwner = trip?.created_by === user?.id;
+  const myMember = members.find(m => m.user_id === user?.id && m.status === 'active');
   const iAmAdmin = isOwner || myMember?.role === 'admin';
   const canManage = iAmAdmin && !readOnly;
   const canResendInvites = iAmAdmin;
@@ -101,14 +101,14 @@ export default function TripMembersCard({ trip, readOnly = false, noFrame = fals
       <div className="flex items-center">
         <div className="flex -space-x-2">
           {visible.slice(0, 8).map(m => {
-            const profile = profiles[m.user_email];
-            const displayName = profile?.full_name || m.user_full_name || m.user_email;
+            const profile = profiles[m.user_id];
+            const displayName = profile?.full_name || m.user_full_name || m.invite_email;
             const showRoleBadge = m.role === 'owner' || m.role === 'admin';
             return (
               <div key={m.id} className="relative ring-2 ring-card rounded-full" title={`${displayName} (${t(`members.role_${m.role}`)})`}>
                 <UserAvatar
                   name={profile?.full_name || m.user_full_name}
-                  email={m.user_email}
+                  email={m.invite_email}
                   avatarUrl={profile?.avatar_url || m.avatar_url}
                   size="sm"
                 />
@@ -150,8 +150,8 @@ export default function TripMembersCard({ trip, readOnly = false, noFrame = fals
                   <MemberRow
                     key={m.id}
                     member={m}
-                    profile={profiles[m.user_email]}
-                    isMe={m.user_email === user?.email}
+                    profile={profiles[m.user_id]}
+                    isMe={m.user_id === user?.id}
                     canManage={canManage}
                     canResend={canResendInvites}
                     onRemove={() => setConfirmRemove({ open: true, member: m, isLeave: false })}
@@ -207,10 +207,10 @@ export default function TripMembersCard({ trip, readOnly = false, noFrame = fals
 function MemberRow({ member, profile, isMe, canManage, canResend = false, onRemove, onChangeRole, onResend, onPromote, resending, resent, t }) {
   const isOwner = member.role === 'owner';
   const isOffline = member.status === 'offline';
-  const displayName = profile?.full_name || member.user_full_name || member.user_email;
+  const displayName = profile?.full_name || member.user_full_name || member.invite_email;
   return (
     <div className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/50">
-      <UserAvatar name={displayName} email={member.user_email} avatarUrl={profile?.avatar_url} size="sm" />
+      <UserAvatar name={displayName} email={member.invite_email} avatarUrl={profile?.avatar_url} size="sm" />
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium truncate flex items-center gap-1.5">
           {displayName}

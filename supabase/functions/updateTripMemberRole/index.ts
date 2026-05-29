@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Cannot change owner role' }, { status: 400, headers: corsHeaders });
     }
 
-    const callerIsAdmin = await isCallerAdmin(member.trip_id, user.email!);
+    const callerIsAdmin = await isCallerAdmin(member.trip_id, user.id);
     if (!callerIsAdmin) {
       return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
     }

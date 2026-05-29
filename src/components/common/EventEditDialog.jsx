@@ -546,7 +546,7 @@ export default function EventEditDialog({
               price: seg.price === '' || seg.price == null ? undefined : Number(seg.price),
               currency: seg.currency || 'EUR',
               details: {},
-              created_by: user?.email,
+              created_by: user?.id,
             });
           }
         }
@@ -878,7 +878,7 @@ async function upsert(table, entity, payload, user) {
     if (error) throw error;
     return data;
   }
-  const { data, error } = await supabase.from(table).insert({ ...payload, created_by: user?.email }).select().single();
+  const { data, error } = await supabase.from(table).insert({ ...payload, created_by: user?.id }).select().single();
   if (error) throw error;
   return data;
 }

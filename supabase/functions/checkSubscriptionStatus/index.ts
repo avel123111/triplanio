@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     if (!tripId) {
       const { data: me } = await admin
         .from('users').select('subscription_status, subscription_end_date')
-        .eq('email', user.email).single();
+        .eq('id', user.id).single();
       const isPro = isActivePro(me, now);
       return Response.json({ isPro, reason: isPro ? 'subscription' : null }, { headers: corsHeaders });
     }
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
       .eq('id', tripId).single();
     if (!trip) return Response.json({ isPro: false, isOwner: false, reason: null }, { headers: corsHeaders });
 
-    const isOwner = trip.created_by === user.email;
+    const isOwner = trip.created_by === user.id;
 
     if (trip.is_pro_trip) {
       return Response.json({ isPro: true, isOwner, reason: 'trip' }, { headers: corsHeaders });
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     if (trip.created_by) {
       const { data: owner } = await admin
         .from('users').select('subscription_status, subscription_end_date')
-        .eq('email', trip.created_by).single();
+        .eq('id', trip.created_by).single();
       if (isActivePro(owner, now)) {
         return Response.json({ isPro: true, isOwner, reason: 'owner_subscription' }, { headers: corsHeaders });
       }

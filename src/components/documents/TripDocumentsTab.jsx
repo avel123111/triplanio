@@ -30,16 +30,16 @@ export default function TripDocumentsTab({ tripId, canEdit }) {
     queryFn: () => base44.entities.TripMember.filter({ trip_id: tripId }),
     enabled: !!tripId,
   });
-  // Map user_email → full_name for author display
-  const memberNameByEmail = React.useMemo(() => {
+  // Map user_id → full_name for author display
+  const memberNameById = React.useMemo(() => {
     const map = {};
-    members.forEach(m => { if (m.user_email && m.user_full_name) map[m.user_email] = m.user_full_name; });
+    members.forEach(m => { if (m.user_id && m.user_full_name) map[m.user_id] = m.user_full_name; });
     return map;
   }, [members]);
 
   // Split: shared vs private (user's own)
   const sharedDocs = allDocs.filter(d => d.visibility !== 'private');
-  const privateDocs = allDocs.filter(d => d.visibility === 'private' && d.created_by_id === user?.id);
+  const privateDocs = allDocs.filter(d => d.visibility === 'private' && d.created_by === user?.id);
 
   const delMut = useMutation({
     mutationFn: (id) => base44.entities.TripDocument.delete(id),
@@ -76,7 +76,7 @@ export default function TripDocumentsTab({ tripId, canEdit }) {
         onEdit={openEdit}
         onView={setViewDoc}
         onDelete={(id) => setConfirmDel({ open: true, docId: id })}
-        memberNameByEmail={memberNameByEmail}
+        memberNameById={memberNameById}
       />
 
       <div className="mt-6" />
@@ -134,7 +134,7 @@ export default function TripDocumentsTab({ tripId, canEdit }) {
 }
 
 // ── Section component ──────────────────────────────────────────────────────
-function DocSection({ title, badge, hint, icon, docs, isLoading, canEdit, emptyLabel, addLabel, onAdd, onEdit, onView, onDelete, iconColorClass, memberNameByEmail = {} }) {
+function DocSection({ title, badge, hint, icon, docs, isLoading, canEdit, emptyLabel, addLabel, onAdd, onEdit, onView, onDelete, iconColorClass, memberNameById = {} }) {
   const t = useT();
   const defaultIconColor = iconColorClass || 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300';
 
@@ -171,7 +171,7 @@ function DocSection({ title, badge, hint, icon, docs, isLoading, canEdit, emptyL
             voucher_file_name: d.file_name,
             documents: d.documents,
           });
-          const authorName = memberNameByEmail[d.created_by] || null;
+          const authorName = memberNameById[d.created_by] || null;
           return (
             <DocCard
               key={d.id}

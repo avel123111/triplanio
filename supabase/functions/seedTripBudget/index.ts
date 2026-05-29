@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   try {
     // Support both user-auth and automation (service-role) calls
     let tripId: string | undefined;
-    let callerEmail: string | undefined = 'system';
+    let callerId: string | null = null;
 
     const body = await req.json();
 
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       // Manual call — require user auth
       const user = await getRequestUser(req);
       if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
-      callerEmail = user.email!;
+      callerId = user.id;
       tripId = body.tripId;
     }
 
@@ -63,7 +63,8 @@ Deno.serve(async (req) => {
 
     if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
 
-    const ownerEmail = trip.created_by || callerEmail;
+    // created_by must be a uuid — prefer the trip owner, fall back to caller id.
+    const ownerId = trip.created_by || callerId;
 
     // --- Ensure trip_budgets row ---
     const { data: existingBudget } = await supabaseAdmin
@@ -79,7 +80,7 @@ Deno.serve(async (req) => {
           trip_id: tripId,
           currency: 'USD',
           fx_overrides: {},
-          created_by: ownerEmail,
+          created_by: ownerId,
         });
     }
 
@@ -99,7 +100,7 @@ Deno.serve(async (req) => {
           icon: c.icon,
           color: c.color,
           order_index: c.order_index,
-          created_by: ownerEmail,
+          created_by: ownerId,
         })),
         ...CUSTOM_CATEGORIES.map((c) => ({
           trip_id: tripId,
@@ -109,7 +110,7 @@ Deno.serve(async (req) => {
           icon: c.icon,
           color: c.color,
           order_index: c.order_index,
-          created_by: ownerEmail,
+          created_by: ownerId,
         })),
       ];
 

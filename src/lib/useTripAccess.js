@@ -8,16 +8,16 @@ import { useAuth } from '@/lib/AuthContext';
  */
 export function useTripAccess(trip) {
   const { user } = useAuth();
-  const enabled = !!trip?.id && !!user?.email;
+  const enabled = !!trip?.id && !!user?.id;
 
   const { data: membership, isLoading } = useQuery({
-    queryKey: ['trip-access', trip?.id, user?.email],
+    queryKey: ['trip-access', trip?.id, user?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('trip_members')
         .select('*')
         .eq('trip_id', trip.id)
-        .eq('user_email', user.email)
+        .eq('user_id', user.id)
         .eq('status', 'active')
         .limit(1);
       return data?.[0] || null;
@@ -26,7 +26,7 @@ export function useTripAccess(trip) {
   });
 
   if (!user || !trip) return { loading: true, allowed: false, role: null, canEdit: false };
-  if (trip.created_by === user.email) return { loading: false, allowed: true, role: 'owner', canEdit: true };
+  if (trip.created_by === user.id) return { loading: false, allowed: true, role: 'owner', canEdit: true };
   if (isLoading) return { loading: true, allowed: false, role: null, canEdit: false };
   const role = membership?.role || null;
   return {

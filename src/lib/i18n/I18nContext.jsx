@@ -52,7 +52,7 @@ export function I18nProvider({ children }) {
     try { localStorage.setItem(STORAGE_KEY, newLang); } catch (e) { /* ignore */ }
     // Persist on user if signed in
     if (user) {
-      try { await supabase.from('users').update({ language: newLang }).eq('email', user.email); } catch (e) { /* ignore */ }
+      try { await supabase.from('users').update({ language: newLang }).eq('id', user.id); } catch (e) { /* ignore */ }
     }
   }, [user]);
 

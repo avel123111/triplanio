@@ -12,7 +12,7 @@
  *   - trip_services
  *
  * Free users: max 3 owned trips. Pro users: unlimited.
- * New trip is owned by the caller (created_by = user.email).
+ * New trip is owned by the caller (created_by = user.id).
  * All child records are re-created with new IDs and caller as created_by.
  */
 
@@ -33,14 +33,14 @@ Deno.serve(async (req) => {
     if (!tripId) return Response.json({ error: 'tripId is required' }, { status: 400, headers: corsHeaders });
 
     // Verify caller has access to source trip
-    const hasAccess = await isCallerParticipant(tripId, user.email!);
+    const hasAccess = await isCallerParticipant(tripId, user.id);
     if (!hasAccess) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
 
     // --- Check subscription / trip limit for free users ---
     const { data: profile } = await supabaseAdmin
       .from('users')
       .select('subscription_status, subscription_end_date')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .maybeSingle();
 
     const now = new Date();
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
       const { count } = await supabaseAdmin
         .from('trips')
         .select('id', { count: 'exact', head: true })
-        .eq('created_by', user.email!);
+        .eq('created_by', user.id);
 
       if ((count ?? 0) >= FREE_TRIP_LIMIT) {
         return Response.json(
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
         notes: sourceTrip.notes,
         details: sourceTrip.details,
         is_pro_trip: false, // copy is not automatically pro
-        created_by: user.email,
+        created_by: user.id,
       })
       .select()
       .single();
@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
             kind: cv.kind,
             notes: cv.notes,
             details: cv.details,
-            created_by: user.email,
+            created_by: user.id,
           })
           .select('id')
           .single();
@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
         ...h,
         trip_id: newTripId,
         city_visit_id: h.city_visit_id ? (cityVisitIdMap[h.city_visit_id] ?? null) : null,
-        created_by: user.email,
+        created_by: user.id,
       }));
       await supabaseAdmin.from('hotel_stays').insert(newHotels);
     }
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
         ...a,
         trip_id: newTripId,
         city_visit_id: a.city_visit_id ? (cityVisitIdMap[a.city_visit_id] ?? null) : null,
-        created_by: user.email,
+        created_by: user.id,
       }));
       await supabaseAdmin.from('activities').insert(newActivities);
     }
@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
         trip_id: newTripId,
         from_city_visit_id: t.from_city_visit_id ? (cityVisitIdMap[t.from_city_visit_id] ?? null) : null,
         to_city_visit_id: t.to_city_visit_id ? (cityVisitIdMap[t.to_city_visit_id] ?? null) : null,
-        created_by: user.email,
+        created_by: user.id,
       }));
       await supabaseAdmin.from('transfers').insert(newTransfers);
     }
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
       const newServices = services.map(({ id: _id, created_at: _ca, updated_at: _ua, ...s }) => ({
         ...s,
         trip_id: newTripId,
-        created_by: user.email,
+        created_by: user.id,
       }));
       await supabaseAdmin.from('trip_services').insert(newServices);
     }

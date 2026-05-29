@@ -16,7 +16,6 @@ export function logPartnerClick({ partner, type, link, tripId, user }) {
       link,
       trip_id: tripId || null,
       user_id: user?.id || '',
-      user_email: user?.email || '',
     };
     // Fire-and-forget — don't await, don't throw
     supabase.from('partner_clicks').insert(payload).then(() => {}, () => { /* ignore */ });

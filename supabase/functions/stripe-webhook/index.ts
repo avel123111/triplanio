@@ -72,9 +72,9 @@ Deno.serve(async (req) => {
 
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        const { user_email, trip_id, plan_type } = session.metadata || {};
+        const { user_id, trip_id, plan_type } = session.metadata || {};
 
-        console.log('Checkout completed for:', user_email, plan_type, 'trip:', trip_id);
+        console.log('Checkout completed for:', user_id, plan_type, 'trip:', trip_id);
 
         // Second idempotency layer: never create two TripSubscription rows
         // for the same checkout session
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
           }
 
           await supabaseAdmin.from('trip_subscriptions').insert({
-            user_email,
+            user_id,
             trip_id: trip_id || null,
             type: 'pro_trip',
             stripe_checkout_id: session.id,
@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
           const { data: userData } = await supabaseAdmin
             .from('users')
             .select('id')
-            .eq('email', user_email)
+            .eq('id', user_id)
             .single();
 
           if (userData) {
@@ -136,11 +136,11 @@ Deno.serve(async (req) => {
                 subscription_end_date: endDate.toISOString(),
               })
               .eq('id', userData.id);
-            console.log('User upgraded to Pro:', user_email);
+            console.log('User upgraded to Pro:', user_id);
           }
 
           await supabaseAdmin.from('trip_subscriptions').insert({
-            user_email,
+            user_id,
             type: plan_type,
             stripe_subscription_id: session.subscription || null,
             stripe_checkout_id: session.id,
@@ -155,10 +155,10 @@ Deno.serve(async (req) => {
           });
 
           // In-app notification confirming Pro activation
-          if (user_email) {
+          if (user_id) {
             try {
               await supabaseAdmin.from('notifications').insert({
-                user_email,
+                user_id,
                 type: 'system',
                 i18n_title_key: 'notif.tpl_pro_activated_title',
                 i18n_message_key: 'notif.tpl_pro_activated_msg',
@@ -181,18 +181,18 @@ Deno.serve(async (req) => {
 
         const { data: subRows } = await supabaseAdmin
           .from('trip_subscriptions')
-          .select('id, user_email')
+          .select('id, user_id')
           .eq('stripe_subscription_id', subscription.id)
           .limit(1);
 
         if (subRows && subRows.length > 0) {
           const record = subRows[0];
-          const { user_email } = record;
+          const { user_id } = record;
 
           const { data: userData } = await supabaseAdmin
             .from('users')
             .select('id')
-            .eq('email', user_email)
+            .eq('id', user_id)
             .single();
 
           // Stripe API 2025-03+ moved current_period_end to subscription items
@@ -258,16 +258,16 @@ Deno.serve(async (req) => {
 
         const { data: subRows } = await supabaseAdmin
           .from('trip_subscriptions')
-          .select('id, user_email')
+          .select('id, user_id')
           .eq('stripe_subscription_id', subscription.id)
           .limit(1);
 
         if (subRows && subRows.length > 0) {
-          const { id, user_email } = subRows[0];
+          const { id, user_id } = subRows[0];
           const { data: userData } = await supabaseAdmin
             .from('users')
             .select('id')
-            .eq('email', user_email)
+            .eq('id', user_id)
             .single();
 
           if (userData) {

@@ -27,13 +27,13 @@ Deno.serve(async (req) => {
       .single();
     if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
 
-    const isCreator = trip.created_by === user.email;
+    const isCreator = trip.created_by === user.id;
     if (!isCreator) {
       const { data: member } = await supabaseAdmin
         .from('trip_members')
         .select('id')
         .eq('trip_id', chat.trip_id)
-        .eq('user_email', user.email)
+        .eq('user_id', user.id)
         .eq('status', 'active')
         .maybeSingle();
       if (!member) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 
     const { data: recentMessages } = await supabaseAdmin
       .from('chat_messages')
-      .select('id,user_id,user_email,user_full_name,text,created_at')
+      .select('id,user_id,user_full_name,text,created_at')
       .eq('chat_id', chat_id)
       .order('created_at', { ascending: false })
       .limit(20);

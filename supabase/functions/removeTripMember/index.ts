@@ -32,8 +32,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Cannot remove owner' }, { status: 400, headers: corsHeaders });
     }
 
-    const isSelf = member.user_email?.toLowerCase() === user.email!.toLowerCase();
-    const callerIsAdmin = isSelf ? false : await isCallerAdmin(member.trip_id, user.email!);
+    const isSelf = member.user_id === user.id;
+    const callerIsAdmin = isSelf ? false : await isCallerAdmin(member.trip_id, user.id);
 
     if (!callerIsAdmin && !isSelf) {
       return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });

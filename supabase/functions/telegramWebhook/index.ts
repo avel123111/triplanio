@@ -99,7 +99,6 @@ Deno.serve(async (req) => {
       const payload = {
         trip_id: tok.trip_id,
         user_id: tok.user_id,
-        user_email: tok.user_email,
         telegram_chat_id: chatId,
         telegram_username: tgUsername,
         telegram_first_name: tgFirstName,

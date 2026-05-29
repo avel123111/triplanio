@@ -65,14 +65,14 @@ Deno.serve(async (req) => {
 
     // Access check — only when a user JWT was provided
     if (user) {
-      const isCreator = trip.created_by === user.email;
+      const isCreator = trip.created_by === user.id;
 
       if (!isCreator) {
         const { data: memberRows } = await supabaseAdmin
           .from('trip_members')
           .select('id')
           .eq('trip_id', tripId)
-          .eq('user_email', user.email)
+          .eq('user_id', user.id)
           .eq('status', 'active')
           .limit(1);
 

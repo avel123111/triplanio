@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { useUserProfiles } from '@/lib/useUserProfiles';
-import { TRIPLANIO_BOT_EMAIL } from '@/lib/triplanio';
+import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
 
 /**
  * Avatar for the Triplanio AI assistant. Renders the bot's uploaded avatar
@@ -28,9 +28,9 @@ const SVG_SIZE = {
 
 function useBotAvatar(tripId, providedUrl) {
   const shouldFetch = providedUrl == null;
-  const profiles = useUserProfiles(shouldFetch ? [TRIPLANIO_BOT_EMAIL] : [], tripId);
+  const profiles = useUserProfiles(shouldFetch ? [TRIPLANIO_BOT_USER_ID] : [], tripId);
   if (!shouldFetch) return providedUrl;
-  return profiles?.[TRIPLANIO_BOT_EMAIL]?.avatar_url || '';
+  return profiles?.[TRIPLANIO_BOT_USER_ID]?.avatar_url || '';
 }
 
 export default function TriplanioAvatar({

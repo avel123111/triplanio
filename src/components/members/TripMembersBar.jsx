@@ -21,7 +21,7 @@ function MemberAvatar({ member, profile, size = 'md' }) {
   return (
     <UserAvatar
       name={profile?.full_name || member.user_full_name}
-      email={member.user_email}
+      email={member.invite_email}
       avatarUrl={profile?.avatar_url || member.avatar_url}
       size={size}
     />
@@ -43,8 +43,8 @@ export default function TripMembersBar({ trip, readOnly = false }) {
 
   const ownerEntry = trip ? {
     id: `owner-${trip.id}`,
-    user_email: trip.created_by,
-    user_full_name: trip.created_by === user?.email ? (user?.full_name || '') : '',
+    user_id: trip.created_by,
+    user_full_name: trip.created_by === user?.id ? (user?.full_name || '') : '',
     role: 'owner',
     status: 'active',
     isVirtual: true,
@@ -55,12 +55,12 @@ export default function TripMembersBar({ trip, readOnly = false }) {
   const visible = allMembers.filter(m => m.status === 'active' || m.status === 'offline');
   const pending = members.filter(m => m.status === 'pending');
 
-  // Load real profiles (avatar_url, full_name) for all known emails so the
+  // Load real profiles (avatar_url, full_name) for all known user ids so the
   // avatars match what each user uploaded in Settings.
-  const profiles = useUserProfiles(allMembers.map(m => m.user_email), trip?.id);
+  const profiles = useUserProfiles(allMembers.map(m => m.user_id), trip?.id);
 
-  const isOwner = trip?.created_by === user?.email;
-  const myMember = members.find(m => m.user_email === user?.email && m.status === 'active');
+  const isOwner = trip?.created_by === user?.id;
+  const myMember = members.find(m => m.user_id === user?.id && m.status === 'active');
   const iAmAdmin = isOwner || myMember?.role === 'admin';
   const canManage = iAmAdmin && !readOnly;
   const canResendInvites = iAmAdmin;
@@ -104,8 +104,8 @@ export default function TripMembersBar({ trip, readOnly = false }) {
         </div>
         <div className="flex -space-x-2 overflow-hidden">
           {visible.slice(0, 6).map(m => {
-            const profile = profiles[m.user_email];
-            const displayName = profile?.full_name || m.user_full_name || m.user_email;
+            const profile = profiles[m.user_id];
+            const displayName = profile?.full_name || m.user_full_name || m.invite_email;
             return (
               <div key={m.id} title={`${displayName} (${t(`members.role_${m.role}`)})`}>
                 <MemberAvatar member={m} profile={profile} size="sm" />
@@ -142,8 +142,8 @@ export default function TripMembersBar({ trip, readOnly = false }) {
                   <MemberRow
                     key={m.id}
                     member={m}
-                    profile={profiles[m.user_email]}
-                    isMe={m.user_email === user?.email}
+                    profile={profiles[m.user_id]}
+                    isMe={m.user_id === user?.id}
                     canManage={canManage}
                     canResend={canResendInvites}
                     onRemove={() => {
@@ -189,7 +189,7 @@ export default function TripMembersBar({ trip, readOnly = false }) {
 function MemberRow({ member, profile, isMe, canManage, canResend = false, onRemove, onChangeRole, onResend, onPromote, resending, resent, t }) {
   const isOwner = member.role === 'owner';
   const isOffline = member.status === 'offline';
-  const displayName = profile?.full_name || member.user_full_name || member.user_email;
+  const displayName = profile?.full_name || member.user_full_name || member.invite_email;
   return (
     <div className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/50">
       <MemberAvatar member={member} profile={profile} size="sm" />

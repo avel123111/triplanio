@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     const { data: subs } = await supabaseAdmin
       .from('trip_subscriptions')
       .select('stripe_subscription_id, start_date')
-      .eq('user_email', user.email!)
+      .eq('user_id', user.id)
       .in('type', ['pro_monthly', 'pro_yearly'])
       .not('stripe_subscription_id', 'is', null)
       .order('start_date', { ascending: false })

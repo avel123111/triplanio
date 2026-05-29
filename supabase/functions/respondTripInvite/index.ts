@@ -3,7 +3,7 @@
  *
  * POST body: { member_id, action: 'accept'|'decline' }
  *
- * Auth: caller must own the invite (member.user_email === caller).
+ * Auth: caller must own the invite (member.user_id === caller, or member.invite_email === caller email).
  * On accept: activates member, notifies inviter in THEIR language.
  * On decline: sets status to 'declined'.
  * In both cases: marks the invite notification as read.
@@ -33,7 +33,9 @@ Deno.serve(async (req) => {
 
     if (!member) return Response.json({ error: 'Invite not found' }, { status: 404, headers: corsHeaders });
 
-    if (member.user_email?.toLowerCase() !== user.email!.toLowerCase()) {
+    const ownsInvite = (member.user_id && member.user_id === user.id)
+      || member.invite_email?.toLowerCase() === user.email!.toLowerCase();
+    if (!ownsInvite) {
       return Response.json({ error: 'This invite is not yours' }, { status: 403, headers: corsHeaders });
     }
     if (member.status !== 'pending') {
@@ -50,7 +52,7 @@ Deno.serve(async (req) => {
       const { data: callerUsers } = await supabaseAdmin
         .from('users')
         .select('full_name')
-        .eq('email', user.email!)
+        .eq('id', user.id)
         .limit(1);
       const callerName = callerUsers?.[0]?.full_name || user.email!;
 
@@ -60,14 +62,15 @@ Deno.serve(async (req) => {
           status: 'active',
           accepted_at: new Date().toISOString(),
           user_full_name: callerName,
+          user_id: user.id,
         })
         .eq('id', member_id);
 
       // Notify the inviter in THEIR language (not the accepter's)
-      if (member.invited_by_email) {
+      if (member.invited_by) {
         const [tripResult, inviterResult] = await Promise.all([
           supabaseAdmin.from('trips').select('title').eq('id', member.trip_id).single(),
-          supabaseAdmin.from('users').select('language').eq('email', member.invited_by_email).limit(1),
+          supabaseAdmin.from('users').select('language').eq('id', member.invited_by).limit(1),
         ]);
 
         const trip = tripResult.data;
@@ -80,7 +83,7 @@ Deno.serve(async (req) => {
           });
 
           await supabaseAdmin.from('notifications').insert({
-            user_email: member.invited_by_email,
+            user_id: member.invited_by,
             type: 'trip_member_joined',
             i18n_title_key: 'notif.tpl_joined_title',
             i18n_message_key: 'notif.tpl_joined_msg',
@@ -92,7 +95,7 @@ Deno.serve(async (req) => {
             message: notifTexts.message,
             trip_id: member.trip_id,
             read: false,
-            created_by: user.email!,
+            created_by: user.id,
           });
         }
       }
@@ -102,7 +105,7 @@ Deno.serve(async (req) => {
     await supabaseAdmin
       .from('notifications')
       .update({ read: true })
-      .eq('user_email', user.email!)
+      .eq('user_id', user.id)
       .eq('trip_member_id', member_id);
 
     return Response.json({ ok: true }, { headers: corsHeaders });

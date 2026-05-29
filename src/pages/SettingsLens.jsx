@@ -227,7 +227,7 @@ function TelegramSection() {
 
 function ApproverRow({ member, locked }) {
   const [on, setOn] = useState(false);
-  const name = member.user_full_name || member.user_email || '—';
+  const name = member.user_full_name || member.invite_email || '—';
   const roleLabel = member.role === 'owner' ? 'Владелец' : member.role === 'admin' ? 'Админ' : 'Зритель';
 
   return (
@@ -307,8 +307,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   // Leave trip
   async function leaveTrip() {
     if (!window.confirm('Выйти из трипа? Ты перестанешь видеть его.')) return;
+    const myMember = members.find(m => m.user_id === user?.id && m.status === 'active');
+    if (!myMember) { alert('Ошибка: не найдено ваше участие в трипе.'); return; }
     const { error } = await supabase.functions.invoke('removeTripMember', {
-      body: { tripId, targetEmail: user?.email },
+      body: { member_id: myMember.id },
     });
     if (error) { alert('Ошибка: ' + error.message); return; }
     nav('/trips');

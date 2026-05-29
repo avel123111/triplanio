@@ -30,3 +30,9 @@ dist-ssr
 
 .env
 .vite
+
+dist_check/
+supabase/.temp/
+
+dist_build/
+dist_build2/

@@ -9,6 +9,8 @@
 // avatar/name based on this sentinel in ChatMessageBubble.
 
 export const TRIPLANIO_BOT_EMAIL = 'info@triplanio.com';
+// The bot's user_id (uuid) in public.users — per-environment, injected via env.
+export const TRIPLANIO_BOT_USER_ID = import.meta.env.VITE_TRIPLANIO_BOT_USER_ID || '';
 export const TRIPLANIO_BOT_NAME = 'Triplanio';
 export const TRIPLANIO_MENTION = '@Triplanio';
 

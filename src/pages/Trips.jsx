@@ -319,13 +319,13 @@ export default function Trips() {
   });
 
   const { data: myMemberships = [] } = useQuery({
-    queryKey: ['my-memberships', user?.email],
+    queryKey: ['my-memberships', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('trip_members').select('*').eq('user_email', user.email).eq('status', 'active');
+      const { data, error } = await supabase.from('trip_members').select('*').eq('user_id', user.id).eq('status', 'active');
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user?.email,
+    enabled: !!user?.id,
   });
 
   const tripIds  = allTrips.map(t => t.id);
@@ -348,7 +348,7 @@ export default function Trips() {
   }, [allVisits]);
 
   const getRoleFor = (trip) => {
-    if (trip.created_by === user?.email) return 'owner';
+    if (trip.created_by === user?.id) return 'owner';
     const m = myMemberships.find(m => m.trip_id === trip.id);
     return m?.role || 'member';
   };

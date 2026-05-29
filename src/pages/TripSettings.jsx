@@ -62,9 +62,9 @@ export default function TripSettings() {
 
   const access = useMemo(() => {
     if (!trip || !user) return { loading: true, allowed: false, role: null };
-    if (trip.created_by === user.email) return { loading: false, allowed: true, role: 'owner' };
+    if (trip.created_by === user.id) return { loading: false, allowed: true, role: 'owner' };
     if (membersLoading) return { loading: true, allowed: false, role: null };
-    const me = members.find(m => m.user_email === user.email && m.status === 'active');
+    const me = members.find(m => m.user_id === user.id && m.status === 'active');
     return { loading: false, allowed: !!me, role: me?.role || null };
   }, [trip, user, members, membersLoading]);
 

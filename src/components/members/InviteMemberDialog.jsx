@@ -50,7 +50,8 @@ export default function InviteMemberDialog({ open, onOpenChange, tripId }) {
     mutationFn: async () => {
       return base44.entities.TripMember.create({
         trip_id: tripId,
-        user_email: null,
+        user_id: null,
+        invite_email: null,
         user_full_name: name.trim(),
         role: 'viewer',
         status: 'offline',

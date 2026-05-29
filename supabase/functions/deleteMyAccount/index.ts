@@ -37,14 +37,13 @@ Deno.serve(async (req) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
-    const userEmail = user.email!;
     const userId = user.id;
 
     // --- Block if active recurring subscription ---
     const { data: activeSubs } = await supabaseAdmin
       .from('trip_subscriptions')
       .select('id, type, status')
-      .eq('user_email', userEmail)
+      .eq('user_id', userId)
       .in('type', ['pro_monthly', 'pro_yearly'])
       .eq('status', 'active');
 
@@ -59,7 +58,7 @@ Deno.serve(async (req) => {
     const { data: ownedTrips } = await supabaseAdmin
       .from('trips')
       .select('id')
-      .eq('created_by', userEmail);
+      .eq('created_by', userId);
 
     const tripIds = (ownedTrips ?? []).map((t) => t.id);
 
@@ -92,17 +91,17 @@ Deno.serve(async (req) => {
 
     // --- Delete user-level records ---
     // Memberships in other people's trips
-    await supabaseAdmin.from('trip_members').delete().eq('user_email', userEmail);
+    await supabaseAdmin.from('trip_members').delete().eq('user_id', userId);
 
     // Subscriptions
-    await supabaseAdmin.from('trip_subscriptions').delete().eq('user_email', userEmail);
+    await supabaseAdmin.from('trip_subscriptions').delete().eq('user_id', userId);
 
     // Remaining Telegram records (not tied to owned trips)
-    await supabaseAdmin.from('telegram_link_tokens').delete().eq('user_email', userEmail);
-    await supabaseAdmin.from('trip_telegram_integrations').delete().eq('user_email', userEmail);
+    await supabaseAdmin.from('telegram_link_tokens').delete().eq('user_id', userId);
+    await supabaseAdmin.from('trip_telegram_integrations').delete().eq('user_id', userId);
 
     // Chat messages in other trips
-    await supabaseAdmin.from('chat_messages').delete().eq('user_email', userEmail);
+    await supabaseAdmin.from('chat_messages').delete().eq('user_id', userId);
 
     // Users profile row
     await supabaseAdmin.from('users').delete().eq('id', userId);

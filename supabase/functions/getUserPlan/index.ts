@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     const { data: userData } = await supabaseAdmin
       .from('users')
       .select('subscription_status, subscription_end_date, email')
-      .eq('email', user.email!)
+      .eq('id', user.id)
       .single();
 
     const now = new Date();
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       const { data: subs } = await supabaseAdmin
         .from('trip_subscriptions')
         .select('*')
-        .eq('user_email', user.email!);
+        .eq('user_id', user.id);
 
       const recurring = (subs ?? [])
         .filter((s) => s.type === 'pro_monthly' || s.type === 'pro_yearly')

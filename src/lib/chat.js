@@ -1,8 +1,7 @@
 // Helpers for the trip chat: queries, read-markers, unread counters.
 //
 // All queries pivot on chat_id (from the chats table — one "group" chat per
-// trip) and on user_id (uuid) rather than user_email. The old trip_id /
-// user_email columns are still written for backward compat.
+// trip) and on user_id (uuid) rather than user_email.
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -41,11 +40,10 @@ export function useChatId(tripId, { enabled = true } = {}) {
 // trip_members row (it's tracked on trips.created_by), so synthesize it when
 // missing. The AI assistant is shown separately and is NOT counted here.
 
-export function chatParticipants(members = [], ownerEmail = '') {
+export function chatParticipants(members = [], ownerId = '') {
   const list = (members || []).filter((m) => m.status === 'active');
-  const oe = (ownerEmail || '').toLowerCase();
-  if (oe && !list.some((m) => m.role === 'owner' || (m.user_email || '').toLowerCase() === oe)) {
-    list.unshift({ id: '__owner__', user_email: ownerEmail, role: 'owner', status: 'active' });
+  if (ownerId && !list.some((m) => m.role === 'owner' || m.user_id === ownerId)) {
+    list.unshift({ id: '__owner__', user_id: ownerId, role: 'owner', status: 'active' });
   }
   return list;
 }
@@ -201,17 +199,15 @@ export function useChatLiveSubscription(tripId, { enabled = true } = {}) {
 
 // ── Mark read ─────────────────────────────────────────────────────────────────
 
-export async function markChatRead(tripId, userEmail, lastReadAt) {
+export async function markChatRead(tripId, userId, lastReadAt) {
   const ts = toUtcIso(lastReadAt);
-  const [{ data: chat }, { data: userRow }] = await Promise.all([
-    supabase.from('chats').select('id').eq('trip_id', tripId).eq('type', 'group').single(),
-    supabase.from('users').select('id').eq('email', userEmail).single(),
-  ]);
-  if (!chat?.id || !userRow?.id) return null;
+  const { data: chat } = await supabase
+    .from('chats').select('id').eq('trip_id', tripId).eq('type', 'group').single();
+  if (!chat?.id || !userId) return null;
   const { data, error } = await supabase
     .from('chat_reads')
     .upsert(
-      { chat_id: chat.id, user_id: userRow.id, trip_id: tripId, user_email: userEmail, last_read_at: ts },
+      { chat_id: chat.id, user_id: userId, trip_id: tripId, last_read_at: ts },
       { onConflict: 'chat_id,user_id' },
     )
     .select()

@@ -54,7 +54,6 @@ Deno.serve(async (req) => {
       token,
       trip_id: tripId,
       user_id: user.id,         // Supabase auth UUID
-      user_email: user.email,
       expires_at: expiresAt,
     });
 

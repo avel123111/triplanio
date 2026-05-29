@@ -1146,12 +1146,12 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
   // Resolve display names from profiles so the widget shows real names, not
   // emails. Include the trip owner (often missing from trip_members) and the
   // current user so the synthetic owner row and the current user resolve.
-  const profileEmails = [
-    ...((members || []).map(m => m.user_email)),
+  const profileIds = [
+    ...((members || []).map(m => m.user_id)),
     trip?.created_by,
-    user?.email,
+    user?.id,
   ].filter(Boolean);
-  const profiles = useUserProfiles(profileEmails, trip?.id);
+  const profiles = useUserProfiles(profileIds, trip?.id);
   if (isLoading) {
     return <div style={{ position: 'sticky', top: 80 }}><RightRailSkeleton /></div>;
   }
@@ -1164,13 +1164,13 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
   // owner row is the current user — otherwise leave user_full_name empty and
   // let the profile resolver fill it in.
   const orderedMembers = (() => {
-    const ownerEmail = trip?.created_by || user?.email || '';
+    const ownerId = trip?.created_by || user?.id || '';
     const all = members.filter(m => m.status !== 'declined');
-    if (ownerEmail && !all.some(m => m.role === 'owner' || m.user_email === ownerEmail)) {
-      const isMeOwner = user?.email && ownerEmail.toLowerCase() === user.email.toLowerCase();
+    if (ownerId && !all.some(m => m.role === 'owner' || m.user_id === ownerId)) {
+      const isMeOwner = user?.id && ownerId === user.id;
       all.unshift({
         id: '__owner__',
-        user_email: ownerEmail,
+        user_id: ownerId,
         user_full_name: isMeOwner ? (user?.full_name || '') : '',
         role: 'owner',
         status: 'active',
@@ -1230,11 +1230,11 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {orderedMembers.map((m, i) => {
-            const profile = profiles[(m.user_email || '').toLowerCase()];
+            const profile = profiles[m.user_id];
             const resolved = profile?.full_name || m.user_full_name
-              || (m.user_email && user?.email && m.user_email.toLowerCase() === user.email.toLowerCase() ? user.full_name : '')
+              || (m.user_id && user?.id && m.user_id === user.id ? user.full_name : '')
               || '';
-            const name = displayName(m.user_email, resolved);
+            const name = displayName(m.invite_email, resolved);
             const isOffline = m.status === 'offline';
             const isPending = m.status === 'pending' || m.status === 'invited';
             const roleIcon = m.role === 'owner' ? 'crown' : m.role === 'admin' ? 'shield' : 'eye';
@@ -1475,8 +1475,8 @@ export default function TripView() {
   const budgetExpenses   = contentData?.budgetExpenses   || [];
 
   // Resolve current user's role in this trip
-  const myMember = members.find(m => m.user_email === user?.email);
-  const myRole   = myMember?.role || (trip?.created_by === user?.email ? 'owner' : 'viewer');
+  const myMember = members.find(m => m.user_id === user?.id);
+  const myRole   = myMember?.role || (trip?.created_by === user?.id ? 'owner' : 'viewer');
 
   const stream = useMemo(
     () => buildEventStream(hotels, activities, transfers, visits),
@@ -1750,7 +1750,7 @@ export default function TripView() {
               tripId={tripId}
               members={members}
               myRole={myRole}
-              ownerEmail={trip?.created_by}
+              ownerId={trip?.created_by}
             />
           )}
           {shownLens === 'map' && (
@@ -1803,7 +1803,7 @@ export default function TripView() {
       />
 
       {isLensVisible(trip, 'chat') && shownLens !== 'chat' && (
-        <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerEmail={trip?.created_by} />
+        <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />
       )}
 
       <ModalHost />

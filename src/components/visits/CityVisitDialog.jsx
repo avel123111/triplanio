@@ -132,7 +132,7 @@ export default function CityVisitDialog({ open, onOpenChange, tripId, visit = nu
       }
       const { data, error } = await supabase
         .from('city_visits')
-        .insert({ ...payload, created_by: user?.email })
+        .insert({ ...payload, created_by: user?.id })
         .select()
         .single();
       if (error) throw error;

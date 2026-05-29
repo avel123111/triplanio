@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
       if (!trip) {
         return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
       }
-      if (trip.created_by !== user.email) {
+      if (trip.created_by !== user.id) {
         return Response.json({ error: 'Only the trip owner can buy Pro for this trip' }, { status: 403, headers: corsHeaders });
       }
       if (trip.is_pro_trip) {
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
       const { data: subs } = await supabaseAdmin
         .from('trip_subscriptions')
         .select('type, status, end_date')
-        .eq('user_email', user.email!);
+        .eq('user_id', user.id);
 
       const now = Date.now();
       const hasActiveRecurring = (subs ?? []).some((s) =>

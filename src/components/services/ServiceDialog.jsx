@@ -58,7 +58,7 @@ export default function ServiceDialog({ open, onOpenChange, tripId, kind, servic
       }
       const { data, error } = await supabase
         .from('trip_services')
-        .insert({ ...payload, created_by: user?.email })
+        .insert({ ...payload, created_by: user?.id })
         .select()
         .single();
       if (error) throw error;

@@ -13,7 +13,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
-import { TRIPLANIO_BOT_EMAIL, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
+import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
@@ -128,7 +128,7 @@ function ChatMember({ name, role, ai }) {
 
 // ─── ChatLens (main export) ───────────────────────────────────────────────────
 
-export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
+export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const scrollRef  = useRef(null);
@@ -159,19 +159,20 @@ export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
   });
 
   // ── Resolve participant display names ──
-  const profileEmails = [
-    ...members.map(m => m.user_email),
-    user?.email,
+  const profileIds = [
+    ...members.map(m => m.user_id),
+    user?.id,
   ].filter(Boolean);
-  const profiles = useUserProfiles(profileEmails, tripId);
-  const nameFor = (email) => {
-    const lower = (email || '').toLowerCase();
-    let real = profiles[lower]?.full_name;
+  const profiles = useUserProfiles(profileIds, tripId);
+  const nameFor = (userId) => {
+    let real = profiles[userId]?.full_name;
+    let email = '';
     if (!real) {
-      const mm = members.find(m => m.user_email?.toLowerCase() === lower);
+      const mm = members.find(m => m.user_id === userId);
       real = mm?.user_full_name || '';
+      email = mm?.invite_email || '';
     }
-    if (!real && user?.email && lower === user.email.toLowerCase()) {
+    if (!real && user?.id && userId === user.id) {
       real = user.full_name || '';
     }
     return displayName(email, real);
@@ -209,7 +210,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
             // remove optimistic from same user
             const filtered = old.filter((m) => {
               if (!String(m.id).startsWith('opt-')) return true;
-              return m.user_id !== msg.user_id && m.user_email !== msg.user_email;
+              return m.user_id !== msg.user_id;
             });
             return [...filtered, msg];
           });
@@ -231,7 +232,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
   useEffect(() => {
     if (!chatId || !user?.id) return;
     supabase.from('chat_reads').upsert(
-      { chat_id: chatId, user_id: user.id, trip_id: tripId, user_email: user.email, last_read_at: new Date().toISOString() },
+      { chat_id: chatId, user_id: user.id, trip_id: tripId, last_read_at: new Date().toISOString() },
       { onConflict: 'chat_id,user_id' },
     ).then(() => qc.invalidateQueries({ queryKey: ['chat-unread', tripId] }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -242,7 +243,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
     if (!msgs.length) return false;
     const last = msgs[msgs.length - 1];
     if (!last) return false;
-    if (last.user_email === TRIPLANIO_BOT_EMAIL) return false;
+    if (last.user_id === TRIPLANIO_BOT_USER_ID) return false;
     if (failedAiIds.has(last.id)) return false;
     return /@triplanio\b/i.test(last.text || '');
   }, [msgs, failedAiIds]);
@@ -262,7 +263,6 @@ export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
       trip_id:        tripId,
       user_id:        user?.id,
       user_full_name: myName,
-      user_email:     user?.email,
       text:           content,
       created_at:     new Date().toISOString(),
       __pending:      true,
@@ -276,9 +276,8 @@ export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
         trip_id:        tripId,
         user_id:        user?.id,
         user_full_name: myName,
-        user_email:     user?.email,
         text:           content,
-        created_by:     user?.email,
+        created_by:     user?.id,
       })
       .select('id')
       .single();
@@ -328,8 +327,8 @@ export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
   // Mention list — Triplanio first, then participants (owner + admins + viewers)
   const mentionList = [
     { name: 'Triplanio', desc: '@Triplanio — отвечает всем', ai: true, handle: 'Triplanio' },
-    ...chatParticipants(members, ownerEmail).map((m) => {
-      const resolved = nameFor(m.user_email);
+    ...chatParticipants(members, ownerId).map((m) => {
+      const resolved = nameFor(m.user_id);
       return {
         name:   resolved,
         desc:   m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель',
@@ -351,14 +350,14 @@ export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
     if (!isSameDay(m.created_at, prev?.created_at)) {
       messageRows.push(<DateDivider key={'div-' + m.id} date={fmtMsgDate(m.created_at)} />);
     }
-    const isMe    = m.user_id === user?.id || m.user_email === user?.email;
-    const grouped = prev && isSameDay(m.created_at, prev.created_at) && prev.user_email === m.user_email;
+    const isMe    = m.user_id === user?.id;
+    const grouped = prev && isSameDay(m.created_at, prev.created_at) && prev.user_id === m.user_id;
     messageRows.push(
       <Msg
         key={m.id}
-        who={m.user_email === TRIPLANIO_BOT_EMAIL ? TRIPLANIO_BOT_NAME : nameFor(m.user_email)}
+        who={m.user_id === TRIPLANIO_BOT_USER_ID ? TRIPLANIO_BOT_NAME : nameFor(m.user_id)}
         isMe={isMe}
-        isAi={m.user_email === TRIPLANIO_BOT_EMAIL}
+        isAi={m.user_id === TRIPLANIO_BOT_USER_ID}
         text={m.text || ''}
         time={fmtMsgTime(m.created_at)}
         grouped={grouped}
@@ -368,9 +367,9 @@ export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
 
   // Chat participants = owner + active admins/viewers (excl. offline/pending).
   const activeMembers = (() => {
-    const list = chatParticipants(members, ownerEmail);
+    const list = chatParticipants(members, ownerId);
     if (list.length === 0 && user) {
-      return [{ id: 'self', user_full_name: user.full_name || '', user_email: user.email, role: myRole || 'owner', status: 'active' }];
+      return [{ id: 'self', user_full_name: user.full_name || '', user_id: user.id, role: myRole || 'owner', status: 'active' }];
     }
     return list;
   })();
@@ -516,7 +515,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
               activeMembers.map((m) => (
                 <ChatMember
                   key={m.id}
-                  name={nameFor(m.user_email)}
+                  name={nameFor(m.user_id)}
                   role={m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель'}
                 />
               ))

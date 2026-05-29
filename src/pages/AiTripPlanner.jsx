@@ -159,7 +159,7 @@ export default function AiTripPlanner() {
   const { data: allTrips = [], isLoading: checkingLimit } = useQuery({
     queryKey: ['trips-limit-check', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('trips').select('id').eq('created_by', user.email);
+      const { data, error } = await supabase.from('trips').select('id').eq('created_by', user.id);
       if (error) throw error;
       return data || [];
     },
@@ -233,11 +233,11 @@ export default function AiTripPlanner() {
     mutationFn: async () => {
       if (!draft) throw new Error(t('ai_plan.no_draft_error'));
 
-      // RLS requires created_by = auth.jwt() ->> 'email'. Always pull email
-      // straight from the JWT (profiles table may diverge).
+      // RLS requires created_by = auth.uid(). Always pull the id straight from
+      // the session (profiles table may diverge).
       const { data: authUser, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !authUser?.user?.email) throw new Error('Не удалось получить email из сессии');
-      const authEmail = authUser.user.email;
+      if (authErr || !authUser?.user?.id) throw new Error('Не удалось получить идентификатор из сессии');
+      const authId = authUser.user.id;
 
       const cities = draft.cities || [];
 
@@ -277,7 +277,7 @@ export default function AiTripPlanner() {
           start_datetime:   start.isValid ? start.toUTC().toISO() : null,
           end_datetime:     end.isValid   ? end.toUTC().toISO()   : null,
           kind,
-          created_by:       authEmail,
+          created_by:       authId,
         };
       });
 
@@ -307,7 +307,7 @@ export default function AiTripPlanner() {
             location_address: a.location_address || null,
             currency:         'EUR',
             details:          {},
-            created_by:       authEmail,
+            created_by:       authId,
           });
         }
       });

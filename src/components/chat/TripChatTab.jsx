@@ -17,7 +17,7 @@ import ChatComposer from './ChatComposer';
 import { DateTime } from 'luxon';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useUserProfiles } from '@/lib/useUserProfiles';
-import { startsWithTriplanioMention, TRIPLANIO_BOT_EMAIL, mentionsTriplanio } from '@/lib/triplanio';
+import { startsWithTriplanioMention, TRIPLANIO_BOT_USER_ID, mentionsTriplanio } from '@/lib/triplanio';
 import { useToast } from '@/components/ui/use-toast';
 import TriplanioAvatar from './TriplanioAvatar.jsx';
 
@@ -51,13 +51,13 @@ export default function TripChatTab({ tripId, trip }) {
   // eliminates a race where multiple <TriplanioAvatar> instances issued
   // parallel resolveProfiles requests and intermittently rendered the
   // fallback robot icon.
-  const authorEmails = useMemo(() => {
-    const set = new Set((messages || []).map((m) => m.user_email).filter(Boolean));
-    set.add(TRIPLANIO_BOT_EMAIL);
+  const authorIds = useMemo(() => {
+    const set = new Set((messages || []).map((m) => m.user_id).filter(Boolean));
+    if (TRIPLANIO_BOT_USER_ID) set.add(TRIPLANIO_BOT_USER_ID);
     return Array.from(set);
   }, [messages]);
-  const profiles = useUserProfiles(authorEmails, tripId);
-  const botAvatarUrl = profiles?.[TRIPLANIO_BOT_EMAIL]?.avatar_url || '';
+  const profiles = useUserProfiles(authorIds, tripId);
+  const botAvatarUrl = profiles?.[TRIPLANIO_BOT_USER_ID]?.avatar_url || '';
 
   const scrollRef = useRef(null);
 
@@ -70,7 +70,7 @@ export default function TripChatTab({ tripId, trip }) {
 
   // Mark as read on mount + whenever new messages arrive while this tab is open.
   useEffect(() => {
-    if (!user?.email || !tripId) return;
+    if (!user?.id || !tripId) return;
     if (!messages || messages.length === 0) return;
     const lastMsg = messages[messages.length - 1];
     const lastTs = lastMsg.created_date;
@@ -88,25 +88,25 @@ export default function TripChatTab({ tripId, trip }) {
     // prevents the chat icon from showing a stale "X new messages" badge
     // while the user is actively reading the chat — useChatLiveSubscription
     // and useUnreadChatCount both recompute against this cached value.
-    qc.setQueryData(CHAT_READ_KEY(tripId, user.email), (prev) => ({
-      ...(prev || { trip_id: tripId, user_email: user.email }),
+    qc.setQueryData(CHAT_READ_KEY(tripId, user.id), (prev) => ({
+      ...(prev || { trip_id: tripId, user_id: user.id }),
       last_read_at: lastTs,
     }));
-    markChatRead(tripId, user.email, lastTs).then(() => {
-      qc.invalidateQueries({ queryKey: CHAT_READ_KEY(tripId, user.email) });
+    markChatRead(tripId, user.id, lastTs).then(() => {
+      qc.invalidateQueries({ queryKey: CHAT_READ_KEY(tripId, user.id) });
     });
-  }, [messages, read, tripId, user?.email, qc]);
+  }, [messages, read, tripId, user?.id, qc]);
 
   const sendMut = useMutation({
     mutationFn: async (text) => {
       const created = await base44.entities.ChatMessage.create({
         trip_id: tripId,
-        user_email: user.email,
+        user_id: user.id,
         user_full_name: user.full_name || user.email,
         text,
       });
       // Bump my own read marker so I don't see my own message as "unread".
-      await markChatRead(tripId, user.email, created.created_date || new Date().toISOString());
+      await markChatRead(tripId, user.id, created.created_date || new Date().toISOString());
 
       // If the message starts with @Triplanio — trigger the AI assistant.
       // Fire-and-forget on the client (the backend is what actually posts to
@@ -141,7 +141,7 @@ export default function TripChatTab({ tripId, trip }) {
       const tempMsg = {
         id: tempId,
         trip_id: tripId,
-        user_email: user.email,
+        user_id: user.id,
         user_full_name: user.full_name || user.email,
         text,
         created_date: new Date().toISOString(),
@@ -158,7 +158,7 @@ export default function TripChatTab({ tripId, trip }) {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: CHAT_MESSAGES_KEY(tripId) });
-      qc.invalidateQueries({ queryKey: CHAT_READ_KEY(tripId, user.email) });
+      qc.invalidateQueries({ queryKey: CHAT_READ_KEY(tripId, user.id) });
     },
   });
 
@@ -171,7 +171,7 @@ export default function TripChatTab({ tripId, trip }) {
     if (!messages || messages.length === 0) return false;
     const last = messages[messages.length - 1];
     if (!last) return false;
-    if (last.user_email === TRIPLANIO_BOT_EMAIL) return false;
+    if (last.user_id === TRIPLANIO_BOT_USER_ID) return false;
     if (failedAiMessageIds.has(last.id)) return false;
     return mentionsTriplanio(last.text || '');
   }, [messages, failedAiMessageIds]);
@@ -221,13 +221,13 @@ export default function TripChatTab({ tripId, trip }) {
           }
           const m = item.message;
           const prev = grouped[idx - 1];
-          const showAuthor = !prev || prev.type === 'day' || prev.message.user_email !== m.user_email;
-          const profile = profiles[m.user_email];
+          const showAuthor = !prev || prev.type === 'day' || prev.message.user_id !== m.user_id;
+          const profile = profiles[m.user_id];
           return (
             <ChatMessageBubble
               key={m.id}
               message={m}
-              isMine={m.user_email === user?.email}
+              isMine={m.user_id === user?.id}
               showAuthor={showAuthor}
               authorName={profile?.full_name || m.user_full_name}
               authorAvatarUrl={profile?.avatar_url}

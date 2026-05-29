@@ -10,6 +10,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { supabase } from '@/api/supabaseClient';
+import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton, Severity, fmt } from '../design/index';
 
@@ -42,6 +43,7 @@ function catIcon(cat) {
 // ─── AddExpenseDialog ─────────────────────────────────────────────────────────
 
 function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], onSaved }) {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState(mainCurrency || 'EUR');
@@ -64,7 +66,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], onSav
       original_currency: currency,
       source_kind: 'manual',
       source_id: null,
-      created_by: 'user',
+      created_by: user?.id,
     };
     if (notes.trim()) row.notes = notes.trim();
     const { error } = await supabase.from('budget_expenses').insert(row);
@@ -125,6 +127,7 @@ const CAT_COLORS = ['#e2503a','#2167e2','#6a3ee2','#1f8a5b','#e08158','#c98a1a',
 const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'spark', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
 function AddCategoryDialog({ tripId, existing, onSaved }) {
+  const { user } = useAuth();
   const [name, setName] = useState(existing?.name || '');
   const [color, setColor] = useState(existing?.color || CAT_COLORS[0]);
   const [icon, setIcon] = useState(existing?.icon || CAT_ICONS_BUDGET[0]);
@@ -147,7 +150,7 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
         icon,
         color,
         order_index: 99,
-        created_by: 'user',
+        created_by: user?.id,
       }));
     }
     setSaving(false);

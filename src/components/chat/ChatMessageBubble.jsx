@@ -4,7 +4,7 @@ import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import UserAvatar from '@/components/UserAvatar';
 import TriplanioAvatar from './TriplanioAvatar.jsx';
 import ChatMarkdown from './ChatMarkdown';
-import { TRIPLANIO_BOT_EMAIL, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
+import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 
 /**
  * Single chat message bubble. Right-aligned + brand color for own messages,
@@ -28,10 +28,10 @@ export default function ChatMessageBubble({
     ? DateTime.fromISO(rawTs).setLocale(locale).toFormat('HH:mm')
     : '';
 
-  const isBot     = message.user_email === TRIPLANIO_BOT_EMAIL;
+  const isBot     = message.user_id === TRIPLANIO_BOT_USER_ID;
   const displayNm = isBot
     ? TRIPLANIO_BOT_NAME
-    : (authorName || message.user_full_name || message.user_email || '');
+    : (authorName || message.user_full_name || '');
 
   // Bubble styles
   const bubbleCls = isMine
@@ -58,7 +58,6 @@ export default function ChatMessageBubble({
           ) : (
             <UserAvatar
               name={displayNm}
-              email={message.user_email}
               avatarUrl={authorAvatarUrl}
               size="sm"
               ring={false}

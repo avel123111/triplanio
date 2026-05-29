@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
       .from('trip_telegram_integrations')
       .delete()
       .eq('trip_id', tripId)
-      .eq('user_email', user.email)
+      .eq('user_id', user.id)
       .select('id');
     if (error) throw error;
 

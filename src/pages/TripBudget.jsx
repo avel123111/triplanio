@@ -111,12 +111,12 @@ export default function TripBudget() {
 
   // Active members count — active members + owner (owner may not appear as a TripMember row)
   const activeMemberCount = useMemo(() => {
-    const activeMemberEmails = new Set(
-      members.filter((m) => m.status === 'active').map((m) => m.user_email)
+    const activeMemberIds = new Set(
+      members.filter((m) => m.status === 'active').map((m) => m.user_id)
     );
-    const activeCount = activeMemberEmails.size;
+    const activeCount = activeMemberIds.size;
     // The trip owner may not have a TripMember row (they created the trip)
-    if (trip?.created_by && !activeMemberEmails.has(trip.created_by)) {
+    if (trip?.created_by && !activeMemberIds.has(trip.created_by)) {
       return activeCount + 1;
     }
     return activeCount;

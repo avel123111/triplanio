@@ -10,7 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageCircle, X, ExternalLink, Sparkles } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
-import { TRIPLANIO_BOT_EMAIL, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
+import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { useChatId, useUnreadChatCount, chatParticipants, pluralPeople } from '@/lib/chat';
 import TriplanioAvatar from './TriplanioAvatar';
 import ChatMarkdown from './ChatMarkdown';
@@ -26,7 +26,7 @@ function highlightMentions(val) {
     .replace(/@triplanio\b/gi, '<b style="color:var(--ai);font-weight:700">$&</b>');
 }
 
-export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail }) {
+export default function ChatWidget({ tripId, members = [], tripTitle, ownerId }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -62,7 +62,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
           qc.setQueryData(MSGS_KEY(chatId), (old = []) => {
             if (old.find((m) => m.id === msg.id)) return old;
             const filtered = old.filter((m) =>
-              !(String(m.id).startsWith('opt-') && (m.user_id === msg.user_id || m.user_email === msg.user_email)),
+              !(String(m.id).startsWith('opt-') && m.user_id === msg.user_id),
             );
             return [...filtered, msg];
           });
@@ -81,23 +81,24 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
   useEffect(() => {
     if (!open || !chatId || !user?.id) return;
     supabase.from('chat_reads').upsert(
-      { chat_id: chatId, user_id: user.id, trip_id: tripId, user_email: user.email, last_read_at: new Date().toISOString() },
+      { chat_id: chatId, user_id: user.id, trip_id: tripId, last_read_at: new Date().toISOString() },
       { onConflict: 'chat_id,user_id' },
     ).then(() => qc.invalidateQueries({ queryKey: ['chat-unread', tripId] }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, chatId, user?.id]);
 
   // ── Display names ──
-  const profileEmails = members.map((m) => m.user_email).filter(Boolean);
-  const profiles = useUserProfiles(profileEmails, tripId);
-  const nameFor = (email) => {
-    const lower = (email || '').toLowerCase();
-    let real = profiles[lower]?.full_name;
+  const profileIds = members.map((m) => m.user_id).filter(Boolean);
+  const profiles = useUserProfiles(profileIds, tripId);
+  const nameFor = (userId) => {
+    let real = profiles[userId]?.full_name;
+    let email = '';
     if (!real) {
-      const mm = members.find((m) => m.user_email?.toLowerCase() === lower);
+      const mm = members.find((m) => m.user_id === userId);
       real = mm?.user_full_name || '';
+      email = mm?.invite_email || '';
     }
-    if (!real && user?.email && lower === user.email.toLowerCase()) real = user.full_name || '';
+    if (!real && user?.id && userId === user.id) real = user.full_name || '';
     return displayName(email, real);
   };
 
@@ -105,7 +106,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
   const isThinking = useMemo(() => {
     if (!msgs.length) return false;
     const last = msgs[msgs.length - 1];
-    if (!last || last.user_email === TRIPLANIO_BOT_EMAIL) return false;
+    if (!last || last.user_id === TRIPLANIO_BOT_USER_ID) return false;
     if (failedAiIds.has(last.id)) return false;
     return /@triplanio\b/i.test(last.text || '');
   }, [msgs, failedAiIds]);
@@ -121,7 +122,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
     const optId = 'opt-' + Date.now();
     qc.setQueryData(MSGS_KEY(chatId), (old = []) => [...old, {
       id: optId, chat_id: chatId, trip_id: tripId,
-      user_id: user?.id, user_email: user?.email,
+      user_id: user?.id,
       user_full_name: myName, text: content,
       created_at: new Date().toISOString(), __pending: true,
     }]);
@@ -129,8 +130,8 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
     const { data: created, error } = await supabase.from('chat_messages')
       .insert({
         chat_id: chatId, trip_id: tripId,
-        user_id: user?.id, user_full_name: myName, user_email: user?.email,
-        text: content, created_by: user?.email,
+        user_id: user?.id, user_full_name: myName,
+        text: content, created_by: user?.id,
       })
       .select('id').single();
 
@@ -151,7 +152,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
     }
   }
 
-  const activeMembers = chatParticipants(members, ownerEmail);
+  const activeMembers = chatParticipants(members, ownerId);
 
   // Active @token being typed, and the helper that completes it on select.
   const mentionToken = (/(^|\s)@(\w*)$/.exec(text)?.[2] || '').toLowerCase();
@@ -160,7 +161,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
     setShowMention(false);
   }
   const mentionMembers = mentionToken
-    ? activeMembers.filter((m) => (nameFor(m.user_email) || '').toLowerCase().startsWith(mentionToken))
+    ? activeMembers.filter((m) => (nameFor(m.user_id) || '').toLowerCase().startsWith(mentionToken))
     : activeMembers;
   const triplanioMatches = !mentionToken || 'triplanio'.startsWith(mentionToken);
 
@@ -225,7 +226,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
           {activeMembers.slice(0, 4).map((m, i) => (
             <Avatar
               key={m.id || i}
-              name={nameFor(m.user_email)}
+              name={nameFor(m.user_id)}
               size="sm"
               style={{ marginLeft: i === 0 ? 0 : -8, border: '1.5px solid var(--surface)', borderRadius: '50%', zIndex: 4 - i }}
             />
@@ -257,11 +258,11 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
           <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: 13 }}>Напиши первым 💬</div>
         ) : msgs.map((m, i) => {
           const prev = i > 0 ? msgs[i - 1] : null;
-          const isMe = m.user_id === user?.id || m.user_email === user?.email;
-          const isAi = m.user_email === TRIPLANIO_BOT_EMAIL;
-          const grouped = prev && prev.user_email === m.user_email &&
+          const isMe = m.user_id === user?.id;
+          const isAi = m.user_id === TRIPLANIO_BOT_USER_ID;
+          const grouped = prev && prev.user_id === m.user_id &&
             new Date(m.created_at).toDateString() === new Date(prev.created_at).toDateString();
-          const who = isAi ? TRIPLANIO_BOT_NAME : nameFor(m.user_email);
+          const who = isAi ? TRIPLANIO_BOT_NAME : nameFor(m.user_id);
           const time = (() => {
             try { return new Date(m.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }); }
             catch { return ''; }
@@ -326,7 +327,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
               </button>
             )}
             {mentionMembers.map((m, i) => {
-              const n = nameFor(m.user_email);
+              const n = nameFor(m.user_id);
               return (
                 <button
                   key={i}

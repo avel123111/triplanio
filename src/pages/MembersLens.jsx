@@ -4,7 +4,7 @@
  * Props: tripId, members, trip, user, role, isLoading, queryClient
  *
  * members — trip_members rows from getTripDetails (include: ['content'])
- *   columns: id, trip_id, user_email, user_full_name, role, status, invite_token, ...
+ *   columns: id, trip_id, user_id, invite_email, user_full_name, role, status, invite_token, ...
  */
 import React, { useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
@@ -178,7 +178,7 @@ function ChangeRoleDialog({ member, tripId, onSaved }) {
         <Btn variant="primary" onClick={save} disabled={saving}>{saving ? 'Сохраняю…' : 'Сохранить'}</Btn>
       </>}>
       <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--muted)' }}>
-        {member.user_full_name || member.user_email}
+        {member.user_full_name || member.invite_email}
       </div>
       <Field label="Роль">
         <select className="select" value={role} onChange={e => setRole(e.target.value)}>
@@ -219,11 +219,11 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   // Resolve display names from profiles. Include the trip owner — they often
   // have no trip_members row, so members.map alone misses them and the owner
   // ends up showing the email twice.
-  const profileEmails = [
-    ...members.map(m => m.user_email),
+  const profileIds = [
+    ...members.map(m => m.user_id),
     trip?.created_by,
   ].filter(Boolean);
-  const profiles = useUserProfiles(profileEmails, tripId);
+  const profiles = useUserProfiles(profileIds, tripId);
 
   // Close menu on outside click
   React.useEffect(() => {
@@ -264,15 +264,15 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   // Add trip owner as first "member" if not already in list. Don't seed
   // user_full_name with the email — leave it empty so the profile resolver
   // (or the auth user's own name when they are the owner) wins the fallback.
-  const ownerEmail = trip?.created_by || '';
+  const ownerId = trip?.created_by || '';
   const allMembers = [...members];
-  const hasOwner = allMembers.some(m => m.user_email === ownerEmail || m.role === 'owner');
-  if (!hasOwner && ownerEmail) {
-    const isMeOwner = user?.email && ownerEmail.toLowerCase() === user.email.toLowerCase();
+  const hasOwner = allMembers.some(m => m.user_id === ownerId || m.role === 'owner');
+  if (!hasOwner && ownerId) {
+    const isMeOwner = user?.id && ownerId === user.id;
     allMembers.unshift({
       id: '__owner__',
       trip_id: tripId,
-      user_email: ownerEmail,
+      user_id: ownerId,
       user_full_name: isMeOwner ? (user?.full_name || '') : '',
       role: 'owner',
       status: 'active',
@@ -296,15 +296,15 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
           const isOwner = m.role === 'owner';
           const showMenu = openMenu === i;
           const isRemoving = removing === m.id;
-          const profile = profiles[(m.user_email || '').toLowerCase()];
+          const profile = profiles[m.user_id];
           // Display name = real name when known. When nothing is recorded,
           // displayName() returns a Title-cased email local-part so the row
           // never shows the same email twice. The email line below is only
           // rendered when we actually have a separate name to put on top.
           const realName = profile?.full_name || m.user_full_name
-            || (m.user_email && user?.email && m.user_email.toLowerCase() === user.email.toLowerCase() ? user.full_name : '')
+            || (m.user_id && user?.id && m.user_id === user.id ? user.full_name : '')
             || '';
-          const name = displayName(m.user_email, realName);
+          const name = displayName(m.invite_email, realName);
           const hasRealName = !!realName;
 
           return (
@@ -322,10 +322,10 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                   {name}
-                  {m.user_email === user?.email && <Badge variant="quiet" style={{ fontSize: 10 }}>Вы</Badge>}
+                  {m.user_id === user?.id && <Badge variant="quiet" style={{ fontSize: 10 }}>Вы</Badge>}
                 </div>
-                {hasRealName && (
-                  <div className="muted" style={{ fontSize: 12.5 }}>{m.user_email}</div>
+                {hasRealName && m.invite_email && (
+                  <div className="muted" style={{ fontSize: 12.5 }}>{m.invite_email}</div>
                 )}
               </div>
 
@@ -334,7 +334,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: 4, position: 'relative' }} data-row-menu>
-                {!isOwner && m.user_email !== user?.email && canManage && (
+                {!isOwner && m.user_id !== user?.id && canManage && (
                   <button
                     onClick={e => { e.stopPropagation(); setOpenMenu(showMenu ? null : i); }}
                     className="icon-btn"

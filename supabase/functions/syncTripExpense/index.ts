@@ -167,6 +167,12 @@ Deno.serve(async (req) => {
         })
         .eq('id', existing.id);
     } else {
+      // created_by must be a uuid — use the trip owner's id (null if unknown).
+      const { data: tripRow } = await supabaseAdmin
+        .from('trips')
+        .select('created_by')
+        .eq('id', source.tripId)
+        .maybeSingle();
       await supabaseAdmin
         .from('budget_expenses')
         .insert({
@@ -177,7 +183,7 @@ Deno.serve(async (req) => {
           original_currency: source.currency || 'USD',
           source_kind: sourceKind,
           source_id: sourceId,
-          created_by: 'system',
+          created_by: tripRow?.created_by ?? null,
         });
     }
 

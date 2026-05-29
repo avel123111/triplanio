@@ -31,14 +31,14 @@ Deno.serve(async (req) => {
     const now = new Date();
     const { data: me } = await admin
       .from('users').select('subscription_status, subscription_end_date')
-      .eq('email', user.email).single();
+      .eq('id', user.id).single();
     const isPro = !!me
       && me.subscription_status === 'pro'
       && !!me.subscription_end_date
       && new Date(me.subscription_end_date) > now;
 
     const { data: trips } = await admin
-      .from('trips').select('id, title').eq('created_by', user.email);
+      .from('trips').select('id, title').eq('created_by', user.id);
 
     if (!trips || trips.length === 0) {
       return Response.json({ isPro, activeCount: 0, activeTrips: [] }, { headers: corsHeaders });

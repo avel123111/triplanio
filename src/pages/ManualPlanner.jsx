@@ -1281,11 +1281,11 @@ export default function ManualPlanner() {
   const { data: allTrips = [], isLoading: checkingLimit } = useQuery({
     queryKey: ['trips-limit-check', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('trips').select('id').eq('created_by', user.email);
+      const { data, error } = await supabase.from('trips').select('id').eq('created_by', user.id);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user?.email && !isPro,
+    enabled: !!user?.id && !isPro,
   });
 
   const { data: allVisits = [] } = useQuery({
@@ -1430,13 +1430,13 @@ export default function ManualPlanner() {
     setError(null);
 
     try {
-      // RLS requires created_by = auth.jwt() ->> 'email'. The profiles table
-      // may diverge from the JWT, so always pull email straight from the JWT.
+      // RLS requires created_by = auth.uid(). The profiles table may diverge
+      // from the session, so always pull the id straight from the session.
       const { data: authUser, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !authUser?.user?.email) {
-        throw new Error('Не удалось получить email из сессии. Перезайди в аккаунт.');
+      if (authErr || !authUser?.user?.id) {
+        throw new Error('Не удалось получить идентификатор из сессии. Перезайди в аккаунт.');
       }
-      const authEmail = authUser.user.email;
+      const authId = authUser.user.id;
 
       // 1. Create trip via SECURITY DEFINER RPC (bypasses RLS caching issues)
       const { data: tripId, error: tripErr } = await supabase
@@ -1474,7 +1474,7 @@ export default function ManualPlanner() {
           kind: 'start',
           start_datetime: null,
           end_datetime: null,
-          created_by: authEmail,
+          created_by: authId,
         });
       }
 
@@ -1497,7 +1497,7 @@ export default function ManualPlanner() {
           kind: isFinalAnchor ? 'end' : 'transit',
           start_datetime: isFinalAnchor ? null : (c.startDate ? c.startDate + 'T12:00:00' : null),
           end_datetime: isFinalAnchor ? null : (c.startDate && c.nights ? addDays(c.startDate, +c.nights) + 'T11:00:00' : null),
-          created_by: authEmail,
+          created_by: authId,
         });
       });
 
@@ -1515,7 +1515,7 @@ export default function ManualPlanner() {
           longitude: effectiveReturn.longitude || null,
           timezone: effectiveReturn.timezone || null,
           kind: 'end',
-          created_by: authEmail,
+          created_by: authId,
         });
       }
 
@@ -1541,7 +1541,7 @@ export default function ManualPlanner() {
               from_city_visit_id: fromVisit.id,
               to_city_visit_id: toVisit.id,
               transport_type: kind,
-              created_by: authEmail,
+              created_by: authId,
             };
           })
           .filter(Boolean);

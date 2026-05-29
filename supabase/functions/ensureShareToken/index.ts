@@ -4,7 +4,7 @@
  * POST body: { tripId }
  *
  * Returns the trip's share_token. If not yet set, generates and saves one.
- * Caller must be the trip owner (created_by === user.email).
+ * Caller must be the trip owner (created_by === user.id).
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     if (!tripId) return Response.json({ error: 'tripId is required' }, { status: 400, headers: corsHeaders });
 
     // Only trip owner (admin) can manage share tokens
-    const isAdmin = await isCallerAdmin(tripId, user.email!);
+    const isAdmin = await isCallerAdmin(tripId, user.id);
     if (!isAdmin) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
 
     // Fetch current share_token

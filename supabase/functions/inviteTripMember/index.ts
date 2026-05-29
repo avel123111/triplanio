@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     }
 
     // Verify caller is owner or admin
-    const callerIsAdmin = await isCallerAdmin(trip_id, user.email!);
+    const callerIsAdmin = await isCallerAdmin(trip_id, user.id);
     if (!callerIsAdmin) {
       return Response.json({ error: 'Only trip admins can invite members' }, { status: 403, headers: corsHeaders });
     }
@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       .from('trip_members')
       .select('*')
       .eq('trip_id', trip_id)
-      .eq('user_email', normalizedEmail);
+      .eq('invite_email', normalizedEmail);
 
     if (existing && existing.length > 0) {
       return Response.json(
@@ -58,10 +58,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch invited user's profile to get their language and full_name
+    // Fetch invited user's profile (if registered) to get id, language, full_name
     const { data: invitedUsers } = await supabaseAdmin
       .from('users')
-      .select('language, full_name, avatar_url')
+      .select('id, language, full_name, avatar_url')
       .eq('email', normalizedEmail)
       .limit(1);
     const invitedUser = invitedUsers?.[0] ?? null;
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
     const { data: callerUsers } = await supabaseAdmin
       .from('users')
       .select('full_name')
-      .eq('email', user.email!)
+      .eq('id', user.id)
       .limit(1);
     const callerName = callerUsers?.[0]?.full_name || user.email!;
 
@@ -80,12 +80,13 @@ Deno.serve(async (req) => {
       .from('trip_members')
       .insert({
         trip_id,
-        user_email: normalizedEmail,
+        invite_email: normalizedEmail,
+        user_id: invitedUser?.id ?? null,
         user_full_name: invitedUser?.full_name || '',
         role,
         status: 'pending',
-        invited_by_email: user.email!,
-        created_by: user.email!,
+        invited_by: user.id,
+        created_by: user.id,
       })
       .select()
       .single();
@@ -101,23 +102,26 @@ Deno.serve(async (req) => {
       role,
     });
 
-    await supabaseAdmin.from('notifications').insert({
-      user_email: normalizedEmail,
-      type: 'trip_invite',
-      i18n_title_key: 'notif.tpl_invite_title',
-      i18n_message_key: 'notif.tpl_invite_msg',
-      i18n_params: {
-        trip: trip.title,
-        inviter: callerName,
-        role_key: role === 'admin' ? 'notif.role_admin' : 'notif.role_viewer',
-      },
-      title: notifTexts.title,
-      message: notifTexts.message,
-      trip_id,
-      trip_member_id: member.id,
-      read: false,
-      created_by: user.email!,
-    });
+    // Only registered users have a notifications inbox keyed by user_id.
+    if (invitedUser?.id) {
+      await supabaseAdmin.from('notifications').insert({
+        user_id: invitedUser.id,
+        type: 'trip_invite',
+        i18n_title_key: 'notif.tpl_invite_title',
+        i18n_message_key: 'notif.tpl_invite_msg',
+        i18n_params: {
+          trip: trip.title,
+          inviter: callerName,
+          role_key: role === 'admin' ? 'notif.role_admin' : 'notif.role_viewer',
+        },
+        title: notifTexts.title,
+        message: notifTexts.message,
+        trip_id,
+        trip_member_id: member.id,
+        read: false,
+        created_by: user.id,
+      });
+    }
 
     // Send invite email (best-effort — failure doesn't break the invite)
     try {

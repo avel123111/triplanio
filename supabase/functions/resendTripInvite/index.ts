@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invitation is not pending' }, { status: 400, headers: corsHeaders });
     }
 
-    const callerIsAdmin = await isCallerAdmin(member.trip_id, user.email!);
+    const callerIsAdmin = await isCallerAdmin(member.trip_id, user.id);
     if (!callerIsAdmin) {
       return Response.json({ error: 'Only trip admins can resend invitations' }, { status: 403, headers: corsHeaders });
     }
@@ -46,11 +46,11 @@ Deno.serve(async (req) => {
       .single();
     if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
 
-    // Fetch recipient language
+    // Fetch recipient language (by the invitation address)
     const { data: recipientUsers } = await supabaseAdmin
       .from('users')
       .select('language')
-      .eq('email', member.user_email)
+      .eq('email', member.invite_email)
       .limit(1);
     const recipientLang = recipientUsers?.[0]?.language ?? 'en';
 
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     const { data: callerUsers } = await supabaseAdmin
       .from('users')
       .select('full_name')
-      .eq('email', user.email!)
+      .eq('id', user.id)
       .limit(1);
     const callerName = callerUsers?.[0]?.full_name || user.email!;
 
@@ -69,12 +69,12 @@ Deno.serve(async (req) => {
       title: trip.title,
       inviter: callerName,
       role: member.role,
-      recipientEmail: member.user_email,
+      recipientEmail: member.invite_email,
       appUrl,
     });
 
     await sendEmail({
-      to: member.user_email,
+      to: member.invite_email,
       subject: emailData.subject,
       body: emailData.body,
       from_name: emailData.brand,

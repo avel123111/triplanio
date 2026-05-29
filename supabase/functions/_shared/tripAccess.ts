@@ -8,10 +8,10 @@
 import { supabaseAdmin } from './supabaseAdmin.ts';
 
 /**
- * Returns true if `userEmail` is the trip creator or an active admin/owner member.
+ * Returns true if `userId` is the trip creator or an active admin/owner member.
  * Used to gate write operations (invite, remove, role change, resend).
  */
-export async function isCallerAdmin(tripId: string, userEmail: string): Promise<boolean> {
+export async function isCallerAdmin(tripId: string, userId: string): Promise<boolean> {
   const { data: trip } = await supabaseAdmin
     .from('trips')
     .select('created_by')
@@ -19,13 +19,13 @@ export async function isCallerAdmin(tripId: string, userEmail: string): Promise<
     .single();
 
   if (!trip) return false;
-  if (trip.created_by === userEmail) return true;
+  if (trip.created_by === userId) return true;
 
   const { data: members } = await supabaseAdmin
     .from('trip_members')
     .select('role')
     .eq('trip_id', tripId)
-    .eq('user_email', userEmail)
+    .eq('user_id', userId)
     .eq('status', 'active')
     .limit(1);
 
@@ -34,10 +34,10 @@ export async function isCallerAdmin(tripId: string, userEmail: string): Promise<
 }
 
 /**
- * Returns true if `userEmail` is an active participant of the trip
+ * Returns true if `userId` is an active participant of the trip
  * (creator OR active TripMember of any role).
  */
-export async function isCallerParticipant(tripId: string, userEmail: string): Promise<boolean> {
+export async function isCallerParticipant(tripId: string, userId: string): Promise<boolean> {
   const { data: trip } = await supabaseAdmin
     .from('trips')
     .select('created_by')
@@ -45,13 +45,13 @@ export async function isCallerParticipant(tripId: string, userEmail: string): Pr
     .single();
 
   if (!trip) return false;
-  if (trip.created_by === userEmail) return true;
+  if (trip.created_by === userId) return true;
 
   const { data: members } = await supabaseAdmin
     .from('trip_members')
     .select('id')
     .eq('trip_id', tripId)
-    .eq('user_email', userEmail)
+    .eq('user_id', userId)
     .eq('status', 'active')
     .limit(1);
 

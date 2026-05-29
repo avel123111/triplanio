@@ -45,10 +45,9 @@ Deno.serve(async (req) => {
         chat_id,
         trip_id:        chat.trip_id,
         user_id:        botUser.id,
-        user_email:     BOT_EMAIL,
         user_full_name: BOT_NAME,
         text:           message.trim().slice(0, 4000),
-        created_by:     BOT_EMAIL,
+        created_by:     botUser.id,
       })
       .select('id')
       .single();

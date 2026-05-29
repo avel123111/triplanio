@@ -23,13 +23,13 @@ async function getUser(req: Request) {
   return user ?? null;
 }
 
-async function isAdmin(tripId: string, email: string) {
+async function isAdmin(tripId: string, userId: string) {
   const { data: trip } = await admin.from('trips').select('created_by').eq('id', tripId).single();
   if (!trip) return false;
-  if (trip.created_by === email) return true;
+  if (trip.created_by === userId) return true;
   const { data: members } = await admin
     .from('trip_members').select('role')
-    .eq('trip_id', tripId).eq('user_email', email).eq('status', 'active').limit(1);
+    .eq('trip_id', tripId).eq('user_id', userId).eq('status', 'active').limit(1);
   const role = members?.[0]?.role;
   return role === 'admin' || role === 'owner';
 }
@@ -44,18 +44,19 @@ Deno.serve(async (req) => {
     if (!tripId || !name || !String(name).trim()) {
       return Response.json({ error: 'tripId and name are required' }, { status: 400, headers: corsHeaders });
     }
-    if (!(await isAdmin(tripId, user.email))) {
+    if (!(await isAdmin(tripId, user.id))) {
       return Response.json({ error: 'Only trip admins can add members' }, { status: 403, headers: corsHeaders });
     }
 
     const { data: member, error } = await admin.from('trip_members').insert({
       trip_id: tripId,
-      user_email: null,
+      user_id: null,
+      invite_email: null,
       user_full_name: String(name).trim(),
       role: 'viewer',
       status: 'offline',
-      invited_by_email: user.email,
-      created_by: user.email,
+      invited_by: user.id,
+      created_by: user.id,
     }).select().single();
     if (error) throw error;
 
