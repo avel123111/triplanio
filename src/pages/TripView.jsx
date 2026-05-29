@@ -1242,6 +1242,8 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
                 <div key={c.id} title={c.name} style={{
                   height: '100%',
                   width: (totalSpent > 0 ? (c.spent / totalSpent) * 100 : 0) + '%',
+                  // keep a tiny segment visible even for very small expenses
+                  minWidth: c.spent > 0 ? 4 : 0,
                   background: c.color,
                 }} />
               ))}

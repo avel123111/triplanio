@@ -184,7 +184,11 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
     const next = {};
     Object.entries(values).forEach(([code, raw]) => {
       const n = Number(raw);
-      if (raw !== '' && Number.isFinite(n) && n > 0) next[code] = n;
+      if (raw === '' || !Number.isFinite(n) || n <= 0) return;
+      const live = liveRateToMain(fx, code);
+      // Store as a manual override ONLY when there is no live rate, or the user
+      // actually changed it — otherwise auto rates would get frozen.
+      if (live == null || Math.abs(n - live) / live > 0.0001) next[code] = n;
     });
     const { error } = await supabase.from('trip_budgets').update({ fx_overrides: next }).eq('trip_id', tripId);
     setSaving(false);
@@ -630,7 +634,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         id={sourceView.id}
         open={sourceView.open}
         onOpenChange={(o) => setSourceView(s => ({ ...s, open: o }))}
-        canEdit={false}
+        canEdit={true}
       />
     </>
   );

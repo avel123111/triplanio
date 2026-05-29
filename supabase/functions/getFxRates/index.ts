@@ -9,7 +9,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const SOURCE = 'frankfurter';
+// open.er-api.com (free, no key) — unlike ECB/frankfurter it INCLUDES RUB and
+// most world currencies, which a RUB-centric app needs.
+const SOURCE = 'er-api';
 const MAX_AGE_HOURS = 48;
 
 const admin = createClient(
@@ -38,22 +40,27 @@ Deno.serve(async (req) => {
       .from('fx_rates').select('*').eq('base', base).limit(1);
     const cached = existingRows?.[0];
 
-    if (cached?.fetched_at) {
+    // Only trust cache from the current source (old ECB rows lacked RUB).
+    if (cached?.fetched_at && cached.source === SOURCE) {
       const ageHours = (Date.now() - new Date(cached.fetched_at).getTime()) / 36e5;
       if (ageHours < MAX_AGE_HOURS && cached.rates && Object.keys(cached.rates).length > 0) {
         return Response.json({ ...cached, age_hours: Math.round(ageHours * 10) / 10, cached: true }, { headers: corsHeaders });
       }
     }
 
-    const resp = await fetch(`https://api.frankfurter.app/latest?from=${encodeURIComponent(base)}`);
+    const resp = await fetch(`https://open.er-api.com/v6/latest/${encodeURIComponent(base)}`);
     if (!resp.ok) {
       if (cached) return Response.json({ ...cached, stale: true }, { headers: corsHeaders });
       return Response.json({ error: `FX API error ${resp.status}` }, { status: 502, headers: corsHeaders });
     }
     const data = await resp.json();
-    const rates = { ...(data.rates || {}), [data.base]: 1 };
+    if (data.result !== 'success' || !data.rates) {
+      if (cached) return Response.json({ ...cached, stale: true }, { headers: corsHeaders });
+      return Response.json({ error: 'FX API returned no rates' }, { status: 502, headers: corsHeaders });
+    }
+    const rates = { ...data.rates, [data.base_code || base]: 1 };
     const payload = {
-      base: data.base || base,
+      base: data.base_code || base,
       rates,
       fetched_at: new Date().toISOString(),
       source: SOURCE,

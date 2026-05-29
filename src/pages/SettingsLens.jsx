@@ -272,13 +272,20 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   async function saveSettings() {
     if (!title.trim()) return;
     setSaving(true);
+    const prevCurrency = trip?.details?.main_currency || trip?.main_currency || 'EUR';
     const { error } = await supabase.from('trips').update({
       title: title.trim(),
       details: { ...(trip?.details || {}), main_currency: currency },
     }).eq('id', tripId);
+    // Main currency changed → existing FX overrides were defined against the OLD
+    // main currency and are now meaningless. Reset them (and keep trip_budgets.currency in sync).
+    if (!error && currency !== prevCurrency) {
+      await supabase.from('trip_budgets').update({ currency, fx_overrides: {} }).eq('trip_id', tripId);
+    }
     setSaving(false);
     if (error) { setSaveMsg('Ошибка: ' + error.message); return; }
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+    queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
     setSaveMsg('Сохранено ✓');
     setTimeout(() => setSaveMsg(''), 2000);
   }
