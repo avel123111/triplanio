@@ -11,7 +11,7 @@ import { ru, es, enUS } from 'date-fns/locale';
 import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton } from '../design/index';
 import HeaderActions from '@/components/HeaderActions';
-import { notifMeta } from '@/components/notifications/NotificationsBell';
+import { notifMeta, emphasize } from '@/components/notifications/NotificationsBell';
 import '../design/app.css';
 
 const DATE_LOCALES = { ru, es, en: enUS };
@@ -258,6 +258,9 @@ function InboxRow({ n, t, dateLocale, last, pending, onRespond }) {
   };
   const titleText = n.i18n_title_key ? t(n.i18n_title_key, renderParams(n.i18n_params)) : n.title;
   const messageText = n.i18n_message_key ? t(n.i18n_message_key, renderParams(n.i18n_params)) : n.message;
+  const ip = n.i18n_params || {};
+  const titleNode = isInvite ? emphasize(titleText, [{ value: ip.trip, style: { fontWeight: 700, color: 'var(--brand)' } }]) : titleText;
+  const messageNode = isInvite ? emphasize(messageText, [{ value: ip.inviter, style: { fontWeight: 700 } }]) : messageText;
   const meta = notifMeta(n.type);
   const showPending = isInvite && member?.status === 'pending';
 
@@ -271,8 +274,8 @@ function InboxRow({ n, t, dateLocale, last, pending, onRespond }) {
         <Icon name={meta.icon} size={16} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, lineHeight: 1.45, fontWeight: 500 }}>{titleText}</div>
-        {messageText && <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>{messageText}</div>}
+        <div style={{ fontSize: 13.5, lineHeight: 1.45, fontWeight: 500 }}>{titleNode}</div>
+        {messageText && <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>{messageNode}</div>}
         <div className="muted" style={{ fontSize: 11.5, marginTop: 3, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span>{time}</span>
           {n.trip_id && (member?.status === 'active' || n.type !== 'trip_invite') && (

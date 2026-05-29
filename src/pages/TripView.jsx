@@ -1245,7 +1245,7 @@ function ContextSide({ budget, budgetExpenses, members, services = [], user, tri
               : m.role === 'admin' ? 'Админ' : 'Зритель';
             return (
               <div key={m.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (isPending || isOffline) ? 0.65 : 1 }}>
-                <Avatar name={name} size="sm" />
+                <Avatar name={name} size="lg" />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1.3 }}>
                     <Icon name={roleIcon} size={11} style={{ color: roleColor, flexShrink: 0 }} />

@@ -37,7 +37,7 @@ const ROLES = [
   { value: 'viewer', label: 'Зритель — только чтение' },
 ];
 
-function InviteDialog({ tripId, onSaved }) {
+function InviteDialog({ tripId, onSaved, promoteMember }) {
   const [tab, setTab] = useState('email');
   const [role, setRole] = useState('viewer');
   const [copied, setCopied] = useState(false);
@@ -55,8 +55,12 @@ function InviteDialog({ tripId, onSaved }) {
     const { data, error } = await supabase.functions.invoke('inviteTripMember', {
       body: { trip_id: tripId, email: trimmed, role },
     });
+    if (error || data?.error) { setSaving(false); setErr((data?.error || error?.message) || 'Ошибка'); return; }
+    // Promoting an offline placeholder → remove it now that a real invite exists.
+    if (promoteMember?.id) {
+      await supabase.functions.invoke('removeTripMember', { body: { member_id: promoteMember.id } });
+    }
     setSaving(false);
-    if (error || data?.error) { setErr((data?.error || error?.message) || 'Ошибка'); return; }
     onSaved?.();
     window.__closeModal?.();
   }
@@ -329,11 +333,19 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                 )}
               </div>
 
-              <div><RoleBadge role={m.role} /></div>
+              <div>{m.status === 'offline'
+                ? <Badge variant="quiet" icon="user">Офлайн</Badge>
+                : <RoleBadge role={m.role} />}</div>
               <div><StatusDot status={m.status} /></div>
 
               {/* Actions */}
-              <div style={{ display: 'flex', gap: 4, position: 'relative' }} data-row-menu>
+              <div style={{ display: 'flex', gap: 4, position: 'relative', alignItems: 'center' }} data-row-menu>
+                {m.status === 'offline' && canManage && (
+                  <Btn variant="ghost" size="sm" icon="send"
+                    onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} promoteMember={m} onSaved={refresh} />)}>
+                    Пригласить
+                  </Btn>
+                )}
                 {!isOwner && m.user_id !== user?.id && canManage && (
                   <button
                     onClick={e => { e.stopPropagation(); setOpenMenu(showMenu ? null : i); }}

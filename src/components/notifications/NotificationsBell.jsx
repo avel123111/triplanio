@@ -12,6 +12,26 @@ import { Btn } from '@/design/index';
 
 const DATE_LOCALES = { ru, es, en: enUS };
 
+// Render `text` but wrap occurrences of given values in styled <span>s.
+// Used to bold the inviter name and emphasize the trip name in invite rows.
+export function emphasize(text, parts = []) {
+  if (text == null) return text;
+  let nodes = [String(text)];
+  parts.filter(p => p && p.value).forEach((p, pi) => {
+    nodes = nodes.flatMap((node, ni) => {
+      if (typeof node !== 'string') return [node];
+      const segs = node.split(p.value);
+      const out = [];
+      segs.forEach((s, si) => {
+        if (s) out.push(s);
+        if (si < segs.length - 1) out.push(<span key={`e${pi}-${ni}-${si}`} style={p.style}>{p.value}</span>);
+      });
+      return out;
+    });
+  });
+  return nodes;
+}
+
 // Icon + accent colour for a notification, by type.
 export function notifMeta(type = '') {
   const tp = String(type).toLowerCase();
@@ -62,11 +82,12 @@ export default function NotificationsBell({ triggerClassName }) {
 
   const respondInvite = useMutation({
     mutationFn: async ({ memberId, action }) => {
-      const update = action === 'accept'
-        ? { status: 'active', accepted_at: new Date().toISOString() }
-        : { status: 'declined' };
-      const { error } = await supabase.from('trip_members').update(update).eq('id', memberId);
-      if (error) throw error;
+      // Edge function sets user_id on the member, notifies the inviter, and
+      // marks the invite read — a raw update would skip all of that.
+      const { data, error } = await supabase.functions.invoke('respondTripInvite', {
+        body: { member_id: memberId, action },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message || 'Failed');
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
@@ -195,6 +216,9 @@ function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip
   };
   const titleText = n.i18n_title_key ? t(n.i18n_title_key, renderParams(n.i18n_params)) : n.title;
   const messageText = n.i18n_message_key ? t(n.i18n_message_key, renderParams(n.i18n_params)) : n.message;
+  const ip = n.i18n_params || {};
+  const titleNode = isInvite ? emphasize(titleText, [{ value: ip.trip, style: { fontWeight: 700, color: 'var(--brand)' } }]) : titleText;
+  const messageNode = isInvite ? emphasize(messageText, [{ value: ip.inviter, style: { fontWeight: 700 } }]) : messageText;
 
   const meta = notifMeta(n.type);
   const showPending = isInvite && member?.status === 'pending';
@@ -213,8 +237,8 @@ function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip
         <Icon name={meta.icon} size={14} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, lineHeight: 1.4, fontWeight: 500 }}>{titleText}</div>
-        {messageText && <div className="muted" style={{ fontSize: 11.5, marginTop: 2, lineHeight: 1.4 }}>{messageText}</div>}
+        <div style={{ fontSize: 12.5, lineHeight: 1.4, fontWeight: 500 }}>{titleNode}</div>
+        {messageText && <div className="muted" style={{ fontSize: 11.5, marginTop: 2, lineHeight: 1.4 }}>{messageNode}</div>}
         <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{time}</div>
 
         {showPending && (
