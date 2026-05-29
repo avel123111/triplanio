@@ -197,7 +197,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerEmail }) {
   useEffect(() => {
     if (!chatId) return;
     const channel = supabase
-      .channel('chat-lens-' + chatId)
+      .channel('chat-lens-' + chatId + '-' + Math.random().toString(36).slice(2))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `chat_id=eq.${chatId}` },

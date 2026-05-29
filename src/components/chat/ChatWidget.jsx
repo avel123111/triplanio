@@ -55,7 +55,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerEmail
   // ── Realtime ──
   useEffect(() => {
     if (!chatId) return;
-    const ch = supabase.channel('chat-widget-' + chatId)
+    const ch = supabase.channel('chat-widget-' + chatId + '-' + Math.random().toString(36).slice(2))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `chat_id=eq.${chatId}` },
         (payload) => {
           const msg = payload.new;
