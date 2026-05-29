@@ -4,7 +4,7 @@
 // trip) and on user_id (uuid) rather than user_email. The old trip_id /
 // user_email columns are still written for backward compat.
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
@@ -177,10 +177,14 @@ export function useUnreadChatCount(tripId, { enabled = true } = {}) {
 export function useChatLiveSubscription(tripId, { enabled = true } = {}) {
   const { data: chatId } = useChatId(tripId, { enabled: !!tripId && enabled });
   const qc = useQueryClient();
+  // Unique per hook instance — two consumers (e.g. sidebar badge + widget) must
+  // NOT share a Realtime topic name, or the 2nd .subscribe() throws
+  // "cannot add postgres_changes callbacks ... after subscribe()".
+  const uidRef = useRef(Math.random().toString(36).slice(2));
   useEffect(() => {
     if (!chatId || !enabled) return undefined;
     const channel = supabase
-      .channel(`chat-lib-${chatId}`)
+      .channel(`chat-lib-${chatId}-${uidRef.current}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
