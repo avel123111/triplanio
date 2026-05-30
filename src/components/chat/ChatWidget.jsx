@@ -21,9 +21,11 @@ import { useUserProfiles } from '@/lib/useUserProfiles';
 const MSGS_KEY = (cid) => ['chat-widget-msgs', cid];
 
 function highlightMentions(val) {
+  // Color only, NO font-weight: the overlay must match the textarea's glyph
+  // metrics exactly, otherwise the caret drifts once @mention is styled.
   return (val || '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')
-    .replace(/@triplanio\b/gi, '<b style="color:var(--ai);font-weight:700">$&</b>');
+    .replace(/@triplanio\b/gi, '<span style="color:var(--ai)">$&</span>');
 }
 
 export default function ChatWidget({ tripId, members = [], tripTitle, ownerId }) {
@@ -255,7 +257,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       )}
 
       {/* Messages */}
-      <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {msgs.length === 0 ? (
           <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: 13 }}>Напиши первым 💬</div>
         ) : msgs.map((m, i) => {
@@ -271,12 +273,12 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           })();
           const bubbleBg = isMe ? 'var(--brand)' : isAi ? 'var(--ai-soft)' : 'var(--wash)';
           return (
-            <div key={m.id} style={{ display: 'flex', gap: 8, justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 2 : 0 }}>
-              {/* Left avatar column for incoming messages (spacer keeps grouped
-                  bubbles aligned under the first message's avatar). */}
+            <div key={m.id} style={{ display: 'flex', gap: 8, justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 0 : 12 }}>
+              {/* Left avatar column for incoming messages (spacer width == avatar--sm
+                  so grouped bubbles line up exactly under the first message's avatar). */}
               {!isMe && (
                 grouped
-                  ? <div style={{ width: 28, flexShrink: 0 }} aria-hidden />
+                  ? <div style={{ width: 22, flexShrink: 0 }} aria-hidden />
                   : (isAi
                       ? <TriplanioAvatar size="sm" />
                       : <Avatar name={who} photo={profiles[m.user_id]?.avatar_url || ''} size="sm" style={{ flexShrink: 0 }} />)
@@ -324,35 +326,20 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             borderRadius: 10, boxShadow: 'var(--shadow-pop)', padding: 4,
             width: 240, zIndex: 5,
           }}>
-            {triplanioMatches && (
-              <button
-                onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', width: '100%', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-              >
-                <TriplanioAvatar size="xs" />
-                <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>@Triplanio — отвечает всем</div>
-                </div>
-              </button>
-            )}
-            {mentionMembers.map((m, i) => {
-              const n = nameFor(m.user_id);
-              return (
-                <button
-                  key={i}
-                  onMouseDown={(e) => { e.preventDefault(); applyMention(n.split(/[\s@]/)[0]); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', width: '100%', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <Avatar name={n} photo={profiles[m.user_id]?.avatar_url || ''} size="sm" />
-                  <div style={{ fontSize: 12.5, fontWeight: 500 }}>{n}</div>
-                </button>
-              );
-            })}
+            {/* Only @Triplanio is actionable — members aren't mentionable, so the
+                popup lists just the assistant. */}
+            <button
+              onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', width: '100%', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <TriplanioAvatar size="sm" />
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>@Triplanio — отвечает всем</div>
+              </div>
+            </button>
           </div>
         )}
         <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>

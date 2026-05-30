@@ -53,9 +53,12 @@ function highlightMentions(val) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/\n/g, '<br/>');
+  // Color only — NO font-weight change. The overlay must keep the exact same
+  // glyph metrics as the textarea, otherwise the caret drifts off the text
+  // once an @mention is styled. Bold widened the run and pushed the caret.
   return escaped.replace(
     /@triplanio\b/gi,
-    '<b style="color:var(--ai);font-weight:700">$&</b>',
+    '<span style="color:var(--ai)">$&</span>',
   );
 }
 
@@ -78,11 +81,11 @@ function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl }) {
   const radius      = isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px';
 
   return (
-    <div style={{ display: 'flex', gap: 8, justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 2 : 0 }}>
+    <div style={{ display: 'flex', gap: 8, justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 0 : 12 }}>
       {/* Incoming: avatar in its own left column; a spacer keeps grouped bubbles aligned. */}
       {!isMe && (
         grouped
-          ? <div style={{ width: 28, flexShrink: 0 }} aria-hidden />
+          ? <div style={{ width: 22, flexShrink: 0 }} aria-hidden />
           : (isAi ? <TriplanioAvatar size="sm" /> : <Avatar name={who} photo={avatarUrl || ''} size="sm" style={{ flexShrink: 0 }} />)
       )}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', minWidth: 0, maxWidth: '78%' }}>
@@ -400,7 +403,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {isLoading ? (
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>Загружаем сообщения…</div>
           ) : msgs.length === 0 ? (
@@ -445,22 +448,21 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 6,
               width: 280, zIndex: 5,
             }}>
-              <div className="eyebrow" style={{ padding: '6px 10px 8px' }}>Упомянуть</div>
-              {filteredMentionList.map((m, i) => (
-                <button
-                  key={i}
-                  onMouseDown={(e) => { e.preventDefault(); applyMention(m.handle); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', width: '100%', border: 'none', background: 'transparent', borderRadius: 7, cursor: 'pointer', textAlign: 'left' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  {m.ai ? <TriplanioAvatar size="sm" /> : <Avatar name={m.name} size="sm" />}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: m.ai ? 'var(--ai)' : 'var(--ink)' }}>{m.name}</div>
-                    <div className="muted" style={{ fontSize: 11.5 }}>{m.desc}</div>
-                  </div>
-                </button>
-              ))}
+              <div className="eyebrow" style={{ padding: '4px 10px 4px' }}>Упомянуть</div>
+              {/* Only @Triplanio is actionable — mentioning a member does nothing,
+                  so the popup lists just the assistant. */}
+              <button
+                onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', width: '100%', border: 'none', background: 'transparent', borderRadius: 7, cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <TriplanioAvatar size="sm" />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
+                  <div className="muted" style={{ fontSize: 11.5 }}>@Triplanio — отвечает всем</div>
+                </div>
+              </button>
             </div>
           )}
 
