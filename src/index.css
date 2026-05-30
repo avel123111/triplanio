@@ -108,12 +108,14 @@
   h4 { font-size: 14px; line-height: 1.3; }
 }
 
-/* AI-filled field: tint the inner input/select trigger */
+/* AI-filled field: violet tint on the inner input/select trigger, matching the
+   designer's `.field--ai` look (var(--ai-soft) fill + soft violet border). */
 .ai-filled input,
 .ai-filled textarea,
 .ai-filled [role="combobox"],
 .ai-filled button[role="combobox"] {
-  background-color: transparent !important;
+  background-color: var(--ai-soft) !important;
+  border-color: var(--ai-soft-12) !important;
 }
 
 /* Mobile fix: native datetime-local inputs render localized text that often

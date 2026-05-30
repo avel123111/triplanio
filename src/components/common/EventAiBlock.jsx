@@ -136,10 +136,9 @@ export default function EventAiBlock({
       }));
       const fileUrls = uploaded.map((f) => f.file_url).filter(Boolean);
 
-      // 2. Call the edge function. Only kind + fileUrls leave the client;
-      //    prompts and schemas live inside the n8n workflow.
-      const body = { kind, fileUrls };
-      if (text.trim()) body.text = text.trim();
+      // 2. Call the edge function. kind + fileUrls + the pasted text all go to
+      //    n8n (prompts and schemas live inside the n8n workflow).
+      const body = { kind, fileUrls, text: text.trim() };
       const { data: invoked, error: invokeErr } = await supabase.functions.invoke('parseBookingWithAi', { body });
       if (invokeErr) throw invokeErr;
       if (invoked?.error) throw new Error(invoked.error);

@@ -1,20 +1,28 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 
 /**
- * Wraps a form field. When `active` is true (AI just filled it),
- * renders an animated gradient ring + tiny corner sparkle badge,
- * plus a light primary tint on inputs inside.
+ * Wraps a form field. When `active` (AI just filled it), the inner input gets a
+ * violet tint via the `.ai-filled` CSS (see index.css) and a small "AI" badge is
+ * pinned to the top-right of the field — matching the designer's `field--ai`
+ * look (var(--ai) badge, var(--ai-soft) input fill).
  */
 export default function AiField({ active, children, className = '' }) {
   if (!active) return <div className={className}>{children}</div>;
   return (
-    <div className={`relative rounded-lg p-[2px] ai-shimmer ai-filled ${className}`}>
-      <div className="rounded-md bg-primary/5">
-        {children}
-      </div>
-      <span className="absolute -top-1.5 -right-1.5 z-10 inline-flex items-center justify-center w-4 h-4 rounded-full bg-gradient-to-br from-primary via-chart-2 to-accent shadow ring-2 ring-background">
-        <Sparkles className="w-2.5 h-2.5 text-white" />
+    <div className={`relative ai-filled ${className}`}>
+      {children}
+      <span
+        className="absolute -top-2 right-2 z-10 leading-none text-white pointer-events-none"
+        style={{
+          background: 'var(--ai)',
+          fontSize: '9.5px',
+          fontWeight: 700,
+          letterSpacing: '.08em',
+          padding: '2px 5px',
+          borderRadius: 4,
+        }}
+      >
+        AI
       </span>
     </div>
   );
