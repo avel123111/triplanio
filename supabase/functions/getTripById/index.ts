@@ -3,25 +3,25 @@
  *
  * POST body: { id: string }
  *
- * Server-to-server endpoint (no JWT required — called from n8n / Telegram bot).
+ * Server-to-server endpoint called from n8n / the Telegram bot. Runs with
+ * verify_jwt=false, so it authenticates the caller itself: requires
+ * `Authorization: Bearer <N8N_SECRET>` (see requireN8nSecret). Without this
+ * gate any party that learns a trip UUID could read the entire trip
+ * (members, budget, expenses, share_token) — broken access control.
+ *
  * Returns the full trip payload for the given trip id.
  */
 
-import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  { auth: { persistSession: false } },
-);
+import { corsHeaders } from '../_shared/cors.ts';
+import { requireN8nSecret } from '../_shared/n8nAuth.ts';
+import { fetchTripPayload } from '../_shared/tripPayload.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  // Authenticate the server-to-server caller (n8n / Telegram bot).
+  const denied = requireN8nSecret(req);
+  if (denied) return denied;
 
   try {
     const { id } = await req.json();
@@ -38,50 +38,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-async function fetchTripPayload(tripId: string) {
-  const { data: trip, error: tripErr } = await supabaseAdmin
-    .from('trips')
-    .select('*')
-    .eq('id', tripId)
-    .single();
-
-  if (tripErr || !trip) {
-    return Response.json({ error: 'Trip not found' }, { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } });
-  }
-
-  const [
-    { data: cityVisits },
-    { data: hotels },
-    { data: activities },
-    { data: transfers },
-    { data: services },
-    { data: members },
-    { data: budgetArr },
-    { data: budgetCategories },
-    { data: budgetExpenses },
-  ] = await Promise.all([
-    supabaseAdmin.from('city_visits').select('*').eq('trip_id', tripId),
-    supabaseAdmin.from('hotel_stays').select('*').eq('trip_id', tripId),
-    supabaseAdmin.from('activities').select('*').eq('trip_id', tripId),
-    supabaseAdmin.from('transfers').select('*').eq('trip_id', tripId),
-    supabaseAdmin.from('trip_services').select('*').eq('trip_id', tripId),
-    supabaseAdmin.from('trip_members').select('*').eq('trip_id', tripId),
-    supabaseAdmin.from('trip_budgets').select('*').eq('trip_id', tripId),
-    supabaseAdmin.from('budget_categories').select('*').eq('trip_id', tripId).order('order_index'),
-    supabaseAdmin.from('budget_expenses').select('*').eq('trip_id', tripId),
-  ]);
-
-  return Response.json({
-    trip,
-    cityVisits: cityVisits ?? [],
-    hotels: hotels ?? [],
-    activities: activities ?? [],
-    transfers: transfers ?? [],
-    services: services ?? [],
-    members: members ?? [],
-    budget: (budgetArr ?? [])[0] ?? null,
-    budgetCategories: budgetCategories ?? [],
-    budgetExpenses: budgetExpenses ?? [],
-  }, { headers: { 'Access-Control-Allow-Origin': '*' } });
-}
