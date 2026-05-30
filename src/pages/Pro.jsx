@@ -21,7 +21,19 @@ export default function Pro() {
   const isPro = isProActive(user);
 
   const tripId = searchParams.get('tripId') || null;
-  const hidePerTrip = searchParams.get('hidePerTrip') === '1' || !tripId;
+  // pro_trip may only be bought by the trip OWNER. If a non-owner lands here with
+  // a tripId (e.g. a leaked link from a shared trip), hide the per-trip plan —
+  // they can still buy a subscription, but can't buy Pro for someone else's trip.
+  const [tripOwner, setTripOwner] = useState(null); // null = unknown
+  useEffect(() => {
+    if (!tripId) return;
+    let cancelled = false;
+    supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } })
+      .then((res) => { if (!cancelled) setTripOwner(!!res.data?.isOwner); })
+      .catch(() => { if (!cancelled) setTripOwner(false); });
+    return () => { cancelled = true; };
+  }, [tripId]);
+  const hidePerTrip = searchParams.get('hidePerTrip') === '1' || !tripId || tripOwner !== true;
 
   const [prices, setPrices] = useState(null);
   const [pricesLoading, setPricesLoading] = useState(false);

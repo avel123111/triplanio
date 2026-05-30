@@ -17,27 +17,31 @@ import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, Toggle } from '../design/index';
 import ProLockedDialog from '@/components/common/ProLockedDialog';
+import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 import CurrencySelect from '@/components/budget/CurrencySelect';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
 // `addon` is the key persisted under trip.details.addons (matches TripView lens ids
 // for the gateable lenses: calendar / budget / chat).
 
+// Pro flags MUST match the backend definition (lib/tripAddons.js PRO_ONLY_ADDONS):
+// pro = budget, chat, telegram_assistant. calendar is NOT pro. hotels_selection
+// is "coming soon" (locked). There is no personal-AI addon. docs is a core lens,
+// not an optional addon, so it's not listed here.
 const FEATURES = [
-  { id: 'cal',    addon: 'calendar',            icon: 'calendar',  color: 'var(--brand)',   label: 'Календарь',                   desc: 'Те же события на сетке месяца/недели',                  pro: true  },
+  { id: 'cal',    addon: 'calendar',            icon: 'calendar',  color: 'var(--brand)',   label: 'Календарь',                   desc: 'Те же события на сетке месяца/недели'                              },
   { id: 'budget', addon: 'budget',              icon: 'wallet',    color: 'var(--success)', label: 'Полная разбивка бюджета',     desc: 'Категории, ручные расходы, FX-override\'ы',             pro: true  },
   { id: 'chat',   addon: 'chat',                icon: 'chat',      color: 'var(--ai)',      label: 'Групповой чат',               desc: 'Сообщения, упоминания, @assistant',                     pro: true  },
-  { id: 'hotels', addon: 'hotels_selection',    icon: 'vote',      color: 'var(--warm)',    label: 'Совместный выбор отелей',     desc: 'Голосование среди аппруверов'                                   },
   { id: 'tg',     addon: 'telegram_assistant',  icon: 'telegram',  color: '#0088cc',        label: 'Telegram-мост',               desc: 'Напоминания в Telegram',                                pro: true  },
-  { id: 'ai',     addon: 'ai',                  icon: 'sparkles',  color: 'var(--ai)',      label: 'Персональный ИИ-помощник',    desc: 'Личный диалог с возможностью править трип',             pro: true  },
-  { id: 'docs',   addon: 'docs',                icon: 'file',      color: 'var(--muted)',   label: 'Документы трипа',             desc: 'Паспорта, страховки, общие файлы',                      locked: true },
+  { id: 'hotels', addon: 'hotels_selection',    icon: 'vote',      color: 'var(--warm)',    label: 'Совместный выбор отелей',     desc: 'Голосование среди аппруверов',                          locked: true },
 ];
 
-// Default ON unless explicitly disabled (addons[key] === false).
+// Default OFF unless explicitly enabled (addons[key] === true). New trips start
+// with every optional/pro feature off — they never auto-enable for anyone.
 function featuresFromTrip(trip) {
   const addons = trip?.details?.addons || {};
   const state = {};
-  for (const f of FEATURES) state[f.id] = f.locked ? false : (addons[f.addon] !== false);
+  for (const f of FEATURES) state[f.id] = f.locked ? false : (addons[f.addon] === true);
   return state;
 }
 
@@ -256,9 +260,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const [saving,  setSaving]  = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
 
-  const hasPro = isPro;
+  const hasPro = isPro; // trip-level Pro (owner sub OR is_pro_trip), passed from TripView
+  const isOwner = myRole === 'owner';
   const [features, setFeatures] = useState(() => featuresFromTrip(trip));
   const [proLocked, setProLocked] = useState({ open: false, feature: '' });
+  const [tripProInfo, setTripProInfo] = useState({ open: false, feature: '' });
   const openUpgrade = () => nav(`/pro?tripId=${tripId}&hidePerTrip=1`);
 
   // Sync local state when trip prop changes
@@ -295,7 +301,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     const feat = FEATURES.find(f => f.id === id);
     if (feat?.locked) return;
     if (pro && !hasPro) {
-      setProLocked({ open: true, feature: feat?.label || '' });
+      // Trip is not Pro. Only the owner can upgrade it → owner sees the upgrade
+      // path; a non-owner (admin) is told to ask the owner instead of being sent
+      // to checkout (their payment wouldn't unlock THIS trip).
+      if (isOwner) setProLocked({ open: true, feature: feat?.label || '' });
+      else setTripProInfo({ open: true, feature: feat?.label || '' });
       return;
     }
     const newVal = !features[id];
@@ -422,6 +432,12 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         feature={proLocked.feature}
         onOpenChange={(o) => setProLocked(s => ({ ...s, open: o }))}
         onUpgrade={openUpgrade}
+      />
+
+      <TripProInfoDialog
+        open={tripProInfo.open}
+        feature={tripProInfo.feature}
+        onOpenChange={(o) => setTripProInfo(s => ({ ...s, open: o }))}
       />
     </div>
   );

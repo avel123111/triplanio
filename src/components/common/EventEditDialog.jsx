@@ -55,6 +55,7 @@ import TimezoneHint from '@/components/common/TimezoneHint';
 import DocumentsField from '@/components/common/DocumentsField';
 import AddressAutocomplete from '@/components/common/AddressAutocomplete';
 import EventAiBlock from '@/components/common/EventAiBlock';
+import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Type metadata — colours, icons, copy
@@ -356,8 +357,12 @@ export default function EventEditDialog({
   // checkSubscriptionStatus resolves; non-Pro lands in 'locked'.
   const [aiState, setAiState] = useState('available');
 
-  // Pro state: null = checking, true/false = resolved.
+  // Pro state: null = checking, true/false = resolved. isOwner tells whether the
+  // caller owns this trip — only the owner may be sent to checkout; a participant
+  // is shown the "ask the owner" info dialog instead.
   const [isPro, setIsPro] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
 
   const [confirmDel, setConfirmDel] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -391,8 +396,8 @@ export default function EventEditDialog({
     let cancelled = false;
     setIsPro(null);
     supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } })
-      .then((res) => { if (!cancelled) setIsPro(!!res.data?.isPro); })
-      .catch((e) => { console.error(e); if (!cancelled) setIsPro(false); });
+      .then((res) => { if (!cancelled) { setIsPro(!!res.data?.isPro); setIsOwner(!!res.data?.isOwner); } })
+      .catch((e) => { console.error(e); if (!cancelled) { setIsPro(false); setIsOwner(false); } });
     return () => { cancelled = true; };
   }, [open, tripId]);
 
@@ -440,6 +445,9 @@ export default function EventEditDialog({
   };
 
   const openUpgrade = () => {
+    // Only the owner can upgrade this trip → checkout. A participant can't unlock
+    // someone else's trip by paying, so show the "ask the owner" dialog instead.
+    if (!isOwner) { setTripProInfoOpen(true); return; }
     onOpenChange?.(false);
     nav(`/pro?tripId=${tripId || ''}`);
   };
@@ -873,6 +881,11 @@ export default function EventEditDialog({
           </div>
         </DialogContent>
       </Dialog>
+
+      <TripProInfoDialog
+        open={tripProInfoOpen}
+        onOpenChange={setTripProInfoOpen}
+      />
     </>
   );
 }

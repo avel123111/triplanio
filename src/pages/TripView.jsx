@@ -9,6 +9,8 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
+import TripProInfoDialog from '@/components/common/TripProInfoDialog';
+import { isAddonEnabled } from '@/lib/tripAddons';
 import { useUnreadChatCount } from '@/lib/chat';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
@@ -308,18 +310,22 @@ const MGMT_ITEMS = [
   { id: 'settings',  label: 'Настройки',     icon: 'settings' },
 ];
 
-// Addon-gated lenses: shown unless the trip explicitly disabled them.
+// Addon-gated lenses: hidden unless the trip explicitly enabled them.
+// Default OFF — a fresh trip shows none of these until enabled in Settings.
 const GATED_LENS_ADDON = { calendar: 'calendar', budget: 'budget', chat: 'chat' };
 
 function isLensVisible(trip, lensId) {
   const key = GATED_LENS_ADDON[lensId];
   if (!key) return true;
-  return trip?.details?.addons?.[key] !== false;
+  return trip?.details?.addons?.[key] === true;
 }
 
-function TripSidebar({ tripId, trip, lens, onNavigate, isPro, onUpgrade }) {
+function TripSidebar({ tripId, trip, lens, onNavigate, isPro, isOwner, myRole, onUpgrade, onProInfo }) {
   const lensItems = LENS_ITEMS.filter(item => isLensVisible(trip, item.id));
-  const showUpgrade = !trip?.is_pro_trip && !isPro;
+  // Viewers can't open Settings or Members — hide those menu items entirely.
+  const mgmtItems = MGMT_ITEMS.filter(item =>
+    !(myRole === 'viewer' && (item.id === 'settings' || item.id === 'members')));
+  const showUpgrade = !isPro; // isPro here = trip-level Pro (owner sub OR pro_trip)
   const chatUnread = useUnreadChatCount(tripId);
   return (
     <aside className="app-side">
@@ -341,26 +347,32 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, onUpgrade }) {
           </button>
         ))}
       </div>
-      <div className="app-side__group">
-        <div className="app-side__group-label">Управление</div>
-        {MGMT_ITEMS.map(item => (
-          <button
-            key={item.id}
-            className={'app-side__item' + (lens === item.id ? ' active' : '')}
-            onClick={() => onNavigate(item.id)}
-          >
-            <Icon name={item.icon} size={15} />
-            {item.label}
-          </button>
-        ))}
-      </div>
+      {mgmtItems.length > 0 && (
+        <div className="app-side__group">
+          <div className="app-side__group-label">Управление</div>
+          {mgmtItems.map(item => (
+            <button
+              key={item.id}
+              className={'app-side__item' + (lens === item.id ? ' active' : '')}
+              onClick={() => onNavigate(item.id)}
+            >
+              <Icon name={item.icon} size={15} />
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
       {showUpgrade && (
         <div style={{ margin: '10px 6px 0', padding: 12, borderRadius: 10, background: 'var(--warm-tint)' }}>
           <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warm)', marginBottom: 4 }}>Free-трип</div>
           <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginBottom: 8, lineHeight: 1.45 }}>
             Календарь, бюджет-разбивка, ИИ и чат закрыты Pro.
           </div>
-          <Btn variant="primary" size="sm" block icon="pro" onClick={onUpgrade}>Апгрейд трипа</Btn>
+          {isOwner ? (
+            <Btn variant="primary" size="sm" block icon="pro" onClick={onUpgrade}>Апгрейд трипа</Btn>
+          ) : (
+            <Btn variant="ghost" size="sm" block icon="lock" onClick={onProInfo}>Подключает владелец</Btn>
+          )}
         </div>
       )}
     </aside>
@@ -740,30 +752,77 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     }
   }
 
-  // Build missing-transfer map (by visit-ID pairs, not city names):
-  //   - Warn for every consecutive pair lacking an inbound transfer, INCLUDING
-  //     start→first-city and last-city→finish.
-  //   - Only the start anchor itself has nothing before it, so it's skipped.
-  const missingTransferByVisitId = {};
-  for (let i = 0; i < ordered.length; i++) {
-    const v = ordered[i];
-    const prev = ordered[i - 1];
-    if (!prev) continue;
-    if (v.kind === 'start') continue;
-    // Show warning for ALL pairs including start→city1 and cityN→end
-    const inboundFromPrev = (inboundByVisit[v.id] || []).filter(
-      tr => tr.from_city_visit_id === prev.id
-    );
-    if (inboundFromPrev.length === 0) {
-      missingTransferByVisitId[v.id] = { fromVisit: prev, toVisit: v };
+  // One ordered walk of TRANSIT cities drives BOTH the render order and the
+  // transfer/warning pairing — so a warning's "from" is always the city shown
+  // directly above it (no sortVisits ↔ visitForDay divergence). Anchors are
+  // rendered separately as StreamAnchor.
+  const transitCities = ordered.filter(v => v.kind !== 'start' && v.kind !== 'end');
+
+  // Inbound transfer EVENTS (from the stream) for a destination visit — used to
+  // render the actual transfer card above its hero.
+  const inboundEventsFor = (visitId) =>
+    stream.filter(e => {
+      if (e.type !== 'transfer' && e.type !== 'flight') return false;
+      const tr = (transfers || []).find(t => t.id === e.id);
+      return tr?.to_city_visit_id === visitId;
+    });
+  const hasTransferBetween = (prev, city) =>
+    !!prev && (inboundByVisit[city.id] || []).some(tr => tr.from_city_visit_id === prev.id);
+
+  // Inbound-transfer event ids — excluded from a day's general event list
+  // (they belong inside the arrival block, above the city hero).
+  const inboundEventIds = new Set();
+  for (const c of transitCities) for (const e of inboundEventsFor(c.id)) inboundEventIds.add(e.id);
+
+  // Renders one city's arrival block: [transfer card | missing-transfer warning]
+  // then the CityHero. `prev` = the previously-rendered city (or start anchor).
+  const renderArrival = (city, prev) => {
+    const out = [];
+    if (prev && !hasTransferBetween(prev, city)) {
+      out.push(
+        <div key={`mt-${city.id}`} style={{ marginBottom: 8 }}>
+          <MissingTransferWarning
+            from={prev.city_name} to={city.city_name}
+            fromVisit={prev} toVisit={city} onAdd={onAddTransfer}
+          />
+        </div>
+      );
+    } else {
+      const inEv = inboundEventsFor(city.id);
+      if (inEv.length > 0) {
+        out.push(
+          <div key={`in-${city.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+            {inEv.map(e => <StreamEventRow key={e.id} e={e} onClick={() => onOpenEvent?.(e)} />)}
+          </div>
+        );
+      }
     }
-  }
+    const vStart = naiveDayKey(city.start_datetime);
+    const vEnd = naiveDayKey(city.end_datetime);
+    const nights = nightsBetween(vStart, vEnd);
+    const dateRange = vStart && vEnd ? `${fmtDate(vStart)} — ${fmtDate(vEnd)}` : null;
+    out.push(
+      <CityHero
+        key={`city-${city.id}`}
+        city={city.city_name}
+        country={city.country || city.country_name}
+        dateRange={dateRange}
+        nights={nights}
+        hotels={hotelsByVisit[city.id] || []}
+        visit={city}
+        onAddHotel={onAddHotel}
+        isEditMode={isEditMode}
+        onEditNotes={onEditVisitNotes}
+        onDeleteCity={onDeleteCity}
+        onOpenEvent={onOpenEvent}
+      />
+    );
+    return out;
+  };
 
   const rows = [];
-  let prevVisitId = null;
-  // Missing-transfer warnings already emitted inside the day loop (keyed by
-  // destination visit id) — so we don't render anchor cities' warnings twice.
-  const renderedMissing = new Set();
+  // Running predecessor across the whole itinerary walk (seed = start anchor).
+  let prevCity = ordered[0]?.kind === 'start' ? ordered[0] : null;
 
   // Start anchor
   const startCity = ordered[0]?.city_name || 'Старт';
@@ -779,55 +838,20 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   );
 
   for (const day of days) {
-    const visit = visitForDay(day, visits);
-    // Arrival day = first day this city's visit appears. The CityHero and the
-    // "no transfer" warning belong to THIS day (rendered under its header),
-    // not floating between the previous day and this one.
-    // Start and end anchors get their own StreamAnchor (top/bottom of timeline) —
-    // never render CityHero or arrival warning for them.
-    const isAnchor = visit && (visit.kind === 'start' || visit.kind === 'end');
-    const isArrival = !!(visit && visit.id !== prevVisitId && !isAnchor);
-    const mt = isArrival ? missingTransferByVisitId[visit.id] : null;
-    if (mt) renderedMissing.add(visit.id);
+    // All transit cities ARRIVING this day (by start day), in itinerary order.
+    // Multiple cities can arrive the same day (e.g. a one-day pass-through that
+    // shares its single day with the previous and next city).
+    const arrivingToday = transitCities.filter(c => naiveDayKey(c.start_datetime) === day);
+    const isArrival = arrivingToday.length > 0;
 
-    let cityHero = null;
-    if (isArrival) {
-      const vStart = naiveDayKey(visit.start_datetime);
-      const vEnd = naiveDayKey(visit.end_datetime);
-      const nights = nightsBetween(vStart, vEnd);
-      const dateRange = vStart && vEnd ? `${fmtDate(vStart)} — ${fmtDate(vEnd)}` : null;
-      const visitHotels = hotelsByVisit[visit.id] || [];
-      cityHero = (
-        <CityHero
-          key={`city-${visit.id}`}
-          city={visit.city_name}
-          country={visit.country || visit.country_name}
-          dateRange={dateRange}
-          nights={nights}
-          hotels={visitHotels}
-          visit={visit}
-          onAddHotel={onAddHotel}
-          isEditMode={isEditMode}
-          onEditNotes={onEditVisitNotes}
-          onDeleteCity={onDeleteCity}
-          onOpenEvent={onOpenEvent}
-        />
-      );
-    }
+    // Header chip = the latest transit city whose range covers this day.
+    const dayCity = [...transitCities].reverse().find(c => {
+      const s = naiveDayKey(c.start_datetime), e = naiveDayKey(c.end_datetime);
+      return s && e && day >= s && day <= e;
+    }) || null;
 
-    // On an arrival day, inbound transfers (to this visit) belong ABOVE
-    // the city hero, not in the day's general event list — so the user
-    // sees "we travelled to X" before X's city banner.
     const allDayEvents = eventsByDate[day] || [];
-    const inboundTransferEvents = isArrival
-      ? allDayEvents.filter(e => {
-          if (e.type !== 'transfer' && e.type !== 'flight') return false;
-          const tr = (transfers || []).find(t => t.id === e.id);
-          return tr?.to_city_visit_id === visit.id;
-        })
-      : [];
-    const inboundIds = new Set(inboundTransferEvents.map(e => e.id));
-    const dayEvents = allDayEvents.filter(e => !inboundIds.has(e.id));
+    const dayEvents = allDayEvents.filter(e => !inboundEventIds.has(e.id));
 
     rows.push(
       <div key={`day-${day}`} style={{ marginBottom: 24 }}>
@@ -841,10 +865,10 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
               {weekday(day)}
             </span>
           </div>
-          {visit && (
+          {dayCity && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px 2px 6px', borderRadius: 999, background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 11.5, fontWeight: 500, marginBottom: 2 }}>
               <Icon name="pin" size={11} />
-              {visit.city_name}
+              {dayCity.city_name}
             </span>
           )}
           {weatherByDay[day] && (
@@ -855,28 +879,10 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
           <div style={{ flex: 1, borderBottom: '1px solid var(--line-2)', marginBottom: 6 }} />
         </div>
 
-        {/* Arrival into this city: missing-transfer warning, then any
-            inbound transfers (so they read as "we travelled here"), then
-            the city hero itself. */}
-        {mt && (
-          <div style={{ marginBottom: 8 }}>
-            <MissingTransferWarning
-              from={mt.fromVisit.city_name}
-              to={mt.toVisit.city_name}
-              fromVisit={mt.fromVisit}
-              toVisit={mt.toVisit}
-              onAdd={onAddTransfer}
-            />
-          </div>
-        )}
-        {inboundTransferEvents.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
-            {inboundTransferEvents.map(e => (
-              <StreamEventRow key={e.id} e={e} onClick={() => onOpenEvent?.(e)} />
-            ))}
-          </div>
-        )}
-        {cityHero}
+        {/* Each city arriving this day: [transfer card | missing-transfer
+            warning] then its CityHero. prevCity carries through the whole
+            itinerary so a warning's "from" is always the city directly above. */}
+        {arrivingToday.flatMap(c => { const block = renderArrival(c, prevCity); prevCity = c; return block; })}
 
         {/* Events or placeholder — never show the empty-day placeholder on an
             arrival day (the city hero already fills it). */}
@@ -907,26 +913,21 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         )}
       </div>
     );
-
-    if (isArrival) prevVisitId = visit.id;
   }
 
-  // Any missing-transfer warnings not emitted in the day loop (e.g. into the
-  // finish anchor city, which has no days of its own) — render before the end.
-  for (const v of ordered) {
-    const mt = missingTransferByVisitId[v.id];
-    if (mt && !renderedMissing.has(v.id)) {
-      rows.push(
+  // Missing transfer into the finish anchor (last rendered city → end), if the
+  // trip has an explicit end anchor and no transfer covers that leg.
+  const endVisit = ordered[ordered.length - 1];
+  if (endVisit && endVisit.kind === 'end' && prevCity && prevCity.id !== endVisit.id
+      && !hasTransferBetween(prevCity, endVisit)) {
+    rows.push(
+      <div key="mt-end" style={{ marginBottom: 8 }}>
         <MissingTransferWarning
-          key={`mt-tail-${v.id}`}
-          from={mt.fromVisit.city_name}
-          to={mt.toVisit.city_name}
-          fromVisit={mt.fromVisit}
-          toVisit={mt.toVisit}
-          onAdd={onAddTransfer}
+          from={prevCity.city_name} to={endVisit.city_name}
+          fromVisit={prevCity} toVisit={endVisit} onAdd={onAddTransfer}
         />
-      );
-    }
+      </div>
+    );
   }
 
   // End anchor
@@ -1176,7 +1177,7 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
 
 // ─── ContextSide ──────────────────────────────────────────────────────────────
 
-function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, services = [], user, trip, isLoading, onAddService }) {
+function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, services = [], user, trip, isLoading, onAddService, canManage = false, budgetEnabled = false, onBudgetLocked }) {
   const mainCurrencyCtx = trip?.details?.main_currency || budget?.currency || 'EUR';
   const { data: fxCtx } = useFxRates(mainCurrencyCtx);
   const overridesCtx = budget?.fx_overrides || {};
@@ -1250,12 +1251,14 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <h3 style={{ flex: 1, marginBottom: 0, fontSize: 14 }}>Бюджет</h3>
-          <button
-            onClick={() => window.__navigate?.('budget')}
-            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }}
-            title="Открыть бюджет">
-            <Icon name="chev" size={13} />
-          </button>
+          {canManage && (
+            <button
+              onClick={() => (budgetEnabled ? window.__navigate?.('budget') : onBudgetLocked?.())}
+              style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }}
+              title={budgetEnabled ? 'Открыть бюджет' : 'Включить аддон бюджета'}>
+              <Icon name="chev" size={13} />
+            </button>
+          )}
         </div>
         {budget ? (
           <>
@@ -1304,12 +1307,14 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <h3 style={{ flex: 1, marginBottom: 0, fontSize: 14 }}>Кто едет</h3>
-          <button
-            onClick={() => window.__navigate?.('members')}
-            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }}
-            title="Открыть участников">
-            <Icon name="chev" size={13} />
-          </button>
+          {canManage && (
+            <button
+              onClick={() => window.__navigate?.('members')}
+              style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }}
+              title="Открыть участников">
+              <Icon name="chev" size={13} />
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {orderedMembers.map((m, i) => {
@@ -1445,25 +1450,8 @@ export default function TripView() {
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
   const [deleteCity, setDeleteCity] = useState({ open: false, visit: null });
   const [deletingCity, setDeletingCity] = useState(false);
-  const [payResult, setPayResult] = useState(null); // 'success' | 'fail' | null
   const openUpgrade = () => nav(`/pro?tripId=${tripId}`);
-
-  // Handle Stripe checkout return when the upgrade started from this trip page.
-  useEffect(() => {
-    const status = searchParams.get('stripe_status');
-    if (!status) return;
-    if (status === 'success') {
-      setPayResult('success');
-      qc.invalidateQueries({ queryKey: ['my-pro-status'] });
-      qc.invalidateQueries({ queryKey: ['me'] });
-    } else if (status === 'cancel') {
-      setPayResult('fail');
-    }
-    const sp = new URLSearchParams(searchParams);
-    sp.delete('stripe_status');
-    sp.delete('session_id');
-    setSearchParams(sp, { replace: true });
-  }, [searchParams, setSearchParams, qc]);
+  // Stripe checkout return is handled globally in Layout (one success/fail modal).
 
   // Cascade-delete a city visit and everything inside it (hotels, activities, transfers).
   const confirmDeleteCity = async () => {
@@ -1566,10 +1554,32 @@ export default function TripView() {
     [hotels, activities, transfers, visits],
   );
 
-  const isPro = isProActive(user);
+  // Account-level Pro (header chip). For IN-TRIP gating use tripIsPro below.
+  const accountPro = isProActive(user);
+  const isOwner = myRole === 'owner';
+
+  // Trip-level Pro = is_pro_trip OR the OWNER has an active subscription.
+  // is_pro_trip is known instantly; the owner-subscription part is resolved by
+  // the server (checkSubscriptionStatus, owner-aware). A participant's own
+  // subscription does NOT unlock someone else's trip.
+  const [ownerProResolved, setOwnerProResolved] = useState(false);
+  useEffect(() => {
+    if (!tripId) return;
+    let cancelled = false;
+    supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } })
+      .then((res) => { if (!cancelled) setOwnerProResolved(!!res.data?.isPro); })
+      .catch(() => { if (!cancelled) setOwnerProResolved(false); });
+    return () => { cancelled = true; };
+  }, [tripId, trip?.is_pro_trip]);
+  const tripIsPro = !!trip?.is_pro_trip || ownerProResolved;
+  const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
+  const [budgetAddonOff, setBudgetAddonOff] = useState(false);
 
   // If the URL points at a lens the trip has disabled, fall back to the timeline.
-  const shownLens = isLensVisible(trip, lens) ? lens : 'timeline';
+  // Viewers can't open Settings/Members even by deep link → fall back too.
+  const VIEWER_BLOCKED_LENSES = new Set(['settings', 'members']);
+  let shownLens = isLensVisible(trip, lens) ? lens : 'timeline';
+  if (myRole === 'viewer' && VIEWER_BLOCKED_LENSES.has(shownLens)) shownLens = 'timeline';
 
   if (loadingShell) return <LoadingScreen />;
   if (shellError || (!loadingShell && !trip)) return <ErrorScreen onBack={() => nav('/trips')} />;
@@ -1579,14 +1589,14 @@ export default function TripView() {
       <TripHeader
         trip={trip}
         visits={visits}
-        isPro={isPro}
+        isPro={accountPro}
         isDark={isDark}
         onToggleTheme={toggleTheme}
         user={user}
         nav={nav}
       />
       <div className="app-body">
-        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={isPro} onUpgrade={openUpgrade} />
+        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} />
         <main style={{
           minWidth: 0,
           padding: shownLens === 'map' ? 0 : shownLens === 'chat' ? '28px 28px 28px' : '28px 28px 60px',
@@ -1781,6 +1791,9 @@ export default function TripView() {
                   trip={trip}
                   isLoading={loadingContent}
                   onAddService={(type) => setServiceChoice({ open: true, type })}
+                  canManage={myRole !== 'viewer'}
+                  budgetEnabled={isAddonEnabled(trip, 'budget')}
+                  onBudgetLocked={() => setBudgetAddonOff(true)}
                 />
               </div>
             </>
@@ -1795,7 +1808,7 @@ export default function TripView() {
               members={members}
               cityVisits={visits}
               isLoading={loadingContent}
-              isPro={isPro}
+              isPro={tripIsPro}
               queryClient={qc}
             />
           )}
@@ -1830,7 +1843,7 @@ export default function TripView() {
               trip={trip}
               members={members}
               myRole={myRole}
-              isPro={isPro}
+              isPro={tripIsPro}
               queryClient={qc}
             />
           )}
@@ -1884,12 +1897,34 @@ export default function TripView() {
         </div>
       )}
 
-      <PaymentSuccessDialog open={payResult === 'success'} onOpenChange={() => setPayResult(null)} />
-      <PaymentFailDialog
-        open={payResult === 'fail'}
-        onOpenChange={() => setPayResult(null)}
-        onRetry={() => { setPayResult(null); openUpgrade(); }}
+      <TripProInfoDialog
+        open={tripProInfoOpen}
+        onOpenChange={setTripProInfoOpen}
       />
+
+      {budgetAddonOff && (
+        <div className="dlg-backdrop" style={{ zIndex: 320 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setBudgetAddonOff(false); }}>
+          <div className="dlg dlg--sm">
+            <div className="dlg__head">
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Icon name="wallet" size={17} />
+              </div>
+              <h2>Бюджет-разбивка выключена</h2>
+              <button className="icon-btn" onClick={() => setBudgetAddonOff(false)}><Icon name="close" size={16} /></button>
+            </div>
+            <div className="dlg__body">
+              <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
+                Полная разбивка бюджета — опциональная Pro-фича трипа. Включи её в настройках трипа, чтобы открыть линзу бюджета.
+              </div>
+            </div>
+            <div className="dlg__foot">
+              <Btn variant="ghost" onClick={() => setBudgetAddonOff(false)}>Закрыть</Btn>
+              <Btn variant="primary" icon="settings" onClick={() => { setBudgetAddonOff(false); setLens('settings'); }}>Открыть настройки</Btn>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isLensVisible(trip, 'chat') && shownLens !== 'chat' && (
         <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />

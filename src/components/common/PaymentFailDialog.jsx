@@ -9,30 +9,37 @@ import { Btn } from '@/design/index';
  * Props:
  *   open          — boolean
  *   onOpenChange  — (open: boolean) => void
- *   message       — optional error detail to show
- *   onRetry       — called when the user taps "Повторить"
+ *   code          — optional Stripe decline code (e.g. "card_declined")
+ *   onRetry       — called when the user taps "Повторить оплату"
  */
-export default function PaymentFailDialog({ open, onOpenChange, message, onRetry }) {
+export default function PaymentFailDialog({ open, onOpenChange, code, onRetry }) {
   if (!open) return null;
   const close = () => onOpenChange?.(false);
   return (
     <div className="dlg-backdrop" style={{ zIndex: 340 }}
       onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <div className="dlg dlg--sm">
-        <div className="dlg__body" style={{ textAlign: 'center', padding: '32px 24px 8px' }}>
-          <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', margin: '0 auto 16px' }}>
-            <Icon name="error" size={30} />
+      <div className="dlg dlg--sm" style={{ position: 'relative' }}>
+        <button className="icon-btn" onClick={close}
+          style={{ position: 'absolute', top: 14, right: 14, zIndex: 1 }}>
+          <Icon name="close" size={16} />
+        </button>
+        <div className="dlg__body" style={{ textAlign: 'center', padding: '36px 24px 8px' }}>
+          <div style={{ width: 72, height: 72, borderRadius: 18, background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
+            <Icon name="error" size={36} />
           </div>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, marginBottom: 8 }}>
-            Оплата не прошла
+          <h2 style={{ marginBottom: 8 }}>Оплата не прошла</h2>
+          <div className="muted" style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 14, maxWidth: 360, margin: '0 auto 14px' }}>
+            {code
+              ? <>Stripe отклонил карту: <span className="mono" style={{ color: 'var(--ink-2)' }}>{code}</span>. С карты ничего не списано. Проверь данные и повтори.</>
+              : <>Платёж отменён или не завершён. С карты ничего не списано — попробуй ещё раз.</>}
           </div>
-          <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>
-            {message || 'Платёж был отменён или не завершён. Подписка не оформлена — попробуй ещё раз.'}
+          <div style={{ background: 'var(--wash)', padding: 10, borderRadius: 8, fontSize: 12, color: 'var(--muted)', lineHeight: 1.5, maxWidth: 360, margin: '0 auto' }}>
+            Если карта работает в других сервисах, попробуй другой способ оплаты или напиши в поддержку.
           </div>
         </div>
-        <div className="dlg__foot" style={{ justifyContent: 'center' }}>
+        <div className="dlg__foot">
           <Btn variant="ghost" onClick={close}>Закрыть</Btn>
-          <Btn variant="primary" icon="refresh" onClick={() => { close(); onRetry?.(); }}>Повторить</Btn>
+          <Btn variant="primary" icon="refresh" onClick={() => { close(); onRetry?.(); }}>Повторить оплату</Btn>
         </div>
       </div>
     </div>

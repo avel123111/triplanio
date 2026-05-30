@@ -268,6 +268,47 @@ Deno.serve(async (req) => {
         }
         break;
       }
+
+      // Refund or chargeback → revoke whatever this payment unlocked.
+      // pro_trip (one-time) carries a payment_intent on its trip_subscriptions row,
+      // so we match by stripe_payment_intent_id and flip is_pro_trip back off.
+      // A refunded recurring payment downgrades the user to free.
+      case 'charge.refunded':
+      case 'charge.dispute.created': {
+        const obj = event.data.object as { payment_intent?: string | null };
+        const paymentIntentId = typeof obj.payment_intent === 'string' ? obj.payment_intent : null;
+        if (!paymentIntentId) break;
+
+        const newStatus = event.type === 'charge.dispute.created' ? 'disputed' : 'refunded';
+
+        const { data: subRows } = await supabaseAdmin
+          .from('trip_subscriptions')
+          .select('id, user_id, trip_id, type')
+          .eq('stripe_payment_intent_id', paymentIntentId)
+          .limit(1);
+
+        if (subRows && subRows.length > 0) {
+          const row = subRows[0];
+          if (row.type === 'pro_trip' && row.trip_id) {
+            await supabaseAdmin
+              .from('trips')
+              .update({ is_pro_trip: false })
+              .eq('id', row.trip_id);
+            console.log('Pro-trip revoked after', event.type, '->', row.trip_id);
+          } else if (row.user_id) {
+            await supabaseAdmin
+              .from('users')
+              .update({ subscription_status: 'free' })
+              .eq('id', row.user_id);
+            console.log('Subscription revoked after', event.type, 'for user', row.user_id);
+          }
+          await supabaseAdmin
+            .from('trip_subscriptions')
+            .update({ status: newStatus })
+            .eq('id', row.id);
+        }
+        break;
+      }
     }
 
     // Record event AFTER successful processing — on error Stripe will retry

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, NavLink, useSearchParams, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Compass, Settings as SettingsIcon } from 'lucide-react';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/api/supabaseClient';
 import AppHeader from '@/components/AppHeader';
-import WelcomeToProDialog from '@/components/subscriptions/WelcomeToProDialog';
+import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
+import PaymentFailDialog from '@/components/common/PaymentFailDialog';
 import { TripMenuProvider } from '@/components/trips/TripMenuContext';
 
 // Theme toggle has been moved into UserMenu (see components/UserMenu.jsx) so
@@ -17,20 +19,44 @@ export default function Layout() {
   const t = useT();
   const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
-  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const nav = useNavigate();
+  const [payModal, setPayModal] = useState(null); // 'success' | 'fail' | null
+  const [planLabel, setPlanLabel] = useState(null);
+  const [priceLabel, setPriceLabel] = useState(null);
   const location = useLocation();
 
-  // Centralised handling of Stripe return — works regardless of which page
-  // the user started the upgrade from (Trips / TripView / Settings). We show
-  // the "Welcome to Pro" dialog on success and silently strip the query
-  // params on cancel.
+  // Centralised handling of Stripe return — works regardless of which page the
+  // upgrade started from. ONE success modal + ONE fail modal, app-wide.
   useEffect(() => {
     const status = searchParams.get('stripe_status');
     if (!status) return;
     if (status === 'success') {
-      setWelcomeOpen(true);
+      setPayModal('success');
       qc.invalidateQueries({ queryKey: ['my-pro-status'] });
       qc.invalidateQueries({ queryKey: ['me'] });
+      // Best-effort plan + price for the success chip (optional).
+      (async () => {
+        try {
+          const planRes = await supabase.functions.invoke('getUserPlan');
+          const type = planRes.data?.subscriptionType;
+          const label = type === 'pro_monthly' ? 'Pro Monthly' : type === 'pro_yearly' ? 'Pro Yearly' : null;
+          setPlanLabel(label);
+          if (type) {
+            const priceRes = await supabase.functions.invoke('getStripePrices', { body: {} });
+            const p = priceRes.data?.prices?.[type];
+            if (p?.unit_amount != null) {
+              const amt = new Intl.NumberFormat('ru-RU', {
+                style: 'currency', currency: (p.currency || 'eur').toUpperCase(),
+                minimumFractionDigits: 0, maximumFractionDigits: 2,
+              }).format(p.unit_amount / 100);
+              const per = p.recurring_interval === 'month' ? '/мес' : p.recurring_interval === 'year' ? '/год' : '';
+              setPriceLabel(amt + per);
+            }
+          }
+        } catch { /* chip is optional */ }
+      })();
+    } else if (status === 'cancel') {
+      setPayModal('fail');
     }
     searchParams.delete('stripe_status');
     searchParams.delete('session_id');
@@ -79,7 +105,17 @@ export default function Layout() {
         </nav>
       )}
 
-      <WelcomeToProDialog open={welcomeOpen} onOpenChange={setWelcomeOpen} />
+      <PaymentSuccessDialog
+        open={payModal === 'success'}
+        onOpenChange={(o) => { if (!o) setPayModal(null); }}
+        planLabel={planLabel}
+        priceLabel={priceLabel}
+      />
+      <PaymentFailDialog
+        open={payModal === 'fail'}
+        onOpenChange={(o) => { if (!o) setPayModal(null); }}
+        onRetry={() => { setPayModal(null); nav('/pro'); }}
+      />
     </div>
   );
 }

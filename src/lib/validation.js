@@ -177,7 +177,11 @@ export function sortVisits(visits) {
     const ra = rank(a), rb = rank(b);
     if (ra !== rb) return ra - rb;
     const sa = t(a.start_datetime) ?? 0, sb = t(b.start_datetime) ?? 0;
-    return sa - sb;
+    if (sa !== sb) return sa - sb;
+    // Same start → the city that ends earlier comes first (e.g. a one-day
+    // pass-through between two cities that share its day).
+    const ea = t(a.end_datetime) ?? 0, eb = t(b.end_datetime) ?? 0;
+    return ea - eb;
   });
 }
 

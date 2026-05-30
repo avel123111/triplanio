@@ -282,28 +282,12 @@ export default function Trips() {
   const [showLimit,   setShowLimit]   = useState(false);
   const openUpgrade = () => nav('/pro?hidePerTrip=1');
   const [pendingPick, setPendingPick] = useState(null);
-  const [payResult, setPayResult] = useState(null); // 'success' | 'fail' | null
-  const [searchParams, setSearchParams] = useSearchParams();
 
   React.useEffect(() => {
     try { localStorage.setItem('trips:viewMode', viewMode); } catch { /* ignore */ }
   }, [viewMode]);
 
-  // Handle Stripe checkout return (returnPath lands the user back here).
-  React.useEffect(() => {
-    const status = searchParams.get('stripe_status');
-    if (!status) return;
-    if (status === 'success') {
-      setPayResult('success');
-      qc.invalidateQueries({ queryKey: ['my-pro-status'] });
-      qc.invalidateQueries({ queryKey: ['me'] });
-    } else if (status === 'cancel') {
-      setPayResult('fail');
-    }
-    searchParams.delete('stripe_status');
-    searchParams.delete('session_id');
-    setSearchParams(searchParams, { replace: true });
-  }, [searchParams, setSearchParams, qc]);
+  // Stripe checkout return is handled globally in Layout (one success/fail modal).
 
   const isPro = isProActive(user);
 
@@ -512,12 +496,6 @@ export default function Trips() {
         onProceed={handleProceed}
         activeCount={activeTrips.length}
         isPro={isPro}
-      />
-      <PaymentSuccessDialog open={payResult === 'success'} onOpenChange={() => setPayResult(null)} />
-      <PaymentFailDialog
-        open={payResult === 'fail'}
-        onOpenChange={() => setPayResult(null)}
-        onRetry={() => { setPayResult(null); openUpgrade(); }}
       />
     </div>
   );

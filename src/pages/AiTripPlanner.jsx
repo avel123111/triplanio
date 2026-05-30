@@ -374,7 +374,22 @@ export default function AiTripPlanner() {
           </div>
           <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
         </header>
-        <TripLimitDialog open onOpenChange={(v) => { if (!v) nav('/trips'); }} activeCount={activeTrips.length} isPro={isPro} />
+        {/* Full-screen blocker — same UX as the manual planner on direct entry. */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ maxWidth: 480, textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--warning-soft, #fff3cd)', color: 'var(--warning, #e6a817)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
+              <Icon name="lock" size={28} />
+            </div>
+            <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700 }}>Достигнут лимит</h2>
+            <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24 }}>
+              На Free плане доступен только <strong>1 активный трип</strong>. Дождись окончания текущего или перейди на Pro.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Btn variant="ghost" onClick={() => nav('/trips')}>← К трипам</Btn>
+              <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1')}>Перейти на Pro</Btn>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
