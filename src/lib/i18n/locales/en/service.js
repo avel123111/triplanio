@@ -70,5 +70,5 @@ export default {
   'service.insurance_choice_manual': 'Add policy manually',
   'service.insurance_choice_manual_hint': "If you've already arranged insurance",
   'service.insurance_safetywing_hint': 'Nomad insurance · from $45/mo',
-  'service.insurance_worldnomads_hint': 'Adventure travel & extreme sports',
+  'service.insurance_ektatraveling_hint': 'Travel & medical insurance',
 };

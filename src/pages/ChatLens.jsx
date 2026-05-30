@@ -126,7 +126,7 @@ function ChatMember({ name, role, ai, avatarUrl }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       {ai
         ? <TriplanioAvatar size="sm" />
-        : <Avatar name={name} photo={avatarUrl || ''} size="sm" />}
+        : <Avatar name={name} photo={avatarUrl || ''} size="sm" style={{ width: 28, height: 28 }} />}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
         <div className="muted" style={{ fontSize: 11 }}>{role}</div>

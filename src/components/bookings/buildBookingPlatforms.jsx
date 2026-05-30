@@ -126,8 +126,8 @@ export function esimPlatforms(visits, t) {
   ];
 }
 
-// INSURANCE: SafetyWing (nomad health insurance) + World Nomads (adventure)
-// TODO: replace direct URLs with affiliate links when available.
+// INSURANCE: SafetyWing (nomad health insurance) + Ekta Traveling (affiliate)
+// SafetyWing is still a direct URL (affiliate TBD); Ekta Traveling is an active affiliate link.
 export function insurancePlatforms(t) {
   return [
     {
@@ -139,12 +139,12 @@ export function insurancePlatforms(t) {
       url: 'https://safetywing.com/nomad-insurance/',
     },
     {
-      key: 'worldnomads',
-      label: bookOn(t, 'World Nomads'),
-      hint: t ? t('service.insurance_worldnomads_hint') : 'Adventure travel & extreme sports',
-      logo: platformLogoUrl('worldnomads'),
+      key: 'ektatraveling',
+      label: bookOn(t, 'Ekta Traveling'),
+      hint: t ? t('service.insurance_ektatraveling_hint') : 'Travel & medical insurance',
+      logo: platformLogoUrl('ektatraveling', 'ektatraveling.com'),
       color: 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/40',
-      url: 'https://www.worldnomads.com/',
+      url: 'https://ektatraveling.tpx.lt/ej8OjLU3',
     },
   ];
 }

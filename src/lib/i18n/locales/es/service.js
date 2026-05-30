@@ -70,5 +70,5 @@ export default {
   'service.insurance_choice_manual': 'Añadir póliza manualmente',
   'service.insurance_choice_manual_hint': 'Si el seguro ya está contratado',
   'service.insurance_safetywing_hint': 'Seguro nómada · desde $45/mes',
-  'service.insurance_worldnomads_hint': 'Viajes de aventura y deportes extremos',
+  'service.insurance_ektatraveling_hint': 'Seguro de viaje y médico',
 };

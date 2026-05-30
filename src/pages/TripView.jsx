@@ -34,6 +34,7 @@ import CalendarLens from './CalendarLens';
 import DocsLens from './DocsLens';
 import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
+import { uniqueCityCount } from '@/lib/trip-cities';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/redesign/ScreenMap';
 import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
@@ -1075,6 +1076,7 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
   const [editingMetadata, setEditingMetadata] = useState(false);
   const activeMemberCount = members.filter(m => m.status === 'active').length || 1;
   const cities = visits.map(v => v.city_name).filter(Boolean);
+  const cityCount = uniqueCityCount(visits); // dedup repeated cities (e.g. Москва … Москва) for the count
   const dateRange = formatTripRange(visits, '—');
 
   // Cover priority: uploaded photo → preset gradient → default HSL gradient + SVG waves.
@@ -1143,7 +1145,7 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
                   fontSize: 12.5, color: 'var(--brand)', fontWeight: 600, cursor: 'pointer',
                 }}>
                 <Icon name="pin" size={13} />
-                {cities.length} {cities.length === 1 ? 'город' : cities.length < 5 ? 'города' : 'городов'}
+                {cityCount} {cityCount === 1 ? 'город' : cityCount < 5 ? 'города' : 'городов'}
                 <Icon name={routeOpen ? 'chevD' : 'chev'} size={11} />
               </button>
               {routeOpen && (

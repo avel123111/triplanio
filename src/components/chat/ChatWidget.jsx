@@ -177,7 +177,9 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     const next = Math.min(ta.scrollHeight, COMPOSER_MAX_H);
     ta.style.height = next + 'px';
     ta.style.overflowY = ta.scrollHeight > COMPOSER_MAX_H ? 'auto' : 'hidden';
-  }, [text]);
+  }, [text, open]);
+  // Re-attach on `open` — the composer (and its refs) only mount when the
+  // widget is open, so an empty-deps effect would never bind the scroll sync.
   useEffect(() => {
     const ta = taRef.current;
     const ov = ovRef.current;
@@ -185,7 +187,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     const sync = () => { ov.scrollTop = ta.scrollTop; };
     ta.addEventListener('scroll', sync);
     return () => ta.removeEventListener('scroll', sync);
-  }, []);
+  }, [open]);
   const mentionMembers = mentionToken
     ? activeMembers.filter((m) => (nameFor(m.user_id) || '').toLowerCase().startsWith(mentionToken))
     : activeMembers;

@@ -610,7 +610,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                 </div>
                 <div style={{ flex: 1 }}>
                   <h3 style={{ marginBottom: 2 }}>{activeCat.name}</h3>
-                  <div className="muted num" style={{ fontSize: 12 }}>{money(activeCat.spent, mainCurrency)} из {money(activeCat.planned_amount || 0, mainCurrency)}</div>
+                  <div className="muted num" style={{ fontSize: 12 }}>{money(activeCat.spent, mainCurrency)}</div>
                 </div>
                 {activeCat.kind === 'custom' && (
                   <Btn variant="ghost" size="sm" icon="edit" onClick={() => openEditCategory(activeCat)}>Изменить</Btn>

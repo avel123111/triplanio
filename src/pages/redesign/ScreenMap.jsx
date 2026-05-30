@@ -6,6 +6,7 @@ import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { sortVisits } from '@/lib/validation';
 import { countryFlag } from '@/lib/geo';
+import { uniqueCityCount } from '@/lib/trip-cities';
 
 // =====================================================================
 // TRIP MAP — geographic lens — full-bleed Google Maps + scrollable sidebar
@@ -40,6 +41,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
     const all = sortVisits(visits).filter(v => v.latitude && v.longitude);
     return anchorsOff ? all.filter(v => v.kind !== 'start' && v.kind !== 'end') : all;
   }, [visits, anchorsOff]);
+  const cityCount = useMemo(() => uniqueCityCount(route), [route]); // dedup repeated cities for the count
 
   // Reset active when the underlying route shrinks (e.g. anchors toggled off).
   React.useEffect(() => {
@@ -93,7 +95,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
                 {trip?.title || 'Трип'}
               </div>
               <div className="num muted" style={{ fontSize: 11, lineHeight: 1.2, marginTop: 1 }}>
-                {route.length} {route.length === 1 ? 'город' : route.length < 5 ? 'города' : 'городов'}
+                {cityCount} {cityCount === 1 ? 'город' : cityCount < 5 ? 'города' : 'городов'}
               </div>
             </div>
           </div>
@@ -182,6 +184,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
 // ----- Route stepper — adaptive: horizontal for ≤5 cities, compact list for >5 -----
 function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
   const isLong = route.length > 5;
+  const nCities = uniqueCityCount(route); // dedup repeated cities for the count
   // Has-transfer lookup between consecutive route items (used for the
   // dashed/solid connector line between pills).
   const transferBetween = (a, b) => transfers.some(t => t.from_city_visit_id === a?.id && t.to_city_visit_id === b?.id);
@@ -195,7 +198,7 @@ function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
           <span className="eyebrow" style={{ flex: 1 }}>
-            Маршрут · {route.length} {route.length === 1 ? 'город' : route.length < 5 ? 'города' : 'городов'}
+            Маршрут · {nCities} {nCities === 1 ? 'город' : nCities < 5 ? 'города' : 'городов'}
           </span>
         </div>
         <div className="scrollbar-thin" style={{ display: 'flex', alignItems: 'center', gap: 0, position: 'relative', overflowX: 'auto' }}>
@@ -239,7 +242,7 @@ function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
       maxHeight: 280, display: 'flex', flexDirection: 'column',
     }}>
       <div style={{ padding: '12px 14px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="eyebrow" style={{ flex: 1 }}>Маршрут · {route.length} городов</span>
+        <span className="eyebrow" style={{ flex: 1 }}>Маршрут · {nCities} {nCities === 1 ? 'город' : nCities < 5 ? 'города' : 'городов'}</span>
       </div>
       <div className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: '0 14px 12px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>

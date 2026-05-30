@@ -76,5 +76,5 @@ export default {
   'service.insurance_choice_manual': 'Добавить полис вручную',
   'service.insurance_choice_manual_hint': 'Если страховка уже оформлена',
   'service.insurance_safetywing_hint': 'Номадская страховка · от $45/мес',
-  'service.insurance_worldnomads_hint': 'Активный туризм и экстремальный спорт',
+  'service.insurance_ektatraveling_hint': 'Тур- и медицинская страховка',
 };
