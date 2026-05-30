@@ -320,12 +320,13 @@ function isLensVisible(trip, lensId) {
   return trip?.details?.addons?.[key] === true;
 }
 
-function TripSidebar({ tripId, trip, lens, onNavigate, isPro, isOwner, myRole, onUpgrade, onProInfo }) {
+function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true, isOwner, myRole, onUpgrade, onProInfo }) {
   const lensItems = LENS_ITEMS.filter(item => isLensVisible(trip, item.id));
   // Viewers can't open Settings or Members — hide those menu items entirely.
   const mgmtItems = MGMT_ITEMS.filter(item =>
     !(myRole === 'viewer' && (item.id === 'settings' || item.id === 'members')));
-  const showUpgrade = !isPro; // isPro here = trip-level Pro (owner sub OR pro_trip)
+  // Only after Pro state is resolved — avoids the banner flashing on pro trips.
+  const showUpgrade = proResolved && !isPro; // isPro = trip-level Pro (owner sub OR pro_trip)
   const chatUnread = useUnreadChatCount(tripId);
   return (
     <aside className="app-side">
@@ -1563,15 +1564,22 @@ export default function TripView() {
   // the server (checkSubscriptionStatus, owner-aware). A participant's own
   // subscription does NOT unlock someone else's trip.
   const [ownerProResolved, setOwnerProResolved] = useState(false);
+  // proResolved: have we resolved the owner-subscription state yet? Until then
+  // we DON'T show the "upgrade trip" banner — otherwise it flashes on pro trips
+  // (is_pro_trip=false but owner has a sub) during the async resolve.
+  const [proResolved, setProResolved] = useState(false);
   useEffect(() => {
     if (!tripId) return;
     let cancelled = false;
+    setProResolved(false);
     supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } })
-      .then((res) => { if (!cancelled) setOwnerProResolved(!!res.data?.isPro); })
-      .catch(() => { if (!cancelled) setOwnerProResolved(false); });
+      .then((res) => { if (!cancelled) { setOwnerProResolved(!!res.data?.isPro); setProResolved(true); } })
+      .catch(() => { if (!cancelled) { setOwnerProResolved(false); setProResolved(true); } });
     return () => { cancelled = true; };
   }, [tripId, trip?.is_pro_trip]);
   const tripIsPro = !!trip?.is_pro_trip || ownerProResolved;
+  // Banner can show only once we KNOW the trip isn't pro (or it's instantly a pro_trip).
+  const tripProResolved = !!trip?.is_pro_trip || proResolved;
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
 
@@ -1596,7 +1604,7 @@ export default function TripView() {
         nav={nav}
       />
       <div className="app-body">
-        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} />
+        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} />
         <main style={{
           minWidth: 0,
           padding: shownLens === 'map' ? 0 : shownLens === 'chat' ? '28px 28px 28px' : '28px 28px 60px',

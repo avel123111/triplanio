@@ -88,7 +88,27 @@ function SettingRow({ label, desc, on, onChange, last }) {
   );
 }
 
-function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, portalLoading, onUpgrade, onManage, locale }) {
+function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, portalLoading, onUpgrade, onManage, locale, prices, switchingPlan, onSwitchYearly }) {
+  // Format the live price for a plan; null if not loaded yet.
+  const money = (cents, cur) => {
+    try {
+      return new Intl.NumberFormat(locale || 'ru-RU', {
+        style: 'currency', currency: (cur || 'eur').toUpperCase(),
+        minimumFractionDigits: 0, maximumFractionDigits: 2,
+      }).format(cents / 100);
+    } catch { return null; }
+  };
+  const priceOf = (type) => {
+    const p = prices?.[type];
+    return (p && p.unit_amount != null) ? money(p.unit_amount, p.currency) : null;
+  };
+  const yearlyMonthlyEq = () => {
+    const p = prices?.pro_yearly;
+    return (p && p.unit_amount != null) ? money(Math.round(p.unit_amount / 12), p.currency) : null;
+  };
+  const monthlyPrice = priceOf('pro_monthly');
+  const yearlyPrice = priceOf('pro_yearly');
+
   if (planLoading) {
     return (
       <Card title="Подписка" style={{ marginBottom: 16 }}>
@@ -101,7 +121,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
 
   if (planState === 'no-sub') {
     return (
-      <Card title="Подписка" subtitle="Сейчас Free" style={{ marginBottom: 16, borderColor: 'var(--warm-soft)' }}>
+      <Card title="Подписка" subtitle="Сейчас Free" className="ai-card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--wash)', color: 'var(--muted)', display: 'grid', placeItems: 'center' }}>
             <Icon name="user" size={22} />
@@ -133,12 +153,18 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontWeight: 600 }}>Pro Monthly</div>
-              {plan?.subscriptionEnd && (
-                <div className="muted num" style={{ fontSize: 12.5 }}>
-                  следующее списание <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b>
-                </div>
-              )}
+              <div className="muted num" style={{ fontSize: 12.5 }}>
+                {monthlyPrice ? `${monthlyPrice}/мес` : 'Pro'}
+                {plan?.subscriptionEnd && (
+                  <> · следующее списание <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b></>
+                )}
+              </div>
             </div>
+            {yearlyPrice && (
+              <Btn variant="ghost" size="sm" icon="arrow" disabled={switchingPlan} onClick={onSwitchYearly}>
+                {switchingPlan ? 'Переключаем…' : `Перейти на годовой · ${yearlyPrice}/год`}
+              </Btn>
+            )}
             <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={onManage}>
               {portalLoading ? 'Открываем…' : 'Биллинг-портал'}
             </Btn>
@@ -163,11 +189,13 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
               <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                 Pro Yearly <Badge variant="success">Активна</Badge>
               </div>
-              {plan?.subscriptionEnd && (
-                <div className="muted num" style={{ fontSize: 12.5 }}>
-                  обновится <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b> · эквивалент €6.67/мес
-                </div>
-              )}
+              <div className="muted num" style={{ fontSize: 12.5 }}>
+                {yearlyPrice ? `${yearlyPrice}/год` : 'Pro'}
+                {plan?.subscriptionEnd && (
+                  <> · обновится <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b></>
+                )}
+                {yearlyMonthlyEq() && ` · эквивалент ${yearlyMonthlyEq()}/мес`}
+              </div>
             </div>
             <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={onManage}>
               {portalLoading ? 'Открываем…' : 'Биллинг-портал'}
@@ -240,6 +268,8 @@ export default function ScreenAccount() {
   const [plan, setPlan] = useState(null);
   const [planLoading, setPlanLoading] = useState(true);
   const [awaitingWebhook, setAwaitingWebhook] = useState(false);
+  const [prices, setPrices] = useState(null);          // live Stripe prices per plan
+  const [switchingPlan, setSwitchingPlan] = useState(false);
 
   // ── Profile form ───────────────────────────────────────────────────────────
   const [fullName, setFullName] = useState('');
@@ -319,6 +349,34 @@ export default function ScreenAccount() {
     finally { setPlanLoading(false); }
   };
 
+  // Live Stripe prices → show the user's actual subscription cost (no hardcode).
+  useEffect(() => {
+    let cancelled = false;
+    supabase.functions.invoke('getStripePrices', { body: {} })
+      .then((res) => { if (!cancelled) setPrices(res.data?.prices || null); })
+      .catch((e) => console.error('getStripePrices error:', e));
+    return () => { cancelled = true; };
+  }, []);
+
+  // Switch the active monthly subscription to yearly (Stripe proration).
+  const handleSwitchToYearly = async () => {
+    setSwitchingPlan(true);
+    setErrorMsg(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('changeSubscriptionPlan', {
+        body: { targetPlan: 'pro_yearly' },
+      });
+      if (error) throw error;
+      if (!data?.ok) { setErrorMsg('Не удалось сменить план: ' + (data?.code || 'ошибка')); return; }
+      await loadPlan();
+    } catch (e) {
+      console.error('changeSubscriptionPlan error:', e);
+      setErrorMsg('Ошибка смены плана: ' + (e.message || String(e)));
+    } finally {
+      setSwitchingPlan(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setErrorMsg(null);
@@ -377,7 +435,7 @@ export default function ScreenAccount() {
         body: { returnPath: '/settings' },
       });
       if (error) throw error;
-      if (data?.url) window.location.href = data.url;
+      if (data?.url) window.open(data.url, '_blank', 'noopener');
       else setErrorMsg('Не удалось открыть биллинг-портал. Попробуй позже.');
     } catch (e) {
       console.error('billing portal error:', e);
@@ -624,8 +682,11 @@ export default function ScreenAccount() {
           awaitingWebhook={awaitingWebhook}
           portalLoading={portalLoading}
           locale={locale}
+          prices={prices}
+          switchingPlan={switchingPlan}
           onUpgrade={openUpgrade}
           onManage={handleManageSubscription}
+          onSwitchYearly={handleSwitchToYearly}
         />
 
         {/* Email notifications */}
