@@ -1,0 +1,50 @@
+# Supabase CLI config.
+#
+# WHY THIS FILE EXISTS:
+# `supabase functions deploy <fn>` defaults to verify_jwt = TRUE. For functions
+# that authenticate the caller themselves (N8N_SECRET / Stripe signature /
+# public share link / Telegram webhook), verify_jwt MUST be false — otherwise
+# the Supabase gateway rejects the caller with 401 before the function runs and
+# the integration breaks (this happened to getTripByTelegramChatId on prod,
+# 2026-05-30). Declaring it here pins the setting so CLI deploys keep it.
+#
+# Functions NOT listed below default to verify_jwt = true (require a valid
+# Supabase JWT). The 10 entries below mirror the live production settings.
+#
+# project_id is only the default link target; deploys pass an explicit
+# --project-ref (dev: nydhzevdizkfaxdlikgc, prod: tizscxrpuopobgcxbekf), so the
+# verify_jwt overrides apply to whichever project is targeted.
+
+project_id = "tizscxrpuopobgcxbekf"
+
+# --- verify_jwt = false (custom auth: N8N_SECRET / Stripe sig / public / webhook) ---
+
+[functions.getTripByTelegramChatId]
+verify_jwt = false
+
+[functions.getTripById]
+verify_jwt = false
+
+[functions.getPublicTrip]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.telegramWebhook]
+verify_jwt = false
+
+[functions.triplanioAiReply]
+verify_jwt = false
+
+[functions.seedTripBudget]
+verify_jwt = false
+
+[functions.syncTripExpense]
+verify_jwt = false
+
+[functions.getPendingReminders]
+verify_jwt = false
+
+[functions.getDailyReminders]
+verify_jwt = false
