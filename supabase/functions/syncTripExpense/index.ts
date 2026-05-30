@@ -39,6 +39,17 @@ const KIND_TO_SYSTEM_KEY: Record<SourceKind, string> = {
   trip_service: 'transport',
 };
 
+// budget_expenses.source_kind has a CHECK constraint allowing only the SHORT
+// forms below (hotel / transfer / activity / service / manual). The internal
+// SourceKind uses table-ish names, so map them before writing — otherwise the
+// insert/update silently fails the constraint and the expense never appears.
+const KIND_TO_DB_SOURCE: Record<SourceKind, string> = {
+  hotel_stay:   'hotel',
+  activity:     'activity',
+  transfer:     'transfer',
+  trip_service: 'service',
+};
+
 async function resolveSource(sourceKind: SourceKind, sourceId: string) {
   if (sourceKind === 'hotel_stay') {
     const { data } = await supabaseAdmin
@@ -132,16 +143,19 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true }, { headers: corsHeaders });
     }
 
-    // Upsert
+    // Upsert. A booking belongs in the budget regardless of price — a €0 /
+    // price-less hotel or transfer still shows as a 0-amount line. We only skip
+    // when the source entity no longer exists (then drop its expense row).
     const source = await resolveSource(sourceKind, sourceId);
-    if (!source || source.price == null || source.price <= 0) {
-      // No price → remove any existing expense record
+    if (!source) {
       await supabaseAdmin
         .from('budget_expenses')
         .delete()
         .eq('source_id', sourceId);
-      return Response.json({ ok: true, skipped: 'no price' }, { headers: corsHeaders });
+      return Response.json({ ok: true, skipped: 'source gone' }, { headers: corsHeaders });
     }
+    const amount = source.price ?? 0;
+    const dbSourceKind = KIND_TO_DB_SOURCE[sourceKind];
 
     const categoryId = await resolveCategoryId(source.tripId, sourceKind);
     if (!categoryId) {
@@ -161,9 +175,9 @@ Deno.serve(async (req) => {
         .update({
           category_id: categoryId,
           title: source.title,
-          original_amount: source.price,
+          original_amount: amount,
           original_currency: source.currency || 'USD',
-          source_kind: sourceKind,
+          source_kind: dbSourceKind,
         })
         .eq('id', existing.id);
     } else {
@@ -179,9 +193,9 @@ Deno.serve(async (req) => {
           trip_id: source.tripId,
           category_id: categoryId,
           title: source.title,
-          original_amount: source.price,
+          original_amount: amount,
           original_currency: source.currency || 'USD',
-          source_kind: sourceKind,
+          source_kind: dbSourceKind,
           source_id: sourceId,
           created_by: tripRow?.created_by ?? null,
         });

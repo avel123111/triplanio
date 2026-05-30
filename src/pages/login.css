@@ -680,6 +680,9 @@
   .brand-col__trust { display: none; }
   .auth__brand-link { display: none; }
   .auth__form-wrap { padding: 8px 0 0; align-items: flex-start; }
+  /* Stacked layout: the footer links sit right under the "нет аккаунта /
+     зарегистрироваться" switch — give them breathing room. */
+  .auth__foot { margin-top: 32px; }
 }
 @media (max-width: 540px) {
   .auth__h1 { font-size: 28px; }

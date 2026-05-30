@@ -169,6 +169,54 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     : activeMembers;
   const triplanioMatches = !mentionToken || 'triplanio'.startsWith(mentionToken);
 
+  // Memoized message elements — typing in the composer (same component) must
+  // NOT rebuild every bubble on each keystroke (that caused the typing lag).
+  const messageEls = useMemo(() => msgs.map((m, i) => {
+    const prev = i > 0 ? msgs[i - 1] : null;
+    const isMe = m.user_id === user?.id;
+    const isAi = m.user_id === TRIPLANIO_BOT_USER_ID;
+    const grouped = prev && prev.user_id === m.user_id &&
+      new Date(m.created_at).toDateString() === new Date(prev.created_at).toDateString();
+    const who = isAi ? TRIPLANIO_BOT_NAME : nameFor(m.user_id);
+    let time = '';
+    try { time = new Date(m.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }); } catch { /* ignore */ }
+    const bubbleBg = isMe ? 'var(--brand)' : isAi ? 'var(--ai-soft)' : 'var(--wash)';
+    return (
+      <div key={m.id} style={{ display: 'flex', gap: 8, justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 0 : 12 }}>
+        {!isMe && (
+          grouped
+            ? <div style={{ width: 22, flexShrink: 0 }} aria-hidden />
+            : (isAi
+                ? <TriplanioAvatar size="sm" />
+                : <Avatar name={who} photo={profiles[m.user_id]?.avatar_url || ''} size="sm" style={{ flexShrink: 0 }} />)
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', minWidth: 0, maxWidth: '82%' }}>
+          {!grouped && !isMe && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2, paddingLeft: 2 }}>
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: isAi ? 'var(--ai)' : 'var(--ink)' }}>{who}</span>
+              <span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{time}</span>
+            </div>
+          )}
+          <div style={{
+            padding: '7px 11px', background: bubbleBg, color: isMe ? '#fff' : 'var(--ink)',
+            fontSize: 13, borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+            lineHeight: 1.45, wordBreak: 'break-word',
+            opacity: m.__pending ? 0.7 : 1,
+          }}>
+            <ChatMarkdown
+              text={m.text || ''}
+              mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
+            />
+          </div>
+          {isMe && !grouped && (
+            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1, paddingRight: 2 }}>{time}</div>
+          )}
+        </div>
+      </div>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [msgs, profiles, user?.id]);
+
   // ── Closed: floating button ──
   if (!open) {
     return (
@@ -261,54 +309,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {msgs.length === 0 ? (
           <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: 13 }}>Напиши первым 💬</div>
-        ) : msgs.map((m, i) => {
-          const prev = i > 0 ? msgs[i - 1] : null;
-          const isMe = m.user_id === user?.id;
-          const isAi = m.user_id === TRIPLANIO_BOT_USER_ID;
-          const grouped = prev && prev.user_id === m.user_id &&
-            new Date(m.created_at).toDateString() === new Date(prev.created_at).toDateString();
-          const who = isAi ? TRIPLANIO_BOT_NAME : nameFor(m.user_id);
-          const time = (() => {
-            try { return new Date(m.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }); }
-            catch { return ''; }
-          })();
-          const bubbleBg = isMe ? 'var(--brand)' : isAi ? 'var(--ai-soft)' : 'var(--wash)';
-          return (
-            <div key={m.id} style={{ display: 'flex', gap: 8, justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 0 : 12 }}>
-              {/* Left avatar column for incoming messages (spacer width == avatar--sm
-                  so grouped bubbles line up exactly under the first message's avatar). */}
-              {!isMe && (
-                grouped
-                  ? <div style={{ width: 22, flexShrink: 0 }} aria-hidden />
-                  : (isAi
-                      ? <TriplanioAvatar size="sm" />
-                      : <Avatar name={who} photo={profiles[m.user_id]?.avatar_url || ''} size="sm" style={{ flexShrink: 0 }} />)
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', minWidth: 0, maxWidth: '82%' }}>
-                {!grouped && !isMe && (
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2, paddingLeft: 2 }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 600, color: isAi ? 'var(--ai)' : 'var(--ink)' }}>{who}</span>
-                    <span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{time}</span>
-                  </div>
-                )}
-                <div style={{
-                  padding: '7px 11px', background: bubbleBg, color: isMe ? '#fff' : 'var(--ink)',
-                  fontSize: 13, borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-                  lineHeight: 1.45, wordBreak: 'break-word',
-                  opacity: m.__pending ? 0.7 : 1,
-                }}>
-                  <ChatMarkdown
-                    text={m.text || ''}
-                    mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
-                  />
-                </div>
-                {isMe && !grouped && (
-                  <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1, paddingRight: 2 }}>{time}</div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        ) : messageEls}
         {isThinking && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
             <TriplanioAvatar size="xs" />

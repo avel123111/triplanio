@@ -352,29 +352,35 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         m.handle.toLowerCase().startsWith(mentionToken) || m.name.toLowerCase().startsWith(mentionToken))
     : mentionList;
 
-  // Build message rows with date dividers
-  const messageRows = [];
-  for (let i = 0; i < msgs.length; i++) {
-    const m    = msgs[i];
-    const prev = i > 0 ? msgs[i - 1] : null;
-    if (!isSameDay(m.created_at, prev?.created_at)) {
-      messageRows.push(<DateDivider key={'div-' + m.id} date={fmtMsgDate(m.created_at)} />);
+  // Build message rows with date dividers. Memoized on [msgs, profiles, user]
+  // so typing in the composer (which lives in this same component) does NOT
+  // rebuild every bubble on each keystroke — that was the typing lag.
+  const messageRows = useMemo(() => {
+    const rows = [];
+    for (let i = 0; i < msgs.length; i++) {
+      const m    = msgs[i];
+      const prev = i > 0 ? msgs[i - 1] : null;
+      if (!isSameDay(m.created_at, prev?.created_at)) {
+        rows.push(<DateDivider key={'div-' + m.id} date={fmtMsgDate(m.created_at)} />);
+      }
+      const isMe    = m.user_id === user?.id;
+      const grouped = prev && isSameDay(m.created_at, prev.created_at) && prev.user_id === m.user_id;
+      rows.push(
+        <Msg
+          key={m.id}
+          who={m.user_id === TRIPLANIO_BOT_USER_ID ? TRIPLANIO_BOT_NAME : nameFor(m.user_id)}
+          isMe={isMe}
+          isAi={m.user_id === TRIPLANIO_BOT_USER_ID}
+          text={m.text || ''}
+          time={fmtMsgTime(m.created_at)}
+          grouped={grouped}
+          avatarUrl={profiles[m.user_id]?.avatar_url}
+        />,
+      );
     }
-    const isMe    = m.user_id === user?.id;
-    const grouped = prev && isSameDay(m.created_at, prev.created_at) && prev.user_id === m.user_id;
-    messageRows.push(
-      <Msg
-        key={m.id}
-        who={m.user_id === TRIPLANIO_BOT_USER_ID ? TRIPLANIO_BOT_NAME : nameFor(m.user_id)}
-        isMe={isMe}
-        isAi={m.user_id === TRIPLANIO_BOT_USER_ID}
-        text={m.text || ''}
-        time={fmtMsgTime(m.created_at)}
-        grouped={grouped}
-        avatarUrl={profiles[m.user_id]?.avatar_url}
-      />,
-    );
-  }
+    return rows;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [msgs, profiles, user?.id]);
 
   // Chat participants = owner + active admins/viewers (excl. offline/pending).
   const activeMembers = (() => {
@@ -449,7 +455,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 6,
               width: 280, zIndex: 5,
             }}>
-              <div className="eyebrow" style={{ padding: '2px 10px 2px' }}>Упомянуть</div>
+              <div className="eyebrow" style={{ padding: '0 10px 2px' }}>Упомянуть</div>
               {/* Only @Triplanio is actionable — mentioning a member does nothing,
                   so the popup lists just the assistant. */}
               <button

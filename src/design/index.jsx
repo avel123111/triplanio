@@ -366,8 +366,29 @@ export function detectPartner(url) {
 
 export const PartnerLogo = ({ url, size = 18 }) => {
   const p = detectPartner(url);
+  // Real favicon of the booking site (same source as the event view/edit dialogs)
+  // instead of a letter monogram. Falls back to the letter/link icon if the
+  // favicon can't load or the URL has no host.
+  let host = "";
+  try {
+    const s = String(url || "").trim();
+    if (s) host = new URL(s.startsWith("http") ? s : `https://${s}`).hostname;
+  } catch { /* ignore */ }
+  const favicon = host ? `https://www.google.com/s2/favicons?domain=${host}&sz=64` : null;
+  const [imgFailed, setImgFailed] = React.useState(false);
+
+  if (favicon && !imgFailed) {
+    return (
+      <img
+        src={favicon}
+        alt=""
+        onError={() => setImgFailed(true)}
+        style={{ width: size, height: size, borderRadius: 4, objectFit: "cover", flexShrink: 0, background: "var(--wash)" }}
+      />
+    );
+  }
   if (!p) return (
-    <div style={{ width: size, height: size, borderRadius: 4, background: "var(--line)", color: "var(--muted)", display: "grid", placeItems: "center", fontSize: size * 0.55, fontWeight: 700 }}>
+    <div style={{ width: size, height: size, borderRadius: 4, background: "var(--line)", color: "var(--muted)", display: "grid", placeItems: "center", fontSize: size * 0.55, fontWeight: 700, flexShrink: 0 }}>
       <Icon name="link" size={size * 0.6} />
     </div>
   );
