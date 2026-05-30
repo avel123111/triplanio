@@ -263,16 +263,39 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const hasPro = isPro; // trip-level Pro (owner sub OR is_pro_trip), passed from TripView
   const isOwner = myRole === 'owner';
   const [features, setFeatures] = useState(() => featuresFromTrip(trip));
+  // Trip-level display toggles (default ON when the flag is absent).
+  const [bookingWarnings, setBookingWarnings] = useState(() => trip?.details?.display?.booking_warnings !== false);
   const [proLocked, setProLocked] = useState({ open: false, feature: '' });
   const [tripProInfo, setTripProInfo] = useState({ open: false, feature: '' });
   const openUpgrade = () => nav(`/pro?tripId=${tripId}&hidePerTrip=1`);
 
-  // Sync local state when trip prop changes
+  // Seed local state when the trip first loads or when switching to a different
+  // trip. Keyed on trip.id (NOT the trip object): react-query hands back a fresh
+  // object on every background refetch / window-focus, and depending on the whole
+  // object would wipe the user's in-progress title edit right before they save it.
   useEffect(() => {
     if (trip?.title)        setTitle(trip.title);
     if (trip?.details?.main_currency || trip?.main_currency) setCurrency(trip.details?.main_currency || trip.main_currency || 'EUR');
     setFeatures(featuresFromTrip(trip));
-  }, [trip]);
+    setBookingWarnings(trip?.details?.display?.booking_warnings !== false);
+  }, [trip?.id]);
+
+  // Trip-level display toggle. Persisted under details.display via the edge
+  // function (trips RLS is owner-only). Architecture note: `display` is an
+  // extensible bag — adding another visibility flag later is just another key.
+  async function toggleBookingWarnings() {
+    const next = !bookingWarnings;
+    setBookingWarnings(next); // optimistic
+    const { data, error } = await supabase.functions.invoke('updateTripSettings', {
+      body: { tripId, display: { booking_warnings: next } },
+    });
+    if (error || !data?.ok) {
+      setBookingWarnings(!next); // revert
+      alert('Не удалось сохранить: ' + (error?.message || data?.code || 'ошибка'));
+      return;
+    }
+    queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+  }
 
   // Save basic settings
   async function saveSettings() {
@@ -380,6 +403,20 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <FeatureRow key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
               onChange={() => toggleFeature(f.id, f.pro)} last={i === FEATURES.length - 1} />
           ))}
+        </div>
+      </Card>
+
+      {/* Display toggles (trip-level) */}
+      <Card title="Отображение" subtitle="Что показывать в этом трипе" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '4px 0' }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--warm)22', color: 'var(--warm)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <Icon name="warning" size={17} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 13.5 }}>Предупреждения о пропущенных бронях</div>
+            <div className="muted" style={{ fontSize: 12 }}>Подсказки «нет переезда» и «нет жилья» в хронологии. Выключи, если план намеренно неполный.</div>
+          </div>
+          <Toggle on={bookingWarnings} onChange={toggleBookingWarnings} />
         </div>
       </Card>
 

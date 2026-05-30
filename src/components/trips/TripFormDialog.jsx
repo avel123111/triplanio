@@ -20,6 +20,9 @@ export default function TripFormDialog({ open, onOpenChange, trip = null, visits
   });
   const isPastTrip = trip && isTripInPast(visits);
 
+  // Seed the form only when the dialog opens (or the target trip changes).
+  // Depending on the whole `trip` object would re-seed on every background
+  // refetch while the dialog is open, clobbering the user's edits.
   useEffect(() => {
     if (open) {
       setForm({
@@ -30,7 +33,7 @@ export default function TripFormDialog({ open, onOpenChange, trip = null, visits
         notes: trip?.notes || '',
       });
     }
-  }, [open, trip]);
+  }, [open, trip?.id]);
 
   const mutation = useMutation({
     mutationFn: async (data) => {

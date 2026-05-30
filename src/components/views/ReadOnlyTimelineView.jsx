@@ -41,6 +41,7 @@ export default function ReadOnlyTimelineView({
   onClickHotel, onClickTransfer, onClickActivity, onClickCarRental,
   canEdit = false, onAddHotel, onAddTransfer, onEditVisitNotes,
   isEditMode = false, onAddCityForDay, onAddActivityForDay,
+  showBookingWarnings = true,
 }) {
   const { t, locale } = useI18nFormat();
   const containerRef = useRef(null);
@@ -401,7 +402,8 @@ export default function ReadOnlyTimelineView({
 
     for (const ev of dayEvents) {
       // Missing transfer warn right before city/anchor-end if applicable
-      if ((ev.kind === 'city' || (ev.kind === 'anchor' && ev.visit.kind === 'end'))
+      if (showBookingWarnings
+          && (ev.kind === 'city' || (ev.kind === 'anchor' && ev.visit.kind === 'end'))
           && missingTransferByVisitId[ev.visit.id]
           && !emittedMissingForVisit.has(ev.visit.id)) {
         const m = missingTransferByVisitId[ev.visit.id];
@@ -453,7 +455,7 @@ export default function ReadOnlyTimelineView({
   // Render dateless end-anchor(s) at the very bottom (after all day loops).
   for (const ev of datelessEndAnchors) {
     // Show missing-transfer warning before end anchor if applicable
-    if (missingTransferByVisitId[ev.visit.id] && !emittedMissingForVisit.has(ev.visit.id)) {
+    if (showBookingWarnings && missingTransferByVisitId[ev.visit.id] && !emittedMissingForVisit.has(ev.visit.id)) {
       const m = missingTransferByVisitId[ev.visit.id];
       out.push(
         <MissingTransferWarn

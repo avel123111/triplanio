@@ -7,10 +7,13 @@
  * update — that silently no-ops. This function (service role) does the write
  * after checking membership + role, and gates enabling Pro addons.
  *
- * POST body: { tripId, fields?, addons?, main_currency? }
- *   fields       — whitelisted top-level columns (title/description/cover_*/notes)
+ * POST body: { tripId, fields?, addons?, main_currency?, display? }
+ *   fields       — whitelisted top-level columns (title, description, cover_image_url, cover_gradient, notes)
  *   addons       — full addons object to set under details.addons
  *   main_currency — set under details.main_currency
+ *   display      — trip-level display toggles, shallow-merged into details.display
+ *                  (e.g. { booking_warnings: false }). Extensible: future display
+ *                  flags flow through here without a schema or function change.
  *
  * Returns 200 { ok: true } | { ok: false, code: 'FORBIDDEN' | 'PRO_REQUIRED' }.
  */
@@ -27,7 +30,7 @@ Deno.serve(async (req) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
-    const { tripId, fields, addons, main_currency } = await req.json();
+    const { tripId, fields, addons, main_currency, display } = await req.json();
     if (!tripId) return Response.json({ error: 'tripId required' }, { status: 400, headers: corsHeaders });
 
     const { data: trip } = await supabaseAdmin
@@ -58,9 +61,13 @@ Deno.serve(async (req) => {
       for (const k of ALLOWED_COLS) if (k in fields) update[k] = fields[k];
     }
 
-    if (main_currency !== undefined || addons !== undefined) {
+    if (main_currency !== undefined || addons !== undefined || display !== undefined) {
       const newDetails = { ...(trip.details || {}) };
       if (typeof main_currency === 'string' && main_currency) newDetails.main_currency = main_currency;
+      if (display && typeof display === 'object') {
+        // Shallow-merge so unrelated display flags are preserved.
+        newDetails.display = { ...(trip.details?.display || {}), ...display };
+      }
       if (addons && typeof addons === 'object') {
         // Block enabling a PRO addon when the trip isn't Pro.
         const prev = (trip.details?.addons) || {};

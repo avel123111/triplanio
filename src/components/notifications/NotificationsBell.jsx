@@ -118,7 +118,18 @@ export default function NotificationsBell({ triggerClassName }) {
             : 'relative inline-flex items-center justify-center h-10 w-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition'}
         >
           <Icon name="bell" size={17} />
-          {unread > 0 && <span className="dot" />}
+          {unread > 0 && (
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute', top: 4, right: 4,
+                width: 11, height: 11, borderRadius: 999,
+                background: 'var(--danger, #e5484d)',
+                border: '2px solid var(--surface, #fff)',
+                boxShadow: '0 0 0 1px color-mix(in oklab, var(--danger, #e5484d) 30%, transparent)',
+              }}
+            />
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={8} className="p-0 w-[360px] max-w-[calc(100vw-16px)] overflow-hidden rounded-2xl">

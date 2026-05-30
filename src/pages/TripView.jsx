@@ -20,6 +20,7 @@ import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
 import { Avatar, Btn, EmptyState, Skeleton, ModalHost, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
+import { SystemStub } from '@/lib/PageNotFound';
 import { sortVisits } from '@/lib/validation';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -245,14 +246,21 @@ function LoadingScreen() {
 }
 
 function ErrorScreen({ onBack }) {
+  const nav = useNavigate();
+  const { logout } = useAuth();
+  const loginOther = async () => {
+    try { await logout?.(false); } catch { /* ignore */ }
+    nav('/login');
+  };
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--wash)' }}>
-      <EmptyState
-        icon="error"
-        kind="error"
-        title="Трип не найден"
-        body="Возможно, у вас нет доступа или трип был удалён."
-        action={<Btn variant="ghost" icon="back" onClick={onBack}>Назад к трипам</Btn>}
+    <div style={{ minHeight: '100vh', background: 'var(--wash)' }}>
+      <SystemStub
+        icon="lock"
+        tone="warm"
+        title="Нет доступа к этому трипу"
+        body="Возможно, тебя нет в списке участников, приглашение отозвали или трип был удалён."
+        primary={{ label: 'К моим трипам', onClick: onBack }}
+        secondary={{ label: 'Войти другим аккаунтом', onClick: loginOther }}
       />
     </div>
   );
@@ -580,7 +588,7 @@ function useWeatherByDay(visits) {
   return weatherByDay;
 }
 
-function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel, isEditMode, onEditNotes, onDeleteCity, onOpenEvent }) {
+function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel, isEditMode, onEditNotes, onDeleteCity, onOpenEvent, showBookingWarnings = true }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--line)',
@@ -653,7 +661,7 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
             {h.price && <div className="num" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(h.price, h.cur || 'EUR')}</div>}
           </button>
         )) : (
-          <MissingHotelWarning city={city} onAdd={() => onAddHotel?.(visit)} />
+          showBookingWarnings ? <MissingHotelWarning city={city} onAdd={() => onAddHotel?.(visit)} /> : null
         )}
       </div>
     </div>
@@ -663,6 +671,10 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
 function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
   const weatherByDay = useWeatherByDay(visits);  // hook must run before any early return
   if (isLoading) return <SkeletonTimeline />;
+
+  // Trip-level display toggle (default ON). Hides missing-transfer / missing-hotel
+  // hints when the owner/admin turned them off in Settings.
+  const showBookingWarnings = trip?.details?.display?.booking_warnings !== false;
 
   if (!trip.start_date && !trip.end_date && !visits.length) {
     return (
@@ -780,7 +792,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   const renderArrival = (city, prev) => {
     const out = [];
     if (prev && !hasTransferBetween(prev, city)) {
-      out.push(
+      if (showBookingWarnings) out.push(
         <div key={`mt-${city.id}`} style={{ marginBottom: 8 }}>
           <MissingTransferWarning
             from={prev.city_name} to={city.city_name}
@@ -816,6 +828,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         onEditNotes={onEditVisitNotes}
         onDeleteCity={onDeleteCity}
         onOpenEvent={onOpenEvent}
+        showBookingWarnings={showBookingWarnings}
       />
     );
     return out;
@@ -919,7 +932,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // Missing transfer into the finish anchor (last rendered city → end), if the
   // trip has an explicit end anchor and no transfer covers that leg.
   const endVisit = ordered[ordered.length - 1];
-  if (endVisit && endVisit.kind === 'end' && prevCity && prevCity.id !== endVisit.id
+  if (showBookingWarnings && endVisit && endVisit.kind === 'end' && prevCity && prevCity.id !== endVisit.id
       && !hasTransferBetween(prevCity, endVisit)) {
     rows.push(
       <div key="mt-end" style={{ marginBottom: 8 }}>

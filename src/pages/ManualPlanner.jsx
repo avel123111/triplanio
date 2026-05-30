@@ -1597,7 +1597,7 @@ export default function ManualPlanner() {
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Btn variant="ghost" onClick={() => nav('/trips')}>← К трипам</Btn>
-              <Btn variant="primary" onClick={() => nav('/settings')}>Перейти на Pro</Btn>
+              <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1')}>Перейти на Pro</Btn>
             </div>
           </div>
         </div>

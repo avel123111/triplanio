@@ -151,6 +151,9 @@ export default function PublicTrip() {
             onClickActivity={(a) => setViewing({ kind: 'activity', data: a })}
             onClickCarRental={(s) => setViewing({ kind: 'service', data: s })}
             canEdit={false}
+            /* Public viewers (Зритель) shouldn't see booking-absence hints —
+               they can't act on them and they expose planning gaps. */
+            showBookingWarnings={false}
           />
         )}
         {tab === 'map' && (

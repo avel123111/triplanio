@@ -109,6 +109,13 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
   const monthlyPrice = priceOf('pro_monthly');
   const yearlyPrice = priceOf('pro_yearly');
 
+  // Exact amount the user is actually billed (from their Stripe subscription),
+  // not the public catalog price. Prefer it whenever getUserPlan returned it.
+  const actual = plan?.actualPrice;
+  const actualMoney = (actual && actual.amount != null) ? money(actual.amount, actual.currency) : null;
+  const actualMonthlyEq = (actual && actual.amount != null && actual.interval === 'year')
+    ? money(Math.round(actual.amount / 12), actual.currency) : null;
+
   if (planLoading) {
     return (
       <Card title="Подписка" style={{ marginBottom: 16 }}>
@@ -154,7 +161,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontWeight: 600 }}>Pro Monthly</div>
               <div className="muted num" style={{ fontSize: 12.5 }}>
-                {monthlyPrice ? `${monthlyPrice}/мес` : 'Pro'}
+                {(actualMoney || monthlyPrice) ? `${actualMoney || monthlyPrice}/мес` : 'Pro'}
                 {plan?.subscriptionEnd && (
                   <> · следующее списание <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b></>
                 )}
@@ -190,11 +197,11 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
                 Pro Yearly <Badge variant="success">Активна</Badge>
               </div>
               <div className="muted num" style={{ fontSize: 12.5 }}>
-                {yearlyPrice ? `${yearlyPrice}/год` : 'Pro'}
+                {(actualMoney || yearlyPrice) ? `${actualMoney || yearlyPrice}/год` : 'Pro'}
                 {plan?.subscriptionEnd && (
                   <> · обновится <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b></>
                 )}
-                {yearlyMonthlyEq() && ` · эквивалент ${yearlyMonthlyEq()}/мес`}
+                {(actualMonthlyEq || yearlyMonthlyEq()) && ` · эквивалент ${actualMonthlyEq || yearlyMonthlyEq()}/мес`}
               </div>
             </div>
             <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={onManage}>
@@ -689,6 +696,17 @@ export default function ScreenAccount() {
           onSwitchYearly={handleSwitchToYearly}
         />
 
+        {/* Payment error banner — directly under the subscription section */}
+        {errorMsg && (
+          <div style={{ marginBottom: 16 }}>
+            <Severity level="error" title="Ошибка" action={
+              <Btn variant="ghost" size="sm" onClick={() => setErrorMsg(null)}>Закрыть</Btn>
+            }>
+              {errorMsg}
+            </Severity>
+          </div>
+        )}
+
         {/* Email notifications */}
         <Card title="E-mail уведомления" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -707,17 +725,6 @@ export default function ScreenAccount() {
             />
           </div>
         </Card>
-
-        {/* Error banner */}
-        {errorMsg && (
-          <div style={{ marginBottom: 16 }}>
-            <Severity level="error" title="Ошибка" action={
-              <Btn variant="ghost" size="sm" onClick={() => setErrorMsg(null)}>Закрыть</Btn>
-            }>
-              {errorMsg}
-            </Severity>
-          </div>
-        )}
 
         {/* Support */}
         <Card title="Поддержка" style={{ marginBottom: 16 }}>
