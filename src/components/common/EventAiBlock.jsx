@@ -124,7 +124,11 @@ export default function EventAiBlock({
       const uploaded = await Promise.all(files.map(async (f) => {
         if (f.file_url) return f;
         const uid = (crypto?.randomUUID?.()) || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const path = `ai-uploads/${uid}/${f.name}`;
+        // Supabase Storage keys reject non-ASCII / special chars (Cyrillic
+        // filenames → "Invalid key"). Sanitise the path; keep the real name for
+        // display via `documents` below.
+        const safeName = (f.name || 'file').replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `ai-uploads/${uid}/${safeName}`;
         const { error: upErr } = await supabase.storage.from('documents').upload(path, f.file);
         if (upErr) throw new Error(upErr.message || 'Не удалось загрузить файл');
         const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);
