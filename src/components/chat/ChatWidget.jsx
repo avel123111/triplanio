@@ -21,11 +21,12 @@ import { useUserProfiles } from '@/lib/useUserProfiles';
 const MSGS_KEY = (cid) => ['chat-widget-msgs', cid];
 
 function highlightMentions(val) {
-  // Color only, NO font-weight: the overlay must match the textarea's glyph
-  // metrics exactly, otherwise the caret drifts once @mention is styled.
+  // Bold look WITHOUT a font-weight change (which would widen the run and drift
+  // the caret): -webkit-text-stroke thickens glyphs but keeps advance width, so
+  // the transparent textarea (caret source) and this overlay stay in lockstep.
   return (val || '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')
-    .replace(/@triplanio\b/gi, '<span style="color:var(--ai)">$&</span>');
+    .replace(/@triplanio\b/gi, '<span style="color:var(--ai);-webkit-text-stroke:0.7px var(--ai)">$&</span>');
 }
 
 export default function ChatWidget({ tripId, members = [], tripTitle, ownerId }) {

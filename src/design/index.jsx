@@ -747,48 +747,91 @@ export function StreamEventRow({ e, onClick, last, editMode }) {
   }
   // Mobile: stacked, phone-friendly rows for every event type.
   if (isMobile) return <EventRowMobile e={e} onClick={onClick} />;
-  if (e.type === "flight" || e.type === "transfer") {
-    const variant = window.__transferCardVariant || "V1";
-    if (variant === "V2") return <TransferCardStrip e={e} onClick={onClick} />;
-    if (variant === "V3") return <TransferCardStacked e={e} onClick={onClick} />;
-    return <TransferCardHub e={e} onClick={onClick} />;
-  }
-  const META = {
-    "hotel-checkin":  { icon: "bed",     c: "var(--ev-hotel)",    bg: "var(--ev-hotel-soft)",    label: "Заезд" },
-    "hotel-checkout": { icon: "bed",     c: "var(--ev-hotel)",    bg: "var(--ev-hotel-soft)",    label: "Выезд" },
-    "hotel-deadline": { icon: "warning", c: "var(--ev-deadline)", bg: "var(--ev-deadline-soft)", label: "Дедлайн" },
-    "activity": {
-      icon: e.category === "food" ? "cup" : e.category === "sight" ? "cam" : "spark",
-      c: "var(--ev-activity)", bg: "var(--ev-activity-soft)"
-    },
-    "car-pickup": { icon: "car", c: "var(--ev-car)", bg: "var(--ev-car-soft)" },
-    "car-return": { icon: "car", c: "var(--ev-car)", bg: "var(--ev-car-soft)" }
-  };
-  const meta = META[e.type] || { icon: "spark", c: "var(--ink)", bg: "var(--wash)" };
-  const isCheckin = e.type === "hotel-checkin" || e.type === "hotel-checkout";
+  // Desktop: v11 "day-card row" design, each event in its own surface card.
+  if (e.type === "flight" || e.type === "transfer") return <TransferRowV11 e={e} onClick={onClick} />;
+  return <EventRowV11 e={e} onClick={onClick} />;
+}
+
+// ── Desktop v11 event card — flush colour bar + time + icon + title/label/sub ──
+function EventRowV11({ e, onClick }) {
+  const meta = _evMeta(e);
+  const sub = [e.duration, e.address].filter(Boolean).join(" · ");
   return (
-    <button onClick={onClick} style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left" }}
-      onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.borderLeftColor = meta.c; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
-      onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = meta.c; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
-      <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: e.time === "?" ? "var(--warning)" : "var(--ink)" }}>
-        {e.time || "—"}
-      </div>
-      <div style={{ width: 32, height: 32, borderRadius: 8, background: meta.bg, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
-        <Icon name={meta.icon} size={15} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13.5, fontWeight: 600 }}>{e.title}</span>
-          {e.warning && <Badge variant="warning" icon="warning">Нет времени</Badge>}
-          {isCheckin && <Badge variant="success">{meta.label}</Badge>}
+    <button onClick={onClick} style={{
+      width: "100%", display: "flex", alignItems: "stretch", padding: 0,
+      background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14,
+      overflow: "hidden", cursor: "pointer", textAlign: "left",
+    }}
+      onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
+      onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
+      <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, padding: "13px 16px" }}>
+        <div className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14.5, minWidth: 52, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", flexShrink: 0 }}>{e.time || "—"}</div>
+        <div style={{ width: 38, height: 38, borderRadius: 10, background: meta.soft, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
+          <Icon name={meta.icon} size={17} />
         </div>
-        <div className="muted" style={{ fontSize: 12, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-          {e.duration && <span className="num">{e.duration}</span>}
-          {e.address && <span>· {e.address}</span>}
-          {e.platformUrl && <PartnerPill url={e.platformUrl} />}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</span>
+            {meta.label && <span style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>{meta.label}</span>}
+          </div>
+          {sub && <div className="muted" style={{ fontSize: 12, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
         </div>
+        {e.price != null && <div className="num" style={{ fontWeight: 600, fontSize: 13.5, flexShrink: 0 }}>{fmt(e.price, e.cur)}</div>}
+        {e.platformUrl && <PartnerPill url={e.platformUrl} />}
       </div>
-      {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(e.price, e.cur)}</span>}
+    </button>
+  );
+}
+
+// ── Desktop v11 transfer card — vertical departure→arrival mini-rail ───────────
+function TransferRowV11({ e, onClick }) {
+  const meta = _evMeta(e);
+  const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "—";
+  return (
+    <button onClick={onClick} style={{
+      width: "100%", display: "flex", alignItems: "stretch", padding: 0,
+      background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14,
+      overflow: "hidden", cursor: "pointer", textAlign: "left",
+    }}
+      onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
+      onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
+      <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "stretch", gap: 12, padding: "13px 16px" }}>
+        {/* time / duration / arrive */}
+        <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14.5, color: "var(--ink)", minWidth: 52, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
+          <span style={{ whiteSpace: "nowrap" }}>{e.time || "—"}</span>
+          {e.duration && <span className="muted" style={{ fontSize: 10.5, fontWeight: 500 }}>{e.duration}</span>}
+          <span style={{ whiteSpace: "nowrap" }}>{arrive}</span>
+        </div>
+        {/* mini rail */}
+        <div style={{ width: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", paddingTop: 3, paddingBottom: 3, flexShrink: 0 }}>
+          <span style={{ width: 9, height: 9, borderRadius: "50%", background: meta.c }} />
+          <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
+          <span style={{ width: 26, height: 26, borderRadius: "50%", background: meta.soft, color: meta.c, display: "grid", placeItems: "center", border: `2px solid ${meta.c}` }}>
+            <Icon name={meta.icon} size={13} />
+          </span>
+          <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
+          <span style={{ width: 9, height: 9, borderRadius: "50%", background: meta.c, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px " + meta.c }} />
+        </div>
+        {/* from → to */}
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 4 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "—"}</div>
+          <div className="muted" style={{ fontSize: 11.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>{meta.label}</span>
+            {e.carrier ? <> · {e.carrier}</> : null}
+            {e.num && e.num !== "—" ? <> · <span className="num">{e.num}</span></> : null}
+          </div>
+          <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "—"}</div>
+        </div>
+        {/* price + chip */}
+        {(e.price != null || e.platformUrl) && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 8, flexShrink: 0 }}>
+            {e.price != null && <div className="num" style={{ fontWeight: 600, fontSize: 13.5 }}>{fmt(e.price, e.cur)}</div>}
+            {e.platformUrl && <PartnerPill url={e.platformUrl} />}
+          </div>
+        )}
+      </div>
     </button>
   );
 }

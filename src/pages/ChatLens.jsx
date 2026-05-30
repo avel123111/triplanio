@@ -53,12 +53,13 @@ function highlightMentions(val) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/\n/g, '<br/>');
-  // Color only — NO font-weight change. The overlay must keep the exact same
-  // glyph metrics as the textarea, otherwise the caret drifts off the text
-  // once an @mention is styled. Bold widened the run and pushed the caret.
+  // Keep the mention BOLD but without a font-weight change: a heavier weight
+  // widens the glyph run, so the textarea (normal weight, drives the caret)
+  // and the overlay diverge and the caret drifts. -webkit-text-stroke thickens
+  // the strokes WITHOUT changing advance width → looks bold, caret stays put.
   return escaped.replace(
     /@triplanio\b/gi,
-    '<span style="color:var(--ai)">$&</span>',
+    '<span style="color:var(--ai);-webkit-text-stroke:0.7px var(--ai)">$&</span>',
   );
 }
 
@@ -448,7 +449,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 6,
               width: 280, zIndex: 5,
             }}>
-              <div className="eyebrow" style={{ padding: '4px 10px 4px' }}>Упомянуть</div>
+              <div className="eyebrow" style={{ padding: '2px 10px 2px' }}>Упомянуть</div>
               {/* Only @Triplanio is actionable — mentioning a member does nothing,
                   so the popup lists just the assistant. */}
               <button
