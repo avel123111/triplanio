@@ -9,16 +9,18 @@
  *   parsing   — spinner + progress
  *   parsed    — success banner + reset
  *
- * The LLM schemas + prompts for `hotel` and `transfer` (the two kinds that
- * have a parser today) are inlined here so the previous
- * HotelAiUpload / TransferAiUpload files can be retired.
+ * Recognition runs server-side: the browser uploads the file(s) to Supabase
+ * Storage, then calls the `parseBookingWithAi` edge function with
+ * { kind, fileUrls }. That function forwards to the n8n webhook, which holds
+ * the per-kind prompts + schemas and runs the LLM (Gemini). We only send
+ * `kind` and the file URLs — no prompt/schema travels from the client.
  *
  * `onExtract(data, fileUrl, fileName)` is called with the parsed JSON
- * (already wrapped per-kind: hotel → flat field shape, transfer → segments
- * shape with documents). Parent maps the values into its form.
+ * (hotel → flat field shape, transfer → segments shape) plus the uploaded
+ * documents. Parent maps the values into its form.
  */
 import React, { useRef, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { detectPlatformFromUrl } from '@/lib/booking-platforms';
 import {
@@ -28,90 +30,6 @@ import {
 
 const MAX_FILES = 3;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
-
-// ── Schemas ─────────────────────────────────────────────────────────────────
-
-const HOTEL_SCHEMA = {
-  type: 'object',
-  properties: {
-    name: { type: 'string' },
-    address: { type: 'string' },
-    check_in_date: { type: 'string', description: 'YYYY-MM-DD' },
-    check_in_time: { type: 'string', description: 'HH:mm 24h' },
-    check_out_date: { type: 'string', description: 'YYYY-MM-DD' },
-    check_out_time: { type: 'string', description: 'HH:mm 24h' },
-    booking_reference: { type: 'string' },
-    payment_status: { type: 'string', enum: ['paid', 'partial', 'pay_on_arrival'] },
-    price: { type: 'number' },
-    currency: { type: 'string', description: 'ISO 4217 code (EUR, USD, etc.)' },
-    free_cancellation: { type: 'boolean' },
-    free_cancellation_until: { type: 'string', description: 'YYYY-MM-DD HH:mm if known' },
-    phone: { type: 'string' },
-    email: { type: 'string' },
-    booking_url: { type: 'string' },
-    booking_platform: {
-      type: 'string',
-      enum: ['booking', 'airbnb', 'hotels', 'expedia', 'agoda', 'trivago', 'vrbo', 'other'],
-    },
-  },
-};
-
-const TRANSFER_SEGMENT_SCHEMA = {
-  type: 'object',
-  properties: {
-    transport_type: { type: 'string', enum: ['plane', 'train', 'bus', 'car', 'taxi', 'ferry', 'other'] },
-    departure_date: { type: 'string', description: 'YYYY-MM-DD' },
-    departure_time: { type: 'string', description: 'HH:mm 24h' },
-    arrival_date: { type: 'string', description: 'YYYY-MM-DD' },
-    arrival_time: { type: 'string', description: 'HH:mm 24h' },
-    carrier: { type: 'string' },
-    booking_reference: { type: 'string' },
-    from_address: { type: 'string' },
-    to_address: { type: 'string' },
-    price: { type: 'number' },
-    currency: { type: 'string' },
-  },
-};
-
-const TRANSFER_SCHEMA = {
-  type: 'object',
-  properties: {
-    booking_url: { type: 'string' },
-    booking_platform: { type: 'string' },
-    segments: { type: 'array', items: TRANSFER_SEGMENT_SCHEMA },
-  },
-};
-
-// ── Prompts ─────────────────────────────────────────────────────────────────
-
-const CURRENT_YEAR = new Date().getFullYear();
-const TODAY_ISO = new Date().toISOString().slice(0, 10);
-
-const HOTEL_PROMPT = `You are extracting hotel booking data from one or more confirmation files (PDF / image). The files belong to the SAME single booking — merge any extra info you find. Return ONLY fields you can confidently read. Leave unknown fields empty. Detect the booking platform from logos/headers/footers/URLs. Times in 24h format. Currency as ISO 4217.
-
-DATE/YEAR RULES:
-- Today's date is ${TODAY_ISO} (current year = ${CURRENT_YEAR}).
-- If a date in the document does NOT include a year, assume the current year (${CURRENT_YEAR}).
-- If that resulting date is already in the PAST, advance the year by 1 (use ${CURRENT_YEAR + 1}).
-- If a year IS explicitly written, honor it as-is.`;
-
-const TRANSFER_PROMPT = `You are extracting transport booking data (flight / train / bus / ferry / boarding pass / e-ticket) from one or more files. The files belong to the SAME single booking — merge across them.
-
-CRITICAL — MULTI-SEGMENT (LAYOVERS / CONNECTIONS):
-A booking can contain MULTIPLE legs with intermediate stops. Return EACH physical leg as a separate item in the segments array, in chronological order, with its OWN from_address, to_address, departure & arrival times.
-
-VERIFICATION RULE: For every pair of consecutive segments, segments[i+1].from_address MUST equal segments[i].to_address.
-
-If the booking is direct, return exactly ONE segment.
-
-Common fields (booking_url, booking_platform) go at the top level. Carrier may differ per leg (codeshare); fill carrier per-segment. For total price, if only a grand total is shown, put it on the FIRST segment.
-
-Return ONLY fields you can confidently read. Leave unknown fields empty. Detect platform from logos/headers/footers/URLs. Times in 24h format. Currency as ISO 4217. For airports/stations include the IATA/station code + city (e.g. "Madrid (MAD) Terminal 1").
-
-DATE/YEAR RULES:
-- Today's date is ${TODAY_ISO} (current year = ${CURRENT_YEAR}).
-- Missing year → assume ${CURRENT_YEAR}; if that's in the past, use ${CURRENT_YEAR + 1}.
-- Explicit year → honor it.`;
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -131,9 +49,6 @@ export default function EventAiBlock({
   const [progress, setProgress] = useState(0);
   const inputRef = useRef(null);
   const animRef = useRef(null);
-
-  const schema = kind === 'transfer' ? TRANSFER_SCHEMA : HOTEL_SCHEMA;
-  const prompt = kind === 'transfer' ? TRANSFER_PROMPT : HOTEL_PROMPT;
 
   const startFakeProgress = () => {
     setProgress(0);
@@ -178,25 +93,39 @@ export default function EventAiBlock({
     });
   };
 
-  // The LLM call — uploads any local files, then invokes the parser.
+  // Recognition — uploads any local files to Supabase Storage, then calls the
+  // parseBookingWithAi edge function (which forwards to the n8n workflow that
+  // holds the per-kind prompts + schemas and runs the LLM).
   const runParse = async () => {
     setError(null);
     setState('parsing');
     startFakeProgress();
     try {
+      // 1. Upload local files to Storage → long-lived signed URLs.
       const uploaded = await Promise.all(files.map(async (f) => {
         if (f.file_url) return f;
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: f.file });
-        return { ...f, file_url };
+        const uid = (crypto?.randomUUID?.()) || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const path = `ai-uploads/${uid}/${f.name}`;
+        const { error: upErr } = await supabase.storage.from('documents').upload(path, f.file);
+        if (upErr) throw new Error(upErr.message || 'Не удалось загрузить файл');
+        const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);
+        return { ...f, file_url: urlData?.signedUrl || '', storage_path: path };
       }));
       const fileUrls = uploaded.map((f) => f.file_url).filter(Boolean);
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: text.trim() ? `${prompt}\n\nAlso extract from this user-provided text:\n${text.trim()}` : prompt,
-        file_urls: fileUrls,
-        response_json_schema: schema,
-        add_context_from_internet: false,
-        model: 'gemini_3_flash',
-      });
+
+      // 2. Call the edge function. Only kind + fileUrls leave the client;
+      //    prompts and schemas live inside the n8n workflow.
+      const body = { kind, fileUrls };
+      if (text.trim()) body.text = text.trim();
+      const { data: invoked, error: invokeErr } = await supabase.functions.invoke('parseBookingWithAi', { body });
+      if (invokeErr) throw invokeErr;
+      if (invoked?.error) throw new Error(invoked.error);
+
+      // n8n may wrap the payload as { kind, data, schema } or return it flat.
+      const result = (invoked && typeof invoked === 'object' && invoked.data && typeof invoked.data === 'object')
+        ? invoked.data
+        : (invoked || {});
+
       if (!result.booking_platform && result.booking_url) {
         const p = detectPlatformFromUrl(result.booking_url);
         if (p) result.booking_platform = p;
