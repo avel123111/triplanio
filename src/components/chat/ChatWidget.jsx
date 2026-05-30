@@ -4,7 +4,7 @@
  * Mounted by TripView on every lens *except* the dedicated chat lens.
  * Design matches DockedChat from the reference prototype (dock.jsx).
  */
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageCircle, X, ExternalLink, Sparkles } from 'lucide-react';
@@ -39,6 +39,8 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   const [showMention, setShowMention] = useState(false);
   const [failedAiIds, setFailedAiIds] = useState(() => new Set());
   const scrollRef = useRef(null);
+  const taRef = useRef(null);
+  const ovRef = useRef(null);
 
   const myName = user?.user_metadata?.full_name || user?.full_name || user?.email || '';
   const unread = useUnreadChatCount(tripId);
@@ -164,6 +166,26 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     setText((t) => t.replace(/@(\w*)$/, '@' + handle + ' '));
     setShowMention(false);
   }
+
+  // Auto-grow the composer up to ~4 lines, then scroll; keep the highlight
+  // overlay's scroll offset in lockstep with the textarea.
+  const COMPOSER_MAX_H = 90; // ≈ 4 lines @ 13px / 1.4
+  useLayoutEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const next = Math.min(ta.scrollHeight, COMPOSER_MAX_H);
+    ta.style.height = next + 'px';
+    ta.style.overflowY = ta.scrollHeight > COMPOSER_MAX_H ? 'auto' : 'hidden';
+  }, [text]);
+  useEffect(() => {
+    const ta = taRef.current;
+    const ov = ovRef.current;
+    if (!ta || !ov) return undefined;
+    const sync = () => { ov.scrollTop = ta.scrollTop; };
+    ta.addEventListener('scroll', sync);
+    return () => ta.removeEventListener('scroll', sync);
+  }, []);
   const mentionMembers = mentionToken
     ? activeMembers.filter((m) => (nameFor(m.user_id) || '').toLowerCase().startsWith(mentionToken))
     : activeMembers;
@@ -347,6 +369,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
         <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
           <div style={{ flex: 1, position: 'relative' }}>
             <div
+              ref={ovRef}
               aria-hidden="true"
               style={{
                 position: 'absolute', inset: 0,
@@ -358,9 +381,11 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
               dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
             />
             <textarea
+              ref={taRef}
               className="textarea"
               placeholder="Сообщение группе... (@упоминание)"
               value={text}
+              rows={1}
               onChange={(e) => {
                 const v = e.target.value;
                 setText(v);
@@ -370,8 +395,9 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
               style={{
                 position: 'relative', zIndex: 1, background: 'transparent',
                 color: 'transparent', caretColor: 'var(--ink)',
-                height: 38, minHeight: 38, maxHeight: 100, width: '100%',
+                minHeight: 38, maxHeight: 90, width: '100%',
                 padding: '8px 10px', fontSize: 13, lineHeight: 1.4, resize: 'none',
+                overflowY: 'hidden', display: 'block',
               }}
             />
           </div>
@@ -380,7 +406,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             disabled={sending || !text.trim() || !chatId}
             aria-label="Отправить"
             style={{
-              width: 34, height: 34, borderRadius: '50%', border: 'none',
+              width: 38, height: 38, borderRadius: '50%', border: 'none',
               background: 'linear-gradient(135deg, #2167e2 0%, #8b3dff 100%)',
               cursor: sending || !text.trim() || !chatId ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',

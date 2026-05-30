@@ -9,7 +9,7 @@
  *   members — array of trip member rows (for @mention list)
  *   myRole  — string
  */
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
@@ -142,6 +142,8 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const qc = useQueryClient();
   const scrollRef  = useRef(null);
   const channelRef = useRef(null);
+  const taRef      = useRef(null);
+  const ovRef      = useRef(null);
 
   const [text,        setText]        = useState('');
   const [sending,     setSending]     = useState(false);
@@ -334,6 +336,27 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     setShowMention(false);
   }
 
+  // Auto-grow the composer up to ~4 lines, then scroll. The highlight overlay
+  // (position:absolute inset:0) matches the textarea box automatically; we only
+  // keep its scroll offset in lockstep with the textarea.
+  const COMPOSER_MAX_H = 100; // ≈ 4 lines @ 13.5px / 1.4
+  useLayoutEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const next = Math.min(ta.scrollHeight, COMPOSER_MAX_H);
+    ta.style.height = next + 'px';
+    ta.style.overflowY = ta.scrollHeight > COMPOSER_MAX_H ? 'auto' : 'hidden';
+  }, [text]);
+  useEffect(() => {
+    const ta = taRef.current;
+    const ov = ovRef.current;
+    if (!ta || !ov) return undefined;
+    const sync = () => { ov.scrollTop = ta.scrollTop; };
+    ta.addEventListener('scroll', sync);
+    return () => ta.removeEventListener('scroll', sync);
+  }, []);
+
   // Mention list — Triplanio first, then participants (owner + admins + viewers)
   const mentionList = [
     { name: 'Triplanio', desc: '@Triplanio — отвечает всем', ai: true, handle: 'Triplanio' },
@@ -455,7 +478,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 6,
               width: 280, zIndex: 5,
             }}>
-              <div className="eyebrow" style={{ padding: '0 10px 2px' }}>Упомянуть</div>
+              <div className="eyebrow" style={{ padding: '0 10px 2px', margin: 0 }}>Упомянуть</div>
               {/* Only @Triplanio is actionable — mentioning a member does nothing,
                   so the popup lists just the assistant. */}
               <button
@@ -479,6 +502,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                   overlay renders the full text with @Triplanio in bold purple,
                   the textarea shows only the caret — no double glyphs. */}
               <div
+                ref={ovRef}
                 aria-hidden="true"
                 style={{
                   position: 'absolute', inset: 0,
@@ -493,18 +517,20 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                 dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
               />
               <textarea
+                ref={taRef}
                 className="textarea"
                 placeholder="Напиши сообщение — @ открывает упоминание"
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKey}
+                rows={1}
                 style={{
                   position: 'relative', zIndex: 1,
                   background: 'transparent',
                   color: 'transparent', caretColor: 'var(--ink)',
-                  height: 44, minHeight: 44, maxHeight: 120, width: '100%',
+                  minHeight: 44, maxHeight: 100, width: '100%',
                   padding: '11px 14px', fontSize: 13.5, lineHeight: 1.4,
-                  resize: 'none',
+                  resize: 'none', overflowY: 'hidden', display: 'block',
                 }}
               />
             </div>
