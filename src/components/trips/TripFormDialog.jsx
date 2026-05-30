@@ -35,8 +35,12 @@ export default function TripFormDialog({ open, onOpenChange, trip = null, visits
   const mutation = useMutation({
     mutationFn: async (data) => {
       if (trip) {
-        const { error } = await supabase.from('trips').update(data).eq('id', trip.id);
+        // trips RLS is owner-only → write via edge function so admins can edit too.
+        const { data: res, error } = await supabase.functions.invoke('updateTripSettings', {
+          body: { tripId: trip.id, fields: data },
+        });
         if (error) throw error;
+        if (!res?.ok) throw new Error(res?.code || 'update failed');
         return;
       }
       return base44.entities.Trip.create(data);

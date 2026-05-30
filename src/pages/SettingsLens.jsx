@@ -279,17 +279,17 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (!title.trim()) return;
     setSaving(true);
     const prevCurrency = trip?.details?.main_currency || trip?.main_currency || 'EUR';
-    const { error } = await supabase.from('trips').update({
-      title: title.trim(),
-      details: { ...(trip?.details || {}), main_currency: currency },
-    }).eq('id', tripId);
+    // trips RLS is owner-only → write via edge function so admins can save too.
+    const { data, error } = await supabase.functions.invoke('updateTripSettings', {
+      body: { tripId, fields: { title: title.trim() }, main_currency: currency },
+    });
     // Main currency changed → existing FX overrides were defined against the OLD
-    // main currency and are now meaningless. Reset them (and keep trip_budgets.currency in sync).
-    if (!error && currency !== prevCurrency) {
+    // main currency and are now meaningless. Reset them (trip_budgets is participant-RLS).
+    if (!error && data?.ok && currency !== prevCurrency) {
       await supabase.from('trip_budgets').update({ currency, fx_overrides: {} }).eq('trip_id', tripId);
     }
     setSaving(false);
-    if (error) { setSaveMsg('Ошибка: ' + error.message); return; }
+    if (error || !data?.ok) { setSaveMsg('Ошибка: ' + (error?.message || data?.code || 'не сохранено')); return; }
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
     setSaveMsg('Сохранено ✓');
@@ -311,12 +311,18 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     const newVal = !features[id];
     setFeatures(s => ({ ...s, [id]: newVal }));  // optimistic
     const nextAddons = { ...(trip?.details?.addons || {}), [feat.addon]: newVal };
-    const { error } = await supabase.from('trips').update({
-      details: { ...(trip?.details || {}), addons: nextAddons },
-    }).eq('id', tripId);
-    if (error) {
+    // trips RLS is owner-only → write via edge function (owner+admin, pro-gated).
+    const { data, error } = await supabase.functions.invoke('updateTripSettings', {
+      body: { tripId, addons: nextAddons },
+    });
+    if (error || !data?.ok) {
       setFeatures(s => ({ ...s, [id]: !newVal }));  // revert
-      alert('Не удалось сохранить: ' + error.message);
+      if (data?.code === 'PRO_REQUIRED') {
+        if (isOwner) setProLocked({ open: true, feature: feat?.label || '' });
+        else setTripProInfo({ open: true, feature: feat?.label || '' });
+      } else {
+        alert('Не удалось сохранить: ' + (error?.message || data?.code || 'ошибка'));
+      }
       return;
     }
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
