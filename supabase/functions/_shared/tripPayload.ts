@@ -1,28 +1,46 @@
 /**
  * Shared full-trip payload builder.
  *
- * Returns the trip plus every related collection (cities, hotels, activities,
- * transfers, services, members, budget + categories + expenses) for `tripId`.
+ * buildTripData(tripId) returns the trip plus every related collection
+ * (cities, hotels, activities, transfers, services, members, budget +
+ * categories + expenses) as a plain object, or null if the trip is missing.
  *
- * Used by the server-to-server endpoints getTripById and
- * getTripByTelegramChatId. Runs with the service-role client (bypasses RLS),
- * so callers MUST authenticate the request (requireN8nSecret) before invoking
- * this — it performs NO access control of its own.
+ * fetchTripPayload(tripId) wraps buildTripData in an HTTP Response and is used
+ * by getTripById (single-trip contract — unchanged).
+ *
+ * getTripByTelegramChatId builds its own { trips: [...] } array response on top
+ * of buildTripData (a chat may be linked to several trips).
+ *
+ * Runs with the service-role client (bypasses RLS), so callers MUST
+ * authenticate the request (requireN8nSecret) before invoking this — it
+ * performs NO access control of its own.
  */
 
 import { supabaseAdmin } from './supabaseAdmin.ts';
 import { corsHeaders } from './cors.ts';
 
-export async function fetchTripPayload(tripId: string): Promise<Response> {
+export interface TripData {
+  trip: Record<string, unknown>;
+  cityVisits: unknown[];
+  hotels: unknown[];
+  activities: unknown[];
+  transfers: unknown[];
+  services: unknown[];
+  members: unknown[];
+  budget: unknown | null;
+  budgetCategories: unknown[];
+  budgetExpenses: unknown[];
+}
+
+/** Builds the full trip object for `tripId`, or null when the trip is missing. */
+export async function buildTripData(tripId: string): Promise<TripData | null> {
   const { data: trip, error: tripErr } = await supabaseAdmin
     .from('trips')
     .select('*')
     .eq('id', tripId)
     .single();
 
-  if (tripErr || !trip) {
-    return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
-  }
+  if (tripErr || !trip) return null;
 
   const [
     { data: cityVisits },
@@ -46,7 +64,7 @@ export async function fetchTripPayload(tripId: string): Promise<Response> {
     supabaseAdmin.from('budget_expenses').select('*').eq('trip_id', tripId),
   ]);
 
-  return Response.json({
+  return {
     trip,
     cityVisits: cityVisits ?? [],
     hotels: hotels ?? [],
@@ -57,5 +75,14 @@ export async function fetchTripPayload(tripId: string): Promise<Response> {
     budget: (budgetArr ?? [])[0] ?? null,
     budgetCategories: budgetCategories ?? [],
     budgetExpenses: budgetExpenses ?? [],
-  }, { headers: corsHeaders });
+  };
+}
+
+/** Single-trip HTTP wrapper used by getTripById (contract unchanged). */
+export async function fetchTripPayload(tripId: string): Promise<Response> {
+  const data = await buildTripData(tripId);
+  if (!data) {
+    return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
+  }
+  return Response.json(data, { headers: corsHeaders });
 }
