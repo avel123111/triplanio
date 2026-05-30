@@ -15,10 +15,13 @@ set -euo pipefail
 REF="${1:?Usage: $0 <PROJECT_REF>}"
 
 # Functions that must keep verify_jwt = FALSE (webhooks / public / automation / no-JWT callers)
-NO_JWT=(getTripDetails stripe-webhook telegramWebhook triplanioAiReply seedTripBudget syncTripExpense)
+# NOTE: getTripDetails was moved to the JWT list — it must require auth. It used
+# to be here as a base44 carry-over, but on Supabase verify_jwt=false exposed the
+# full trip payload to anyone with the public anon key + a tripId (fail-open).
+NO_JWT=(stripe-webhook telegramWebhook triplanioAiReply seedTripBudget syncTripExpense)
 
 # Functions with verify_jwt = TRUE (default)
-JWT=(inviteTripMember respondTripInvite removeTripMember updateTripMemberRole resolveProfiles \
+JWT=(getTripDetails inviteTripMember respondTripInvite removeTripMember updateTripMemberRole resolveProfiles \
      resendTripInvite getUserPlan createStripeCheckout createBillingPortal telegramStartLink \
      ensureShareToken copyTrip deleteMyAccount checkSubscriptionStatus getActiveTrips \
      telegramDisconnect addOfflineTripMember callTriplanioAi)

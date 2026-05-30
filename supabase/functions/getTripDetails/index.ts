@@ -13,9 +13,11 @@
  *   'budget'    — budget + categories + expenses
  *   'documents' — documents
  *
- * Access: caller must be the trip creator (created_by == user.email)
- * or an active TripMember. Server-to-server calls without a JWT bypass
- * this check (service-role / internal calls).
+ * Access: authentication is REQUIRED. The caller must be the trip creator
+ * (created_by == user.id) or an active TripMember. There is NO trusted
+ * no-JWT path — the SPA always sends a user token, and public read-only
+ * viewing goes through getPublicTrip. Fails CLOSED: any request we can't tie
+ * to an authorized user is rejected, never served data.
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
@@ -28,8 +30,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Identify caller. Absent JWT = trusted server-to-server call.
+    // Identify caller — REQUIRED. getRequestUser returns null when there is no
+    // Authorization header OR when the token is not a real user token (e.g. the
+    // public anon key shipped in the frontend bundle). Either way: deny.
     const user = await getRequestUser(req);
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    }
 
     const { tripId, include } = await req.json();
     if (!tripId) {
@@ -63,24 +70,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
     }
 
-    // Access check — only when a user JWT was provided
-    if (user) {
-      const isCreator = trip.created_by === user.id;
+    // Access check — ALWAYS runs (user is guaranteed non-null above).
+    // Caller must be the trip creator or an active member.
+    const isCreator = trip.created_by === user.id;
+    if (!isCreator) {
+      const { data: memberRows } = await supabaseAdmin
+        .from('trip_members')
+        .select('id')
+        .eq('trip_id', tripId)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .limit(1);
 
-      if (!isCreator) {
-        const { data: memberRows } = await supabaseAdmin
-          .from('trip_members')
-          .select('id')
-          .eq('trip_id', tripId)
-          .eq('user_id', user.id)
-          .eq('status', 'active')
-          .limit(1);
+      const isMember = (memberRows ?? []).length > 0;
 
-        const isMember = (memberRows ?? []).length > 0;
-
-        if (!isMember) {
-          return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
-        }
+      if (!isMember) {
+        return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
       }
     }
 
