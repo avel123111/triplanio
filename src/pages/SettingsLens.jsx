@@ -313,6 +313,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     }
     setSaving(false);
     if (error || !data?.ok) { setSaveMsg('Ошибка: ' + (error?.message || data?.code || 'не сохранено')); return; }
+    // Optimistically patch the shell cache so the header/title updates instantly,
+    // then invalidate to reconcile with the server.
+    queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
+      old?.trip ? { ...old, trip: { ...old.trip, title: title.trim(), details: { ...(old.trip.details || {}), main_currency: currency } } } : old);
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
     setSaveMsg('Сохранено ✓');
@@ -393,6 +397,20 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             </div>
             <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>Бюджет агрегируется в эту валюту.</div>
           </Field>
+
+          {/* Trip-level display toggle — lives here in "Основное" alongside the
+              other core trip settings. `display` is an extensible bag, so future
+              show/hide toggles slot in as more rows here. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingTop: 14, borderTop: '1px solid var(--line-2)' }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--warm)22', color: 'var(--warm)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Icon name="warning" size={17} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Предупреждения о пропущенных бронях</div>
+              <div className="muted" style={{ fontSize: 12 }}>Подсказки «нет переезда» и «нет жилья» в хронологии. Выключи, если план намеренно неполный.</div>
+            </div>
+            <Toggle on={bookingWarnings} onChange={toggleBookingWarnings} />
+          </div>
         </div>
       </Card>
 
@@ -403,20 +421,6 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <FeatureRow key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
               onChange={() => toggleFeature(f.id, f.pro)} last={i === FEATURES.length - 1} />
           ))}
-        </div>
-      </Card>
-
-      {/* Display toggles (trip-level) */}
-      <Card title="Отображение" subtitle="Что показывать в этом трипе" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '4px 0' }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--warm)22', color: 'var(--warm)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-            <Icon name="warning" size={17} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 13.5 }}>Предупреждения о пропущенных бронях</div>
-            <div className="muted" style={{ fontSize: 12 }}>Подсказки «нет переезда» и «нет жилья» в хронологии. Выключи, если план намеренно неполный.</div>
-          </div>
-          <Toggle on={bookingWarnings} onChange={toggleBookingWarnings} />
         </div>
       </Card>
 

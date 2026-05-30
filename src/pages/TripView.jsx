@@ -668,13 +668,15 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
   );
 }
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity }) {
+function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
   const weatherByDay = useWeatherByDay(visits);  // hook must run before any early return
   if (isLoading) return <SkeletonTimeline />;
 
-  // Trip-level display toggle (default ON). Hides missing-transfer / missing-hotel
-  // hints when the owner/admin turned them off in Settings.
-  const showBookingWarnings = trip?.details?.display?.booking_warnings !== false;
+  // Show missing-transfer / missing-hotel hints only when (a) the trip-level
+  // toggle is on (default on) AND (b) the current user can act on them. Viewers
+  // (Зрители) never see them — they can't add bookings, so it's just noise that
+  // exposes planning gaps.
+  const showBookingWarnings = !isViewer && trip?.details?.display?.booking_warnings !== false;
 
   if (!trip.start_date && !trip.end_date && !visits.length) {
     return (
@@ -1180,7 +1182,11 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
               ? <Btn variant="primary" size="sm" icon="check" onClick={onToggleEdit}>Готово</Btn>
               : <Btn variant="ghost" size="sm" icon="edit" onClick={onToggleEdit}>Редактировать</Btn>
           )}
-          <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>Поделиться</Btn>
+          {/* Only owner/admin can mint a share token (ensureShareToken is admin-only);
+              showing this to a viewer just produced a 403 "не удалось создать ссылку". */}
+          {myRole !== 'viewer' && (
+            <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>Поделиться</Btn>
+          )}
           <Btn variant="ghost" size="sm" icon="download" onClick={() => window.print()}>Экспорт</Btn>
           <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
         </div>
@@ -1773,6 +1779,7 @@ export default function TripView() {
                   visits={visits}
                   transfers={transfers}
                   trip={trip}
+                  isViewer={myRole === 'viewer'}
                   isLoading={loadingContent}
                   onAddTransfer={(fromVisit, toVisit) =>
                     setTransferChoice({ open: true, fromVisit, toVisit })

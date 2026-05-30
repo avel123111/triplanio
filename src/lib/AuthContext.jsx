@@ -123,17 +123,25 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
     } catch (error) {
       console.error('Failed to load user profile:', error);
-      loadingForRef.current = null; // allow retry
       setAuthError({ type: 'unknown', message: error.message });
       setIsAuthenticated(false);
       setIsLoadingAuth(false);
       setAuthChecked(true);
+    } finally {
+      // Release the in-flight guard. It exists only to dedupe CONCURRENT loads
+      // (SIGNED_IN + INITIAL_SESSION firing together on page load). If it stayed
+      // pinned to the user id forever, a later checkUserAuth() — e.g. right after
+      // saving the profile — would early-return and never re-fetch, so the updated
+      // name never reached the context and looked like it "didn't save".
+      loadingForRef.current = null;
     }
   };
 
   const checkUserAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
+      // Force a genuine re-fetch even if this user was already loaded once.
+      loadingForRef.current = null;
       await loadUserProfile(session.user);
     }
   };
