@@ -71,53 +71,58 @@ function DateDivider({ date }) {
 
 // ─── Msg ──────────────────────────────────────────────────────────────────────
 
-function Msg({ who, isMe, isAi, text, time, grouped }) {
+function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl }) {
   const bubbleBg    = isMe ? 'var(--brand)' : isAi ? 'var(--ai-soft)' : 'var(--wash)';
   const bubbleColor = isMe ? '#fff' : 'var(--ink)';
   const nameColor   = isAi ? 'var(--ai)' : 'var(--ink)';
   const radius      = isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 2 : 0 }}>
-      {!grouped && !isMe && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, paddingLeft: 2 }}>
-          {isAi && <TriplanioAvatar size="xs" />}
-          {!isAi && <Avatar name={who} size="sm" />}
-          <span style={{ fontWeight: 600, fontSize: 12, color: nameColor }}>{who}</span>
-          <span style={{ fontSize: 11, color: 'var(--muted)' }}>{time}</span>
+    <div style={{ display: 'flex', gap: 8, justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 2 : 0 }}>
+      {/* Incoming: avatar in its own left column; a spacer keeps grouped bubbles aligned. */}
+      {!isMe && (
+        grouped
+          ? <div style={{ width: 28, flexShrink: 0 }} aria-hidden />
+          : (isAi ? <TriplanioAvatar size="sm" /> : <Avatar name={who} photo={avatarUrl || ''} size="sm" style={{ flexShrink: 0 }} />)
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', minWidth: 0, maxWidth: '78%' }}>
+        {!grouped && !isMe && (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 3, paddingLeft: 2 }}>
+            <span style={{ fontWeight: 600, fontSize: 12, color: nameColor }}>{who}</span>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>{time}</span>
+          </div>
+        )}
+        <div style={{
+          padding: '8px 12px',
+          background: bubbleBg,
+          color: bubbleColor,
+          fontSize: 13.5,
+          borderRadius: radius,
+          lineHeight: 1.45,
+          wordBreak: 'break-word',
+        }}>
+          <ChatMarkdown
+            text={text}
+            mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
+            linkClassName={isMe ? 'underline' : 'underline text-primary'}
+          />
         </div>
-      )}
-      <div style={{
-        padding: '8px 12px',
-        background: bubbleBg,
-        color: bubbleColor,
-        fontSize: 13.5,
-        borderRadius: radius,
-        maxWidth: '78%',
-        lineHeight: 1.45,
-        wordBreak: 'break-word',
-      }}>
-        <ChatMarkdown
-          text={text}
-          mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
-          linkClassName={isMe ? 'underline' : 'underline text-primary'}
-        />
+        {isMe && !grouped && (
+          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2, paddingRight: 2 }}>{time}</div>
+        )}
       </div>
-      {isMe && !grouped && (
-        <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2, paddingRight: 2 }}>{time}</div>
-      )}
     </div>
   );
 }
 
 // ─── ChatMember ───────────────────────────────────────────────────────────────
 
-function ChatMember({ name, role, ai }) {
+function ChatMember({ name, role, ai, avatarUrl }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       {ai
         ? <TriplanioAvatar size="sm" />
-        : <Avatar name={name} className="w-7 h-7" style={{ width: 28, height: 28, fontSize: 11 }} />}
+        : <Avatar name={name} photo={avatarUrl || ''} size="sm" />}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
         <div className="muted" style={{ fontSize: 11 }}>{role}</div>
@@ -161,6 +166,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   // ── Resolve participant display names ──
   const profileIds = [
     ...members.map(m => m.user_id),
+    ownerId,          // owner often has no trip_members row → resolve explicitly
     user?.id,
   ].filter(Boolean);
   const profiles = useUserProfiles(profileIds, tripId);
@@ -361,6 +367,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         text={m.text || ''}
         time={fmtMsgTime(m.created_at)}
         grouped={grouped}
+        avatarUrl={profiles[m.user_id]?.avatar_url}
       />,
     );
   }
@@ -516,6 +523,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                 <ChatMember
                   key={m.id}
                   name={nameFor(m.user_id)}
+                  avatarUrl={profiles[m.user_id]?.avatar_url}
                   role={m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель'}
                 />
               ))

@@ -1188,7 +1188,11 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
             <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>Поделиться</Btn>
           )}
           <Btn variant="ghost" size="sm" icon="download" onClick={() => window.print()}>Экспорт</Btn>
-          <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
+          {/* The "…" menu only holds owner/admin actions (edit, settings, delete) —
+              every item is unavailable to a viewer, so hide the whole button. */}
+          {myRole !== 'viewer' && (
+            <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
+          )}
         </div>
       </div>
     </div>
@@ -1353,7 +1357,7 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
               : m.role === 'admin' ? 'Админ' : 'Зритель';
             return (
               <div key={m.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (isPending || isOffline) ? 0.65 : 1 }}>
-                <Avatar name={name} size="lg" />
+                <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1.3 }}>
                     <Icon name={roleIcon} size={11} style={{ color: roleColor, flexShrink: 0 }} />

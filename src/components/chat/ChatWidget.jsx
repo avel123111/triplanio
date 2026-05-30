@@ -87,8 +87,9 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, chatId, user?.id]);
 
-  // ── Display names ──
-  const profileIds = members.map((m) => m.user_id).filter(Boolean);
+  // ── Display names ── include the owner: they usually have NO trip_members
+  // row, so without this the owner's name/avatar never resolve in the chat.
+  const profileIds = [...members.map((m) => m.user_id), ownerId].filter(Boolean);
   const profiles = useUserProfiles(profileIds, tripId);
   const nameFor = (userId) => {
     let real = profiles[userId]?.full_name;
@@ -227,6 +228,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             <Avatar
               key={m.id || i}
               name={nameFor(m.user_id)}
+              photo={profiles[m.user_id]?.avatar_url || ''}
               size="sm"
               style={{ marginLeft: i === 0 ? 0 : -8, border: '1.5px solid var(--surface)', borderRadius: '50%', zIndex: 4 - i }}
             />
@@ -269,28 +271,38 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           })();
           const bubbleBg = isMe ? 'var(--brand)' : isAi ? 'var(--ai-soft)' : 'var(--wash)';
           return (
-            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 2 : 0 }}>
-              {!grouped && !isMe && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2, paddingLeft: 2 }}>
-                  {isAi ? <TriplanioAvatar size="xs" /> : <Avatar name={who} style={{ width: 22, height: 22, fontSize: 10 }} />}
-                  <span style={{ fontSize: 11.5, fontWeight: 600, color: isAi ? 'var(--ai)' : 'var(--ink)' }}>{who}</span>
-                  <span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{time}</span>
+            <div key={m.id} style={{ display: 'flex', gap: 8, justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 2 : 0 }}>
+              {/* Left avatar column for incoming messages (spacer keeps grouped
+                  bubbles aligned under the first message's avatar). */}
+              {!isMe && (
+                grouped
+                  ? <div style={{ width: 28, flexShrink: 0 }} aria-hidden />
+                  : (isAi
+                      ? <TriplanioAvatar size="sm" />
+                      : <Avatar name={who} photo={profiles[m.user_id]?.avatar_url || ''} size="sm" style={{ flexShrink: 0 }} />)
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', minWidth: 0, maxWidth: '82%' }}>
+                {!grouped && !isMe && (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2, paddingLeft: 2 }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 600, color: isAi ? 'var(--ai)' : 'var(--ink)' }}>{who}</span>
+                    <span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{time}</span>
+                  </div>
+                )}
+                <div style={{
+                  padding: '7px 11px', background: bubbleBg, color: isMe ? '#fff' : 'var(--ink)',
+                  fontSize: 13, borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+                  lineHeight: 1.45, wordBreak: 'break-word',
+                  opacity: m.__pending ? 0.7 : 1,
+                }}>
+                  <ChatMarkdown
+                    text={m.text || ''}
+                    mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
+                  />
                 </div>
-              )}
-              <div style={{
-                padding: '7px 11px', background: bubbleBg, color: isMe ? '#fff' : 'var(--ink)',
-                fontSize: 13, borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-                maxWidth: '82%', lineHeight: 1.45, wordBreak: 'break-word',
-                opacity: m.__pending ? 0.7 : 1,
-              }}>
-                <ChatMarkdown
-                  text={m.text || ''}
-                  mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
-                />
+                {isMe && !grouped && (
+                  <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1, paddingRight: 2 }}>{time}</div>
+                )}
               </div>
-              {isMe && !grouped && (
-                <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1, paddingRight: 2 }}>{time}</div>
-              )}
             </div>
           );
         })}
@@ -336,7 +348,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <Avatar name={n} style={{ width: 22, height: 22, fontSize: 10 }} />
+                  <Avatar name={n} photo={profiles[m.user_id]?.avatar_url || ''} size="sm" />
                   <div style={{ fontSize: 12.5, fontWeight: 500 }}>{n}</div>
                 </button>
               );

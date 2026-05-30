@@ -50,28 +50,32 @@ export default function ChatMessageBubble({
   const linkClassName = isMine ? 'underline opacity-80' : 'underline text-primary';
 
   return (
-    <div className={`flex gap-2 items-end ${isMine ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
       {!isMine && (
         showAuthor ? (
           isBot ? (
-            <TriplanioAvatar size="sm" ring={false} tripId={tripId} avatarUrl={botAvatarUrl} className="shrink-0 mb-5" />
+            <TriplanioAvatar size="sm" ring={false} tripId={tripId} avatarUrl={botAvatarUrl} className="shrink-0" />
           ) : (
             <UserAvatar
               name={displayNm}
               avatarUrl={authorAvatarUrl}
               size="sm"
               ring={false}
-              className="shrink-0 mb-5"
+              className="shrink-0"
             />
           )
         ) : (
           <div className="w-7 shrink-0" aria-hidden />
         )
       )}
-      <div className={`max-w-[80%] sm:max-w-[70%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
-        {!isMine && showAuthor && (
-          <div className={`text-xs font-medium mb-0.5 px-1 truncate max-w-full`} style={{ color: isBot ? 'var(--ai)' : 'var(--muted-foreground)' }}>
-            {displayNm}
+      <div className={`max-w-[80%] sm:max-w-[70%] flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
+        {/* Header: name + time for incoming (first of a group); time only for own messages. */}
+        {showAuthor && !isMine && (
+          <div className="flex items-baseline gap-2 mb-0.5 px-1">
+            <span className="text-xs font-semibold truncate max-w-[170px]" style={{ color: isBot ? 'var(--ai)' : 'var(--ink)' }}>
+              {displayNm}
+            </span>
+            <span className="text-[10px] shrink-0" style={{ color: 'var(--muted)' }}>{time}</span>
           </div>
         )}
         <div
@@ -84,9 +88,9 @@ export default function ChatMessageBubble({
             linkClassName={linkClassName}
           />
         </div>
-        <div className="text-[10px] mt-0.5 px-1" style={{ color: 'var(--muted)' }}>
-          {time}
-        </div>
+        {isMine && (
+          <div className="text-[10px] mt-0.5 px-1" style={{ color: 'var(--muted)' }}>{time}</div>
+        )}
       </div>
     </div>
   );

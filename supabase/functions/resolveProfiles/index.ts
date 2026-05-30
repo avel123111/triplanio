@@ -71,13 +71,14 @@ Deno.serve(async (req) => {
     // Single batch query — no N+1
     const { data: userRows } = await supabaseAdmin
       .from('users')
-      .select('id, full_name, avatar_url')
+      .select('id, full_name, avatar_url, email')
       .in('id', allowedIds);
 
-    const profiles = (userRows ?? []).map((u: { id: string; full_name: string | null; avatar_url: string | null }) => ({
+    const profiles = (userRows ?? []).map((u: { id: string; full_name: string | null; avatar_url: string | null; email: string | null }) => ({
       id: u.id,
       full_name: u.full_name || '',
       avatar_url: u.avatar_url || '',
+      email: u.email || '',
     }));
 
     return Response.json({ profiles }, { headers: corsHeaders });

@@ -14,18 +14,18 @@ const AVATAR_COLORS = [
 ];
 function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
 
-export const Avatar = ({ name = "?", size, role, kind, photo, className = "" }) => {
+export const Avatar = ({ name = "?", size, role, kind, photo, className = "", style: styleProp }) => {
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
   if (kind === "ai") {
-    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`}>AI</div>;
+    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp}>AI</div>;
   }
   if (kind === "placeholder") {
-    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--placeholder ${className}`}>{initials}</div>;
+    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--placeholder ${className}`} style={styleProp}>{initials}</div>;
   }
   const [a, b] = AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length];
   const style = photo
-    ? { backgroundImage: `url(${photo})`, backgroundSize: "cover", backgroundPosition: "center" }
-    : { background: `linear-gradient(135deg, ${a}, ${b})` };
+    ? { backgroundImage: `url(${photo})`, backgroundSize: "cover", backgroundPosition: "center", ...styleProp }
+    : { background: `linear-gradient(135deg, ${a}, ${b})`, ...styleProp };
   return (
     <div className={`avatar ${size ? "avatar--" + size : ""} ${className}`} style={style}>
       {!photo && initials}

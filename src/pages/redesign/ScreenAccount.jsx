@@ -414,19 +414,47 @@ export default function ScreenAccount() {
     setUploadingAvatar(true);
     setErrorMsg(null);
     try {
-      const ext = file.name.split('.').pop().toLowerCase();
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
       const path = `${user.id}/avatar.${ext}`;
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type });
+        .upload(path, file, { upsert: true, contentType: file.type || undefined });
       if (uploadErr) throw uploadErr;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      setAvatarUrl(`${publicUrl}?t=${Date.now()}`);
+      const url = `${publicUrl}?t=${Date.now()}`;
+      // Persist immediately to the users row so the avatar survives a reload
+      // WITHOUT needing a separate "Сохранить" click, and refresh the auth
+      // context so it shows everywhere (header, members, chat) right away.
+      const { error: dbErr } = await supabase.from('users').update({ avatar_url: url }).eq('id', user.id);
+      if (dbErr) throw dbErr;
+      setAvatarUrl(url);
+      await checkUserAuth?.();
     } catch (e) {
       console.error('avatar upload error:', e);
       setErrorMsg('Ошибка загрузки аватара: ' + (e.message || String(e)));
     } finally {
       setUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!user) return;
+    setErrorMsg(null);
+    const prev = avatarUrl;
+    setAvatarUrl(''); // optimistic
+    try {
+      const { error } = await supabase.from('users').update({ avatar_url: null }).eq('id', user.id);
+      if (error) throw error;
+      // Best-effort storage cleanup (don't fail the action if this part errors).
+      try {
+        const { data: files } = await supabase.storage.from('avatars').list(user.id);
+        if (files?.length) await supabase.storage.from('avatars').remove(files.map(f => `${user.id}/${f.name}`));
+      } catch { /* ignore */ }
+      await checkUserAuth?.();
+    } catch (e) {
+      console.error('avatar remove error:', e);
+      setAvatarUrl(prev);
+      setErrorMsg('Ошибка удаления аватара: ' + (e.message || String(e)));
     }
   };
 
@@ -588,7 +616,7 @@ export default function ScreenAccount() {
             <input
               ref={avatarInputRef}
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
               style={{ display: 'none' }}
               onChange={e => handleAvatarUpload(e.target.files?.[0])}
             />
@@ -599,12 +627,13 @@ export default function ScreenAccount() {
               {avatarUrl && (
                 <div style={{ marginTop: 8 }}>
                   <button
-                    onClick={() => setAvatarUrl('')}
-                    style={{ padding: '4px 10px', background: 'transparent', border: 'none', color: 'var(--danger)', fontSize: 12, fontWeight: 500, cursor: 'pointer', borderRadius: 6 }}
+                    onClick={handleRemoveAvatar}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'transparent', border: 'none', color: 'var(--danger)', fontSize: 12, fontWeight: 500, cursor: 'pointer', borderRadius: 6, lineHeight: 1 }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--danger-soft)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    <Icon name="trash" size={11} style={{ verticalAlign: -1, marginRight: 4 }} />Удалить аватар
+                    <Icon name="trash" size={12} />
+                    <span>Удалить аватар</span>
                   </button>
                 </div>
               )}

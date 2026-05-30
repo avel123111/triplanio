@@ -17,7 +17,7 @@ async function fetchProfiles(tripId, userIds) {
     const list = res?.data?.profiles || [];
     const map = {};
     for (const p of list) {
-      if (p?.id) map[p.id] = { full_name: p.full_name || '', avatar_url: p.avatar_url || '' };
+      if (p?.id) map[p.id] = { full_name: p.full_name || '', avatar_url: p.avatar_url || '', email: p.email || '' };
     }
     return map;
   } catch {

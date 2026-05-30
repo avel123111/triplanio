@@ -310,6 +310,9 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
             || '';
           const name = displayName(m.invite_email, realName);
           const hasRealName = !!realName;
+          // Email line: invite_email for invited members, else the resolved
+          // account email (covers the owner, who has no trip_members row).
+          const emailLine = m.invite_email || profile?.email || '';
 
           return (
             <div key={m.id || i} style={{
@@ -322,14 +325,14 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
               opacity: isRemoving ? 0.5 : 1,
               transition: 'opacity 0.2s',
             }}>
-              <Avatar name={name} size="lg" />
+              <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                   {name}
                   {m.user_id === user?.id && <Badge variant="quiet" style={{ fontSize: 10 }}>Вы</Badge>}
                 </div>
-                {hasRealName && m.invite_email && (
-                  <div className="muted" style={{ fontSize: 12.5 }}>{m.invite_email}</div>
+                {hasRealName && emailLine && (
+                  <div className="muted" style={{ fontSize: 12.5 }}>{emailLine}</div>
                 )}
               </div>
 

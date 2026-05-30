@@ -398,18 +398,29 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>Бюджет агрегируется в эту валюту.</div>
           </Field>
 
-          {/* Trip-level display toggle — lives here in "Основное" alongside the
-              other core trip settings. `display` is an extensible bag, so future
-              show/hide toggles slot in as more rows here. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingTop: 14, borderTop: '1px solid var(--line-2)' }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--warm)22', color: 'var(--warm)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-              <Icon name="warning" size={17} />
+          <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)', margin: 0 }} />
+
+          {/* Warnings — section header + per-warning toggles (design: trip-settings.jsx §29).
+              `display` in trip.details is an extensible bag, so future warning/display
+              toggles slot in as more rows under this same header. */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Icon name="warning" size={17} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 13.5 }}>Предупреждения</div>
+                <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>Бейджи и баннеры о проблемах в плане этого трипа.</div>
+              </div>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Предупреждения о пропущенных бронях</div>
-              <div className="muted" style={{ fontSize: 12 }}>Подсказки «нет переезда» и «нет жилья» в хронологии. Выключи, если план намеренно неполный.</div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>Предупреждения об отсутствии бронирований</div>
+                <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.45 }}>Например: нет переезда между городами или на даты не забронирован отель.</div>
+              </div>
+              <Toggle on={bookingWarnings} onChange={toggleBookingWarnings} />
             </div>
-            <Toggle on={bookingWarnings} onChange={toggleBookingWarnings} />
           </div>
         </div>
       </Card>
