@@ -31,6 +31,25 @@ import {
 const MAX_FILES = 3;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
+// n8n wraps the webhook response differently depending on which node answers:
+// a bare object, an array of items, a { kind, data } envelope, or a node-named
+// wrapper like { output: {...} }. Descend through any of those wrappers until we
+// reach the object that actually carries the booking fields.
+function extractBookingPayload(node, depth = 0) {
+  if (node == null || depth > 6) return node || {};
+  if (Array.isArray(node)) return extractBookingPayload(node[0], depth + 1);
+  if (typeof node !== 'object') return {};
+  const isBooking = ['segments', 'name', 'from_address', 'check_in_date', 'booking_platform', 'booking_reference', 'booking_url']
+    .some((k) => k in node);
+  if (isBooking) return node;
+  for (const key of ['output', 'data', 'json', 'body', 'result', 'response']) {
+    if (node[key] != null) return extractBookingPayload(node[key], depth + 1);
+  }
+  const keys = Object.keys(node);
+  if (keys.length === 1) return extractBookingPayload(node[keys[0]], depth + 1);
+  return node;
+}
+
 // ── Component ───────────────────────────────────────────────────────────────
 
 export default function EventAiBlock({
@@ -121,10 +140,16 @@ export default function EventAiBlock({
       if (invokeErr) throw invokeErr;
       if (invoked?.error) throw new Error(invoked.error);
 
-      // n8n may wrap the payload as { kind, data, schema } or return it flat.
-      const result = (invoked && typeof invoked === 'object' && invoked.data && typeof invoked.data === 'object')
-        ? invoked.data
-        : (invoked || {});
+      // Peel any n8n wrappers (array / { output } / { kind, data } / …) down to
+      // the object that actually holds the booking fields.
+      const result = extractBookingPayload(invoked);
+
+      // Normalise transport_type synonyms the model may emit (e.g. "flight")
+      // to the enum the form expects ("plane").
+      if (kind === 'transfer' && Array.isArray(result.segments)) {
+        const TT = { flight: 'plane', air: 'plane', airplane: 'plane', rail: 'train', boat: 'ferry', shuttle: 'bus' };
+        result.segments.forEach((s) => { if (s && TT[s.transport_type]) s.transport_type = TT[s.transport_type]; });
+      }
 
       if (!result.booking_platform && result.booking_url) {
         const p = detectPlatformFromUrl(result.booking_url);
