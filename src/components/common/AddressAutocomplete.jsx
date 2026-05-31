@@ -97,14 +97,26 @@ export default function AddressAutocomplete({
         const res = await supabase.functions.invoke('placesAutocomplete', {
           body: {
             action: 'details',
-            place_id: p.place_id,
+            // Edge fn expects `placeId` (camelCase). Sending `place_id` made it
+            // 400 → details never resolved → coords never reached the form.
+            placeId: p.place_id,
             sessionToken,
             language: effectiveLang,
           },
         });
-        if (res?.data && !res.data.error) {
+        // Edge fn returns { result: <google place> } with coords nested under
+        // result.geometry.location. Flatten to the shape consumers expect
+        // (see JSDoc): { formatted_address, name, latitude, longitude, ... }.
+        const r = res?.data?.result;
+        if (r) {
           onPlaceSelected({
-            ...res.data,
+            formatted_address: r.formatted_address,
+            name: r.name,
+            latitude: r.geometry?.location?.lat ?? null,
+            longitude: r.geometry?.location?.lng ?? null,
+            utc_offset_minutes: r.utc_offset_minutes,
+            address_components: r.address_components,
+            place_id: p.place_id,
             description: p.description,
           });
         }

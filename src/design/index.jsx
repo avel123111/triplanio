@@ -818,9 +818,10 @@ function TransferRowV11({ e, onClick }) {
       onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
       onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
       <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
-      {/* ~25% taller than other event rows (padding 13→23); the time/rail/from-to
-          columns use space-between/center so the icon + duration stay centered. */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "stretch", gap: 12, padding: "23px 16px" }}>
+      {/* Taller card via minHeight (not padding), so the time/rail/from-to columns
+          (all justify-content:space-between) stretch top→bottom: from/to anchor to
+          the edges, duration + icon stay centered. Vertical margin matches mobile (13px). */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "stretch", gap: 12, padding: "13px 16px", minHeight: 76 }}>
         {/* time / duration / arrive */}
         <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14.5, color: "var(--ink)", minWidth: 52, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
           <span style={{ whiteSpace: "nowrap" }}>{e.time || "—"}</span>
