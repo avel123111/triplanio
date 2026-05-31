@@ -79,18 +79,54 @@ function FeatureRow({ feat, on, onChange, hasPro, last }) {
 }
 
 // ─── TelegramConnectDialog ────────────────────────────────────────────────────
+// Real binding flow: telegramStartLink → open deep link → poll telegramGetIntegration
+// until a new binding appears (user pressed Start in Telegram).
 
-function TelegramConnectDialog() {
-  const [stage, setStage] = useState('idle');
-  const [countdown, setCountdown] = useState(600);
+function TelegramConnectDialog({ tripId, onLinked }) {
+  const [stage, setStage] = useState('loading'); // loading | idle | waiting | connected | error
+  const [url, setUrl] = useState('');
+  const [errText, setErrText] = useState('');
+  const baselineRef = React.useRef(0);
 
+  // Generate the one-time deep link when the dialog opens.
   useEffect(() => {
-    if (stage !== 'connecting') return;
-    const id = setInterval(() => setCountdown(c => Math.max(0, c - 1)), 1000);
-    return () => clearInterval(id);
-  }, [stage]);
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.functions.invoke('telegramStartLink', { body: { tripId } });
+      if (cancelled) return;
+      if (error || !data?.url) {
+        setErrText('Не удалось создать ссылку. Попробуйте позже.');
+        setStage('error');
+        return;
+      }
+      setUrl(data.url);
+      setStage('idle');
+    })();
+    return () => { cancelled = true; };
+  }, [tripId]);
 
-  const mmss = `${String(Math.floor(countdown / 60)).padStart(2, '0')}:${String(countdown % 60).padStart(2, '0')}`;
+  // While waiting, poll for the new binding.
+  useEffect(() => {
+    if (stage !== 'waiting') return;
+    const id = setInterval(async () => {
+      const { data } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
+      const count = data?.integrations?.length ?? 0;
+      if (count > baselineRef.current) {
+        clearInterval(id);
+        onLinked?.();
+        setStage('connected');
+      }
+    }, 3000);
+    return () => clearInterval(id);
+  }, [stage, tripId, onLinked]);
+
+  const openBot = async () => {
+    // Snapshot the current binding count, then send the user to the bot.
+    const { data } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
+    baselineRef.current = data?.integrations?.length ?? 0;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setStage('waiting');
+  };
 
   return (
     <Dialog title="Привязать Telegram" icon="telegram" size=""
@@ -99,19 +135,26 @@ function TelegramConnectDialog() {
         Привяжите Telegram, чтобы получать напоминания об отелях, переездах и активностях для этого трипа.
       </div>
 
+      {stage === 'loading' && (
+        <div className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 20 }}>
+          <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
+          Генерируем персональную ссылку…
+        </div>
+      )}
+
+      {stage === 'error' && (
+        <div style={{ padding: 14, background: 'var(--danger-soft)', borderRadius: 12, fontSize: 13, lineHeight: 1.5 }}>
+          {errText}
+        </div>
+      )}
+
       {stage === 'idle' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-              <Icon name="telegram" size={17} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Telegram не подключён</div>
-              <div className="muted" style={{ fontSize: 11.5 }}>Для этого трипа</div>
-            </div>
-            <Badge variant="quiet">Не подключён</Badge>
+          <div style={{ marginBottom: 16 }}>
+            <div className="eyebrow" style={{ marginBottom: 6 }}>Персональная ссылка · действует 10 минут</div>
+            <input className="input mono" value={url} readOnly style={{ fontSize: 12 }} />
           </div>
-          <Btn variant="primary" icon="telegram" block onClick={() => { setStage('connecting'); setCountdown(600); }}>
+          <Btn variant="primary" icon="telegram" block onClick={openBot}>
             Открыть Triplanio-бот в Telegram
           </Btn>
           <div className="muted" style={{ fontSize: 11.5, marginTop: 14, lineHeight: 1.5, textAlign: 'center' }}>
@@ -120,7 +163,7 @@ function TelegramConnectDialog() {
         </>
       )}
 
-      {stage === 'connecting' && (
+      {stage === 'waiting' && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: '#0088cc11', border: '1px solid #0088cc33', borderRadius: 12, marginBottom: 16 }}>
             <div style={{ width: 36, height: 36, borderRadius: 9, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center' }}>
@@ -130,15 +173,13 @@ function TelegramConnectDialog() {
               <div style={{ fontWeight: 600, fontSize: 13.5 }}>Ожидаем «Старт» в Telegram</div>
               <div className="muted" style={{ fontSize: 11.5 }}>
                 <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
-                Ссылка действительна ещё <span className="num">{mmss}</span>
+                Нажмите Start в боте — статус обновится сам
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn variant="ghost" icon="telegram">Открыть бот ещё раз</Btn>
-            <div style={{ flex: 1 }} />
-            <Btn variant="primary" icon="check" onClick={() => setStage('connected')}>Я нажал Start</Btn>
-          </div>
+          <Btn variant="ghost" icon="telegram" block onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>
+            Открыть бот ещё раз
+          </Btn>
         </>
       )}
 
@@ -162,10 +203,45 @@ function TelegramConnectDialog() {
 }
 
 // ─── TelegramSection ──────────────────────────────────────────────────────────
+// Lists all Telegram bindings of the trip (many chats per trip). Real API:
+// telegramGetIntegration / telegramSetActive / telegramDisconnect.
 
-function TelegramSection() {
-  const [accounts, setAccounts] = useState([]);
-  const [notif, setNotif] = useState({ checkin: true, transfer: true, cancel: true, daily: false, chat: true });
+function TelegramSection({ tripId }) {
+  const [accounts, setAccounts] = useState(null); // null = loading
+
+  const load = React.useCallback(async () => {
+    const { data, error } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
+    setAccounts(error ? [] : (data?.integrations ?? []));
+  }, [tripId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const displayName = (a) =>
+    a.telegram_first_name || (a.telegram_username ? `@${a.telegram_username}` : 'Пользователь Telegram');
+  const handle = (a) => (a.telegram_username ? `@${a.telegram_username}` : '');
+
+  const toggle = async (a) => {
+    setAccounts(list => list.map(x => x.id === a.id ? { ...x, is_active: !x.is_active } : x)); // optimistic
+    const { error } = await supabase.functions.invoke('telegramSetActive', {
+      body: { tripId, integrationId: a.id, isActive: !a.is_active },
+    });
+    if (error) load();
+  };
+
+  const remove = async (a) => {
+    if (!window.confirm(`Удалить ${displayName(a)}? На этот чат перестанут приходить напоминания об этом трипе.`)) return;
+    setAccounts(list => list.filter(x => x.id !== a.id)); // optimistic
+    const { error } = await supabase.functions.invoke('telegramDisconnect', {
+      body: { tripId, integrationId: a.id },
+    });
+    if (error) load();
+  };
+
+  const openConnect = () => window.__openModal?.(<TelegramConnectDialog tripId={tripId} onLinked={load} />);
+
+  if (accounts === null) {
+    return <div className="muted" style={{ fontSize: 13, padding: 8 }}>Загрузка…</div>;
+  }
 
   if (accounts.length === 0) {
     return (
@@ -177,7 +253,7 @@ function TelegramSection() {
         <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 12 }}>
           Привяжи аккаунт, чтобы получать уведомления о заселениях и переездах.
         </div>
-        <Btn variant="primary" icon="telegram" onClick={() => window.__openModal?.(<TelegramConnectDialog />)}>
+        <Btn variant="primary" icon="telegram" onClick={openConnect}>
           Привязать Telegram
         </Btn>
       </div>
@@ -188,42 +264,20 @@ function TelegramSection() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {accounts.map(a => (
         <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 9, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="telegram" size={17} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 13.5 }}>{a.name}</div>
-            <div className="muted mono" style={{ fontSize: 11.5 }}>{a.handle}</div>
+            <div style={{ fontWeight: 600, fontSize: 13.5 }}>{displayName(a)}</div>
+            {handle(a) && <div className="muted mono" style={{ fontSize: 11.5 }}>{handle(a)}</div>}
           </div>
-          <Badge variant={a.status === 'connected' ? 'success' : 'warning'}>
-            {a.status === 'connected' ? 'Активен' : 'Ожидает'}
-          </Badge>
-          <Btn variant="quiet" size="sm" icon="trash" onClick={() => setAccounts(accounts.filter(x => x.id !== a.id))} />
+          <Toggle on={!!a.is_active} onChange={() => toggle(a)} />
+          <Btn variant="quiet" size="sm" icon="trash" onClick={() => remove(a)} />
         </div>
       ))}
-      <Btn variant="ghost" icon="plus" onClick={() => window.__openModal?.(<TelegramConnectDialog />)}>
+      <Btn variant="ghost" icon="plus" onClick={openConnect}>
         Привязать ещё один Telegram-аккаунт
       </Btn>
-      <div style={{ marginTop: 8 }}>
-        <div className="eyebrow" style={{ marginBottom: 10 }}>Настройки уведомлений</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: 12, background: 'var(--wash)', borderRadius: 10 }}>
-          {[
-            { id: 'checkin',  label: 'Заезды и выезды',    desc: 'За 12 часов до заселения и выезда' },
-            { id: 'transfer', label: 'Переезды',            desc: 'За 3 часа до отправления' },
-            { id: 'cancel',   label: 'Дедлайны отмены',    desc: 'За день до невозвратной оплаты' },
-            { id: 'daily',    label: 'Дайджест дня',        desc: 'Утром — что сегодня в плане' },
-            { id: 'chat',     label: 'Упоминания в чате',  desc: 'Когда тебя @упомянули' },
-          ].map((s, i, arr) => (
-            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--line-2)' : 'none' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{s.label}</div>
-                <div className="muted" style={{ fontSize: 11.5 }}>{s.desc}</div>
-              </div>
-              <Toggle on={notif[s.id]} onChange={() => setNotif(n => ({ ...n, [s.id]: !n[s.id] }))} />
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
