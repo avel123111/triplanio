@@ -301,14 +301,16 @@ function ConnectedAccountsSection() {
     return (
       <Card title={t('telegram.account_section_title')} subtitle={t('telegram.account_section_subtitle')} style={{ marginBottom: 16 }}>
         <div style={{
+          position: 'relative', overflow: 'hidden',
           border: '1px dashed var(--line)', borderRadius: 14,
-          background: 'var(--wash)', padding: '28px 24px', textAlign: 'center',
+          background: 'linear-gradient(160deg, color-mix(in srgb, var(--ai) 6%, var(--surface)) 0%, var(--surface) 60%)',
+          padding: '28px 24px', textAlign: 'center',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: TG_BLUE, color: 'white', display: 'grid', placeItems: 'center', zIndex: 2, border: '2.5px solid var(--surface)' }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: TG_BLUE, color: 'white', display: 'grid', placeItems: 'center', zIndex: 2, border: '2.5px solid var(--surface)', boxShadow: '0 8px 20px -8px ' + TG_BLUE }}>
               <Icon name="telegram" size={24} />
             </div>
-            <div style={{ width: 48, height: 48, borderRadius: 13, marginLeft: -12, background: 'var(--ai)', color: 'white', display: 'grid', placeItems: 'center', zIndex: 1, border: '2.5px solid var(--surface)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 13, marginLeft: -12, background: 'linear-gradient(135deg, var(--ai) 0%, #c66ce2 100%)', color: 'white', display: 'grid', placeItems: 'center', zIndex: 1, border: '2.5px solid var(--surface)', boxShadow: '0 8px 20px -8px var(--ai)' }}>
               <Icon name="sparkles" size={21} />
             </div>
           </div>
@@ -382,7 +384,7 @@ function ConnectedAccountsSection() {
                   <div className="muted mono" style={{ fontSize: 11.5, marginTop: 1 }}>{nick(a)}</div>
                 </div>
                 <Btn variant="ghost" size="sm" icon="arrow" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>{t('telegram.go_to_trip')}</Btn>
-                <Btn variant="quiet" size="sm" onClick={() => unlink(a)}>{t('telegram.unlink_btn')}</Btn>
+                <Btn variant="quiet" size="sm" icon="unlink" onClick={() => unlink(a)} />
               </div>
             ))}
           </div>
