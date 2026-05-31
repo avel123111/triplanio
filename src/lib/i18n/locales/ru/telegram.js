@@ -23,4 +23,28 @@ export default {
   'telegram.link_label': 'Персональная ссылка · действует 10 минут',
   'telegram.open_bot': 'Открыть Triplanio-бот в Telegram',
   'telegram.waiting_hint': 'Нажмите Start в Telegram и вернитесь сюда — панель обновится автоматически.',
+
+  // — Общая модалка отвязки (настройки трипа + аккаунт) —
+  'telegram.unlink_title': 'Отвязать Telegram?',
+  'telegram.unlink_body': 'Вы уверены? На {handle} перестанут приходить уведомления об этом трипе — заезды, переезды, дедлайны отмены и упоминания в чате.',
+  'telegram.unlink_confirm': 'Отвязать',
+
+  // — Секция «Подключённые аккаунты» в настройках аккаунта —
+  'telegram.account_section_title': 'Подключённые аккаунты',
+  'telegram.account_section_subtitle': 'Аккаунты для уведомлений по трипам',
+  'telegram.connected': 'Подключён',
+  'telegram.linked_trips': 'Привязанные трипы',
+  'telegram.go_to_trip': 'Перейти',
+  'telegram.unlink_btn': 'Отвязать',
+  'telegram.account_hint': 'Включить уведомления для другого трипа можно в его «Настройках трипа».',
+  'telegram.tg_trips_one': 'уведомления по {count} трипу',
+  'telegram.tg_trips_few': 'уведомления по {count} трипам',
+  'telegram.tg_trips_many': 'уведомления по {count} трипам',
+  'telegram.account_empty_title': 'Мессенджеры не подключены',
+  'telegram.account_empty_desc': 'Подключите мессенджер в настройках трипа, чтобы получать напоминания и консультации от ИИ-помощника — прямо в чате.',
+  'telegram.account_empty_benefit_reminders': 'Напоминания о заездах, переездах и дедлайнах отмены',
+  'telegram.account_empty_benefit_ai': 'Советы и ответы ИИ-помощника по маршруту',
+  'telegram.account_empty_benefit_chat': 'Упоминания и обсуждения из чата трипа',
+  'telegram.go_to_trips': 'К трипам',
+  'telegram.coming_soon': '· WhatsApp и Viber — скоро',
 };

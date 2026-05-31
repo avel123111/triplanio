@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation, useNavigate, useParams, matchPath } from 'react-router-dom';
+import { Link, useLocation, useNavigate, matchPath } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Menu as MenuIcon, User as UserIcon, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -138,8 +138,7 @@ function useBackTargetAndTitle(pathname) {
   const tripMatch =
   matchPath('/trip/:tripId', pathname) ||
   matchPath('/trip/:tripId/edit', pathname) ||
-  matchPath('/trip/:tripId/budget', pathname) ||
-  matchPath('/trip/:tripId/settings', pathname);
+  matchPath('/trip/:tripId/budget', pathname);
   const tripId = tripMatch?.params?.tripId || null;
 
   // Fetch the trip's title for sub-routes. react-query dedupes by key, so the
@@ -164,7 +163,7 @@ function useBackTargetAndTitle(pathname) {
     return { backTo: null, title: null };
   }
 
-  // /trip/:id/(edit|budget|settings)  → back to /trip/:id, title = trip title
+  // /trip/:id/(edit|budget)  → back to /trip/:id, title = trip title
   if (tripId && pathname !== `/trip/${tripId}`) {
     return { backTo: `/trip/${tripId}`, title: trip?.title || null };
   }

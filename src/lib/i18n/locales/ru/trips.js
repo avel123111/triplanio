@@ -11,6 +11,7 @@ export default {
   'trips.no_matches_subtitle': 'Попробуйте другой запрос.',
   'trips.past_trips': 'Прошлые путешествия',
   'trips.section_label': 'Поездка',
+  'trips.role_owner': 'Владелец',
   'trips.role_admin': 'Админ',
   'trips.role_viewer': 'Зритель',
   'trips.view_grid': 'Сеткой',

@@ -11,7 +11,6 @@ import { I18nProvider } from '@/lib/i18n/I18nContext';
 import Layout from '@/components/Layout';
 import Trips from '@/pages/Trips';
 import TripView from '@/pages/TripView';
-import TripSettings from '@/pages/TripSettings';
 import ScreenAccount from '@/pages/redesign/ScreenAccount';
 import PublicTrip from '@/pages/PublicTrip';
 import AdminHome from '@/pages/admin/AdminHome';
@@ -124,7 +123,6 @@ const AuthenticatedApp = () => {
       <Route path="/pro" element={<Pro />} />
 
       <Route path="/plan-trip-ai" element={<AiTripPlanner />} />
-      <Route path="/trip/:tripId/settings" element={<TripSettings />} />
 
       <Route element={<Layout />}>
         <Route path="/admin" element={<AdminHome />} />

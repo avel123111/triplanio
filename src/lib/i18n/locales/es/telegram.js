@@ -23,4 +23,28 @@ export default {
   'telegram.link_label': 'Enlace personal · válido 10 minutos',
   'telegram.open_bot': 'Abrir el bot de Triplanio en Telegram',
   'telegram.waiting_hint': 'Pulsa Start en Telegram y vuelve aquí: el panel se actualizará automáticamente.',
+
+  // — Modal de desvinculación compartido (ajustes del viaje + cuenta) —
+  'telegram.unlink_title': '¿Desvincular Telegram?',
+  'telegram.unlink_body': '¿Seguro? {handle} dejará de recibir notificaciones de este viaje: entradas, traslados, fechas límite de cancelación y menciones del chat.',
+  'telegram.unlink_confirm': 'Desvincular',
+
+  // — Sección «Cuentas conectadas» en los ajustes de la cuenta —
+  'telegram.account_section_title': 'Cuentas conectadas',
+  'telegram.account_section_subtitle': 'Cuentas para notificaciones de viajes',
+  'telegram.connected': 'Conectado',
+  'telegram.linked_trips': 'Viajes vinculados',
+  'telegram.go_to_trip': 'Abrir',
+  'telegram.unlink_btn': 'Desvincular',
+  'telegram.account_hint': 'Activa las notificaciones de otro viaje en sus «Ajustes del viaje».',
+  'telegram.tg_trips_one': 'notificaciones de {count} viaje',
+  'telegram.tg_trips_few': 'notificaciones de {count} viajes',
+  'telegram.tg_trips_many': 'notificaciones de {count} viajes',
+  'telegram.account_empty_title': 'No hay mensajeros conectados',
+  'telegram.account_empty_desc': 'Conecta un mensajero en los ajustes del viaje para recibir recordatorios y consejos del asistente IA, directamente en tu chat.',
+  'telegram.account_empty_benefit_reminders': 'Recordatorios de entradas, traslados y fechas límite de cancelación',
+  'telegram.account_empty_benefit_ai': 'Consejos y respuestas del asistente IA sobre tu ruta',
+  'telegram.account_empty_benefit_chat': 'Menciones y conversaciones del chat del viaje',
+  'telegram.go_to_trips': 'Ir a los viajes',
+  'telegram.coming_soon': '· WhatsApp y Viber — próximamente',
 };

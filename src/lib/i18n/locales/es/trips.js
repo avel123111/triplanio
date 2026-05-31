@@ -11,6 +11,7 @@ export default {
   'trips.no_matches_title': 'No hay viajes que coincidan',
   'trips.no_matches_subtitle': 'Prueba con otro término.',
   'trips.past_trips': 'Viajes pasados',
+  'trips.role_owner': 'Propietario',
   'trips.role_admin': 'Admin',
   'trips.role_viewer': 'Lector',
   'trips.view_grid': 'Cuadrícula',

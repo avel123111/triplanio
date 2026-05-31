@@ -18,6 +18,7 @@ import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, Toggle } from '../design/index';
 import ProLockedDialog from '@/components/common/ProLockedDialog';
 import TripProInfoDialog from '@/components/common/TripProInfoDialog';
+import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import CurrencySelect from '@/components/budget/CurrencySelect';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
@@ -261,6 +262,8 @@ function TelegramConnectDialog({ tripId, onLinked }) {
 // ─── TelegramSection ──────────────────────────────────────────────────────────
 // Lists all Telegram bindings of the trip (many chats per trip). Real API:
 // telegramGetIntegration / telegramSetActive / telegramDisconnect.
+// The remove flow uses the shared TelegramUnlinkDialog (same modal as the
+// account-level "Подключённые аккаунты" section — single source of truth).
 
 function TelegramSection({ tripId }) {
   const [accounts, setAccounts] = useState(null); // null = loading
@@ -284,14 +287,16 @@ function TelegramSection({ tripId }) {
     if (error) load();
   };
 
-  const remove = async (a) => {
-    if (!window.confirm(`Удалить ${displayName(a)}? На этот чат перестанут приходить напоминания об этом трипе.`)) return;
+  const doRemove = async (a) => {
     setAccounts(list => list.filter(x => x.id !== a.id)); // optimistic
     const { error } = await supabase.functions.invoke('telegramDisconnect', {
       body: { tripId, integrationId: a.id },
     });
     if (error) load();
   };
+  const remove = (a) => window.__openModal?.(
+    <TelegramUnlinkDialog handle={handle(a) || displayName(a)} onConfirm={() => doRemove(a)} />
+  );
 
   const openConnect = () => window.__openModal?.(<TelegramConnectDialog tripId={tripId} onLinked={load} />);
 

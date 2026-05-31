@@ -11,6 +11,7 @@ export default {
   'trips.no_matches_subtitle': 'Try a different search term.',
   'trips.past_trips': 'Past trips',
   'trips.section_label': 'Trip',
+  'trips.role_owner': 'Owner',
   'trips.role_admin': 'Admin',
   'trips.role_viewer': 'Viewer',
   'trips.view_grid': 'Grid view',

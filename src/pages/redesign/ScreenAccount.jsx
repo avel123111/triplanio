@@ -5,11 +5,12 @@ import {
   Badge, Btn, Card, Severity, Toggle, ModalHost,
 } from '../../design/index';
 import { useAuth } from '@/lib/AuthContext';
-import { useI18n } from '@/lib/i18n/I18nContext';
+import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 import { supabase } from '@/api/supabaseClient';
 import HeaderActions from '@/components/HeaderActions';
+import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import '../../design/app.css';
 
 // ─── Avatar helpers (inline so we can render directly into the 76×76 circle) ──
@@ -251,6 +252,148 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
   }
 
   return null;
+}
+
+// ─── ConnectedAccountsSection ───────────────────────────────────────────────
+// Account-level view of the user's Telegram bindings across ALL trips.
+// Data: telegramGetMyIntegrations (one row per binding). Empty / collapsed /
+// expanded states match the design. Unlink reuses the shared TelegramUnlinkDialog
+// + telegramDisconnect (same modal as Trip settings).
+
+const TG_BLUE = '#0088cc';
+
+function ConnectedAccountsSection() {
+  const { t, plural } = useI18nFormat();
+  const nav = useNavigate();
+  const [items, setItems] = useState(null); // null = loading
+  const [open, setOpen] = useState(false);   // collapsed by default
+
+  const load = React.useCallback(async () => {
+    const { data, error } = await supabase.functions.invoke('telegramGetMyIntegrations');
+    setItems(error ? [] : (data?.integrations ?? []));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const nick = (a) =>
+    a.telegram_username ? `@${a.telegram_username}` : (a.telegram_first_name || t('telegram.unknown_user'));
+
+  const doUnlink = async (a) => {
+    setItems(list => list.filter(x => x.id !== a.id)); // optimistic
+    const { error } = await supabase.functions.invoke('telegramDisconnect', {
+      body: { tripId: a.trip_id, integrationId: a.id },
+    });
+    if (error) load();
+  };
+  const unlink = (a) => window.__openModal?.(
+    <TelegramUnlinkDialog handle={nick(a)} onConfirm={() => doUnlink(a)} />
+  );
+
+  if (items === null) {
+    return (
+      <Card title={t('telegram.account_section_title')} subtitle={t('telegram.account_section_subtitle')} style={{ marginBottom: 16 }}>
+        <div className="muted" style={{ fontSize: 13, padding: 8 }}>{t('common.loading')}</div>
+      </Card>
+    );
+  }
+
+  // ── Empty state ──
+  if (items.length === 0) {
+    return (
+      <Card title={t('telegram.account_section_title')} subtitle={t('telegram.account_section_subtitle')} style={{ marginBottom: 16 }}>
+        <div style={{
+          border: '1px dashed var(--line)', borderRadius: 14,
+          background: 'var(--wash)', padding: '28px 24px', textAlign: 'center',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: TG_BLUE, color: 'white', display: 'grid', placeItems: 'center', zIndex: 2, border: '2.5px solid var(--surface)' }}>
+              <Icon name="telegram" size={24} />
+            </div>
+            <div style={{ width: 48, height: 48, borderRadius: 13, marginLeft: -12, background: 'var(--ai)', color: 'white', display: 'grid', placeItems: 'center', zIndex: 1, border: '2.5px solid var(--surface)' }}>
+              <Icon name="sparkles" size={21} />
+            </div>
+          </div>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{t('telegram.account_empty_title')}</div>
+          <div className="muted" style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 420, margin: '0 auto 18px' }}>
+            {t('telegram.account_empty_desc')}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 360, margin: '0 auto 20px', textAlign: 'left' }}>
+            {[
+              { icon: 'bell', text: t('telegram.account_empty_benefit_reminders') },
+              { icon: 'sparkles', text: t('telegram.account_empty_benefit_ai') },
+              { icon: 'chat', text: t('telegram.account_empty_benefit_chat') },
+            ].map((r, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12.5, color: 'var(--ink-2)' }}>
+                <span style={{ width: 22, height: 22, borderRadius: 7, background: 'var(--ai-soft)', color: 'var(--ai)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                  <Icon name={r.icon} size={12} />
+                </span>
+                <span style={{ lineHeight: 1.45, paddingTop: 2 }}>{r.text}</span>
+              </div>
+            ))}
+          </div>
+          <Btn variant="primary" icon="arrow" onClick={() => nav('/trips')}>{t('telegram.go_to_trips')}</Btn>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--line-2)', flexWrap: 'wrap' }}>
+            <Icon name="telegram" size={14} style={{ color: TG_BLUE }} />
+            <span style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Telegram</span>
+            <span className="muted" style={{ fontSize: 11.5 }}>{t('telegram.coming_soon')}</span>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // ── Connected: expandable Telegram node ──
+  const tripCount = new Set(items.map(i => i.trip_id)).size;
+
+  return (
+    <Card title={t('telegram.account_section_title')} subtitle={t('telegram.account_section_subtitle')} style={{ marginBottom: 16 }}>
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, border: '1px solid var(--line)', borderRadius: 12, background: 'var(--surface)', cursor: 'pointer' }}
+      >
+        <div style={{ width: 42, height: 42, borderRadius: 11, background: TG_BLUE + '22', color: TG_BLUE, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <Icon name="telegram" size={20} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Telegram</span>
+            <Badge variant="success" icon="check">{t('telegram.connected')}</Badge>
+          </div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+            {plural(tripCount, 'telegram.tg_trips', { count: tripCount })}
+          </div>
+        </div>
+        <Icon name={open ? 'chevD' : 'chev'} size={15} style={{ color: 'var(--muted)', flexShrink: 0 }} />
+      </div>
+
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          <div className="eyebrow" style={{ marginBottom: 8, paddingLeft: 2 }}>{t('telegram.linked_trips')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {items.map((a) => (
+              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)' }}>
+                <div style={{ width: 38, height: 38, borderRadius: 9, flexShrink: 0, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center' }}>
+                  <Icon name="map" size={16} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.trip_title}</span>
+                    <Badge variant="quiet">{t(`trips.role_${a.role}`)}</Badge>
+                  </div>
+                  <div className="muted mono" style={{ fontSize: 11.5, marginTop: 1 }}>{nick(a)}</div>
+                </div>
+                <Btn variant="ghost" size="sm" icon="arrow" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>{t('telegram.go_to_trip')}</Btn>
+                <Btn variant="quiet" size="sm" onClick={() => unlink(a)}>{t('telegram.unlink_btn')}</Btn>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 11.5, color: 'var(--muted)' }}>
+            <Icon name="info" size={13} />
+            <span>{t('telegram.account_hint')}</span>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -754,6 +897,9 @@ export default function ScreenAccount() {
             />
           </div>
         </Card>
+
+        {/* Connected accounts (Telegram) */}
+        <ConnectedAccountsSection />
 
         {/* Support */}
         <Card title="Поддержка" style={{ marginBottom: 16 }}>

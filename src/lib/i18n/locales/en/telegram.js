@@ -23,4 +23,28 @@ export default {
   'telegram.link_label': 'Personal link · valid 10 minutes',
   'telegram.open_bot': 'Open Triplanio bot in Telegram',
   'telegram.waiting_hint': 'Press Start in Telegram, then come back — the panel updates automatically.',
+
+  // — Shared unlink modal (trip settings + account) —
+  'telegram.unlink_title': 'Unlink Telegram?',
+  'telegram.unlink_body': 'Are you sure? {handle} will stop receiving notifications for this trip — check-ins, transfers, cancellation deadlines and chat mentions.',
+  'telegram.unlink_confirm': 'Unlink',
+
+  // — Account-level "Connected accounts" section —
+  'telegram.account_section_title': 'Connected accounts',
+  'telegram.account_section_subtitle': 'Accounts for trip notifications',
+  'telegram.connected': 'Connected',
+  'telegram.linked_trips': 'Linked trips',
+  'telegram.go_to_trip': 'Open',
+  'telegram.unlink_btn': 'Unlink',
+  'telegram.account_hint': 'Enable notifications for another trip in its “Trip settings”.',
+  'telegram.tg_trips_one': 'notifications for {count} trip',
+  'telegram.tg_trips_few': 'notifications for {count} trips',
+  'telegram.tg_trips_many': 'notifications for {count} trips',
+  'telegram.account_empty_title': 'No messengers connected',
+  'telegram.account_empty_desc': 'Connect a messenger in your trip settings to get reminders and AI assistant tips — right in your chat.',
+  'telegram.account_empty_benefit_reminders': 'Reminders about check-ins, transfers and cancellation deadlines',
+  'telegram.account_empty_benefit_ai': 'AI assistant tips and answers about your route',
+  'telegram.account_empty_benefit_chat': 'Mentions and discussions from the trip chat',
+  'telegram.go_to_trips': 'Go to trips',
+  'telegram.coming_soon': '· WhatsApp and Viber — coming soon',
 };
