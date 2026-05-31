@@ -14,4 +14,13 @@ export default {
   'telegram.disconnect_btn': 'Desconectar',
   'telegram.disconnect_confirm_title': '¿Desconectar Telegram?',
   'telegram.disconnect_confirm_desc': 'Dejarás de recibir recordatorios para este viaje en Telegram. Puedes volver a conectarlo más adelante.',
+
+  'telegram.connect_title': 'Conectar Telegram',
+  'telegram.connect_another': 'Conectar otra cuenta de Telegram',
+  'telegram.connect_dialog_desc': 'Abre el bot con el enlace de abajo y pulsa Start. El enlace es válido durante 10 minutos.',
+  'telegram.connect_success_desc': 'Listo: esta cuenta está vinculada al viaje y recibirá recordatorios.',
+  'telegram.connect_error': 'No se pudo crear el enlace. Inténtalo de nuevo.',
+  'telegram.link_label': 'Enlace personal · válido 10 minutos',
+  'telegram.open_bot': 'Abrir el bot de Triplanio en Telegram',
+  'telegram.waiting_hint': 'Pulsa Start en Telegram y vuelve aquí: el panel se actualizará automáticamente.',
 };
