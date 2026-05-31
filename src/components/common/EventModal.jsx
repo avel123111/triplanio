@@ -19,6 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/api/supabaseClient';
+import { safeStorageName } from '@/lib/storage';
 import { parseNaive } from '@/lib/naive-time';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
@@ -377,7 +378,7 @@ export default function EventModal(props) {
       const uploaded = [];
       for (const file of files) {
         const uid = (crypto?.randomUUID?.()) || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const path = `attachments/${uid}/${file.name}`;
+        const path = `attachments/${uid}/${safeStorageName(file.name)}`;
         const { error: upErr } = await supabase.storage.from('documents').upload(path, file);
         if (upErr) { console.error('upload error', upErr); continue; }
         const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);

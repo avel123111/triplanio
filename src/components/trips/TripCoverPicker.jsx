@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Upload, Loader2, Check } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
+import { safeStorageName } from '@/lib/storage';
 import { TRIP_GRADIENTS, getGradientById } from '@/lib/trip-gradients';
 import { useT } from '@/lib/i18n/I18nContext';
 
@@ -43,8 +44,7 @@ export default function TripCoverPicker({
     setError('');
     setUploading(true);
     try {
-      const safeName = file.name.replace(/[^\w.\-]+/g, '_');
-      const path = `${tripId || 'new'}/${Date.now()}_${safeName}`;
+      const path = `${tripId || 'new'}/${Date.now()}_${safeStorageName(file.name)}`;
       const { data, error: uploadErr } = await supabase.storage
         .from(BUCKET)
         .upload(path, file, { cacheControl: '3600', upsert: true });

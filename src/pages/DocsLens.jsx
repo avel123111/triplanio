@@ -12,6 +12,7 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { safeStorageName } from '@/lib/storage';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton } from '../design/index';
@@ -46,7 +47,7 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
           setErr(`Файл «${file.name}» слишком большой (макс. 10 МБ)`);
           continue;
         }
-        const path = `${tripId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+        const path = `${tripId}/${Date.now()}-${safeStorageName(file.name)}`;
         const { error: uploadErr } = await supabase.storage.from('documents').upload(path, file);
         if (uploadErr) { setErr(uploadErr.message); continue; }
         const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);

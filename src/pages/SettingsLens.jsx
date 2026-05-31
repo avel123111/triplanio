@@ -380,6 +380,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const [features, setFeatures] = useState(() => featuresFromTrip(trip));
   // Trip-level display toggles (default ON when the flag is absent).
   const [bookingWarnings, setBookingWarnings] = useState(() => trip?.details?.display?.booking_warnings !== false);
+  const [chatWidget, setChatWidget] = useState(() => trip?.details?.display?.chat_widget !== false);
   const [proLocked, setProLocked] = useState({ open: false, feature: '' });
   const [tripProInfo, setTripProInfo] = useState({ open: false, feature: '' });
   const openUpgrade = () => nav(`/pro?tripId=${tripId}&hidePerTrip=1`);
@@ -393,6 +394,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (trip?.details?.main_currency || trip?.main_currency) setCurrency(trip.details?.main_currency || trip.main_currency || 'EUR');
     setFeatures(featuresFromTrip(trip));
     setBookingWarnings(trip?.details?.display?.booking_warnings !== false);
+    setChatWidget(trip?.details?.display?.chat_widget !== false);
   }, [trip?.id]);
 
   // Trip-level display toggle. Persisted under details.display via the edge
@@ -406,6 +408,25 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     });
     if (error || !data?.ok) {
       setBookingWarnings(!next); // revert
+      alert('Не удалось сохранить: ' + (error?.message || data?.code || 'ошибка'));
+      return;
+    }
+    queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+  }
+
+  // Trip-level toggle for the floating chat widget (the dock button shown on
+  // every trip page). Persisted under details.display.chat_widget, same path as
+  // booking_warnings. Independent of the per-user nothing — it's a trip setting.
+  // NOTE: the actual widget is ALSO gated by the `chat` addon in TripView, so
+  // turning the addon off hides the widget regardless of this flag.
+  async function toggleChatWidget() {
+    const next = !chatWidget;
+    setChatWidget(next); // optimistic
+    const { data, error } = await supabase.functions.invoke('updateTripSettings', {
+      body: { tripId, display: { chat_widget: next } },
+    });
+    if (error || !data?.ok) {
+      setChatWidget(!next); // revert
       alert('Не удалось сохранить: ' + (error?.message || data?.code || 'ошибка'));
       return;
     }
@@ -550,10 +571,45 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </div>
       </Card>
 
-      {/* Telegram */}
-      <Card title="Telegram-мост" subtitle="Уведомления в Telegram" style={{ marginBottom: 16 }}>
-        <TelegramSection tripId={tripId} />
-      </Card>
+      {/* Chat widget — trip-level toggle for the floating dock button.
+          Only shown when the Group Chat addon is on (the widget can't exist
+          without it). Hidden entirely otherwise. */}
+      {features.chat && (
+        <Card title="Виджет чата" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Показывать виджет на страницах трипа</div>
+              <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
+                Плавающая кнопка чата видна на каждой странице этого трипа — быстрый доступ к групповому чату и ИИ-помощнику без перехода на отдельный экран.
+              </div>
+            </div>
+            <Toggle on={chatWidget} onChange={toggleChatWidget} />
+          </div>
+
+          <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              position: 'relative', width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+              background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, #6a3ee2 100%)',
+              color: 'white', display: 'grid', placeItems: 'center',
+              opacity: chatWidget ? 1 : 0.35, transition: 'opacity .15s ease',
+            }}>
+              <Icon name="chat" size={20} />
+            </div>
+            <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
+              {chatWidget
+                ? 'Закреплён в правом нижнем углу — открывает чат и ИИ-помощника поверх любой страницы трипа.'
+                : 'Виджет скрыт. Чат остаётся доступен на отдельной странице «Групповой чат».'}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Telegram — only when the Telegram addon is enabled. */}
+      {features.tg && (
+        <Card title="Telegram-мост" subtitle="Уведомления в Telegram" style={{ marginBottom: 16 }}>
+          <TelegramSection tripId={tripId} />
+        </Card>
+      )}
 
       {/* Approvers */}
       <Card title="Аппруверы голосования за отели" subtitle="Кто голосует «за»" style={{ marginBottom: 16 }}>

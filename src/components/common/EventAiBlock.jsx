@@ -21,6 +21,7 @@
  */
 import React, { useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
+import { safeStorageName } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
 import { detectPlatformFromUrl } from '@/lib/booking-platforms';
 import {
@@ -127,8 +128,7 @@ export default function EventAiBlock({
         // Supabase Storage keys reject non-ASCII / special chars (Cyrillic
         // filenames → "Invalid key"). Sanitise the path; keep the real name for
         // display via `documents` below.
-        const safeName = (f.name || 'file').replace(/[^a-zA-Z0-9._-]/g, '_');
-        const path = `ai-uploads/${uid}/${safeName}`;
+        const path = `ai-uploads/${uid}/${safeStorageName(f.name)}`;
         const { error: upErr } = await supabase.storage.from('documents').upload(path, f.file);
         if (upErr) throw new Error(upErr.message || 'Не удалось загрузить файл');
         const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);

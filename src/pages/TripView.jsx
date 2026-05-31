@@ -1962,7 +1962,10 @@ export default function TripView() {
         </div>
       )}
 
-      {isLensVisible(trip, 'chat') && shownLens !== 'chat' && (
+      {/* Floating chat widget: requires the chat addon AND the trip-level
+          "chat widget" display toggle (default ON). The full Chat lens stays
+          reachable from the sidebar regardless of this toggle. */}
+      {isLensVisible(trip, 'chat') && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
         <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />
       )}
 
