@@ -50,6 +50,18 @@ const AuthenticatedApp = () => {
 
   // Design preview — accessible without auth
   if (path === '/ui' || path.startsWith('/ui/')) {
+    // Blog preview — full viewport iframe to static HTML
+    if (path === '/ui/blog' || path.startsWith('/ui/blog')) {
+      return (
+        <div style={{ position: 'fixed', inset: 0, margin: 0, padding: 0 }}>
+          <iframe
+            src="/blog/"
+            style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+            title="Triplanio Blog Preview"
+          />
+        </div>
+      );
+    }
     return (
       <Routes>
         <Route path="/ui" element={<DesignPreview />} />
