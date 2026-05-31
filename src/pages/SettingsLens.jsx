@@ -83,15 +83,19 @@ function FeatureRow({ feat, on, onChange, hasPro, last }) {
 // until a new binding appears (user pressed Start in Telegram).
 
 function TelegramConnectDialog({ tripId, onLinked }) {
-  const [stage, setStage] = useState('loading'); // loading | idle | waiting | connected | error
+  const [stage, setStage] = useState('generating'); // generating | idle | connecting | connected | error
   const [url, setUrl] = useState('');
   const [errText, setErrText] = useState('');
+  const [countdown, setCountdown] = useState(600);
+  const [copied, setCopied] = useState(false);
   const baselineRef = React.useRef(0);
 
-  // Generate the one-time deep link when the dialog opens.
+  // Snapshot current bindings, then generate the one-time deep link on open.
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const { data: cur } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
+      baselineRef.current = cur?.integrations?.length ?? 0;
       const { data, error } = await supabase.functions.invoke('telegramStartLink', { body: { tripId } });
       if (cancelled) return;
       if (error || !data?.url) {
@@ -105,13 +109,19 @@ function TelegramConnectDialog({ tripId, onLinked }) {
     return () => { cancelled = true; };
   }, [tripId]);
 
-  // While waiting, poll for the new binding.
+  // Countdown while waiting for Start.
   useEffect(() => {
-    if (stage !== 'waiting') return;
+    if (stage !== 'connecting') return;
+    const id = setInterval(() => setCountdown(c => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(id);
+  }, [stage]);
+
+  // Poll for the new binding while waiting.
+  useEffect(() => {
+    if (stage !== 'connecting') return;
     const id = setInterval(async () => {
       const { data } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
-      const count = data?.integrations?.length ?? 0;
-      if (count > baselineRef.current) {
+      if ((data?.integrations?.length ?? 0) > baselineRef.current) {
         clearInterval(id);
         onLinked?.();
         setStage('connected');
@@ -120,13 +130,17 @@ function TelegramConnectDialog({ tripId, onLinked }) {
     return () => clearInterval(id);
   }, [stage, tripId, onLinked]);
 
-  const openBot = async () => {
-    // Snapshot the current binding count, then send the user to the bot.
-    const { data } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
-    baselineRef.current = data?.integrations?.length ?? 0;
+  const openBot = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
-    setStage('waiting');
+    setCountdown(600);
+    setStage('connecting');
   };
+  const checkNow = async () => {
+    const { data } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
+    if ((data?.integrations?.length ?? 0) > baselineRef.current) { onLinked?.(); setStage('connected'); }
+  };
+  const copyLink = () => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+  const mmss = `${String(Math.floor(countdown / 60)).padStart(2, '0')}:${String(countdown % 60).padStart(2, '0')}`;
 
   return (
     <Dialog title="Привязать Telegram" icon="telegram" size=""
@@ -135,10 +149,16 @@ function TelegramConnectDialog({ tripId, onLinked }) {
         Привяжите Telegram, чтобы получать напоминания об отелях, переездах и активностях для этого трипа.
       </div>
 
-      {stage === 'loading' && (
-        <div className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 20 }}>
-          <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
-          Генерируем персональную ссылку…
+      {stage === 'generating' && (
+        <div style={{ padding: '22px 18px', textAlign: 'center', background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12 }}>
+          <div style={{ width: 44, height: 44, margin: '0 auto 12px', borderRadius: 12, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center' }}>
+            <Icon name="telegram" size={20} />
+          </div>
+          <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 6 }}>
+            Генерируем персональную ссылку
+            <span className="ai-dots" style={{ marginLeft: 6 }}><span /><span /><span /></span>
+          </div>
+          <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Создаём уникальную ссылку на Triplanio-бота для этого трипа.</div>
         </div>
       )}
 
@@ -150,10 +170,29 @@ function TelegramConnectDialog({ tripId, onLinked }) {
 
       {stage === 'idle' && (
         <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 16 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Icon name="telegram" size={17} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Telegram не подключён</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>Для этого трипа</div>
+            </div>
+            <Badge variant="quiet">Не подключён</Badge>
+          </div>
+
           <div style={{ marginBottom: 16 }}>
             <div className="eyebrow" style={{ marginBottom: 6 }}>Персональная ссылка · действует 10 минут</div>
-            <input className="input mono" value={url} readOnly style={{ fontSize: 12 }} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input className="input mono" value={url} readOnly style={{ flex: 1, fontSize: 12 }} />
+              <Btn variant="ghost" icon="copy" onClick={copyLink}>{copied ? '✓' : 'Копия'}</Btn>
+            </div>
           </div>
+
+          <div style={{ fontSize: 13, lineHeight: 1.55, marginBottom: 16 }}>
+            Нажмите кнопку ниже, чтобы открыть бота по этой ссылке и нажать «Старт».
+          </div>
+
           <Btn variant="primary" icon="telegram" block onClick={openBot}>
             Открыть Triplanio-бот в Telegram
           </Btn>
@@ -163,30 +202,44 @@ function TelegramConnectDialog({ tripId, onLinked }) {
         </>
       )}
 
-      {stage === 'waiting' && (
+      {stage === 'connecting' && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: '#0088cc11', border: '1px solid #0088cc33', borderRadius: 12, marginBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="telegram" size={17} />
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: 13.5 }}>Ожидаем «Старт» в Telegram</div>
               <div className="muted" style={{ fontSize: 11.5 }}>
                 <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
-                Нажмите Start в боте — статус обновится сам
+                Ссылка действительна ещё <span className="num">{mmss}</span>
               </div>
             </div>
           </div>
-          <Btn variant="ghost" icon="telegram" block onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>
-            Открыть бот ещё раз
-          </Btn>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 14, fontSize: 12.5, lineHeight: 1.55 }}>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center', flexShrink: 0 }}>1</div>
+              <div>В открывшемся чате нажмите <strong>«Start»</strong>.</div>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center', flexShrink: 0 }}>2</div>
+              <div>Вернитесь на эту вкладку — статус обновится автоматически.</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="ghost" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>Открыть бот ещё раз</Btn>
+            <div style={{ flex: 1 }} />
+            <Btn variant="primary" icon="check" onClick={checkNow}>Я нажал Start</Btn>
+          </div>
         </>
       )}
 
       {stage === 'connected' && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--success-soft)', border: '1px solid color-mix(in oklab, var(--success) 25%, transparent)', borderRadius: 12, marginBottom: 14 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'color-mix(in oklab, var(--success) 22%, transparent)', color: 'var(--success)', display: 'grid', placeItems: 'center' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'color-mix(in oklab, var(--success) 22%, transparent)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="check" size={17} />
             </div>
             <div style={{ flex: 1 }}>
@@ -194,6 +247,9 @@ function TelegramConnectDialog({ tripId, onLinked }) {
               <div className="muted" style={{ fontSize: 11.5 }}>только что</div>
             </div>
             <Badge variant="success" icon="check">Активен</Badge>
+          </div>
+          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.55, marginBottom: 14 }}>
+            Уведомления для этого трипа теперь будут приходить в Telegram.
           </div>
           <Btn variant="primary" icon="check" block onClick={() => window.__closeModal?.()}>Готово</Btn>
         </>
