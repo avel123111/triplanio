@@ -32,17 +32,12 @@ Deno.serve(async (req) => {
       .single();
     if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
 
-    const hasAccess = await isCallerParticipant(tripId, user.email!);
+    const hasAccess = await isCallerParticipant(tripId, user.id);
     if (!hasAccess) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
 
-    // Get bot username
-    const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
-    if (!botToken) return Response.json({ error: 'TELEGRAM_BOT_TOKEN missing' }, { status: 500, headers: corsHeaders });
-
-    const meRes = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
-    const meData = await meRes.json();
-    if (!meData.ok) return Response.json({ error: 'Cannot reach Telegram' }, { status: 500, headers: corsHeaders });
-    const botUsername = meData.result.username;
+    // Bot username is a static public value — no need to call Telegram (no bot token).
+    const botUsername = Deno.env.get('TELEGRAM_BOT_USERNAME');
+    if (!botUsername) return Response.json({ error: 'TELEGRAM_BOT_USERNAME missing' }, { status: 500, headers: corsHeaders });
 
     // Generate random 32-hex token
     const bytes = new Uint8Array(16);

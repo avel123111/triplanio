@@ -41,6 +41,16 @@ Deno.serve(async (req) => {
 
     await supabaseAdmin.from('trip_members').delete().eq('id', member_id);
 
+    // Revoke this member's Telegram bindings for the trip — bot/reminder access
+    // is tied to trip membership. (Offline members have user_id null → skip.)
+    if (member.user_id) {
+      await supabaseAdmin
+        .from('trip_telegram_integrations')
+        .delete()
+        .eq('trip_id', member.trip_id)
+        .eq('user_id', member.user_id);
+    }
+
     return Response.json({ ok: true }, { headers: corsHeaders });
 
   } catch (error) {

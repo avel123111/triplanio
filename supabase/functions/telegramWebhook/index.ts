@@ -1,148 +1,97 @@
 /**
  * telegramWebhook
  *
- * Public endpoint called by Telegram when a user sends a message to the bot.
- * Authenticity enforced via ?s= query-string secret.
+ * INTERNAL binding endpoint. Called by n8n (NOT by Telegram directly): n8n owns
+ * the bot webhook (Telegram Trigger) and forwards `/start` updates here. Auth via
+ * `Authorization: Bearer <N8N_SECRET>` (requireN8nSecret); verify_jwt=false.
  *
- * /start <token> → consume TelegramLinkToken, upsert TripTelegramIntegration.
- * /start         → reply with connection hint.
- * other          → silently ignored.
+ * Handles the /start handshake only — does NOT send Telegram messages (n8n renders
+ * the reply from the JSON this returns):
+ *   /start <token> → consume telegram_link_tokens, upsert trip_telegram_integrations
+ *                    by (trip_id, telegram_chat_id) → { ok:true, action:'linked', trip_title }
+ *   /start         → { ok:true, action:'welcome' }
+ *   bad token      → { ok:false, reason:'invalid' | 'used' | 'expired' }
+ *   other message  → { ok:true, action:'ignored' }
  *
- * verify_jwt: false — called by Telegram, not by an authenticated user.
+ * Identity is (trip_id, telegram_chat_id) — many chats per trip, many trips per chat.
+ * user_id is informational ("linked_by").
  */
 
+import { corsHeaders } from '../_shared/cors.ts';
+import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 
-const TG_API = (token: string) => `https://api.telegram.org/bot${token}`;
-
-async function sendMessage(token: string, chatId: string, text: string, parseMode = 'HTML') {
-  try {
-    const body: Record<string, unknown> = { chat_id: chatId, text, disable_web_page_preview: true };
-    if (parseMode) body.parse_mode = parseMode;
-    const res = await fetch(`${TG_API(token)}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!data.ok) console.error('sendMessage failed:', data);
-    return data;
-  } catch (e) {
-    console.error('sendMessage error:', e);
-  }
-}
-
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  const denied = requireN8nSecret(req);
+  if (denied) return denied;
+
   try {
-    // 1. Verify shared secret
-    const url = new URL(req.url);
-    const s = url.searchParams.get('s');
-    const expected = Deno.env.get('TELEGRAM_WEBHOOK_SECRET');
-    if (!expected || s !== expected) {
-      console.warn('telegramWebhook: bad or missing secret');
-      return new Response('forbidden', { status: 403 });
-    }
-
-    const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
-    if (!botToken) return new Response('missing token', { status: 500 });
-
     const update = await req.json().catch(() => null);
-    if (!update?.message) {
-      // Acknowledge other update types to avoid Telegram retry storms
-      return Response.json({ ok: true });
-    }
+    const msg = update?.message;
+    if (!msg) return Response.json({ ok: true, action: 'ignored' }, { headers: corsHeaders });
 
-    const msg = update.message;
     const chatId = String(msg.chat.id);
     const text = (msg.text || '').trim();
     const tgUsername = msg.from?.username || '';
     const tgFirstName = msg.from?.first_name || '';
 
-    // 2. /start <token>  →  bind chat to trip
-    if (text.startsWith('/start')) {
-      const parts = text.split(/\s+/);
-      const linkToken = parts[1];
+    if (!text.startsWith('/start')) {
+      return Response.json({ ok: true, action: 'ignored' }, { headers: corsHeaders });
+    }
 
-      if (!linkToken) {
-        await sendMessage(botToken, chatId, 'Привет! Чтобы подключить меня к поездке, откройте настройки поездки в приложении и нажмите "Подключить Telegram".');
-        return Response.json({ ok: true });
-      }
+    const linkToken = text.split(/\s+/)[1];
+    if (!linkToken) {
+      return Response.json({ ok: true, action: 'welcome' }, { headers: corsHeaders });
+    }
 
-      const { data: tokens } = await supabaseAdmin
-        .from('telegram_link_tokens')
-        .select('*')
-        .eq('token', linkToken)
-        .limit(1);
-      const tok = tokens?.[0];
+    const { data: tokens } = await supabaseAdmin
+      .from('telegram_link_tokens')
+      .select('*')
+      .eq('token', linkToken)
+      .limit(1);
+    const tok = tokens?.[0];
 
-      if (!tok) {
-        await sendMessage(botToken, chatId, '❌ Ссылка недействительна. Сгенерируйте новую в настройках поездки.');
-        return Response.json({ ok: true });
-      }
-      if (tok.used_at) {
-        await sendMessage(botToken, chatId, '❌ Эта ссылка уже использована. Сгенерируйте новую в настройках поездки.');
-        return Response.json({ ok: true });
-      }
-      if (new Date(tok.expires_at).getTime() < Date.now()) {
-        await sendMessage(botToken, chatId, '❌ Срок действия ссылки истёк. Сгенерируйте новую в настройках поездки.');
-        return Response.json({ ok: true });
-      }
+    if (!tok) return Response.json({ ok: false, reason: 'invalid' }, { headers: corsHeaders });
+    if (tok.used_at) return Response.json({ ok: false, reason: 'used' }, { headers: corsHeaders });
+    if (new Date(tok.expires_at).getTime() < Date.now()) {
+      return Response.json({ ok: false, reason: 'expired' }, { headers: corsHeaders });
+    }
 
-      // Upsert TripTelegramIntegration
-      const { data: existing } = await supabaseAdmin
-        .from('trip_telegram_integrations')
-        .select('id')
-        .eq('trip_id', tok.trip_id)
-        .eq('user_id', tok.user_id)
-        .limit(1);
-
-      const payload = {
+    // Upsert by (trip_id, telegram_chat_id). Re-binding the same chat updates the row.
+    const { error: upsertErr } = await supabaseAdmin
+      .from('trip_telegram_integrations')
+      .upsert({
         trip_id: tok.trip_id,
-        user_id: tok.user_id,
+        user_id: tok.user_id,            // linked_by (informational, not identity)
         telegram_chat_id: chatId,
         telegram_username: tgUsername,
         telegram_first_name: tgFirstName,
         is_active: true,
         linked_at: new Date().toISOString(),
-      };
+      }, { onConflict: 'trip_id,telegram_chat_id' });
+    if (upsertErr) throw upsertErr;
 
-      if (existing?.[0]) {
-        await supabaseAdmin
-          .from('trip_telegram_integrations')
-          .update(payload)
-          .eq('id', existing[0].id);
-      } else {
-        await supabaseAdmin
-          .from('trip_telegram_integrations')
-          .insert(payload);
-      }
+    // Consume the token only after a successful upsert.
+    await supabaseAdmin
+      .from('telegram_link_tokens')
+      .update({ used_at: new Date().toISOString() })
+      .eq('id', tok.id);
 
-      await supabaseAdmin
-        .from('telegram_link_tokens')
-        .update({ used_at: new Date().toISOString() })
-        .eq('id', tok.id);
+    const { data: trip } = await supabaseAdmin
+      .from('trips').select('title').eq('id', tok.trip_id).maybeSingle();
 
-      let tripTitle = '';
-      try {
-        const { data: trip } = await supabaseAdmin
-          .from('trips').select('title').eq('id', tok.trip_id).single();
-        tripTitle = trip?.title || '';
-      } catch { /* ignore */ }
-
-      await sendMessage(
-        botToken,
-        chatId,
-        `✅ Готово! Теперь я подключён к поездке <b>${tripTitle || tok.trip_id}</b>.\n\nЯ буду присылать напоминания о важных событиях: заезды и выезды из отелей, трансферы, активности, аренда авто.`,
-      );
-      return Response.json({ ok: true });
-    }
-
-    // 3. Any other message → silently ignored
-    return Response.json({ ok: true });
+    return Response.json(
+      { ok: true, action: 'linked', trip_title: trip?.title || '' },
+      { headers: corsHeaders },
+    );
 
   } catch (e) {
     console.error('telegramWebhook error:', e);
-    // Always 200 to Telegram — otherwise it will retry the same update forever
-    return Response.json({ ok: true, error: (e as Error).message });
+    return Response.json(
+      { ok: false, reason: 'error', error: (e as Error).message },
+      { status: 500, headers: corsHeaders },
+    );
   }
 });
