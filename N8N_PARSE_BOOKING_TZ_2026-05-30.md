@@ -189,6 +189,7 @@ DATE/YEAR RULES:
           "arrival_date": { "type": "STRING" },
           "arrival_time": { "type": "STRING" },
           "carrier": { "type": "STRING" },
+          "flight_number": { "type": "STRING" },
           "booking_reference": { "type": "STRING" },
           "from_address": { "type": "STRING" },
           "to_address": { "type": "STRING" },

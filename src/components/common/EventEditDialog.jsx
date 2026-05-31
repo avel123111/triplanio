@@ -556,6 +556,7 @@ export default function EventEditDialog({
               start_datetime: localToUtc(seg.start_datetime, startTz),
               end_datetime: localToUtc(seg.end_datetime, endTz),
               carrier: seg.carrier || undefined,
+              flight_number: seg.flight_number || undefined,
               booking_reference: seg.booking_reference || undefined,
               booking_url: form.booking_url || undefined,
               booking_platform: form.booking_platform || undefined,
@@ -662,6 +663,7 @@ export default function EventEditDialog({
     const segments = Array.isArray(data.segments) && data.segments.length > 0 ? data.segments : [data];
     const first = segments[0] || {};
     setIf('carrier', first.carrier);
+    setIf('flight_number', first.flight_number);
     setIf('booking_reference', first.booking_reference);
     setIf('from_address', first.from_address);
     setIf('to_address', first.to_address);
@@ -691,6 +693,7 @@ export default function EventEditDialog({
       start_datetime: s.departure_date ? combine(s.departure_date, s.departure_time) : '',
       end_datetime:   s.arrival_date   ? combine(s.arrival_date,   s.arrival_time)   : '',
       carrier: s.carrier || '',
+      flight_number: s.flight_number || '',
       booking_reference: s.booking_reference || '',
       from_address: s.from_address || '',
       to_address: s.to_address || '',
