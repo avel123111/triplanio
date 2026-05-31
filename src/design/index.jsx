@@ -811,17 +811,19 @@ function TransferRowV11({ e, onClick }) {
   const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "—";
   return (
     <button onClick={onClick} style={{
-      width: "100%", display: "flex", alignItems: "stretch", padding: 0,
+      width: "100%", display: "flex", alignItems: "stretch", padding: 0, minHeight: 120,
       background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14,
       overflow: "hidden", cursor: "pointer", textAlign: "left",
     }}
       onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
       onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
       <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
-      {/* Taller card via minHeight (not padding), so the time/rail/from-to columns
-          (all justify-content:space-between) stretch top→bottom: from/to anchor to
-          the edges, duration + icon stay centered. Vertical margin matches mobile (13px). */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "stretch", gap: 12, padding: "13px 16px", minHeight: 76 }}>
+      {/* Card height is fixed on the BUTTON (minHeight:120) — taller than mobile, never
+          collapses. The inner block stretches to it (align-items:stretch), and the
+          time / rail / from-to columns (all justify-content:space-between) spread their
+          content top→bottom: from anchors to the top, to to the bottom, the rail line
+          grows, and duration + icon stay centered. Vertical margin matches mobile (13px). */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "stretch", gap: 12, padding: "13px 16px" }}>
         {/* time / duration / arrive */}
         <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14.5, color: "var(--ink)", minWidth: 52, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
           <span style={{ whiteSpace: "nowrap" }}>{e.time || "—"}</span>
