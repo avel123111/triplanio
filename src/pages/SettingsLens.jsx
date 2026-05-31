@@ -547,7 +547,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
       {/* Telegram */}
       <Card title="Telegram-мост" subtitle="Уведомления в Telegram" style={{ marginBottom: 16 }}>
-        <TelegramSection />
+        <TelegramSection tripId={tripId} />
       </Card>
 
       {/* Approvers */}
