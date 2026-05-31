@@ -161,6 +161,8 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
       title: t.carrier || (isPlane ? 'Перелёт' : 'Переезд'),
       from: cityForVisit(t.from_city_visit_id, visits) || t.from_address,
       to: cityForVisit(t.to_city_visit_id, visits) || t.to_address,
+      from_address: t.from_address || null,
+      to_address: t.to_address || null,
       kind,
       carrier: t.carrier,
       num: t.booking_reference,

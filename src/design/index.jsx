@@ -840,15 +840,25 @@ function TransferRowV11({ e, onClick }) {
           <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
           <span style={{ width: 9, height: 9, borderRadius: "50%", background: meta.c, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px " + meta.c }} />
         </div>
-        {/* from → to */}
+        {/* from → to (with departure/arrival address sub-lines, desktop) */}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 4 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "—"}</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "—"}</div>
+            {e.from_address && e.from_address !== e.from && (
+              <div className="muted" style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from_address}</div>
+            )}
+          </div>
           <div className="muted" style={{ fontSize: 11.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>{meta.label}</span>
             {e.carrier ? <> · {e.carrier}</> : null}
             {e.num && e.num !== "—" ? <> · <span className="num">{e.num}</span></> : null}
           </div>
-          <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "—"}</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "—"}</div>
+            {e.to_address && e.to_address !== e.to && (
+              <div className="muted" style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to_address}</div>
+            )}
+          </div>
         </div>
         {/* price + chip */}
         {(e.price != null || e.platformUrl) && (
