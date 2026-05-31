@@ -168,7 +168,7 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
   const Ic = ttIcon;
   return (
     <>
-      <div className="mt-3 p-4 rounded-xl grid items-center gap-3" style={{ gridTemplateColumns: '1fr auto 1fr', background: 'var(--wash)', border: '1px solid var(--line-2)' }}>
+      <div className="mt-3 p-4 rounded-xl grid items-center gap-3" style={{ gridTemplateColumns: '1fr auto 1fr', background: 'var(--wash)' }}>
         <div>
           <div className="font-display font-bold text-2xl leading-tight">{fmtTime(entity.start_datetime)}</div>
           {fromCity && <div className="text-sm font-semibold mt-1">{fromCity}</div>}
