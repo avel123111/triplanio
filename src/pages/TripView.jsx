@@ -336,6 +336,8 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
   // Viewers can't open Settings or Members — hide those menu items entirely.
   const mgmtItems = MGMT_ITEMS.filter(item =>
     !(myRole === 'viewer' && (item.id === 'settings' || item.id === 'members')));
+  // Viewers can't mint a share token (ensureShareToken is owner/admin-only).
+  const canShare = myRole !== 'viewer';
   // Only after Pro state is resolved — avoids the banner flashing on pro trips.
   const showUpgrade = proResolved && !isPro; // isPro = trip-level Pro (owner sub OR pro_trip)
   const chatUnread = useUnreadChatCount(tripId);
@@ -359,7 +361,7 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
           </button>
         ))}
       </div>
-      {mgmtItems.length > 0 && (
+      {(mgmtItems.length > 0 || canShare) && (
         <div className="app-side__group">
           <div className="app-side__group-label">Управление</div>
           {mgmtItems.map(item => (
@@ -372,6 +374,18 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
               {item.label}
             </button>
           ))}
+          {/* Share opens the same dialog as the header button. Hidden from
+              viewers — ensureShareToken is owner/admin-only (a viewer just
+              gets a 403), matching the header share gate (myRole !== 'viewer'). */}
+          {canShare && (
+            <button
+              className="app-side__item"
+              onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}
+            >
+              <Icon name="share" size={15} />
+              Поделиться
+            </button>
+          )}
         </div>
       )}
       {showUpgrade && (

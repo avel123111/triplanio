@@ -51,9 +51,15 @@ Deno.serve(async (req) => {
       .eq('trip_id', trip_id)
       .eq('invite_email', normalizedEmail);
 
-    if (existing && existing.length > 0) {
+    // An existing row blocks a fresh invite — EXCEPT when it was declined.
+    // A declined invite can be re-sent: we reuse the same row (reset to pending)
+    // so the notification FK and history stay intact. Any other status
+    // (pending / active / offline) still 409s.
+    const existingRow = existing?.[0] ?? null;
+    const reactivating = !!existingRow && existingRow.status === 'declined';
+    if (existingRow && !reactivating) {
       return Response.json(
-        { error: 'This user is already invited or a member', existing: existing[0] },
+        { error: 'This user is already invited or a member', existing: existingRow },
         { status: 409, headers: corsHeaders },
       );
     }
@@ -75,21 +81,24 @@ Deno.serve(async (req) => {
       .limit(1);
     const callerName = callerUsers?.[0]?.full_name || user.email!;
 
-    // Create the TripMember record (pending)
-    const { data: member, error: memberError } = await supabaseAdmin
-      .from('trip_members')
-      .insert({
-        trip_id,
-        invite_email: normalizedEmail,
-        user_id: invitedUser?.id ?? null,
-        user_full_name: invitedUser?.full_name || '',
-        role,
-        status: 'pending',
-        invited_by: user.id,
-        created_by: user.id,
-      })
-      .select()
-      .single();
+    // Create the TripMember record (pending) — or, when re-inviting a declined
+    // member, reset the existing row back to pending with the new role.
+    const memberFields = {
+      trip_id,
+      invite_email: normalizedEmail,
+      user_id: invitedUser?.id ?? null,
+      user_full_name: invitedUser?.full_name || '',
+      role,
+      status: 'pending',
+      invited_by: user.id,
+      created_by: user.id,
+    };
+    const { data: member, error: memberError } = reactivating
+      ? await supabaseAdmin.from('trip_members')
+          .update({ ...memberFields, accepted_at: null })
+          .eq('id', existingRow.id).select().single()
+      : await supabaseAdmin.from('trip_members')
+          .insert(memberFields).select().single();
 
     if (memberError || !member) {
       throw new Error(memberError?.message || 'Failed to create member');

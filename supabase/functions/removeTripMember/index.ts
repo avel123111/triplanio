@@ -39,7 +39,20 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
     }
 
-    await supabaseAdmin.from('trip_members').delete().eq('id', member_id);
+    // Notifications reference trip_members via trip_member_id. The prod FK is
+    // ON DELETE NO ACTION (dev is CASCADE — schema drift), so a member that has
+    // an invite notification can't be deleted until that notification is gone.
+    // Clear referencing notifications first so the delete succeeds on BOTH envs.
+    await supabaseAdmin.from('notifications').delete().eq('trip_member_id', member_id);
+
+    // CRITICAL: capture the delete error. Previously this was fire-and-forget,
+    // so a blocked delete (un-cleared FK reference) returned ok:true while the
+    // row survived — "removeTripMember returns true but the member isn't removed".
+    const { error: delErr } = await supabaseAdmin.from('trip_members').delete().eq('id', member_id);
+    if (delErr) {
+      console.error('removeTripMember delete failed:', delErr);
+      return Response.json({ error: delErr.message }, { status: 500, headers: corsHeaders });
+    }
 
     // Revoke this member's Telegram bindings for the trip — bot/reminder access
     // is tied to trip membership. (Offline members have user_id null → skip.)

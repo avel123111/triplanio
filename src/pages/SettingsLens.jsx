@@ -496,10 +496,19 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (!window.confirm('Выйти из трипа? Ты перестанешь видеть его.')) return;
     const myMember = members.find(m => m.user_id === user?.id && m.status === 'active');
     if (!myMember) { alert('Ошибка: не найдено ваше участие в трипе.'); return; }
-    const { error } = await supabase.functions.invoke('removeTripMember', {
+    // Only leave (navigate away) once the backend actually removed the row.
+    // removeTripMember now returns a non-2xx with the reason on failure, so we
+    // must read the response — navigating on a silent failure left the user
+    // still in the trip ("выход" перебрасывал на /trips, но не выходил).
+    const { data, error } = await supabase.functions.invoke('removeTripMember', {
       body: { member_id: myMember.id },
     });
-    if (error) { alert('Ошибка: ' + error.message); return; }
+    if (error || !data?.ok) {
+      let msg = error?.message || 'не удалось выйти';
+      try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
+      alert('Ошибка: ' + msg);
+      return;
+    }
     nav('/trips');
   }
 

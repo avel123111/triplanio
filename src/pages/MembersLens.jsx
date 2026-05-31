@@ -12,28 +12,46 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Skeleton } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, Field, Skeleton } from '../design/index';
+
+// ─── edge error helper ──────────────────────────────────────────────────────
+// supabase-js wraps any non-2xx edge response in a FunctionsHttpError whose
+// `.message` is the generic "Edge Function returned a non-2xx status code" and
+// leaves `data` null. The real { error } payload lives on error.context (the
+// Response). This reads it so we can surface the actual reason to the user.
+async function edgeErrorMessage(error, data, fallback = 'Ошибка') {
+  if (data?.error) return data.error;
+  try {
+    const body = await error?.context?.json?.();
+    if (body?.error) return body.error;
+  } catch { /* not JSON / already consumed */ }
+  return error?.message && !/non-2xx/i.test(error.message) ? error.message : fallback;
+}
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
+// Real roles are owner / admin / viewer. owner is assigned only at creation and
+// is never selectable here. There is no "editor" role on the backend.
 
 function RoleBadge({ role }) {
   if (role === 'owner') return <Badge variant="warm">Владелец</Badge>;
   if (role === 'admin') return <Badge>Админ</Badge>;
-  if (role === 'editor') return <Badge variant="quiet">Редактор</Badge>;
   return <Badge variant="quiet" icon="eye">Зритель</Badge>;
 }
 
+// Status column. Active members show no status text (the role badge already
+// conveys they're in the trip). Offline placeholders show nothing here (the
+// "Офлайн" badge sits in the role column). Only pending and declined invites
+// carry a status pill.
 function StatusDot({ status }) {
-  if (status === 'active')  return <span style={{ color: 'var(--success)', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', display: 'inline-block' }} />Принял</span>;
   if (status === 'pending') return <span style={{ color: 'var(--warning)', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--warning)', display: 'inline-block' }} />Ожидает</span>;
-  return <span className="muted" style={{ fontSize: 12.5 }}>—</span>;
+  if (status === 'declined') return <span style={{ color: 'var(--danger)', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block' }} />Отклонил</span>;
+  return null;
 }
 
 // ─── InviteDialog ─────────────────────────────────────────────────────────────
 
 const ROLES = [
   { value: 'admin',  label: 'Админ — редактирование всего' },
-  { value: 'editor', label: 'Редактор — добавляет события' },
   { value: 'viewer', label: 'Зритель — только чтение' },
 ];
 
@@ -55,7 +73,7 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
     const { data, error } = await supabase.functions.invoke('inviteTripMember', {
       body: { trip_id: tripId, email: trimmed, role },
     });
-    if (error || data?.error) { setSaving(false); setErr((data?.error || error?.message) || 'Ошибка'); return; }
+    if (error || data?.error) { setSaving(false); setErr(await edgeErrorMessage(error, data)); return; }
     // Promoting an offline placeholder → remove it now that a real invite exists.
     if (promoteMember?.id) {
       await supabase.functions.invoke('removeTripMember', { body: { member_id: promoteMember.id } });
@@ -248,12 +266,27 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     await supabase.functions.invoke('resendTripInvite', { body: { member_id: memberId } });
   }
 
+  // Re-invite a member who declined: restart the invite flow on the SAME row.
+  // inviteTripMember resets a declined row back to pending and re-sends the
+  // notification + email (reusing the existing role).
+  async function reinvite(member) {
+    setOpenMenu(null);
+    setRemoving(member.id);
+    const { data, error } = await supabase.functions.invoke('inviteTripMember', {
+      body: { trip_id: tripId, email: member.invite_email, role: member.role || 'viewer' },
+    });
+    setRemoving(null);
+    if (error || data?.error) { alert(await edgeErrorMessage(error, data, 'Не удалось отправить приглашение')); return; }
+    refresh();
+  }
+
   async function removeMember(memberId) {
     if (!window.confirm('Убрать участника из трипа?')) return;
     setOpenMenu(null);
     setRemoving(memberId);
-    await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });
+    const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });
     setRemoving(null);
+    if (error || !data?.ok) { alert(await edgeErrorMessage(error, data, 'Не удалось убрать участника')); return; }
     refresh();
   }
 
@@ -375,6 +408,9 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                   }}>
                     {m.status === 'pending' && (
                       <RowMenuItem icon="send" onClick={() => resend(m.id)}>Отправить ещё раз</RowMenuItem>
+                    )}
+                    {m.status === 'declined' && (
+                      <RowMenuItem icon="send" onClick={() => reinvite(m)}>Пригласить ещё раз</RowMenuItem>
                     )}
                     {m.status === 'active' && (
                       <RowMenuItem icon="edit" onClick={() => { setOpenMenu(null); window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />); }}>Изменить роль</RowMenuItem>
