@@ -11,6 +11,12 @@ export const AuthProvider = ({ children }) => {
   const [authChecked, setAuthChecked] = useState(false);
   // Prevent race condition: track which user ID is currently being loaded
   const loadingForRef = React.useRef(null);
+  // Track which user's profile is already loaded & live. Unlike loadingForRef
+  // (an in-flight guard that gets cleared in finally), this persists so that a
+  // repeat SIGNED_IN — which supabase-js emits every time the tab regains focus
+  // — does NOT trigger another loadUserProfile()/isLoadingAuth flash that would
+  // unmount the whole app and look like a full page "refresh" on tab switch.
+  const loadedUserIdRef = React.useRef(null);
 
   useEffect(() => {
     // Check if this is an OAuth callback (PKCE code in URL or implicit hash token).
@@ -38,14 +44,18 @@ export const AuthProvider = ({ children }) => {
     // Secondary: react to auth changes (sign-in, sign-out, OAuth callback, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') {
-        // Deduplicate: skip if already loading profile for this user
-        if (loadingForRef.current !== session.user.id) {
+        // Skip when this user's profile is already loaded (the common case on
+        // tab refocus) or a load for them is already in flight. Without this,
+        // every tab focus reloaded the profile → isLoadingAuth flash → remount.
+        if (loadedUserIdRef.current !== session.user.id &&
+            loadingForRef.current !== session.user.id) {
           loadUserProfile(session.user);
         }
       } else if (event === 'INITIAL_SESSION') {
         // Fired on page load with the resolved session (covers OAuth callback exchange)
         if (session) {
-          if (loadingForRef.current !== session.user.id) {
+          if (loadedUserIdRef.current !== session.user.id &&
+              loadingForRef.current !== session.user.id) {
             loadUserProfile(session.user);
           }
         } else {
@@ -57,6 +67,7 @@ export const AuthProvider = ({ children }) => {
         }
       } else if (event === 'SIGNED_OUT') {
         loadingForRef.current = null;
+        loadedUserIdRef.current = null;
         setUser(null);
         setIsAuthenticated(false);
         setIsLoadingAuth(false);
@@ -121,6 +132,9 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
       setAuthChecked(true);
+      // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
+      // are ignored by the onAuthStateChange guard above.
+      loadedUserIdRef.current = authUser.id;
     } catch (error) {
       console.error('Failed to load user profile:', error);
       setAuthError({ type: 'unknown', message: error.message });

@@ -7,15 +7,16 @@
  * verify_jwt=false, so it authenticates the caller itself: requires
  * `Authorization: Bearer <N8N_SECRET>` (see requireN8nSecret). Without this
  * gate any party could resolve a chat id to a trip and read the entire trip
- * (members, budget, expenses, share_token) — broken access control.
+ * (members, share_token, …) — broken access control.
  *
  * A single Telegram chat can be linked to SEVERAL trips (one row per
  * (trip_id, user_id) in trip_telegram_integrations; telegram_chat_id is NOT
  * unique). Therefore this endpoint returns an ARRAY:
  *
  *   { trips: [ { is_active, linked_at, trip, cityVisits, hotels, transfers,
- *                activities, services, members, budget, budgetCategories,
- *                budgetExpenses }, ... ] }
+ *                activities, services, members }, ... ] }
+ *
+ * Budget data is intentionally excluded (finances are never sent to the bot).
  *
  * Trips are ordered active-first, then by linked_at desc. When the chat has no
  * linked trips the response is { trips: [] } with HTTP 200 (not an error) so

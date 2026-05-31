@@ -5,6 +5,7 @@ export default {
   
   // Dialog titles
   'ai_plan.title': 'Planificar con IA',
+  'ai_plan.page_subtitle': 'Describe el viaje que quieres — prepararé un borrador y lo afinamos juntos.',
   'ai_plan.desc_initial': 'Describe tu viaje soñado y crearé un itinerario detallado',
   'ai_plan.desc_with_draft': 'Refina tu viaje o guárdalo cuando esté listo',
   

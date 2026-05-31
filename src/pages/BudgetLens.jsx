@@ -619,7 +619,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {activeCat.items.length === 0 && (
                   <div style={{ padding: 22, textAlign: 'center', color: 'var(--muted)', border: '1.5px dashed var(--line)', borderRadius: 10 }}>
-                    <Icon name={catIcon(activeCat)} size={20} style={{ color: activeCat.color, marginBottom: 6 }} />
+                    <Icon name={catIcon(activeCat)} size={20} style={{ color: activeCat.color, marginBottom: 6, display: 'block', marginLeft: 'auto', marginRight: 'auto' }} />
                     <div>В категории «{activeCat.name}» пока пусто. <a href="#" onClick={e => { e.preventDefault(); openAddExpense(); }}>Добавить первую трату</a></div>
                   </div>
                 )}

@@ -5,6 +5,7 @@ export default {
   
   // Dialog titles (legacy from old modal)
   'ai_plan.title': 'Plan with AI',
+  'ai_plan.page_subtitle': 'Describe the trip you want — I’ll draft it and we’ll refine it together.',
   'ai_plan.desc_initial': 'Describe your dream trip and I\'ll create a detailed itinerary',
   'ai_plan.desc_with_draft': 'Refine your trip or save it when ready',
   

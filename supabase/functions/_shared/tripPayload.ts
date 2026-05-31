@@ -1,9 +1,11 @@
 /**
  * Shared full-trip payload builder.
  *
- * buildTripData(tripId) returns the trip plus every related collection
- * (cities, hotels, activities, transfers, services, members, budget +
- * categories + expenses) as a plain object, or null if the trip is missing.
+ * buildTripData(tripId) returns the trip plus its itinerary collections
+ * (cities, hotels, activities, transfers, services, members) as a plain
+ * object, or null if the trip is missing. Budget data is intentionally NOT
+ * included — this payload feeds the server-to-server (n8n / Telegram bot)
+ * endpoints, which must not expose trip finances.
  *
  * fetchTripPayload(tripId) wraps buildTripData in an HTTP Response and is used
  * by getTripById (single-trip contract — unchanged).
@@ -27,9 +29,6 @@ export interface TripData {
   transfers: unknown[];
   services: unknown[];
   members: unknown[];
-  budget: unknown | null;
-  budgetCategories: unknown[];
-  budgetExpenses: unknown[];
 }
 
 /** Builds the full trip object for `tripId`, or null when the trip is missing. */
@@ -49,9 +48,6 @@ export async function buildTripData(tripId: string): Promise<TripData | null> {
     { data: transfers },
     { data: services },
     { data: members },
-    { data: budgetArr },
-    { data: budgetCategories },
-    { data: budgetExpenses },
   ] = await Promise.all([
     supabaseAdmin.from('city_visits').select('*').eq('trip_id', tripId),
     supabaseAdmin.from('hotel_stays').select('*').eq('trip_id', tripId),
@@ -59,9 +55,6 @@ export async function buildTripData(tripId: string): Promise<TripData | null> {
     supabaseAdmin.from('transfers').select('*').eq('trip_id', tripId),
     supabaseAdmin.from('trip_services').select('*').eq('trip_id', tripId),
     supabaseAdmin.from('trip_members').select('*').eq('trip_id', tripId),
-    supabaseAdmin.from('trip_budgets').select('*').eq('trip_id', tripId),
-    supabaseAdmin.from('budget_categories').select('*').eq('trip_id', tripId).order('order_index'),
-    supabaseAdmin.from('budget_expenses').select('*').eq('trip_id', tripId),
   ]);
 
   return {
@@ -72,9 +65,6 @@ export async function buildTripData(tripId: string): Promise<TripData | null> {
     transfers: transfers ?? [],
     services: services ?? [],
     members: members ?? [],
-    budget: (budgetArr ?? [])[0] ?? null,
-    budgetCategories: budgetCategories ?? [],
-    budgetExpenses: budgetExpenses ?? [],
   };
 }
 

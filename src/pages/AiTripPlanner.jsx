@@ -409,12 +409,23 @@ export default function AiTripPlanner() {
           <span className="app-header__crumb-sep">/</span>
           <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{t('ai_plan.page_title')}</span>
         </div>
-        <Btn variant="ghost" icon="refresh" onClick={resetAll} style={{ marginRight: 4 }}>{t('ai_plan.restart')}</Btn>
         <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
       </header>
 
       {/* Body */}
       <div style={{ flex: 1, padding: '32px 24px', maxWidth: 1280, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+        {/* Page title — icon + heading + subtitle, with "restart" opposite (matches design) */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, var(--ai), #c66ce2)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <Icon name="sparkles" size={22} />
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <h1 style={{ marginBottom: 6 }}>{t('ai_plan.title')}</h1>
+            <div className="muted" style={{ fontSize: 15 }}>{t('ai_plan.page_subtitle')}</div>
+          </div>
+          <Btn variant="ghost" icon="refresh" onClick={resetAll}>{t('ai_plan.restart')}</Btn>
+        </div>
+
         {/* 50/50 shell — identical across all four states */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }} className="ai-planner-grid">
           {/* ── LEFT — prompt + AI status + chips/hint ── */}
@@ -559,7 +570,7 @@ export default function AiTripPlanner() {
               {state === 'empty' && (
                 <div style={{ flex: 1, minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted-2)', textAlign: 'center' }}>
                   <div>
-                    <Sparkles size={28} style={{ color: 'var(--ai)', marginBottom: 6 }} />
+                    <Sparkles size={28} style={{ color: 'var(--ai)', marginBottom: 6, display: 'block', marginLeft: 'auto', marginRight: 'auto' }} />
                     <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--muted)' }}>{t('ai_plan.draft_placeholder')}</div>
                     <div style={{ fontSize: 12, marginTop: 4, maxWidth: 260, marginInline: 'auto' }}>{t('ai_plan.draft_placeholder_sub')}</div>
                   </div>

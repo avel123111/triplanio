@@ -87,14 +87,14 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
         {tab === 'offline' && <Btn variant="primary" icon="user" onClick={addOffline} disabled={saving}>{saving ? 'Добавляю…' : 'Добавить'}</Btn>}
       </>}>
       <div className="tweaks__seg" style={{ marginBottom: 14, display: 'flex' }}>
-        <button className={tab === 'email' ? 'active' : ''} onClick={() => setTab('email')} style={{ flex: 1 }}>
-          <Icon name="send" size={12} style={{ verticalAlign: -2, marginRight: 4 }} />По e-mail
+        <button className={tab === 'email' ? 'active' : ''} onClick={() => setTab('email')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <Icon name="send" size={12} />По e-mail
         </button>
-        <button className={tab === 'link' ? 'active' : ''} onClick={() => setTab('link')} style={{ flex: 1 }}>
-          <Icon name="link" size={12} style={{ verticalAlign: -2, marginRight: 4 }} />Скопировать ссылку
+        <button className={tab === 'link' ? 'active' : ''} onClick={() => setTab('link')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <Icon name="link" size={12} />Скопировать ссылку
         </button>
-        <button className={tab === 'offline' ? 'active' : ''} onClick={() => setTab('offline')} style={{ flex: 1 }}>
-          <Icon name="user" size={12} style={{ verticalAlign: -2, marginRight: 4 }} />Офлайн
+        <button className={tab === 'offline' ? 'active' : ''} onClick={() => setTab('offline')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <Icon name="user" size={12} />Офлайн
         </button>
       </div>
 
