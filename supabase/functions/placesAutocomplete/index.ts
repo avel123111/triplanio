@@ -50,21 +50,32 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'details') {
-      const { placeId, sessionToken } = body;
+      const { placeId, sessionToken, language } = body;
       if (!placeId) return Response.json({ error: 'placeId is required' }, { status: 400, headers: corsHeaders });
 
+      // NB: `utc_offset_minutes` is a Places API (NEW) field name. The legacy
+      // place/details/json endpoint rejects it and fails the WHOLE request with
+      // INVALID_REQUEST (result:null → no coords). Keep only legacy field names.
+      // language is taken from the caller (was hardcoded 'en' → address always
+      // came back English regardless of the user's locale).
       const params = new URLSearchParams({
         place_id: placeId,
         key: apiKey,
-        fields: 'name,formatted_address,geometry,address_components,utc_offset_minutes',
-        language: 'en',
+        fields: 'name,formatted_address,geometry,address_components',
+        language: language || 'en',
       });
       if (sessionToken) params.set('sessiontoken', sessionToken);
 
       const res = await fetch(`${BASE_MAPS}/place/details/json?${params}`);
       const data = await res.json();
+      if (!data.result) {
+        console.error('[placesAutocomplete details] no result', JSON.stringify({ status: data.status, error_message: data.error_message }));
+      }
 
-      return Response.json({ result: data.result || null }, { headers: corsHeaders });
+      return Response.json(
+        { result: data.result || null, status: data.status ?? null, error_message: data.error_message ?? null },
+        { headers: corsHeaders },
+      );
     }
 
     if (action === 'timezone') {
