@@ -5,7 +5,6 @@ import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-route
 import AppErrorBoundary from '@/components/AppErrorBoundary';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { I18nProvider } from '@/lib/i18n/I18nContext';
 import Layout from '@/components/Layout';
@@ -24,7 +23,7 @@ import Inbox from '@/pages/Inbox';
 import Pro from '@/pages/Pro';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
   const location = useLocation();
 
   // Public read-only trip page — no auth needed
@@ -38,11 +37,15 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Login page — always accessible
-  if (path === '/login') {
+  // Login + password-recovery pages — always accessible (no auth gating).
+  // /reset-password is reached from the recovery email; its token creates a
+  // session, so it must bypass the authenticated routing below and render the
+  // same Login shell (which opens on the new-password form).
+  if (path === '/login' || path === '/reset-password') {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<Login />} />
       </Routes>
     );
   }
@@ -94,19 +97,6 @@ const AuthenticatedApp = () => {
         <Route path="*" element={<LandingPage />} />
       </Routes>
     );
-  }
-
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      return (
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="*" element={<LandingPage />} />
-        </Routes>
-      );
-    }
   }
 
   return (

@@ -17,6 +17,10 @@ export const AuthProvider = ({ children }) => {
   // — does NOT trigger another loadUserProfile()/isLoadingAuth flash that would
   // unmount the whole app and look like a full page "refresh" on tab switch.
   const loadedUserIdRef = React.useRef(null);
+  // Set while a logout is in progress. The SIGNED_OUT handler keeps the spinner
+  // up (instead of clearing isLoadingAuth) so the public landing doesn't flash
+  // for ~0.5s between sign-out and the redirect to /login.
+  const isLoggingOutRef = React.useRef(false);
 
   useEffect(() => {
     // Check if this is an OAuth callback (PKCE code in URL or implicit hash token).
@@ -70,8 +74,14 @@ export const AuthProvider = ({ children }) => {
         loadedUserIdRef.current = null;
         setUser(null);
         setIsAuthenticated(false);
-        setIsLoadingAuth(false);
-        setAuthChecked(true);
+        if (isLoggingOutRef.current) {
+          // Keep the spinner up until logout()'s redirect to /login fires —
+          // prevents a flash of the public landing during sign-out.
+          setIsLoadingAuth(true);
+        } else {
+          setIsLoadingAuth(false);
+          setAuthChecked(true);
+        }
       }
       // TOKEN_REFRESHED: session stays valid, no profile reload needed
     });
@@ -161,11 +171,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async (shouldRedirect = true) => {
+    // Flag the logout so the SIGNED_OUT listener holds the spinner instead of
+    // rendering the landing. Show the spinner immediately, then sign out and
+    // hard-redirect to /login — no landing flash in between.
+    isLoggingOutRef.current = true;
+    if (shouldRedirect) setIsLoadingAuth(true);
     await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);
     if (shouldRedirect) {
-      window.location.href = '/login';
+      window.location.replace('/login');
+    } else {
+      isLoggingOutRef.current = false;
     }
   };
 

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
-import { BRAND_NAME, BRAND_LOGO_URL } from '@/lib/brand';
+import { BRAND_NAME } from '@/lib/brand';
 import './login.css';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -22,6 +22,15 @@ const STRENGTH_LABELS = [
   'Хороший — почти.',
   'Надёжный.',
 ];
+
+// Hard gate that mirrors the Supabase server policy
+// (Auth → Password: min length 8 + "Letters and digits").
+// Keep this in sync if the dashboard policy changes.
+function meetsPasswordPolicy(pw) {
+  return (pw || '').length >= 8 && /[A-Za-zА-Яа-яЁё]/.test(pw) && /\d/.test(pw);
+}
+const PASSWORD_POLICY_MSG =
+  'Пароль должен быть не короче 8 символов и содержать буквы и цифры.';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 function IconEye({ off }) {
@@ -90,23 +99,33 @@ function BrandMark({ size = 28 }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Login() {
-  const [view, setView]           = useState('login'); // login | signup | reset | reset-sent
+  // Password-recovery deep link (/reset-password) reuses this same auth shell
+  // (left forms + right brand panel) but opens straight on the new-password form
+  // and must NOT bounce to /trips even though the recovery token creates a session.
+  const isRecoveryRoute =
+    typeof window !== 'undefined' && window.location.pathname === '/reset-password';
+
+  const [view, setView]           = useState(isRecoveryRoute ? 'reset-password' : 'login'); // login | signup | reset | reset-sent | reset-password | reset-done
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
+  const [password2, setPassword2] = useState('');
   const [name, setName]           = useState('');
   const [showPw, setShowPw]       = useState(false);
+  const [showPw2, setShowPw2]     = useState(false);
   const [remember, setRemember]   = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState(null);
   const [sentEmail, setSentEmail] = useState('');
   const pwScore = scorePassword(password);
 
-  // Redirect if already logged in
+  // Redirect if already logged in — but never on the recovery route, where the
+  // session belongs to a password reset still in progress.
   useEffect(() => {
+    if (isRecoveryRoute) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) window.location.href = '/trips';
     });
-  }, []);
+  }, [isRecoveryRoute]);
 
   // The auth screen is light-only by design (white form + photo brand panel).
   // A dark theme stored from the authed app sets [data-theme=dark] on <html>,
@@ -142,7 +161,7 @@ export default function Login() {
   }, []);
 
   // Reset error + pw visibility on view change
-  useEffect(() => { setError(null); setShowPw(false); }, [view]);
+  useEffect(() => { setError(null); setShowPw(false); setShowPw2(false); }, [view]);
 
   const goto = (v) => setView(v);
 
@@ -217,19 +236,55 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault(); setIsLoading(true); setError(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setError(error.message); setIsLoading(false); }
-    // on success onAuthStateChange in AuthContext handles redirect
+    if (error) { setError(error.message); setIsLoading(false); return; }
+    // Success: AuthContext picks up SIGNED_IN, but this page stays mounted on
+    // /login (App routes /login independently of auth state), so navigate
+    // explicitly to land the user in the app. Keep isLoading=true until the
+    // full navigation tears the page down (avoids a flash of re-enabled buttons).
+    window.location.href = '/trips';
   };
 
   const handleSignup = async (e) => {
-    e.preventDefault(); setIsLoading(true); setError(null);
+    e.preventDefault(); setError(null);
+    if (!meetsPasswordPolicy(password)) { setError(PASSWORD_POLICY_MSG); return; }
+    setIsLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options: {
+        data: { full_name: name },
+        // Land confirmed users in the app, not on the Site-URL landing page.
+        emailRedirectTo: window.location.origin + '/trips',
+      },
     });
     if (error) { setError(error.message); setIsLoading(false); }
     else { setSentEmail(email); goto('reset-sent'); setIsLoading(false); }
+  };
+
+  // Set a new password during a Supabase recovery session (reached via the
+  // /reset-password email link). detectSessionInUrl exchanges the recovery token
+  // into a session on load; updateUser then writes the new password. For a
+  // Google-only account this ADDS an email/password login alongside Google.
+  const handleNewPassword = async (e) => {
+    e.preventDefault(); setError(null);
+    if (!meetsPasswordPolicy(password)) { setError(PASSWORD_POLICY_MSG); return; }
+    if (password !== password2) { setError('Пароли не совпадают.'); return; }
+    setIsLoading(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      const msg = /session|token|expired|missing/i.test(error.message)
+        ? 'Ссылка для сброса устарела или недействительна. Запросите новую.'
+        : error.message;
+      setError(msg); setIsLoading(false); return;
+    }
+    goto('reset-done'); setIsLoading(false);
+  };
+
+  // From the "password updated" screen: drop the recovery session and send the
+  // user to a clean login so they sign in with the new password.
+  const finishToLogin = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
 
   const handleReset = async (e) => {
@@ -453,6 +508,93 @@ export default function Login() {
                   Не получили письмо?{' '}
                   <button type="button" onClick={() => goto('reset')}>Отправить ещё раз</button>
                 </p>
+              </div>
+            )}
+
+            {/* ── Reset password (set new) ── */}
+            {view === 'reset-password' && (
+              <>
+                <div className="eyebrow">Новый пароль</div>
+                <h1 className="auth__h1">Придумайте новый пароль.</h1>
+                <p className="lede">Введите новый пароль дважды — он заменит старый для входа в аккаунт.</p>
+
+                {error && <div className="auth-error">{error}</div>}
+
+                <form className="auth__inputs" onSubmit={handleNewPassword} style={{ marginTop: 26 }}>
+                  <div className="field">
+                    <div className="field__top">
+                      <label className="field__label" htmlFor="rp-pw">Новый пароль</label>
+                    </div>
+                    <div className="input-wrap">
+                      <input className="auth-input auth-input--trail" id="rp-pw"
+                        type={showPw ? 'text' : 'password'} autoComplete="new-password"
+                        placeholder="Минимум 8 символов" required minLength={8} value={password}
+                        onChange={e => setPassword(e.target.value)} disabled={isLoading} />
+                      <button type="button" className="input-trail"
+                        aria-label={showPw ? 'Скрыть пароль' : 'Показать пароль'}
+                        onClick={() => setShowPw(v => !v)}>
+                        <IconEye off={showPw} />
+                      </button>
+                    </div>
+                    <div className="pw-strength" data-score={password ? pwScore : undefined}>
+                      <span /><span /><span /><span />
+                    </div>
+                    <div className="pw-strength__label">{STRENGTH_LABELS[pwScore]}</div>
+                  </div>
+
+                  <div className="field">
+                    <div className="field__top">
+                      <label className="field__label" htmlFor="rp-pw2">Повторите пароль</label>
+                    </div>
+                    <div className="input-wrap">
+                      <input className="auth-input auth-input--trail" id="rp-pw2"
+                        type={showPw2 ? 'text' : 'password'} autoComplete="new-password"
+                        placeholder="Ещё раз тот же пароль" required value={password2}
+                        onChange={e => setPassword2(e.target.value)} disabled={isLoading} />
+                      <button type="button" className="input-trail"
+                        aria-label={showPw2 ? 'Скрыть пароль' : 'Показать пароль'}
+                        onClick={() => setShowPw2(v => !v)}>
+                        <IconEye off={showPw2} />
+                      </button>
+                    </div>
+                    {password2 && (
+                      <div className={`field__match ${password === password2 ? 'is-ok' : 'is-bad'}`} aria-live="polite">
+                        {password === password2 ? 'Пароли совпадают' : 'Пароли не совпадают'}
+                      </div>
+                    )}
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ marginTop: 14 }} disabled={isLoading}>
+                    {isLoading ? 'Сохранение…' : 'Сохранить пароль'}<IconArrow />
+                  </button>
+                </form>
+
+                <p className="auth__switch">
+                  Вспомнили старый пароль?{' '}
+                  <button type="button" onClick={finishToLogin}>Войти</button>
+                </p>
+              </>
+            )}
+
+            {/* ── Reset done ── */}
+            {view === 'reset-done' && (
+              <div className="confirm">
+                <div className="confirm__icon">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                </div>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '-0.025em', color: 'var(--ink)' }}>
+                  Пароль обновлён.
+                </h2>
+                <p className="lede" style={{ margin: '14px auto 0', maxWidth: '34ch' }}>
+                  Готово — войдите в аккаунт с новым паролем. Старый больше не работает.
+                </p>
+                <div className="confirm__actions" style={{ gridTemplateColumns: '1fr' }}>
+                  <button type="button" className="btn-primary" onClick={finishToLogin}>
+                    Войти<IconArrow />
+                  </button>
+                </div>
               </div>
             )}
 
