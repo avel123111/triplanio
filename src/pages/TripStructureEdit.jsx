@@ -5,7 +5,6 @@ import { DateTime } from 'luxon';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
 import { sortVisits, computeTripValidation } from '@/lib/validation';
-import { formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
@@ -278,12 +277,12 @@ export default function TripStructureEdit() {
   };
 
   // Persistent app-header — rendered in EVERY branch (loading / blocked / error /
-  // ready) so it never blanks out while the lock RPC + queries resolve. Crumb
-  // dates come from the cached shell via the SAME formatter TripView uses, so
-  // navigating timeline ↔ editor shows an identical header (no flash/jump).
-  // Editor actions (undo / reset / save) live HERE on the right — the work area
-  // below is fully given over to the two columns. Exit = the back-arrow / brand.
-  const hdrRange = formatTripRange(shell?.cityVisits || [], '');
+  // ready) so it never blanks out while the lock RPC + queries resolve. The page
+  // title (name · dates · nights) lives in the LEFT column, not here; the header
+  // is the global app bar + the editor action buttons.
+  //   Undo     = revert the last single action (step back).
+  //   Отменить = discard ALL edits, release the lock, return to the timeline.
+  //   Сброс    = discard all edits but STAY in the editor.
   const headerEl = (
     <header className="app-header">
       <button className="app-header__crumb-back" onClick={cancelEdit} title="Выйти из редактора">
@@ -296,18 +295,17 @@ export default function TripStructureEdit() {
       <div className="app-header__crumb">
         <span className="app-header__crumb-sep">/</span>
         <div className="app-header__crumb-trip">
-          <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px' }}>
+          <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
             {trip?.title || '…'}
           </span>
-          {hdrRange && <span className="app-header__crumb-dates">{hdrRange}</span>}
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 7px', borderRadius: 999, background: 'var(--brand-soft)', whiteSpace: 'nowrap', flexShrink: 0 }}>структура</span>
         </div>
       </div>
       {draft && (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
           {blocked && <Badge variant="warm" icon="warning">{errors ? `${errors} ош.` : `${warns} предупр.`}</Badge>}
-          <Btn variant="ghost" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title="Шаг назад">Шаг назад</Btn>
-          <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title="Сбросить все изменения">Сброс</Btn>
+          <Btn variant="ghost" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title="Отменить последнее действие">Шаг назад</Btn>
+          <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title="Сбросить все изменения (остаться в редакторе)">Сброс</Btn>
+          <Btn variant="ghost" size="sm" icon="close" onClick={cancelEdit} title="Сбросить изменения и выйти в таймлайн">Отменить</Btn>
           <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={onSave}>{saving ? 'Сохраняю…' : 'Сохранить'}</Btn>
         </div>
       )}
@@ -362,21 +360,26 @@ export default function TripStructureEdit() {
   return (
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
     {headerEl}
-    <div className="ts-grid" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: 12, overflow: 'hidden' }}>
-        {/* LEFT — cities (fixed start toolbar + scrolling list) */}
-        <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap', flexShrink: 0 }}>
-            <span className="eyebrow">Старт трипа</span>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: 2 }}>
-              <button className="ts-step" onClick={() => shiftStart(-1)} title="раньше"><Icon name="back" size={13} /></button>
-              <span className="num" style={{ padding: '0 8px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDW(startDate)}</span>
-              <button className="ts-step" onClick={() => shiftStart(1)} title="позже"><Icon name="chev" size={13} /></button>
+    <div className="ts-grid" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, overflow: 'hidden' }}>
+        {/* LEFT — page title + cities (scrolling list) */}
+        <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)' }}>
+          {/* page title */}
+          <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: '1px solid var(--line-2)' }}>
+            <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>Редактирование структуры</div>
+            <h1 style={{ fontSize: 22, lineHeight: 1.15, marginBottom: 6, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
+            <div className="muted num" style={{ fontSize: 12.5 }}>{fmtD(startDate)} – {fmtD(endDate)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights)}` : ''} · {cities.length} {cities.length === 1 ? 'город' : 'городов'}{membersCount > 0 ? ` · ${membersCount} уч.` : ''}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+              <span className="eyebrow" style={{ fontSize: 10 }}>Старт трипа</span>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: 2 }}>
+                <button className="ts-step" onClick={() => shiftStart(-1)} title="раньше"><Icon name="back" size={13} /></button>
+                <span className="num" style={{ padding: '0 8px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDW(startDate)}</span>
+                <button className="ts-step" onClick={() => shiftStart(1)} title="позже"><Icon name="chev" size={13} /></button>
+              </div>
+              <span className="muted" style={{ fontSize: 11 }}>двигает весь трип</span>
             </div>
-            <span className="muted" style={{ fontSize: 11.5 }}>двигает весь трип</span>
-            <span className="muted num" style={{ fontSize: 11.5, marginLeft: 'auto', whiteSpace: 'nowrap' }}>{cities.length} {cities.length === 1 ? 'город' : 'городов'}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights)}` : ''}{membersCount > 0 ? ` · ${membersCount} уч.` : ''}</span>
           </div>
 
-          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 4 }}>
+          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 20px 18px' }}>
           <div>
             {rows.map((r, i) => {
               const first = i === 0, last = i === rows.length - 1;
@@ -426,13 +429,16 @@ export default function TripStructureEdit() {
           </div>{/* /ts-leftscroll */}
         </div>
 
-        {/* RIGHT — map (top 70%) + warnings (bottom 30%); each scrolls on its own */}
-        <div className="ts-col-right" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, gap: 12 }}>
-          <div className="ts-map" style={{ flex: '7 1 0', minHeight: 0, borderRadius: 14, overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
-            <MapView visits={draft.nodes} transfers={liveTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
-          </div>
-          <div className="ts-warn" style={{ flex: '3 1 0', minHeight: 0, display: 'flex' }}>
-            <WarningsPanel issues={issues} errors={errors} warns={warns} onOpen={openConflict} />
+        {/* RIGHT — one rounded card: map (top 70%) + warnings (bottom 30%),
+            split by a divider, no gap between them. Each scrolls on its own. */}
+        <div className="ts-col-right" style={{ minWidth: 0, display: 'flex', minHeight: 0, padding: 12 }}>
+          <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
+            <div className="ts-map" style={{ flex: '7 1 0', minHeight: 0, overflow: 'hidden', borderBottom: '1px solid var(--line)' }}>
+              <MapView visits={draft.nodes} transfers={liveTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
+            </div>
+            <div className="ts-warn" style={{ flex: '3 1 0', minHeight: 0, display: 'flex' }}>
+              <WarningsPanel issues={issues} errors={errors} warns={warns} onOpen={openConflict} />
+            </div>
           </div>
         </div>
       </div>
@@ -695,7 +701,7 @@ function plateType(code) {
 function WarningsPanel({ issues, errors, warns, onOpen }) {
   const has = issues.length > 0;
   return (
-    <div style={{ flex: 1, width: '100%', minWidth: 0, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-soft)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ flex: 1, width: '100%', minWidth: 0, background: 'var(--surface)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '10px 13px', borderBottom: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
         <div style={{ width: 26, height: 26, borderRadius: 7, background: has ? 'var(--warning-soft)' : 'var(--success-soft)', color: has ? 'var(--warning)' : 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name={has ? 'warning' : 'check'} size={15} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
