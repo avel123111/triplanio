@@ -181,13 +181,18 @@ export default function Login() {
   // Google One Tap credential handler — exchanges the Google JWT for a
   // Supabase session via signInWithIdToken. AuthContext picks up SIGNED_IN
   // and handles profile creation + redirect to /trips.
-  const handleOneTapCredential = async (response) => {
+  // `nonce` is the RAW nonce: Google embedded its SHA-256 hash in the id_token,
+  // Supabase re-hashes the raw value and compares. Both sides must agree —
+  // omitting it while the token carries a nonce throws "Passed nonce and nonce
+  // in id_token should either both exist or not".
+  const handleOneTapCredential = async (response, nonce) => {
     setIsLoading(true);
     setError(null);
     try {
       const { error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: response.credential,
+        nonce,
       });
       if (error) {
         setError(error.message);
@@ -203,20 +208,41 @@ export default function Login() {
   // prompt. Scoped to this page so other routes don't pay the cost.
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      window.google?.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleOneTapCredential,
-        itp_support: true,
-      });
-      window.google?.accounts.id.prompt();
+    let cancelled = false;
+
+    const init = async () => {
+      // Nonce binding (One Tap + FedCM): generate a raw nonce, hand Google its
+      // SHA-256 hex hash (goes into the id_token's `nonce` claim), and keep the
+      // raw value to pass to signInWithIdToken. Without an explicit nonce, FedCM
+      // injects its own that we can't reproduce → Supabase rejects the token.
+      const rawNonce = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+        .map((b) => b.toString(16).padStart(2, '0')).join('');
+      const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawNonce));
+      const hashedNonce = Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, '0')).join('');
+      if (cancelled) return;
+
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        if (cancelled) return;
+        window.google?.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: (response) => handleOneTapCredential(response, rawNonce),
+          nonce: hashedNonce,
+          itp_support: true,
+        });
+        window.google?.accounts.id.prompt();
+      };
+      document.head.appendChild(script);
     };
-    document.head.appendChild(script);
+
+    init();
+
     return () => {
+      cancelled = true;
       window.google?.accounts.id.cancel();
       const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
       if (existing) existing.remove();
