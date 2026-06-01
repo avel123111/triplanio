@@ -36,3 +36,4 @@ supabase/.temp/
 
 dist_build/
 dist_build2/
+dist_chk*/

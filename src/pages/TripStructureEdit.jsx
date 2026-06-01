@@ -13,6 +13,7 @@ import MapView from '@/components/views/MapView';
 import SourceViewLoader from '@/components/budget/SourceViewLoader';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useToast } from '@/components/ui/use-toast';
+import AppHeader from '@/components/AppHeader';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR — "Сетка" (grid) design from the trip-structure-*
@@ -59,9 +60,13 @@ function buildDraft(shell) {
     position: Number.isFinite(v.position) ? v.position : i,
     nights: (isAnchor(v) || v.kind === 'waypoint') ? null : (nightsBetween(v.start_datetime, v.end_datetime) ?? 1),
   }));
-  // Draft holds ONLY structure (nodes + removed cities). Bookings are read LIVE
-  // from `content` (edits/adds go through the real event dialogs → DB → refetch).
-  return { nodes, removed: [] };
+  // Draft holds ONLY structure (nodes + removed cities + a FIXED trip start date).
+  // Bookings are read LIVE from `content` (edits/adds via real dialogs → DB → refetch).
+  const firstTransit = nodes.find((n) => !isAnchor(n));
+  const startDate = firstTransit?.start_datetime
+    ? DateTime.fromISO(firstTransit.start_datetime, { zone: 'utc' }).toISO()
+    : (shell?.trip?.start_date ? DateTime.fromISO(`${shell.trip.start_date}T12:00:00`, { zone: 'utc' }).toISO() : null);
+  return { nodes, removed: [], startDate };
 }
 
 export default function TripStructureEdit() {
@@ -142,9 +147,14 @@ export default function TripStructureEdit() {
   const blocked = issues.length > 0;
 
   // ---- structural edits ----
-  const applyNodes = (nextNodes, baseISO) => editDraft((d) => ({ ...d, nodes: recompute(nextNodes, baseISO) }));
+  // Trip start (d.startDate) is FIXED until shiftStart changes it; every recompute
+  // lays cities contiguously FROM that fixed date, so reorder/nights never move it.
+  const applyNodes = (nextNodes) => editDraft((d) => ({ ...d, nodes: recompute(nextNodes, d.startDate) }));
   const nudgeNights = (id, delta) => applyNodes(draft.nodes.map((n) => (n.id === id ? { ...n, nights: Math.max(1, Math.min(60, (n.nights || 1) + delta)) } : n)));
-  const shiftStart = (delta) => { const first = draft.nodes.find((n) => !isAnchor(n)); const base = first ? toDT(first.start_datetime)?.plus({ days: delta }).toISO() : null; applyNodes(draft.nodes, base); };
+  const shiftStart = (delta) => editDraft((d) => {
+    const base = d.startDate ? toDT(d.startDate).plus({ days: delta }).toISO() : null;
+    return { ...d, startDate: base, nodes: recompute(d.nodes, base) };
+  });
   const moveTo = (from, to) => {
     if (from == null || to == null || from === to) return;
     editDraft((d) => {
@@ -156,7 +166,7 @@ export default function TripStructureEdit() {
       const hi = arr[arr.length - 1]?.kind === 'end' ? arr.length - 1 : arr.length;
       t = Math.max(lo, Math.min(hi, t));
       arr.splice(t, 0, m);
-      return { ...d, nodes: recompute(arr) };
+      return { ...d, nodes: recompute(arr, d.startDate) };
     });
   };
   // Remove a city → confirm first. On confirm the city AND its attached bookings
@@ -168,20 +178,24 @@ export default function TripStructureEdit() {
       const node = d.nodes.find((n) => n.id === id); if (!node || isAnchor(node)) return d;
       // bookings stay in `content`; they're filtered out of conflicts via removedIds
       // and cascade-deleted on save (p_deletes.cities).
-      return { ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id)), removed: [...d.removed, node] };
+      return { ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id), d.startDate), removed: [...d.removed, node] };
     });
     setConfirmDel(null);
   };
-  const removeEndpoint = (id) => editDraft((d) => ({ ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id)), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) }));
+  const removeEndpoint = (id) => editDraft((d) => ({ ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id), d.startDate), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) }));
   const restoreCity = (id) => editDraft((d) => {
     const node = d.removed.find((n) => n.id === id); if (!node) return d;
     const arr = d.nodes.slice();
     if (node.kind === 'start') arr.unshift(node);
     else if (node.kind === 'end') arr.push(node);
     else { const endIdx = arr.findIndex((n) => n.kind === 'end'); arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
-    return { ...d, nodes: recompute(arr), removed: d.removed.filter((n) => n.id !== id) };
+    return { ...d, nodes: recompute(arr, d.startDate), removed: d.removed.filter((n) => n.id !== id) };
   });
   const addCity = (city, kind = 'transit') => {
+    if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
+      toast({ description: kind === 'start' ? 'Старт уже задан — сначала уберите текущий.' : 'Финиш уже задан — сначала уберите текущий.' });
+      return;
+    }
     const node = {
       id: 'tmp-' + Math.random().toString(36).slice(2), kind,
       city_name: city.city_name, country: city.country || null, country_code: city.country_code || null,
@@ -194,7 +208,7 @@ export default function TripStructureEdit() {
       if (kind === 'start') arr.unshift(node);
       else if (kind === 'end') arr.push(node);
       else { const endIdx = arr.findIndex((n) => n.kind === 'end'); arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
-      return { ...d, nodes: recompute(arr) };
+      return { ...d, nodes: recompute(arr, d.startDate) };
     });
   };
   const onPickCity = async (c, kind) => {
@@ -215,10 +229,6 @@ export default function TripStructureEdit() {
     if (t) {
       const mismatch = issues.some((i) => i.transferId === t.id && ['D1', 'D2', 'D3', 'D4'].includes(i.code));
       setViewEvent({ kind: 'transfer', id: t.id, warning: mismatch ? 'Дата переезда не совпадает с планом структуры.' : null });
-      return;
-    }
-    if (String(a.id).startsWith('tmp-') || String(b.id).startsWith('tmp-')) {
-      toast({ description: 'Сначала сохраните трип, чтобы добавить переезд к новому городу.' });
       return;
     }
     setAddLeg({ fromVisit: a, toVisit: b });
@@ -282,10 +292,11 @@ export default function TripStructureEdit() {
   });
 
   return (
+    <>
+    <AppHeader />
     <div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}>
-      {/* Header */}
+      {/* Sub-header: editor actions */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', paddingBottom: 14, marginBottom: 16, borderBottom: '1px solid var(--line-2)' }}>
-        <button onClick={cancelEdit} title="Отменить редактирование и вернуться к трипу" className="ts-step" style={{ width: 38, height: 38, background: 'var(--surface)', border: '1px solid var(--line)', flexShrink: 0 }}><Icon name="back" size={16} /></button>
         <div style={{ flex: '1 1 320px', minWidth: 0 }}>
           <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>Редактирование структуры</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -374,7 +385,7 @@ export default function TripStructureEdit() {
           onOpenChange={(o) => { if (!o) { setAddLeg(null); qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); } }}
         />
       )}
-      {adding && <AddPointDialog onPick={onPickCity} onClose={() => setAdding(false)} />}
+      {adding && <AddPointDialog onPick={onPickCity} onClose={() => setAdding(false)} hasStart={ordered.some((n) => n.kind === 'start')} hasEnd={ordered.some((n) => n.kind === 'end')} />}
       {confirmDel && (
         <div onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)', padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, width: 420, maxWidth: '100%', boxShadow: 'var(--shadow-pop)' }}>
@@ -403,6 +414,7 @@ export default function TripStructureEdit() {
         @media (max-width: 1080px) { .ts-grid { grid-template-columns: 1fr !important; } .ts-rightcol { position: static !important; height: auto !important; } }
       `}</style>
     </div>
+    </>
   );
 }
 
@@ -452,7 +464,7 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
   };
   if (seg.kind === 'waypoint') {
     return (
-      <div {...dragAttrs} style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '9px 11px', background: `color-mix(in srgb, ${m.color} 5%, var(--surface))`, opacity: drag.dragging ? 0.4 : 1, boxShadow: drag.dropping ? 'inset 0 3px 0 var(--brand)' : 'none', marginTop: drag.dropping ? 14 : 0, transition: 'margin-top .12s ease' }}>
+      <div {...dragAttrs} style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '9px 11px', background: `color-mix(in srgb, ${m.color} 5%, var(--surface))`, opacity: drag.dragging ? 0.4 : 1, transition: 'padding .1s ease, background .1s ease', ...(drag.dropping ? { borderTop: '3px solid var(--brand)', paddingTop: 34, background: 'var(--brand-soft)' } : null) }}>
         <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--surface)', border: '1.5px dashed ' + m.color, color: m.color, display: 'grid', placeItems: 'center', cursor: 'grab' }}><Icon name="arrowSwap" size={11} /></span>
         <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontSize: 13.5 }}>{m.flag}</span>
@@ -472,7 +484,7 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
   return (
     <div draggable onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; drag.onDragStart(); }} onDragEnd={drag.onDragEnd}
       onDragOver={(e) => { e.preventDefault(); drag.onDragOver(); }} onDrop={(e) => { e.preventDefault(); drag.onDrop(); }}
-      style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '14px 11px', opacity: drag.dragging ? 0.4 : 1, boxShadow: drag.dropping ? 'inset 0 3px 0 var(--brand)' : 'none', marginTop: drag.dropping ? 14 : 0, transition: 'margin-top .12s ease' }}>
+      style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '14px 11px', opacity: drag.dragging ? 0.4 : 1, transition: 'padding .1s ease, background .1s ease', ...(drag.dropping ? { borderTop: '3px solid var(--brand)', paddingTop: 34, background: 'var(--brand-soft)' } : null) }}>
       <span style={{ width: 24, height: 24, borderRadius: 6, background: m.color, color: 'white', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center', cursor: 'grab' }}>{stayNum}</span>
       <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
         <span style={{ fontSize: 13.5 }}>{m.flag}</span>
@@ -528,7 +540,7 @@ function GridEndpoint({ node, first, last, onRemove, drag }) {
   return <div
     onDragOver={drag ? (e) => { e.preventDefault(); drag.onDragOver(); } : undefined}
     onDrop={drag ? (e) => { e.preventDefault(); drag.onDrop(); } : undefined}
-    style={{ ...rowStyle(first, last), display: 'flex', alignItems: 'center', gap: 10, padding: '11px', boxShadow: drag?.dropping ? 'inset 0 3px 0 var(--brand)' : 'none', marginTop: drag?.dropping ? 14 : 0, transition: 'margin-top .12s ease' }}>
+    style={{ ...rowStyle(first, last), display: 'flex', alignItems: 'center', gap: 10, padding: '11px', transition: 'padding .1s ease, background .1s ease', ...(drag?.dropping ? { borderTop: '3px solid var(--brand)', paddingTop: 34, background: 'var(--brand-soft)' } : null) }}>
     <span style={{ width: 24, height: 24, borderRadius: 6, background: 'color-mix(in srgb, ' + accent + ' 14%, transparent)', color: accent, display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="flag" size={13} /></span>
     <span style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '.09em', fontWeight: 700, color: accent, flexShrink: 0 }}>{isStart ? 'Старт' : 'Финиш'}</span>
     <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>{m.flag} {node.city_name}</span>
@@ -549,24 +561,31 @@ const POINT_TYPES = [
   { id: 'start', label: 'Старт', icon: 'flag', sub: 'Начало поездки' },
   { id: 'end', label: 'Финиш', icon: 'flag', sub: 'Конец поездки' },
 ];
-function AddPointDialog({ onPick, onClose }) {
+function AddPointDialog({ onPick, onClose, hasStart, hasEnd }) {
   const [type, setType] = useState('transit');
+  const disabledFor = (id) => (id === 'start' && hasStart) || (id === 'end' && hasEnd);
+  const meta = POINT_TYPES.find((p) => p.id === type);
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)', padding: '10vh 16px 16px' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, padding: 18, width: 480, maxWidth: '100%', boxShadow: 'var(--shadow-pop)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h2 style={{ fontSize: 16, margin: 0 }}>Добавить точку</h2>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, width: 480, maxWidth: '100%', boxShadow: 'var(--shadow-pop)' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--brand)' }} />
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '18px 18px 12px' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="pin" size={17} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}><h2 style={{ fontSize: 17, marginBottom: 2 }}>Добавить точку</h2><div className="muted" style={{ fontSize: 12 }}>Выбери тип и город</div></div>
           <button className="ts-step" onClick={onClose}><Icon name="close" size={16} /></button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7, marginBottom: 14 }}>
-          {POINT_TYPES.map((pt) => {
-            const active = type === pt.id;
-            return <button key={pt.id} onClick={() => setType(pt.id)} title={pt.sub} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 11, cursor: 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: active ? 'var(--brand)' : 'var(--ink-2)' }}>
-              <Icon name={pt.icon} size={17} /><span style={{ fontSize: 11.5, fontWeight: 600 }}>{pt.label}</span>
-            </button>;
-          })}
+        <div style={{ padding: '0 18px 18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7, marginBottom: 10 }}>
+            {POINT_TYPES.map((pt) => {
+              const dis = disabledFor(pt.id), active = type === pt.id;
+              return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? 'Уже задан' : pt.sub} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 11, cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
+                <Icon name={pt.icon} size={17} /><span style={{ fontSize: 11.5, fontWeight: 600 }}>{pt.label}</span>
+              </button>;
+            })}
+          </div>
+          <div className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{meta?.sub}</div>
+          <CitySearch onSelect={(c) => onPick(c, type)} />
         </div>
-        <CitySearch onSelect={(c) => onPick(c, type)} />
       </div>
     </div>
   );

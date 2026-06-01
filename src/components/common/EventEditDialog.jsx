@@ -37,7 +37,7 @@ import { localToUtc, utcToLocalInput } from '@/lib/time';
 import { hotelWarnings, transferWarnings, activityWarnings } from '@/lib/validation';
 import { detectPlatformFromUrl, BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
-import { invalidateTripData, optimisticContentUpdate } from '@/lib/trip-data';
+import { invalidateTripData } from '@/lib/trip-data';
 import { resolveTimezoneFromCoords } from '@/lib/timezone-resolver';
 
 // Ensure a user-entered URL like "booking.com" opens absolutely (otherwise the
@@ -824,10 +824,11 @@ export default function EventEditDialog({
               )}
 
               {warnings.length > 0 && (
-                <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 text-sm text-amber-900 dark:text-amber-200 space-y-1">
+                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {warnings.map((w, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />{w}
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '9px 12px', borderRadius: 10, background: 'var(--warning-soft)', border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)', color: 'var(--ink)' }}>
+                      <span style={{ width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--warning) 22%, transparent)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><AlertTriangle className="w-3.5 h-3.5" /></span>
+                      <div style={{ fontSize: 12.5, lineHeight: 1.45, alignSelf: 'center' }}>{w}</div>
                     </div>
                   ))}
                 </div>
