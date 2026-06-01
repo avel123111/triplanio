@@ -20,7 +20,9 @@ const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'и�
 const TKIND = { plane: { icon: 'plane', label: 'Перелёт' }, train: { icon: 'train', label: 'Поезд' }, bus: { icon: 'bus', label: 'Автобус' }, car: { icon: 'car', label: 'На авто' }, ferry: { icon: 'ferry', label: 'Паром' } };
 const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9'];
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
+const WD = ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
 const fmtD = (iso) => { const d = toDT(iso); return d ? `${d.day} ${MONTHS[d.month - 1]}` : '—'; };
+const fmtDW = (iso) => { const d = toDT(iso); return d ? `${d.day} ${MONTHS[d.month - 1]}, ${WD[d.weekday]}` : '—'; };
 const fmtTime = (iso) => { const d = toDT(iso); return d ? d.toFormat('HH:mm') : null; };
 const dayInput = (iso) => { const d = toDT(iso); return d ? d.toFormat('yyyy-MM-dd') : ''; };
 const isoDay = (day, hour = 12) => (day ? DateTime.fromISO(`${day}`, { zone: 'utc' }).set({ hour, minute: 0, second: 0 }).toISO() : null);
@@ -79,6 +81,11 @@ export default function TripStructureEdit() {
   const DRAFT_KEY = `ts-edit-${tripId}`;
   const clearDraftStore = () => { try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } };
   const onBack = () => { clearDraftStore(); nav(`/trip/${tripId}`); };
+  const histRef = React.useRef([]);
+  const baseRef = React.useRef(null); // JSON of the originally-loaded draft (for Reset)
+  const editDraft = (updater) => { setDraft((d) => { if (!d) return d; histRef.current.push(JSON.stringify(d)); if (histRef.current.length > 120) histRef.current.shift(); return updater(d); }); setDirty(true); };
+  const undo = () => { const prev = histRef.current.pop(); if (prev == null) return; setDraft(JSON.parse(prev)); setDirty(prev !== baseRef.current); };
+  const reset = () => { if (!baseRef.current) return; histRef.current = []; setDraft(JSON.parse(baseRef.current)); setDirty(false); clearDraftStore(); };
 
   const { data: shell, isLoading: loadingShell, error: shellError } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
@@ -93,6 +100,7 @@ export default function TripStructureEdit() {
 
   useEffect(() => {
     if (draft || !shell || !content) return;
+    if (!baseRef.current) baseRef.current = JSON.stringify(buildDraft(shell, content));
     try { const saved = sessionStorage.getItem(DRAFT_KEY); if (saved) { const p = JSON.parse(saved); if (p?.draft) { setDraft(p.draft); setDirty(!!p.dirty); return; } } } catch { /* ignore */ }
     setDraft(buildDraft(shell, content));
   }, [shell, content, draft, DRAFT_KEY]);
@@ -121,12 +129,12 @@ export default function TripStructureEdit() {
   const blocked = issues.length > 0;
 
   // ---- structural edits ----
-  const applyNodes = (nextNodes, baseISO) => { setDraft((d) => ({ ...d, nodes: recompute(nextNodes, baseISO) })); setDirty(true); };
+  const applyNodes = (nextNodes, baseISO) => editDraft((d) => ({ ...d, nodes: recompute(nextNodes, baseISO) }));
   const nudgeNights = (id, delta) => applyNodes(draft.nodes.map((n) => (n.id === id ? { ...n, nights: Math.max(1, Math.min(60, (n.nights || 1) + delta)) } : n)));
   const shiftStart = (delta) => { const first = draft.nodes.find((n) => !isAnchor(n)); const base = first ? toDT(first.start_datetime)?.plus({ days: delta }).toISO() : null; applyNodes(draft.nodes, base); };
   const moveTo = (from, to) => {
     if (from == null || to == null || from === to) return;
-    setDraft((d) => {
+    editDraft((d) => {
       const arr = d.nodes.slice();
       if (isAnchor(arr[from])) return d;
       const [m] = arr.splice(from, 1);
@@ -137,21 +145,17 @@ export default function TripStructureEdit() {
       arr.splice(t, 0, m);
       return { ...d, nodes: recompute(arr) };
     });
-    setDirty(true);
   };
-  const removeCity = (id) => { setDraft((d) => { const node = d.nodes.find((n) => n.id === id); if (!node || isAnchor(node)) return d; return { ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id)), removed: [...d.removed, node] }; }); setDirty(true); };
-  const removeEndpoint = (id) => { setDraft((d) => ({ ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id)), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) })); setDirty(true); };
-  const restoreCity = (id) => {
-    setDraft((d) => {
-      const node = d.removed.find((n) => n.id === id); if (!node) return d;
-      const arr = d.nodes.slice();
-      if (node.kind === 'start') arr.unshift(node);
-      else if (node.kind === 'end') arr.push(node);
-      else { const endIdx = arr.findIndex((n) => n.kind === 'end'); arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
-      return { ...d, nodes: recompute(arr), removed: d.removed.filter((n) => n.id !== id) };
-    });
-    setDirty(true);
-  };
+  const removeCity = (id) => editDraft((d) => { const node = d.nodes.find((n) => n.id === id); if (!node || isAnchor(node)) return d; return { ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id)), removed: [...d.removed, node] }; });
+  const removeEndpoint = (id) => editDraft((d) => ({ ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id)), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) }));
+  const restoreCity = (id) => editDraft((d) => {
+    const node = d.removed.find((n) => n.id === id); if (!node) return d;
+    const arr = d.nodes.slice();
+    if (node.kind === 'start') arr.unshift(node);
+    else if (node.kind === 'end') arr.push(node);
+    else { const endIdx = arr.findIndex((n) => n.kind === 'end'); arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
+    return { ...d, nodes: recompute(arr), removed: d.removed.filter((n) => n.id !== id) };
+  });
   const addCity = (city, kind = 'transit') => {
     const node = {
       id: 'tmp-' + Math.random().toString(36).slice(2), kind,
@@ -160,14 +164,13 @@ export default function TripStructureEdit() {
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
       nights: kind === 'transit' ? 2 : null, start_datetime: null, end_datetime: null,
     };
-    setDraft((d) => {
+    editDraft((d) => {
       const arr = d.nodes.slice();
       if (kind === 'start') arr.unshift(node);
       else if (kind === 'end') arr.push(node);
       else { const endIdx = arr.findIndex((n) => n.kind === 'end'); arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
       return { ...d, nodes: recompute(arr) };
     });
-    setDirty(true);
   };
   const onPickCity = async (c, kind) => {
     setAdding(false);
@@ -179,15 +182,14 @@ export default function TripStructureEdit() {
   // ---- booking edits ----
   const mark = (d, kind, id) => ({ ...d._edited, [kind]: { ...d._edited[kind], [id]: true } });
   const t_isNew = (d, id) => !!d.transfers.find((t) => t.id === id)?.__new;
-  const editHotel = (id, ci, co) => { setDraft((d) => ({ ...d, hotels: d.hotels.map((h) => h.id === id ? { ...h, check_in_datetime: ci, check_out_datetime: co } : h), _edited: mark(d, 'hotels', id) })); setDirty(true); };
-  const editActivity = (id, s, e) => { setDraft((d) => ({ ...d, activities: d.activities.map((a) => a.id === id ? { ...a, start_datetime: s, end_datetime: e } : a), _edited: mark(d, 'activities', id) })); setDirty(true); };
-  const editTransfer = (id, s, e) => { setDraft((d) => ({ ...d, transfers: d.transfers.map((t) => t.id === id ? { ...t, start_datetime: s, end_datetime: e } : t), _edited: t_isNew(d, id) ? d._edited : mark(d, 'transfers', id) })); setDirty(true); };
-  const delBooking = (kind, id) => { setDraft((d) => { const arr = d[kind].filter((x) => x.id !== id); const wasNew = kind === 'transfers' && t_isNew(d, id); const _del = wasNew ? d._del : { ...d._del, [kind]: [...d._del[kind], id] }; return { ...d, [kind]: arr, _del }; }); setDirty(true); };
+  const editHotel = (id, ci, co) => editDraft((d) => ({ ...d, hotels: d.hotels.map((h) => h.id === id ? { ...h, check_in_datetime: ci, check_out_datetime: co } : h), _edited: mark(d, 'hotels', id) }));
+  const editActivity = (id, s, e) => editDraft((d) => ({ ...d, activities: d.activities.map((a) => a.id === id ? { ...a, start_datetime: s, end_datetime: e } : a), _edited: mark(d, 'activities', id) }));
+  const editTransfer = (id, s, e) => editDraft((d) => ({ ...d, transfers: d.transfers.map((t) => t.id === id ? { ...t, start_datetime: s, end_datetime: e } : t), _edited: t_isNew(d, id) ? d._edited : mark(d, 'transfers', id) }));
+  const delBooking = (kind, id) => editDraft((d) => { const arr = d[kind].filter((x) => x.id !== id); const wasNew = kind === 'transfers' && t_isNew(d, id); const _del = wasNew ? d._del : { ...d._del, [kind]: [...d._del[kind], id] }; return { ...d, [kind]: arr, _del }; });
   const addTransfer = (fromId, toId, kind) => {
     const byId = new Map(draft.nodes.map((n) => [n.id, n]));
     const from = byId.get(fromId), to = byId.get(toId);
-    setDraft((d) => ({ ...d, transfers: [...d.transfers, { id: 'tmp-' + Math.random().toString(36).slice(2), __new: true, from_city_visit_id: fromId, to_city_visit_id: toId, from_city_name: from?.city_name, to_city_name: to?.city_name, start_datetime: from?.end_datetime || to?.start_datetime || null, end_datetime: to?.start_datetime || from?.end_datetime || null, transport_type: kind, carrier: null }] }));
-    setDirty(true);
+    editDraft((d) => ({ ...d, transfers: [...d.transfers, { id: 'tmp-' + Math.random().toString(36).slice(2), __new: true, from_city_visit_id: fromId, to_city_visit_id: toId, from_city_name: from?.city_name, to_city_name: to?.city_name, start_datetime: from?.end_datetime || to?.start_datetime || null, end_datetime: to?.start_datetime || from?.end_datetime || null, transport_type: kind, carrier: null }] }));
   };
 
   const onSave = async () => {
@@ -237,6 +239,8 @@ export default function TripStructureEdit() {
   const startDate = transit[0]?.start_datetime;
   const endDate = transit[transit.length - 1]?.end_datetime;
   const totalNights = nightsBetween(startDate, endDate);
+  const canUndo = histRef.current.length > 0;
+  const membersCount = content?.members?.length || 0;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => draft.transfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
   const transferMismatch = (t) => !!t && issues.some((i) => i.transferId === t.id && ['D1', 'D2', 'D3', 'D4'].includes(i.code));
@@ -257,11 +261,16 @@ export default function TripStructureEdit() {
         <button onClick={onBack} title="Назад (отменить правки)" className="ts-step" style={{ width: 38, height: 38, background: 'var(--surface)', border: '1px solid var(--line)', flexShrink: 0 }}><Icon name="back" size={16} /></button>
         <div style={{ flex: '1 1 320px', minWidth: 0 }}>
           <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>Редактирование структуры</div>
-          <h1 style={{ fontSize: 26, marginBottom: 4, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
-          <div className="muted num" style={{ fontSize: 13 }}>{fmtD(startDate)} → {fmtD(endDate)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights)}` : ''} · {transit.length} {transit.length === 1 ? 'город' : 'городов'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <h1 style={{ fontSize: 26, marginBottom: 0, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
+            {membersCount > 0 && <Badge variant="quiet"><Icon name="lock" size={11} /> {membersCount} уч.</Badge>}
+          </div>
+          <div className="muted num" style={{ fontSize: 13, marginTop: 6 }}>{fmtD(startDate)} → {fmtD(endDate)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights)}` : ''} · {transit.length} {transit.length === 1 ? 'город' : 'городов'}</div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
           {blocked && <Badge variant="warm" icon="warning">{errors ? `${errors} ошибок` : `${warns} предупр.`}</Badge>}
+          <Btn variant="ghost" size="sm" icon="back" onClick={undo} disabled={!canUndo}>Отменить</Btn>
+          <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty}>Сброс</Btn>
           <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={onSave}>{saving ? 'Сохраняю…' : 'Сохранить'}</Btn>
         </div>
       </div>
@@ -273,7 +282,7 @@ export default function TripStructureEdit() {
             <span className="eyebrow">Старт трипа</span>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: 2 }}>
               <button className="ts-step" onClick={() => shiftStart(-1)} title="раньше"><Icon name="back" size={13} /></button>
-              <span className="num" style={{ padding: '0 8px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtD(startDate)}</span>
+              <span className="num" style={{ padding: '0 8px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDW(startDate)}</span>
               <button className="ts-step" onClick={() => shiftStart(1)} title="позже"><Icon name="chev" size={13} /></button>
             </div>
             <span className="muted" style={{ fontSize: 11.5 }}>двигает весь трип</span>
