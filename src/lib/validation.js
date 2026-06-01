@@ -299,6 +299,12 @@ export function computeTripValidation({ visits = [], hotels = [], activities = [
   }
 
   // ---- D. Transfers ----
+  // Strict per-transfer hierarchy: emit AT MOST ONE issue per transfer, by
+  // root-cause priority, so a single mistake doesn't fan out into 3+ warnings.
+  //   D6 (dangling) → D5 (not adjacent) → D2 (date mismatch).
+  // Date checks are SUPPRESSED while the transfer is structurally broken (no
+  // city / not adjacent) — the "expected" days are undefined then. Once the
+  // structural issue is fixed, the date issue (if any) surfaces next.
   for (const tr of transfers) {
     const f = tr.from_city_visit_id ? byId.get(tr.from_city_visit_id) : null;
     const to = tr.to_city_visit_id ? byId.get(tr.to_city_visit_id) : null;
@@ -306,21 +312,27 @@ export function computeTripValidation({ visits = [], hotels = [], activities = [
       push('error', 'D6', `Переезд ${tr.from_city_name || ''} → ${tr.to_city_name || ''} висит без города.`, { transferId: tr.id });
       continue;
     }
-    // D1/D2: departure day must equal the from-city's last day.
-    const dep = dayInTz(tr.start_datetime, f.timezone), fend = dayInTz(f.end_datetime, f.timezone);
-    if (dep && fend && +dep !== +fend) {
-      push('warn', dep > fend ? 'D1' : 'D2', `Вылет ${f.city_name} → ${to.city_name} не в день выезда из ${f.city_name}.`, { transferId: tr.id });
-    }
-    // D3/D4: arrival day must equal the to-city's first day.
-    const arr = dayInTz(tr.end_datetime, to.timezone), tstart = dayInTz(to.start_datetime, to.timezone);
-    if (arr && tstart && +arr !== +tstart) {
-      push('warn', arr > tstart ? 'D4' : 'D3', `Прилёт ${f.city_name} → ${to.city_name} не в день въезда в ${to.city_name}.`, { transferId: tr.id });
-    }
     // D5: ends must be strictly forward-adjacent in the (start, position) order
     // (covers non-adjacent AND back-in-time, since to must be exactly from+1).
     const fi = orderIndex.get(f.id), ti = orderIndex.get(to.id);
     if (fi != null && ti != null && ti !== fi + 1) {
       push('warn', 'D5', `Маршрут не сходится: ${f.city_name} → ${to.city_name} не соседние узлы.`, { transferId: tr.id });
+      continue; // structural — date alignment is meaningless until adjacency is fixed
+    }
+    // D2: departure must be on the from-city checkout day AND arrival on the
+    // to-city check-in day. Both facets merged into ONE warning naming whichever
+    // end(s) don't line up.
+    const dep = dayInTz(tr.start_datetime, f.timezone), fend = dayInTz(f.end_datetime, f.timezone);
+    const arr = dayInTz(tr.end_datetime, to.timezone), tstart = dayInTz(to.start_datetime, to.timezone);
+    const depOff = dep && fend && +dep !== +fend;
+    const arrOff = arr && tstart && +arr !== +tstart;
+    if (depOff || arrOff) {
+      const msg = (depOff && arrOff)
+        ? `Даты переезда ${f.city_name} → ${to.city_name} не совпадают: вылет не в день выезда из ${f.city_name}, прилёт не в день въезда в ${to.city_name}.`
+        : depOff
+          ? `Вылет ${f.city_name} → ${to.city_name} не в день выезда из ${f.city_name}.`
+          : `Прилёт ${f.city_name} → ${to.city_name} не в день въезда в ${to.city_name}.`;
+      push('warn', 'D2', msg, { transferId: tr.id });
     }
   }
 

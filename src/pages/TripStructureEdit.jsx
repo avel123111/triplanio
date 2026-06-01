@@ -266,8 +266,9 @@ export default function TripStructureEdit() {
   };
   const openTransferRow = (a, b, t) => {
     if (t) {
-      const mismatch = issues.some((i) => i.transferId === t.id && ['D1', 'D2', 'D3', 'D4'].includes(i.code));
-      setViewEvent({ kind: 'transfer', id: t.id, warning: mismatch ? 'Дата переезда не совпадает с планом структуры.' : null });
+      // Hierarchy guarantees ≤1 issue per transfer → show that real message.
+      const issue = issues.find((i) => i.transferId === t.id);
+      setViewEvent({ kind: 'transfer', id: t.id, warning: issue?.message || null });
       return;
     }
     setAddLeg({ fromVisit: a, toVisit: b });
@@ -321,7 +322,9 @@ export default function TripStructureEdit() {
   const membersCount = content?.members?.length || 0;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
-  const transferMismatch = (t) => !!t && issues.some((i) => i.transferId === t.id && ['D1', 'D2', 'D3', 'D4'].includes(i.code));
+  // A transfer row is flagged (orange "не совпадает") when it has ANY conflict —
+  // date mismatch (D2), non-adjacent (D5) or dangling (D6).
+  const transferMismatch = (t) => !!t && issues.some((i) => i.transferId === t.id);
   let stayNum = 0;
 
   // assemble rows: each node + the connector to the next node
