@@ -120,6 +120,7 @@ Deno.serve(async (req) => {
             start_datetime: cv.start_datetime,
             end_datetime: cv.end_datetime,
             kind: cv.kind,
+            position: cv.position,
             notes: cv.notes,
             details: cv.details,
             created_by: user.id,

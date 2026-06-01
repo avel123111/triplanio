@@ -170,7 +170,13 @@ export function tripWarnings(visits, transfers, _hotels, _activities) {
   return w;
 }
 
-// Start anchor always first, end anchor always last; transit sorted by start_datetime only.
+// Start anchor always first, end anchor always last; transit ordered by
+// (start_datetime, position). `position` is an auto-maintained tie-breaker
+// (TRIP_EDIT_MODE_TZ §4a) that only disambiguates nodes sharing a day; it is
+// kept consistent with chronology, never contradicts it. When position is
+// absent (legacy/pre-backfill rows) we fall back to end_datetime so ordering
+// is identical to the previous behaviour.
+const posOf = (v) => (Number.isFinite(v?.position) ? v.position : null);
 export function sortVisits(visits) {
   const rank = (v) => (v.kind === 'start' ? -1 : v.kind === 'end' ? 1 : 0);
   return [...visits].sort((a, b) => {
@@ -178,11 +184,149 @@ export function sortVisits(visits) {
     if (ra !== rb) return ra - rb;
     const sa = t(a.start_datetime) ?? 0, sb = t(b.start_datetime) ?? 0;
     if (sa !== sb) return sa - sb;
-    // Same start → the city that ends earlier comes first (e.g. a one-day
-    // pass-through between two cities that share its day).
+    // Equal start → explicit position tie-break first…
+    const pa = posOf(a), pb = posOf(b);
+    if (pa !== null && pb !== null && pa !== pb) return pa - pb;
+    // …then the city that ends earlier (legacy fallback when position absent).
     const ea = t(a.end_datetime) ?? 0, eb = t(b.end_datetime) ?? 0;
     return ea - eb;
   });
+}
+
+// Recompute `position` 0..N so it stays consistent with chronology. On equal
+// start_datetime the INCOMING array order wins (the on-screen tie order the
+// user arranged). Returns new visit objects with `position` set. Pure — no DB.
+// Used by the Edit Mode editor and by insert paths so position never drifts
+// from dates (TRIP_EDIT_MODE_TZ §4a).
+export function normalizePositions(visits) {
+  const rank = (v) => (v.kind === 'start' ? -1 : v.kind === 'end' ? 1 : 0);
+  return [...visits]
+    .map((v, i) => ({ v, i }))
+    .sort((A, B) => {
+      const ra = rank(A.v), rb = rank(B.v);
+      if (ra !== rb) return ra - rb;
+      const sa = t(A.v.start_datetime) ?? 0, sb = t(B.v.start_datetime) ?? 0;
+      if (sa !== sb) return sa - sb;
+      return A.i - B.i; // preserve incoming order for an equal-start tie
+    })
+    .map((x, pos) => ({ ...x.v, position: pos }));
+}
+
+// =====================================================================
+// STRUCTURED CONFLICT ENGINE — for the Edit Mode editor (TRIP_EDIT_MODE_TZ §5).
+// Pure: operates on an in-memory draft, never touches the DB. Produces a sorted
+// (errors first) list of structured issues so the UI can render the conflict
+// panel AND gate Save (hard gate: any open issue blocks save).
+// Day comparisons are done by CALENDAR DAY in each node's timezone (TZ §10.3).
+// The legacy string helpers above (hotelWarnings/…/tripWarnings) stay for the
+// current timeline; the two converge in Phase 5.
+// =====================================================================
+const dayInTz = (iso, tz) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }).setZone(tz || 'UTC').startOf('day') : null);
+
+// Same city = same external_city_id; fallback to name+country_code (TZ E2).
+const cityIdentity = (v) =>
+  v?.external_city_id || `${(v?.city_name || '').trim().toLowerCase()}|${(v?.country_code || '').trim().toLowerCase()}`;
+
+const activityTitle = (a) => a?.title || a?.name || 'активность';
+
+/**
+ * @param {{visits:[], hotels:[], activities:[], transfers:[]}} draft
+ * @returns {Array<{level:'error'|'warn', code, message, cityId?, hotelId?, activityId?, transferId?, fromId?, toId?}>}
+ */
+export function computeTripValidation({ visits = [], hotels = [], activities = [], transfers = [] } = {}) {
+  const issues = [];
+  const push = (level, code, message, extra = {}) => issues.push({ level, code, message, ...extra });
+
+  const ordered = sortVisits(visits);                 // (start, position) aware
+  const byId = new Map(visits.map((v) => [v.id, v]));
+  const orderIndex = new Map(ordered.map((v, i) => [v.id, i]));
+  const isAnchor = (v) => v.kind === 'start' || v.kind === 'end';
+
+  // ---- A. Nodes (dates) ----
+  for (const v of ordered) {
+    if (isAnchor(v)) continue;                         // anchors: dates null by design — skip A1/A2
+    if (!v.start_datetime || !v.end_datetime) {
+      push('error', 'A1', `У города «${v.city_name}» не заданы даты.`, { cityId: v.id });
+      continue;
+    }
+    const s = dayInTz(v.start_datetime, v.timezone), e = dayInTz(v.end_datetime, v.timezone);
+    if (s && e && e < s) push('error', 'A2', `У города «${v.city_name}» конец раньше начала.`, { cityId: v.id });
+  }
+
+  // A3. Adjacency between consecutive dated nodes: border day (gap 0/1) OK;
+  // gap > 1 day → warning; overlap (gap < 0) → warning. Skip pairs touching anchors.
+  for (let i = 0; i < ordered.length - 1; i++) {
+    const a = ordered[i], b = ordered[i + 1];
+    const aEnd = dayInTz(a.end_datetime, a.timezone), bStart = dayInTz(b.start_datetime, b.timezone);
+    if (!aEnd || !bStart) continue;
+    const gap = bStart.diff(aEnd, 'days').days;
+    if (gap > 1) push('warn', 'A3-gap', `Разрыв больше дня между «${a.city_name}» и «${b.city_name}».`, { fromId: a.id, toId: b.id });
+    else if (gap < 0) push('warn', 'A3-overlap', `«${a.city_name}» и «${b.city_name}» наслаиваются.`, { fromId: a.id, toId: b.id });
+  }
+
+  // ---- B. Hotels (out-of-bounds only — Pavel 2026-06-01) + orphan ----
+  for (const h of hotels) {
+    const v = h.city_visit_id ? byId.get(h.city_visit_id) : null;
+    if (!v) { push('error', 'B3', `Бронь «${h.name || 'отель'}» без города.`, { hotelId: h.id }); continue; }
+    const ci = dayInTz(h.check_in_datetime, v.timezone), co = dayInTz(h.check_out_datetime, v.timezone);
+    const vs = dayInTz(v.start_datetime, v.timezone), ve = dayInTz(v.end_datetime, v.timezone);
+    if (ci && vs && ci < vs) push('warn', 'B1', `Заезд в «${h.name}» раньше прибытия в ${v.city_name}.`, { hotelId: h.id, cityId: v.id });
+    if (co && ve && co > ve) push('warn', 'B2', `Выезд из «${h.name}» позже выезда из ${v.city_name}.`, { hotelId: h.id, cityId: v.id });
+  }
+
+  // ---- C. Activities (out-of-bounds) + orphan ----
+  for (const a of activities) {
+    const v = a.city_visit_id ? byId.get(a.city_visit_id) : null;
+    if (!v) { push('error', 'C3', `«${activityTitle(a)}» без города.`, { activityId: a.id }); continue; }
+    const as = dayInTz(a.start_datetime, v.timezone), ae = dayInTz(a.end_datetime || a.start_datetime, v.timezone);
+    const vs = dayInTz(v.start_datetime, v.timezone), ve = dayInTz(v.end_datetime, v.timezone);
+    if (as && vs && as < vs) push('warn', 'C1', `«${activityTitle(a)}» начинается раньше прибытия в ${v.city_name}.`, { activityId: a.id, cityId: v.id });
+    if (ae && ve && ae > ve) push('warn', 'C2', `«${activityTitle(a)}» заканчивается позже выезда из ${v.city_name}.`, { activityId: a.id, cityId: v.id });
+  }
+
+  // ---- D. Transfers ----
+  for (const tr of transfers) {
+    const f = tr.from_city_visit_id ? byId.get(tr.from_city_visit_id) : null;
+    const to = tr.to_city_visit_id ? byId.get(tr.to_city_visit_id) : null;
+    if (!f || !to) {
+      push('error', 'D6', `Переезд ${tr.from_city_name || ''} → ${tr.to_city_name || ''} висит без города.`, { transferId: tr.id });
+      continue;
+    }
+    // D1/D2: departure day must equal the from-city's last day.
+    const dep = dayInTz(tr.start_datetime, f.timezone), fend = dayInTz(f.end_datetime, f.timezone);
+    if (dep && fend && +dep !== +fend) {
+      push('warn', dep > fend ? 'D1' : 'D2', `Вылет ${f.city_name} → ${to.city_name} не в день выезда из ${f.city_name}.`, { transferId: tr.id });
+    }
+    // D3/D4: arrival day must equal the to-city's first day.
+    const arr = dayInTz(tr.end_datetime, to.timezone), tstart = dayInTz(to.start_datetime, to.timezone);
+    if (arr && tstart && +arr !== +tstart) {
+      push('warn', arr > tstart ? 'D4' : 'D3', `Прилёт ${f.city_name} → ${to.city_name} не в день въезда в ${to.city_name}.`, { transferId: tr.id });
+    }
+    // D5: ends must be strictly forward-adjacent in the (start, position) order
+    // (covers non-adjacent AND back-in-time, since to must be exactly from+1).
+    const fi = orderIndex.get(f.id), ti = orderIndex.get(to.id);
+    if (fi != null && ti != null && ti !== fi + 1) {
+      push('warn', 'D5', `Маршрут не сходится: ${f.city_name} → ${to.city_name} не соседние узлы.`, { transferId: tr.id });
+    }
+  }
+
+  // ---- E. Trip-level sequence ----
+  const pairCount = new Map();                          // "fromId>toId" → count
+  for (const tr of transfers) {
+    if (!tr.from_city_visit_id || !tr.to_city_visit_id) continue;
+    const k = `${tr.from_city_visit_id}>${tr.to_city_visit_id}`;
+    pairCount.set(k, (pairCount.get(k) || 0) + 1);
+  }
+  for (let i = 0; i < ordered.length - 1; i++) {
+    const a = ordered[i], b = ordered[i + 1];
+    const cnt = pairCount.get(`${a.id}>${b.id}`) || 0;
+    const sameCity = cityIdentity(a) === cityIdentity(b);
+    if (!sameCity && cnt === 0) push('warn', 'E1', `Нет переезда: ${a.city_name} → ${b.city_name}.`, { fromId: a.id, toId: b.id });   // E2: same-city consecutive → no E1
+    if (cnt > 1) push('warn', 'E3', `Дубликат переезда ${a.city_name} → ${b.city_name} (${cnt}).`, { fromId: a.id, toId: b.id });
+  }
+
+  issues.sort((x, y) => (x.level === y.level ? 0 : x.level === 'error' ? -1 : 1));
+  return issues;
 }
 
 // "10:30 (Europe/Rome)" formatter helper kept here to avoid widening lib/time.js

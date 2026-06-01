@@ -7,7 +7,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
-import { formatTripRange } from '@/lib/trip-dates';
+import { formatTripRange, isTripInPast } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 import { isAddonEnabled } from '@/lib/tripAddons';
@@ -1050,7 +1050,7 @@ function ShareDialog({ trip }) {
   );
 }
 
-function MoreMenuDialog({ trip, visits, onEditMetadata }) {
+function MoreMenuDialog({ trip, visits, canEditMode, onEditStructure, onEditMetadata }) {
   const openEditMetadata = () => {
     onEditMetadata?.();
   };
@@ -1060,6 +1060,13 @@ function MoreMenuDialog({ trip, visits, onEditMetadata }) {
       onClick={() => window.__closeModal?.()}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 20, width: 320, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {canEditMode && (
+            <button onClick={() => onEditStructure?.()} style={{ ...itemStyle, color: 'var(--brand)', fontWeight: 600 }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <Icon name="map" size={16} style={{ color: 'var(--brand)' }} /> Редактировать структуру
+            </button>
+          )}
           <button onClick={openEditMetadata} style={itemStyle}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -1087,7 +1094,8 @@ function MoreMenuDialog({ trip, visits, onEditMetadata }) {
 
 // ─── TripCoverStrip ──────────────────────────────────────────────────────────
 
-function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdit }) {
+function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, isEditMode, onToggleEdit }) {
+  const nav = useNavigate();
   const [routeOpen, setRouteOpen] = useState(false);
   const [editingMetadata, setEditingMetadata] = useState(false);
   const activeMemberCount = members.filter(m => m.status === 'active').length || 1;
@@ -1196,9 +1204,11 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           {myRole !== 'viewer' && (
-            isEditMode
-              ? <Btn variant="primary" size="sm" icon="check" onClick={onToggleEdit}>Готово</Btn>
-              : <Btn variant="ghost" size="sm" icon="edit" onClick={onToggleEdit}>Редактировать</Btn>
+            frozen
+              ? <Btn variant="ghost" size="sm" icon="lock" disabled>Редактируется</Btn>
+              : isEditMode
+                ? <Btn variant="primary" size="sm" icon="check" onClick={onToggleEdit}>Готово</Btn>
+                : <Btn variant="ghost" size="sm" icon="edit" onClick={onToggleEdit}>Редактировать</Btn>
           )}
           {/* Only owner/admin can mint a share token (ensureShareToken is admin-only);
               showing this to a viewer just produced a 403 "не удалось создать ссылку". */}
@@ -1209,7 +1219,7 @@ function TripCoverStrip({ trip, visits, members, myRole, isEditMode, onToggleEdi
           {/* The "…" menu only holds owner/admin actions (edit, settings, delete) —
               every item is unavailable to a viewer, so hide the whole button. */}
           {myRole !== 'viewer' && (
-            <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
+            <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canEditMode={canEditMode} onEditStructure={() => { window.__closeModal?.(); nav(`/trip/${trip.id}/edit`); }} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
           )}
         </div>
       </div>
@@ -1619,6 +1629,12 @@ export default function TripView() {
     return () => { cancelled = true; };
   }, [tripId, trip?.is_pro_trip]);
   const tripIsPro = !!trip?.is_pro_trip || ownerProResolved;
+  // Edit Mode (structure editor) gate — exact current model (TRIP_EDIT_MODE_TZ §2):
+  // anyone but a viewer; past trips require the trip to be Pro (or owner Pro).
+  const canEditMode = myRole !== 'viewer' && (!isTripInPast(visits) || tripIsPro);
+  // Structure Edit Mode lock held (by anyone, incl. self in another tab) → freeze
+  // timeline mutations (TRIP_EDIT_MODE_TZ §3a). Reflected on load/refetch of the shell.
+  const frozen = !!trip?.editing_by;
   // Banner can show only once we KNOW the trip isn't pro (or it's instantly a pro_trip).
   const tripProResolved = !!trip?.is_pro_trip || proResolved;
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
@@ -1792,9 +1808,16 @@ export default function TripView() {
                 visits={visits}
                 members={members}
                 myRole={myRole}
+                canEditMode={canEditMode}
+                frozen={frozen}
                 isEditMode={isEditMode}
                 onToggleEdit={() => setIsEditMode(m => !m)}
               />
+              {frozen && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--wash)', border: '1px solid var(--line)', fontSize: 13, color: 'var(--ink-2)' }}>
+                  <Icon name="lock" size={14} /> Трип сейчас редактируется в режиме структуры — изменения временно недоступны.
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
                 <TimelineLens
                   stream={stream}

@@ -1521,7 +1521,11 @@ export default function ManualPlanner() {
 
       let insertedVisits = [];
       if (visitsToInsert.length > 0) {
-        const { data: vd, error: visitErr } = await supabase.from('city_visits').insert(visitsToInsert).select('id');
+        // position = array index: visitsToInsert is built in itinerary order, so
+        // (start_datetime, position) reproduces it. Order is preserved (NOT
+        // reordered) because the returned ids are mapped back by index for transfers.
+        const withPos = visitsToInsert.map((v, i) => ({ ...v, position: i }));
+        const { data: vd, error: visitErr } = await supabase.from('city_visits').insert(withPos).select('id');
         if (visitErr) throw visitErr;
         insertedVisits = vd || [];
       }

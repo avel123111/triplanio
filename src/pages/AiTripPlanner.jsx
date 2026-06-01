@@ -281,8 +281,11 @@ export default function AiTripPlanner() {
         };
       });
 
+      // position = array index: visitsToInsert is built in itinerary order, so
+      // (start_datetime, position) reproduces it. Order preserved (ids mapped back by index).
+      const withPos = visitsToInsert.map((v, i) => ({ ...v, position: i }));
       const { data: insertedVisits, error: visitErr } = await supabase
-        .from('city_visits').insert(visitsToInsert).select('id');
+        .from('city_visits').insert(withPos).select('id');
       if (visitErr) throw visitErr;
 
       // 4. Batch insert activities
