@@ -24,7 +24,6 @@ import { SystemStub } from '@/lib/PageNotFound';
 import { sortVisits } from '@/lib/validation';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
-import CityVisitDialog from '../components/visits/CityVisitDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import ServiceDialog from '@/components/services/ServiceDialog';
@@ -421,15 +420,7 @@ function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
       </button>
       {open && (
         <>
-          <button
-            type="button"
-            onClick={() => { setOpen(false); onAddCity?.(dayKey); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
-          >
-            <Icon name="pin" size={13} style={{ color: 'var(--muted)' }} /> Добавить город
-          </button>
+          {/* "Add city" lives in the Structure editor now — timeline only adds activities. */}
           <button
             type="button"
             onClick={() => { setOpen(false); onAddActivity?.(dayKey); }}
@@ -627,26 +618,8 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
                 · {nights} {nights === 1 ? 'ночь' : nights < 5 ? 'ночи' : 'ночей'}
               </span>
             )}
-            {isEditMode && (
-              <button
-                type="button"
-                onClick={() => onEditNotes?.(visit)}
-                title="Редактировать город"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--muted)', fontSize: 12, cursor: 'pointer' }}
-              >
-                <Icon name="edit" size={12} /> Изменить
-              </button>
-            )}
-            {isEditMode && onDeleteCity && (
-              <button
-                type="button"
-                onClick={() => onDeleteCity?.(visit)}
-                title="Удалить город"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 8, border: '1px solid var(--danger-soft)', background: 'var(--surface)', color: 'var(--danger)', fontSize: 12, cursor: 'pointer' }}
-              >
-                <Icon name="trash" size={12} /> Удалить
-              </button>
-            )}
+            {/* City add/edit/delete moved entirely to the Structure editor
+                (/trip/:id/edit). No city-level mutations on the timeline. */}
           </div>
         </div>
       </div>
@@ -1495,36 +1468,11 @@ export default function TripView() {
   const [serviceChoice, setServiceChoice] = useState({ open: false, type: null });
   const [serviceEditCar, setServiceEditCar] = useState({ open: false });
   const [serviceEditSimple, setServiceEditSimple] = useState({ open: false, kind: null });
-  const [visitEdit, setVisitEdit] = useState({ open: false, visit: null });
-  const [newCityOpen, setNewCityOpen] = useState(false);
-  const [newCityDefaultDay, setNewCityDefaultDay] = useState(null);
+  // City add/edit/delete moved entirely to the Structure editor (/trip/:id/edit).
   const [activityEdit, setActivityEdit] = useState({ open: false, visit: null, activity: null, defaultStart: null });
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
-  const [deleteCity, setDeleteCity] = useState({ open: false, visit: null });
-  const [deletingCity, setDeletingCity] = useState(false);
   const openUpgrade = () => nav(`/pro?tripId=${tripId}`);
   // Stripe checkout return is handled globally in Layout (one success/fail modal).
-
-  // Cascade-delete a city visit and everything inside it (hotels, activities, transfers).
-  const confirmDeleteCity = async () => {
-    const v = deleteCity.visit;
-    if (!v?.id) return;
-    setDeletingCity(true);
-    try {
-      await supabase.from('hotel_stays').delete().eq('city_visit_id', v.id);
-      await supabase.from('activities').delete().eq('city_visit_id', v.id);
-      await supabase.from('transfers').delete().or(`from_city_visit_id.eq.${v.id},to_city_visit_id.eq.${v.id}`);
-      const { error } = await supabase.from('city_visits').delete().eq('id', v.id);
-      if (error) throw error;
-      setDeleteCity({ open: false, visit: null });
-      qc.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
-      qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) });
-    } catch (e) {
-      alert('Не удалось удалить город: ' + (e?.message || e));
-    } finally {
-      setDeletingCity(false);
-    }
-  };
 
   // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
   const openEventView = (e) => {
@@ -1757,28 +1705,6 @@ export default function TripView() {
               service={null}
             />
           )}
-          {/* CityVisitDialog — edit existing visit notes */}
-          {visitEdit.open && visitEdit.visit && (
-            <CityVisitDialog
-              key={`edit-visit-${visitEdit.visit.id}`}
-              open={visitEdit.open}
-              onOpenChange={(o) => setVisitEdit(s => ({ ...s, open: o }))}
-              tripId={tripId}
-              visit={visitEdit.visit}
-              trip={trip}
-              allVisits={visits}
-            />
-          )}
-          {/* CityVisitDialog — add new city */}
-          <CityVisitDialog
-            key="new-city-from-edit"
-            open={newCityOpen}
-            onOpenChange={(o) => { setNewCityOpen(o); if (!o) setNewCityDefaultDay(null); }}
-            tripId={tripId}
-            visit={null}
-            trip={newCityDefaultDay ? { ...trip, start_date: newCityDefaultDay } : trip}
-            allVisits={visits}
-          />
           {/* Activity — add new activity in edit mode */}
           {activityEdit.visit && (
             <EventEditDialog
@@ -1834,12 +1760,6 @@ export default function TripView() {
                   }
                   isEditMode={isEditMode}
                   onOpenEvent={openEventView}
-                  onEditVisitNotes={(v) => setVisitEdit({ open: true, visit: v })}
-                  onDeleteCity={(v) => setDeleteCity({ open: true, visit: v })}
-                  onAddCityForDay={(dayKey) => {
-                    setNewCityDefaultDay(dayKey || null);
-                    setNewCityOpen(true);
-                  }}
                   onAddActivityForDay={(dayKey) => {
                     const dayVisit = visits.find(v =>
                       v.kind === 'transit' && v.start_datetime && v.end_datetime &&
@@ -1942,33 +1862,6 @@ export default function TripView() {
         </main>
       </div>
 
-      {deleteCity.open && (
-        <div className="dlg-backdrop" style={{ zIndex: 280 }}
-          onClick={(e) => { if (e.target === e.currentTarget && !deletingCity) setDeleteCity({ open: false, visit: null }); }}>
-          <div className="dlg dlg--sm">
-            <div className="dlg__head">
-              <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                <Icon name="trash" size={17} />
-              </div>
-              <h2>Удалить город?</h2>
-            </div>
-            <div className="dlg__body">
-              <div style={{ fontSize: 14, marginBottom: 8 }}>
-                Удалить <b>{deleteCity.visit?.city_name || 'город'}</b>?
-              </div>
-              <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
-                Все события внутри этого города (отели, активности, переезды) также будут удалены. Действие необратимо.
-              </div>
-            </div>
-            <div className="dlg__foot">
-              <Btn variant="ghost" onClick={() => setDeleteCity({ open: false, visit: null })} disabled={deletingCity}>Отмена</Btn>
-              <Btn variant="danger-solid" icon="trash" onClick={confirmDeleteCity} disabled={deletingCity}>
-                {deletingCity ? 'Удаляем…' : 'Удалить город'}
-              </Btn>
-            </div>
-          </div>
-        </div>
-      )}
 
       <TripProInfoDialog
         open={tripProInfoOpen}
