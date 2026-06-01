@@ -91,6 +91,7 @@ export default function TripStructureEdit() {
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
+  const [undoStack, setUndoStack] = useState([]); // history of draft snapshots (JSON) for step-undo
   const endDrag = () => { setDragIdx(null); setOverGap(null); };
   const dropAt = (gap) => { if (dragIdx !== null) moveTo(dragIdx, gap); endDrag(); };
   const acquiredRef = React.useRef(false);
@@ -103,9 +104,23 @@ export default function TripStructureEdit() {
     nav(`/trip/${tripId}`);
   };
   const baseRef = React.useRef(null); // JSON of the originally-loaded draft (for Reset)
-  const editDraft = (updater) => { setDraft((d) => (d ? updater(d) : d)); setDirty(true); };
+  // Every structural mutation funnels through editDraft → snapshot the pre-edit
+  // draft onto the undo stack (cap 50), apply, mark dirty. `undo` pops one step.
+  const editDraft = (updater) => {
+    if (draft) setUndoStack((s) => [...s.slice(-49), JSON.stringify(draft)]);
+    setDraft((d) => (d ? updater(d) : d));
+    setDirty(true);
+  };
+  const undo = () => {
+    if (undoStack.length === 0) return;
+    const prev = undoStack[undoStack.length - 1];
+    setUndoStack((s) => s.slice(0, -1));
+    setDraft(JSON.parse(prev));
+    setDirty(baseRef.current != null && prev !== baseRef.current);
+  };
+  const canUndo = undoStack.length > 0;
   // Сброс: вернуть к загруженному состоянию, оставаясь в редакторе.
-  const reset = () => { if (!baseRef.current) return; setDraft(JSON.parse(baseRef.current)); setDirty(false); clearDraftStore(); };
+  const reset = () => { if (!baseRef.current) return; setDraft(JSON.parse(baseRef.current)); setDirty(false); setUndoStack([]); clearDraftStore(); };
 
   const { data: shell, isLoading: loadingShell, error: shellError } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
@@ -154,36 +169,6 @@ export default function TripStructureEdit() {
   const errors = issues.filter((i) => i.level === 'error').length;
   const warns = issues.length - errors;
   const blocked = issues.length > 0;
-
-  // Persistent app-header — rendered in EVERY branch (loading / blocked / error /
-  // ready) so it never blanks out while the lock RPC + queries resolve. Crumb
-  // dates come from the cached shell via the SAME formatter TripView uses, so
-  // navigating timeline ↔ editor shows an identical header (no flash/jump).
-  const hdrRange = formatTripRange(shell?.cityVisits || [], '');
-  const headerEl = (
-    <header className="app-header">
-      <button className="app-header__crumb-back" onClick={cancelEdit} title="Выйти из редактора">
-        <Icon name="back" size={15} />
-      </button>
-      <div className="app-header__brand" onClick={cancelEdit} style={{ cursor: 'pointer' }}>
-        <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
-        <span className="app-header__brand-name">Triplanio</span>
-      </div>
-      <div className="app-header__crumb">
-        <span className="app-header__crumb-sep">/</span>
-        <div className="app-header__crumb-trip">
-          <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
-            {trip?.title || '…'}
-          </span>
-          {hdrRange && <span className="app-header__crumb-dates">{hdrRange}</span>}
-          {trip?.is_pro_trip && !accountPro && (
-            <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '2px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', flexShrink: 0 }}>PRO</span>
-          )}
-        </div>
-      </div>
-      <HeaderActions user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} />
-    </header>
-  );
 
   // ---- structural edits ----
   // Trip start (d.startDate) is FIXED until shiftStart changes it; every recompute
@@ -292,6 +277,44 @@ export default function TripStructureEdit() {
     nav(`/trip/${tripId}`);
   };
 
+  // Persistent app-header — rendered in EVERY branch (loading / blocked / error /
+  // ready) so it never blanks out while the lock RPC + queries resolve. Crumb
+  // dates come from the cached shell via the SAME formatter TripView uses, so
+  // navigating timeline ↔ editor shows an identical header (no flash/jump).
+  // Editor actions (undo / reset / save) live HERE on the right — the work area
+  // below is fully given over to the two columns. Exit = the back-arrow / brand.
+  const hdrRange = formatTripRange(shell?.cityVisits || [], '');
+  const headerEl = (
+    <header className="app-header">
+      <button className="app-header__crumb-back" onClick={cancelEdit} title="Выйти из редактора">
+        <Icon name="back" size={15} />
+      </button>
+      <div className="app-header__brand" onClick={cancelEdit} style={{ cursor: 'pointer' }}>
+        <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
+        <span className="app-header__brand-name">Triplanio</span>
+      </div>
+      <div className="app-header__crumb">
+        <span className="app-header__crumb-sep">/</span>
+        <div className="app-header__crumb-trip">
+          <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px' }}>
+            {trip?.title || '…'}
+          </span>
+          {hdrRange && <span className="app-header__crumb-dates">{hdrRange}</span>}
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 7px', borderRadius: 999, background: 'var(--brand-soft)', whiteSpace: 'nowrap', flexShrink: 0 }}>структура</span>
+        </div>
+      </div>
+      {draft && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+          {blocked && <Badge variant="warm" icon="warning">{errors ? `${errors} ош.` : `${warns} предупр.`}</Badge>}
+          <Btn variant="ghost" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title="Шаг назад">Шаг назад</Btn>
+          <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title="Сбросить все изменения">Сброс</Btn>
+          <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={onSave}>{saving ? 'Сохраняю…' : 'Сохранить'}</Btn>
+        </div>
+      )}
+      <HeaderActions user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} />
+    </header>
+  );
+
   if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">Не удалось загрузить трип: {String(shellError.message || shellError)}</div></div></>;
   if (lock === 'blocked' || lock === 'error') {
     return (
@@ -337,31 +360,12 @@ export default function TripStructureEdit() {
   const draggedName = dragIdx !== null ? (ordered[dragIdx]?.city_name || 'город') : '';
 
   return (
-    <>
+    <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
     {headerEl}
-    <div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}>
-      {/* Sub-header: editor actions */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', paddingBottom: 14, marginBottom: 16, borderBottom: '1px solid var(--line-2)' }}>
-        <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-          <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>Редактирование структуры</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <h1 style={{ fontSize: 26, marginBottom: 0, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
-            {membersCount > 0 && <Badge variant="quiet"><Icon name="lock" size={11} /> {membersCount} уч.</Badge>}
-          </div>
-          <div className="muted num" style={{ fontSize: 13, marginTop: 6 }}>{fmtD(startDate)} → {fmtD(endDate)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights)}` : ''} · {cities.length} {cities.length === 1 ? 'город' : 'городов'}</div>
-        </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
-          {blocked && <Badge variant="warm" icon="warning">{errors ? `${errors} ошибок` : `${warns} предупр.`}</Badge>}
-          <Btn variant="ghost" size="sm" icon="back" onClick={cancelEdit}>Отменить</Btn>
-          <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty}>Сброс</Btn>
-          <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={onSave}>{saving ? 'Сохраняю…' : 'Сохранить'}</Btn>
-        </div>
-      </div>
-
-      <div className="ts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22, alignItems: 'start' }}>
-        {/* LEFT — structure table */}
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+    <div className="ts-grid" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: 12, overflow: 'hidden' }}>
+        {/* LEFT — cities (fixed start toolbar + scrolling list) */}
+        <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap', flexShrink: 0 }}>
             <span className="eyebrow">Старт трипа</span>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: 2 }}>
               <button className="ts-step" onClick={() => shiftStart(-1)} title="раньше"><Icon name="back" size={13} /></button>
@@ -369,8 +373,10 @@ export default function TripStructureEdit() {
               <button className="ts-step" onClick={() => shiftStart(1)} title="позже"><Icon name="chev" size={13} /></button>
             </div>
             <span className="muted" style={{ fontSize: 11.5 }}>двигает весь трип</span>
+            <span className="muted num" style={{ fontSize: 11.5, marginLeft: 'auto', whiteSpace: 'nowrap' }}>{cities.length} {cities.length === 1 ? 'город' : 'городов'}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights)}` : ''}{membersCount > 0 ? ` · ${membersCount} уч.` : ''}</span>
           </div>
 
+          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 4 }}>
           <div>
             {rows.map((r, i) => {
               const first = i === 0, last = i === rows.length - 1;
@@ -417,14 +423,15 @@ export default function TripStructureEdit() {
           )}
           <AddPointButton onOpen={() => setAdding(true)} />
           <RemovedTray removed={draft.removed} onRestore={restoreCity} />
+          </div>{/* /ts-leftscroll */}
         </div>
 
-        {/* RIGHT — live map + warnings */}
-        <div className="ts-rightcol" style={{ position: 'sticky', top: 14, height: 'calc(100vh - 128px)', minHeight: 520, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ flex: 1, minHeight: 220, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
+        {/* RIGHT — map (top 70%) + warnings (bottom 30%); each scrolls on its own */}
+        <div className="ts-col-right" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, gap: 12 }}>
+          <div className="ts-map" style={{ flex: '7 1 0', minHeight: 0, borderRadius: 14, overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
             <MapView visits={draft.nodes} transfers={liveTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
-          <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+          <div className="ts-warn" style={{ flex: '3 1 0', minHeight: 0, display: 'flex' }}>
             <WarningsPanel issues={issues} errors={errors} warns={warns} onOpen={openConflict} />
           </div>
         </div>
@@ -469,10 +476,15 @@ export default function TripStructureEdit() {
         .ts-step:hover { background: var(--wash); }
         .ts-step:disabled { opacity: .3; cursor: default; }
         .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 13px; }
-        @media (max-width: 1080px) { .ts-grid { grid-template-columns: 1fr !important; } .ts-rightcol { position: static !important; height: auto !important; } }
+        @media (max-width: 1080px) {
+          .ts-screen { height: auto !important; min-height: 100vh; overflow: visible !important; }
+          .ts-grid { grid-template-columns: 1fr !important; overflow: visible !important; }
+          .ts-leftscroll { overflow: visible !important; }
+          .ts-map { flex: 0 0 340px !important; }
+          .ts-warn { flex: 0 0 auto !important; min-height: 300px; }
+        }
       `}</style>
     </div>
-    </>
   );
 }
 

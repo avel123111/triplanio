@@ -18,6 +18,7 @@ const ICONS = {
   grid: <><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></>,
   list: <><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></>,
   back: <><path d="M15 19l-7-7 7-7"/></>,
+  undo: <><path d="M9 7L4 12l5 5"/><path d="M4 12h11a5 5 0 0 1 0 10h-1"/></>,
   chev: <><path d="M9 6l6 6-6 6"/></>,
   chevD: <><path d="M6 9l6 6 6-6"/></>,
   close: <><path d="M6 6l12 12M18 6L6 18"/></>,
