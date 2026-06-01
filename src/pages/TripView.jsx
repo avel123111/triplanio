@@ -21,7 +21,7 @@ import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
 import { Avatar, Btn, EmptyState, Skeleton, ModalHost, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
 import { SystemStub } from '@/lib/PageNotFound';
-import { sortVisits } from '@/lib/validation';
+import { sortVisits, cityIdentity } from '@/lib/validation';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
@@ -783,7 +783,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // then the CityHero. `prev` = the previously-rendered city (or start anchor).
   const renderArrival = (city, prev) => {
     const out = [];
-    if (prev && !hasTransferBetween(prev, city)) {
+    if (prev && cityIdentity(prev) !== cityIdentity(city) && !hasTransferBetween(prev, city)) {
       if (showBookingWarnings) out.push(
         <div key={`mt-${city.id}`} style={{ marginBottom: 8 }}>
           <MissingTransferWarning
@@ -925,7 +925,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // trip has an explicit end anchor and no transfer covers that leg.
   const endVisit = ordered[ordered.length - 1];
   if (showBookingWarnings && endVisit && endVisit.kind === 'end' && prevCity && prevCity.id !== endVisit.id
-      && !hasTransferBetween(prevCity, endVisit)) {
+      && cityIdentity(prevCity) !== cityIdentity(endVisit) && !hasTransferBetween(prevCity, endVisit)) {
     rows.push(
       <div key="mt-end" style={{ marginBottom: 8 }}>
         <MissingTransferWarning
@@ -1583,6 +1583,9 @@ export default function TripView() {
   // Structure Edit Mode lock held (by anyone, incl. self in another tab) → freeze
   // timeline mutations (TRIP_EDIT_MODE_TZ §3a). Reflected on load/refetch of the shell.
   const frozen = !!trip?.editing_by;
+  // While the trip is being edited in the Structure editor, freeze ALL event
+  // mutations on the timeline (add/edit/delete) — viewing stays allowed (TZ §3a).
+  const frozenNote = () => alert('Трип сейчас редактируется в режиме структуры — изменения временно недоступны.');
   // Banner can show only once we KNOW the trip isn't pro (or it's instantly a pro_trip).
   const tripProResolved = !!trip?.is_pro_trip || proResolved;
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
@@ -1724,7 +1727,7 @@ export default function TripView() {
             id={eventView.id}
             open={eventView.open}
             onOpenChange={(o) => setEventView(s => ({ ...s, open: o }))}
-            canEdit={myRole !== 'viewer'}
+            canEdit={myRole !== 'viewer' && !frozen}
           />
 
           {shownLens === 'timeline' && (
@@ -1752,15 +1755,15 @@ export default function TripView() {
                   trip={trip}
                   isViewer={myRole === 'viewer'}
                   isLoading={loadingContent}
-                  onAddTransfer={(fromVisit, toVisit) =>
+                  onAddTransfer={frozen ? frozenNote : (fromVisit, toVisit) =>
                     setTransferChoice({ open: true, fromVisit, toVisit })
                   }
-                  onAddHotel={(visit) =>
+                  onAddHotel={frozen ? frozenNote : (visit) =>
                     setHotelChoice({ open: true, visit })
                   }
                   isEditMode={isEditMode}
                   onOpenEvent={openEventView}
-                  onAddActivityForDay={(dayKey) => {
+                  onAddActivityForDay={frozen ? frozenNote : (dayKey) => {
                     const dayVisit = visits.find(v =>
                       v.kind === 'transit' && v.start_datetime && v.end_datetime &&
                       naiveDayKey(v.start_datetime) <= dayKey && dayKey <= naiveDayKey(v.end_datetime)
@@ -1783,7 +1786,7 @@ export default function TripView() {
                   user={user}
                   trip={trip}
                   isLoading={loadingContent}
-                  onAddService={(type) => setServiceChoice({ open: true, type })}
+                  onAddService={frozen ? frozenNote : (type) => setServiceChoice({ open: true, type })}
                   canManage={myRole !== 'viewer'}
                   budgetEnabled={isAddonEnabled(trip, 'budget')}
                   onBudgetLocked={() => setBudgetAddonOff(true)}

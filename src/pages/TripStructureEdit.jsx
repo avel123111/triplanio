@@ -39,6 +39,10 @@ function recompute(nodes, baseISO) {
   cursor = cursor.startOf('day');
   return nodes.map((n, i) => {
     if (isAnchor(n)) return { ...n, position: i };
+    if (n.kind === 'waypoint') { // single-date transit point — consumes no nights
+      const d = cursor.set({ hour: 12 });
+      return { ...n, start_datetime: d.toISO(), end_datetime: d.toISO(), nights: null, position: i };
+    }
     const nights = Number.isFinite(n.nights) ? n.nights : (nightsBetween(n.start_datetime, n.end_datetime) ?? 1);
     const start = cursor.set({ hour: 12 });
     const end = cursor.plus({ days: nights }).set({ hour: 11 });
@@ -52,7 +56,7 @@ function buildDraft(shell, content) {
   const nodes = visits.map((v, i) => ({
     ...v,
     position: Number.isFinite(v.position) ? v.position : i,
-    nights: isAnchor(v) ? null : (nightsBetween(v.start_datetime, v.end_datetime) ?? 1),
+    nights: (isAnchor(v) || v.kind === 'waypoint') ? null : (nightsBetween(v.start_datetime, v.end_datetime) ?? 1),
   }));
   return {
     nodes,
@@ -80,12 +84,12 @@ export default function TripStructureEdit() {
   const acquiredRef = React.useRef(false);
   const DRAFT_KEY = `ts-edit-${tripId}`;
   const clearDraftStore = () => { try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } };
-  const onBack = () => { clearDraftStore(); nav(`/trip/${tripId}`); };
-  const histRef = React.useRef([]);
+  // Отмена редактирования: выбросить черновик, СНЯТЬ лок (статус editing) и вернуться на таймлайн.
+  const cancelEdit = () => { if (acquiredRef.current) { supabase.rpc('release_trip_lock', { p_trip: tripId }); acquiredRef.current = false; } clearDraftStore(); nav(`/trip/${tripId}`); };
   const baseRef = React.useRef(null); // JSON of the originally-loaded draft (for Reset)
-  const editDraft = (updater) => { setDraft((d) => { if (!d) return d; histRef.current.push(JSON.stringify(d)); if (histRef.current.length > 120) histRef.current.shift(); return updater(d); }); setDirty(true); };
-  const undo = () => { const prev = histRef.current.pop(); if (prev == null) return; setDraft(JSON.parse(prev)); setDirty(prev !== baseRef.current); };
-  const reset = () => { if (!baseRef.current) return; histRef.current = []; setDraft(JSON.parse(baseRef.current)); setDirty(false); clearDraftStore(); };
+  const editDraft = (updater) => { setDraft((d) => (d ? updater(d) : d)); setDirty(true); };
+  // Сброс: вернуть к загруженному состоянию, оставаясь в редакторе.
+  const reset = () => { if (!baseRef.current) return; setDraft(JSON.parse(baseRef.current)); setDirty(false); clearDraftStore(); };
 
   const { data: shell, isLoading: loadingShell, error: shellError } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
@@ -235,11 +239,11 @@ export default function TripStructureEdit() {
 
   const ordered = sortVisits(draft.nodes);
   const byId = new Map(ordered.map((n) => [n.id, n]));
-  const transit = ordered.filter((n) => !isAnchor(n));
-  const startDate = transit[0]?.start_datetime;
-  const endDate = transit[transit.length - 1]?.end_datetime;
+  const seq = ordered.filter((n) => !isAnchor(n));          // cities + waypoints, in order
+  const cities = seq.filter((n) => n.kind === 'transit');   // stays only (for count/numbering)
+  const startDate = seq[0]?.start_datetime;
+  const endDate = seq[seq.length - 1]?.end_datetime;
   const totalNights = nightsBetween(startDate, endDate);
-  const canUndo = histRef.current.length > 0;
   const membersCount = content?.members?.length || 0;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => draft.transfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
@@ -249,7 +253,7 @@ export default function TripStructureEdit() {
   // assemble rows: each node + the connector to the next node
   const rows = [];
   ordered.forEach((n, idx) => {
-    rows.push({ kind: 'node', node: n, idx, stayNum: isAnchor(n) ? null : ++stayNum });
+    rows.push({ kind: 'node', node: n, idx, stayNum: n.kind === 'transit' ? ++stayNum : null });
     const next = ordered[idx + 1];
     if (next) rows.push({ kind: 'leg', a: n, b: next });
   });
@@ -258,18 +262,18 @@ export default function TripStructureEdit() {
     <div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', paddingBottom: 14, marginBottom: 16, borderBottom: '1px solid var(--line-2)' }}>
-        <button onClick={onBack} title="Назад (отменить правки)" className="ts-step" style={{ width: 38, height: 38, background: 'var(--surface)', border: '1px solid var(--line)', flexShrink: 0 }}><Icon name="back" size={16} /></button>
+        <button onClick={cancelEdit} title="Отменить редактирование и вернуться к трипу" className="ts-step" style={{ width: 38, height: 38, background: 'var(--surface)', border: '1px solid var(--line)', flexShrink: 0 }}><Icon name="back" size={16} /></button>
         <div style={{ flex: '1 1 320px', minWidth: 0 }}>
           <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>Редактирование структуры</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: 26, marginBottom: 0, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
             {membersCount > 0 && <Badge variant="quiet"><Icon name="lock" size={11} /> {membersCount} уч.</Badge>}
           </div>
-          <div className="muted num" style={{ fontSize: 13, marginTop: 6 }}>{fmtD(startDate)} → {fmtD(endDate)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights)}` : ''} · {transit.length} {transit.length === 1 ? 'город' : 'городов'}</div>
+          <div className="muted num" style={{ fontSize: 13, marginTop: 6 }}>{fmtD(startDate)} → {fmtD(endDate)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights)}` : ''} · {cities.length} {cities.length === 1 ? 'город' : 'городов'}</div>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
           {blocked && <Badge variant="warm" icon="warning">{errors ? `${errors} ошибок` : `${warns} предупр.`}</Badge>}
-          <Btn variant="ghost" size="sm" icon="back" onClick={undo} disabled={!canUndo}>Отменить</Btn>
+          <Btn variant="ghost" size="sm" icon="back" onClick={cancelEdit}>Отменить</Btn>
           <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty}>Сброс</Btn>
           <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={onSave}>{saving ? 'Сохраняю…' : 'Сохранить'}</Btn>
         </div>
@@ -298,7 +302,7 @@ export default function TripStructureEdit() {
               }
               const n = r.node;
               if (isAnchor(n)) return <GridEndpoint key={n.id} node={n} first={first} last={last} onRemove={() => removeEndpoint(n.id)} />;
-              return <GridNode key={n.id} seg={n} stayNum={r.stayNum} first={n === transit[0]} firstRow={first} last={last}
+              return <GridNode key={n.id} seg={n} stayNum={r.stayNum} first={n === cities[0]} firstRow={first} last={last}
                 conflictCount={cityConflicts(n.id)}
                 onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
                 onShiftMinus={() => shiftStart(-1)} onShiftPlus={() => shiftStart(1)}
@@ -377,6 +381,32 @@ function GCell({ label, iso, editable, onPlus }) {
 
 function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNightsMinus, onNightsPlus, onShiftMinus, onShiftPlus, onUp, onDown, onRemove, drag }) {
   const m = metaOf(seg);
+  const dragAttrs = {
+    draggable: true,
+    onDragStart: (e) => { e.dataTransfer.effectAllowed = 'move'; drag.onDragStart(); },
+    onDragEnd: drag.onDragEnd,
+    onDragOver: (e) => { e.preventDefault(); drag.onDragOver(); },
+    onDrop: (e) => { e.preventDefault(); drag.onDrop(); },
+  };
+  if (seg.kind === 'waypoint') {
+    return (
+      <div {...dragAttrs} style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '9px 11px', background: `color-mix(in srgb, ${m.color} 5%, var(--surface))`, opacity: drag.dragging ? 0.4 : 1, boxShadow: drag.dropping ? 'inset 0 2px 0 var(--brand)' : 'none' }}>
+        <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--surface)', border: '1.5px dashed ' + m.color, color: m.color, display: 'grid', placeItems: 'center', cursor: 'grab' }}><Icon name="arrowSwap" size={11} /></span>
+        <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ fontSize: 13.5 }}>{m.flag}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{seg.city_name}</span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ev-transfer)', textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 6px', borderRadius: 999, background: 'var(--ev-transfer-soft)', whiteSpace: 'nowrap' }}>пересадка</span>
+          <Conf n={conflictCount} />
+        </div>
+        <div style={{ gridColumn: '3 / 5', textAlign: 'center' }}>
+          <div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>транзит</div>
+          <div className="num" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtD(seg.start_datetime)}</div>
+        </div>
+        <span style={{ textAlign: 'center', color: 'var(--muted-2)', fontSize: 12 }}>—</span>
+        <Acts onUp={onUp} onDown={onDown} onRemove={onRemove} />
+      </div>
+    );
+  }
   return (
     <div draggable onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; drag.onDragStart(); }} onDragEnd={drag.onDragEnd}
       onDragOver={(e) => { e.preventDefault(); drag.onDragOver(); }} onDrop={(e) => { e.preventDefault(); drag.onDrop(); }}
@@ -450,6 +480,7 @@ function AddPointButton({ onOpen }) {
 
 const POINT_TYPES = [
   { id: 'transit', label: 'Город', icon: 'bed', sub: 'Остановка с ночёвками' },
+  { id: 'waypoint', label: 'Пересадка', icon: 'arrowSwap', sub: 'Транзит на 1 день' },
   { id: 'start', label: 'Старт', icon: 'flag', sub: 'Начало поездки' },
   { id: 'end', label: 'Финиш', icon: 'flag', sub: 'Конец поездки' },
 ];
@@ -462,7 +493,7 @@ function AddPointDialog({ onPick, onClose }) {
           <h2 style={{ fontSize: 16, margin: 0 }}>Добавить точку</h2>
           <button className="ts-step" onClick={onClose}><Icon name="close" size={16} /></button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7, marginBottom: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7, marginBottom: 14 }}>
           {POINT_TYPES.map((pt) => {
             const active = type === pt.id;
             return <button key={pt.id} onClick={() => setType(pt.id)} title={pt.sub} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 11, cursor: 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: active ? 'var(--brand)' : 'var(--ink-2)' }}>

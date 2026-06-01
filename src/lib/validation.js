@@ -224,7 +224,9 @@ export function normalizePositions(visits) {
 const dayInTz = (iso, tz) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }).setZone(tz || 'UTC').startOf('day') : null);
 
 // Same city = same external_city_id; fallback to name+country_code (TZ E2).
-const cityIdentity = (v) =>
+// Exported so the timeline's "no transfer" warning shares one identity rule
+// with the editor's E1/E2 (single source of truth).
+export const cityIdentity = (v) =>
   v?.external_city_id || `${(v?.city_name || '').trim().toLowerCase()}|${(v?.country_code || '').trim().toLowerCase()}`;
 
 const activityTitle = (a) => a?.title || a?.name || 'активность';
