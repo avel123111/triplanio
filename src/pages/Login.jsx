@@ -197,7 +197,13 @@ export default function Login() {
       if (error) {
         setError(error.message);
         setIsLoading(false);
+        return;
       }
+      // Success: AuthContext picks up SIGNED_IN but does not navigate, and this
+      // page stays mounted on /login — redirect explicitly (same as email login
+      // and the Google redirect flow's redirectTo). Keep isLoading=true so the
+      // buttons don't flash re-enabled before the navigation tears the page down.
+      window.location.href = '/trips';
     } catch (err) {
       setError(err.message);
       setIsLoading(false);
