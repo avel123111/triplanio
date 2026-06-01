@@ -358,11 +358,11 @@ export default function TripStructureEdit() {
   const draggedName = dragIdx !== null ? (ordered[dragIdx]?.city_name || 'город') : '';
 
   return (
-    <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
     {headerEl}
     <div className="ts-grid" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, overflow: 'hidden' }}>
         {/* LEFT — page title + cities (scrolling list) */}
-        <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)' }}>
+        <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
           {/* page title */}
           <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: '1px solid var(--line-2)' }}>
             <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>Редактирование структуры</div>
@@ -429,16 +429,14 @@ export default function TripStructureEdit() {
           </div>{/* /ts-leftscroll */}
         </div>
 
-        {/* RIGHT — one rounded card: map (top 70%) + warnings (bottom 30%),
-            split by a divider, no gap between them. Each scrolls on its own. */}
-        <div className="ts-col-right" style={{ minWidth: 0, display: 'flex', minHeight: 0, padding: 12 }}>
-          <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
-            <div className="ts-map" style={{ flex: '7 1 0', minHeight: 0, overflow: 'hidden', borderBottom: '1px solid var(--line)' }}>
-              <MapView visits={draft.nodes} transfers={liveTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
-            </div>
-            <div className="ts-warn" style={{ flex: '3 1 0', minHeight: 0, display: 'flex' }}>
-              <WarningsPanel issues={issues} errors={errors} warns={warns} onOpen={openConflict} />
-            </div>
+        {/* RIGHT — map (top 70%) + warnings (bottom 30%), flush edge-to-edge,
+            split by a divider, no gap/padding anywhere. Each scrolls on its own. */}
+        <div className="ts-col-right" style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--surface)' }}>
+          <div className="ts-map" style={{ flex: '7 1 0', minHeight: 0, overflow: 'hidden', borderBottom: '1px solid var(--line)' }}>
+            <MapView visits={draft.nodes} transfers={liveTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
+          </div>
+          <div className="ts-warn" style={{ flex: '3 1 0', minHeight: 0, display: 'flex' }}>
+            <WarningsPanel issues={issues} errors={errors} warns={warns} onOpen={openConflict} />
           </div>
         </div>
       </div>
