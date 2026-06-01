@@ -1,25 +1,66 @@
 /**
  * telegramWebhook
  *
- * INTERNAL binding endpoint. Called by n8n (NOT by Telegram directly): n8n owns
- * the bot webhook (Telegram Trigger) and forwards `/start` updates here. Auth via
+ * INTERNAL binding endpoint. Called by n8n (NOT by Telegram directly). Auth via
  * `Authorization: Bearer <N8N_SECRET>` (requireN8nSecret); verify_jwt=false.
  *
- * Handles the /start handshake only — does NOT send Telegram messages (n8n renders
- * the reply from the JSON this returns):
- *   /start <token> → consume telegram_link_tokens, upsert trip_telegram_integrations
- *                    by (trip_id, telegram_chat_id) → { ok:true, action:'linked', trip_title }
- *   /start         → { ok:true, action:'welcome' }
- *   bad token      → { ok:false, reason:'invalid' | 'used' | 'expired' }
- *   other message  → { ok:true, action:'ignored' }
+ * Returns a fully-localized `message` string so n8n just sends `{{ $json.message }}`
+ * — no per-language text in the workflow. Language is resolved from the linking
+ * user's `users.language` (token branches) or the Telegram `language_code`
+ * (welcome / no-token). Adding a language = add a block to T below.
  *
  * Identity is (trip_id, telegram_chat_id) — many chats per trip, many trips per chat.
- * user_id is informational ("linked_by").
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+
+type Lang = 'ru' | 'en' | 'es';
+
+function pickLang(code?: string | null): Lang {
+  const c = (code || '').slice(0, 2).toLowerCase();
+  return c === 'ru' || c === 'es' || c === 'en' ? (c as Lang) : 'en';
+}
+
+const T: Record<Lang, {
+  linked: (title: string) => string;
+  welcome: string;
+  invalid: string;
+  used: string;
+  expired: string;
+}> = {
+  ru: {
+    linked: (t) => `✅ Готово! Подключено к поездке «${t}». Буду присылать напоминания о событиях.`,
+    welcome: 'Привет! Я Triplanio-бот. Чтобы подключить меня к поездке — в приложении откройте настройки поездки → «Привязать Telegram».',
+    invalid: '❌ Ссылка недействительна. Сгенерируйте новую в настройках поездки.',
+    used: '❌ Эта ссылка уже использована. Сгенерируйте новую в настройках поездки.',
+    expired: '❌ Срок действия ссылки истёк. Сгенерируйте новую в настройках поездки.',
+  },
+  en: {
+    linked: (t) => `✅ Done! Connected to "${t}". I'll send you reminders about events.`,
+    welcome: 'Hi! I am the Triplanio bot. To connect me to a trip, open the trip settings in the app → "Connect Telegram".',
+    invalid: '❌ This link is invalid. Generate a new one in the trip settings.',
+    used: '❌ This link has already been used. Generate a new one in the trip settings.',
+    expired: '❌ This link has expired. Generate a new one in the trip settings.',
+  },
+  es: {
+    linked: (t) => `✅ ¡Listo! Conectado a «${t}». Te enviaré recordatorios de los eventos.`,
+    welcome: 'Hola! Soy el bot de Triplanio. Para conectarme a un viaje, abre los ajustes del viaje en la app → «Conectar Telegram».',
+    invalid: '❌ El enlace no es válido. Genera uno nuevo en los ajustes del viaje.',
+    used: '❌ Este enlace ya se ha usado. Genera uno nuevo en los ajustes del viaje.',
+    expired: '❌ El enlace ha caducado. Genera uno nuevo en los ajustes del viaje.',
+  },
+};
+
+async function resolveLang(userId?: string | null, fallbackCode?: string | null): Promise<Lang> {
+  if (userId) {
+    const { data } = await supabaseAdmin.from('users').select('language').eq('id', userId).maybeSingle();
+    const l = data?.language;
+    if (l === 'ru' || l === 'en' || l === 'es') return l;
+  }
+  return pickLang(fallbackCode);
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -36,6 +77,7 @@ Deno.serve(async (req) => {
     const text = (msg.text || '').trim();
     const tgUsername = msg.from?.username || '';
     const tgFirstName = msg.from?.first_name || '';
+    const langCode = msg.from?.language_code || '';
 
     if (!text.startsWith('/start')) {
       return Response.json({ ok: true, action: 'ignored' }, { headers: corsHeaders });
@@ -43,7 +85,8 @@ Deno.serve(async (req) => {
 
     const linkToken = text.split(/\s+/)[1];
     if (!linkToken) {
-      return Response.json({ ok: true, action: 'welcome' }, { headers: corsHeaders });
+      const lang = pickLang(langCode);
+      return Response.json({ ok: true, action: 'welcome', message: T[lang].welcome }, { headers: corsHeaders });
     }
 
     const { data: tokens } = await supabaseAdmin
@@ -53,18 +96,24 @@ Deno.serve(async (req) => {
       .limit(1);
     const tok = tokens?.[0];
 
-    if (!tok) return Response.json({ ok: false, reason: 'invalid' }, { headers: corsHeaders });
-    if (tok.used_at) return Response.json({ ok: false, reason: 'used' }, { headers: corsHeaders });
+    if (!tok) {
+      const lang = pickLang(langCode);
+      return Response.json({ ok: false, reason: 'invalid', message: T[lang].invalid }, { headers: corsHeaders });
+    }
+    if (tok.used_at) {
+      const lang = await resolveLang(tok.user_id, langCode);
+      return Response.json({ ok: false, reason: 'used', message: T[lang].used }, { headers: corsHeaders });
+    }
     if (new Date(tok.expires_at).getTime() < Date.now()) {
-      return Response.json({ ok: false, reason: 'expired' }, { headers: corsHeaders });
+      const lang = await resolveLang(tok.user_id, langCode);
+      return Response.json({ ok: false, reason: 'expired', message: T[lang].expired }, { headers: corsHeaders });
     }
 
-    // Upsert by (trip_id, telegram_chat_id). Re-binding the same chat updates the row.
     const { error: upsertErr } = await supabaseAdmin
       .from('trip_telegram_integrations')
       .upsert({
         trip_id: tok.trip_id,
-        user_id: tok.user_id,            // linked_by (informational, not identity)
+        user_id: tok.user_id,
         telegram_chat_id: chatId,
         telegram_username: tgUsername,
         telegram_first_name: tgFirstName,
@@ -73,7 +122,6 @@ Deno.serve(async (req) => {
       }, { onConflict: 'trip_id,telegram_chat_id' });
     if (upsertErr) throw upsertErr;
 
-    // Consume the token only after a successful upsert.
     await supabaseAdmin
       .from('telegram_link_tokens')
       .update({ used_at: new Date().toISOString() })
@@ -81,9 +129,11 @@ Deno.serve(async (req) => {
 
     const { data: trip } = await supabaseAdmin
       .from('trips').select('title').eq('id', tok.trip_id).maybeSingle();
+    const tripTitle = trip?.title || '';
+    const lang = await resolveLang(tok.user_id, langCode);
 
     return Response.json(
-      { ok: true, action: 'linked', trip_title: trip?.title || '' },
+      { ok: true, action: 'linked', trip_title: tripTitle, message: T[lang].linked(tripTitle) },
       { headers: corsHeaders },
     );
 
