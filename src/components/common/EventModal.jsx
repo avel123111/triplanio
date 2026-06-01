@@ -280,6 +280,8 @@ export default function EventModal(props) {
   const canEdit = legacy ? !!props.canEdit : !props.readOnly;
   const onEdit = props.onEdit;
   const onDelete = legacy ? props.onDelete : undefined;
+  // Optional conflict banner shown at the very top (Edit Mode → click a conflict).
+  const warning = props.warning ?? (legacy ? props.event?.warning : undefined) ?? null;
 
   // Open/close: new API uses open/onOpenChange; legacy uses onClose.
   // When no `open` is passed (some legacy proto callers conditionally mount
@@ -417,6 +419,13 @@ export default function EventModal(props) {
       <DialogContent className="p-0 max-w-xl max-h-[90vh] overflow-y-auto gap-0 w-[calc(100%-1rem)] sm:w-full">
         {/* 4px colour stripe */}
         <div style={{ height: 4, background: theme.color }} />
+
+        {warning && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 18px', background: 'var(--warning-soft)', borderBottom: '1px solid color-mix(in srgb, var(--warning) 35%, transparent)', color: 'var(--ink)' }}>
+            <span style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }}>⚠️</span>
+            <div style={{ fontSize: 13, lineHeight: 1.45 }}>{warning}</div>
+          </div>
+        )}
 
         {/* Header */}
         <div

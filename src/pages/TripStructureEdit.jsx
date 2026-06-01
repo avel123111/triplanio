@@ -10,6 +10,9 @@ import { Btn, Badge, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { getTimezone } from '@/lib/geo';
 import MapView from '@/components/views/MapView';
+import SourceViewLoader from '@/components/budget/SourceViewLoader';
+import EventEditDialog from '@/components/common/EventEditDialog';
+import { useToast } from '@/components/ui/use-toast';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR — "Сетка" (grid) design from the trip-structure-*
@@ -24,8 +27,6 @@ const WD = ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
 const fmtD = (iso) => { const d = toDT(iso); return d ? `${d.day} ${MONTHS[d.month - 1]}` : '—'; };
 const fmtDW = (iso) => { const d = toDT(iso); return d ? `${d.day} ${MONTHS[d.month - 1]}, ${WD[d.weekday]}` : '—'; };
 const fmtTime = (iso) => { const d = toDT(iso); return d ? d.toFormat('HH:mm') : null; };
-const dayInput = (iso) => { const d = toDT(iso); return d ? d.toFormat('yyyy-MM-dd') : ''; };
-const isoDay = (day, hour = 12) => (day ? DateTime.fromISO(`${day}`, { zone: 'utc' }).set({ hour, minute: 0, second: 0 }).toISO() : null);
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
 const dayWord = (n) => (n === 1 ? 'день' : n >= 2 && n <= 4 ? 'дня' : 'дней');
 const flagEmoji = (cc) => (cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt(0))) : '📍');
@@ -51,41 +52,42 @@ function recompute(nodes, baseISO) {
   });
 }
 
-function buildDraft(shell, content) {
+function buildDraft(shell) {
   const visits = sortVisits(shell?.cityVisits || []);
   const nodes = visits.map((v, i) => ({
     ...v,
     position: Number.isFinite(v.position) ? v.position : i,
     nights: (isAnchor(v) || v.kind === 'waypoint') ? null : (nightsBetween(v.start_datetime, v.end_datetime) ?? 1),
   }));
-  return {
-    nodes,
-    hotels: content?.hotels || [],
-    activities: content?.activities || [],
-    transfers: content?.transfers || [],
-    _edited: { hotels: {}, activities: {}, transfers: {} },
-    _del: { hotels: [], activities: [], transfers: [] },
-    removed: [],
-  };
+  // Draft holds ONLY structure (nodes + removed cities). Bookings are read LIVE
+  // from `content` (edits/adds go through the real event dialogs → DB → refetch).
+  return { nodes, removed: [] };
 }
 
 export default function TripStructureEdit() {
   const { tripId } = useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [draft, setDraft] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [lock, setLock] = useState('acquiring');
   const [saving, setSaving] = useState(false);
-  const [resolve, setResolve] = useState(null);
+  const [viewEvent, setViewEvent] = useState(null); // {kind,id,warning} — real EventModal
+  const [addLeg, setAddLeg] = useState(null);        // {fromVisit,toVisit} — real transfer create dialog
   const [adding, setAdding] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [dragIdx, setDragIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);
   const acquiredRef = React.useRef(false);
   const DRAFT_KEY = `ts-edit-${tripId}`;
   const clearDraftStore = () => { try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } };
   // Отмена редактирования: выбросить черновик, СНЯТЬ лок (статус editing) и вернуться на таймлайн.
-  const cancelEdit = () => { if (acquiredRef.current) { supabase.rpc('release_trip_lock', { p_trip: tripId }); acquiredRef.current = false; } clearDraftStore(); nav(`/trip/${tripId}`); };
+  const cancelEdit = async () => {
+    clearDraftStore();
+    if (acquiredRef.current) { acquiredRef.current = false; try { await supabase.rpc('release_trip_lock', { p_trip: tripId }); } catch { /* ignore */ } }
+    nav(`/trip/${tripId}`);
+  };
   const baseRef = React.useRef(null); // JSON of the originally-loaded draft (for Reset)
   const editDraft = (updater) => { setDraft((d) => (d ? updater(d) : d)); setDirty(true); };
   // Сброс: вернуть к загруженному состоянию, оставаясь в редакторе.
@@ -104,9 +106,9 @@ export default function TripStructureEdit() {
 
   useEffect(() => {
     if (draft || !shell || !content) return;
-    if (!baseRef.current) baseRef.current = JSON.stringify(buildDraft(shell, content));
+    if (!baseRef.current) baseRef.current = JSON.stringify(buildDraft(shell));
     try { const saved = sessionStorage.getItem(DRAFT_KEY); if (saved) { const p = JSON.parse(saved); if (p?.draft) { setDraft(p.draft); setDirty(!!p.dirty); return; } } } catch { /* ignore */ }
-    setDraft(buildDraft(shell, content));
+    setDraft(buildDraft(shell));
   }, [shell, content, draft, DRAFT_KEY]);
 
   useEffect(() => { if (draft && dirty) { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, dirty })); } catch { /* quota */ } } }, [draft, dirty, DRAFT_KEY]);
@@ -127,7 +129,14 @@ export default function TripStructureEdit() {
   }, [tripId]);
 
   const trip = shell?.trip;
-  const issues = useMemo(() => (draft ? computeTripValidation({ visits: draft.nodes, hotels: draft.hotels, activities: draft.activities, transfers: draft.transfers }) : []), [draft]);
+  // Bookings are read LIVE from content. Exclude bookings of cities slated for
+  // deletion (else they'd surface as orphans that block the very save that
+  // cascade-deletes them).
+  const removedIds = useMemo(() => new Set((draft?.removed || []).map((n) => n.id)), [draft]);
+  const liveHotels = useMemo(() => (content?.hotels || []).filter((h) => !removedIds.has(h.city_visit_id)), [content, removedIds]);
+  const liveActivities = useMemo(() => (content?.activities || []).filter((a) => !removedIds.has(a.city_visit_id)), [content, removedIds]);
+  const liveTransfers = useMemo(() => (content?.transfers || []).filter((t) => !removedIds.has(t.from_city_visit_id) && !removedIds.has(t.to_city_visit_id)), [content, removedIds]);
+  const issues = useMemo(() => (draft ? computeTripValidation({ visits: draft.nodes, hotels: liveHotels, activities: liveActivities, transfers: liveTransfers }) : []), [draft, liveHotels, liveActivities, liveTransfers]);
   const errors = issues.filter((i) => i.level === 'error').length;
   const warns = issues.length - errors;
   const blocked = issues.length > 0;
@@ -139,7 +148,7 @@ export default function TripStructureEdit() {
   const moveTo = (from, to) => {
     if (from == null || to == null || from === to) return;
     editDraft((d) => {
-      const arr = d.nodes.slice();
+      const arr = sortVisits(d.nodes); // base = exactly the rendered row order (indices match r.idx)
       if (isAnchor(arr[from])) return d;
       const [m] = arr.splice(from, 1);
       let t = to > from ? to - 1 : to;
@@ -150,7 +159,19 @@ export default function TripStructureEdit() {
       return { ...d, nodes: recompute(arr) };
     });
   };
-  const removeCity = (id) => editDraft((d) => { const node = d.nodes.find((n) => n.id === id); if (!node || isAnchor(node)) return d; return { ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id)), removed: [...d.removed, node] }; });
+  // Remove a city → confirm first. On confirm the city AND its attached bookings
+  // leave the draft (the city goes to the tray; on save save_trip_edit deletes the
+  // city + children). Bookings are stashed on the node so Restore brings them back.
+  const removeCity = (id) => { const n = draft.nodes.find((x) => x.id === id); if (n && !isAnchor(n)) setConfirmDel(n); };
+  const doRemoveCity = (id) => {
+    editDraft((d) => {
+      const node = d.nodes.find((n) => n.id === id); if (!node || isAnchor(node)) return d;
+      // bookings stay in `content`; they're filtered out of conflicts via removedIds
+      // and cascade-deleted on save (p_deletes.cities).
+      return { ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id)), removed: [...d.removed, node] };
+    });
+    setConfirmDel(null);
+  };
   const removeEndpoint = (id) => editDraft((d) => ({ ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id)), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) }));
   const restoreCity = (id) => editDraft((d) => {
     const node = d.removed.find((n) => n.id === id); if (!node) return d;
@@ -183,17 +204,24 @@ export default function TripStructureEdit() {
     addCity({ ...c, timezone: tz }, kind);
   };
 
-  // ---- booking edits ----
-  const mark = (d, kind, id) => ({ ...d._edited, [kind]: { ...d._edited[kind], [id]: true } });
-  const t_isNew = (d, id) => !!d.transfers.find((t) => t.id === id)?.__new;
-  const editHotel = (id, ci, co) => editDraft((d) => ({ ...d, hotels: d.hotels.map((h) => h.id === id ? { ...h, check_in_datetime: ci, check_out_datetime: co } : h), _edited: mark(d, 'hotels', id) }));
-  const editActivity = (id, s, e) => editDraft((d) => ({ ...d, activities: d.activities.map((a) => a.id === id ? { ...a, start_datetime: s, end_datetime: e } : a), _edited: mark(d, 'activities', id) }));
-  const editTransfer = (id, s, e) => editDraft((d) => ({ ...d, transfers: d.transfers.map((t) => t.id === id ? { ...t, start_datetime: s, end_datetime: e } : t), _edited: t_isNew(d, id) ? d._edited : mark(d, 'transfers', id) }));
-  const delBooking = (kind, id) => editDraft((d) => { const arr = d[kind].filter((x) => x.id !== id); const wasNew = kind === 'transfers' && t_isNew(d, id); const _del = wasNew ? d._del : { ...d._del, [kind]: [...d._del[kind], id] }; return { ...d, [kind]: arr, _del }; });
-  const addTransfer = (fromId, toId, kind) => {
-    const byId = new Map(draft.nodes.map((n) => [n.id, n]));
-    const from = byId.get(fromId), to = byId.get(toId);
-    editDraft((d) => ({ ...d, transfers: [...d.transfers, { id: 'tmp-' + Math.random().toString(36).slice(2), __new: true, from_city_visit_id: fromId, to_city_visit_id: toId, from_city_name: from?.city_name, to_city_name: to?.city_name, start_datetime: from?.end_datetime || to?.start_datetime || null, end_datetime: to?.start_datetime || from?.end_datetime || null, transport_type: kind, carrier: null }] }));
+  // ---- conflict / transfer dialogs (REAL app dialogs → write to DB → refetch) ----
+  const openConflict = (c) => {
+    if (c.hotelId) setViewEvent({ kind: 'hotel', id: c.hotelId, warning: c.message });
+    else if (c.activityId) setViewEvent({ kind: 'activity', id: c.activityId, warning: c.message });
+    else if (c.transferId) setViewEvent({ kind: 'transfer', id: c.transferId, warning: c.message });
+    else toast({ description: `${c.message} Поправьте ночи, порядок или старт города слева.` });
+  };
+  const openTransferRow = (a, b, t) => {
+    if (t) {
+      const mismatch = issues.some((i) => i.transferId === t.id && ['D1', 'D2', 'D3', 'D4'].includes(i.code));
+      setViewEvent({ kind: 'transfer', id: t.id, warning: mismatch ? 'Дата переезда не совпадает с планом структуры.' : null });
+      return;
+    }
+    if (String(a.id).startsWith('tmp-') || String(b.id).startsWith('tmp-')) {
+      toast({ description: 'Сначала сохраните трип, чтобы добавить переезд к новому городу.' });
+      return;
+    }
+    setAddLeg({ fromVisit: a, toVisit: b });
   };
 
   const onSave = async () => {
@@ -202,13 +230,9 @@ export default function TripStructureEdit() {
     const isTmp = (id) => String(id).startsWith('tmp-');
     const p_nodes = draft.nodes.filter((n) => !isTmp(n.id)).map((n) => ({ id: n.id, start_datetime: n.start_datetime ?? null, end_datetime: n.end_datetime ?? null, position: n.position }));
     const p_cities_new = draft.nodes.filter((n) => isTmp(n.id)).map((n) => ({ tmp: n.id, city_name: n.city_name, country: n.country ?? null, country_code: n.country_code ?? null, latitude: n.latitude ?? null, longitude: n.longitude ?? null, timezone: n.timezone ?? null, external_city_id: n.external_city_id ?? null, kind: n.kind || 'transit', start_datetime: n.start_datetime ?? null, end_datetime: n.end_datetime ?? null, position: n.position }));
-    const p_edits = {
-      hotels: draft.hotels.filter((h) => draft._edited.hotels[h.id]).map((h) => ({ id: h.id, check_in_datetime: h.check_in_datetime ?? null, check_out_datetime: h.check_out_datetime ?? null })),
-      activities: draft.activities.filter((a) => draft._edited.activities[a.id]).map((a) => ({ id: a.id, start_datetime: a.start_datetime ?? null, end_datetime: a.end_datetime ?? null })),
-      transfers_upd: draft.transfers.filter((t) => !t.__new && draft._edited.transfers[t.id]).map((t) => ({ id: t.id, start_datetime: t.start_datetime ?? null, end_datetime: t.end_datetime ?? null })),
-      transfers_new: draft.transfers.filter((t) => t.__new).map((t) => ({ from_city_visit_id: t.from_city_visit_id, to_city_visit_id: t.to_city_visit_id, start_datetime: t.start_datetime ?? null, end_datetime: t.end_datetime ?? null, transport_type: t.transport_type ?? null, carrier: t.carrier ?? null })),
-    };
-    const p_deletes = { ...draft._del, cities: (draft.removed || []).filter((n) => !isTmp(n.id)).map((n) => n.id) };
+    // Bookings are edited/added via real dialogs (already in DB) — structure-only save.
+    const p_edits = {};
+    const p_deletes = { cities: (draft.removed || []).filter((n) => !isTmp(n.id)).map((n) => n.id) };
     const { error } = await supabase.rpc('save_trip_edit', { p_trip: tripId, p_nodes, p_cities_new, p_edits, p_deletes });
     setSaving(false);
     if (error) { alert('Не удалось сохранить: ' + (error.message || error)); return; }
@@ -238,7 +262,6 @@ export default function TripStructureEdit() {
   }
 
   const ordered = sortVisits(draft.nodes);
-  const byId = new Map(ordered.map((n) => [n.id, n]));
   const seq = ordered.filter((n) => !isAnchor(n));          // cities + waypoints, in order
   const cities = seq.filter((n) => n.kind === 'transit');   // stays only (for count/numbering)
   const startDate = seq[0]?.start_datetime;
@@ -246,7 +269,7 @@ export default function TripStructureEdit() {
   const totalNights = nightsBetween(startDate, endDate);
   const membersCount = content?.members?.length || 0;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
-  const transferFor = (aId, bId) => draft.transfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
+  const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
   const transferMismatch = (t) => !!t && issues.some((i) => i.transferId === t.id && ['D1', 'D2', 'D3', 'D4'].includes(i.code));
   let stayNum = 0;
 
@@ -298,10 +321,11 @@ export default function TripStructureEdit() {
               if (r.kind === 'leg') {
                 const t = transferFor(r.a.id, r.b.id);
                 return <GridTransfer key={`leg-${r.a.id}-${r.b.id}`} a={r.a} b={r.b} t={t} mismatch={transferMismatch(t)} first={first} last={last}
-                  onOpen={() => setResolve(t ? { code: transferMismatch(t) ? 'D1' : 'D-edit', transferId: t.id } : { code: 'E1', fromId: r.a.id, toId: r.b.id })} />;
+                  onOpen={() => openTransferRow(r.a, r.b, t)} />;
               }
               const n = r.node;
-              if (isAnchor(n)) return <GridEndpoint key={n.id} node={n} first={first} last={last} onRemove={() => removeEndpoint(n.id)} />;
+              if (isAnchor(n)) return <GridEndpoint key={n.id} node={n} first={first} last={last} onRemove={() => removeEndpoint(n.id)}
+                drag={dragIdx !== null ? { dropping: overIdx === r.idx && dragIdx !== r.idx, onDragOver: () => setOverIdx(r.idx), onDrop: () => { moveTo(dragIdx, r.idx); setDragIdx(null); setOverIdx(null); } } : null} />;
               return <GridNode key={n.id} seg={n} stayNum={r.stayNum} first={n === cities[0]} firstRow={first} last={last}
                 conflictCount={cityConflicts(n.id)}
                 onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
@@ -315,6 +339,13 @@ export default function TripStructureEdit() {
             })}
           </div>
 
+          {dragIdx !== null && ordered[ordered.length - 1]?.kind !== 'end' && (
+            <div onDragOver={(e) => { e.preventDefault(); setOverIdx(ordered.length); }}
+              onDrop={(e) => { e.preventDefault(); moveTo(dragIdx, ordered.length); setDragIdx(null); setOverIdx(null); }}
+              style={{ height: 38, marginTop: 8, borderRadius: 10, border: '2px dashed ' + (overIdx === ordered.length ? 'var(--brand)' : 'var(--line)'), background: overIdx === ordered.length ? 'var(--brand-soft)' : 'transparent', display: 'grid', placeItems: 'center', color: overIdx === ordered.length ? 'var(--brand)' : 'var(--muted)', fontSize: 12, fontWeight: 600 }}>
+              Переместить в конец
+            </div>
+          )}
           <AddPointButton onOpen={() => setAdding(true)} />
           <RemovedTray removed={draft.removed} onRestore={restoreCity} />
         </div>
@@ -322,16 +353,47 @@ export default function TripStructureEdit() {
         {/* RIGHT — live map + warnings */}
         <div className="ts-rightcol" style={{ position: 'sticky', top: 14, height: 'calc(100vh - 128px)', minHeight: 520, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ flex: 1, minHeight: 220, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--line)', boxShadow: 'var(--shadow-soft)' }}>
-            <MapView visits={draft.nodes} transfers={draft.transfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
+            <MapView visits={draft.nodes} transfers={liveTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-            <WarningsPanel issues={issues} errors={errors} warns={warns} onOpen={setResolve} />
+            <WarningsPanel issues={issues} errors={errors} warns={warns} onOpen={openConflict} />
           </div>
         </div>
       </div>
 
-      {resolve && <ResolveModal conflict={resolve} draft={draft} byId={byId} actions={{ editHotel, editActivity, editTransfer, delBooking, addTransfer }} onClose={() => setResolve(null)} />}
+      {viewEvent && (
+        <SourceViewLoader
+          kind={viewEvent.kind} id={viewEvent.id} open canEdit warning={viewEvent.warning}
+          onOpenChange={(o) => { if (!o) { setViewEvent(null); qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); } }}
+        />
+      )}
+      {addLeg && (
+        <EventEditDialog
+          open kind="transfer" tripId={tripId} fromVisit={addLeg.fromVisit} toVisit={addLeg.toVisit}
+          defaultCurrency={trip?.details?.main_currency || 'EUR'}
+          onOpenChange={(o) => { if (!o) { setAddLeg(null); qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); } }}
+        />
+      )}
       {adding && <AddPointDialog onPick={onPickCity} onClose={() => setAdding(false)} />}
+      {confirmDel && (
+        <div onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)', padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, width: 420, maxWidth: '100%', boxShadow: 'var(--shadow-pop)' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--danger)' }} />
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '18px 18px 8px' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="trash" size={17} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}><h2 style={{ fontSize: 17, marginBottom: 2 }}>Удалить город «{confirmDel.city_name}»?</h2></div>
+              <button className="ts-step" onClick={() => setConfirmDel(null)}><Icon name="close" size={16} /></button>
+            </div>
+            <div style={{ padding: '0 18px 8px', fontSize: 13, lineHeight: 1.55, color: 'var(--ink-2)' }}>
+              Все привязанные брони в этом городе (отели, активности, переезды) тоже будут удалены. Изменение применится при сохранении.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 18px 18px' }}>
+              <Btn variant="ghost" onClick={() => setConfirmDel(null)}>Отмена</Btn>
+              <Btn variant="danger-solid" icon="trash" onClick={() => doRemoveCity(confirmDel.id)}>Удалить город</Btn>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .ts-step { border: none; background: transparent; border-radius: 8px; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; }
@@ -390,7 +452,7 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
   };
   if (seg.kind === 'waypoint') {
     return (
-      <div {...dragAttrs} style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '9px 11px', background: `color-mix(in srgb, ${m.color} 5%, var(--surface))`, opacity: drag.dragging ? 0.4 : 1, boxShadow: drag.dropping ? 'inset 0 2px 0 var(--brand)' : 'none' }}>
+      <div {...dragAttrs} style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '9px 11px', background: `color-mix(in srgb, ${m.color} 5%, var(--surface))`, opacity: drag.dragging ? 0.4 : 1, boxShadow: drag.dropping ? 'inset 0 3px 0 var(--brand)' : 'none', marginTop: drag.dropping ? 14 : 0, transition: 'margin-top .12s ease' }}>
         <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--surface)', border: '1.5px dashed ' + m.color, color: m.color, display: 'grid', placeItems: 'center', cursor: 'grab' }}><Icon name="arrowSwap" size={11} /></span>
         <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontSize: 13.5 }}>{m.flag}</span>
@@ -410,7 +472,7 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
   return (
     <div draggable onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; drag.onDragStart(); }} onDragEnd={drag.onDragEnd}
       onDragOver={(e) => { e.preventDefault(); drag.onDragOver(); }} onDrop={(e) => { e.preventDefault(); drag.onDrop(); }}
-      style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '14px 11px', opacity: drag.dragging ? 0.4 : 1, boxShadow: drag.dropping ? 'inset 0 2px 0 var(--brand)' : 'none' }}>
+      style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '14px 11px', opacity: drag.dragging ? 0.4 : 1, boxShadow: drag.dropping ? 'inset 0 3px 0 var(--brand)' : 'none', marginTop: drag.dropping ? 14 : 0, transition: 'margin-top .12s ease' }}>
       <span style={{ width: 24, height: 24, borderRadius: 6, background: m.color, color: 'white', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center', cursor: 'grab' }}>{stayNum}</span>
       <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
         <span style={{ fontSize: 13.5 }}>{m.flag}</span>
@@ -459,11 +521,14 @@ function GridTransfer({ a, b, t, mismatch, first, last, onOpen }) {
   </button>;
 }
 
-function GridEndpoint({ node, first, last, onRemove }) {
+function GridEndpoint({ node, first, last, onRemove, drag }) {
   const isStart = node.kind === 'start';
   const accent = isStart ? 'var(--success)' : 'var(--warm, var(--brand))';
   const m = metaOf(node);
-  return <div style={{ ...rowStyle(first, last), display: 'flex', alignItems: 'center', gap: 10, padding: '11px' }}>
+  return <div
+    onDragOver={drag ? (e) => { e.preventDefault(); drag.onDragOver(); } : undefined}
+    onDrop={drag ? (e) => { e.preventDefault(); drag.onDrop(); } : undefined}
+    style={{ ...rowStyle(first, last), display: 'flex', alignItems: 'center', gap: 10, padding: '11px', boxShadow: drag?.dropping ? 'inset 0 3px 0 var(--brand)' : 'none', marginTop: drag?.dropping ? 14 : 0, transition: 'margin-top .12s ease' }}>
     <span style={{ width: 24, height: 24, borderRadius: 6, background: 'color-mix(in srgb, ' + accent + ' 14%, transparent)', color: accent, display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="flag" size={13} /></span>
     <span style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '.09em', fontWeight: 700, color: accent, flexShrink: 0 }}>{isStart ? 'Старт' : 'Финиш'}</span>
     <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>{m.flag} {node.city_name}</span>
@@ -577,78 +642,5 @@ function WarningPlate({ c, onClick }) {
   );
 }
 
-// ---- resolution modal ----
-function ResolveModal({ conflict, draft, byId, actions, onClose }) {
-  const code = conflict.code;
-  const isHotel = ['B1', 'B2', 'B3'].includes(code);
-  const isActivity = ['C1', 'C2', 'C3'].includes(code);
-  const isTransfer = ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D-edit'].includes(code);
-  const isAdd = code === 'E1';
-  const isCity = ['A1', 'A2', 'A3-gap', 'A3-overlap'].includes(code);
-
-  const hotel = isHotel ? draft.hotels.find((h) => h.id === conflict.hotelId) : null;
-  const act = isActivity ? draft.activities.find((a) => a.id === conflict.activityId) : null;
-  const tr = isTransfer ? draft.transfers.find((t) => t.id === conflict.transferId) : null;
-  const city = conflict.cityId ? byId.get(conflict.cityId) : null;
-  const fromN = tr ? byId.get(tr.from_city_visit_id) : (isAdd ? byId.get(conflict.fromId) : null);
-  const toN = tr ? byId.get(tr.to_city_visit_id) : (isAdd ? byId.get(conflict.toId) : null);
-
-  const [d1, setD1] = useState(dayInput(hotel?.check_in_datetime || act?.start_datetime || tr?.start_datetime));
-  const [d2, setD2] = useState(dayInput(hotel?.check_out_datetime || act?.end_datetime || tr?.end_datetime));
-  const [kind, setKind] = useState('train');
-
-  const meta = { hotel: { color: 'var(--ev-hotel)', icon: 'bed', label: 'Отель' }, activity: { color: 'var(--ev-activity)', icon: 'spark', label: 'Активность' }, transfer: { color: 'var(--ev-transfer)', icon: 'plane', label: 'Трансфер' } }[isHotel ? 'hotel' : isActivity ? 'activity' : 'transfer'];
-  const applyDates = () => {
-    if (isHotel) actions.editHotel(hotel.id, isoDay(d1, 15), isoDay(d2, 11));
-    else if (isActivity) actions.editActivity(act.id, isoDay(d1, 10), isoDay(d2 || d1, 12));
-    else if (isTransfer) actions.editTransfer(tr.id, isoDay(d1, 12), isoDay(d2 || d1, 14));
-    onClose();
-  };
-  const matchCity = () => {
-    if (isHotel && city) { setD1(dayInput(city.start_datetime)); setD2(dayInput(city.end_datetime)); }
-    else if (isActivity && city) { setD1(dayInput(city.start_datetime)); setD2(dayInput(city.start_datetime)); }
-    else if (isTransfer && fromN && toN) { setD1(dayInput(fromN.end_datetime)); setD2(dayInput(toN.start_datetime)); }
-  };
-  const del = () => { if (isHotel) actions.delBooking('hotels', hotel.id); else if (isActivity) actions.delBooking('activities', act.id); else if (isTransfer) actions.delBooking('transfers', tr.id); onClose(); };
-  const addLeg = () => { actions.addTransfer(conflict.fromId, conflict.toId, kind); onClose(); };
-  const structural = code === 'B3' || code === 'C3' || code === 'D5' || code === 'D6';
-  const title = isAdd ? `${fromN?.city_name || ''} → ${toN?.city_name || ''}` : (hotel?.name || (act ? (act.title || act.name) : (tr ? `${fromN?.city_name || ''} → ${toN?.city_name || ''}` : 'Конфликт')));
-
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)', padding: 16 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, width: 480, maxWidth: '100%', boxShadow: 'var(--shadow-pop)' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: isAdd || isCity ? 'var(--brand)' : meta.color }} />
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '18px 18px 12px' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--wash)', color: isAdd || isCity ? 'var(--brand)' : meta.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name={isAdd ? 'plane' : isCity ? 'pin' : meta.icon} size={17} /></div>
-          <div style={{ flex: 1, minWidth: 0 }}><h2 style={{ fontSize: 17, marginBottom: 2 }}>{title}</h2><div className="muted" style={{ fontSize: 12 }}>{conflict.message || ''}</div></div>
-          <button className="ts-step" onClick={onClose}><Icon name="close" size={16} /></button>
-        </div>
-        <div style={{ padding: '0 18px 18px' }}>
-          {isCity && <div className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>Поправьте ночи, порядок или старт города в списке слева — даты пересчитаются.<div style={{ marginTop: 14, textAlign: 'right' }}><Btn variant="primary" size="sm" onClick={onClose}>Понятно</Btn></div></div>}
-          {isAdd && <div>
-            <div className="eyebrow" style={{ marginBottom: 8 }}>Чем едем</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-              {Object.keys(TKIND).map((k) => <button key={k} onClick={() => setKind(k)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1, minWidth: 64, padding: '10px 6px', borderRadius: 10, cursor: 'pointer', background: kind === k ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (kind === k ? 'var(--brand)' : 'var(--line)'), color: kind === k ? 'var(--brand)' : 'var(--ink-2)' }}><Icon name={TKIND[k].icon} size={16} /><span style={{ fontSize: 11, fontWeight: 600 }}>{TKIND[k].label}</span></button>)}
-            </div>
-            <div style={{ textAlign: 'right' }}><Btn variant="primary" icon="plus" onClick={addLeg}>Добавить переезд</Btn></div>
-          </div>}
-          {(isHotel || isActivity || isTransfer) && <div>
-            {structural ? <div className="muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>{code === 'D5' ? 'Маршрут изменился — переезд больше не между соседними городами. Удалите его или верните прежний порядок.' : 'Бронь осталась без города. Удалите её или верните город из трея «Убраны из маршрута».'}</div>
-              : <>
-                <div className="eyebrow" style={{ marginBottom: 8 }}>{isHotel ? 'Даты брони' : isTransfer ? 'Дата переезда' : 'Дата активности'}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-                  <div><label className="muted" style={{ fontSize: 11 }}>{isHotel ? 'Заезд' : isTransfer ? 'Вылет' : 'Начало'}</label><input className="ts-in" type="date" value={d1} onChange={(e) => setD1(e.target.value)} /></div>
-                  <div><label className="muted" style={{ fontSize: 11 }}>{isHotel ? 'Выезд' : isTransfer ? 'Прилёт' : 'Конец'}</label><input className="ts-in" type="date" value={d2} onChange={(e) => setD2(e.target.value)} /></div>
-                </div>
-                {(city || (fromN && toN)) && <button onClick={matchCity} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 11px', borderRadius: 9, cursor: 'pointer', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, var(--line))', color: 'var(--brand)', fontSize: 12.5, fontWeight: 600, marginBottom: 4 }}><Icon name="refresh" size={13} /> Подогнать под город</button>}
-              </>}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-              <Btn variant="ghost" icon="trash" onClick={del}>Удалить</Btn>
-              {!structural && <Btn variant="primary" icon="check" onClick={applyDates}>Применить</Btn>}
-            </div>
-          </div>}
-        </div>
-      </div>
-    </div>
-  );
-}
+// (ResolveModal removed — conflicts now open the real EventModal via SourceViewLoader,
+//  and "Добавить переезд" opens the real EventEditDialog. TRIP_EDIT_MODE test #8/#9.)

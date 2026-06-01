@@ -222,6 +222,17 @@ export function normalizePositions(visits) {
 // current timeline; the two converge in Phase 5.
 // =====================================================================
 const dayInTz = (iso, tz) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }).setZone(tz || 'UTC').startOf('day') : null);
+// Calendar day (YYYY-MM-DD) in a node's tz, as a plain date. Use this for
+// CROSS-node day gaps (A3): two nodes may have different timezones, and diffing
+// their tz-local startOf('day') would leak the offset and report a phantom
+// sub-day overlap. Comparing plain ISO dates parsed in one zone gives an exact
+// integer day gap.
+const calDay = (iso, tz) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }).setZone(tz || 'UTC').toISODate() : null);
+const dayGap = (fromIso, fromTz, toIso, toTz) => {
+  const a = calDay(fromIso, fromTz), b = calDay(toIso, toTz);
+  if (!a || !b) return null;
+  return Math.round(DateTime.fromISO(b, { zone: 'utc' }).diff(DateTime.fromISO(a, { zone: 'utc' }), 'days').days);
+};
 
 // Same city = same external_city_id; fallback to name+country_code (TZ E2).
 // Exported so the timeline's "no transfer" warning shares one identity rule
@@ -259,11 +270,12 @@ export function computeTripValidation({ visits = [], hotels = [], activities = [
   // gap > 1 day → warning; overlap (gap < 0) → warning. Skip pairs touching anchors.
   for (let i = 0; i < ordered.length - 1; i++) {
     const a = ordered[i], b = ordered[i + 1];
-    const aEnd = dayInTz(a.end_datetime, a.timezone), bStart = dayInTz(b.start_datetime, b.timezone);
-    if (!aEnd || !bStart) continue;
-    const gap = bStart.diff(aEnd, 'days').days;
+    if (!a.end_datetime || !b.start_datetime) continue;
+    const gap = dayGap(a.end_datetime, a.timezone, b.start_datetime, b.timezone); // integer calendar-day gap
+    if (gap == null) continue;
     if (gap > 1) push('warn', 'A3-gap', `Разрыв больше дня между «${a.city_name}» и «${b.city_name}».`, { fromId: a.id, toId: b.id });
     else if (gap < 0) push('warn', 'A3-overlap', `«${a.city_name}» и «${b.city_name}» наслаиваются.`, { fromId: a.id, toId: b.id });
+    // gap === 0 (стыковка) и gap === 1 (соседние дни / ночной перелёт) — OK
   }
 
   // ---- B. Hotels (out-of-bounds only — Pavel 2026-06-01) + orphan ----
@@ -319,11 +331,12 @@ export function computeTripValidation({ visits = [], hotels = [], activities = [
     const k = `${tr.from_city_visit_id}>${tr.to_city_visit_id}`;
     pairCount.set(k, (pairCount.get(k) || 0) + 1);
   }
+  // NB: E1 («нет переезда между соседями») НЕ конфликт в Edit Mode (решение Pavel) —
+  // отсутствие переезда показывается коннектором «+ Добавить переезд» в сетке и
+  // плашкой в таймлайне, но НЕ блокирует сохранение. Здесь оставлен только E3 (дубликат).
   for (let i = 0; i < ordered.length - 1; i++) {
     const a = ordered[i], b = ordered[i + 1];
     const cnt = pairCount.get(`${a.id}>${b.id}`) || 0;
-    const sameCity = cityIdentity(a) === cityIdentity(b);
-    if (!sameCity && cnt === 0) push('warn', 'E1', `Нет переезда: ${a.city_name} → ${b.city_name}.`, { fromId: a.id, toId: b.id });   // E2: same-city consecutive → no E1
     if (cnt > 1) push('warn', 'E3', `Дубликат переезда ${a.city_name} → ${b.city_name} (${cnt}).`, { fromId: a.id, toId: b.id });
   }
 

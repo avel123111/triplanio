@@ -22,6 +22,7 @@ import HeaderActions from '@/components/HeaderActions';
 import { Avatar, Btn, EmptyState, Skeleton, ModalHost, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
 import { SystemStub } from '@/lib/PageNotFound';
 import { sortVisits, cityIdentity } from '@/lib/validation';
+import { useToast } from '@/components/ui/use-toast';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
@@ -1453,6 +1454,7 @@ export default function TripView() {
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const { toast } = useToast();
   const lens = searchParams.get('lens') || 'timeline';
 
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -1585,7 +1587,7 @@ export default function TripView() {
   const frozen = !!trip?.editing_by;
   // While the trip is being edited in the Structure editor, freeze ALL event
   // mutations on the timeline (add/edit/delete) — viewing stays allowed (TZ §3a).
-  const frozenNote = () => alert('Трип сейчас редактируется в режиме структуры — изменения временно недоступны.');
+  const frozenNote = () => toast({ description: 'Трип сейчас редактируется в режиме структуры — изменения временно недоступны.' });
   // Banner can show only once we KNOW the trip isn't pro (or it's instantly a pro_trip).
   const tripProResolved = !!trip?.is_pro_trip || proResolved;
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);

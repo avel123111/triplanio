@@ -28,7 +28,7 @@ async function getRow(table, id) {
   return data;
 }
 
-export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false }) {
+export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false, warning = null }) {
   const qc = useQueryClient();
   const [data, setData] = useState(null);
   const [visit, setVisit] = useState(null);
@@ -131,6 +131,7 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
   return (
     <EventModal
       event={{ kind, entity: data, visit, fromVisit, toVisit, tripId: data.trip_id }}
+      warning={warning}
       canEdit={canEdit}
       onClose={() => onOpenChange(false)}
       onEdit={() => setEditMode(true)}
