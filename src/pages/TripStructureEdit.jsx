@@ -13,7 +13,10 @@ import MapView from '@/components/views/MapView';
 import SourceViewLoader from '@/components/budget/SourceViewLoader';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useToast } from '@/components/ui/use-toast';
-import AppHeader from '@/components/AppHeader';
+import HeaderActions from '@/components/HeaderActions';
+import { useAuth } from '@/lib/AuthContext';
+import { useTheme } from '@/lib/ThemeContext';
+import { isProActive } from '@/lib/subscription';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR — "Сетка" (grid) design from the trip-structure-*
@@ -74,6 +77,9 @@ export default function TripStructureEdit() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { isDark, toggle: toggleTheme } = useTheme();
+  const accountPro = isProActive(user);
   const [draft, setDraft] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [lock, setLock] = useState('acquiring');
@@ -293,7 +299,33 @@ export default function TripStructureEdit() {
 
   return (
     <>
-    <AppHeader />
+    <header className="app-header">
+      <button className="app-header__crumb-back" onClick={cancelEdit} title="Выйти из редактора">
+        <Icon name="back" size={15} />
+      </button>
+
+      <div className="app-header__brand" onClick={cancelEdit} style={{ cursor: 'pointer' }}>
+        <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
+        <span className="app-header__brand-name">Triplanio</span>
+      </div>
+
+      <div className="app-header__crumb">
+        <span className="app-header__crumb-sep">/</span>
+        <div className="app-header__crumb-trip">
+          <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
+            {trip?.title || '…'}
+          </span>
+          {startDate && endDate && (
+            <span className="app-header__crumb-dates">{fmtD(startDate)} – {fmtD(endDate)}</span>
+          )}
+          {trip?.is_pro_trip && !accountPro && (
+            <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '2px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', flexShrink: 0 }}>PRO</span>
+          )}
+        </div>
+      </div>
+
+      <HeaderActions user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} />
+    </header>
     <div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}>
       {/* Sub-header: editor actions */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', paddingBottom: 14, marginBottom: 16, borderBottom: '1px solid var(--line-2)' }}>

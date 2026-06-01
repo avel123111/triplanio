@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, NavLink, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Compass, Settings as SettingsIcon } from 'lucide-react';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
+import { useTheme } from '@/lib/ThemeContext';
+import { isProActive } from '@/lib/subscription';
 import { supabase } from '@/api/supabaseClient';
-import AppHeader from '@/components/AppHeader';
+import HeaderActions from '@/components/HeaderActions';
 import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
 import PaymentFailDialog from '@/components/common/PaymentFailDialog';
-import { TripMenuProvider } from '@/components/trips/TripMenuContext';
 
 // Theme toggle has been moved into UserMenu (see components/UserMenu.jsx) so
 // it's reachable on mobile without taking header space, and the dropdown is
@@ -16,6 +17,7 @@ import { TripMenuProvider } from '@/components/trips/TripMenuContext';
 
 export default function Layout() {
   const { user } = useAuth();
+  const { isDark, toggle: toggleTheme } = useTheme();
   const t = useT();
   const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
@@ -23,7 +25,6 @@ export default function Layout() {
   const [payModal, setPayModal] = useState(null); // 'success' | 'fail' | null
   const [planLabel, setPlanLabel] = useState(null);
   const [priceLabel, setPriceLabel] = useState(null);
-  const location = useLocation();
 
   // Centralised handling of Stripe return — works regardless of which page the
   // upgrade started from. ONE success modal + ONE fail modal, app-wide.
@@ -63,34 +64,32 @@ export default function Layout() {
     setSearchParams(searchParams, { replace: true });
   }, [searchParams, setSearchParams, qc]);
 
-  // Hide bottom-nav while inside a trip — those screens have their own
-  // left-side nav (TripSideMenu).
-  const isTripRoute = location.pathname.startsWith('/trip/');
-  const showBottomNav = !!user && !isTripRoute;
+  // Layout now serves only the non-trip admin routes; trip/new-design pages
+  // are standalone and render their own header. Bottom-nav shown for logged-in
+  // users on these pages (mobile).
+  const showBottomNav = !!user;
 
-  // Trip routes need the TripMenuProvider to wrap BOTH the header (the
-  // burger button calls `open()` on the context) AND the page content
-  // (TripShell mounts the menu Sheet). Putting the provider inside
-  // TripShell only would hide the context from the header above.
   const body = (
     <>
-      <AppHeader />
-      {isTripRoute ? (
+      <header className="app-header">
+        <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
+          <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
+          <span className="app-header__brand-name">Triplanio</span>
+        </div>
+        <HeaderActions user={user} isPro={isProActive(user)} isDark={isDark} onToggleTheme={toggleTheme} />
+      </header>
+      <main
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10"
+        style={showBottomNav ? { paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' } : undefined}
+      >
         <Outlet />
-      ) : (
-        <main
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10"
-          style={showBottomNav ? { paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' } : undefined}
-        >
-          <Outlet />
-        </main>
-      )}
+      </main>
     </>
   );
 
   return (
     <div className="min-h-screen bg-background">
-      {isTripRoute ? <TripMenuProvider>{body}</TripMenuProvider> : body}
+      {body}
 
       {/* Mobile bottom navigation — hidden on sm+ where the header has the user menu. */}
       {showBottomNav && (
