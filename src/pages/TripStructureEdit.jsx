@@ -5,6 +5,7 @@ import { DateTime } from 'luxon';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
 import { sortVisits, computeTripValidation } from '@/lib/validation';
+import { formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
@@ -88,8 +89,10 @@ export default function TripStructureEdit() {
   const [addLeg, setAddLeg] = useState(null);        // {fromVisit,toVisit} — real transfer create dialog
   const [adding, setAdding] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
-  const [dragIdx, setDragIdx] = useState(null);
-  const [overIdx, setOverIdx] = useState(null);
+  const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
+  const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
+  const endDrag = () => { setDragIdx(null); setOverGap(null); };
+  const dropAt = (gap) => { if (dragIdx !== null) moveTo(dragIdx, gap); endDrag(); };
   const acquiredRef = React.useRef(false);
   const DRAFT_KEY = `ts-edit-${tripId}`;
   const clearDraftStore = () => { try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } };
@@ -151,6 +154,36 @@ export default function TripStructureEdit() {
   const errors = issues.filter((i) => i.level === 'error').length;
   const warns = issues.length - errors;
   const blocked = issues.length > 0;
+
+  // Persistent app-header — rendered in EVERY branch (loading / blocked / error /
+  // ready) so it never blanks out while the lock RPC + queries resolve. Crumb
+  // dates come from the cached shell via the SAME formatter TripView uses, so
+  // navigating timeline ↔ editor shows an identical header (no flash/jump).
+  const hdrRange = formatTripRange(shell?.cityVisits || [], '');
+  const headerEl = (
+    <header className="app-header">
+      <button className="app-header__crumb-back" onClick={cancelEdit} title="Выйти из редактора">
+        <Icon name="back" size={15} />
+      </button>
+      <div className="app-header__brand" onClick={cancelEdit} style={{ cursor: 'pointer' }}>
+        <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
+        <span className="app-header__brand-name">Triplanio</span>
+      </div>
+      <div className="app-header__crumb">
+        <span className="app-header__crumb-sep">/</span>
+        <div className="app-header__crumb-trip">
+          <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
+            {trip?.title || '…'}
+          </span>
+          {hdrRange && <span className="app-header__crumb-dates">{hdrRange}</span>}
+          {trip?.is_pro_trip && !accountPro && (
+            <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '2px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', flexShrink: 0 }}>PRO</span>
+          )}
+        </div>
+      </div>
+      <HeaderActions user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} />
+    </header>
+  );
 
   // ---- structural edits ----
   // Trip start (d.startDate) is FIXED until shiftStart changes it; every recompute
@@ -258,9 +291,10 @@ export default function TripStructureEdit() {
     nav(`/trip/${tripId}`);
   };
 
-  if (shellError) return <div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">Не удалось загрузить трип: {String(shellError.message || shellError)}</div></div>;
+  if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">Не удалось загрузить трип: {String(shellError.message || shellError)}</div></div></>;
   if (lock === 'blocked' || lock === 'error') {
     return (
+      <>{headerEl}
       <div style={{ maxWidth: 640, margin: '40px auto', padding: 16 }}>
         <div className={`sev sev--${lock === 'blocked' ? 'warning' : 'error'}`}>
           <span className="sev__icon"><Icon name="warning" size={16} /></span>
@@ -271,10 +305,11 @@ export default function TripStructureEdit() {
           </div>
         </div>
       </div>
+      </>
     );
   }
   if (loadingShell || loadingContent || !draft || lock === 'acquiring') {
-    return <div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}><Skeleton w="40%" h={28} style={{ marginBottom: 18 }} /><Skeleton w="100%" h={120} style={{ marginBottom: 10 }} /><Skeleton w="100%" h={120} /></div>;
+    return <>{headerEl}<div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}><Skeleton w="40%" h={28} style={{ marginBottom: 18 }} /><Skeleton w="100%" h={120} style={{ marginBottom: 10 }} /><Skeleton w="100%" h={120} /></div></>;
   }
 
   const ordered = sortVisits(draft.nodes);
@@ -294,38 +329,13 @@ export default function TripStructureEdit() {
   ordered.forEach((n, idx) => {
     rows.push({ kind: 'node', node: n, idx, stayNum: n.kind === 'transit' ? ++stayNum : null });
     const next = ordered[idx + 1];
-    if (next) rows.push({ kind: 'leg', a: n, b: next });
+    if (next) rows.push({ kind: 'leg', a: n, b: next, gap: idx + 1 }); // gap = insert position between a and b
   });
+  const draggedName = dragIdx !== null ? (ordered[dragIdx]?.city_name || 'город') : '';
 
   return (
     <>
-    <header className="app-header">
-      <button className="app-header__crumb-back" onClick={cancelEdit} title="Выйти из редактора">
-        <Icon name="back" size={15} />
-      </button>
-
-      <div className="app-header__brand" onClick={cancelEdit} style={{ cursor: 'pointer' }}>
-        <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
-        <span className="app-header__brand-name">Triplanio</span>
-      </div>
-
-      <div className="app-header__crumb">
-        <span className="app-header__crumb-sep">/</span>
-        <div className="app-header__crumb-trip">
-          <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
-            {trip?.title || '…'}
-          </span>
-          {startDate && endDate && (
-            <span className="app-header__crumb-dates">{fmtD(startDate)} – {fmtD(endDate)}</span>
-          )}
-          {trip?.is_pro_trip && !accountPro && (
-            <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '2px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', flexShrink: 0 }}>PRO</span>
-          )}
-        </div>
-      </div>
-
-      <HeaderActions user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} />
-    </header>
+    {headerEl}
     <div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}>
       {/* Sub-header: editor actions */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', paddingBottom: 14, marginBottom: 16, borderBottom: '1px solid var(--line-2)' }}>
@@ -363,12 +373,23 @@ export default function TripStructureEdit() {
               const first = i === 0, last = i === rows.length - 1;
               if (r.kind === 'leg') {
                 const t = transferFor(r.a.id, r.b.id);
-                return <GridTransfer key={`leg-${r.a.id}-${r.b.id}`} a={r.a} b={r.b} t={t} mismatch={transferMismatch(t)} first={first} last={last}
+                const transfer = <GridTransfer key={`leg-${r.a.id}-${r.b.id}`} a={r.a} b={r.b} t={t} mismatch={transferMismatch(t)} first={first} last={last}
                   onOpen={() => openTransferRow(r.a, r.b, t)} />;
+                // While dragging, every leg is a drop target. The hovered gap
+                // hides its transfer plate and shows a city-sized placeholder
+                // marking exactly where the city lands.
+                if (dragIdx === null) return transfer;
+                const activeGap = overGap === r.gap;
+                return (
+                  <div key={`gap-${r.a.id}-${r.b.id}`}
+                    onDragOver={(e) => { e.preventDefault(); setOverGap(r.gap); }}
+                    onDrop={(e) => { e.preventDefault(); dropAt(r.gap); }}>
+                    {activeGap ? <DropSlot label={draggedName} /> : transfer}
+                  </div>
+                );
               }
               const n = r.node;
-              if (isAnchor(n)) return <GridEndpoint key={n.id} node={n} first={first} last={last} onRemove={() => removeEndpoint(n.id)}
-                drag={dragIdx !== null ? { dropping: overIdx === r.idx && dragIdx !== r.idx, onDragOver: () => setOverIdx(r.idx), onDrop: () => { moveTo(dragIdx, r.idx); setDragIdx(null); setOverIdx(null); } } : null} />;
+              if (isAnchor(n)) return <GridEndpoint key={n.id} node={n} first={first} last={last} onRemove={() => removeEndpoint(n.id)} />;
               return <GridNode key={n.id} seg={n} stayNum={r.stayNum} first={n === cities[0]} firstRow={first} last={last}
                 conflictCount={cityConflicts(n.id)}
                 onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
@@ -376,16 +397,18 @@ export default function TripStructureEdit() {
                 onUp={r.idx > 0 && !isAnchor(ordered[r.idx - 1]) ? () => moveTo(r.idx, r.idx - 1) : null}
                 onDown={r.idx < ordered.length - 1 && !isAnchor(ordered[r.idx + 1]) ? () => moveTo(r.idx, r.idx + 1) : null}
                 onRemove={() => removeCity(n.id)}
-                drag={{ dragging: dragIdx === r.idx, dropping: overIdx === r.idx && dragIdx !== null && dragIdx !== r.idx,
-                  onDragStart: () => setDragIdx(r.idx), onDragOver: () => setOverIdx(r.idx),
-                  onDrop: () => { moveTo(dragIdx, r.idx); setDragIdx(null); setOverIdx(null); }, onDragEnd: () => { setDragIdx(null); setOverIdx(null); } }} />;
+                drag={{ dragging: dragIdx === r.idx,
+                  onDragStart: () => setDragIdx(r.idx),
+                  onDragOver: () => { if (dragIdx !== null && dragIdx !== r.idx) setOverGap(r.idx); }, // hovering a city = insert in the gap above it
+                  onDrop: () => { if (dragIdx !== r.idx) dropAt(r.idx); else endDrag(); },
+                  onDragEnd: endDrag }} />;
             })}
           </div>
 
           {dragIdx !== null && ordered[ordered.length - 1]?.kind !== 'end' && (
-            <div onDragOver={(e) => { e.preventDefault(); setOverIdx(ordered.length); }}
-              onDrop={(e) => { e.preventDefault(); moveTo(dragIdx, ordered.length); setDragIdx(null); setOverIdx(null); }}
-              style={{ height: 38, marginTop: 8, borderRadius: 10, border: '2px dashed ' + (overIdx === ordered.length ? 'var(--brand)' : 'var(--line)'), background: overIdx === ordered.length ? 'var(--brand-soft)' : 'transparent', display: 'grid', placeItems: 'center', color: overIdx === ordered.length ? 'var(--brand)' : 'var(--muted)', fontSize: 12, fontWeight: 600 }}>
+            <div onDragOver={(e) => { e.preventDefault(); setOverGap(ordered.length); }}
+              onDrop={(e) => { e.preventDefault(); dropAt(ordered.length); }}
+              style={{ height: 38, marginTop: 8, borderRadius: 10, border: '2px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line)'), background: overGap === ordered.length ? 'var(--brand-soft)' : 'transparent', display: 'grid', placeItems: 'center', color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', fontSize: 12, fontWeight: 600 }}>
               Переместить в конец
             </div>
           )}
@@ -496,7 +519,7 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
   };
   if (seg.kind === 'waypoint') {
     return (
-      <div {...dragAttrs} style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '9px 11px', background: `color-mix(in srgb, ${m.color} 5%, var(--surface))`, opacity: drag.dragging ? 0.4 : 1, transition: 'padding .1s ease, background .1s ease', ...(drag.dropping ? { borderTop: '3px solid var(--brand)', paddingTop: 34, background: 'var(--brand-soft)' } : null) }}>
+      <div {...dragAttrs} style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '9px 11px', background: `color-mix(in srgb, ${m.color} 5%, var(--surface))`, opacity: drag.dragging ? 0.4 : 1, transition: 'opacity .1s ease' }}>
         <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--surface)', border: '1.5px dashed ' + m.color, color: m.color, display: 'grid', placeItems: 'center', cursor: 'grab' }}><Icon name="arrowSwap" size={11} /></span>
         <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontSize: 13.5 }}>{m.flag}</span>
@@ -516,7 +539,7 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
   return (
     <div draggable onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; drag.onDragStart(); }} onDragEnd={drag.onDragEnd}
       onDragOver={(e) => { e.preventDefault(); drag.onDragOver(); }} onDrop={(e) => { e.preventDefault(); drag.onDrop(); }}
-      style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '14px 11px', opacity: drag.dragging ? 0.4 : 1, transition: 'padding .1s ease, background .1s ease', ...(drag.dropping ? { borderTop: '3px solid var(--brand)', paddingTop: 34, background: 'var(--brand-soft)' } : null) }}>
+      style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '14px 11px', opacity: drag.dragging ? 0.4 : 1, transition: 'opacity .1s ease' }}>
       <span style={{ width: 24, height: 24, borderRadius: 6, background: m.color, color: 'white', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center', cursor: 'grab' }}>{stayNum}</span>
       <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
         <span style={{ fontSize: 13.5 }}>{m.flag}</span>
@@ -532,6 +555,18 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
         <button className="ts-step" style={{ width: 20, height: 20 }} onClick={onNightsPlus}><Icon name="plus" size={9} /></button>
       </div>
       <Acts onUp={onUp} onDown={onDown} onRemove={onRemove} />
+    </div>
+  );
+}
+
+// Empty city-sized slot shown at the hovered gap during drag — replaces the
+// transfer plate there so it reads as "the dragged city drops in HERE".
+function DropSlot({ label }) {
+  return (
+    <div style={{ height: 56, margin: '4px 0', borderRadius: 11, border: '2px dashed var(--brand)', background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', gap: 9, padding: '0 14px', color: 'var(--brand)', pointerEvents: 'none' }}>
+      <span style={{ width: 24, height: 24, borderRadius: 6, border: '2px dashed var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="plus" size={13} /></span>
+      <span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: 11.5, opacity: 0.75, marginLeft: 'auto' }}>встанет сюда</span>
     </div>
   );
 }
@@ -565,14 +600,12 @@ function GridTransfer({ a, b, t, mismatch, first, last, onOpen }) {
   </button>;
 }
 
-function GridEndpoint({ node, first, last, onRemove, drag }) {
+function GridEndpoint({ node, first, last, onRemove }) {
   const isStart = node.kind === 'start';
   const accent = isStart ? 'var(--success)' : 'var(--warm, var(--brand))';
   const m = metaOf(node);
   return <div
-    onDragOver={drag ? (e) => { e.preventDefault(); drag.onDragOver(); } : undefined}
-    onDrop={drag ? (e) => { e.preventDefault(); drag.onDrop(); } : undefined}
-    style={{ ...rowStyle(first, last), display: 'flex', alignItems: 'center', gap: 10, padding: '11px', transition: 'padding .1s ease, background .1s ease', ...(drag?.dropping ? { borderTop: '3px solid var(--brand)', paddingTop: 34, background: 'var(--brand-soft)' } : null) }}>
+    style={{ ...rowStyle(first, last), display: 'flex', alignItems: 'center', gap: 10, padding: '11px' }}>
     <span style={{ width: 24, height: 24, borderRadius: 6, background: 'color-mix(in srgb, ' + accent + ' 14%, transparent)', color: accent, display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="flag" size={13} /></span>
     <span style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '.09em', fontWeight: 700, color: accent, flexShrink: 0 }}>{isStart ? 'Старт' : 'Финиш'}</span>
     <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>{m.flag} {node.city_name}</span>
