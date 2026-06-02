@@ -40,7 +40,7 @@ function extractBookingPayload(node, depth = 0) {
   if (node == null || depth > 6) return node || {};
   if (Array.isArray(node)) return extractBookingPayload(node[0], depth + 1);
   if (typeof node !== 'object') return {};
-  const isBooking = ['segments', 'name', 'from_address', 'check_in_date', 'booking_platform', 'booking_reference', 'booking_url']
+  const isBooking = ['transfers', 'waypoints', 'segments', 'name', 'from_address', 'check_in_date', 'booking_platform', 'booking_reference', 'booking_url']
     .some((k) => k in node);
   if (isBooking) return node;
   for (const key of ['output', 'data', 'json', 'body', 'result', 'response']) {
@@ -147,19 +147,25 @@ export default function EventAiBlock({
       // the object that actually holds the booking fields.
       const result = extractBookingPayload(invoked);
 
-      // Normalise transport_type synonyms the model may emit (e.g. "flight")
-      // to the enum the form expects ("plane").
-      if (kind === 'transfer' && Array.isArray(result.segments)) {
+      // New transfer shape = result.transfers[] (legs) + result.waypoints[]
+      // (layover cities). Older shape used result.segments[]. Pick whichever
+      // the model returned and normalise transport_type synonyms ("flight"→"plane").
+      const legs = kind === 'transfer'
+        ? (Array.isArray(result.transfers) ? result.transfers
+          : (Array.isArray(result.segments) ? result.segments : null))
+        : null;
+      if (legs) {
         const TT = { flight: 'plane', air: 'plane', airplane: 'plane', rail: 'train', boat: 'ferry', shuttle: 'bus' };
-        result.segments.forEach((s) => { if (s && TT[s.transport_type]) s.transport_type = TT[s.transport_type]; });
+        legs.forEach((s) => { if (s && TT[s.transport_type]) s.transport_type = TT[s.transport_type]; });
       }
 
       if (!result.booking_platform && result.booking_url) {
         const p = detectPlatformFromUrl(result.booking_url);
         if (p) result.booking_platform = p;
       }
-      if (kind === 'transfer' && (!Array.isArray(result.segments) || result.segments.length === 0)) {
-        result.segments = [{}];
+      // Empty fallback only when the model returned NO legs at all.
+      if (kind === 'transfer' && !legs) {
+        result.transfers = [{}];
       }
       const documents = uploaded
         .filter((u) => u.file_url)

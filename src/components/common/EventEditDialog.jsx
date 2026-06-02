@@ -457,6 +457,9 @@ export default function EventEditDialog({
   // multi-leg booking; the additional legs get inserted as separate Transfer
   // rows on save). Empty when AI returns a single segment.
   const [extraSegments, setExtraSegments] = useState([]);
+  // Soft note when an AI-parsed multi-leg booking's endpoints differ from the
+  // trip leg the modal was opened for (we keep the trip's endpoints).
+  const [aiEndpointWarn, setAiEndpointWarn] = useState(null);
 
   // Time-missing flags for individual datetime-local inputs (the native input
   // returns "" when only a date is entered — DateTimeInput reports this so we
@@ -472,6 +475,7 @@ export default function EventEditDialog({
     setForm(buildInitialForm(k, entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
     setAiFields(new Set());
     setExtraSegments([]);
+    setAiEndpointWarn(null);
     setTimeMissing({});
   }, [open, entity?.id, initialKind]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -527,6 +531,7 @@ export default function EventEditDialog({
     setForm(buildInitialForm(k, null, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
     setAiFields(new Set());
     setExtraSegments([]);
+    setAiEndpointWarn(null);
     setTimeMissing({});
   };
 
@@ -764,14 +769,89 @@ export default function EventEditDialog({
     setAiState('parsed');
   };
 
-  const handleTransferExtract = (data, fileUrl, fileName) => {
+  const handleTransferExtract = async (data, fileUrl, fileName) => {
+    // New parser shape: data.transfers[] (legs) + data.waypoints[] (intermediate
+    // layover cities, each with a date). Fall back to the legacy data.segments[].
+    const segs = Array.isArray(data.transfers) && data.transfers.length > 0
+      ? data.transfers
+      : (Array.isArray(data.segments) && data.segments.length > 0 ? data.segments : [data]);
+    const wps = Array.isArray(data.waypoints) ? data.waypoints : [];
+    const combine = (d, t2) => {
+      if (!d) return '';
+      const time = t2 && /^\d{1,2}:\d{2}/.test(t2) ? t2.padStart(5, '0').slice(0, 5) : '00:00';
+      return `${d}T${time}`;
+    };
+    const normType = (tt, fb = 'plane') => (TRANSPORT_KINDS.some((k) => k.id === tt) ? tt : fb);
+    const docs = (Array.isArray(data.documents) && data.documents.length)
+      ? data.documents
+      : (fileUrl ? [{ file_url: fileUrl, file_name: fileName || '' }] : []);
+
+    // ── Multi-leg booking (create mode) → layover form (waypoint chain) ──
+    if (segs.length > 1 && !isEdit) {
+      const formSegs = segs.map((s) => ({
+        ...makeSegment(s.currency || data.currency || 'EUR'),
+        transport_type: normType(s.transport_type),
+        from_address: s.from_address || '',
+        to_address: s.to_address || '',
+        startLocal: s.departure_date ? combine(s.departure_date, s.departure_time) : '',
+        endLocal: s.arrival_date ? combine(s.arrival_date, s.arrival_time) : '',
+        carrier: s.carrier || '',
+        flight_number: s.flight_number || '',
+        booking_reference: s.booking_reference || '',
+        price: typeof s.price === 'number' ? String(s.price) : (s.price || ''),
+        currency: s.currency || data.currency || 'EUR',
+        toCity: null,
+      }));
+      // Resolve the intermediate layover cities (to_city of all but the last leg)
+      // to full city objects (coords + tz) so saveLayoverChain can create waypoints.
+      for (let i = 0; i < formSegs.length - 1; i++) {
+        // Prefer the explicit waypoints[] entry; fall back to the leg's to_city.
+        const name = wps[i]?.city || segs[i].to_city;
+        const code = wps[i]?.country_code || segs[i].to_country_code;
+        if (!name) continue;
+        try {
+          const cc = code ? ', ' + code : '';
+          const r = await searchCities(`${name}${cc}`, 'ru');
+          const best = r?.[0];
+          if (best?.latitude) {
+            let tz = null; try { tz = await getTimezone(best.latitude, best.longitude); } catch { /* ignore */ }
+            formSegs[i].toCity = { city_name: best.city_name, country: best.country, country_code: best.country_code, latitude: best.latitude, longitude: best.longitude, timezone: tz, external_city_id: best.external_city_id };
+          }
+        } catch { /* leave null — user picks the layover city manually */ }
+      }
+      // Endpoints stay the trip's fromVisit/toVisit; warn softly on mismatch.
+      const overlaps = (a, b) => {
+        if (!a || !b) return false;
+        const x = a.trim().toLowerCase(), y = b.trim().toLowerCase();
+        return x.includes(y) || y.includes(x);
+      };
+      const originName = segs[0].from_city || '';
+      const destName = segs[segs.length - 1].to_city || '';
+      const w = [];
+      if (fromVisit?.city_name && originName && !overlaps(originName, fromVisit.city_name)) w.push(`старт брони «${originName}» ≠ «${fromVisit.city_name}»`);
+      if (toVisit?.city_name && destName && !overlaps(destName, toVisit.city_name)) w.push(`финиш брони «${destName}» ≠ «${toVisit.city_name}»`);
+      setAiEndpointWarn(w.length ? `Концы маршрута взяты из трипа. ${w.join('; ')}.` : null);
+
+      setForm((prev) => ({
+        ...prev,
+        hasLayovers: true,
+        segments: formSegs,
+        booking_url: data.booking_url || prev.booking_url,
+        booking_platform: data.booking_platform || prev.booking_platform,
+        documents: docs.length ? [...(prev.documents || []), ...docs].slice(0, 50) : prev.documents,
+      }));
+      setAiFields(new Set()); // per-field highlight isn't wired in the segment UI
+      setAiState('parsed');
+      return;
+    }
+
+    // ── Single leg — flat-form fill (unchanged behavior) ──
     const filled = new Set();
-    const upd = { ...form };
+    const upd = { ...form, hasLayovers: false, segments: [] };
     const setIf = (k, v) => { if (v != null && v !== '') { upd[k] = v; filled.add(k); } };
+    const first = segs[0] || {};
     setIf('booking_url', data.booking_url);
     setIf('booking_platform', data.booking_platform);
-    const segments = Array.isArray(data.segments) && data.segments.length > 0 ? data.segments : [data];
-    const first = segments[0] || {};
     setIf('carrier', first.carrier);
     setIf('flight_number', first.flight_number);
     setIf('booking_reference', first.booking_reference);
@@ -779,39 +859,16 @@ export default function EventEditDialog({
     setIf('to_address', first.to_address);
     if (typeof first.price === 'number') setIf('price', first.price);
     setIf('currency', first.currency);
-    const combine = (d, t2) => {
-      if (!d) return '';
-      const time = t2 && /^\d{1,2}:\d{2}/.test(t2) ? t2.padStart(5, '0').slice(0, 5) : '00:00';
-      return `${d}T${time}`;
-    };
     if (first.departure_date) { upd.startLocal = combine(first.departure_date, first.departure_time); filled.add('startLocal'); }
     if (first.arrival_date)   { upd.endLocal   = combine(first.arrival_date,   first.arrival_time);   filled.add('endLocal'); }
-    if (Array.isArray(data.documents) && data.documents.length > 0) {
-      upd.documents = [...(upd.documents || []), ...data.documents].slice(0, 50);
-      filled.add('documents');
-    } else if (fileUrl) {
-      upd.documents = [...(upd.documents || []), { file_url: fileUrl, file_name: fileName || '' }];
-      filled.add('documents');
-    }
+    if (docs.length) { upd.documents = [...(upd.documents || []), ...docs].slice(0, 50); filled.add('documents'); }
     if (first.transport_type && TRANSPORT_KINDS.some((k) => k.id === first.transport_type)) {
       upd.transport_type = first.transport_type;
       filled.add('transport_type');
     }
-    // Stash additional segments — created as their own rows on save.
-    setExtraSegments(segments.slice(1, 6).map((s) => ({
-      transport_type: TRANSPORT_KINDS.some((k) => k.id === s.transport_type) ? s.transport_type : (first.transport_type || 'plane'),
-      start_datetime: s.departure_date ? combine(s.departure_date, s.departure_time) : '',
-      end_datetime:   s.arrival_date   ? combine(s.arrival_date,   s.arrival_time)   : '',
-      carrier: s.carrier || '',
-      flight_number: s.flight_number || '',
-      booking_reference: s.booking_reference || '',
-      from_address: s.from_address || '',
-      to_address: s.to_address || '',
-      price: typeof s.price === 'number' ? s.price : '',
-      currency: s.currency || first.currency || 'EUR',
-    })));
     setForm(upd);
     setAiFields(filled);
+    setAiEndpointWarn(null);
     setAiState('parsed');
   };
 
@@ -876,8 +933,15 @@ export default function EventEditDialog({
                 onExtract={currentKind === 'hotel' ? handleHotelExtract : handleTransferExtract}
                 onUpgrade={openUpgrade}
                 parsedFieldCount={aiFields.size}
-                onReset={() => { setAiFields(new Set()); setExtraSegments([]); }}
+                onReset={() => { setAiFields(new Set()); setExtraSegments([]); setAiEndpointWarn(null); }}
               />
+            )}
+
+            {aiEndpointWarn && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '9px 12px', marginBottom: 12, borderRadius: 10, background: 'var(--warning-soft)', border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)', color: 'var(--ink)' }}>
+                <AlertTriangle className="w-3.5 h-3.5" style={{ marginTop: 2, flexShrink: 0, color: 'var(--warning)' }} />
+                <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{aiEndpointWarn}</div>
+              </div>
             )}
 
             <fieldset disabled={aiState === 'parsing'} className={aiState === 'parsing' ? 'opacity-50 pointer-events-none select-none' : ''}>
