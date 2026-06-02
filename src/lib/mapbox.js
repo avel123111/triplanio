@@ -7,8 +7,8 @@ export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 if (MAPBOX_TOKEN) mapboxgl.accessToken = MAPBOX_TOKEN;
 
 // Match the app's light/dark theme toggle (colorScheme LIGHT/DARK).
-export const STYLE_LIGHT = 'mapbox://styles/mapbox/light-v11';
-export const STYLE_DARK = 'mapbox://styles/mapbox/dark-v11';
+export const STYLE_LIGHT = 'mapbox://styles/avel1231/cmdj48my7004r01s8grdu846i';
+export const STYLE_DARK = 'mapbox://styles/avel1231/cmpvw5xmt000y01s7ekeghrxs';
 export const styleFor = (scheme) => (scheme === 'DARK' ? STYLE_DARK : STYLE_LIGHT);
 
 // Fit the map to a set of [lng, lat] points. Single point → centered; empty → no-op.

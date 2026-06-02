@@ -65,6 +65,7 @@ export default function MapView({
       style: styleFor(colorScheme),
       center: [0, 20],
       zoom: 2,
+      projection: 'mercator',
       cooperativeGestures: true,
       attributionControl: true,
     });
