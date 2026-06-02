@@ -13,8 +13,6 @@ import TripView from '@/pages/TripView';
 import TripStructureEdit from '@/pages/TripStructureEdit';
 import ScreenAccount from '@/pages/redesign/ScreenAccount';
 import PublicTrip from '@/pages/PublicTrip';
-import AdminHome from '@/pages/admin/AdminHome';
-import AdminNotifications from '@/pages/admin/Notifications';
 import Login from '@/pages/Login';
 import DesignPreview from '@/pages/redesign/DesignPreview';
 import LandingPage from '@/pages/Landing/LandingPage';
@@ -120,10 +118,6 @@ const AuthenticatedApp = () => {
 
       <Route path="/plan-trip-ai" element={<ManualPlanner initialMethod="ai" />} />
 
-      <Route element={<Layout />}>
-        <Route path="/admin" element={<AdminHome />} />
-        <Route path="/admin/notifications" element={<AdminNotifications />} />
-      </Route>
       <Route path="*" element={<PageNotFound />} />
       </Routes>
     </>

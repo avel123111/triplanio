@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, AlertTriangle } from 'lucide-react';
@@ -37,16 +36,12 @@ export default function TripFormDialog({ open, onOpenChange, trip = null, visits
 
   const mutation = useMutation({
     mutationFn: async (data) => {
-      if (trip) {
-        // trips RLS is owner-only → write via edge function so admins can edit too.
-        const { data: res, error } = await supabase.functions.invoke('updateTripSettings', {
-          body: { tripId: trip.id, fields: data },
-        });
-        if (error) throw error;
-        if (!res?.ok) throw new Error(res?.code || 'update failed');
-        return;
-      }
-      return base44.entities.Trip.create(data);
+      // trips RLS is owner-only → write via edge function so admins can edit too.
+      const { data: res, error } = await supabase.functions.invoke('updateTripSettings', {
+        body: { tripId: trip.id, fields: data },
+      });
+      if (error) throw error;
+      if (!res?.ok) throw new Error(res?.code || 'update failed');
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['trips'] });
