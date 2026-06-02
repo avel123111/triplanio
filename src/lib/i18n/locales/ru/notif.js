@@ -17,4 +17,18 @@ export default {
   // Sent by the Stripe webhook after a successful subscription payment.
   'notif.tpl_pro_activated_title': 'Подписка Pro активирована',
   'notif.tpl_pro_activated_msg': 'Оплата прошла успешно. Спасибо!',
+  'notif.inbox_title': 'Инбокс',
+  'notif.earlier': 'Ранее',
+  'notif.this_week': 'Эта неделя',
+  'notif.unread': 'Непрочитанные',
+  'notif.invitations': 'Приглашения',
+  'notif.filter_empty': 'В этом фильтре пусто',
+  'notif.invitations_desc': 'когда кто-то зовёт в путешествие',
+  'notif.votes': 'Голосования',
+  'notif.votes_desc': 'новые отели и активности',
+  'notif.updates': 'Обновления',
+  'notif.updates_desc': 'правки в общих путешествиях',
+  'notif.inbox_empty': 'Инбокс пуст',
+  'notif.to_collection': 'К коллекции',
+  'notif.inbox_empty_desc': 'Никаких приглашений, голосований и обновлений. Когда кто-то добавит тебя в путешествие, проголосует за отель или внесёт правку - увидишь здесь.',
 };

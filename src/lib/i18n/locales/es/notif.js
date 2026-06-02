@@ -16,4 +16,18 @@ export default {
   // Sent by the Stripe webhook after a successful subscription payment.
   'notif.tpl_pro_activated_title': 'Suscripción Pro activada',
   'notif.tpl_pro_activated_msg': 'Tu pago se realizó correctamente. ¡Gracias!',
+  'notif.inbox_title': 'Bandeja',
+  'notif.earlier': 'Antes',
+  'notif.this_week': 'Esta semana',
+  'notif.unread': 'No leídas',
+  'notif.invitations': 'Invitaciones',
+  'notif.filter_empty': 'Nada en este filtro',
+  'notif.invitations_desc': 'cuando alguien te invita a un viaje',
+  'notif.votes': 'Votaciones',
+  'notif.votes_desc': 'nuevos hoteles y actividades',
+  'notif.updates': 'Novedades',
+  'notif.updates_desc': 'cambios en viajes compartidos',
+  'notif.inbox_empty': 'La bandeja está vacía',
+  'notif.to_collection': 'A la colección',
+  'notif.inbox_empty_desc': 'Sin invitaciones, votaciones ni novedades. Cuando alguien te añada a un viaje, vote por un hotel o haga un cambio, aparecerá aquí.',
 };

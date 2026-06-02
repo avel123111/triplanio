@@ -16,6 +16,7 @@ import { safeStorageName } from '@/lib/storage';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton } from '../design/index';
+import { useI18n } from '@/lib/i18n/I18nContext';
 
 // ─── query key ────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,7 @@ const DOCS_KEY = (tripId) => ['trip-docs', tripId];
 // ─── AddDocDialog ─────────────────────────────────────────────────────────────
 
 function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
+  const { t } = useI18n();
   const [title,      setTitle]      = useState('');
   const [notes,      setNotes]      = useState('');
   const [linkUrl,    setLinkUrl]    = useState('');
@@ -44,7 +46,7 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
       const uploaded = [];
       for (const file of Array.from(files)) {
         if (file.size > 10 * 1024 * 1024) {
-          setErr(`Файл «${file.name}» слишком большой (макс. 10 МБ)`);
+          setErr(t('doc.file_too_big', { name: file.name }));
           continue;
         }
         const path = `${tripId}/${Date.now()}-${safeStorageName(file.name)}`;
@@ -61,7 +63,7 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
   }
 
   async function save() {
-    if (!title.trim()) { setErr('Введи название документа'); return; }
+    if (!title.trim()) { setErr(t('doc.err_title')); return; }
     setSaving(true); setErr('');
     const { error } = await supabase.from('trip_documents').insert({
       trip_id:    tripId,
@@ -79,21 +81,21 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
   }
 
   return (
-    <Dialog title="Новый документ" icon="file" size=""
+    <Dialog title={t('doc.shared_empty')} icon="file" size=""
       foot={<>
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
-        <Btn variant="primary" loading={saving} disabled={uploading} onClick={save}>Сохранить</Btn>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="primary" loading={saving} disabled={uploading} onClick={save}>{t('trip.form_save')}</Btn>
       </>}>
 
       {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
 
       {/* Visibility - two card buttons, as in base44 */}
       <div style={{ marginBottom: 16 }}>
-        <div className="eyebrow" style={{ marginBottom: 8 }}>Доступ</div>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>{t('doc.access_label')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {[
-            { value: 'shared',  icon: 'users', label: 'Общий',   desc: 'Виден всем участникам' },
-            { value: 'private', icon: 'lock',  label: 'Личный',  desc: 'Только ты его видишь' },
+            { value: 'shared',  icon: 'users', label: t('doc.visibility_shared'),   desc: t('doc.visibility_shared_hint') },
+            { value: 'private', icon: 'lock',  label: t('doc.visibility_private'),  desc: t('doc.visibility_private_hint') },
           ].map(opt => (
             <button
               key={opt.value}
@@ -118,20 +120,20 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
       </div>
 
       {/* Title */}
-      <Field label="Название *">
-        <input className="input" autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Паспорт, Страховка, Чеклист…" />
+      <Field label={t('trip.form_title_required')}>
+        <input className="input" autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder={t('doc.title_ph')} />
       </Field>
 
       {/* Notes */}
       <div style={{ marginTop: 14 }}>
-        <Field label="Заметки (опц.)">
-          <textarea className="textarea" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Покрытие, даты, номер подтверждения…" />
+        <Field label={t('doc.notes_opt_label')}>
+          <textarea className="textarea" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('doc.notes_ph')} />
         </Field>
       </div>
 
       {/* Link */}
       <div style={{ marginTop: 14 }}>
-        <Field label="Ссылка (опц.)">
+        <Field label={t('doc.link_label')}>
           <input className="input" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://…" />
         </Field>
       </div>
@@ -140,7 +142,7 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
       <div style={{ marginTop: 16 }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>
           <Icon name="paperclip" size={12} style={{ marginRight: 4, verticalAlign: -1, color: 'var(--brand)' }} />
-          Файлы
+          {t('doc.files_label')}
           {documents.length > 0 && <span className="muted" style={{ fontWeight: 400, marginLeft: 6 }}>· {documents.length}</span>}
         </div>
 
@@ -185,14 +187,14 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
           {uploading ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--brand)', fontSize: 13 }}>
               <div style={{ width: 14, height: 14, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
-              Загрузка…
+              {t('common.loading')}
             </div>
           ) : (
             <div style={{ color: 'var(--muted)', fontSize: 13 }}>
               <Icon name="upload" size={16} style={{ display: 'block', margin: '0 auto 6px' }} />
               {documents.length === 0
-                ? 'Загрузить файлы (PDF / фото) - до 10 МБ каждый'
-                : 'Добавить ещё файлы'}
+                ? t('doc.upload_label')
+                : t('doc.add_more_files')}
             </div>
           )}
         </div>
@@ -206,11 +208,12 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
 // ─── DocDetailDialog ──────────────────────────────────────────────────────────
 
 function DocDetailDialog({ doc, tripId }) {
+  const { t } = useI18n();
   const [deleting, setDeleting] = useState(false);
   const qc = useQueryClient();
 
   async function handleDelete() {
-    if (!window.confirm('Удалить документ «' + doc.title + '»?')) return;
+    if (!window.confirm(t('doc.delete_confirm', { name: doc.title }))) return;
     setDeleting(true);
     await supabase.from('trip_documents').delete().eq('id', doc.id);
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
@@ -220,9 +223,9 @@ function DocDetailDialog({ doc, tripId }) {
   return (
     <Dialog title={doc.title} icon="file" size=""
       foot={<>
-        <Btn variant="danger" loading={deleting} icon="trash" onClick={handleDelete}>Удалить</Btn>
+        <Btn variant="danger" loading={deleting} icon="trash" onClick={handleDelete}>{t('trip.delete')}</Btn>
         <div style={{ flex: 1 }} />
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Закрыть</Btn>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>
       </>}>
       {doc.notes && (
         <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--ink-2)', marginBottom: 14 }}>{doc.notes}</div>
@@ -238,7 +241,7 @@ function DocDetailDialog({ doc, tripId }) {
       )}
       {doc.documents?.length > 0 && (
         <div>
-          <div className="eyebrow" style={{ marginBottom: 8 }}>Файлы</div>
+          <div className="eyebrow" style={{ marginBottom: 8 }}>{t('doc.files_label')}</div>
           {doc.documents.map((f, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--line-2)' }}>
               <Icon name="file" size={14} style={{ color: 'var(--brand)', flexShrink: 0 }} />
@@ -251,7 +254,7 @@ function DocDetailDialog({ doc, tripId }) {
         </div>
       )}
       {!doc.notes && !doc.link_url && !doc.documents?.length && (
-        <div className="muted" style={{ fontSize: 13 }}>Нет содержимого. Добавь ссылку или файлы.</div>
+        <div className="muted" style={{ fontSize: 13 }}>{t('doc.no_content')}</div>
       )}
     </Dialog>
   );
@@ -260,6 +263,7 @@ function DocDetailDialog({ doc, tripId }) {
 // ─── DocCard ──────────────────────────────────────────────────────────────────
 
 function DocCard({ doc, tripId, scope }) {
+  const { t } = useI18n();
   return (
     <button
       onClick={() => window.__openModal?.(<DocDetailDialog doc={doc} tripId={tripId} />)}
@@ -283,8 +287,8 @@ function DocCard({ doc, tripId, scope }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</div>
           <div className="muted" style={{ fontSize: 12 }}>
-            {(doc.documents?.length || 0)} {doc.documents?.length === 1 ? 'файл' : 'файла'}
-            {doc.link_url && ' · ссылка'}
+            {(doc.documents?.length || 0)} {doc.documents?.length === 1 ? t('doc.files_count_one') : t('doc.files_count_few')}
+            {doc.link_url && t('doc.has_link')}
           </div>
         </div>
       </div>
@@ -309,6 +313,7 @@ function DocCard({ doc, tripId, scope }) {
 // ─── DocEmpty ─────────────────────────────────────────────────────────────────
 
 function DocEmpty({ scope, tripId }) {
+  const { t } = useI18n();
   return (
     <div style={{ padding: '32px 24px', textAlign: 'center', border: '1.5px dashed var(--line)', borderRadius: 14, background: 'var(--wash)' }}>
       <div style={{
@@ -320,16 +325,16 @@ function DocEmpty({ scope, tripId }) {
         <Icon name="file" size={26} />
       </div>
       <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-        {scope === 'personal' ? 'Личных документов пока нет' : 'Общих документов пока нет'}
+        {scope === 'personal' ? t('doc.empty_private') : t('doc.empty_shared')}
       </div>
       <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5, maxWidth: 360, margin: '0 auto 14px' }}>
         {scope === 'personal'
-          ? 'Здесь храни паспорта, визы и страховки - другие участники их не видят.'
-          : 'Чеклисты, общие брони из почты, шаблоны - всё, что нужно всем.'}
+          ? t('doc.empty_private_desc')
+          : t('doc.empty_shared_desc')}
       </div>
       <Btn variant="ghost" icon="plus"
         onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} defaultVisibility={scope === 'personal' ? 'private' : 'shared'} />)}>
-        Добавить {scope === 'personal' ? 'личный' : 'общий'} документ
+        {t('doc.add_doc')}
       </Btn>
     </div>
   );
@@ -338,6 +343,7 @@ function DocEmpty({ scope, tripId }) {
 // ─── DocsGrid ─────────────────────────────────────────────────────────────────
 
 function DocsGrid({ docs, scope, tripId }) {
+  const { t } = useI18n();
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
       {docs.map(d => (
@@ -357,7 +363,7 @@ function DocsGrid({ docs, scope, tripId }) {
         }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)'; }}>
         <Icon name="plus" size={18} />
-        <span>Новый документ</span>
+        <span>{t('doc.shared_empty')}</span>
       </button>
     </div>
   );
@@ -366,6 +372,7 @@ function DocsGrid({ docs, scope, tripId }) {
 // ─── DocsLens (main export) ───────────────────────────────────────────────────
 
 export default function DocsLens({ tripId, isLoading: parentLoading }) {
+  const { t } = useI18n();
   const { user } = useAuth();
 
   const { data: docs = [], isLoading, error } = useQuery({
@@ -399,7 +406,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
     return (
       <div style={{ padding: 32, textAlign: 'center', color: 'var(--danger)' }}>
         <Icon name="error" size={32} style={{ marginBottom: 10 }} />
-        <div>Ошибка загрузки документов: {error.message}</div>
+        <div>{t('doc.load_error', { message: error.message })}</div>
       </div>
     );
   }
@@ -407,10 +414,10 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-        <h2 style={{ flex: 1 }}>Документы путешествия</h2>
+        <h2 style={{ flex: 1 }}>{t('doc.page_title')}</h2>
         <Btn variant="primary" icon="plus"
           onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} />)}>
-          Добавить документ
+          {t('doc.add_doc')}
         </Btn>
       </div>
 
@@ -418,10 +425,10 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
       <section style={{ marginBottom: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <Icon name="users" size={14} style={{ color: 'var(--brand)' }} />
-          <h3 style={{ marginBottom: 0 }}>Общие документы путешествия</h3>
+          <h3 style={{ marginBottom: 0 }}>{t('doc.section_shared')}</h3>
           <Badge variant="quiet">{sharedDocs.length}</Badge>
           <div style={{ flex: 1 }} />
-          <div className="muted" style={{ fontSize: 11.5 }}>Видят все участники</div>
+          <div className="muted" style={{ fontSize: 11.5 }}>{t('doc.section_shared_hint')}</div>
         </div>
         {sharedDocs.length === 0
           ? <DocEmpty scope="shared" tripId={tripId} />
@@ -432,10 +439,10 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
       <section style={{ marginBottom: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <Icon name="user" size={14} style={{ color: 'var(--warm)' }} />
-          <h3 style={{ marginBottom: 0 }}>Личные документы</h3>
+          <h3 style={{ marginBottom: 0 }}>{t('doc.section_private')}</h3>
           <Badge variant="quiet">{personalDocs.length}</Badge>
           <div style={{ flex: 1 }} />
-          <div className="muted" style={{ fontSize: 11.5 }}>Только ты их видишь</div>
+          <div className="muted" style={{ fontSize: 11.5 }}>{t('doc.section_private_hint')}</div>
         </div>
         {personalDocs.length === 0
           ? <DocEmpty scope="personal" tripId={tripId} />

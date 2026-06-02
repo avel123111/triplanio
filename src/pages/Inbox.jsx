@@ -17,18 +17,19 @@ import '../design/app.css';
 const DATE_LOCALES = { ru, es, en: enUS };
 
 function dateGroup(iso) {
-  if (!iso) return 'Ранее';
+  if (!iso) return 'earlier';
   const d = new Date(iso);
   const now = new Date();
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startYest = new Date(startToday); startYest.setDate(startYest.getDate() - 1);
   const startWeek = new Date(startToday); startWeek.setDate(startWeek.getDate() - 7);
-  if (d >= startToday) return 'Сегодня';
-  if (d >= startYest) return 'Вчера';
-  if (d >= startWeek) return 'Эта неделя';
-  return 'Ранее';
+  if (d >= startToday) return 'today';
+  if (d >= startYest) return 'yesterday';
+  if (d >= startWeek) return 'week';
+  return 'earlier';
 }
-const GROUP_ORDER = ['Сегодня', 'Вчера', 'Эта неделя', 'Ранее'];
+const GROUP_ORDER = ['today', 'yesterday', 'week', 'earlier'];
+const GROUP_LABEL_KEY = { today: 'common.today', yesterday: 'common.yesterday', week: 'notif.this_week', earlier: 'notif.earlier' };
 
 export default function Inbox() {
   const nav = useNavigate();
@@ -95,15 +96,15 @@ export default function Inbox() {
     .filter(g => g.items.length > 0);
 
   const TABS = [
-    ['all', 'Все'],
-    ['unread', `Непрочитанные${unreadCount ? ` · ${unreadCount}` : ''}`],
-    ['invites', `Приглашения${inviteCount ? ` · ${inviteCount}` : ''}`],
+    ['all', t('admin.notifications.filter_all')],
+    ['unread', `${t('notif.unread')}${unreadCount ? ` · ${unreadCount}` : ''}`],
+    ['invites', `${t('notif.invitations')}${inviteCount ? ` · ${inviteCount}` : ''}`],
   ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К путешествиям">
+        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title={t('telegram.go_to_trips')}>
           <Icon name="back" size={14} />
         </button>
         <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
@@ -112,16 +113,16 @@ export default function Inbox() {
         </div>
         <div className="app-header__crumb">
           <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>Инбокс</span>
+          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{t('notif.inbox_title')}</span>
         </div>
         <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
       </header>
 
       <main style={{ flex: 1, padding: '32px 24px', maxWidth: 760, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-          <h1 style={{ flex: 1, marginBottom: 0 }}>Инбокс</h1>
+          <h1 style={{ flex: 1, marginBottom: 0 }}>{t('notif.inbox_title')}</h1>
           {notifications.length > 0 && unreadCount > 0 && (
-            <Btn variant="ghost" size="sm" onClick={() => markAllRead.mutate()}>Пометить всё прочитанным</Btn>
+            <Btn variant="ghost" size="sm" onClick={() => markAllRead.mutate()}>{t('notif.mark_all_read')}</Btn>
           )}
         </div>
 
@@ -142,14 +143,14 @@ export default function Inbox() {
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '36px 24px', color: 'var(--muted)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14 }}>
             <Icon name="bell" size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
-            <div style={{ fontSize: 13.5 }}>В этом фильтре пусто</div>
+            <div style={{ fontSize: 13.5 }}>{t('notif.filter_empty')}</div>
           </div>
         ) : (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
             {groups.map((g, gi) => (
               <div key={g.label}>
                 <div style={{ padding: '10px 18px', fontSize: 11, color: 'var(--muted-2)', letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 600, background: 'var(--wash-2)', borderTop: gi > 0 ? '1px solid var(--line-2)' : 'none', borderBottom: '1px solid var(--line-2)' }}>
-                  {g.label}
+                  {t(GROUP_LABEL_KEY[g.label])}
                 </div>
                 {g.items.map((n, ni) => (
                   <InboxRow
@@ -172,10 +173,11 @@ export default function Inbox() {
 }
 
 function InboxEmpty({ onCollection, onAi }) {
+  const t = useT();
   const hints = [
-    { icon: 'users', title: 'Приглашения', desc: 'когда кто-то зовёт в путешествие' },
-    { icon: 'vote',  title: 'Голосования', desc: 'новые отели и активности' },
-    { icon: 'edit',  title: 'Обновления',  desc: 'правки в общих путешествиях' },
+    { icon: 'users', title: t('notif.invitations'), desc: t('notif.invitations_desc') },
+    { icon: 'vote',  title: t('notif.votes'), desc: t('notif.votes_desc') },
+    { icon: 'edit',  title: t('notif.updates'),  desc: t('notif.updates_desc') },
   ];
   return (
     <div style={{
@@ -202,9 +204,9 @@ function InboxEmpty({ onCollection, onAi }) {
           <Icon name="check" size={13} />
         </span>
       </div>
-      <h2 style={{ marginBottom: 8, fontSize: 22, letterSpacing: '-0.02em' }}>Инбокс пуст</h2>
+      <h2 style={{ marginBottom: 8, fontSize: 22, letterSpacing: '-0.02em' }}>{t('notif.inbox_empty')}</h2>
       <div className="muted" style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 420, margin: '0 auto 22px' }}>
-        Никаких приглашений, голосований и обновлений. Когда кто-то добавит тебя в путешествие, проголосует за отель или внесёт правку - увидишь здесь.
+        {t('notif.inbox_empty_desc')}
       </div>
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10,
@@ -231,8 +233,8 @@ function InboxEmpty({ onCollection, onAi }) {
         ))}
       </div>
       <div style={{ marginTop: 26, display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <Btn variant="primary" icon="plus" onClick={onCollection}>К коллекции</Btn>
-        <Btn variant="ghost" icon="sparkles" onClick={onAi}>Начать с ИИ</Btn>
+        <Btn variant="primary" icon="plus" onClick={onCollection}>{t('notif.to_collection')}</Btn>
+        <Btn variant="ghost" icon="sparkles" onClick={onAi}>{t('trips.ai')}</Btn>
       </div>
     </div>
   );
