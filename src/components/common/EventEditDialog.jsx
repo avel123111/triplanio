@@ -615,9 +615,16 @@ export default function EventEditDialog({
       if (form.hasLayovers) {
         const segs = form.segments || [];
         if (segs.length < 2) return false;
+        let prevArr = null;
         for (let i = 0; i < segs.length; i++) {
-          if (!segs[i].startLocal || !segs[i].endLocal) return false;
-          if (i < segs.length - 1 && !segs[i].toCity?.city_name) return false; // layover city required
+          const s = segs[i];
+          if (!s.startLocal || !s.endLocal) return false;
+          const dep = new Date(s.startLocal).getTime();
+          const arr = new Date(s.endLocal).getTime();
+          if (!(arr > dep)) return false;                       // arrival must be after departure
+          if (prevArr != null && dep < prevArr) return false;   // can't depart before previous arrival
+          prevArr = arr;
+          if (i < segs.length - 1 && !s.toCity?.city_name) return false; // layover city required
         }
         return true;
       }
@@ -860,6 +867,26 @@ export default function EventEditDialog({
           ) : (
           /* Body */
           <div style={{ padding: 22 }}>
+            {/* TYPE PICKER — visible in create mode (per design spec). */}
+            {!isEdit && (
+              <div style={{ margin: '-4px 0 18px', padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span className="eyebrow">Тип</span>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+                  {Object.entries(TYPE_META).map(([k, m]) => {
+                    const active = k === currentKind;
+                    const MIcon = m.Icon;
+                    return (
+                      <button key={k} type="button" onClick={() => switchKind(k)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: active ? m.soft : 'var(--surface)', color: active ? m.color : 'var(--ink-2)', border: '1.5px solid ' + (active ? m.color : 'var(--line)'), borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: active ? 600 : 500 }}>
+                        <MIcon className="w-3 h-3" />
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* AI block — only for hotel & transfer (the kinds with parsers). */}
             {(currentKind === 'hotel' || currentKind === 'transfer') && (
               <EventAiBlock
@@ -1216,14 +1243,11 @@ function buildServicePayload(form, tripId, t) {
 //  Section heading + colored-bar variant used inside the field groups
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SectionHeader({ children, color }) {
-  return (
-    <div className="flex items-center gap-2 mt-5 mb-3">
-      <div style={{ width: 3, height: 14, background: color, borderRadius: 2 }} />
-      <h3 className="text-sm font-semibold m-0">{children}</h3>
-    </div>
-  );
+function SectionHeader({ children }) {
+  // Plain heading per the design spec (event-edit.jsx) — no colour bar.
+  return <h3 style={{ margin: '22px 0 14px', fontSize: 15, fontWeight: 600 }}>{children}</h3>;
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Field groups per kind
@@ -1741,6 +1765,13 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color }) {
                   </div>
                 </div>
               </div>
+
+              {seg.startLocal && seg.endLocal && new Date(seg.endLocal).getTime() <= new Date(seg.startLocal).getTime() && (
+                <p style={{ marginTop: 8, fontSize: 12, color: 'var(--danger, #e74c3c)' }}>Прибытие должно быть позже отправления.</p>
+              )}
+              {i > 0 && seg.startLocal && segs[i - 1].endLocal && new Date(seg.startLocal).getTime() < new Date(segs[i - 1].endLocal).getTime() && (
+                <p style={{ marginTop: 8, fontSize: 12, color: 'var(--danger, #e74c3c)' }}>Отправление раньше прибытия предыдущего сегмента.</p>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                 <div><Label>Перевозчик</Label><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder="Авиакомпания / перевозчик" /></div>
