@@ -15,7 +15,6 @@ import ScreenAccount from '@/pages/redesign/ScreenAccount';
 import PublicTrip from '@/pages/PublicTrip';
 import AdminHome from '@/pages/admin/AdminHome';
 import AdminNotifications from '@/pages/admin/Notifications';
-import AiTripPlanner from '@/pages/AiTripPlanner';
 import Login from '@/pages/Login';
 import DesignPreview from '@/pages/redesign/DesignPreview';
 import LandingPage from '@/pages/Landing/LandingPage';
@@ -114,7 +113,7 @@ const AuthenticatedApp = () => {
       <Route path="/inbox" element={<Inbox />} />
       <Route path="/pro" element={<Pro />} />
 
-      <Route path="/plan-trip-ai" element={<AiTripPlanner />} />
+      <Route path="/plan-trip-ai" element={<ManualPlanner initialMethod="ai" />} />
 
       <Route element={<Layout />}>
         <Route path="/admin" element={<AdminHome />} />

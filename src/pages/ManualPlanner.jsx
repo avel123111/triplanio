@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, fitToPoints, htmlMarkerEl, lineFeature, setLineLayer } from '@/lib/mapbox';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { DateTime } from 'luxon';
+import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useToast } from '@/components/ui/use-toast';
 import { isTripInPast } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
@@ -11,60 +13,38 @@ import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/ge
 import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
 import HeaderActions from '@/components/HeaderActions';
-import { groupMarkers, markerSvg, MISSING_COLOR } from '@/lib/mapRoute';
-import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { getGradientById } from '@/lib/trip-gradients';
+import FlowProgress from '@/pages/create/FlowProgress';
+import FlowMap from '@/pages/create/FlowMap';
+import PanelAi from '@/pages/create/PanelAi';
 import '../design/app.css';
 
-// ─── Static data ──────────────────────────────────────────────────────────────
-
-const STEPS = [
-  { id: 'home',      num: 1, label: 'Откуда' },
-  { id: 'cities',    num: 2, label: 'Скелет трипа' },
-  { id: 'return',    num: 3, label: 'Возврат' },
-  { id: 'transport', num: 4, label: 'Транспорт' },
-  { id: 'review',    num: 5, label: 'Финальный драфт' },
-];
-
-// Transport kinds for the per-leg picker.
-const TRANSPORT_KINDS = [
-  { id: 'plane', icon: 'plane', label: 'Самолёт' },
-  { id: 'train', icon: 'train', label: 'Поезд'   },
-  { id: 'bus',   icon: 'bus',   label: 'Автобус' },
-  { id: 'ferry', icon: 'ferry', label: 'Паром'   },
-  { id: 'car',   icon: 'car',   label: 'На авто' },
-  { id: 'walk',  icon: 'walk',  label: 'Пешком'  },
-];
-
-// Crude default — long international hops → plane, else train.
-function defaultKindFor(fromName, toName) {
-  const longHaul = ['Москва','Санкт-Петербург','Дубай','Тбилиси','Стамбул','Минск','Хельсинки','Токио','Нью-Йорк','Лондон'];
-  if (longHaul.includes(fromName) || longHaul.includes(toName)) return 'plane';
-  return 'train';
+// Whole days between two ISO date strings (b - a). 0 on bad input.
+function daysBetweenISO(a, b) {
+  if (!a || !b) return 0;
+  const da = new Date(a + 'T00:00:00');
+  const db = new Date(b + 'T00:00:00');
+  if (isNaN(da) || isNaN(db)) return 0;
+  return Math.round((db - da) / 86400000);
 }
 
-// Storage key is user-specific to prevent draft leaking between accounts
-const storageKey = (userId) => `triplanio-planner-${userId || 'guest'}`;
+// ─── Static data ──────────────────────────────────────────────────────────────
+// Unified create-flow steps. The "Транспорт" step was removed — transfers are
+// no longer collected at creation time (added later in the timeline / Edit
+// Mode). "Возврат" is skipped when the last city is marked as the finish point.
+const STEPS = [
+  { id: 'home',   num: 1, label: 'Откуда' },
+  { id: 'cities', num: 2, label: 'Скелет трипа' },
+  { id: 'return', num: 3, label: 'Возврат' },
+  { id: 'review', num: 4, label: 'Финальный драфт' },
+];
+
+// Storage key is user- and method-specific so the manual and AI drafts don't
+// leak into each other (the same flow component serves both routes).
+const storageKey = (userId, method = 'manual') => `triplanio-planner-${method}-${userId || 'guest'}`;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-// Build ordered legs for the transport step and save function.
-function computeLegs(home, cities, effectiveReturn, finalPoint) {
-  const stops = [];
-  if (home?.city_name) stops.push(home);
-  cities.forEach(c => stops.push(c));
-  // If not finalPoint and there's a meaningful return city, append it
-  const lastCity = cities[cities.length - 1];
-  if (!finalPoint && effectiveReturn?.city_name && effectiveReturn.city_name !== lastCity?.city_name) {
-    stops.push(effectiveReturn);
-  }
-  const legs = [];
-  for (let i = 0; i < stops.length - 1; i++) {
-    legs.push({ id: `leg_${i}`, from: stops[i], to: stops[i + 1] });
-  }
-  return legs;
-}
 
 function addDays(dateStr, days) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -85,53 +65,6 @@ function recomputeDates(list) {
     cursor.setDate(cursor.getDate() + (+c.nights || 0));
     return { ...c, startDate: d.toISOString().slice(0, 10) };
   });
-}
-
-// ─── Stepper ─────────────────────────────────────────────────────────────────
-
-function Stepper({ currentId, onJump, finalPoint }) {
-  const visibleSteps = finalPoint ? STEPS.filter(s => s.id !== 'return') : STEPS;
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-      {visibleSteps.map((s, i) => {
-        const isCurrent = s.id === currentId;
-        const myIdx = STEPS.findIndex(x => x.id === s.id);
-        const curIdx = STEPS.findIndex(x => x.id === currentId);
-        const isPast = curIdx > myIdx;
-        return (
-          <React.Fragment key={s.id}>
-            <button
-              onClick={() => isPast && onJump(s.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '4px 10px',
-                background: isCurrent ? 'var(--brand-soft)' : 'transparent',
-                border: 'none', borderRadius: 999,
-                cursor: isPast ? 'pointer' : 'default',
-              }}
-            >
-              <div style={{
-                width: 22, height: 22, borderRadius: '50%',
-                background: isCurrent ? 'var(--brand)' : isPast ? 'var(--success)' : 'var(--wash)',
-                color: isCurrent || isPast ? 'white' : 'var(--muted-2)',
-                display: 'grid', placeItems: 'center',
-                fontSize: 11, fontWeight: 700, flexShrink: 0,
-                border: isPast || isCurrent ? 'none' : '1px solid var(--line)',
-              }}>
-                {isPast ? <Icon name="check" size={11} /> : s.num}
-              </div>
-              <span style={{ fontSize: 12.5, fontWeight: isCurrent ? 600 : 500, color: isCurrent ? 'var(--brand)' : 'var(--muted)', whiteSpace: 'nowrap' }}>
-                {s.label}
-              </span>
-            </button>
-            {i < visibleSteps.length - 1 && (
-              <div style={{ width: 16, height: 2, background: isPast ? 'var(--success)' : 'var(--line)', margin: '0 2px' }} />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
-  );
 }
 
 // ─── CityPicker ──────────────────────────────────────────────────────────────
@@ -230,151 +163,6 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Map (Mapbox GL) ──────────────────────────────────────────────────────────
-
-const PLANNER_ROUTE_COLOR = '#5b6cff';
-
-function PlannerMap({ home, cities, returnCity, transport = {}, finalPoint = false }) {
-  const containerRef = useRef(null);
-  const mapRef = useRef(null);
-  const markersRef = useRef([]);
-  const readyRef = useRef(false);
-
-  const pts = [];
-  if (home?.latitude) pts.push({ lat: home.latitude, lng: home.longitude, label: '🏠', name: home.city_name });
-  cities.forEach((c, i) => {
-    if (c.latitude) pts.push({ lat: c.latitude, lng: c.longitude, label: String(i + 1), name: c.city_name });
-  });
-  if (returnCity?.latitude && returnCity.city_name !== home?.city_name) {
-    pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: '↩', name: returnCity.city_name });
-  }
-
-  const positions = pts.map((p) => [p.lng, p.lat]); // [lng, lat] for Mapbox
-  const groups = groupMarkers(pts);
-  const totalNights = cities.reduce((n, c) => n + (+c.nights || 0), 0);
-  // Legs match the IDs used by StepTransport so the picker's choice maps to the
-  // right polyline. computeLegs already knows how to handle finalPoint.
-  const legs = computeLegs(home, cities, returnCity, finalPoint);
-
-  const ptsKey = pts.map((p) => `${p.lat},${p.lng}`).join('|');
-  const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
-
-  // Init map once (container is always mounted; empty-state overlays on top).
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current || !MAPBOX_TOKEN) return undefined;
-    const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: MAP_STYLE,
-      config: baseConfig(dark ? 'DARK' : 'LIGHT'),
-      center: positions[0] || [15, 50],
-      zoom: 4,
-      projection: 'mercator',
-      attributionControl: false,
-      cooperativeGestures: true,
-    });
-    mapRef.current = map;
-    map.on('load', () => { readyRef.current = true; });
-    return () => { map.remove(); mapRef.current = null; readyRef.current = false; };
-  }, []);
-
-  // Numbered markers.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return undefined;
-    const draw = () => {
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-      groups.forEach((g) => {
-        const marker = new mapboxgl.Marker({ element: htmlMarkerEl(markerSvg(g.labels, false)) }).setLngLat([g.lng, g.lat]).addTo(map);
-        markersRef.current.push(marker);
-      });
-      if (positions.length) fitToPoints(map, positions, { padding: 28, maxZoom: 7, singleZoom: 8 });
-    };
-    if (readyRef.current) draw(); else map.once('load', draw);
-    return undefined;
-  }, [ptsKey]);
-
-  // Route lines: dashed = no transport, solid = flight/road/other; road via OSRM.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return undefined;
-    let cancelled = false;
-    const draw = () => {
-      const dashed = [];
-      const solid = [];
-      const roadTasks = [];
-      legs.forEach((leg) => {
-        if (!leg.from?.latitude || !leg.to?.latitude) return;
-        const straight = [[leg.from.longitude, leg.from.latitude], [leg.to.longitude, leg.to.latitude]];
-        const kind = transport[leg.id]?.kind;
-        if (!kind) { dashed.push(lineFeature(straight)); return; }
-        if (isFlightTransport(kind)) {
-          const arc = geodesicLine(leg.from.latitude, leg.from.longitude, leg.to.latitude, leg.to.longitude).map(([la, lo]) => [lo, la]);
-          solid.push(lineFeature(arc));
-        } else if (isRoadTransport(kind)) {
-          const idx = solid.length;
-          solid.push(lineFeature(straight));
-          roadTasks.push({ idx, leg, kind });
-        } else {
-          solid.push(lineFeature(straight));
-        }
-      });
-      setLineLayer(map, 'planner-dashed', dashed, { color: MISSING_COLOR, width: 2, dashed: true, opacity: 0.5 });
-      setLineLayer(map, 'planner-solid', solid, { color: PLANNER_ROUTE_COLOR, width: 3.5 });
-      (async () => {
-        for (const task of roadTasks) {
-          const route = await fetchOsrmRoute(task.leg.from.latitude, task.leg.from.longitude, task.leg.to.latitude, task.leg.to.longitude, task.kind);
-          if (cancelled || !mapRef.current) return;
-          const coords = route && route.length > 1 ? route.map(([la, lo]) => [lo, la]) : null;
-          if (coords) { solid[task.idx] = lineFeature(coords); setLineLayer(map, 'planner-solid', solid, { color: PLANNER_ROUTE_COLOR, width: 3.5 }); }
-        }
-      })();
-    };
-    if (readyRef.current) draw(); else map.once('load', draw);
-    return () => { cancelled = true; };
-  }, [legsKey]);
-
-  return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Icon name="map" size={14} style={{ color: 'var(--brand)' }} />
-        <span style={{ fontSize: 12.5, fontWeight: 600, flex: 1 }}>Маршрут · предпросмотр</span>
-        <span style={{ fontSize: 11, color: 'var(--muted)' }}>{cities.length} городов</span>
-      </div>
-
-      <div style={{ position: 'relative', height: 320 }}>
-        <div ref={containerRef} style={{ height: 320, width: '100%' }} />
-        {pts.length === 0 && (
-          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'var(--wash)', color: 'var(--muted)' }}>
-            <div style={{ textAlign: 'center' }}>
-              <Icon name="map" size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
-              <div style={{ fontSize: 13 }}>Добавь города —<br />маршрут появится здесь</div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div style={{ padding: '10px 14px', borderTop: '1px solid var(--line-2)', background: 'var(--wash)', fontSize: 11.5, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        {home?.city_name && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2167e2', display: 'inline-block' }} />
-            {home.city_name}
-          </span>
-        )}
-        {cities.length > 0 && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2167e2', display: 'inline-block' }} />
-            {cities.length} {cities.length < 5 ? 'города' : 'городов'}
-          </span>
-        )}
-        <span style={{ flex: 1 }} />
-        {totalNights > 0 && <span style={{ fontWeight: 600 }}>{totalNights} ночей</span>}
-      </div>
     </div>
   );
 }
@@ -882,86 +670,6 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
   );
 }
 
-// ─── Step 4: Transport ────────────────────────────────────────────────────────
-
-function StepTransport({ home, cities, effectiveReturn, finalPoint, transport, setTransport, goPrev, goNext, onReset }) {
-  const legs = computeLegs(home, cities, effectiveReturn, finalPoint);
-
-  const setLegKind = (legId, kind) => {
-    setTransport(t => ({ ...t, [legId]: { kind } }));
-  };
-
-  return (
-    <div>
-      <h1 style={{ marginBottom: 10 }}>Транспорт</h1>
-      <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 540 }}>
-        Выбери, как добираться между городами. Это обновит маршрут на карте и поможет посчитать бюджет.
-      </div>
-
-      {legs.length === 0 ? (
-        <div style={{ padding: 28, textAlign: 'center', color: 'var(--muted)', border: '1.5px dashed var(--line)', borderRadius: 12 }}>
-          Нет переездов для выбора транспорта.
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {legs.map((leg, i) => {
-            const chosen = transport[leg.id]?.kind;
-            return (
-              <div key={leg.id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--line-2)', background: 'var(--wash)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-                    {i + 1}
-                  </div>
-                  <span style={{ fontSize: 13.5, fontWeight: 600 }}>{leg.from.city_name}</span>
-                  <Icon name="chev" size={12} style={{ color: 'var(--muted-2)' }} />
-                  <span style={{ fontSize: 13.5, fontWeight: 600 }}>{leg.to.city_name}</span>
-                  {chosen && (
-                    <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--success, #27ae60)', fontWeight: 500 }}>
-                      {TRANSPORT_KINDS.find(k => k.id === chosen)?.label}
-                    </span>
-                  )}
-                </div>
-                <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {TRANSPORT_KINDS.map(k => {
-                    const isSelected = chosen === k.id;
-                    return (
-                      <button
-                        key={k.id}
-                        onClick={() => setLegKind(leg.id, k.id)}
-                        style={{
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                          padding: '12px 8px', borderRadius: 10, cursor: 'pointer',
-                          background: isSelected ? 'var(--brand-soft)' : 'var(--wash)',
-                          border: '1.5px solid ' + (isSelected ? 'var(--brand)' : 'var(--line-2)'),
-                          color: isSelected ? 'var(--brand)' : 'var(--ink-2)',
-                          fontWeight: isSelected ? 700 : 500, fontSize: 12,
-                          transition: 'all .12s',
-                        }}
-                        onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.color = 'var(--brand)'; } }}
-                        onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.borderColor = 'var(--line-2)'; e.currentTarget.style.color = 'var(--ink-2)'; } }}
-                      >
-                        <Icon name={k.icon} size={20} />
-                        {k.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <FooterNav>
-        <Btn variant="ghost" onClick={goPrev}>← Назад</Btn>
-        <Btn variant="ghost" icon="refresh" onClick={onReset}>Сбросить</Btn>
-        <div style={{ flex: 1 }} />
-        <Btn variant="primary" onClick={goNext}>Дальше →</Btn>
-      </FooterNav>
-    </div>
-  );
-}
-
 // ─── Step 5: Review ───────────────────────────────────────────────────────────
 
 function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
@@ -1130,12 +838,21 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ManualPlanner() {
+export default function ManualPlanner({ initialMethod = 'manual' }) {
   const nav = useNavigate();
   const { user } = useAuth();
+  const t = useT();
+  const { lang } = useI18n();
+  const { toast } = useToast();
+  const qc = useQueryClient();
 
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
+
+  // 'manual' | 'ai' — only the entry screen differs; from the skeleton onward
+  // both methods share the same steps.
+  const method = initialMethod;
+  const isAi = method === 'ai';
 
   // ── Free-plan limit check ─────────────────────────────────────────────────
   const { data: allTrips = [], isLoading: checkingLimit } = useQuery({
@@ -1177,7 +894,6 @@ export default function ManualPlanner() {
   const [returnMode, setReturnMode] = useState('home');
   const [returnCity, setReturnCity] = useState(null);
   const [finalPoint, setFinalPoint] = useState(false); // last city is the finish — skip "return"
-  const [transport, setTransport]   = useState({});    // legId -> { kind }
   const [tripTitle, setTripTitle]   = useState('');
   const [cover, setCover]           = useState({ cover_image_url: '', cover_gradient: 'gradient_1' });
   const [saving, setSaving]         = useState(false);
@@ -1186,10 +902,17 @@ export default function ManualPlanner() {
   const [error, setError]           = useState(null);
   const [restored, setRestored]     = useState(false);
 
+  // ── AI-entry state (only used when method === 'ai') ────────────────────────
+  const [prompt, setPrompt]                 = useState('');
+  const [aiState, setAiState]               = useState(isAi ? 'prompt' : 'draft'); // prompt | generating | draft
+  const [aiComment, setAiComment]           = useState('');
+  const [activitiesByCity, setActivitiesByCity] = useState({}); // cityId -> [{ title, dayOffset, start_time, end_time, location_address }]
+  const [sessionId, setSessionId]           = useState(() => crypto.randomUUID());
+
   // Restore from sessionStorage on mount — only for the current user
   useEffect(() => {
     try {
-      const key = storageKey(user?.id);
+      const key = storageKey(user?.id, method);
       const raw = sessionStorage.getItem(key);
       if (raw) {
         const saved = JSON.parse(raw);
@@ -1200,9 +923,10 @@ export default function ManualPlanner() {
         if (saved.returnCity) setReturnCity(saved.returnCity);
         if (saved.tripTitle) setTripTitle(saved.tripTitle);
         if (saved.finalPoint) setFinalPoint(!!saved.finalPoint);
-        if (saved.transport) setTransport(saved.transport);
         if (saved.startDate) setStartDateRaw(saved.startDate);
         if (saved.cover) setCover(saved.cover);
+        if (saved.activitiesByCity) setActivitiesByCity(saved.activitiesByCity);
+        if (saved.aiState && isAi) setAiState(saved.aiState);
       }
     } catch {}
     setRestored(true);
@@ -1212,9 +936,9 @@ export default function ManualPlanner() {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(storageKey(user?.id), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport, startDate, cover }));
+      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, activitiesByCity, aiState }));
     } catch {}
-  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, transport, startDate, cover, restored, user?.id]);
+  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, activitiesByCity, aiState, restored, user?.id]);
 
   // setStartDate also cascades to cities (first city anchors all subsequent dates).
   const setStartDate = (dateStr) => {
@@ -1226,17 +950,101 @@ export default function ManualPlanner() {
     });
   };
 
-  // Skip "return" step when the last city is marked as the finish point.
+  // ── AI draft → shared skeleton ─────────────────────────────────────────────
+  // The AI returns a full draft (cities + per-day activities). We convert it
+  // into the manual-planner `cities` shape and keep activities keyed by city
+  // id, storing each activity's day OFFSET inside its city's stay. Because the
+  // saved activity date is derived as (city.startDate + dayOffset), editing the
+  // skeleton (dates / nights / order) automatically re-dates the activities.
+  const applyAiDraft = async (d) => {
+    const dc = d?.cities || [];
+    const resolved = await Promise.all(dc.map(async (c, i) => {
+      let best = null;
+      let tz = null;
+      try {
+        const r = await searchCities(`${c.city_name}${c.country ? ', ' + c.country : ''}`, lang || 'ru');
+        best = r?.[0] || null;
+      } catch { /* ignore */ }
+      if (best?.latitude) { try { tz = await getTimezone(best.latitude, best.longitude); } catch { /* ignore */ } }
+      const startDate = c.start_date || '';
+      const nights = c.nights ?? c.n ?? (c.start_date && c.end_date ? daysBetweenISO(c.start_date, c.end_date) : 1);
+      const id = Date.now() + i;
+      return {
+        city: {
+          id,
+          external_city_id: best?.external_city_id || null,
+          city_name: c.city_name || '',
+          country: c.country || best?.country || '',
+          country_code: (c.country_code || best?.country_code || '').toUpperCase(),
+          latitude: best?.latitude ?? null,
+          longitude: best?.longitude ?? null,
+          timezone: tz || best?.timezone || null,
+          startDate,
+          nights: Math.max(1, +nights || 1),
+        },
+        activities: (c.activities || []).map((a) => ({
+          title: a.title || a.name || '',
+          dayOffset: (a.date && startDate) ? Math.max(0, daysBetweenISO(startDate, a.date)) : 0,
+          start_time: a.start_time || a.time || null,
+          end_time: a.end_time || null,
+          location_address: a.location_address || null,
+        })),
+      };
+    }));
+    const newCities = recomputeDates(resolved.map(r => r.city));
+    const byCity = {};
+    resolved.forEach((r) => { byCity[r.city.id] = r.activities; });
+    setCities(newCities);
+    setActivitiesByCity(byCity);
+    setStartDateRaw(newCities[0]?.startDate || '');
+    if (d?.title) setTripTitle(d.title);
+  };
+
+  const planMut = useMutation({
+    mutationFn: async ({ promptText }) => {
+      const { data, error: fnErr } = await supabase.functions.invoke('planTripWithAi', {
+        body: { sessionId, prompt: promptText, language: lang || 'ru' },
+      });
+      if (fnErr) throw fnErr;
+      return data;
+    },
+    onMutate: () => { setAiState('generating'); setError(null); },
+    onSuccess: async (data) => {
+      const out = data?.output || {};
+      setAiComment(out.ai_comment || '');
+      await applyAiDraft(out.draft || {});
+      setAiState('draft');
+    },
+    onError: (err) => {
+      setAiState(cities.length ? 'draft' : 'prompt');
+      toast({
+        title: t('ai_plan.error_plan_title'),
+        description: err?.message || t('ai_plan.error_plan_desc'),
+        variant: 'destructive',
+      });
+    },
+  });
+  const onGenerate = (promptText) => { if (promptText) planMut.mutate({ promptText }); };
+
+  // Visible steps — "Возврат" is skipped when the last city is the finish point.
+  // The entry step's label depends on the method (origin vs AI prompt).
+  const entryLabel = isAi ? 'Планирование с ИИ' : 'Откуда';
+  const visibleSteps = (finalPoint ? STEPS.filter(s => s.id !== 'return') : STEPS)
+    .map(s => (s.id === 'home' ? { ...s, label: entryLabel } : s));
   const goNext = () => {
-    if (step === 'cities' && finalPoint) { setStep('transport'); return; }
-    const i = STEPS.findIndex(s => s.id === step);
-    if (i < STEPS.length - 1) setStep(STEPS[i + 1].id);
+    const i = visibleSteps.findIndex(s => s.id === step);
+    if (i >= 0 && i < visibleSteps.length - 1) setStep(visibleSteps[i + 1].id);
   };
   const goPrev = () => {
-    if (step === 'transport' && finalPoint) { setStep('cities'); return; }
-    const i = STEPS.findIndex(s => s.id === step);
-    if (i > 0) setStep(STEPS[i - 1].id);
+    const i = visibleSteps.findIndex(s => s.id === step);
+    if (i > 0) setStep(visibleSteps[i - 1].id);
   };
+
+  // If the active step becomes hidden (toggled finalPoint while on "return"),
+  // fall back to the skeleton step.
+  useEffect(() => {
+    if (!visibleSteps.some(s => s.id === step)) setStep('cities');
+  }, [finalPoint]);
 
   // Reset draft and go back to step 1
   const resetToStart = () => {
@@ -1246,14 +1054,19 @@ export default function ManualPlanner() {
     setReturnMode('home');
     setReturnCity(null);
     setFinalPoint(false);
-    setTransport({});
     setStartDateRaw('');
     setTripTitle('');
     setCover({ cover_image_url: '', cover_gradient: 'gradient_1' });
     setSavedOk(false);
     setSavedTripId(null);
     setError(null);
-    try { sessionStorage.removeItem(storageKey(user?.id)); } catch { /* ignore */ }
+    // AI-entry reset
+    setPrompt('');
+    setAiComment('');
+    setActivitiesByCity({});
+    setAiState(isAi ? 'prompt' : 'draft');
+    setSessionId(crypto.randomUUID());
+    try { sessionStorage.removeItem(storageKey(user?.id, method)); } catch { /* ignore */ }
   };
 
   // Allow setting trip start date from the Review step — cascades to all cities
@@ -1268,7 +1081,6 @@ export default function ManualPlanner() {
   // When the user marked the last city as the finish, there's no separate
   // return city — the trip ends at the last transit city.
   const effectiveReturn = finalPoint ? null : (returnMode === 'home' ? home : returnCity);
-  const mapHighlight = step === 'home' ? 'home' : step === 'return' ? 'return' : step === 'transport' ? 'all' : 'cities';
   const autoTitle = cities.length === 0 ? 'Новый трип' : cities.length === 1 ? cities[0].city_name : `${cities[0]?.city_name} → ${cities[cities.length - 1]?.city_name}`;
 
   // ── Supabase save ────────────────────────────────────────────────────────
@@ -1382,40 +1194,56 @@ export default function ManualPlanner() {
       let insertedVisits = [];
       if (visitsToInsert.length > 0) {
         // position = array index: visitsToInsert is built in itinerary order, so
-        // (start_datetime, position) reproduces it. Order is preserved (NOT
-        // reordered) because the returned ids are mapped back by index for transfers.
+        // (start_datetime, position) reproduces it. Ids are returned in insert
+        // order, so we can map activities back to their city visit by index.
         const withPos = visitsToInsert.map((v, i) => ({ ...v, position: i }));
         const { data: vd, error: visitErr } = await supabase.from('city_visits').insert(withPos).select('id');
         if (visitErr) throw visitErr;
         insertedVisits = vd || [];
       }
 
-      // 3. Create transfers for legs that have a transport kind selected
-      if (insertedVisits.length >= 2) {
-        const legs = computeLegs(home, cities, effectiveReturn, finalPoint);
-        const transfersToInsert = legs
-          .map((leg, i) => {
-            const kind = transport[leg.id]?.kind;
-            if (!kind) return null;
-            const fromVisit = insertedVisits[i];
-            const toVisit = insertedVisits[i + 1];
-            if (!fromVisit || !toVisit) return null;
-            return {
-              trip_id: trip.id,
-              from_city_visit_id: fromVisit.id,
-              to_city_visit_id: toVisit.id,
-              transport_type: kind,
-              created_by: authId,
-            };
-          })
-          .filter(Boolean);
-        if (transfersToInsert.length > 0) {
-          const { error: transferErr } = await supabase.from('transfers').insert(transfersToInsert);
-          if (transferErr) console.error('Failed to create transfers:', transferErr);
-        }
+      // Transfers are intentionally NOT created at trip-creation time. The
+      // "Транспорт" step was removed from the flow; the timeline shows a
+      // "Нет переезда" affordance and transfers are added later in Edit Mode.
+
+      // Activities (AI flow only) — attached to each city visit. The activity
+      // date is DERIVED from the (possibly edited) city startDate + dayOffset,
+      // so reordering / re-dating the skeleton re-dates the activities too.
+      const homeOffset = home?.city_name ? 1 : 0;
+      const activitiesToInsert = [];
+      cities.forEach((c, i) => {
+        const visitId = insertedVisits[homeOffset + i]?.id;
+        const acts = activitiesByCity[c.id];
+        if (!visitId || !c.startDate || !acts?.length) return;
+        const tz = c.timezone || 'UTC';
+        acts.forEach((a) => {
+          if (!a.title) return;
+          const date = addDays(c.startDate, +a.dayOffset || 0);
+          const time = (a.start_time && /^\d{1,2}:\d{2}/.test(a.start_time)) ? a.start_time.padStart(5, '0').slice(0, 5) : '10:00';
+          const startDt = DateTime.fromISO(`${date}T${time}`, { zone: tz });
+          if (!startDt.isValid) return;
+          const endTime = (a.end_time && /^\d{1,2}:\d{2}/.test(a.end_time)) ? a.end_time.padStart(5, '0').slice(0, 5) : null;
+          const endDt = endTime ? DateTime.fromISO(`${date}T${endTime}`, { zone: tz }) : startDt.plus({ hours: 2 });
+          activitiesToInsert.push({
+            trip_id: trip.id,
+            city_visit_id: visitId,
+            title: a.title,
+            start_datetime: startDt.toUTC().toISO(),
+            end_datetime: (endDt.isValid ? endDt : startDt.plus({ hours: 2 })).toUTC().toISO(),
+            location_address: a.location_address || null,
+            currency: 'EUR',
+            details: {},
+            created_by: authId,
+          });
+        });
+      });
+      if (activitiesToInsert.length > 0) {
+        const { error: actErr } = await supabase.from('activities').insert(activitiesToInsert);
+        if (actErr) throw actErr;
       }
 
-      sessionStorage.removeItem(storageKey(user?.id));
+      sessionStorage.removeItem(storageKey(user?.id, method));
+      qc.invalidateQueries({ queryKey: ['trips'] });
       setSavedOk(true);
       setSavedTripId(trip.id);
     } catch (err) {
@@ -1471,9 +1299,9 @@ export default function ManualPlanner() {
 
   // ── Main render ───────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg, var(--wash))' }}>
       {/* Header */}
-      <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
+      <header className="app-header" style={{ flexShrink: 0, zIndex: 50 }}>
         <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К коллекции">
           <Icon name="back" size={14} />
         </button>
@@ -1483,7 +1311,7 @@ export default function ManualPlanner() {
         </div>
         <div className="app-header__crumb">
           <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>Новый трип</span>
+          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{isAi ? 'Планирование с ИИ' : 'Новый трип'}</span>
         </div>
         <HeaderActions
           user={user}
@@ -1493,80 +1321,74 @@ export default function ManualPlanner() {
         />
       </header>
 
-      {/* Sub-header: stepper */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 24px', borderBottom: '1px solid var(--line-2)', background: 'var(--surface)' }}>
-        <div style={{ flex: 1 }} />
-        <Stepper currentId={step} onJump={setStep} finalPoint={finalPoint} />
+      {/* Slim top bar: progress glued under the header */}
+      <div className="flow-top">
+        <div className="flow-progress-wrap">
+          <FlowProgress
+            steps={visibleSteps}
+            current={Math.max(0, visibleSteps.findIndex(s => s.id === step))}
+            accent="var(--brand)"
+            onJump={(i) => setStep(visibleSteps[i].id)}
+          />
+        </div>
       </div>
 
-      {/* Body */}
-      <div style={{ flex: 1, padding: '32px 24px', maxWidth: 1280, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-        <div className="planner-grid">
-          {/* Form column */}
-          <div style={{ minWidth: 0 }}>
-            {step === 'home' && (
-              <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} goNext={goNext} />
-            )}
-            {step === 'cities' && (
-              <StepCities cities={cities} setCities={setCities} home={home} startDate={startDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} goPrev={goPrev} goNext={goNext} onReset={resetToStart} />
-            )}
-            {step === 'transport' && (
-              <StepTransport
-                home={home}
-                cities={cities}
-                effectiveReturn={effectiveReturn}
-                finalPoint={finalPoint}
-                transport={transport}
-                setTransport={setTransport}
-                goPrev={goPrev}
-                goNext={goNext}
-                onReset={resetToStart}
-              />
-            )}
-            {step === 'return' && (
-              <StepReturn
-                home={home}
-                lastCityName={cities[cities.length - 1]?.city_name || 'последний город'}
-                returnMode={returnMode}
-                setReturnMode={setReturnMode}
-                returnCity={returnCity}
-                setReturnCity={setReturnCity}
-                goPrev={goPrev}
-                goNext={goNext}
-                onReset={resetToStart}
-              />
-            )}
-            {step === 'review' && (
-              <StepReview
-                home={home}
-                cities={cities}
-                returnCity={effectiveReturn}
-                cover={cover}
-                setCover={setCover}
-                tripTitle={tripTitle}
-                setTripTitle={setTripTitle}
-                onStartDateChange={handleStartDateChange}
-                saving={saving}
-                savedOk={savedOk}
-                savedTripId={savedTripId}
-                goPrev={goPrev}
-                onReset={resetToStart}
-                onSave={handleSave}
-                error={error}
-              />
-            )}
-          </div>
+      {/* Two-pane shell: big full-bleed map + scrollable editing column */}
+      <div className="flow-shell">
+        <div className="flow-shell__map">
+          <FlowMap
+            home={home}
+            cities={cities}
+            returnCity={effectiveReturn}
+            finalPoint={finalPoint}
+            accent={isAi ? 'var(--ai)' : '#5b6cff'}
+            badge={isAi
+              ? { label: 'Маршрут от ИИ', icon: 'sparkles', color: 'var(--ai)' }
+              : { label: 'Ваш маршрут', icon: 'map', color: 'var(--brand)' }}
+          />
+        </div>
 
-          {/* Map column — sticky on desktop, static on mobile */}
-          <div className="planner-map-col">
-            <PlannerMap
+        <div className="flow-edit scrollbar-thin">
+          {step === 'home' && (isAi ? (
+            <PanelAi ctx={{ aiState, prompt, setPrompt, aiComment, cities, onGenerate, goNext }} />
+          ) : (
+            <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} goNext={goNext} />
+          ))}
+          {step === 'cities' && (
+            <StepCities cities={cities} setCities={setCities} home={home} startDate={startDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} goPrev={goPrev} goNext={goNext} onReset={resetToStart} />
+          )}
+          {step === 'return' && (
+            <StepReturn
+              home={home}
+              lastCityName={cities[cities.length - 1]?.city_name || 'последний город'}
+              returnMode={returnMode}
+              setReturnMode={setReturnMode}
+              returnCity={returnCity}
+              setReturnCity={setReturnCity}
+              goPrev={goPrev}
+              goNext={goNext}
+              onReset={resetToStart}
+            />
+          )}
+          {step === 'review' && (
+            <StepReview
               home={home}
               cities={cities}
               returnCity={effectiveReturn}
-              transport={transport}
-              finalPoint={finalPoint}
+              cover={cover}
+              setCover={setCover}
+              tripTitle={tripTitle}
+              setTripTitle={setTripTitle}
+              onStartDateChange={handleStartDateChange}
+              saving={saving}
+              savedOk={savedOk}
+              savedTripId={savedTripId}
+              goPrev={goPrev}
+              onReset={resetToStart}
+              onSave={handleSave}
+              error={error}
             />
-          </div>
+          )}
         </div>
       </div>
     </div>

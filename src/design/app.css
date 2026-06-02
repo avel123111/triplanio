@@ -698,6 +698,57 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
   .planner-map-col { position: static; order: 2; }
 }
 
+/* ── Unified create-flow (manual + AI) ──────────────────────────────────────
+   Slim top bar (icon back + full-width progress) glued under the app header,
+   then a two-pane shell: a big full-bleed map that is the spatial anchor, and
+   a scrollable editing column beside it. Replaces the old small map-card. */
+.flow-screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.flow-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--line-2);
+  background: var(--surface);
+}
+.flow-progress-wrap { flex: 1; min-width: 0; }
+.flow-shell {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 560px);
+}
+.flow-shell__map {
+  position: relative;
+  min-height: 0;
+  border-right: 1px solid var(--line-2);
+  background: var(--wash);
+}
+.flow-edit {
+  min-width: 0;
+  overflow-y: auto;
+  padding: 32px 28px 48px;
+}
+.flow-standalone {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 32px 24px 48px;
+}
+@media (max-width: 960px) {
+  .flow-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: 300px minmax(0, 1fr);
+  }
+  .flow-shell__map { border-right: none; border-bottom: 1px solid var(--line-2); }
+  .flow-edit { padding: 24px 18px 40px; }
+}
+
 /* Manual planner CityRow.
    When the date and nights inputs are hidden (finalPoint), the row should
    collapse around the remaining slots — auto-flow columns handle that
