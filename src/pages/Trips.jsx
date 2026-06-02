@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '../design/icons';
 import { Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import { getGradientById } from '@/lib/trip-gradients';
@@ -23,21 +24,21 @@ function strHue(str = '') {
   return Math.abs(h) % 360;
 }
 
-function scopeLabel(visits = []) {
+function scopeLabel(t, visits = []) {
   const cities = [...new Set(visits.map(v => v.city_name).filter(Boolean))];
-  if (cities.length === 0) return 'Нет городов';
+  if (cities.length === 0) return t('trips.no_cities');
   if (cities.length <= 3) return cities.join(' · ');
-  return cities.slice(0, 2).join(' · ') + ` · ещё ${cities.length - 2}`;
+  return cities.slice(0, 2).join(' · ') + ' ' + t('trips.cities_more', { count: cities.length - 2 });
 }
 
 /** Shape raw Supabase trip + visits into the object the card components expect */
-function normalizeTrip(trip, visits = [], role = 'member', isPro = false) {
+function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false) {
   return {
     ...trip,
     coverHue:  strHue(trip.id),
     accentHue: strHue(trip.title || ''),
     days:      formatTripRange(visits, '-'),
-    scope:     scopeLabel(visits),
+    scope:     scopeLabel(t, visits),
     role,
     // Badge shows only for trips purchased individually as Pro trip.
     // User subscription (isPro) unlocks features but doesn't badge every trip.
@@ -49,6 +50,7 @@ function normalizeTrip(trip, visits = [], role = 'member', isPro = false) {
 
 // ─── Trip cover gradient ──────────────────────────────────────────────────────
 const CollectionTripCover = ({ trip }) => {
+  const { t } = useI18n();
   const gradient = trip.cover_gradient ? getGradientById(trip.cover_gradient) : null;
   const hasPhoto = !!trip.cover_image_url;
   const hasGradient = !hasPhoto && !!gradient;
@@ -79,7 +81,7 @@ const CollectionTripCover = ({ trip }) => {
         )}
         {trip.role !== 'owner' && (
           <div style={{ background: 'rgba(15,23,42,.6)', color: 'white', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999, backdropFilter: 'blur(8px)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Icon name="users" size={11} /> Совместный
+            <Icon name="users" size={11} /> {t('trips.shared_badge')}
           </div>
         )}
       </div>
@@ -91,7 +93,9 @@ const CollectionTripCover = ({ trip }) => {
 };
 
 // ─── Trip card (grid view) ───────────────────────────────────────────────────
-const TripCard = ({ trip, onClick }) => (
+const TripCard = ({ trip, onClick }) => {
+  const { t } = useI18n();
+  return (
   <button
     onClick={onClick}
     style={{ border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 'var(--radius-card)', padding: 14, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 12, cursor: 'pointer', transition: 'transform .15s, box-shadow .15s, border-color .15s' }}
@@ -104,19 +108,22 @@ const TripCard = ({ trip, onClick }) => (
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 17, letterSpacing: '-0.015em', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trip.title}</div>
         <div className="muted num" style={{ fontSize: 12.5 }}>{trip.days}</div>
       </div>
-      {trip.role === 'viewer' && <Badge variant="quiet" icon="eye">Зритель</Badge>}
-      {trip.role === 'admin'  && <Badge>Админ</Badge>}
+      {trip.role === 'viewer' && <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>}
+      {trip.role === 'admin'  && <Badge>{t('trips.role_admin')}</Badge>}
     </div>
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--muted)' }}>
       <Icon name="pin" size={13} />
       <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{trip.scope}</span>
-      {trip.status === 'draft' && <Badge variant="warning" dot>Черновик</Badge>}
+      {trip.status === 'draft' && <Badge variant="warning" dot>{t('ai_plan.draft_label')}</Badge>}
     </div>
   </button>
-);
+  );
+};
 
 // ─── Trip row (list view) ────────────────────────────────────────────────────
-const TripRow = ({ trip, onClick }) => (
+const TripRow = ({ trip, onClick }) => {
+  const { t } = useI18n();
+  return (
   <button onClick={onClick} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 180px 140px 100px 30px', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, cursor: 'pointer', textAlign: 'left', fontSize: 13.5 }}
     onMouseEnter={e => e.currentTarget.style.borderColor = '#dbe1ec'}
     onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--line)'}>
@@ -133,24 +140,26 @@ const TripRow = ({ trip, onClick }) => (
     </div>
     <div className="muted num" style={{ fontSize: 12.5 }}>{trip.days}</div>
     <div>
-      {trip.role === 'owner'  && <Badge>Владелец</Badge>}
-      {trip.role === 'admin'  && <Badge>Админ</Badge>}
-      {trip.role === 'viewer' && <Badge variant="quiet" icon="eye">Зритель</Badge>}
+      {trip.role === 'owner'  && <Badge>{t('trips.role_owner')}</Badge>}
+      {trip.role === 'admin'  && <Badge>{t('trips.role_admin')}</Badge>}
+      {trip.role === 'viewer' && <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>}
     </div>
     <div>{trip.pro && <Badge variant="warm">Pro</Badge>}</div>
     <Icon name="chev" size={14} style={{ color: 'var(--muted-2)' }} />
   </button>
-);
+  );
+};
 
 // ─── New Trip Dialog ─────────────────────────────────────────────────────────
 function NewTripDialog({ onClose, onManual, onAi }) {
+  const { t } = useI18n();
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
         style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 440, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
-        <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700 }}>Новое путешествие</h2>
-        <div style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 22 }}>Как хочешь начать?</div>
+        <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700 }}>{t('trips.new')}</h2>
+        <div style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 22 }}>{t('trips.choice_subtitle')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <button onClick={onManual} style={{ padding: 20, background: 'var(--surface)', border: '1.5px solid var(--line)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
             onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand)'}
@@ -158,19 +167,19 @@ function NewTripDialog({ onClose, onManual, onAi }) {
             <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
               <Icon name="edit" size={19} />
             </div>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Собрать руками</div>
-            <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5 }}>Выбрать города, даты, отели вручную.</div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('trips.start_manual')}</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5 }}>{t('trips.manual_desc_short')}</div>
           </button>
           <button onClick={onAi} className="ai-card" style={{ padding: 20, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
               <Icon name="sparkles" size={19} />
             </div>
-            <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--ai)' }}>Начать с ИИ</div>
-            <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5 }}>Описать словами - получить черновик.</div>
+            <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--ai)' }}>{t('trips.start_with_ai')}</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5 }}>{t('trips.ai_desc_short')}</div>
           </button>
         </div>
         <div style={{ marginTop: 16, textAlign: 'right' }}>
-          <Btn variant="ghost" onClick={onClose}>Отмена</Btn>
+          <Btn variant="ghost" onClick={onClose}>{t('common.cancel')}</Btn>
         </div>
       </div>
     </div>
@@ -179,30 +188,31 @@ function NewTripDialog({ onClose, onManual, onAi }) {
 
 // ─── Empty state ─────────────────────────────────────────────────────────────
 function CollectionEmpty({ onManual, onAi }) {
+  const { t } = useI18n();
   return (
     <div style={{ maxWidth: 720, margin: '60px auto', textAlign: 'center' }}>
       <div style={{ width: 96, height: 96, margin: '0 auto 22px', borderRadius: 24, background: 'linear-gradient(135deg, var(--brand-soft), var(--ai-soft))', display: 'grid', placeItems: 'center' }}>
         <Icon name="globe" size={42} style={{ color: 'var(--brand)' }} />
       </div>
-      <h1 style={{ marginBottom: 10 }}>Спланируй первое путешествие</h1>
+      <h1 style={{ marginBottom: 10 }}>{t('trips.empty_heading')}</h1>
       <div className="muted" style={{ fontSize: 16, marginBottom: 28, maxWidth: 480, margin: '0 auto 28px' }}>
-        Triplanio собирает города, переезды, отели, активности и бюджет в одну картину. Начни с любого.
+        {t('trips.empty_desc')}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, maxWidth: 600, margin: '0 auto' }}>
         <button onClick={onManual} style={{ padding: 22, background: 'var(--surface)', border: '1.5px solid var(--brand-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}>
           <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 14 }}>
             <Icon name="edit" size={19} />
           </div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Собрать руками</div>
-          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>Сам выбираю города, даты, отели и активности. Полный контроль.</div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('trips.start_manual')}</div>
+          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>{t('trips.manual_desc_full')}</div>
         </button>
         <button onClick={onAi} style={{ padding: 22, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
           className="ai-card">
           <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 14 }}>
             <Icon name="sparkles" size={19} />
           </div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }} className="ai-text">Начать с ИИ <Badge variant="warm" style={{ marginLeft: 4 }}>Pro</Badge></div>
-          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>Описать словами - получить черновик и доработать с ассистентом.</div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }} className="ai-text">{t('trips.start_with_ai')} <Badge variant="warm" style={{ marginLeft: 4 }}>Pro</Badge></div>
+          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>{t('trips.ai_desc_full')}</div>
         </button>
       </div>
     </div>
@@ -267,6 +277,7 @@ function TripSkeleton({ viewMode }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Trips() {
+  const { t }     = useI18n();
   const { user }  = useAuth();
   const nav       = useNavigate();
   const qc        = useQueryClient();
@@ -343,12 +354,12 @@ export default function Trips() {
     return !q || tr.title?.toLowerCase().includes(q) || tr.description?.toLowerCase().includes(q);
   };
 
-  const activeTrips = allTrips.filter(t => !isTripInPast(visitsByTrip[t.id] || []) && matches(t));
-  const pastTrips   = allTrips.filter(t =>  isTripInPast(visitsByTrip[t.id] || []) && matches(t));
+  const activeTrips = allTrips.filter(tr => !isTripInPast(visitsByTrip[tr.id] || []) && matches(tr));
+  const pastTrips   = allTrips.filter(tr =>  isTripInPast(visitsByTrip[tr.id] || []) && matches(tr));
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
   // Normalize to the shape TripCard / TripRow expect
-  const shownNorm = shown.map(t => normalizeTrip(t, visitsByTrip[t.id] || [], getRoleFor(t), isPro));
+  const shownNorm = shown.map(tr => normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro));
 
   // ── Create flow ───────────────────────────────────────────────────────────────
   const checkLimit = (pick) => {
@@ -401,30 +412,30 @@ export default function Trips() {
             {/* Header row */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <h1 style={{ marginBottom: 6 }}>Твои путешествия</h1>
+                <h1 style={{ marginBottom: 6 }}>{t('trips.page_title')}</h1>
                 <div className="muted" style={{ fontSize: 15 }}>
-                  {activeTrips.length} активных · {pastTrips.length} в архиве
+                  {t('trips.count_summary', { active: activeTrips.length, past: pastTrips.length })}
                 </div>
               </div>
-              <Btn variant="primary" size="lg" icon="plus" onClick={() => setShowNewTrip(true)}>Новое путешествие</Btn>
+              <Btn variant="primary" size="lg" icon="plus" onClick={() => setShowNewTrip(true)}>{t('trips.new')}</Btn>
             </div>
 
             {/* Filters row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18, flexWrap: 'wrap' }}>
               <div className="tweaks__seg" style={{ flexShrink: 0 }}>
                 <button className={filterMode === 'active' ? 'active' : ''} onClick={() => setFilterMode('active')} style={{ whiteSpace: 'nowrap' }}>
-                  Активные · {activeTrips.length}
+                  {t('trips.tab_active')} · {activeTrips.length}
                 </button>
                 <button className={filterMode === 'past' ? 'active' : ''} onClick={() => setFilterMode('past')} style={{ whiteSpace: 'nowrap' }}>
-                  Прошедшие · {pastTrips.length}
+                  {t('trips.tab_past')} · {pastTrips.length}
                 </button>
               </div>
               <div style={{ position: 'relative', flex: 1, minWidth: 220, maxWidth: 360 }}>
                 <Icon name="search" size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-2)' }} />
-                <input className="input" placeholder="Поиск по названию, городу, описанию" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 34 }} />
+                <input className="input" placeholder={t('trips.search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 34 }} />
               </div>
               <div style={{ flex: 1 }} />
-              <div className="tweaks__seg" title="Вид">
+              <div className="tweaks__seg" title={t('trips.view')}>
                 <button className={viewMode === 'grid' ? 'active' : ''} onClick={() => setViewMode('grid')}><Icon name="grid" size={13} /></button>
                 <button className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}><Icon name="list" size={13} /></button>
               </div>
@@ -436,13 +447,13 @@ export default function Trips() {
             ) : shownNorm.length === 0 ? (
               <EmptyState
                 icon={filterMode === 'past' ? 'calendar' : 'search'}
-                title={filterMode === 'past' ? 'В архиве пока ничего нет' : 'По этому запросу ничего не нашлось'}
-                body={filterMode === 'past' ? 'Завершённые путешествия будут собираться здесь.' : 'Поправь поиск или переключись на другую вкладку.'}
+                title={filterMode === 'past' ? t('trips.empty_archive_title') : t('trips.empty_search_title')}
+                body={filterMode === 'past' ? t('trips.empty_archive_body') : t('trips.empty_search_body')}
               />
             ) : viewMode === 'grid' ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-                {shownNorm.map(t => (
-                  <TripCard key={t.id} trip={t} onClick={() => nav(`/trip/${t.id}`)} />
+                {shownNorm.map(tr => (
+                  <TripCard key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
                 {filterMode === 'active' && (
                   <button
@@ -452,15 +463,15 @@ export default function Trips() {
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)'; }}
                   >
                     <Icon name="plus" size={22} />
-                    <div style={{ fontWeight: 500 }}>Добавить путешествие</div>
-                    <div style={{ fontSize: 12, textAlign: 'center', maxWidth: 200 }}>Собрать руками или начать с ИИ.</div>
+                    <div style={{ fontWeight: 500 }}>{t('trips.add_trip')}</div>
+                    <div style={{ fontSize: 12, textAlign: 'center', maxWidth: 200 }}>{t('trips.add_trip_sub')}</div>
                   </button>
                 )}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {shownNorm.map(t => (
-                  <TripRow key={t.id} trip={t} onClick={() => nav(`/trip/${t.id}`)} />
+                {shownNorm.map(tr => (
+                  <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
               </div>
             )}
@@ -472,10 +483,10 @@ export default function Trips() {
                   <Icon name="sparkles" size={18} />
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 2 }}>На Free доступен 1 активное путешествие</div>
-                  <div className="muted" style={{ fontSize: 12.5 }}>Pro - безлимит путешествий, ИИ-планировщик и парсинг бронирований.</div>
+                  <div style={{ fontWeight: 600, marginBottom: 2 }}>{t('trips.free_limit_title')}</div>
+                  <div className="muted" style={{ fontSize: 12.5 }}>{t('trips.free_limit_desc')}</div>
                 </div>
-                <Btn variant="primary" onClick={openUpgrade}>Перейти к Pro</Btn>
+                <Btn variant="primary" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
               </div>
             )}
           </>

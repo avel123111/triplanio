@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { BRAND_NAME } from '@/lib/brand';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import './login.css';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -15,13 +16,6 @@ function scorePassword(pw) {
   if (/[^A-Za-zА-Яа-я0-9]/.test(pw) || pw.length >= 12) s++;
   return s;
 }
-const STRENGTH_LABELS = [
-  'Используйте 8+ символов, цифры и заглавные.',
-  'Слабый - добавь длину или регистр.',
-  'Средний - добавь цифру или символ.',
-  'Хороший - почти.',
-  'Надёжный.',
-];
 
 // Hard gate that mirrors the Supabase server policy
 // (Auth → Password: min length 8 + "Letters and digits").
@@ -29,8 +23,6 @@ const STRENGTH_LABELS = [
 function meetsPasswordPolicy(pw) {
   return (pw || '').length >= 8 && /[A-Za-zА-Яа-яЁё]/.test(pw) && /\d/.test(pw);
 }
-const PASSWORD_POLICY_MSG =
-  'Пароль должен быть не короче 8 символов и содержать буквы и цифры.';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 function IconEye({ off }) {
@@ -99,6 +91,8 @@ function BrandMark({ size = 28 }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Login() {
+  const { t } = useI18n();
+
   // Password-recovery deep link (/reset-password) reuses this same auth shell
   // (left forms + right brand panel) but opens straight on the new-password form
   // and must NOT bounce to /trips even though the recovery token creates a session.
@@ -117,6 +111,15 @@ export default function Login() {
   const [error, setError]         = useState(null);
   const [sentEmail, setSentEmail] = useState('');
   const pwScore = scorePassword(password);
+
+  // Password-strength labels (localized; index matches scorePassword 0..4).
+  const STRENGTH_LABELS = [
+    t('auth.pw_hint0'),
+    t('auth.pw_weak'),
+    t('auth.pw_medium'),
+    t('auth.pw_good'),
+    t('auth.pw_strong'),
+  ];
 
   // Redirect if already logged in - but never on the recovery route, where the
   // session belongs to a password reset still in progress.
@@ -182,7 +185,8 @@ export default function Login() {
   // Supabase session via signInWithIdToken. AuthContext picks up SIGNED_IN
   // and handles profile creation + redirect to /trips.
   // `nonce` is the RAW nonce: Google embedded its SHA-256 hash in the id_token,
-  // Supabase re-hashes the raw value and compares. Both sides must agree -   // omitting it while the token carries a nonce throws "Passed nonce and nonce
+  // Supabase re-hashes the raw value and compares. Both sides must agree -
+  // omitting it while the token carries a nonce throws "Passed nonce and nonce
   // in id_token should either both exist or not".
   const handleOneTapCredential = async (response, nonce) => {
     setIsLoading(true);
@@ -277,7 +281,7 @@ export default function Login() {
 
   const handleSignup = async (e) => {
     e.preventDefault(); setError(null);
-    if (!meetsPasswordPolicy(password)) { setError(PASSWORD_POLICY_MSG); return; }
+    if (!meetsPasswordPolicy(password)) { setError(t('auth.pw_policy')); return; }
     setIsLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
@@ -298,13 +302,13 @@ export default function Login() {
   // Google-only account this ADDS an email/password login alongside Google.
   const handleNewPassword = async (e) => {
     e.preventDefault(); setError(null);
-    if (!meetsPasswordPolicy(password)) { setError(PASSWORD_POLICY_MSG); return; }
-    if (password !== password2) { setError('Пароли не совпадают.'); return; }
+    if (!meetsPasswordPolicy(password)) { setError(t('auth.pw_policy')); return; }
+    if (password !== password2) { setError(t('auth.pw_nomatch')); return; }
     setIsLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
       const msg = /session|token|expired|missing/i.test(error.message)
-        ? 'Ссылка для сброса устарела или недействительна. Запросите новую.'
+        ? t('auth.err_reset_link')
         : error.message;
       setError(msg); setIsLoading(false); return;
     }
@@ -342,9 +346,9 @@ export default function Login() {
             {/* ── Login ── */}
             {view === 'login' && (
               <>
-                <div className="eyebrow">Вход в аккаунт</div>
-                <h1 className="auth__h1">С возвращением.</h1>
-                <p className="lede">Открой свои маршруты, бюджеты и общие планы - там, где ты их оставили.</p>
+                <div className="eyebrow">{t('auth.login_eyebrow')}</div>
+                <h1 className="auth__h1">{t('auth.login_title')}</h1>
+                <p className="lede">{t('auth.login_lede')}</p>
 
                 <div className="socials">
                   <button type="button" className="btn-social" onClick={handleGoogle} disabled={isLoading}>
@@ -355,14 +359,14 @@ export default function Login() {
                   </button>
                 </div>
 
-                <div className="divider"><span>или по email</span></div>
+                <div className="divider"><span>{t('auth.or_email')}</span></div>
 
                 {error && <div className="auth-error">{error}</div>}
 
                 <form className="auth__inputs" onSubmit={handleLogin}>
                   <div className="field">
                     <div className="field__top">
-                      <label className="field__label" htmlFor="l-email">Email</label>
+                      <label className="field__label" htmlFor="l-email">{t('auth.email_label')}</label>
                     </div>
                     <input className="auth-input" id="l-email" type="email" autoComplete="email"
                       placeholder="you@example.com" required value={email}
@@ -371,18 +375,18 @@ export default function Login() {
 
                   <div className="field">
                     <div className="field__top">
-                      <label className="field__label" htmlFor="l-pw">Пароль</label>
+                      <label className="field__label" htmlFor="l-pw">{t('auth.password')}</label>
                       <span className="field__hint">
-                        <a href="#" onClick={e => { e.preventDefault(); goto('reset'); }}>Забыли пароль?</a>
+                        <a href="#" onClick={e => { e.preventDefault(); goto('reset'); }}>{t('auth.forgot')}</a>
                       </span>
                     </div>
                     <div className="input-wrap">
                       <input className={`auth-input auth-input--trail`} id="l-pw"
                         type={showPw ? 'text' : 'password'} autoComplete="current-password"
-                        placeholder="Минимум 8 символов" required value={password}
+                        placeholder={t('auth.pw_placeholder')} required value={password}
                         onChange={e => setPassword(e.target.value)} disabled={isLoading} />
                       <button type="button" className="input-trail"
-                        aria-label={showPw ? 'Скрыть пароль' : 'Показать пароль'}
+                        aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')}
                         onClick={() => setShowPw(v => !v)}>
                         <IconEye off={showPw} />
                       </button>
@@ -392,18 +396,18 @@ export default function Login() {
                   <div className="row-between">
                     <label className="check">
                       <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
-                      <span>Запомнить меня</span>
+                      <span>{t('auth.remember')}</span>
                     </label>
                   </div>
 
                   <button type="submit" className="btn-primary" disabled={isLoading}>
-                    {isLoading ? 'Загрузка…' : 'Войти'}<IconArrow />
+                    {isLoading ? t('common.loading') : t('auth.sign_in')}<IconArrow />
                   </button>
                 </form>
 
                 <p className="auth__switch">
-                  Ещё нет аккаунта?{' '}
-                  <button type="button" onClick={() => goto('signup')}>Зарегистрироваться</button>
+                  {t('auth.no_account')}{' '}
+                  <button type="button" onClick={() => goto('signup')}>{t('auth.sign_up')}</button>
                 </p>
               </>
             )}
@@ -411,9 +415,9 @@ export default function Login() {
             {/* ── Sign up ── */}
             {view === 'signup' && (
               <>
-                <div className="eyebrow">Создать аккаунт</div>
-                <h1 className="auth__h1">Спланируйте первую поездку.</h1>
-                <p className="lede">Бесплатно, без карты. Соберите маршрут, бюджет и компанию - в одном месте.</p>
+                <div className="eyebrow">{t('auth.create_account')}</div>
+                <h1 className="auth__h1">{t('auth.signup_title')}</h1>
+                <p className="lede">{t('auth.signup_lede')}</p>
 
                 <div className="socials">
                   <button type="button" className="btn-social" onClick={handleGoogle} disabled={isLoading}>
@@ -424,23 +428,23 @@ export default function Login() {
                   </button>
                 </div>
 
-                <div className="divider"><span>или по email</span></div>
+                <div className="divider"><span>{t('auth.or_email')}</span></div>
 
                 {error && <div className="auth-error">{error}</div>}
 
                 <form className="auth__inputs" onSubmit={handleSignup}>
                   <div className="field">
                     <div className="field__top">
-                      <label className="field__label" htmlFor="s-name">Имя</label>
+                      <label className="field__label" htmlFor="s-name">{t('auth.name_label')}</label>
                     </div>
                     <input className="auth-input" id="s-name" type="text" autoComplete="name"
-                      placeholder="Как к тебе обращаться" required value={name}
+                      placeholder={t('auth.name_placeholder')} required value={name}
                       onChange={e => setName(e.target.value)} disabled={isLoading} />
                   </div>
 
                   <div className="field">
                     <div className="field__top">
-                      <label className="field__label" htmlFor="s-email">Email</label>
+                      <label className="field__label" htmlFor="s-email">{t('auth.email_label')}</label>
                     </div>
                     <input className="auth-input" id="s-email" type="email" autoComplete="email"
                       placeholder="you@example.com" required value={email}
@@ -449,15 +453,15 @@ export default function Login() {
 
                   <div className="field">
                     <div className="field__top">
-                      <label className="field__label" htmlFor="s-pw">Пароль</label>
+                      <label className="field__label" htmlFor="s-pw">{t('auth.password')}</label>
                     </div>
                     <div className="input-wrap">
                       <input className="auth-input auth-input--trail" id="s-pw"
                         type={showPw ? 'text' : 'password'} autoComplete="new-password"
-                        placeholder="Минимум 8 символов" required minLength={8} value={password}
+                        placeholder={t('auth.pw_placeholder')} required minLength={8} value={password}
                         onChange={e => setPassword(e.target.value)} disabled={isLoading} />
                       <button type="button" className="input-trail"
-                        aria-label={showPw ? 'Скрыть пароль' : 'Показать пароль'}
+                        aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')}
                         onClick={() => setShowPw(v => !v)}>
                         <IconEye off={showPw} />
                       </button>
@@ -469,17 +473,17 @@ export default function Login() {
                   </div>
 
                   <p className="terms">
-                    Регистрируясь, вы соглашаетесь с <a href="#">условиями</a> и <a href="#">политикой конфиденциальности</a>.
+                    {t('auth.terms_pre')} <a href="#">{t('auth.terms_link')}</a> {t('auth.terms_and')} <a href="#">{t('auth.privacy_link')}</a>.
                   </p>
 
                   <button type="submit" className="btn-primary" style={{ marginTop: 18 }} disabled={isLoading}>
-                    {isLoading ? 'Загрузка…' : 'Создать аккаунт'}<IconArrow />
+                    {isLoading ? t('common.loading') : t('auth.create_account')}<IconArrow />
                   </button>
                 </form>
 
                 <p className="auth__switch">
-                  Уже есть аккаунт?{' '}
-                  <button type="button" onClick={() => goto('login')}>Войти</button>
+                  {t('auth.have_account')}{' '}
+                  <button type="button" onClick={() => goto('login')}>{t('auth.sign_in')}</button>
                 </p>
               </>
             )}
@@ -487,16 +491,16 @@ export default function Login() {
             {/* ── Reset request ── */}
             {view === 'reset' && (
               <>
-                <div className="eyebrow">Восстановление</div>
-                <h1 className="auth__h1">Сбросьте пароль.</h1>
-                <p className="lede">Введи email, на который зарегистрирован аккаунт - пришлём ссылку для смены пароля.</p>
+                <div className="eyebrow">{t('auth.reset_eyebrow')}</div>
+                <h1 className="auth__h1">{t('auth.reset_title')}</h1>
+                <p className="lede">{t('auth.reset_lede')}</p>
 
                 {error && <div className="auth-error">{error}</div>}
 
                 <form className="auth__inputs" onSubmit={handleReset} style={{ marginTop: 28 }}>
                   <div className="field">
                     <div className="field__top">
-                      <label className="field__label" htmlFor="r-email">Email</label>
+                      <label className="field__label" htmlFor="r-email">{t('auth.email_label')}</label>
                     </div>
                     <input className="auth-input" id="r-email" type="email" autoComplete="email"
                       placeholder="you@example.com" required value={email}
@@ -504,13 +508,13 @@ export default function Login() {
                   </div>
 
                   <button type="submit" className="btn-primary" style={{ marginTop: 6 }} disabled={isLoading}>
-                    {isLoading ? 'Загрузка…' : 'Прислать ссылку'}<IconArrow />
+                    {isLoading ? t('common.loading') : t('auth.reset_submit')}<IconArrow />
                   </button>
                 </form>
 
                 <p className="auth__switch">
-                  Вспомнили пароль?{' '}
-                  <button type="button" onClick={() => goto('login')}>Войти</button>
+                  {t('auth.remember_pw')}{' '}
+                  <button type="button" onClick={() => goto('login')}>{t('auth.sign_in')}</button>
                 </p>
               </>
             )}
@@ -520,24 +524,25 @@ export default function Login() {
               <div className="confirm">
                 <div className="confirm__icon"><IconMail /></div>
                 <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '-0.025em', color: 'var(--ink)' }}>
-                  Письмо отправлено.
+                  {t('auth.sent_title')}
                 </h2>
                 <p className="lede" style={{ margin: '14px auto 0', maxWidth: '36ch' }}>
-                  Ссылка ушла на{' '}
-                  <span className="confirm__email">{sentEmail}</span>.
-                  <br />Не пришло за пару минут - посмотрите в «Спам».
+                  {t('auth.sent_to').split('{email}')[0]}
+                  <span className="confirm__email">{sentEmail}</span>
+                  {t('auth.sent_to').split('{email}')[1]}
+                  <br />{t('auth.sent_spam')}
                 </p>
                 <div className="confirm__actions">
                   <a className="btn-ghost" href="https://mail.google.com" target="_blank" rel="noopener noreferrer">
-                    Открыть Gmail <IconExternalLink />
+                    {t('auth.open_gmail')} <IconExternalLink />
                   </a>
                   <button type="button" className="btn-ghost" onClick={() => goto('login')}>
-                    К входу
+                    {t('auth.to_login')}
                   </button>
                 </div>
                 <p className="auth__switch" style={{ marginTop: 24 }}>
-                  Не получили письмо?{' '}
-                  <button type="button" onClick={() => goto('reset')}>Отправить ещё раз</button>
+                  {t('auth.no_email')}{' '}
+                  <button type="button" onClick={() => goto('reset')}>{t('auth.resend')}</button>
                 </p>
               </div>
             )}
@@ -545,24 +550,24 @@ export default function Login() {
             {/* ── Reset password (set new) ── */}
             {view === 'reset-password' && (
               <>
-                <div className="eyebrow">Новый пароль</div>
-                <h1 className="auth__h1">Придумайте новый пароль.</h1>
-                <p className="lede">Введи новый пароль дважды - он заменит старый для входа в аккаунт.</p>
+                <div className="eyebrow">{t('auth.new_password')}</div>
+                <h1 className="auth__h1">{t('auth.newpw_title')}</h1>
+                <p className="lede">{t('auth.newpw_lede')}</p>
 
                 {error && <div className="auth-error">{error}</div>}
 
                 <form className="auth__inputs" onSubmit={handleNewPassword} style={{ marginTop: 26 }}>
                   <div className="field">
                     <div className="field__top">
-                      <label className="field__label" htmlFor="rp-pw">Новый пароль</label>
+                      <label className="field__label" htmlFor="rp-pw">{t('auth.new_password')}</label>
                     </div>
                     <div className="input-wrap">
                       <input className="auth-input auth-input--trail" id="rp-pw"
                         type={showPw ? 'text' : 'password'} autoComplete="new-password"
-                        placeholder="Минимум 8 символов" required minLength={8} value={password}
+                        placeholder={t('auth.pw_placeholder')} required minLength={8} value={password}
                         onChange={e => setPassword(e.target.value)} disabled={isLoading} />
                       <button type="button" className="input-trail"
-                        aria-label={showPw ? 'Скрыть пароль' : 'Показать пароль'}
+                        aria-label={showPw ? t('auth.pw_hide') : t('auth.pw_show')}
                         onClick={() => setShowPw(v => !v)}>
                         <IconEye off={showPw} />
                       </button>
@@ -575,34 +580,34 @@ export default function Login() {
 
                   <div className="field">
                     <div className="field__top">
-                      <label className="field__label" htmlFor="rp-pw2">Повтори пароль</label>
+                      <label className="field__label" htmlFor="rp-pw2">{t('auth.repeat_password')}</label>
                     </div>
                     <div className="input-wrap">
                       <input className="auth-input auth-input--trail" id="rp-pw2"
                         type={showPw2 ? 'text' : 'password'} autoComplete="new-password"
-                        placeholder="Ещё раз тот же пароль" required value={password2}
+                        placeholder={t('auth.repeat_placeholder')} required value={password2}
                         onChange={e => setPassword2(e.target.value)} disabled={isLoading} />
                       <button type="button" className="input-trail"
-                        aria-label={showPw2 ? 'Скрыть пароль' : 'Показать пароль'}
+                        aria-label={showPw2 ? t('auth.pw_hide') : t('auth.pw_show')}
                         onClick={() => setShowPw2(v => !v)}>
                         <IconEye off={showPw2} />
                       </button>
                     </div>
                     {password2 && (
                       <div className={`field__match ${password === password2 ? 'is-ok' : 'is-bad'}`} aria-live="polite">
-                        {password === password2 ? 'Пароли совпадают' : 'Пароли не совпадают'}
+                        {password === password2 ? t('auth.pw_match') : t('auth.pw_nomatch')}
                       </div>
                     )}
                   </div>
 
                   <button type="submit" className="btn-primary" style={{ marginTop: 14 }} disabled={isLoading}>
-                    {isLoading ? 'Сохранение…' : 'Сохранить пароль'}<IconArrow />
+                    {isLoading ? t('auth.saving') : t('auth.save_password')}<IconArrow />
                   </button>
                 </form>
 
                 <p className="auth__switch">
-                  Вспомнили старый пароль?{' '}
-                  <button type="button" onClick={finishToLogin}>Войти</button>
+                  {t('auth.remember_old')}{' '}
+                  <button type="button" onClick={finishToLogin}>{t('auth.sign_in')}</button>
                 </p>
               </>
             )}
@@ -616,14 +621,14 @@ export default function Login() {
                   </svg>
                 </div>
                 <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '-0.025em', color: 'var(--ink)' }}>
-                  Пароль обновлён.
+                  {t('auth.done_title')}
                 </h2>
                 <p className="lede" style={{ margin: '14px auto 0', maxWidth: '34ch' }}>
-                  Готово - войдите в аккаунт с новым паролем. Старый больше не работает.
+                  {t('auth.done_lede')}
                 </p>
                 <div className="confirm__actions" style={{ gridTemplateColumns: '1fr' }}>
                   <button type="button" className="btn-primary" onClick={finishToLogin}>
-                    Войти<IconArrow />
+                    {t('auth.sign_in')}<IconArrow />
                   </button>
                 </div>
               </div>
@@ -635,9 +640,9 @@ export default function Login() {
         <footer className="auth__foot">
           <span>© 2026 Triplanio</span>
           <div className="auth__foot-links">
-            <a href="#">Условия</a>
-            <a href="#">Приватность</a>
-            <a href="#">Поддержка</a>
+            <a href="#">{t('auth.foot_terms')}</a>
+            <a href="#">{t('auth.foot_privacy')}</a>
+            <a href="#">{t('auth.foot_support')}</a>
           </div>
         </footer>
       </section>
@@ -652,14 +657,14 @@ export default function Login() {
             </span>
             <span className="brand-col__eyebrow">Triplanio</span>
             <h2 className="brand-col__tag">
-              Вся поездка. <span className="accent">Один</span> красивый план.
+              {t('auth.brand_tag_pre')} <span className="accent">{t('auth.brand_tag_accent')}</span> {t('auth.brand_tag_post')}
             </h2>
             <p className="brand-col__sub">
-              Маршруты в нескольких городах, общие планы, бюджеты в любой валюте - и ИИ, который берёт на себя рутину.
+              {t('auth.brand_sub')}
             </p>
           </header>
 
-          <div className="preview" role="img" aria-label="Превью маршрута Иберия - Лето 2026">
+          <div className="preview" role="img" aria-label={t('auth.preview_aria')}>
             <div className="preview__stage">
               <div className="appframe">
                 <div className="appframe__bar">
@@ -670,8 +675,8 @@ export default function Login() {
                 </div>
                 <div className="appframe__body">
                   <div className="trip-head">
-                    <div className="trip-head__meta">Маршрут · 12.07 → 23.07</div>
-                    <div className="trip-head__title">Иберия - Лето '26</div>
+                    <div className="trip-head__meta">{t('auth.preview_route_meta')}</div>
+                    <div className="trip-head__title">{t('auth.preview_trip_name')}</div>
                     <div className="trip-head__cities">
                       <span className="city-chip"><span className="dot" style={{ background: 'var(--brand)' }} /> Lisbon</span>
                       <span className="city-chip"><span className="dot" style={{ background: 'var(--warm)' }} /> Porto</span>
@@ -679,13 +684,13 @@ export default function Login() {
                     </div>
                   </div>
                   <div className="trip-tl">
-                    <div className="trip-tl__day">Сб · 12.07</div>
+                    <div className="trip-tl__day">{t('auth.preview_day')}</div>
                     <div className="trip-tl__row">
                       <span className="ico">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.5 3 18l4-5-4-5 18 5.5a.5.5 0 0 1 0 1z"/></svg>
                       </span>
                       <span className="lbl"><strong>LHR → LIS</strong><span className="sub">British Airways 503</span></span>
-                      <span className="tag">Перелёт</span>
+                      <span className="tag">{t('auth.preview_flight')}</span>
                       <span className="time">10:25</span>
                     </div>
                     <div className="trip-tl__row">
@@ -693,7 +698,7 @@ export default function Login() {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-7a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v7"/><path d="M3 14h18"/></svg>
                       </span>
                       <span className="lbl"><strong>Memmo Alfama</strong><span className="sub">check-in</span></span>
-                      <span className="tag tag--green">Отель</span>
+                      <span className="tag tag--green">{t('auth.preview_hotel')}</span>
                       <span className="time">15:00</span>
                     </div>
                     <div className="trip-tl__row">
@@ -701,36 +706,36 @@ export default function Login() {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.5"/></svg>
                       </span>
                       <span className="lbl"><strong>Pastéis de Belém</strong><span className="sub">pastry crawl</span></span>
-                      <span className="tag tag--warm">Активность</span>
+                      <span className="tag tag--warm">{t('auth.preview_activity')}</span>
                       <span className="time">15:30</span>
                     </div>
                   </div>
                   <div className="trip-foot">
-                    <div className="trip-foot__lab">Бюджет</div>
+                    <div className="trip-foot__lab">{t('auth.preview_budget')}</div>
                     <div className="trip-foot__total">
                       <span className="big">€4,820</span>
                       <span className="ccy">· $5,210 · ₽491k</span>
                     </div>
-                    <span className="trip-foot__delta">−€180 от плана</span>
+                    <span className="trip-foot__delta">{t('auth.preview_delta')}</span>
                   </div>
                 </div>
               </div>
               <div className="appnudge">
                 <span className="av">AI</span>
                 <div>
-                  <div className="ttl">Выезд в 14:10</div>
-                  <div className="sub">Поезд в Порту, 30 мин от отеля</div>
+                  <div className="ttl">{t('auth.preview_nudge_title')}</div>
+                  <div className="sub">{t('auth.preview_nudge_sub')}</div>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="brand-col__trust">
-            <span>Бесплатно для старта</span>
+            <span>{t('auth.trust_free')}</span>
             <span className="pip" />
             <span>EN · RU · ES</span>
             <span className="pip" />
-            <span>Работает в браузере</span>
+            <span>{t('auth.trust_browser')}</span>
           </div>
         </div>
       </aside>
