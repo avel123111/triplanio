@@ -70,6 +70,10 @@ export function setLineLayer(map, id, features, { color, width, dashed = false, 
         'line-color': color,
         'line-width': width,
         'line-opacity': opacity ?? (dashed ? 0.5 : 1),
+        // Mapbox Standard lights layers by the scene; without full emissive
+        // strength custom lines render dark/black under the `night` preset.
+        // Keeping it at 1 makes the line show its true colour in both themes.
+        'line-emissive-strength': 1,
         ...(dashed ? { 'line-dasharray': [2, 2] } : {}),
       },
     });
