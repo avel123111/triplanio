@@ -867,26 +867,6 @@ export default function EventEditDialog({
           ) : (
           /* Body */
           <div style={{ padding: 22 }}>
-            {/* TYPE PICKER — visible in create mode (per design spec). */}
-            {!isEdit && (
-              <div style={{ margin: '-4px 0 18px', padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span className="eyebrow">Тип</span>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-                  {Object.entries(TYPE_META).map(([k, m]) => {
-                    const active = k === currentKind;
-                    const MIcon = m.Icon;
-                    return (
-                      <button key={k} type="button" onClick={() => switchKind(k)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: active ? m.soft : 'var(--surface)', color: active ? m.color : 'var(--ink-2)', border: '1.5px solid ' + (active ? m.color : 'var(--line)'), borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: active ? 600 : 500 }}>
-                        <MIcon className="w-3 h-3" />
-                        {m.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* AI block — only for hotel & transfer (the kinds with parsers). */}
             {(currentKind === 'hotel' || currentKind === 'transfer') && (
               <EventAiBlock
@@ -1110,14 +1090,29 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user) {
   const segs = form.segments;
   const N = segs.length;
 
+  // Waypoint NODE ordering must place each layover strictly between fromVisit
+  // and toVisit, because the timeline/edit-mode sort cities by their own
+  // start_datetime and only draw a transfer between CONSECUTIVE nodes. The
+  // node date is decoupled from the (possibly later) segment-leg times: we
+  // distribute the N-1 waypoints evenly in the gap between the two endpoints.
+  const ms = (iso) => { const x = iso ? Date.parse(iso) : NaN; return Number.isNaN(x) ? null : x; };
+  const fromMs = ms(fromVisit?.end_datetime) ?? ms(fromVisit?.start_datetime);
+  const toMs = ms(toVisit?.start_datetime) ?? ms(toVisit?.end_datetime);
+  const MIN = 60000;
+  const nodeMsAt = (i) => { // i: 0..N-2
+    if (fromMs != null && toMs != null && toMs > fromMs) return fromMs + ((toMs - fromMs) * (i + 1)) / N;
+    if (toMs != null) return toMs - (N - 1 - i + 1) * MIN;   // just before toVisit, ascending
+    if (fromMs != null) return fromMs + (i + 1) * MIN;        // just after fromVisit, ascending
+    return ms(localToUtc(segs[i].endLocal, 'UTC')) ?? Date.now() + i * MIN; // fallback
+  };
+
   // 1. Create the N-1 waypoint nodes (one per intermediate boundary).
   const wpRows = [];
   for (let i = 0; i < N - 1; i++) {
     const c = segs[i].toCity;
     if (!c?.city_name) throw new Error('Укажите город пересадки для каждого участка маршрута.');
     const tz = c.timezone || 'UTC';
-    // Waypoint sits at the arrival moment of the segment landing into it.
-    const at = localToUtc(segs[i].endLocal, tz);
+    const at = new Date(nodeMsAt(i)).toISOString();
     wpRows.push({
       trip_id: tripId,
       external_city_id: c.external_city_id || null,
@@ -1130,9 +1125,8 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user) {
       kind: 'waypoint',
       start_datetime: at,
       end_datetime: at,
-      // Ordering is driven by start_datetime (distinct, mid-trip); position is
-      // only a same-day tie-breaker. Anchor near fromVisit.
-      position: fromVisit?.position ?? 0,
+      // position follows fromVisit; ordering is carried by start_datetime above.
+      position: (fromVisit?.position ?? 0) + i + 1,
       created_by: user?.id,
     });
   }
