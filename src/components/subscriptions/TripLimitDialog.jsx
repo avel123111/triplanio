@@ -4,6 +4,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2, Crown, Check, X, Info } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
+import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
  * Trip-limit modal (Variant D) - shown for the IN-APP "new trip" action when a
@@ -16,6 +17,7 @@ import { supabase } from '@/api/supabaseClient';
  *   activeCount, isPro     - pre-computed (preferred); otherwise self-fetched
  */
 export default function TripLimitDialog({ open, onOpenChange, onProceed, activeCount: activeCountProp, isPro: isProProp }) {
+  const { t } = useI18n();
   const hasPreComputed = typeof activeCountProp === 'number' && typeof isProProp === 'boolean';
   const [state, setState] = useState(() => hasPreComputed
     ? { status: 'ready', activeCount: activeCountProp, isPro: isProProp }
@@ -77,16 +79,16 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
   if (!shouldBlock) return null;
 
   const freeRows = [
-    { ok: true,  text: '1 активное путешествие' },
-    { ok: true,  text: 'Все основные разделы' },
-    { ok: false, text: 'Безлимит путешествий' },
-    { ok: false, text: 'ИИ-парсинг броней' },
+    { ok: true,  text: t('sub.feat_free_active1') },
+    { ok: true,  text: t('sub.feat_free_sections') },
+    { ok: false, text: t('sub.feat_unlimited_trips') },
+    { ok: false, text: t('sub.feat_ai_parse') },
   ];
   const proRows = [
-    <><b>Безлимит</b> активных путешествий</>,
-    'ИИ-распознавание броней',
-    'Все разделы во всех путешествиях',
-    'Приоритетная поддержка',
+    <><b>{t('sub.unlimited_word')}</b> {t('sub.feat_unlimited_active_rest')}</>,
+    t('sub.feat_ai_recognition'),
+    t('sub.feat_all_sections'),
+    t('sub.feat_priority_support'),
   ];
 
   return (
@@ -98,23 +100,23 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
             background: 'linear-gradient(110deg, var(--brand-ink, #1b3a8f) 0%, var(--brand, #2167e2) 55%, #6aa0ff 120%)', color: 'white' }}>
             <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '.04em', background: 'rgba(255,255,255,.18)', padding: '2px 9px', borderRadius: 999, marginBottom: 10 }}>Pro</span>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 6 }}>
-              Планируй сколько угодно путешествий.
+              {t('sub.limit_hero_title')}
             </div>
             <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.9)' }}>
-              Ты достиг лимита Free - {state.activeCount} активное путешествие. Pro снимает ограничение.
+              {t('sub.limit_hero_sub', { count: state.activeCount })}
             </div>
           </div>
 
           {/* Info strip */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, marginBottom: 16, fontSize: 12.5, color: 'var(--muted)' }}>
             <Info className="w-3.5 h-3.5 shrink-0" />
-            Путешествие активено до последнего дня - прошедшие путешествия освобождают слот автоматически.
+            {t('sub.limit_info')}
           </div>
 
           {/* Two columns */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: 'var(--muted)', marginBottom: 12 }}>СЕЙЧАС · FREE</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: 'var(--muted)', marginBottom: 12 }}>{t('sub.limit_now_free')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {freeRows.map((r, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: r.ok ? 'var(--ink-2)' : 'var(--muted-2)' }}>
@@ -139,13 +141,13 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           </div>
 
           <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted)', marginTop: 14 }}>
-            Тарифы и цены - на следующем экране.
+            {t('sub.limit_prices_next')}
           </div>
 
           {/* Footer */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Не сейчас</Button>
-            <Button onClick={openUpgrade}><Crown className="w-4 h-4 mr-2" />Посмотреть тарифы</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>{t('sub.not_now')}</Button>
+            <Button onClick={openUpgrade}><Crown className="w-4 h-4 mr-2" />{t('sub.see_plans')}</Button>
           </div>
         </div>
       </DialogContent>

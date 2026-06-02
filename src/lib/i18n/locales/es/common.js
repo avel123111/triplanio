@@ -83,4 +83,5 @@ export default {
   'ai_plan.error_plan_desc': 'No se pudo generar el itinerario. Intenta una descripción diferente.',
   'ai_plan.error_save': 'No se pudo guardar el viaje. Por favor, intenta de nuevo.',
   'ai_plan.draft_placeholder': 'Tu itinerario aparecerá aquí',
+  'common.got_it': 'Entendido',
 };

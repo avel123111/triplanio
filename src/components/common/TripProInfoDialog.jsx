@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
+import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
  * TripProInfoDialog - shown to a NON-OWNER participant who hits a Pro gate
@@ -15,6 +16,7 @@ import { Btn } from '@/design/index';
  *   ownerName     - optional owner display name
  */
 export default function TripProInfoDialog({ open, onOpenChange, feature, ownerName }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   if (!open) return null;
   const close = () => onOpenChange?.(false);
@@ -35,7 +37,7 @@ export default function TripProInfoDialog({ open, onOpenChange, feature, ownerNa
           <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--warm-tint)', color: 'var(--warm)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="lock" size={17} />
           </div>
-          <h2>Pro-функция путешествия</h2>
+          <h2>{t('sub.trip_pro_heading')}</h2>
           <button className="icon-btn" onClick={close}><Icon name="close" size={16} /></button>
         </div>
         <div className="dlg__body">
@@ -44,18 +46,18 @@ export default function TripProInfoDialog({ open, onOpenChange, feature, ownerNa
               <Icon name="crown" size={24} />
             </div>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
-              {feature ? `«${feature}» - Pro-функция` : 'Это Pro-функция путешествия'}
+              {feature ? t('sub.trip_pro_feature_named', { feature }) : t('sub.trip_pro_generic')}
             </div>
             <div className="muted" style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 340, margin: '0 auto' }}>
-              Pro-функции этого путешествия подключает {ownerName ? <b>{ownerName}</b> : 'владелец путешествия'}. Чтобы открыть ИИ-распознавание, бюджет, чат и календарь - попроси владельца оформить Pro для путешествия.
+              {t('sub.trip_pro_desc_pre')}{ownerName ? <b>{ownerName}</b> : t('sub.trip_owner_fallback')}{t('sub.trip_pro_desc_post')}
             </div>
           </div>
         </div>
         <div className="dlg__foot">
           <Btn variant="ghost" icon={copied ? 'check' : 'copy'} onClick={copyLink}>
-            {copied ? 'Скопировано' : 'Скопировать ссылку'}
+            {copied ? t('common.copied') : t('trip.copy_link')}
           </Btn>
-          <Btn variant="primary" onClick={close}>Понятно</Btn>
+          <Btn variant="primary" onClick={close}>{t('common.got_it')}</Btn>
         </div>
       </div>
     </div>

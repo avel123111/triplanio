@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
 import PaymentFailDialog from '@/components/common/PaymentFailDialog';
+import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
  * Global Stripe-checkout return handler. Mounted ONCE above all authenticated
@@ -13,6 +14,7 @@ import PaymentFailDialog from '@/components/common/PaymentFailDialog';
  * `stripe_status`). Screens must NOT duplicate this.
  */
 export default function StripeReturnModals() {
+  const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const nav = useNavigate();
   const qc = useQueryClient();
@@ -33,7 +35,7 @@ export default function StripeReturnModals() {
         try {
           const planRes = await supabase.functions.invoke('getUserPlan');
           const type = planRes.data?.subscriptionType;
-          setPlanLabel(type === 'pro_monthly' ? 'Pro Monthly' : type === 'pro_yearly' ? 'Pro Yearly' : null);
+          setPlanLabel(type === 'pro_monthly' ? t('sub.plan_monthly_title') : type === 'pro_yearly' ? t('sub.plan_yearly_title') : null);
           if (type) {
             const priceRes = await supabase.functions.invoke('getStripePrices', { body: {} });
             const p = priceRes.data?.prices?.[type];
@@ -42,7 +44,7 @@ export default function StripeReturnModals() {
                 style: 'currency', currency: (p.currency || 'eur').toUpperCase(),
                 minimumFractionDigits: 0, maximumFractionDigits: 2,
               }).format(p.unit_amount / 100);
-              const per = p.recurring_interval === 'month' ? '/мес' : p.recurring_interval === 'year' ? '/год' : '';
+              const per = p.recurring_interval === 'month' ? t('sub.period_month') : p.recurring_interval === 'year' ? t('sub.period_year') : '';
               setPriceLabel(amt + per);
             }
           }

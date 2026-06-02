@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
+import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
  * PaymentFailDialog - shown when a Stripe checkout is cancelled or errors out.
@@ -13,6 +14,7 @@ import { Btn } from '@/design/index';
  *   onRetry       - called when the user taps "Повторить оплату"
  */
 export default function PaymentFailDialog({ open, onOpenChange, code, onRetry }) {
+  const { t } = useI18n();
   if (!open) return null;
   const close = () => onOpenChange?.(false);
   return (
@@ -27,19 +29,19 @@ export default function PaymentFailDialog({ open, onOpenChange, code, onRetry })
           <div style={{ width: 72, height: 72, borderRadius: 18, background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
             <Icon name="error" size={36} />
           </div>
-          <h2 style={{ marginBottom: 8 }}>Оплата не прошла</h2>
+          <h2 style={{ marginBottom: 8 }}>{t('sub.fail_title')}</h2>
           <div className="muted" style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 14, maxWidth: 360, margin: '0 auto 14px' }}>
             {code
-              ? <>Stripe отклонил карту: <span className="mono" style={{ color: 'var(--ink-2)' }}>{code}</span>. С карты ничего не списано. Проверь данные и повтори.</>
-              : <>Платёж отменён или не завершён. С карты ничего не списано - попробуй ещё раз.</>}
+              ? <>{t('sub.fail_declined_pre')}<span className="mono" style={{ color: 'var(--ink-2)' }}>{code}</span>{t('sub.fail_declined_post')}</>
+              : <>{t('sub.fail_cancelled')}</>}
           </div>
           <div style={{ background: 'var(--wash)', padding: 10, borderRadius: 8, fontSize: 12, color: 'var(--muted)', lineHeight: 1.5, maxWidth: 360, margin: '0 auto' }}>
-            Если карта работает в других сервисах, попробуй другой способ оплаты или напиши в поддержку.
+            {t('sub.fail_help')}
           </div>
         </div>
         <div className="dlg__foot">
-          <Btn variant="ghost" onClick={close}>Закрыть</Btn>
-          <Btn variant="primary" icon="refresh" onClick={() => { close(); onRetry?.(); }}>Повторить оплату</Btn>
+          <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+          <Btn variant="primary" icon="refresh" onClick={() => { close(); onRetry?.(); }}>{t('sub.fail_retry')}</Btn>
         </div>
       </div>
     </div>

@@ -98,7 +98,7 @@ export default function Pro() {
     let period = '';
     if (p.recurring_interval === 'month') period = t('sub.period_month');
     else if (p.recurring_interval === 'year') period = t('sub.period_year');
-    else period = t('sub.period_once') || 'разово';
+    else period = t('sub.period_once');
     return { price, period };
   };
 
@@ -125,7 +125,7 @@ export default function Pro() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <button className="app-header__crumb-back" onClick={() => nav(-1)} title="Назад">
+        <button className="app-header__crumb-back" onClick={() => nav(-1)} title={t('common.back')}>
           <Icon name="back" size={14} />
         </button>
         <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
@@ -146,15 +146,15 @@ export default function Pro() {
             <span>Triplanio Pro</span>
           </div>
           <h1 style={{ fontSize: 44, marginBottom: 10, maxWidth: 720, margin: '0 auto 10px', letterSpacing: '-0.02em' }}>
-            Больше путешествий, меньше работы.
+            {t('sub.hero_title')}
           </h1>
           <div className="muted" style={{ fontSize: 17, maxWidth: 560, margin: '0 auto', lineHeight: 1.55 }}>
-            ИИ-планировщик с нуля, парсинг бронирований, безлимит путешествий и группового планирования.
+            {t('sub.hero_sub')}
           </div>
           {hidePerTrip && tripId === null && (
             <div className="muted" style={{ fontSize: 13, marginTop: 14 }}>
               <Icon name="info" size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
-              Одноразовый апгрейд одного путешествия доступен только внутри конкретного путешествия.
+              {t('sub.per_trip_note')}
             </div>
           )}
         </div>
@@ -190,7 +190,7 @@ export default function Pro() {
                   >
                     {p.popular && (
                       <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: 'var(--brand)', color: 'white', padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: '.04em', boxShadow: '0 4px 14px rgba(33,103,226,.3)' }}>
-                        ⭐ САМЫЙ ПОПУЛЯРНЫЙ
+                        {t('sub.most_popular')}
                       </div>
                     )}
                     {p.save && (
@@ -222,7 +222,7 @@ export default function Pro() {
                       color: selected ? 'white' : 'var(--ink)',
                       border: '1px solid ' + (selected ? 'var(--brand)' : 'var(--line)'),
                       borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer',
-                    }}>{selected ? '✓ Выбран' : 'Выбрать'}</button>
+                    }}>{selected ? t('sub.selected') : t('sub.select')}</button>
                   </div>
                 );
               })}
@@ -237,10 +237,10 @@ export default function Pro() {
         <div style={{ marginTop: 30, padding: 18, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <Icon name="lock" size={20} style={{ color: 'var(--muted)' }} />
           <div style={{ flex: 1, minWidth: 220, fontSize: 13.5 }}>
-            <b>Безопасный чекаут</b> · Stripe · отменишь в любой момент · Apple Pay / Google Pay / карты
+            <b>{t('sub.secure_checkout')}</b>{t('sub.secure_checkout_meta')}
           </div>
           <Btn variant="primary" size="lg" iconRight="arrow" disabled={loading} onClick={() => !loading && handleUpgrade(picked)}>
-            {loading ? (t('sub.processing') || 'Обработка…') : 'Перейти к оплате'}
+            {loading ? t('sub.processing') : t('sub.go_to_payment')}
           </Btn>
         </div>
       </main>

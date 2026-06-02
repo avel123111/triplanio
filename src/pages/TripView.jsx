@@ -39,11 +39,12 @@ import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/redesign/ScreenMap';
 import TripFormDialog from '@/components/trips/TripFormDialog';
 import { getGradientById } from '@/lib/trip-gradients';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import '../design/app.css';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function formatDuration(start, end) {
+function formatDuration(t, start, end) {
   const s = parseNaive(start);
   const e = parseNaive(end);
   if (!s || !e) return null;
@@ -51,9 +52,9 @@ function formatDuration(start, end) {
   if (mins <= 0) return null;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  if (h === 0) return `${m}м`;
-  if (m === 0) return `${h}ч`;
-  return `${h}ч ${m}м`;
+  if (h === 0) return t('trip.dur_m', { m });
+  if (m === 0) return t('trip.dur_h', { h });
+  return t('trip.dur_hm', { h, m });
 }
 
 function cityForVisit(visitId, visits) {
@@ -61,7 +62,7 @@ function cityForVisit(visitId, visits) {
   return v ? v.city_name : null;
 }
 
-export function buildEventStream(hotels = [], activities = [], transfers = [], visits = []) {
+export function buildEventStream(t, hotels = [], activities = [], transfers = [], visits = []) {
   const events = [];
 
   for (const h of hotels) {
@@ -73,7 +74,7 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
         date: naiveDayKey(h.check_in_datetime),
         time: formatNaive(h.check_in_datetime, 'HH:mm'),
         city,
-        title: 'Заезд · ' + h.name,
+        title: t('trip.hotel_check_in') + ' · ' + h.name,
         hotel: h.name,
         hotelId: h.id,
         price: h.price,
@@ -91,7 +92,7 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
         date: naiveDayKey(h.check_out_datetime),
         time: formatNaive(h.check_out_datetime, 'HH:mm'),
         city,
-        title: 'Выезд · ' + h.name,
+        title: t('trip.hotel_check_out') + ' · ' + h.name,
         hotelId: h.id,
         _ms: parseNaive(h.check_out_datetime)?.toMillis() ?? 0,
       });
@@ -105,7 +106,7 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
         date: naiveDayKey(h.free_cancellation_until),
         time: formatNaive(h.free_cancellation_until, 'HH:mm'),
         city,
-        title: 'Дедлайн бесплатной отмены · ' + h.name,
+        title: t('trip.hotel_free_cancel') + ' · ' + h.name,
         hotelId: h.id,
         price: h.price,
         cur: h.currency,
@@ -127,47 +128,47 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
       cur: a.currency,
       category: a.category,
       address: a.location_address,
-      duration: a.end_datetime ? formatDuration(a.start_datetime, a.end_datetime) : null,
+      duration: a.end_datetime ? formatDuration(t, a.start_datetime, a.end_datetime) : null,
       _ms: parseNaive(a.start_datetime)?.toMillis() ?? 0,
     });
   }
 
-  for (const t of transfers) {
-    const kind = t.transport_type || t.kind || 'car';
+  for (const tr of transfers) {
+    const kind = tr.transport_type || tr.kind || 'car';
     const isPlane = kind === 'plane';
     // If the transfer has no explicit start_datetime (e.g. created via the
     // ManualPlanner transport step), anchor it to the arrival day of the
     // to-visit so it still appears in the timeline above the city header.
-    const explicitDate = naiveDayKey(t.start_datetime);
-    const toVisit = visits.find(v => v.id === t.to_city_visit_id);
-    const fromVisit = visits.find(v => v.id === t.from_city_visit_id);
+    const explicitDate = naiveDayKey(tr.start_datetime);
+    const toVisit = visits.find(v => v.id === tr.to_city_visit_id);
+    const fromVisit = visits.find(v => v.id === tr.from_city_visit_id);
     // For dateless transfers anchor to the to-visit's arrival day, or - for
     // legs into a dateless end anchor - to the from-visit's end day.
     const fallbackDate = (toVisit && naiveDayKey(toVisit.start_datetime))
       || (fromVisit && naiveDayKey(fromVisit.end_datetime))
       || null;
     const eventDate = explicitDate || fallbackDate;
-    const eventMs = parseNaive(t.start_datetime)?.toMillis()
+    const eventMs = parseNaive(tr.start_datetime)?.toMillis()
       ?? parseNaive(toVisit?.start_datetime)?.toMillis()
       ?? parseNaive(fromVisit?.end_datetime)?.toMillis()
       ?? 0;
     events.push({
       type: isPlane ? 'flight' : 'transfer',
-      id: t.id,
+      id: tr.id,
       date: eventDate,
-      time: formatNaive(t.start_datetime, 'HH:mm'),
-      title: t.carrier || (isPlane ? 'Перелёт' : 'Переезд'),
-      from: cityForVisit(t.from_city_visit_id, visits) || t.from_address,
-      to: cityForVisit(t.to_city_visit_id, visits) || t.to_address,
-      from_address: t.from_address || null,
-      to_address: t.to_address || null,
+      time: formatNaive(tr.start_datetime, 'HH:mm'),
+      title: tr.carrier || (isPlane ? t('trip.tl_flight') : t('trip.tl_transfer')),
+      from: cityForVisit(tr.from_city_visit_id, visits) || tr.from_address,
+      to: cityForVisit(tr.to_city_visit_id, visits) || tr.to_address,
+      from_address: tr.from_address || null,
+      to_address: tr.to_address || null,
       kind,
-      carrier: t.carrier,
-      num: t.booking_reference,
-      price: t.price,
-      cur: t.currency,
-      platformUrl: t.booking_url,
-      duration: t.end_datetime ? formatDuration(t.start_datetime, t.end_datetime) : null,
+      carrier: tr.carrier,
+      num: tr.booking_reference,
+      price: tr.price,
+      cur: tr.currency,
+      platformUrl: tr.booking_url,
+      duration: tr.end_datetime ? formatDuration(t, tr.start_datetime, tr.end_datetime) : null,
       _ms: eventMs,
     });
   }
@@ -202,7 +203,7 @@ function LoadingScreen() {
         {/* Skeleton sidebar */}
         <aside className="app-side">
           <div className="app-side__group">
-            <div className="app-side__group-label">Разделы путешествия</div>
+            <div className="app-side__group-label">{t('trip.sections_title')}</div>
             {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px' }}>
                 <Skeleton w={15} h={15} r={4} />
@@ -211,7 +212,7 @@ function LoadingScreen() {
             ))}
           </div>
           <div className="app-side__group">
-            <div className="app-side__group-label">Управление</div>
+            <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
             {[1, 2, 3, 4].map(i => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px' }}>
                 <Skeleton w={15} h={15} r={4} />
@@ -247,6 +248,7 @@ function LoadingScreen() {
 }
 
 function ErrorScreen({ onBack }) {
+  const { t } = useI18n();
   const nav = useNavigate();
   const { logout } = useAuth();
   const loginOther = async () => {
@@ -258,10 +260,10 @@ function ErrorScreen({ onBack }) {
       <SystemStub
         icon="lock"
         tone="warm"
-        title="Нет доступа к этому путешествию"
-        body="Возможно, тебя нет в списке участников, приглашение отозвали или путешествие был удалёно."
-        primary={{ label: 'К моим путешествиям', onClick: onBack }}
-        secondary={{ label: 'Войти другим аккаунтом', onClick: loginOther }}
+        title={t('trip.no_access_title')}
+        body={t('trip.no_access_desc')}
+        primary={{ label: t('trip.to_my_trips'), onClick: onBack }}
+        secondary={{ label: t('trip.login_other'), onClick: loginOther }}
       />
     </div>
   );
@@ -270,11 +272,12 @@ function ErrorScreen({ onBack }) {
 // ─── TripHeader ───────────────────────────────────────────────────────────────
 
 function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
+  const { t } = useI18n();
   const dateRange = formatTripRange(visits, '-');
 
   return (
     <header className="app-header">
-      <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="Назад">
+      <button className="app-header__crumb-back" onClick={() => nav('/trips')} title={t('trip.back')}>
         <Icon name="back" size={15} />
       </button>
 
@@ -306,17 +309,17 @@ function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
 // ─── TripSidebar ──────────────────────────────────────────────────────────────
 
 const LENS_ITEMS = [
-  { id: 'timeline',  label: 'Хронология',   icon: 'list'     },
-  { id: 'map',       label: 'Карта',         icon: 'map'      },
-  { id: 'calendar',  label: 'Календарь',     icon: 'calendar' },
-  { id: 'budget',    label: 'Бюджет',        icon: 'wallet'   },
-  { id: 'docs',      label: 'Документы',     icon: 'file'     },
-  { id: 'chat',      label: 'Чат',           icon: 'chat'     },
+  { id: 'timeline',  labelKey: 'trip_menu.timeline',   icon: 'list'     },
+  { id: 'map',       labelKey: 'trip_menu.map',         icon: 'map'      },
+  { id: 'calendar',  labelKey: 'trip_menu.calendar',     icon: 'calendar' },
+  { id: 'budget',    labelKey: 'trip.sidebar_budget',        icon: 'wallet'   },
+  { id: 'docs',      labelKey: 'trip_menu.documents',     icon: 'file'     },
+  { id: 'chat',      labelKey: 'trip_menu.chat',           icon: 'chat'     },
 ];
 
 const MGMT_ITEMS = [
-  { id: 'members',   label: 'Участники',     icon: 'users'    },
-  { id: 'settings',  label: 'Настройки',     icon: 'settings' },
+  { id: 'members',   labelKey: 'trip.sidebar_members',     icon: 'users'    },
+  { id: 'settings',  labelKey: 'nav.settings',     icon: 'settings' },
 ];
 
 // Addon-gated lenses: hidden unless the trip explicitly enabled them.
@@ -330,6 +333,7 @@ function isLensVisible(trip, lensId) {
 }
 
 function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true, isOwner, myRole, onUpgrade, onProInfo }) {
+  const { t } = useI18n();
   const lensItems = LENS_ITEMS.filter(item => isLensVisible(trip, item.id));
   // Viewers can't open Settings or Members - hide those menu items entirely.
   const mgmtItems = MGMT_ITEMS.filter(item =>
@@ -342,7 +346,7 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
   return (
     <aside className="app-side">
       <div className="app-side__group">
-        <div className="app-side__group-label">Разделы путешествия</div>
+        <div className="app-side__group-label">{t('trip.sections_title')}</div>
         {lensItems.map(item => (
           <button
             key={item.id}
@@ -350,7 +354,7 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
             onClick={() => onNavigate(item.id)}
           >
             <Icon name={item.icon} size={15} />
-            {item.label}
+            {t(item.labelKey)}
             {item.id === 'chat' && chatUnread > 0 && (
               <span className="app-side__item-badge" style={{ marginLeft: 'auto', background: 'var(--warm)', color: '#fff', borderRadius: 999, fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
                 {chatUnread > 99 ? '99+' : chatUnread}
@@ -361,7 +365,7 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
       </div>
       {(mgmtItems.length > 0 || canShare) && (
         <div className="app-side__group">
-          <div className="app-side__group-label">Управление</div>
+          <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
           {mgmtItems.map(item => (
             <button
               key={item.id}
@@ -369,7 +373,7 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
               onClick={() => onNavigate(item.id)}
             >
               <Icon name={item.icon} size={15} />
-              {item.label}
+              {t(item.labelKey)}
             </button>
           ))}
           {/* Share opens the same dialog as the header button. Hidden from
@@ -381,21 +385,21 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
               onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}
             >
               <Icon name="share" size={15} />
-              Поделиться
+              {t('trip.share')}
             </button>
           )}
         </div>
       )}
       {showUpgrade && (
         <div style={{ margin: '10px 6px 0', padding: 12, borderRadius: 10, background: 'var(--warm-tint)' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warm)', marginBottom: 4 }}>Free-путешествие</div>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warm)', marginBottom: 4 }}>{t('trip_menu.free_trip_title')}</div>
           <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginBottom: 8, lineHeight: 1.45 }}>
-            Календарь, бюджет-разбивка, ИИ и чат закрыты Pro.
+            {t('trip.pro_locked_lenses')}
           </div>
           {isOwner ? (
-            <Btn variant="primary" size="sm" block icon="pro" onClick={onUpgrade}>Апгрейд путешествия</Btn>
+            <Btn variant="primary" size="sm" block icon="pro" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
           ) : (
-            <Btn variant="ghost" size="sm" block icon="lock" onClick={onProInfo}>Подключает владелец</Btn>
+            <Btn variant="ghost" size="sm" block icon="lock" onClick={onProInfo}>{t('trip.pro_by_owner')}</Btn>
           )}
         </div>
       )}
@@ -405,6 +409,7 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
 
 // ─── AddDayButton - shown in edit mode after each day ────────────────────────
 function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
@@ -415,7 +420,7 @@ function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
         onMouseEnter={e => { e.currentTarget.style.color = 'var(--ink)'; e.currentTarget.style.borderColor = 'var(--brand)'; }}
         onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.borderColor = 'var(--line)'; }}
       >
-        <Icon name="plus" size={13} /> Добавить
+        <Icon name="plus" size={13} /> {t('common.add')}
       </button>
       {open && (
         <>
@@ -427,7 +432,7 @@ function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
             onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
             onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
           >
-            <Icon name="sparkles" size={13} style={{ color: 'var(--muted)' }} /> Добавить активность
+            <Icon name="sparkles" size={13} style={{ color: 'var(--muted)' }} /> {t('activity.add')}
           </button>
         </>
       )}
@@ -1466,6 +1471,7 @@ function ServiceRowEmpty({ icon, name, desc, onClick }) {
 // ─── TripView (main export) ───────────────────────────────────────────────────
 
 export default function TripView() {
+  const { t } = useI18n();
   const { tripId } = useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
@@ -1569,8 +1575,8 @@ export default function TripView() {
   const myRole   = myMember?.role || (trip?.created_by === user?.id ? 'owner' : 'viewer');
 
   const stream = useMemo(
-    () => buildEventStream(hotels, activities, transfers, visits),
-    [hotels, activities, transfers, visits],
+    () => buildEventStream(t, hotels, activities, transfers, visits),
+    [t, hotels, activities, transfers, visits],
   );
 
   // Account-level Pro (header chip). For IN-TRIP gating use tripIsPro below.

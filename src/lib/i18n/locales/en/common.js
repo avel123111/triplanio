@@ -85,4 +85,5 @@ export default {
   'ai_plan.error_plan_desc': 'Could not generate itinerary. Try a different prompt.',
   'ai_plan.error_save': 'Could not save trip. Please try again.',
   'ai_plan.draft_placeholder': 'Your itinerary will appear here',
+  'common.got_it': 'Got it',
 };
