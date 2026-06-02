@@ -13,6 +13,7 @@ import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, Field, Skeleton } from '../design/index';
+import { useI18n } from '@/lib/i18n/I18nContext';
 
 // ─── edge error helper ──────────────────────────────────────────────────────
 // supabase-js wraps any non-2xx edge response in a FunctionsHttpError whose
@@ -33,9 +34,10 @@ async function edgeErrorMessage(error, data, fallback = 'Ошибка') {
 // is never selectable here. There is no "editor" role on the backend.
 
 function RoleBadge({ role }) {
-  if (role === 'owner') return <Badge variant="warm">Владелец</Badge>;
-  if (role === 'admin') return <Badge>Админ</Badge>;
-  return <Badge variant="quiet" icon="eye">Зритель</Badge>;
+  const { t } = useI18n();
+  if (role === 'owner') return <Badge variant="warm">{t('members.role_owner')}</Badge>;
+  if (role === 'admin') return <Badge>{t('trips.role_admin')}</Badge>;
+  return <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>;
 }
 
 // Status column. Active members show no status text (the role badge already
@@ -43,19 +45,21 @@ function RoleBadge({ role }) {
 // "Офлайн" badge sits in the role column). Only pending and declined invites
 // carry a status pill.
 function StatusDot({ status }) {
-  if (status === 'pending') return <span style={{ color: 'var(--warning)', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--warning)', display: 'inline-block' }} />Ожидает</span>;
-  if (status === 'declined') return <span style={{ color: 'var(--danger)', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block' }} />Отклонил</span>;
+  const { t } = useI18n();
+  if (status === 'pending') return <span style={{ color: 'var(--warning)', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--warning)', display: 'inline-block' }} />{t('member.status_pending')}</span>;
+  if (status === 'declined') return <span style={{ color: 'var(--danger)', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block' }} />{t('member.status_declined')}</span>;
   return null;
 }
 
 // ─── InviteDialog ─────────────────────────────────────────────────────────────
 
 const ROLES = [
-  { value: 'admin',  label: 'Админ - редактирование всего' },
-  { value: 'viewer', label: 'Зритель - только чтение' },
+  { value: 'admin',  labelKey: 'member.role_admin_desc' },
+  { value: 'viewer', labelKey: 'member.role_viewer_desc' },
 ];
 
 function InviteDialog({ tripId, onSaved, promoteMember }) {
+  const { t } = useI18n();
   const [tab, setTab] = useState('email');
   const [role, setRole] = useState('viewer');
   const [copied, setCopied] = useState(false);
@@ -67,13 +71,13 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
 
   async function inviteByEmail() {
     const trimmed = email.trim().toLowerCase();
-    if (!trimmed.includes('@')) { setErr('Введи корректный e-mail'); return; }
+    if (!trimmed.includes('@')) { setErr(t('member.err_email')); return; }
     setSaving(true);
     setErr('');
     const { data, error } = await supabase.functions.invoke('inviteTripMember', {
       body: { trip_id: tripId, email: trimmed, role },
     });
-    if (error || data?.error) { setSaving(false); setErr(await edgeErrorMessage(error, data)); return; }
+    if (error || data?.error) { setSaving(false); setErr(await edgeErrorMessage(error, data, t('members.error_generic'))); return; }
     // Promoting an offline placeholder → remove it now that a real invite exists.
     if (promoteMember?.id) {
       await supabase.functions.invoke('removeTripMember', { body: { member_id: promoteMember.id } });
@@ -85,41 +89,41 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
 
   async function addOffline() {
     const name = offlineName.trim();
-    if (!name) { setErr('Введи имя'); return; }
+    if (!name) { setErr(t('member.err_name')); return; }
     setSaving(true);
     setErr('');
     const { data, error } = await supabase.functions.invoke('addOfflineTripMember', {
       body: { tripId, name },
     });
     setSaving(false);
-    if (error || data?.error) { setErr((data?.error || error?.message) || 'Ошибка'); return; }
+    if (error || data?.error) { setErr((data?.error || error?.message) || t('members.error_generic')); return; }
     onSaved?.();
     window.__closeModal?.();
   }
 
   return (
-    <Dialog title="Пригласить в путешествие" icon="users" size=""
+    <Dialog title={t('member.invite_to_trip')} icon="users" size=""
       foot={<>
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Закрыть</Btn>
-        {tab === 'email' && <Btn variant="primary" icon="send" onClick={inviteByEmail} disabled={saving}>{saving ? 'Отправляю…' : 'Отправить приглашение'}</Btn>}
-        {tab === 'offline' && <Btn variant="primary" icon="user" onClick={addOffline} disabled={saving}>{saving ? 'Добавляю…' : 'Добавить'}</Btn>}
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>
+        {tab === 'email' && <Btn variant="primary" icon="send" onClick={inviteByEmail} disabled={saving}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
+        {tab === 'offline' && <Btn variant="primary" icon="user" onClick={addOffline} disabled={saving}>{saving ? t('member.adding') : t('members.add')}</Btn>}
       </>}>
       <div className="tweaks__seg" style={{ marginBottom: 14, display: 'flex' }}>
         <button className={tab === 'email' ? 'active' : ''} onClick={() => setTab('email')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-          <Icon name="send" size={12} />По e-mail
+          <Icon name="send" size={12} />{t('member.tab_email')}
         </button>
         <button className={tab === 'link' ? 'active' : ''} onClick={() => setTab('link')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-          <Icon name="link" size={12} />Скопировать ссылку
+          <Icon name="link" size={12} />{t('trip.copy_link')}
         </button>
         <button className={tab === 'offline' ? 'active' : ''} onClick={() => setTab('offline')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-          <Icon name="user" size={12} />Офлайн
+          <Icon name="user" size={12} />{t('trip.member_offline')}
         </button>
       </div>
 
       {tab !== 'offline' && (
-        <Field label="Роль приглашаемого">
+        <Field label={t('member.invitee_role')}>
           <div className="tweaks__seg" style={{ display: 'flex' }}>
-            {[['viewer', 'Зритель', 'Только смотрит'], ['admin', 'Админ', 'Редактирует путешествие']].map(([k, lab, sub]) =>
+            {[['viewer', t('trips.role_viewer'), t('member.role_viewer_short')], ['admin', t('trips.role_admin'), t('member.role_admin_short')]].map(([k, lab, sub]) =>
               <button key={k} className={role === k ? 'active' : ''} onClick={() => setRole(k)}
                 style={{ flex: 1, flexDirection: 'column', gap: 0, padding: '8px 10px' }}>
                 <div style={{ fontWeight: 500 }}>{lab}</div>
@@ -137,35 +141,35 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
         <Field label="E-mail">
           <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" autoFocus />
         </Field>
-        <Field label="Сообщение (опц.)" hint="свободный текст">
-          <textarea className="textarea" value={message} onChange={e => setMessage(e.target.value)} placeholder="Поедешь со мной?" rows={3} />
+        <Field label={t('member.message_label')} hint={t('member.message_hint')}>
+          <textarea className="textarea" value={message} onChange={e => setMessage(e.target.value)} placeholder={t('member.message_ph')} rows={3} />
         </Field>
         <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-          Получатель примет приглашение из инбокса в Triplanio.
+          {t('member.invite_email_note')}
         </div>
       </>}
 
       {tab === 'link' && <>
-        <Field label="Ссылка для приглашения · истекает через 7 дней">
+        <Field label={t('member.invite_link_label')}>
           <div style={{ display: 'flex', gap: 6 }}>
             <input className="input mono" value={`https://triplanio.com/join/4f6b-${role === 'viewer' ? 'v' : 'a'}-x29a`}
               readOnly style={{ flex: 1, fontSize: 12 }} />
             <Btn variant="primary" icon="copy" onClick={() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
-              {copied ? 'Скопировано' : 'Копировать'}
+              {copied ? t('common.copied') : t('share.copy')}
             </Btn>
           </div>
         </Field>
         <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
-          Кто откроет ссылку - попадёт на страницу принятия с автоматически выбранной ролью.
+          {t('member.invite_link_note')}
         </div>
       </>}
 
       {tab === 'offline' && <>
-        <Field label="Имя" hint="без аккаунта - только отображается в участниках">
-          <input className="input" value={offlineName} onChange={e => setOfflineName(e.target.value)} placeholder="Серёжа, мама и т.д." autoFocus />
+        <Field label={t('members.offline_name')} hint={t('member.offline_name_hint')}>
+          <input className="input" value={offlineName} onChange={e => setOfflineName(e.target.value)} placeholder={t('member.offline_name_ph')} autoFocus />
         </Field>
         <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
-          Офлайн-участник не получает уведомлений и не голосует.
+          {t('member.offline_note')}
         </div>
       </>}
 
@@ -177,6 +181,7 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
 // ─── ChangeRoleDialog ─────────────────────────────────────────────────────────
 
 function ChangeRoleDialog({ member, tripId, onSaved }) {
+  const { t } = useI18n();
   const [role, setRole] = useState(member.role || 'viewer');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -188,23 +193,23 @@ function ChangeRoleDialog({ member, tripId, onSaved }) {
       body: { member_id: member.id, role },
     });
     setSaving(false);
-    if (error || data?.error) { setErr((data?.error || error?.message) || 'Ошибка'); return; }
+    if (error || data?.error) { setErr((data?.error || error?.message) || t('members.error_generic')); return; }
     onSaved?.();
     window.__closeModal?.();
   }
 
   return (
-    <Dialog title="Изменить роль" icon="edit" size="sm"
+    <Dialog title={t('members.change_role')} icon="edit" size="sm"
       foot={<>
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
-        <Btn variant="primary" onClick={save} disabled={saving}>{saving ? 'Сохраняю…' : 'Сохранить'}</Btn>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="primary" onClick={save} disabled={saving}>{saving ? t('member.saving') : t('trip.form_save')}</Btn>
       </>}>
       <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--muted)' }}>
         {member.user_full_name || member.invite_email}
       </div>
-      <Field label="Роль">
+      <Field label={t('member.role_label')}>
         <select className="select" value={role} onChange={e => setRole(e.target.value)}>
-          {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+          {ROLES.map(r => <option key={r.value} value={r.value}>{t(r.labelKey)}</option>)}
         </select>
       </Field>
       {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
@@ -234,6 +239,7 @@ function RowMenuItem({ icon, danger, onClick, children }) {
 // ─── MembersLens ──────────────────────────────────────────────────────────────
 
 export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient }) {
+  const { t } = useI18n();
   const [openMenu, setOpenMenu] = useState(null);
   const [removing, setRemoving] = useState(null);
 
@@ -276,17 +282,17 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
       body: { trip_id: tripId, email: member.invite_email, role: member.role || 'viewer' },
     });
     setRemoving(null);
-    if (error || data?.error) { alert(await edgeErrorMessage(error, data, 'Не удалось отправить приглашение')); return; }
+    if (error || data?.error) { alert(await edgeErrorMessage(error, data, t('member.err_send_invite'))); return; }
     refresh();
   }
 
   async function removeMember(memberId) {
-    if (!window.confirm('Убрать участника из путешествия?')) return;
+    if (!window.confirm(t('member.remove_confirm'))) return;
     setOpenMenu(null);
     setRemoving(memberId);
     const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });
     setRemoving(null);
-    if (error || !data?.ok) { alert(await edgeErrorMessage(error, data, 'Не удалось убрать участника')); return; }
+    if (error || !data?.ok) { alert(await edgeErrorMessage(error, data, t('member.err_remove'))); return; }
     refresh();
   }
 
@@ -319,15 +325,15 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
-        <h2 style={{ flex: 1, marginBottom: 0 }}>Участники · {allMembers.length}</h2>
+        <h2 style={{ flex: 1, marginBottom: 0 }}>{t('trip.sidebar_members')} · {allMembers.length}</h2>
         {canManage && (
-          <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>Пригласить</Btn>
+          <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>{t('members.invite')}</Btn>
         )}
       </div>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'visible' }}>
         {allMembers.length === 0 && (
-          <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>Нет участников</div>
+          <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>{t('member.empty')}</div>
         )}
         {allMembers.map((m, i) => {
           const isOwner = m.role === 'owner';
@@ -362,7 +368,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                   {name}
-                  {m.user_id === user?.id && <Badge variant="quiet" style={{ fontSize: 10 }}>Вы</Badge>}
+                  {m.user_id === user?.id && <Badge variant="quiet" style={{ fontSize: 10 }}>{t('member.you_self')}</Badge>}
                 </div>
                 {hasRealName && emailLine && (
                   <div className="muted" style={{ fontSize: 12.5 }}>{emailLine}</div>
@@ -370,7 +376,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
               </div>
 
               <div>{m.status === 'offline'
-                ? <Badge variant="quiet" icon="user">Офлайн</Badge>
+                ? <Badge variant="quiet" icon="user">{t('trip.member_offline')}</Badge>
                 : <RoleBadge role={m.role} />}</div>
               <div><StatusDot status={m.status} /></div>
 
@@ -379,7 +385,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                 {m.status === 'offline' && canManage && (
                   <Btn variant="ghost" size="sm" icon="send"
                     onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} promoteMember={m} onSaved={refresh} />)}>
-                    Пригласить
+                    {t('members.invite')}
                   </Btn>
                 )}
                 {!isOwner && m.user_id !== user?.id && canManage && (
@@ -392,7 +398,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                       color: showMenu ? 'var(--brand)' : 'var(--muted)',
                       border: '1px solid ' + (showMenu ? 'var(--brand)' : 'transparent'),
                     }}
-                    title="Действия"
+                    title={t('member.actions')}
                   >
                     <Icon name="more" size={15} />
                   </button>
@@ -407,16 +413,16 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                     padding: 6,
                   }}>
                     {m.status === 'pending' && (
-                      <RowMenuItem icon="send" onClick={() => resend(m.id)}>Отправить ещё раз</RowMenuItem>
+                      <RowMenuItem icon="send" onClick={() => resend(m.id)}>{t('members.resend')}</RowMenuItem>
                     )}
                     {m.status === 'declined' && (
-                      <RowMenuItem icon="send" onClick={() => reinvite(m)}>Пригласить ещё раз</RowMenuItem>
+                      <RowMenuItem icon="send" onClick={() => reinvite(m)}>{t('member.invite_again')}</RowMenuItem>
                     )}
                     {m.status === 'active' && (
-                      <RowMenuItem icon="edit" onClick={() => { setOpenMenu(null); window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />); }}>Изменить роль</RowMenuItem>
+                      <RowMenuItem icon="edit" onClick={() => { setOpenMenu(null); window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />); }}>{t('members.change_role')}</RowMenuItem>
                     )}
                     <RowMenuItem icon="trash" danger onClick={() => removeMember(m.id)}>
-                      {m.status === 'pending' ? 'Отменить приглашение' : 'Убрать из путешествия'}
+                      {m.status === 'pending' ? t('member.cancel_invite') : t('members.remove')}
                     </RowMenuItem>
                   </div>
                 )}
@@ -433,10 +439,10 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
             <Icon name="users" size={20} />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>Пригласить ещё участников</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>Отправь приглашение по e-mail. Получатель увидит путешествие после регистрации.</div>
+            <div style={{ fontWeight: 600, marginBottom: 2 }}>{t('member.invite_more_title')}</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>{t('member.invite_more_desc')}</div>
           </div>
-          <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>Пригласить</Btn>
+          <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>{t('members.invite')}</Btn>
         </div>
       )}
 
