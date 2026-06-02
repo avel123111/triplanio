@@ -181,6 +181,7 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 // ─── LoadingScreen / ErrorScreen ──────────────────────────────────────────────
 
 function LoadingScreen() {
+  const { t } = useI18n();
   return (
     <div className="app" style={{ minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       {/* Skeleton header */}
@@ -527,6 +528,7 @@ function StreamAnchor({ label, sub, color, icon }) {
 // ─── MissingHotelWarning ──────────────────────────────────────────────────────
 
 function MissingHotelWarning({ city, onAdd }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(true);
   if (!open) return null;
   return (
@@ -538,10 +540,10 @@ function MissingHotelWarning({ city, onAdd }) {
         <Icon name="warning" size={18} />
       </div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>Нет бронирования в {city}</div>
-        <div className="muted" style={{ fontSize: 11.5 }}>Добавь отель или место проживания</div>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{t('trip.no_booking_in', { city })}</div>
+        <div className="muted" style={{ fontSize: 11.5 }}>{t('trip.add_hotel_prompt')}</div>
       </div>
-      <Btn variant="primary" size="sm" icon="plus" onClick={onAdd}>Добавить</Btn>
+      <Btn variant="primary" size="sm" icon="plus" onClick={onAdd}>{t('common.add')}</Btn>
       <button onClick={() => setOpen(false)} style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
         <Icon name="close" size={12} />
       </button>
@@ -552,6 +554,7 @@ function MissingHotelWarning({ city, onAdd }) {
 // ─── MissingTransferWarning ───────────────────────────────────────────────────
 
 function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
+  const { t } = useI18n();
   const [hidden, setHidden] = useState(false);
   if (hidden) return null;
   return (
@@ -563,9 +566,9 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
     }}>
       <Icon name="warning" size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
       <div style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>
-        Нет переезда · {from} → {to}
+        {t('trip.no_transfer', { from, to })}
       </div>
-      <Btn variant="primary" size="sm" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>Добавить переезд</Btn>
+      <Btn variant="primary" size="sm" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
       <button onClick={() => setHidden(true)} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--warning)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
         <Icon name="close" size={12} />
       </button>
@@ -601,6 +604,7 @@ function useWeatherByDay(visits) {
 }
 
 function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel, isEditMode, onEditNotes, onDeleteCity, onOpenEvent, showBookingWarnings = true }) {
+  const { t } = useI18n();
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--line)',
@@ -619,7 +623,7 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
             {dateRange && <span className="muted num" style={{ fontSize: 13 }}>{dateRange}</span>}
             {nights > 0 && (
               <span className="muted" style={{ fontSize: 13 }}>
-                · {nights} {nights === 1 ? 'ночь' : nights < 5 ? 'ночи' : 'ночей'}
+                · {nights} {nights === 1 ? t('trip.nights_one') : nights < 5 ? t('trip.nights_few') : t('trip.nights_many')}
               </span>
             )}
             {/* City add/edit/delete moved entirely to the Structure editor
@@ -647,9 +651,9 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 600 }}>{h.hotel}</div>
               <div className="muted num" style={{ fontSize: 11.5, marginTop: 2 }}>
-                {h.checkIn && `Заезд ${fmtDate(h.checkIn)}`}
-                {h.checkOut && ` · Выезд ${fmtDate(h.checkOut)}`}
-                {h.nights && ` · ${h.nights} ${h.nights === 1 ? 'ночь' : 'ночи'}`}
+                {h.checkIn && t('trip.hotel_checkin_date', { date: fmtDate(h.checkIn) })}
+                {h.checkOut && ' · ' + t('trip.hotel_checkout_date', { date: fmtDate(h.checkOut) })}
+                {h.nights && ` · ${h.nights} ${h.nights === 1 ? t('trip.nights_one') : t('trip.nights_few')}`}
               </div>
             </div>
             {h.price && <div className="num" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(h.price, h.cur || 'EUR')}</div>}
@@ -663,6 +667,7 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
 }
 
 function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
+  const { t } = useI18n();
   const weatherByDay = useWeatherByDay(visits);  // hook must run before any early return
   if (isLoading) return <SkeletonTimeline />;
 
@@ -676,8 +681,8 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     return (
       <EmptyState
         icon="list"
-        title="Хронология пуста"
-        body="Добавь отели, переезды и активности - они появятся здесь в хронологическом порядке."
+        title={t('trip.timeline_empty_title')}
+        body={t('trip.timeline_empty_desc')}
       />
     );
   }
@@ -697,8 +702,8 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     return (
       <EmptyState
         icon="list"
-        title="Даты путешествия не заданы"
-        body="Укажи даты путешествия, чтобы увидеть хронологию."
+        title={t('trip.no_dates_title')}
+        body={t('trip.no_dates_desc')}
       />
     );
   }
@@ -841,12 +846,12 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   let prevCity = ordered[0]?.kind === 'start' ? ordered[0] : null;
 
   // Start anchor
-  const startCity = ordered[0]?.city_name || 'Старт';
-  const endCity   = ordered[ordered.length - 1]?.city_name || 'Финиш';
+  const startCity = ordered[0]?.city_name || t('ai_plan.start_badge');
+  const endCity   = ordered[ordered.length - 1]?.city_name || t('ai_plan.end_badge');
   rows.push(
     <StreamAnchor
       key="anchor-start"
-      label={`Старт · ${startCity}`}
+      label={t('trip.start_city', { city: startCity })}
       sub={fmtDate(tripStart)}
       color="var(--brand)"
       icon="flag"
@@ -916,7 +921,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
             borderRadius: 10, color: 'var(--muted)',
           }}>
             <Icon name="info" size={14} />
-            <div style={{ flex: 1, fontSize: 12.5 }}>На этот день ничего не запланировано</div>
+            <div style={{ flex: 1, fontSize: 12.5 }}>{t('view.empty_day')}</div>
           </div>
         )}
         {/* Edit mode: add buttons */}
@@ -964,7 +969,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   rows.push(
     <StreamAnchor
       key="anchor-end"
-      label={`Финиш · ${endCity}`}
+      label={t('trip.finish_city', { city: endCity })}
       sub={fmtDate(tripEnd)}
       color="var(--ink-2)"
       icon="check"
@@ -981,6 +986,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
 // ─── Share / More dialogs ─────────────────────────────────────────────────────
 
 function ShareDialog({ trip }) {
+  const { t } = useI18n();
   const [shareUrl, setShareUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -994,15 +1000,15 @@ function ShareDialog({ trip }) {
     supabase.functions.invoke('ensureShareToken', { body: { tripId: trip.id } })
       .then(({ data, error: invokeErr }) => {
         if (cancelled) return;
-        if (invokeErr) { console.error('ensureShareToken error:', invokeErr); setError('Не удалось создать ссылку'); return; }
+        if (invokeErr) { console.error('ensureShareToken error:', invokeErr); setError(t('trip.link_error')); return; }
         const token = data?.shareToken || data?.token;
         if (token) {
           setShareUrl(`${window.location.origin}/public/trip/${trip.id}?t=${token}`);
         } else {
-          setError('Не удалось создать ссылку');
+          setError(t('trip.link_error'));
         }
       })
-      .catch(err => { if (!cancelled) { console.error('ensureShareToken error:', err); setError('Не удалось создать ссылку'); } })
+      .catch(err => { if (!cancelled) { console.error('ensureShareToken error:', err); setError(t('trip.link_error')); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [trip?.id]);
@@ -1018,10 +1024,10 @@ function ShareDialog({ trip }) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
       onClick={() => window.__closeModal?.()}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 420, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
-        <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>Поделиться путешествием</h2>
-        <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>Скопируй ссылку и отправь участникам - она откроется без входа в аккаунт</div>
+        <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>{t('share.dialog_title')}</h2>
+        <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>{t('trip.share_desc')}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? 'Генерируем ссылку…' : ''} style={{ flex: 1, fontSize: 12.5 }} onClick={e => e.target.select()} />
+          <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1, fontSize: 12.5 }} onClick={e => e.target.select()} />
           {loading ? (
             <Btn variant="primary" disabled>
               <span className="spin-mini" style={{
@@ -1030,17 +1036,17 @@ function ShareDialog({ trip }) {
                 borderRadius: '50%', animation: 'spin .7s linear infinite',
                 marginRight: 6, verticalAlign: -2,
               }} />
-              Генерируем…
+              {t('share.generating')}
             </Btn>
           ) : (
             <Btn variant="primary" icon="check" onClick={copyLink} disabled={!shareUrl}>
-              {copied ? 'Скопировано!' : 'Копировать'}
+              {copied ? t('trip.link_copied') : t('share.copy')}
             </Btn>
           )}
         </div>
         {error && <div style={{ color: 'var(--danger, #dc2626)', fontSize: 12.5, marginTop: 10 }}>{error}</div>}
         <div style={{ marginTop: 18, textAlign: 'right' }}>
-          <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Закрыть</Btn>
+          <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>
         </div>
       </div>
     </div>
@@ -1048,6 +1054,7 @@ function ShareDialog({ trip }) {
 }
 
 function MoreMenuDialog({ trip, visits, canEditMode, onEditStructure, onEditMetadata }) {
+  const { t } = useI18n();
   const openEditMetadata = () => {
     onEditMetadata?.();
   };
@@ -1061,27 +1068,27 @@ function MoreMenuDialog({ trip, visits, canEditMode, onEditStructure, onEditMeta
             <button onClick={() => onEditStructure?.()} style={{ ...itemStyle, color: 'var(--brand)', fontWeight: 600 }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <Icon name="map" size={16} style={{ color: 'var(--brand)' }} /> Редактировать структуру
+              <Icon name="map" size={16} style={{ color: 'var(--brand)' }} /> {t('trip.edit_structure')}
             </button>
           )}
           <button onClick={openEditMetadata} style={itemStyle}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <Icon name="edit" size={16} style={{ color: 'var(--muted)' }} /> Редактировать метаданные
+            <Icon name="edit" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.edit_metadata')}
           </button>
           <button onClick={() => { window.__closeModal?.(); window.__navigate?.('settings'); }} style={itemStyle}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <Icon name="settings" size={16} style={{ color: 'var(--muted)' }} /> Настройки путешествия
+            <Icon name="settings" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.settings_title')}
           </button>
           <button onClick={() => { window.__closeModal?.(); window.__navigate?.('members'); }} style={itemStyle}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <Icon name="users" size={16} style={{ color: 'var(--muted)' }} /> Участники
+            <Icon name="users" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.sidebar_members')}
           </button>
           <div style={{ height: 1, background: 'var(--line-2)', margin: '6px 0' }} />
           <button onClick={() => window.__closeModal?.()} style={{ ...itemStyle, color: 'var(--muted)' }}>
-            <Icon name="close" size={16} /> Закрыть
+            <Icon name="close" size={16} /> {t('common.close')}
           </button>
         </div>
       </div>
@@ -1092,6 +1099,7 @@ function MoreMenuDialog({ trip, visits, canEditMode, onEditStructure, onEditMeta
 // ─── TripCoverStrip ──────────────────────────────────────────────────────────
 
 function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, isEditMode, onToggleEdit }) {
+  const { t } = useI18n();
   const nav = useNavigate();
   const [routeOpen, setRouteOpen] = useState(false);
   const [editingMetadata, setEditingMetadata] = useState(false);
@@ -1166,7 +1174,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
                   fontSize: 12.5, color: 'var(--brand)', fontWeight: 600, cursor: 'pointer',
                 }}>
                 <Icon name="pin" size={13} />
-                {cityCount} {cityCount === 1 ? 'город' : cityCount < 5 ? 'города' : 'городов'}
+                {cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
                 <Icon name={routeOpen ? 'chevD' : 'chev'} size={11} />
               </button>
               {routeOpen && (
@@ -1195,24 +1203,24 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
             fontSize: 12.5, color: 'var(--success)', fontWeight: 600,
           }}>
             <Icon name="users" size={13} />
-            {activeMemberCount} {activeMemberCount === 1 ? 'участник' : activeMemberCount < 5 ? 'участника' : 'участников'}
+            {activeMemberCount} {activeMemberCount === 1 ? t('trip.members_count_one') : activeMemberCount < 5 ? t('trip.members_count_few') : t('trip.members_count_many')}
           </span>
         </div>
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           {myRole !== 'viewer' && (
             frozen
-              ? <Btn variant="ghost" size="sm" icon="lock" disabled>Редактируется</Btn>
+              ? <Btn variant="ghost" size="sm" icon="lock" disabled>{t('trip.editing')}</Btn>
               : isEditMode
-                ? <Btn variant="primary" size="sm" icon="check" onClick={onToggleEdit}>Готово</Btn>
-                : <Btn variant="ghost" size="sm" icon="edit" onClick={onToggleEdit}>Редактировать</Btn>
+                ? <Btn variant="primary" size="sm" icon="check" onClick={onToggleEdit}>{t('view.edit_mode_done')}</Btn>
+                : <Btn variant="ghost" size="sm" icon="edit" onClick={onToggleEdit}>{t('trip.edit_trip')}</Btn>
           )}
           {/* Only owner/admin can mint a share token (ensureShareToken is admin-only);
               showing this to a viewer just produced a 403 "не удалось создать ссылку". */}
           {myRole !== 'viewer' && (
-            <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>Поделиться</Btn>
+            <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>{t('trip.share')}</Btn>
           )}
-          <Btn variant="ghost" size="sm" icon="download" onClick={() => window.print()}>Экспорт</Btn>
+          <Btn variant="ghost" size="sm" icon="download" onClick={() => window.print()}>{t('trip.export')}</Btn>
           {/* The "…" menu only holds owner/admin actions (edit, settings, delete) -               every item is unavailable to a viewer, so hide the whole button. */}
           {myRole !== 'viewer' && (
             <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canEditMode={canEditMode} onEditStructure={() => { window.__closeModal?.(); nav(`/trip/${trip.id}/edit`); }} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
@@ -1226,6 +1234,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
 // ─── ContextSide ──────────────────────────────────────────────────────────────
 
 function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, services = [], user, trip, isLoading, onAddService, canManage = false, budgetEnabled = false, onBudgetLocked }) {
+  const { t } = useI18n();
   const mainCurrencyCtx = trip?.details?.main_currency || budget?.currency || 'EUR';
   const { data: fxCtx } = useFxRates(mainCurrencyCtx);
   const overridesCtx = budget?.fx_overrides || {};
@@ -1298,12 +1307,12 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
       {/* Budget widget */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 14 }}>Бюджет</h3>
+          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 14 }}>{t('trip.sidebar_budget')}</h3>
           {canManage && (
             <button
               onClick={() => (budgetEnabled ? window.__navigate?.('budget') : onBudgetLocked?.())}
               style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }}
-              title={budgetEnabled ? 'Открыть бюджет' : 'Включить аддон бюджета'}>
+              title={budgetEnabled ? t('trip.open_budget') : t('trip.enable_budget_addon')}>
               <Icon name="chev" size={13} />
             </button>
           )}
@@ -1316,7 +1325,7 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
             {hasMissingRate && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: 11.5, color: 'var(--warning)' }}>
                 <Icon name="warning" size={12} />
-                <span>Часть трат не пересчитана - нет курса</span>
+                <span>{t('trip.budget_no_rate')}</span>
               </div>
             )}
             {/* Segmented bar - one segment per category */}
@@ -1343,23 +1352,23 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
                 ))}
               </div>
             ) : (
-              <div className="muted" style={{ fontSize: 12 }}>Пока нет ни одной траты</div>
+              <div className="muted" style={{ fontSize: 12 }}>{t('trip.budget_empty')}</div>
             )}
           </>
         ) : (
-          <div className="muted" style={{ fontSize: 12.5 }}>Бюджет не создано</div>
+          <div className="muted" style={{ fontSize: 12.5 }}>{t('trip.budget_none')}</div>
         )}
       </div>
 
       {/* Who's going widget */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 14 }}>Кто едет</h3>
+          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 14 }}>{t('trip.who_goes')}</h3>
           {canManage && (
             <button
               onClick={() => window.__navigate?.('members')}
               style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }}
-              title="Открыть участников">
+              title={t('trip.open_members')}>
               <Icon name="chev" size={13} />
             </button>
           )}
@@ -1375,10 +1384,10 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
             const isPending = m.status === 'pending' || m.status === 'invited';
             const roleIcon = m.role === 'owner' ? 'crown' : m.role === 'admin' ? 'shield' : 'eye';
             const roleColor = m.role === 'owner' ? 'var(--warm)' : m.role === 'admin' ? 'var(--brand)' : 'var(--muted)';
-            const roleLabel = isPending ? 'Ожидает приглашение'
-              : isOffline ? 'Офлайн'
-              : m.role === 'owner' ? 'Владелец'
-              : m.role === 'admin' ? 'Админ' : 'Зритель';
+            const roleLabel = isPending ? t('trip.member_pending')
+              : isOffline ? t('trip.member_offline')
+              : m.role === 'owner' ? t('members.role_owner')
+              : m.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
             return (
               <div key={m.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (isPending || isOffline) ? 0.65 : 1 }}>
                 <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
@@ -1404,22 +1413,23 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
 // ─── ServicesWidget ───────────────────────────────────────────────────────────
 
 function ServicesWidget({ services = [], onAddService }) {
+  const { t } = useI18n();
   const [moreOpen, setMoreOpen] = useState(false);
   const activeServices = services.filter(s => s.status === 'active' || s.status === 'booked');
   const pendingServices = services.filter(s => !s.status || s.status === 'pending');
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
-      <h3 style={{ marginBottom: 10, fontSize: 14 }}>Сервисы</h3>
+      <h3 style={{ marginBottom: 10, fontSize: 14 }}>{t('trip.sidebar_services')}</h3>
       {activeServices.length === 0 && pendingServices.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <ServiceRowEmpty icon="esim" name="eSIM" desc="Связь за рубежом" onClick={() => onAddService?.('esim')} />
-          <ServiceRowEmpty icon="car" name="Прокат авто" desc="Аренда в пункте назначения" onClick={() => onAddService?.('car_rental')} />
+          <ServiceRowEmpty icon="esim" name="eSIM" desc={t('trip.svc_roaming')} onClick={() => onAddService?.('esim')} />
+          <ServiceRowEmpty icon="car" name={t('trip.svc_carrental')} desc={t('trip.svc_carrental_desc')} onClick={() => onAddService?.('car_rental')} />
           {moreOpen
-            ? <ServiceRowEmpty icon="shield" name="Страховка" desc="Не подключена" onClick={() => onAddService?.('insurance')} />
+            ? <ServiceRowEmpty icon="shield" name={t('trip.svc_insurance')} desc={t('trip.svc_not_connected_f')} onClick={() => onAddService?.('insurance')} />
             : <button onClick={() => setMoreOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: 12, cursor: 'pointer' }}>
                 <Icon name="more" size={12} />
-                <span>Ещё: страховка и др.</span>
+                <span>{t('trip.services_more')}</span>
               </button>
           }
         </div>
@@ -1437,7 +1447,7 @@ function ServicesWidget({ services = [], onAddService }) {
             </div>
           ))}
           {pendingServices.map((s, i) => (
-            <ServiceRowEmpty key={i} icon="spark" name={s.name || s.service_type} desc="Не подключено" />
+            <ServiceRowEmpty key={i} icon="spark" name={s.name || s.service_type} desc={t('trip.svc_not_connected_n')} />
           ))}
         </div>
       )}
@@ -1610,7 +1620,7 @@ export default function TripView() {
   const frozen = !!trip?.editing_by;
   // While the trip is being edited in the Structure editor, freeze ALL event
   // mutations on the timeline (add/edit/delete) - viewing stays allowed (TZ §3a).
-  const frozenNote = () => toast({ description: 'Путешествие сейчас редактируется в режиме структуры - изменения временно недоступны.' });
+  const frozenNote = () => toast({ description: t('trip.frozen_note') });
   // Banner can show only once we KNOW the trip isn't pro (or it's instantly a pro_trip).
   const tripProResolved = !!trip?.is_pro_trip || proResolved;
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
@@ -1769,7 +1779,7 @@ export default function TripView() {
               />
               {frozen && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--wash)', border: '1px solid var(--line)', fontSize: 13, color: 'var(--ink-2)' }}>
-                  <Icon name="lock" size={14} /> Путешествие сейчас редактируется в режиме структуры - изменения временно недоступны.
+                  <Icon name="lock" size={14} /> {t('trip.frozen_note')}
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
@@ -1904,17 +1914,17 @@ export default function TripView() {
               <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                 <Icon name="wallet" size={17} />
               </div>
-              <h2>Бюджет-разбивка выключена</h2>
+              <h2>{t('trip.budget_breakdown_off')}</h2>
               <button className="icon-btn" onClick={() => setBudgetAddonOff(false)}><Icon name="close" size={16} /></button>
             </div>
             <div className="dlg__body">
               <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
-                Полная разбивка бюджета - опциональная Pro-фича путешествия. Включи её в настройках путешествия, чтобы открыть раздел бюджета.
+                {t('trip.budget_addon_off_desc')}
               </div>
             </div>
             <div className="dlg__foot">
-              <Btn variant="ghost" onClick={() => setBudgetAddonOff(false)}>Закрыть</Btn>
-              <Btn variant="primary" icon="settings" onClick={() => { setBudgetAddonOff(false); setLens('settings'); }}>Открыть настройки</Btn>
+              <Btn variant="ghost" onClick={() => setBudgetAddonOff(false)}>{t('common.close')}</Btn>
+              <Btn variant="primary" icon="settings" onClick={() => { setBudgetAddonOff(false); setLens('settings'); }}>{t('trip.open_settings')}</Btn>
             </div>
           </div>
         </div>

@@ -202,4 +202,8 @@ export default {
   'trip.services_more': 'More: insurance and others',
   'trip.budget_breakdown_off': 'Budget breakdown is off',
   'trip.pro_locked_lenses': 'Calendar, budget breakdown, AI and chat are Pro-only.',
+  'trip.no_booking_in': 'No booking in {city}',
+  'trip.no_transfer': 'No transfer · {from} → {to}',
+  'trip.budget_addon_off_desc': 'The full budget breakdown is an optional Pro feature of the trip. Enable it in the trip settings to open the budget section.',
+  'trip.edit_structure': 'Edit structure',
 };

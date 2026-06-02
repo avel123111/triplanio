@@ -205,4 +205,8 @@ export default {
   'trip.services_more': 'Ещё: страховка и др.',
   'trip.budget_breakdown_off': 'Бюджет-разбивка выключена',
   'trip.pro_locked_lenses': 'Календарь, бюджет-разбивка, ИИ и чат закрыты Pro.',
+  'trip.no_booking_in': 'Нет бронирования в {city}',
+  'trip.no_transfer': 'Нет переезда · {from} → {to}',
+  'trip.budget_addon_off_desc': 'Полная разбивка бюджета - опциональная Pro-функция путешествия. Включи её в настройках путешествия, чтобы открыть раздел бюджета.',
+  'trip.edit_structure': 'Редактировать структуру',
 };

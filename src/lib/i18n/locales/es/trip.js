@@ -202,4 +202,8 @@ export default {
   'trip.services_more': 'Más: seguro y otros',
   'trip.budget_breakdown_off': 'El desglose de presupuesto está desactivado',
   'trip.pro_locked_lenses': 'El calendario, el desglose de presupuesto, la IA y el chat son solo para Pro.',
+  'trip.no_booking_in': 'Sin reserva en {city}',
+  'trip.no_transfer': 'Sin traslado · {from} → {to}',
+  'trip.budget_addon_off_desc': 'El desglose completo del presupuesto es una función Pro opcional del viaje. Actívala en los ajustes del viaje para abrir la sección de presupuesto.',
+  'trip.edit_structure': 'Editar la estructura',
 };
