@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { DateTime } from 'luxon';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
 import { isTripInPast } from '@/lib/trip-dates';
@@ -50,6 +49,22 @@ function addDays(dateStr, days) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+const _MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+function shortDateLabel(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return '';
+  return `${d.getDate()} ${_MONTHS_SHORT[d.getMonth()]}`;
+}
+
+// Default trip start = one month ahead of today (local), YYYY-MM-DD.
+function defaultStartISO() {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }
 
 function recomputeDates(list) {
@@ -198,22 +213,25 @@ function CityAnchorRow({ label, city_name, country, kind }) {
 
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
-function CityRow({ idx, total, city, isDragging, isOver, isLast, finalPoint, onToggleFinalPoint, onDragStart, onDragOver, onDrop, onDragEnd, onChange, onRemove, onMoveUp, onMoveDown }) {
+function CityRow({ idx, total, city, isDragging, isLast, finalPoint, onToggleFinalPoint, onDragStart, onDragEnd, onChange, onRemove, onMoveUp, onMoveDown }) {
   // When the last city is also the final point, the card switches to an
-  // "end-anchor" look — warm orange tones, flag icon, and the date/nights
-  // inputs disappear (the end visit is computed, not entered).
+  // "end-anchor" look — warm orange tones, flag icon, and the nights
+  // input disappears (the end visit is computed, not entered).
   const isFinalAnchor = isLast && finalPoint;
   const accentColor = isFinalAnchor ? 'var(--warm, #c9603a)' : 'var(--brand)';
   const accentSoft = isFinalAnchor ? 'var(--warm-tint, color-mix(in oklab, var(--warm, #c9603a) 14%, transparent))' : 'var(--brand-soft)';
+  // A city is "invalid" once it has text but no resolved coordinates — i.e. it
+  // wasn't picked from the directory. We block the Next button on these.
+  const invalid = !!city.city_name && city.latitude == null;
+  const startLabel = city.startDate ? shortDateLabel(city.startDate) : null;
+  const endLabel = (city.startDate && city.nights) ? shortDateLabel(addDays(city.startDate, +city.nights)) : null;
   return (
     <div
-      onDragOver={onDragOver}
-      onDrop={onDrop}
       style={{
-        background: isOver ? 'var(--brand-soft)' : isFinalAnchor ? accentSoft : 'var(--surface)',
-        border: '1px solid ' + (isOver ? 'var(--brand)' : isFinalAnchor ? accentColor : 'var(--line)'),
+        background: isFinalAnchor ? accentSoft : 'var(--surface)',
+        border: '1px solid ' + (invalid ? 'var(--danger, #e74c3c)' : isFinalAnchor ? accentColor : 'var(--line)'),
         borderRadius: 12,
-        opacity: isDragging ? 0.45 : 1,
+        opacity: isDragging ? 0.4 : 1,
         transition: 'background .15s, border-color .15s, opacity .15s',
         overflow: 'hidden',
       }}
@@ -252,29 +270,25 @@ function CityRow({ idx, total, city, isDragging, isOver, isLast, finalPoint, onT
         />
       </div>
 
-      {/* Date — hidden when this is the final anchor (its date is computed
-          from the previous city, not entered) */}
-      {!isFinalAnchor && (
-        <input
-          className="input num planner-city-row__date"
-          type="date"
-          value={city.startDate || ''}
-          onChange={(e) => onChange({ startDate: e.target.value })}
-          style={{ fontSize: 12.5 }}
-        />
+      {/* Derived date range — read-only. Dates are computed from the trip start
+          and each city's nights (city N starts where city N-1 ends), so they
+          can't be edited per-row and never drift the trip start. */}
+      {!isFinalAnchor && startLabel && (
+        <div className="planner-city-row__date num" style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap', textAlign: 'right' }}>
+          {startLabel}{endLabel ? ` → ${endLabel}` : ''}
+        </div>
       )}
 
-      {/* Nights — hidden for the final anchor */}
+      {/* Nights stepper — hidden for the final anchor */}
       {!isFinalAnchor && (
-        <div className="planner-city-row__nights" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <input
-            className="input num"
-            type="number" min={1} max={30}
-            value={city.nights || ''}
-            onChange={(e) => onChange({ nights: Math.max(1, +e.target.value || 1) })}
-            style={{ width: 50, padding: '8px 10px', fontSize: 12.5, textAlign: 'center' }}
-          />
-          <span className="muted" style={{ fontSize: 11 }}>ноч</span>
+        <div className="planner-city-row__nights" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button type="button" title="Меньше ночей" onClick={() => onChange({ nights: Math.max(1, (+city.nights || 1) - 1) })}
+            disabled={(+city.nights || 1) <= 1}
+            style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--surface)', cursor: (+city.nights || 1) <= 1 ? 'default' : 'pointer', opacity: (+city.nights || 1) <= 1 ? 0.4 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 15, fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>−</button>
+          <span className="num" style={{ minWidth: 34, textAlign: 'center', fontSize: 12.5, fontWeight: 600 }}>{city.nights || 1}<span className="muted" style={{ fontWeight: 400 }}>н</span></span>
+          <button type="button" title="Больше ночей" onClick={() => onChange({ nights: Math.min(30, (+city.nights || 1) + 1) })}
+            disabled={(+city.nights || 1) >= 30}
+            style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--surface)', cursor: (+city.nights || 1) >= 30 ? 'default' : 'pointer', opacity: (+city.nights || 1) >= 30 ? 0.4 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 15, fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>+</button>
         </div>
       )}
 
@@ -469,7 +483,7 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
 
       <FooterNav>
         <div style={{ flex: 1 }} />
-        <Btn variant="primary" onClick={goNext} disabled={!home?.city_name}>Дальше →</Btn>
+        <Btn variant="primary" onClick={goNext} disabled={!home?.city_name || !startDate}>Дальше →</Btn>
       </FooterNav>
     </div>
   );
@@ -477,10 +491,14 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
 
 // ─── Step 2: Cities ───────────────────────────────────────────────────────────
 
-function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startDate, goPrev, goNext, onReset }) {
+function DropLine() {
+  return <div style={{ height: 3, borderRadius: 2, background: 'var(--brand)', margin: '-3px 0', boxShadow: '0 0 0 3px var(--brand-soft)' }} />;
+}
+
+function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startDate, setStartDate, goPrev, goNext, onReset }) {
   const [hasError, setHasError] = useState(false);
-  const [dragId, setDragId] = useState(null);
-  const [overId, setOverId] = useState(null);
+  const [dragIdx, setDragIdx] = useState(null);
+  const [overGap, setOverGap] = useState(null);
 
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
@@ -489,44 +507,60 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
 
   const remove = (id) => setCities(cs => recomputeDates(cs.filter(c => c.id !== id)));
 
-  const update = (id, patch) => setCities(cs => {
-    const next = cs.map(c => c.id === id ? { ...c, ...patch } : c);
-    // Always cascade from the first city's anchor whenever nights or any
-    // city's startDate changes — so city[i+1].start always equals city[i].end
-    // and you can't end up with a gap or overlap between consecutive cities.
-    if ('nights' in patch || 'startDate' in patch) {
-      return recomputeDates(next);
-    }
-    return next;
+  // Cities are laid contiguously from the FIXED trip start (city N starts where
+  // N-1 ends), so any nights / order change re-cascades — but the trip start
+  // itself never moves (only the top date control changes it).
+  const update = (id, patch) => setCities(cs => recomputeDates(cs.map(c => c.id === id ? { ...c, ...patch } : c)));
+
+  const endDrag = () => { setDragIdx(null); setOverGap(null); };
+  const dropAtGap = () => {
+    if (dragIdx == null || overGap == null) { endDrag(); return; }
+    setCities(cs => {
+      const ns = [...cs];
+      const [moved] = ns.splice(dragIdx, 1);
+      let target = overGap;
+      if (dragIdx < overGap) target -= 1; // removal shifts the insertion index
+      target = Math.max(0, Math.min(ns.length, target));
+      ns.splice(target, 0, moved);
+      return recomputeDates(ns);
+    });
+    endDrag();
+  };
+  const moveBy = (i, delta) => setCities(cs => {
+    const j = i + delta;
+    if (j < 0 || j >= cs.length) return cs;
+    const ns = [...cs];
+    [ns[i], ns[j]] = [ns[j], ns[i]];
+    return recomputeDates(ns);
   });
 
-  const onDragStart = (id) => (e) => { setDragId(id); e.dataTransfer.effectAllowed = 'move'; };
-  const onDragOver = (id) => (e) => { e.preventDefault(); if (overId !== id) setOverId(id); };
-  const onDrop = (id) => (e) => {
-    e.preventDefault();
-    if (dragId == null || dragId === id) { setDragId(null); setOverId(null); return; }
-    setCities(cs => {
-      const fromIdx = cs.findIndex(c => c.id === dragId);
-      const toIdx = cs.findIndex(c => c.id === id);
-      if (fromIdx < 0 || toIdx < 0) return cs;
-      const ns = [...cs];
-      const [moved] = ns.splice(fromIdx, 1);
-      ns.splice(toIdx, 0, moved);
-      // Never recompute dates on drag-drop — user set them explicitly
-      return ns;
-    });
-    setDragId(null);
-    setOverId(null);
-  };
-  const onDragEnd = () => { setDragId(null); setOverId(null); };
-
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
+  const allValid = cities.length > 0 && cities.every(c => c.city_name && c.latitude != null);
+  const endDate = cities.length && startDate ? addDays(startDate, totalNights) : null;
 
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>Скелет трипа</h1>
-      <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 620 }}>
-        Перечисли города в порядке поездки. <b style={{ color: 'var(--ink)' }}>Перетащи</b> карточку за ручку слева — даты пересчитаются автоматически.
+      <div className="muted" style={{ fontSize: 15, marginBottom: 18, maxWidth: 620 }}>
+        Перечисли города в порядке поездки. <b style={{ color: 'var(--ink)' }}>Перетащи</b> карточку за ручку слева — даты пересчитаются автоматически от старта трипа.
+      </div>
+
+      {/* Trip-start control — the single date anchor for the whole trip */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <Icon name="calendar" size={15} style={{ color: 'var(--brand)' }} />
+        <span style={{ fontSize: 13, fontWeight: 600 }}>Старт трипа</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+          <button type="button" title="На день раньше" onClick={() => startDate && setStartDate(addDays(startDate, -1))}
+            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 15, fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>‹</button>
+          <input className="input num" type="date" value={startDate || ''} onChange={(e) => setStartDate(e.target.value)} style={{ fontSize: 13, padding: '6px 8px', width: 150 }} />
+          <button type="button" title="На день позже" onClick={() => startDate && setStartDate(addDays(startDate, 1))}
+            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 15, fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>›</button>
+        </div>
+        {endDate && (
+          <span className="num" style={{ fontSize: 12, color: 'var(--muted)', flexBasis: '100%', textAlign: 'right' }}>
+            {shortDateLabel(startDate)} → {shortDateLabel(endDate)} · {totalNights}н
+          </span>
+        )}
       </div>
 
       <CityAnchorRow label="Старт" city_name={home?.city_name} country={home?.country} kind="home" />
@@ -539,28 +573,33 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
           <Btn variant="primary" onClick={() => addCity()}>+ Добавить город</Btn>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }} onDragOver={(e) => e.preventDefault()}>
           {cities.map((c, i) => (
-            <CityRow
-              key={c.id}
-              idx={i}
-              total={cities.length}
-              city={c}
-              isDragging={dragId === c.id}
-              isOver={overId === c.id && dragId !== c.id}
-              isLast={i === cities.length - 1}
-              finalPoint={finalPoint}
-              onToggleFinalPoint={setFinalPoint}
-              onDragStart={onDragStart(c.id)}
-              onDragOver={onDragOver(c.id)}
-              onDrop={onDrop(c.id)}
-              onDragEnd={onDragEnd}
-              onChange={(patch) => update(c.id, patch)}
-              onRemove={() => remove(c.id)}
-              onMoveUp={() => setCities(cs => { if (i === 0) return cs; const ns = [...cs]; [ns[i-1], ns[i]] = [ns[i], ns[i-1]]; return ns[0]?.startDate ? recomputeDates(ns) : ns; })}
-              onMoveDown={() => setCities(cs => { if (i === cs.length-1) return cs; const ns = [...cs]; [ns[i], ns[i+1]] = [ns[i+1], ns[i]]; return ns[0]?.startDate ? recomputeDates(ns) : ns; })}
-            />
+            <React.Fragment key={c.id}>
+              {dragIdx != null && overGap === i && <DropLine />}
+              <div
+                onDragOver={(e) => { e.preventDefault(); if (dragIdx == null) return; const r = e.currentTarget.getBoundingClientRect(); setOverGap((e.clientY - r.top) > r.height / 2 ? i + 1 : i); }}
+                onDrop={(e) => { e.preventDefault(); dropAtGap(); }}
+              >
+                <CityRow
+                  idx={i}
+                  total={cities.length}
+                  city={c}
+                  isDragging={dragIdx === i}
+                  isLast={i === cities.length - 1}
+                  finalPoint={finalPoint}
+                  onToggleFinalPoint={setFinalPoint}
+                  onDragStart={(e) => { setDragIdx(i); e.dataTransfer.effectAllowed = 'move'; }}
+                  onDragEnd={endDrag}
+                  onChange={(patch) => update(c.id, patch)}
+                  onRemove={() => remove(c.id)}
+                  onMoveUp={() => moveBy(i, -1)}
+                  onMoveDown={() => moveBy(i, 1)}
+                />
+              </div>
+            </React.Fragment>
           ))}
+          {dragIdx != null && overGap === cities.length && <DropLine />}
           <button onClick={() => addCity()} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '12px 16px', background: 'transparent',
@@ -575,21 +614,9 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
         </div>
       )}
 
-      {hasError && (
+      {hasError && !allValid && (
         <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--warning-soft, #fff3cd)', border: '1px solid var(--warning, #e6a817)', borderRadius: 10, fontSize: 13, color: 'var(--ink)' }}>
-          ⚠️ Добавь хотя бы один город маршрута.
-        </div>
-      )}
-
-      {cities.length > 0 && (
-        <div style={{ marginTop: 22, padding: '12px 16px', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, rgba(59,91,219,.12))', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <Icon name="calendar" size={16} style={{ color: 'var(--brand)' }} />
-          <div style={{ flex: 1, fontSize: 13, color: 'var(--ink-2)' }}>
-            <b>{cities.length}</b> {cities.length < 5 ? 'города' : 'городов'} · <span className="num">{totalNights}</span> ночей в дороге
-          </div>
-          <span className="num" style={{ fontSize: 12.5, color: 'var(--muted)' }}>
-            {cities[0]?.startDate || '—'} → +{totalNights}д
-          </span>
+          ⚠️ {cities.length === 0 ? 'Добавь хотя бы один город маршрута.' : 'Выбери каждый город из списка подсказок — нераспознанные города выделены красным.'}
         </div>
       )}
 
@@ -597,7 +624,7 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
         <Btn variant="ghost" onClick={goPrev}>← Назад</Btn>
         <Btn variant="ghost" icon="refresh" onClick={onReset}>Сбросить</Btn>
         <div style={{ flex: 1 }} />
-        <Btn variant="primary" onClick={() => { if (cities.length === 0) { setHasError(true); return; } goNext(); }}>Дальше →</Btn>
+        <Btn variant="primary" disabled={!allValid} onClick={() => { if (!allValid) { setHasError(true); return; } goNext(); }}>Дальше →</Btn>
       </FooterNav>
     </div>
   );
@@ -784,7 +811,6 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
             </div>
             <Stat label="Длительность" value={`${totalNights} ноч.`} />
             <Stat label="Городов" value={cities.length} />
-            <Stat label="Бюджет" value="—" hint="Можно указать позже" />
           </div>
         </div>
       </div>
@@ -889,7 +915,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // ── Wizard state ─────────────────────────────────────────────────────────
   const [step, setStep]             = useState('home');
   const [home, setHome]             = useState(null);
-  const [startDate, setStartDateRaw] = useState(''); // YYYY-MM-DD, departure date from home
+  const [startDate, setStartDateRaw] = useState(defaultStartISO()); // YYYY-MM-DD, trip start; prefilled +1 month
   const [cities, setCities]         = useState([]);
   const [returnMode, setReturnMode] = useState('home');
   const [returnCity, setReturnCity] = useState(null);
@@ -906,7 +932,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [prompt, setPrompt]                 = useState('');
   const [aiState, setAiState]               = useState(isAi ? 'prompt' : 'draft'); // prompt | generating | draft
   const [aiComment, setAiComment]           = useState('');
-  const [activitiesByCity, setActivitiesByCity] = useState({}); // cityId -> [{ title, dayOffset, start_time, end_time, location_address }]
   const [sessionId, setSessionId]           = useState(() => crypto.randomUUID());
 
   // Restore from sessionStorage on mount — only for the current user
@@ -925,7 +950,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         if (saved.finalPoint) setFinalPoint(!!saved.finalPoint);
         if (saved.startDate) setStartDateRaw(saved.startDate);
         if (saved.cover) setCover(saved.cover);
-        if (saved.activitiesByCity) setActivitiesByCity(saved.activitiesByCity);
         if (saved.aiState && isAi) setAiState(saved.aiState);
       }
     } catch {}
@@ -936,9 +960,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, activitiesByCity, aiState }));
+      sessionStorage.setItem(storageKey(user?.id, method), JSON.stringify({ step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState }));
     } catch {}
-  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, activitiesByCity, aiState, restored, user?.id]);
+  }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, restored, user?.id]);
 
   // setStartDate also cascades to cities (first city anchors all subsequent dates).
   const setStartDate = (dateStr) => {
@@ -951,11 +975,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   };
 
   // ── AI draft → shared skeleton ─────────────────────────────────────────────
-  // The AI returns a full draft (cities + per-day activities). We convert it
-  // into the manual-planner `cities` shape and keep activities keyed by city
-  // id, storing each activity's day OFFSET inside its city's stay. Because the
-  // saved activity date is derived as (city.startDate + dayOffset), editing the
-  // skeleton (dates / nights / order) automatically re-dates the activities.
+  // The AI returns a cities-only skeleton (no per-day activities). We convert it
+  // into the manual-planner `cities` shape (resolving coords + timezone) and
+  // then the user edits it like any manual trip. Dates are re-anchored to the
+  // trip start via recomputeDates.
   const applyAiDraft = async (d) => {
     const dc = d?.cities || [];
     const resolved = await Promise.all(dc.map(async (c, i) => {
@@ -968,34 +991,21 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       if (best?.latitude) { try { tz = await getTimezone(best.latitude, best.longitude); } catch { /* ignore */ } }
       const startDate = c.start_date || '';
       const nights = c.nights ?? c.n ?? (c.start_date && c.end_date ? daysBetweenISO(c.start_date, c.end_date) : 1);
-      const id = Date.now() + i;
       return {
-        city: {
-          id,
-          external_city_id: best?.external_city_id || null,
-          city_name: c.city_name || '',
-          country: c.country || best?.country || '',
-          country_code: (c.country_code || best?.country_code || '').toUpperCase(),
-          latitude: best?.latitude ?? null,
-          longitude: best?.longitude ?? null,
-          timezone: tz || best?.timezone || null,
-          startDate,
-          nights: Math.max(1, +nights || 1),
-        },
-        activities: (c.activities || []).map((a) => ({
-          title: a.title || a.name || '',
-          dayOffset: (a.date && startDate) ? Math.max(0, daysBetweenISO(startDate, a.date)) : 0,
-          start_time: a.start_time || a.time || null,
-          end_time: a.end_time || null,
-          location_address: a.location_address || null,
-        })),
+        id: Date.now() + i,
+        external_city_id: best?.external_city_id || null,
+        city_name: c.city_name || '',
+        country: c.country || best?.country || '',
+        country_code: (c.country_code || best?.country_code || '').toUpperCase(),
+        latitude: best?.latitude ?? null,
+        longitude: best?.longitude ?? null,
+        timezone: tz || best?.timezone || null,
+        startDate,
+        nights: Math.max(1, +nights || 1),
       };
     }));
-    const newCities = recomputeDates(resolved.map(r => r.city));
-    const byCity = {};
-    resolved.forEach((r) => { byCity[r.city.id] = r.activities; });
+    const newCities = recomputeDates(resolved);
     setCities(newCities);
-    setActivitiesByCity(byCity);
     setStartDateRaw(newCities[0]?.startDate || '');
     if (d?.title) setTripTitle(d.title);
   };
@@ -1054,7 +1064,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     setReturnMode('home');
     setReturnCity(null);
     setFinalPoint(false);
-    setStartDateRaw('');
+    setStartDateRaw(defaultStartISO());
     setTripTitle('');
     setCover({ cover_image_url: '', cover_gradient: 'gradient_1' });
     setSavedOk(false);
@@ -1063,7 +1073,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     // AI-entry reset
     setPrompt('');
     setAiComment('');
-    setActivitiesByCity({});
     setAiState(isAi ? 'prompt' : 'draft');
     setSessionId(crypto.randomUUID());
     try { sessionStorage.removeItem(storageKey(user?.id, method)); } catch { /* ignore */ }
@@ -1191,56 +1200,18 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         });
       }
 
-      let insertedVisits = [];
       if (visitsToInsert.length > 0) {
         // position = array index: visitsToInsert is built in itinerary order, so
-        // (start_datetime, position) reproduces it. Ids are returned in insert
-        // order, so we can map activities back to their city visit by index.
+        // (start_datetime, position) reproduces it.
         const withPos = visitsToInsert.map((v, i) => ({ ...v, position: i }));
-        const { data: vd, error: visitErr } = await supabase.from('city_visits').insert(withPos).select('id');
+        const { error: visitErr } = await supabase.from('city_visits').insert(withPos).select('id');
         if (visitErr) throw visitErr;
-        insertedVisits = vd || [];
       }
 
-      // Transfers are intentionally NOT created at trip-creation time. The
-      // "Транспорт" step was removed from the flow; the timeline shows a
-      // "Нет переезда" affordance and transfers are added later in Edit Mode.
-
-      // Activities (AI flow only) — attached to each city visit. The activity
-      // date is DERIVED from the (possibly edited) city startDate + dayOffset,
-      // so reordering / re-dating the skeleton re-dates the activities too.
-      const homeOffset = home?.city_name ? 1 : 0;
-      const activitiesToInsert = [];
-      cities.forEach((c, i) => {
-        const visitId = insertedVisits[homeOffset + i]?.id;
-        const acts = activitiesByCity[c.id];
-        if (!visitId || !c.startDate || !acts?.length) return;
-        const tz = c.timezone || 'UTC';
-        acts.forEach((a) => {
-          if (!a.title) return;
-          const date = addDays(c.startDate, +a.dayOffset || 0);
-          const time = (a.start_time && /^\d{1,2}:\d{2}/.test(a.start_time)) ? a.start_time.padStart(5, '0').slice(0, 5) : '10:00';
-          const startDt = DateTime.fromISO(`${date}T${time}`, { zone: tz });
-          if (!startDt.isValid) return;
-          const endTime = (a.end_time && /^\d{1,2}:\d{2}/.test(a.end_time)) ? a.end_time.padStart(5, '0').slice(0, 5) : null;
-          const endDt = endTime ? DateTime.fromISO(`${date}T${endTime}`, { zone: tz }) : startDt.plus({ hours: 2 });
-          activitiesToInsert.push({
-            trip_id: trip.id,
-            city_visit_id: visitId,
-            title: a.title,
-            start_datetime: startDt.toUTC().toISO(),
-            end_datetime: (endDt.isValid ? endDt : startDt.plus({ hours: 2 })).toUTC().toISO(),
-            location_address: a.location_address || null,
-            currency: 'EUR',
-            details: {},
-            created_by: authId,
-          });
-        });
-      });
-      if (activitiesToInsert.length > 0) {
-        const { error: actErr } = await supabase.from('activities').insert(activitiesToInsert);
-        if (actErr) throw actErr;
-      }
+      // Transfers and activities are intentionally NOT created at trip-creation
+      // time. The "Транспорт" step was removed; the timeline shows a "Нет
+      // переезда" affordance. AI now returns a cities-only skeleton (no
+      // activities) — both are added later in the trip view / Edit Mode.
 
       sessionStorage.removeItem(storageKey(user?.id, method));
       qc.invalidateQueries({ queryKey: ['trips'] });
@@ -1355,7 +1326,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} goNext={goNext} />
           ))}
           {step === 'cities' && (
-            <StepCities cities={cities} setCities={setCities} home={home} startDate={startDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} goPrev={goPrev} goNext={goNext} onReset={resetToStart} />
+            <StepCities cities={cities} setCities={setCities} home={home} startDate={startDate} setStartDate={setStartDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} goPrev={goPrev} goNext={goNext} onReset={resetToStart} />
           )}
           {step === 'return' && (
             <StepReturn

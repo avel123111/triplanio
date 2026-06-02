@@ -721,7 +721,7 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 560px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 .flow-shell__map {
   position: relative;

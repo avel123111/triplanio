@@ -79,7 +79,7 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
         const marker = new mapboxgl.Marker({ element: htmlMarkerEl(markerSvg(g.labels, false)) }).setLngLat([g.lng, g.lat]).addTo(map);
         markersRef.current.push(marker);
       });
-      if (positions.length) fitToPoints(map, positions, { padding: 48, maxZoom: 7, singleZoom: 8 });
+      if (positions.length) fitToPoints(map, positions, { padding: 48, maxZoom: 7, singleZoom: 8, animate: true });
     };
     if (readyRef.current) draw(); else map.once('load', draw);
     return undefined;
@@ -153,15 +153,6 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
         </div>
       )}
 
-      {pts.length === 0 && (
-        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'var(--wash)', color: 'var(--muted)', pointerEvents: 'none' }}>
-          <div style={{ textAlign: 'center', background: 'color-mix(in srgb, var(--surface) 78%, transparent)', padding: '16px 22px', borderRadius: 14 }}>
-            <Icon name="map" size={26} style={{ color: accent, marginBottom: 6 }} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-2)' }}>Маршрут появится здесь</div>
-            <div style={{ fontSize: 11.5, marginTop: 2 }}>Добавьте города — карта оживёт</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

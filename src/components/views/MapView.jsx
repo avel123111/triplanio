@@ -166,9 +166,11 @@ export default function MapView({
       }
     })();
 
-    // Fit once per distinct set of visits.
+    // Fit once per distinct set of visits — animate the camera so the map
+    // glides out/in to the route as it changes (e.g. while editing structure).
+    // First fit (after load / style reload) is instant; later changes ease.
     if (ordered.length > 0 && fittedSigRef.current !== visitsSignature) {
-      fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8 });
+      fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: fittedSigRef.current !== '' });
       fittedSigRef.current = visitsSignature;
     }
 

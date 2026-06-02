@@ -28,16 +28,19 @@ export function applyBasemapConfig(map, scheme) {
 }
 
 // Fit the map to a set of [lng, lat] points. Single point → centered; empty → no-op.
+// Pass opts.animate (or opts.duration) to ease the camera to the new bounds
+// instead of jumping — used while the route is being edited so the map glides
+// out/in as cities are added, removed or reordered.
 export function fitToPoints(map, points, opts = {}) {
   if (!map || !points || points.length === 0) return;
+  const duration = opts.duration ?? (opts.animate ? 650 : 0);
   if (points.length === 1) {
-    map.setCenter(points[0]);
-    map.setZoom(opts.singleZoom ?? 7);
+    map.easeTo({ center: points[0], zoom: opts.singleZoom ?? 7, duration });
     return;
   }
   const b = new mapboxgl.LngLatBounds();
   points.forEach((p) => b.extend(p));
-  map.fitBounds(b, { padding: opts.padding ?? 48, maxZoom: opts.maxZoom ?? 8, duration: 0 });
+  map.fitBounds(b, { padding: opts.padding ?? 48, maxZoom: opts.maxZoom ?? 8, duration });
 }
 
 // Wrap an SVG/HTML string into a DOM element usable as a mapboxgl.Marker.
