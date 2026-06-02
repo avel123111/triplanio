@@ -13,4 +13,9 @@ export default {
   'calendar.hotel_cancel_deadline': 'Cancelación gratis hasta: {name}',
   'calendar.car_pickup': 'Recogida coche: {name}',
   'calendar.car_dropoff': 'Devolución coche: {name}',
+  'calendar.to_trip_start': 'Al inicio del viaje',
+  'calendar.legend_city': 'Ciudad (barra)',
+  'calendar.legend_transport': 'Vuelos y traslados',
+  'calendar.week_word': 'semana',
+  'calendar.week_no_data': 'Sin datos para esta semana',
 };

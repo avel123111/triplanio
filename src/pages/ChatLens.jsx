@@ -13,6 +13,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 're
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
@@ -138,6 +139,7 @@ function ChatMember({ name, role, ai, avatarUrl }) {
 // ─── ChatLens (main export) ───────────────────────────────────────────────────
 
 export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
+  const { t } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
   const scrollRef  = useRef(null);
@@ -150,7 +152,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const [showMention, setShowMention] = useState(false);
   const [failedAiIds, setFailedAiIds] = useState(() => new Set());
 
-  const myName = user?.user_metadata?.full_name || user?.full_name || user?.email || 'Я';
+  const myName = user?.user_metadata?.full_name || user?.full_name || user?.email || t('member.you_self');
 
   // ── Resolve chatId for this trip ──
   const { data: chatId } = useQuery({
@@ -359,12 +361,12 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
 
   // Mention list - Triplanio first, then participants (owner + admins + viewers)
   const mentionList = [
-    { name: 'Triplanio', desc: '@Triplanio - отвечает всем', ai: true, handle: 'Triplanio' },
+    { name: 'Triplanio', desc: t('chat.mention_all_hint'), ai: true, handle: 'Triplanio' },
     ...chatParticipants(members, ownerId).map((m) => {
       const resolved = nameFor(m.user_id);
       return {
         name:   resolved,
-        desc:   m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель',
+        desc:   m.role === 'owner' ? t('members.role_owner') : m.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer'),
         handle: resolved.split(/[\s@]/)[0],
         ai:     false,
       };
@@ -423,7 +425,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       }}>
         {/* Header */}
         <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h3 style={{ flex: 1, marginBottom: 0 }}>Групповой чат</h3>
+          <h3 style={{ flex: 1, marginBottom: 0 }}>{t('chat.group_title')}</h3>
           {activeMembers.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success)', fontSize: 12 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} />
@@ -435,12 +437,12 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         {/* Messages */}
         <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {isLoading ? (
-            <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>Загружаем сообщения…</div>
+            <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>{t('chat.loading_messages')}</div>
           ) : msgs.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>
               <div style={{ fontSize: 28, marginBottom: 10 }}>💬</div>
-              <div style={{ fontWeight: 500, marginBottom: 6 }}>Чат пуст</div>
-              <div style={{ fontSize: 12.5 }}>Будь первым - напиши что-нибудь</div>
+              <div style={{ fontWeight: 500, marginBottom: 6 }}>{t('chat.empty_title')}</div>
+              <div style={{ fontSize: 12.5 }}>{t('chat.empty_desc')}</div>
             </div>
           ) : messageRows}
         </div>
@@ -462,7 +464,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               animation: 'shimmer 1.4s linear infinite',
             }} />
             <TriplanioAvatar size="xs" />
-            <span style={{ fontWeight: 500 }}>Triplanio печатает</span>
+            <span style={{ fontWeight: 500 }}>{t('chat.typing')}</span>
             <span className="ai-dots" style={{ display: 'inline-flex', alignItems: 'center' }}>
               <span /><span /><span />
             </span>
@@ -478,7 +480,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 6,
               width: 280, zIndex: 5,
             }}>
-              <div className="eyebrow" style={{ padding: '0 10px 2px', margin: 0 }}>Упомянуть</div>
+              <div className="eyebrow" style={{ padding: '0 10px 2px', margin: 0 }}>{t('chat.mention')}</div>
               {/* Only @Triplanio is actionable - mentioning a member does nothing,
                   so the popup lists just the assistant. */}
               <button
@@ -490,7 +492,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                 <TriplanioAvatar size="sm" />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
-                  <div className="muted" style={{ fontSize: 11.5 }}>@Triplanio - отвечает всем</div>
+                  <div className="muted" style={{ fontSize: 11.5 }}>{t('chat.mention_all_hint')}</div>
                 </div>
               </button>
             </div>
@@ -519,7 +521,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               <textarea
                 ref={taRef}
                 className="textarea"
-                placeholder="Напиши сообщение - @ открывает упоминание"
+                placeholder={t('chat.composer_ph')}
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKey}
@@ -541,7 +543,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               disabled={sending || !text.trim() || !chatId}
               style={{ height: 44, flexShrink: 0, padding: '0 18px' }}
             >
-              <Icon name="send" size={16} /> Отправить
+              <Icon name="send" size={16} /> {t('chat.send')}
             </button>
           </div>
         </div>
@@ -549,31 +551,31 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
 
       {/* Sidebar */}
       <aside className="scrollbar-thin" style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto', minHeight: 0 }}>
-        <Card title="Участники чата">
+        <Card title={t('chat.members_title')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {activeMembers.length === 0 ? (
-              <div className="muted" style={{ fontSize: 12.5 }}>Нет участников</div>
+              <div className="muted" style={{ fontSize: 12.5 }}>{t('member.empty')}</div>
             ) : (
               activeMembers.map((m) => (
                 <ChatMember
                   key={m.id}
                   name={nameFor(m.user_id)}
                   avatarUrl={profiles[m.user_id]?.avatar_url}
-                  role={m.role === 'owner' ? 'Владелец' : m.role === 'admin' ? 'Админ' : 'Зритель'}
+                  role={m.role === 'owner' ? t('members.role_owner') : m.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer')}
                 />
               ))
             )}
             <div style={{ borderTop: '1px solid var(--line-2)', paddingTop: 8, marginTop: 4 }}>
-              <ChatMember name="Triplanio" role="@Triplanio - общий" ai />
+              <ChatMember name="Triplanio" role={t('chat.ai_general')} ai />
             </div>
           </div>
         </Card>
 
-        <Card variant="soft" title="Что умеет @Triplanio">
+        <Card variant="soft" title={t('chat.ai_can_title')}>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 12.5, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <li>Отвечает всем участникам</li>
-            <li>Предлагает отели, перелёты, активности</li>
-            <li>Может править путешествие - с согласия владельца</li>
+            <li>{t('chat.ai_can_1')}</li>
+            <li>{t('chat.ai_can_2')}</li>
+            <li>{t('chat.ai_can_3')}</li>
           </ul>
         </Card>
       </aside>

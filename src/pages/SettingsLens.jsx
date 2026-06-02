@@ -13,6 +13,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, Toggle } from '../design/index';
@@ -30,11 +31,11 @@ import CurrencySelect from '@/components/budget/CurrencySelect';
 // is "coming soon" (locked). There is no personal-AI addon. docs is a core lens,
 // not an optional addon, so it's not listed here.
 const FEATURES = [
-  { id: 'cal',    addon: 'calendar',            icon: 'calendar',  color: 'var(--brand)',   label: 'Календарь',                   desc: 'Те же события на сетке месяца/недели'                              },
-  { id: 'budget', addon: 'budget',              icon: 'wallet',    color: 'var(--success)', label: 'Полная разбивка бюджета',     desc: 'Категории, ручные расходы, FX-override\'ы',             pro: true  },
-  { id: 'chat',   addon: 'chat',                icon: 'chat',      color: 'var(--ai)',      label: 'Групповой чат',               desc: 'Сообщения, упоминания, @assistant',                     pro: true  },
-  { id: 'tg',     addon: 'telegram_assistant',  icon: 'telegram',  color: '#0088cc',        label: 'Telegram-мост',               desc: 'Напоминания в Telegram',                                pro: true  },
-  { id: 'hotels', addon: 'hotels_selection',    icon: 'vote',      color: 'var(--warm)',    label: 'Совместный выбор отелей',     desc: 'Голосование среди аппруверов',                          locked: true },
+  { id: 'cal',    addon: 'calendar',            icon: 'calendar',  color: 'var(--brand)',   labelKey: 'trip.addon_calendar_title', descKey: 'settings.feat_calendar_desc'                              },
+  { id: 'budget', addon: 'budget',              icon: 'wallet',    color: 'var(--success)', labelKey: 'settings.feat_budget_title', descKey: 'settings.feat_budget_desc',             pro: true  },
+  { id: 'chat',   addon: 'chat',                icon: 'chat',      color: 'var(--ai)',      labelKey: 'chat.group_title',          descKey: 'settings.feat_chat_desc',              pro: true  },
+  { id: 'tg',     addon: 'telegram_assistant',  icon: 'telegram',  color: '#0088cc',        labelKey: 'settings.feat_tg_title',    descKey: 'settings.feat_tg_desc',                pro: true  },
+  { id: 'hotels', addon: 'hotels_selection',    icon: 'vote',      color: 'var(--warm)',    labelKey: 'settings.feat_hotels_title', descKey: 'settings.feat_hotels_desc',           locked: true },
 ];
 
 // Default OFF unless explicitly enabled (addons[key] === true). New trips start
@@ -49,6 +50,7 @@ function featuresFromTrip(trip) {
 // ─── FeatureRow ───────────────────────────────────────────────────────────────
 
 function FeatureRow({ feat, on, onChange, hasPro, last }) {
+  const { t } = useI18n();
   const locked = feat.pro && !hasPro;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: last ? 'none' : '1px solid var(--line-2)' }}>
@@ -63,15 +65,15 @@ function FeatureRow({ feat, on, onChange, hasPro, last }) {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {feat.label}
+          {t(feat.labelKey)}
           {feat.pro && !hasPro && <Badge variant="warm" icon="pro">Pro</Badge>}
-          {feat.pro &&  hasPro && <Badge variant="success" icon="check">Доступно</Badge>}
-          {feat.locked && <Badge variant="quiet">Скоро</Badge>}
+          {feat.pro &&  hasPro && <Badge variant="success" icon="check">{t('settings.feat_available')}</Badge>}
+          {feat.locked && <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>}
         </div>
-        <div className="muted" style={{ fontSize: 12 }}>{feat.desc}</div>
+        <div className="muted" style={{ fontSize: 12 }}>{t(feat.descKey)}</div>
       </div>
       {locked ? (
-        <Btn variant="ghost" size="sm" icon="lock" onClick={onChange}>Подключить</Btn>
+        <Btn variant="ghost" size="sm" icon="lock" onClick={onChange}>{t('settings.feat_enable')}</Btn>
       ) : (
         <Toggle on={on} onChange={onChange} locked={feat.locked} />
       )}
@@ -84,6 +86,7 @@ function FeatureRow({ feat, on, onChange, hasPro, last }) {
 // until a new binding appears (user pressed Start in Telegram).
 
 function TelegramConnectDialog({ tripId, onLinked }) {
+  const { t } = useI18n();
   const [stage, setStage] = useState('generating'); // generating | idle | connecting | connected | error
   const [url, setUrl] = useState('');
   const [errText, setErrText] = useState('');
@@ -100,7 +103,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
       const { data, error } = await supabase.functions.invoke('telegramStartLink', { body: { tripId } });
       if (cancelled) return;
       if (error || !data?.url) {
-        setErrText('Не удалось создать ссылку. Попробуй позже.');
+        setErrText(t('settings.tg_link_error'));
         setStage('error');
         return;
       }
@@ -144,10 +147,10 @@ function TelegramConnectDialog({ tripId, onLinked }) {
   const mmss = `${String(Math.floor(countdown / 60)).padStart(2, '0')}:${String(countdown % 60).padStart(2, '0')}`;
 
   return (
-    <Dialog title="Привязать Telegram" icon="telegram" size=""
-      foot={<Btn variant="ghost" onClick={() => window.__closeModal?.()}>Закрыть</Btn>}>
+    <Dialog title={t('telegram.connect_title')} icon="telegram" size=""
+      foot={<Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>}>
       <div className="muted" style={{ fontSize: 13, lineHeight: 1.55, marginBottom: 16 }}>
-        Привяжите Telegram, чтобы получать напоминания об отелях, переездах и активностях для этого путешествия.
+        {t('settings.tg_connect_desc')}
       </div>
 
       {stage === 'generating' && (
@@ -156,10 +159,10 @@ function TelegramConnectDialog({ tripId, onLinked }) {
             <Icon name="telegram" size={20} />
           </div>
           <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 6 }}>
-            Генерируем персональную ссылку
+            {t('settings.tg_generating')}
             <span className="ai-dots" style={{ marginLeft: 6 }}><span /><span /><span /></span>
           </div>
-          <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Создаём уникальную ссылку на Triplanio-бота для этого путешествия.</div>
+          <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>{t('settings.tg_creating')}</div>
         </div>
       )}
 
@@ -176,29 +179,29 @@ function TelegramConnectDialog({ tripId, onLinked }) {
               <Icon name="telegram" size={17} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Telegram не подключён</div>
-              <div className="muted" style={{ fontSize: 11.5 }}>Для этого путешествия</div>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('telegram.not_connected_title')}</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>{t('settings.tg_for_trip')}</div>
             </div>
-            <Badge variant="quiet">Не подключён</Badge>
+            <Badge variant="quiet">{t('settings.tg_not_connected_badge')}</Badge>
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <div className="eyebrow" style={{ marginBottom: 6 }}>Персональная ссылка · действует 10 минут</div>
+            <div className="eyebrow" style={{ marginBottom: 6 }}>{t('telegram.link_label')}</div>
             <div style={{ display: 'flex', gap: 6 }}>
               <input className="input mono" value={url} readOnly style={{ flex: 1, fontSize: 12 }} />
-              <Btn variant="ghost" icon="copy" onClick={copyLink}>{copied ? '✓' : 'Копия'}</Btn>
+              <Btn variant="ghost" icon="copy" onClick={copyLink}>{copied ? '✓' : t('settings.tg_copy')}</Btn>
             </div>
           </div>
 
           <div style={{ fontSize: 13, lineHeight: 1.55, marginBottom: 16 }}>
-            Нажмите кнопку ниже, чтобы открыть бота по этой ссылке и нажать «Старт».
+            {t('settings.tg_press_below')}
           </div>
 
           <Btn variant="primary" icon="telegram" block onClick={openBot}>
-            Открыть Triplanio-бот в Telegram
+            {t('telegram.open_bot')}
           </Btn>
           <div className="muted" style={{ fontSize: 11.5, marginTop: 14, lineHeight: 1.5, textAlign: 'center' }}>
-            После «Старта» в Telegram вернитесь сюда - панель обновится автоматически.
+            {t('settings.tg_after_start')}
           </div>
         </>
       )}
@@ -210,10 +213,10 @@ function TelegramConnectDialog({ tripId, onLinked }) {
               <Icon name="telegram" size={17} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Ожидаем «Старт» в Telegram</div>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('settings.tg_waiting')}</div>
               <div className="muted" style={{ fontSize: 11.5 }}>
                 <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
-                Ссылка действительна ещё <span className="num">{mmss}</span>
+                {t('settings.tg_link_valid')} <span className="num">{mmss}</span>
               </div>
             </div>
           </div>
@@ -221,18 +224,18 @@ function TelegramConnectDialog({ tripId, onLinked }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 14, fontSize: 12.5, lineHeight: 1.55 }}>
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center', flexShrink: 0 }}>1</div>
-              <div>В открывшемся чате нажми <strong>«Start»</strong>.</div>
+              <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center', flexShrink: 0 }}>2</div>
-              <div>Вернись на эту вкладку - статус обновится автоматически.</div>
+              <div>{t('settings.tg_step2')}</div>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn variant="ghost" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>Открыть бот ещё раз</Btn>
+            <Btn variant="ghost" icon="telegram" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>{t('settings.tg_open_again')}</Btn>
             <div style={{ flex: 1 }} />
-            <Btn variant="primary" icon="check" onClick={checkNow}>Я нажал Start</Btn>
+            <Btn variant="primary" icon="check" onClick={checkNow}>{t('settings.tg_pressed_start')}</Btn>
           </div>
         </>
       )}
@@ -244,15 +247,15 @@ function TelegramConnectDialog({ tripId, onLinked }) {
               <Icon name="check" size={17} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Telegram привязан</div>
-              <div className="muted" style={{ fontSize: 11.5 }}>только что</div>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('settings.tg_linked')}</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>{t('settings.tg_just_now')}</div>
             </div>
-            <Badge variant="success" icon="check">Активен</Badge>
+            <Badge variant="success" icon="check">{t('settings.tg_active')}</Badge>
           </div>
           <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.55, marginBottom: 14 }}>
-            Уведомления для этого путешествия теперь будут приходить в Telegram.
+            {t('settings.tg_connected_desc')}
           </div>
-          <Btn variant="primary" icon="check" block onClick={() => window.__closeModal?.()}>Готово</Btn>
+          <Btn variant="primary" icon="check" block onClick={() => window.__closeModal?.()}>{t('view.edit_mode_done')}</Btn>
         </>
       )}
     </Dialog>
@@ -266,6 +269,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
 // account-level "Подключённые аккаунты" section - single source of truth).
 
 function TelegramSection({ tripId }) {
+  const { t } = useI18n();
   const [accounts, setAccounts] = useState(null); // null = loading
 
   const load = React.useCallback(async () => {
@@ -276,7 +280,7 @@ function TelegramSection({ tripId }) {
   useEffect(() => { load(); }, [load]);
 
   const displayName = (a) =>
-    a.telegram_first_name || (a.telegram_username ? `@${a.telegram_username}` : 'Пользователь Telegram');
+    a.telegram_first_name || (a.telegram_username ? `@${a.telegram_username}` : t('telegram.unknown_user'));
   const handle = (a) => (a.telegram_username ? `@${a.telegram_username}` : '');
 
   const toggle = async (a) => {
@@ -301,7 +305,7 @@ function TelegramSection({ tripId }) {
   const openConnect = () => window.__openModal?.(<TelegramConnectDialog tripId={tripId} onLinked={load} />);
 
   if (accounts === null) {
-    return <div className="muted" style={{ fontSize: 13, padding: 8 }}>Загрузка…</div>;
+    return <div className="muted" style={{ fontSize: 13, padding: 8 }}>{t('common.loading')}</div>;
   }
 
   if (accounts.length === 0) {
@@ -310,12 +314,12 @@ function TelegramSection({ tripId }) {
         <div style={{ width: 48, height: 48, margin: '0 auto 10px', borderRadius: 12, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center' }}>
           <Icon name="telegram" size={22} />
         </div>
-        <div style={{ fontWeight: 600, marginBottom: 4 }}>Telegram не подключён</div>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('telegram.not_connected_title')}</div>
         <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 12 }}>
-          Привяжи аккаунт, чтобы получать уведомления о заселениях и переездах.
+          {t('settings.tg_section_empty_desc')}
         </div>
         <Btn variant="primary" icon="telegram" onClick={openConnect}>
-          Привязать Telegram
+          {t('telegram.connect_title')}
         </Btn>
       </div>
     );
@@ -337,7 +341,7 @@ function TelegramSection({ tripId }) {
         </div>
       ))}
       <Btn variant="ghost" icon="plus" onClick={openConnect}>
-        Привязать ещё один Telegram-аккаунт
+        {t('telegram.connect_another')}
       </Btn>
     </div>
   );
@@ -346,9 +350,10 @@ function TelegramSection({ tripId }) {
 // ─── ApproverRow ──────────────────────────────────────────────────────────────
 
 function ApproverRow({ member, locked }) {
+  const { t } = useI18n();
   const [on, setOn] = useState(false);
   const name = member.user_full_name || member.invite_email || '-';
-  const roleLabel = member.role === 'owner' ? 'Владелец' : member.role === 'admin' ? 'Админ' : 'Зритель';
+  const roleLabel = member.role === 'owner' ? t('members.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -358,7 +363,7 @@ function ApproverRow({ member, locked }) {
         <div className="muted" style={{ fontSize: 11.5 }}>{roleLabel}</div>
       </div>
       {locked
-        ? <span className="muted" style={{ fontSize: 12 }}>Аппрувер по роли</span>
+        ? <span className="muted" style={{ fontSize: 12 }}>{t('settings.approver_by_role')}</span>
         : <Toggle on={on} onChange={() => setOn(v => !v)} />}
     </div>
   );
@@ -367,6 +372,7 @@ function ApproverRow({ member, locked }) {
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
 export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, queryClient }) {
+  const { t } = useI18n();
   const { user } = useAuth();
   const nav = useNavigate();
 
@@ -408,7 +414,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     });
     if (error || !data?.ok) {
       setBookingWarnings(!next); // revert
-      alert('Не удалось сохранить: ' + (error?.message || data?.code || 'ошибка'));
+      alert(t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }));
       return;
     }
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
@@ -427,7 +433,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     });
     if (error || !data?.ok) {
       setChatWidget(!next); // revert
-      alert('Не удалось сохранить: ' + (error?.message || data?.code || 'ошибка'));
+      alert(t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }));
       return;
     }
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
@@ -448,14 +454,14 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       await supabase.from('trip_budgets').update({ currency, fx_overrides: {} }).eq('trip_id', tripId);
     }
     setSaving(false);
-    if (error || !data?.ok) { setSaveMsg('Ошибка: ' + (error?.message || data?.code || 'не сохранено')); return; }
+    if (error || !data?.ok) { setSaveMsg(t('settings.save_error2', { message: error?.message || data?.code || t('members.error_generic') })); return; }
     // Optimistically patch the shell cache so the header/title updates instantly,
     // then invalidate to reconcile with the server.
     queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
       old?.trip ? { ...old, trip: { ...old.trip, title: title.trim(), details: { ...(old.trip.details || {}), main_currency: currency } } } : old);
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
-    setSaveMsg('Сохранено ✓');
+    setSaveMsg(t('settings.saved'));
     setTimeout(() => setSaveMsg(''), 2000);
   }
 
@@ -467,8 +473,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       // Trip is not Pro. Only the owner can upgrade it → owner sees the upgrade
       // path; a non-owner (admin) is told to ask the owner instead of being sent
       // to checkout (their payment wouldn't unlock THIS trip).
-      if (isOwner) setProLocked({ open: true, feature: feat?.label || '' });
-      else setTripProInfo({ open: true, feature: feat?.label || '' });
+      if (isOwner) setProLocked({ open: true, feature: feat ? t(feat.labelKey) : '' });
+      else setTripProInfo({ open: true, feature: feat ? t(feat.labelKey) : '' });
       return;
     }
     const newVal = !features[id];
@@ -481,10 +487,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (error || !data?.ok) {
       setFeatures(s => ({ ...s, [id]: !newVal }));  // revert
       if (data?.code === 'PRO_REQUIRED') {
-        if (isOwner) setProLocked({ open: true, feature: feat?.label || '' });
-        else setTripProInfo({ open: true, feature: feat?.label || '' });
+        if (isOwner) setProLocked({ open: true, feature: feat ? t(feat.labelKey) : '' });
+        else setTripProInfo({ open: true, feature: feat ? t(feat.labelKey) : '' });
       } else {
-        alert('Не удалось сохранить: ' + (error?.message || data?.code || 'ошибка'));
+        alert(t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }));
       }
       return;
     }
@@ -493,9 +499,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   // Leave trip
   async function leaveTrip() {
-    if (!window.confirm('Выйти из путешествия? Ты перестанешь видеть его.')) return;
+    if (!window.confirm(t('settings.leave_confirm'))) return;
     const myMember = members.find(m => m.user_id === user?.id && m.status === 'active');
-    if (!myMember) { alert('Ошибка: не найдено твоё участие в путешествии.'); return; }
+    if (!myMember) { alert(t('settings.leave_not_found')); return; }
     // Only leave (navigate away) once the backend actually removed the row.
     // removeTripMember now returns a non-2xx with the reason on failure, so we
     // must read the response - navigating on a silent failure left the user
@@ -504,9 +510,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       body: { member_id: myMember.id },
     });
     if (error || !data?.ok) {
-      let msg = error?.message || 'не удалось выйти';
+      let msg = error?.message || t('settings.leave_error');
       try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
-      alert('Ошибка: ' + msg);
+      alert(t('settings.save_error2', { message: msg }));
       return;
     }
     nav('/trips');
@@ -514,10 +520,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   // Delete trip (owner only)
   async function deleteTrip() {
-    if (!window.confirm('Удалить путешествие? Это действие необратимо.')) return;
-    if (!window.confirm('Ты уверены? Все данные путешествия будут удалены.')) return;
+    if (!window.confirm(t('settings.delete_confirm1'))) return;
+    if (!window.confirm(t('settings.delete_confirm2'))) return;
     const { error } = await supabase.from('trips').delete().eq('id', tripId);
-    if (error) { alert('Ошибка: ' + error.message); return; }
+    if (error) { alert(t('settings.save_error2', { message: error.message })); return; }
     nav('/trips');
   }
 
@@ -526,21 +532,21 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   return (
     <div style={{ maxWidth: 720 }}>
-      <h2 style={{ marginBottom: 18 }}>Настройки путешествия</h2>
+      <h2 style={{ marginBottom: 18 }}>{t('trip.settings')}</h2>
 
       {/* Basic settings */}
-      <Card title="Основное" style={{ marginBottom: 16 }}>
+      <Card title={t('settings.section_basic')} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Field label="Название">
+          <Field label={t('trip.title_label')}>
             <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
           </Field>
-          <Field label="Основная валюта отображения">
+          <Field label={t('settings.main_currency_label')}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <CurrencySelect value={currency} onChange={setCurrency} width={200} />
-              <Btn variant="primary" loading={saving} onClick={saveSettings}>Сохранить</Btn>
+              <Btn variant="primary" loading={saving} onClick={saveSettings}>{t('trip.form_save')}</Btn>
               {saveMsg && <span style={{ fontSize: 12.5, color: 'var(--success)', alignSelf: 'center' }}>{saveMsg}</span>}
             </div>
-            <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>Бюджет агрегируется в эту валюту.</div>
+            <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>{t('settings.main_currency_hint')}</div>
           </Field>
 
           <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)', margin: 0 }} />
@@ -554,15 +560,15 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                 <Icon name="warning" size={17} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 13.5 }}>Предупреждения</div>
-                <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>Бейджи и баннеры о проблемах в плане этого путешествия.</div>
+                <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('settings.warnings_title')}</div>
+                <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>{t('settings.warnings_desc')}</div>
               </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>Предупреждения об отсутствии бронирований</div>
-                <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.45 }}>Например: нет переезда между городами или на даты не забронирован отель.</div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{t('settings.warn_bookings_title')}</div>
+                <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.45 }}>{t('settings.warn_bookings_desc')}</div>
               </div>
               <Toggle on={bookingWarnings} onChange={toggleBookingWarnings} />
             </div>
@@ -571,7 +577,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       </Card>
 
       {/* Feature toggles */}
-      <Card title="Опциональные фичи" style={{ marginBottom: 16 }}>
+      <Card title={t('settings.optional_features')} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
           {FEATURES.map((f, i) => (
             <FeatureRow key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
@@ -584,12 +590,12 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           Only shown when the Group Chat addon is on (the widget can't exist
           without it). Hidden entirely otherwise. */}
       {features.chat && (
-        <Card title="Виджет чата" style={{ marginBottom: 16 }}>
+        <Card title={t('settings.chat_widget_title')} style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Показывать виджет на страницах путешествия</div>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('settings.chat_widget_label')}</div>
               <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
-                Плавающая кнопка чата видна на каждой странице этого путешествия - быстрый доступ к групповому чату и ИИ-помощнику без перехода на отдельный экран.
+                {t('settings.chat_widget_desc')}
               </div>
             </div>
             <Toggle on={chatWidget} onChange={toggleChatWidget} />
@@ -606,8 +612,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             </div>
             <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
               {chatWidget
-                ? 'Закреплён в правом нижнем углу - открывает чат и ИИ-помощника поверх любой страницы путешествия.'
-                : 'Виджет скрыт. Чат остаётся доступен на отдельной странице «Групповой чат».'}
+                ? t('settings.chat_widget_on')
+                : t('settings.chat_widget_off')}
             </div>
           </div>
         </Card>
@@ -615,50 +621,50 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
       {/* Telegram - only when the Telegram addon is enabled. */}
       {features.tg && (
-        <Card title="Telegram-мост" subtitle="Уведомления в Telegram" style={{ marginBottom: 16 }}>
+        <Card title={t('settings.feat_tg_title')} subtitle={t('settings.feat_tg_desc')} style={{ marginBottom: 16 }}>
           <TelegramSection tripId={tripId} />
         </Card>
       )}
 
       {/* Approvers */}
-      <Card title="Аппруверы голосования за отели" subtitle="Кто голосует «за»" style={{ marginBottom: 16 }}>
+      <Card title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {approvers.map(m => <ApproverRow key={m.id} member={m} locked />)}
           {viewerMems.map(m => <ApproverRow key={m.id} member={m} locked={false} />)}
           {members.length === 0 && (
-            <div className="muted" style={{ fontSize: 13 }}>Участники ещё не загружены.</div>
+            <div className="muted" style={{ fontSize: 13 }}>{t('settings.members_loading')}</div>
           )}
         </div>
       </Card>
 
       {/* Danger zone */}
-      <Card title="Опасная зона" style={{ borderColor: 'var(--danger-soft)' }}>
+      <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {myRole !== 'owner' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13.5 }}>Выйти из путешествия</div>
-                <div className="muted" style={{ fontSize: 12 }}>Ты перестанешь видеть путешествие. Владелец сможет пригласить тебя снова.</div>
+                <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('settings.leave_trip')}</div>
+                <div className="muted" style={{ fontSize: 12 }}>{t('settings.leave_desc')}</div>
               </div>
-              <Btn variant="danger" onClick={leaveTrip}>Выйти</Btn>
+              <Btn variant="danger" onClick={leaveTrip}>{t('auth.logout')}</Btn>
             </div>
           )}
           {myRole === 'owner' && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>Выйти из путешествия</div>
-                  <div className="muted" style={{ fontSize: 12 }}>Передай владение другому участнику, прежде чем выходить.</div>
+                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('settings.leave_trip')}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{t('settings.leave_owner_blocked')}</div>
                 </div>
-                <Btn variant="danger" disabled>Выйти</Btn>
+                <Btn variant="danger" disabled>{t('auth.logout')}</Btn>
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>Удалить путешествие</div>
-                  <div className="muted" style={{ fontSize: 12 }}>Безвозвратно. Все данные путешествия будут удалены.</div>
+                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('settings.delete_trip')}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{t('settings.delete_desc')}</div>
                 </div>
-                <Btn variant="danger-solid" onClick={deleteTrip}>Удалить путешествие</Btn>
+                <Btn variant="danger-solid" onClick={deleteTrip}>{t('settings.delete_trip')}</Btn>
               </div>
             </>
           )}

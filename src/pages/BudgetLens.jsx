@@ -16,6 +16,7 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { Icon } from '../design/icons';
@@ -55,6 +56,7 @@ const money = (value, cur) => fmtMoney(value, cur, 'ru-RU');
 // ─── AddExpenseDialog (create + edit manual expense) ────────────────────────────
 
 function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved }) {
+  const { t } = useI18n();
   const { user } = useAuth();
   const isEdit = !!existing;
   const [title, setTitle] = useState(existing?.title || '');
@@ -69,7 +71,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
   const [err, setErr] = useState('');
 
   async function save() {
-    if (!title.trim() || !amount || !categoryId) { setErr('Заполни обязательные поля'); return; }
+    if (!title.trim() || !amount || !categoryId) { setErr(t('budget.err_required')); return; }
     setSaving(true);
     setErr('');
     const row = {
@@ -106,38 +108,38 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
   }
 
   return (
-    <Dialog title={isEdit ? 'Изменить трату' : 'Ручная трата'} icon="wallet" size=""
+    <Dialog title={isEdit ? t('budget.edit_expense') : t('budget.manual_expense')} icon="wallet" size=""
       foot={<>
         {isEdit && (
-          <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting || saving}>{deleting ? 'Удаляю…' : 'Удалить'}</Btn>
+          <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting || saving}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
         )}
         <div style={{ flex: 1 }} />
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" icon="check" onClick={save} disabled={saving}>
-          {saving ? 'Сохраняю…' : isEdit ? 'Сохранить' : 'Добавить'}
+          {saving ? t('member.saving') : isEdit ? t('trip.form_save') : t('members.add')}
         </Btn>
       </>}>
-      <Field label="Описание">
-        <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Например, «Ужин в LX Factory»" autoFocus />
+      <Field label={t('trip.description')}>
+        <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder={t('budget.desc_ph')} autoFocus />
       </Field>
       <div className="field-row cols-2" style={{ marginTop: 14 }}>
-        <Field label="Сумма">
+        <Field label={t('budget.field_amount')}>
           <div style={{ display: 'flex', gap: 6 }}>
             <input className="input num" type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex: 1 }} />
             <CurrencySelect value={currency} onChange={setCurrency} width={92} />
           </div>
         </Field>
-        <Field label="Дата">
+        <Field label={t('budget.field_date')}>
           <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
         </Field>
       </div>
       <div className="field-row cols-2" style={{ marginTop: 14 }}>
-        <Field label="Категория">
+        <Field label={t('budget.field_category')}>
           <select className="select" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </Field>
-        <Field label="Город">
+        <Field label={t('visit.city')}>
           <select className="select" value={cityName} onChange={e => setCityName(e.target.value)}>
             <option value="">-</option>
             {cities.map((c, i) => <option key={i} value={c}>{c}</option>)}
@@ -145,8 +147,8 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
         </Field>
       </div>
       <div style={{ marginTop: 14 }}>
-        <Field label="Заметка (опц.)">
-          <textarea className="textarea" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Свободный текст" />
+        <Field label={t('doc.notes_label')}>
+          <textarea className="textarea" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('budget.free_text')} />
         </Field>
       </div>
       {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
@@ -165,6 +167,7 @@ function liveRateToMain(fx, code) {
 }
 
 function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx, onSaved }) {
+  const { t } = useI18n();
   const others = currencies.filter(c => c && c !== mainCurrency);
   const [values, setValues] = useState(() => {
     const init = {};
@@ -198,16 +201,16 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
   }
 
   return (
-    <Dialog title="Курсы валют" icon="wallet" size="" foot={<>
-      <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
-      <Btn variant="primary" icon="check" onClick={apply} disabled={saving}>{saving ? 'Сохраняю…' : 'Применить'}</Btn>
+    <Dialog title={t('budget.fx_button')} icon="wallet" size="" foot={<>
+      <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
+      <Btn variant="primary" icon="check" onClick={apply} disabled={saving}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
       <div className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>
-        Дефолтные курсы тянутся автоматически. Если автомат ошибается - поставь свой курс.
+        {t('budget.fx_intro')}
       </div>
       {others.length === 0 ? (
         <div className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 14 }}>
-          Появятся, когда добавишь первую трату в другой валюте.
+          {t('budget.fx_empty')}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -215,10 +218,10 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
             const live = liveRateToMain(fx, code);
             const hasOverride = currentOverrides?.[code] != null;
             const hint = hasOverride
-              ? `${mainCurrency} · вручную`
+              ? t('budget.fx_manual', { cur: mainCurrency })
               : live != null
-                ? `${mainCurrency} · автоматический`
-                : `${mainCurrency} · курс не найден / Нужно вручную`;
+                ? t('budget.fx_auto', { cur: mainCurrency })
+                : t('budget.fx_not_found', { cur: mainCurrency });
             const hintColor = (!hasOverride && live == null) ? 'var(--danger)' : 'var(--muted)';
             return (
               <div key={code} style={{ display: 'grid', gridTemplateColumns: '60px 110px 1fr', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 8 }}>
@@ -242,6 +245,7 @@ const CAT_COLORS = ['#e2503a','#2167e2','#6a3ee2','#1f8a5b','#e08158','#c98a1a',
 const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'spark', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
 function AddCategoryDialog({ tripId, existing, onSaved }) {
+  const { t } = useI18n();
   const { user } = useAuth();
   const [name, setName] = useState(existing?.name || '');
   const [color, setColor] = useState(existing?.color || CAT_COLORS[0]);
@@ -250,7 +254,7 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
   const [err, setErr] = useState('');
 
   async function save() {
-    if (!name.trim()) { setErr('Введите название'); return; }
+    if (!name.trim()) { setErr(t('budget.err_cat_name')); return; }
     setSaving(true);
     setErr('');
     let error;
@@ -275,16 +279,16 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
   }
 
   return (
-    <Dialog title={existing ? 'Изменить категорию' : 'Новая категория'} icon="wallet" size="sm"
+    <Dialog title={existing ? t('budget.edit_category') : t('budget.category_new')} icon="wallet" size="sm"
       foot={<>
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Отмена</Btn>
-        <Btn variant="primary" icon="check" onClick={save} disabled={saving}>{saving ? 'Сохраняю…' : existing ? 'Сохранить' : 'Добавить'}</Btn>
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="primary" icon="check" onClick={save} disabled={saving}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
       </>}>
-      <Field label="Название">
-        <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="Сувениры…" autoFocus />
+      <Field label={t('trip.title_label')}>
+        <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder={t('budget.cat_name_ph')} autoFocus />
       </Field>
       <div style={{ marginTop: 14 }}>
-        <div className="eyebrow" style={{ marginBottom: 8 }}>Цвет</div>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>{t('budget.color_label')}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {CAT_COLORS.map(c => (
             <button key={c} onClick={() => setColor(c)} style={{
@@ -295,7 +299,7 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
         </div>
       </div>
       <div style={{ marginTop: 14 }}>
-        <div className="eyebrow" style={{ marginBottom: 8 }}>Иконка</div>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>{t('budget.icon_label')}</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {CAT_ICONS_BUDGET.map(ic => (
             <button key={ic} onClick={() => setIcon(ic)} style={{
@@ -317,6 +321,7 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
 // `mainAmount` is the converted value; `ok=false` means no rate was available.
 
 function ExpenseRow({ expense, catColor, catIcon: icon, showCategory, catName, mainCurrency, mainAmount, ok, onOpen }) {
+  const { t } = useI18n();
   const src = expense.source_kind || 'manual';
   const isManual = src === 'manual';
   return (
@@ -339,12 +344,12 @@ function ExpenseRow({ expense, catColor, catIcon: icon, showCategory, catName, m
         <div className="muted" style={{ fontSize: 11.5, display: 'flex', alignItems: 'center', gap: 6 }}>
           {expense.notes && <span>{expense.notes}</span>}
           {showCategory && <Badge variant="quiet" style={{ fontSize: 10, padding: '1px 5px' }}>{catName}</Badge>}
-          {!isManual && <Badge variant="quiet" icon="link" style={{ fontSize: 10 }}>авто</Badge>}
+          {!isManual && <Badge variant="quiet" icon="link" style={{ fontSize: 10 }}>{t('budget.expense_auto_badge')}</Badge>}
         </div>
       </div>
       <div className="num" style={{ fontWeight: 600, fontSize: 13.5, minWidth: 64, textAlign: 'right', flexShrink: 0 }}>
         {ok ? money(mainAmount, mainCurrency) : (
-          <span title="Курс не получен" style={{ color: 'var(--danger)' }}>
+          <span title={t('budget.rate_missing')} style={{ color: 'var(--danger)' }}>
             {money(expense.original_amount || 0, expense.original_currency || mainCurrency)} ?
           </span>
         )}
@@ -356,6 +361,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, showCategory, catName, m
 // ─── BudgetLens ───────────────────────────────────────────────────────────────
 
 export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient }) {
+  const { t } = useI18n();
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);
   const [sourceView, setSourceView] = useState({ open: false, kind: null, id: null });
@@ -479,10 +485,10 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 22 }}>
         {/* Всего потрачено */}
         <Card>
-          <div className="muted" style={{ fontSize: 12 }}>Всего потрачено</div>
+          <div className="muted" style={{ fontSize: 12 }}>{t('budget.total_spent')}</div>
           <div className="num" style={{ fontSize: 30, fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(totalSpent, mainCurrency)}</div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-            {noExpenses ? 'Пока нет ни одной траты' : `${budgetExpenses.length} ${budgetExpenses.length === 1 ? 'трата' : 'трат'}`}
+            {noExpenses ? t('trip.budget_empty') : `${budgetExpenses.length} ${budgetExpenses.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}`}
           </div>
           <div style={{ marginTop: 12, height: 6, borderRadius: 3, background: 'var(--wash)', overflow: 'hidden' }}>
             <div style={{ height: '100%', width: Math.min((totalSpent / Math.max(totalSpent, 1)) * 100, 100) + '%', background: 'var(--success)' }} />
@@ -491,19 +497,19 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
         {/* На одного */}
         <Card>
-          <div className="muted" style={{ fontSize: 12 }}>На одного</div>
+          <div className="muted" style={{ fontSize: 12 }}>{t('budget.per_person_label')}</div>
           <div className="num" style={{ fontSize: 30, fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{memberCount} {memberCount === 1 ? 'участник' : 'участника'} · поровну</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')} · {t('budget.split_evenly')}</div>
         </Card>
 
         {/* Курсы валют */}
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <span className="muted" style={{ fontSize: 12 }}>Курсы валют</span>
+            <span className="muted" style={{ fontSize: 12 }}>{t('budget.fx_button')}</span>
           </div>
           {foreignCurrencies.length === 0 ? (
             <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
-              Появятся, когда добавишь первую трату в другой валюте.
+              {t('budget.fx_empty')}
             </div>
           ) : (
             <div className="num" style={{ fontSize: 13, color: 'var(--ink)', marginTop: 8, lineHeight: 1.7 }}>
@@ -521,16 +527,16 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
             </div>
           )}
           {foreignCurrencies.length > 0 && (
-            <Btn variant="ghost" size="sm" icon="edit" style={{ marginTop: 8 }} onClick={openFxDialog}>Изменить курсы</Btn>
+            <Btn variant="ghost" size="sm" icon="edit" style={{ marginTop: 8 }} onClick={openFxDialog}>{t('budget.fx_change')}</Btn>
           )}
         </Card>
       </div>
 
       {/* Missing-rate warning */}
       {missingCurrencies.length > 0 && (
-        <Severity level="warning" title={`Курсы для ${missingCurrencies.join(', ')} не получены`}>
-          {missingCurrencies.map(cur => `${missing[cur]} ${missing[cur] === 1 ? 'трата' : 'трат'} в ${cur}`).join(', ')} не пересчитаны и не включены в итог.{' '}
-          <a href="#" onClick={(e) => { e.preventDefault(); openFxDialog(); }} style={{ fontWeight: 500 }}>Поставь курс вручную</a>
+        <Severity level="warning" title={t('budget.rates_missing', { currencies: missingCurrencies.join(', ') })}>
+          {missingCurrencies.map(cur => `${missing[cur]} ${missing[cur] === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')} · ${cur}`).join(', ')} {t('budget.not_in_total')}{' '}
+          <a href="#" onClick={(e) => { e.preventDefault(); openFxDialog(); }} style={{ fontWeight: 500 }}>{t('budget.set_rate_manual')}</a>
         </Severity>
       )}
 
@@ -545,26 +551,26 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
             <Icon name="wallet" size={24} />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Расходов пока нет</div>
+            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{t('budget.no_expenses')}</div>
             <div className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
-              Брони отелей, переезды и активности появятся здесь автоматически. Свои траты - еду, такси, сувениры - добавляй вручную.
+              {t('budget.no_expenses_desc')}
             </div>
           </div>
-          <Btn variant="primary" icon="plus" onClick={openAddExpense}>Первая трата</Btn>
+          <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.first_expense')}</Btn>
         </div>
       )}
 
       {/* Grouping controls - always shown (categories exist even before any expense) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 22, marginBottom: 14, flexWrap: 'wrap' }}>
         <div className="tweaks__seg">
-          <button className={grouping === 'category' ? 'active' : ''} onClick={() => setGrouping('category')}>По категориям</button>
-          <button className={grouping === 'city' ? 'active' : ''} onClick={() => setGrouping('city')}>По городам</button>
+          <button className={grouping === 'category' ? 'active' : ''} onClick={() => setGrouping('category')}>{t('budget.group_by_category')}</button>
+          <button className={grouping === 'city' ? 'active' : ''} onClick={() => setGrouping('city')}>{t('budget.group_by_city')}</button>
         </div>
         <div style={{ flex: 1 }} />
         {grouping === 'category' && (
-          <Btn variant="ghost" size="sm" icon="plus" onClick={openAddCategory}>Категория</Btn>
+          <Btn variant="ghost" size="sm" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
         )}
-        <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>Ручная трата</Btn>
+        <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
       </div>
 
       {grouping === 'category' ? (
@@ -588,9 +594,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 500, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                       {c.name}
-                      {c.kind === 'custom' && <Badge variant="quiet" style={{ fontSize: 10, padding: '1px 5px' }}>польз.</Badge>}
+                      {c.kind === 'custom' && <Badge variant="quiet" style={{ fontSize: 10, padding: '1px 5px' }}>{t('budget.custom_short')}</Badge>}
                     </div>
-                    <div className="muted" style={{ fontSize: 11 }}>{empty ? 'пусто' : `${c.itemCount} ${c.itemCount === 1 ? 'трата' : 'трат'}`}</div>
+                    <div className="muted" style={{ fontSize: 11 }}>{empty ? t('budget.empty_word') : `${c.itemCount} ${c.itemCount === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}`}</div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div className="num" style={{ fontWeight: 600, fontSize: 13, color: empty ? 'var(--muted-2)' : 'var(--ink)' }}>{money(c.spent, mainCurrency)}</div>
@@ -613,14 +619,14 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                   <div className="muted num" style={{ fontSize: 12 }}>{money(activeCat.spent, mainCurrency)}</div>
                 </div>
                 {activeCat.kind === 'custom' && (
-                  <Btn variant="ghost" size="sm" icon="edit" onClick={() => openEditCategory(activeCat)}>Изменить</Btn>
+                  <Btn variant="ghost" size="sm" icon="edit" onClick={() => openEditCategory(activeCat)}>{t('visit.change')}</Btn>
                 )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {activeCat.items.length === 0 && (
                   <div style={{ padding: 22, textAlign: 'center', color: 'var(--muted)', border: '1.5px dashed var(--line)', borderRadius: 10 }}>
                     <Icon name={catIcon(activeCat)} size={20} style={{ color: activeCat.color, marginBottom: 6, display: 'block', marginLeft: 'auto', marginRight: 'auto' }} />
-                    <div>В категории «{activeCat.name}» пока пусто. <a href="#" onClick={e => { e.preventDefault(); openAddExpense(); }}>Добавить первую трату</a></div>
+                    <div>{t('budget.cat_empty', { name: activeCat.name })} <a href="#" onClick={e => { e.preventDefault(); openAddExpense(); }}>{t('budget.add_first')}</a></div>
                   </div>
                 )}
                 {activeCat.items.map(exp => {
@@ -661,6 +667,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 // ─── CityGrouping ─────────────────────────────────────────────────────────────
 
 function CityGrouping({ cityGroups, mainCurrency, conv, onOpen, onAdd }) {
+  const { t } = useI18n();
   const [activeCity, setActiveCity] = useState(cityGroups[0]?.city || '');
   const cur = cityGroups.find(g => g.city === activeCity) || cityGroups[0];
 
@@ -668,9 +675,9 @@ function CityGrouping({ cityGroups, mainCurrency, conv, onOpen, onAdd }) {
     return (
       <EmptyState
         icon="pin"
-        title="В городах пока пусто"
-        body="Расходы по городам появятся после первой траты с указанным городом."
-        action={<Btn variant="primary" icon="plus" onClick={onAdd}>Добавить трату</Btn>}
+        title={t('budget.cities_empty')}
+        body={t('budget.cities_empty_desc')}
+        action={<Btn variant="primary" icon="plus" onClick={onAdd}>{t('budget.add_expense')}</Btn>}
       />
     );
   }
@@ -693,8 +700,8 @@ function CityGrouping({ cityGroups, mainCurrency, conv, onOpen, onAdd }) {
                 <Icon name="pin" size={14} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500, fontSize: 13 }}>{g.city === '-' ? 'Без города' : g.city}</div>
-                <div className="muted" style={{ fontSize: 11 }}>{g.items.length} {g.items.length === 1 ? 'трата' : 'трат'}</div>
+                <div style={{ fontWeight: 500, fontSize: 13 }}>{g.city === '-' ? t('budget.no_city') : g.city}</div>
+                <div className="muted" style={{ fontSize: 11 }}>{g.items.length} {g.items.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}</div>
               </div>
               <div className="num" style={{ fontWeight: 600, fontSize: 13 }}>{money(g.total, mainCurrency)}</div>
             </button>
@@ -707,8 +714,8 @@ function CityGrouping({ cityGroups, mainCurrency, conv, onOpen, onAdd }) {
             <Icon name="pin" size={15} />
           </div>
           <div style={{ flex: 1 }}>
-            <h3 style={{ marginBottom: 2 }}>{cur.city === '-' ? 'Без города' : cur.city}</h3>
-            <div className="muted num" style={{ fontSize: 12 }}>{cur.items.length} {cur.items.length === 1 ? 'трата' : 'трат'} · {money(cur.total, mainCurrency)}</div>
+            <h3 style={{ marginBottom: 2 }}>{cur.city === '-' ? t('budget.no_city') : cur.city}</h3>
+            <div className="muted num" style={{ fontSize: 12 }}>{cur.items.length} {cur.items.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')} · {money(cur.total, mainCurrency)}</div>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

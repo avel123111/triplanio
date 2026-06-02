@@ -13,4 +13,9 @@ export default {
   'calendar.hotel_cancel_deadline': 'Free cancel deadline: {name}',
   'calendar.car_pickup': 'Car pickup: {name}',
   'calendar.car_dropoff': 'Car drop-off: {name}',
+  'calendar.to_trip_start': 'To trip start',
+  'calendar.legend_city': 'City (bar)',
+  'calendar.legend_transport': 'Flights and transfers',
+  'calendar.week_word': 'week',
+  'calendar.week_no_data': 'No data for this week',
 };

@@ -8,9 +8,16 @@
  *   isLoading - boolean
  */
 import React, { useState, useMemo } from 'react';
+import { Info } from 'luxon';
 import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton } from '../design/index';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
+import { useI18n } from '@/lib/i18n/I18nContext';
+import { localeTag } from '@/lib/i18n/translations';
+
+// Localized month names (1-indexed) and weekday short names (Mon..Sun) via Luxon.
+const monthNames = (lang) => ['', ...Info.months('long', { locale: localeTag(lang) })];
+const weekdayNames = (lang) => Info.weekdays('short', { locale: localeTag(lang) });
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -22,11 +29,6 @@ const EVENT_COLOR = {
   transfer:         'var(--brand)',
 };
 
-const MONTH_NAMES_RU = [
-  '', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
-];
-const WD_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 // ─── Legend ───────────────────────────────────────────────────────────────────
 
@@ -42,6 +44,8 @@ function Legend({ color, children }) {
 // ─── MonthView ────────────────────────────────────────────────────────────────
 
 function MonthView({ cells, eventsByDay, spans, inTripDays }) {
+  const { lang } = useI18n();
+  const WD_NAMES = weekdayNames(lang);
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
       {/* Weekday header */}
@@ -116,6 +120,7 @@ function MonthView({ cells, eventsByDay, spans, inTripDays }) {
 // ─── WeekView ─────────────────────────────────────────────────────────────────
 
 function WeekView({ days, events }) {
+  const { t } = useI18n();
   const HOURS = [];
   for (let h = 8; h <= 22; h++) HOURS.push(h);
   const HOUR_HEIGHT = 36;
@@ -123,7 +128,7 @@ function WeekView({ days, events }) {
   if (!days.length) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', border: '1px solid var(--line)', borderRadius: 14 }}>
-        Нет данных для этой недели
+        {t('calendar.week_no_data')}
       </div>
     );
   }
@@ -190,6 +195,9 @@ function WeekView({ days, events }) {
 // ─── CalendarLens (main export) ───────────────────────────────────────────────
 
 export default function CalendarLens({ stream, visits, trip, isLoading }) {
+  const { t, lang } = useI18n();
+  const MONTH_NAMES = useMemo(() => monthNames(lang), [lang]);
+  const WD_NAMES = useMemo(() => weekdayNames(lang), [lang]);
   const [view, setView] = useState('month');
   const [monthOffset, setMonthOffset] = useState(0);
   const [weekOffset, setWeekOffset]   = useState(0);
@@ -213,8 +221,8 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
     const result = [];
     for (let i = 0; i < offset; i++) result.push(null);
     for (let d = 1; d <= daysInMonth; d++) result.push(d);
-    return { cells: result, year: y, monthNum: m, monthLabel: `${MONTH_NAMES_RU[m]} ${y}` };
-  }, [currentMonth]);
+    return { cells: result, year: y, monthNum: m, monthLabel: `${MONTH_NAMES[m]} ${y}` };
+  }, [currentMonth, MONTH_NAMES]);
 
   // Events keyed by day-of-month for current month
   const eventsByDay = useMemo(() => {
@@ -302,7 +310,7 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
       weekEvents: wEvents,
       weekLabel: `${weekStart.day} - ${weekEnd.day}`,
     };
-  }, [stream, visits, baseDateStr, weekOffset]);
+  }, [stream, visits, baseDateStr, weekOffset, WD_NAMES]);
 
   if (isLoading) {
     return (
@@ -329,16 +337,16 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
           {monthLabel}
           {view === 'week' && weekLabel && (
             <span className="muted num" style={{ fontSize: 16, fontWeight: 400, marginLeft: 12 }}>
-              · неделя {weekLabel}
+              · {t('calendar.week_word')} {weekLabel}
             </span>
           )}
         </h2>
         <Btn variant="ghost" size="sm" icon="back" onClick={goBack} />
-        <Btn variant="ghost" size="sm" onClick={goHome}>К старту путешествия</Btn>
+        <Btn variant="ghost" size="sm" onClick={goHome}>{t('calendar.to_trip_start')}</Btn>
         <Btn variant="ghost" size="sm" icon="chev" onClick={goFwd} />
         <div className="tweaks__seg" style={{ marginLeft: 6 }}>
-          <button className={view === 'month' ? 'active' : ''} onClick={() => setView('month')}>Месяц</button>
-          <button className={view === 'week'  ? 'active' : ''} onClick={() => setView('week')}>Неделя</button>
+          <button className={view === 'month' ? 'active' : ''} onClick={() => setView('month')}>{t('calendar.month')}</button>
+          <button className={view === 'week'  ? 'active' : ''} onClick={() => setView('week')}>{t('calendar.week')}</button>
         </div>
       </div>
 
@@ -348,10 +356,10 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
 
       {/* Legend */}
       <div style={{ marginTop: 16, fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        <Legend color="var(--brand)">Город (полоса)</Legend>
-        <Legend color="var(--success)">Проживание</Legend>
-        <Legend color="var(--ai)">Активности</Legend>
-        <Legend color="var(--brand)">Перелёты и переезды</Legend>
+        <Legend color="var(--brand)">{t('calendar.legend_city')}</Legend>
+        <Legend color="var(--success)">{t('budget.cat_accommodation')}</Legend>
+        <Legend color="var(--ai)">{t('budget.cat_activities')}</Legend>
+        <Legend color="var(--brand)">{t('calendar.legend_transport')}</Legend>
       </div>
     </>
   );

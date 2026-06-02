@@ -13,4 +13,9 @@ export default {
   'calendar.hotel_cancel_deadline': 'Бесплатная отмена до: {name}',
   'calendar.car_pickup': 'Получение авто: {name}',
   'calendar.car_dropoff': 'Возврат авто: {name}',
+  'calendar.to_trip_start': 'К старту путешествия',
+  'calendar.legend_city': 'Город (полоса)',
+  'calendar.legend_transport': 'Перелёты и переезды',
+  'calendar.week_word': 'неделя',
+  'calendar.week_no_data': 'Нет данных для этой недели',
 };
