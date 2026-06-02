@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { Sparkles, Info, AlertTriangle, ChevronDown } from 'lucide-react';
-import { mapboxgl, MAPBOX_TOKEN, STYLE_LIGHT, fitToPoints, htmlMarkerEl, lineFeature, setLineLayer } from '@/lib/mapbox';
+import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, fitToPoints, htmlMarkerEl, lineFeature, setLineLayer } from '@/lib/mapbox';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
@@ -50,11 +50,14 @@ function AiPlannerMap({ cities }) {
   // Init map once (container is always mounted, placeholder overlays on top).
   useEffect(() => {
     if (!containerRef.current || mapRef.current || !MAPBOX_TOKEN) return undefined;
+    const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: STYLE_LIGHT,
+      style: MAP_STYLE,
+      config: baseConfig(dark ? 'DARK' : 'LIGHT'),
       center: [0, 20],
       zoom: 2,
+      projection: 'mercator',
       attributionControl: false,
       cooperativeGestures: true,
     });

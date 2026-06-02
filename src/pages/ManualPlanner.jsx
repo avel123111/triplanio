@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { mapboxgl, MAPBOX_TOKEN, styleFor, fitToPoints, htmlMarkerEl, lineFeature, setLineLayer } from '@/lib/mapbox';
+import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, fitToPoints, htmlMarkerEl, lineFeature, setLineLayer } from '@/lib/mapbox';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -269,9 +269,11 @@ function PlannerMap({ home, cities, returnCity, transport = {}, finalPoint = fal
     const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: styleFor(dark ? 'DARK' : 'LIGHT'),
+      style: MAP_STYLE,
+      config: baseConfig(dark ? 'DARK' : 'LIGHT'),
       center: positions[0] || [15, 50],
       zoom: 4,
+      projection: 'mercator',
       attributionControl: false,
       cooperativeGestures: true,
     });

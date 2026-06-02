@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { mapboxgl, MAPBOX_TOKEN, STYLE_LIGHT, fitToPoints, lineFeature, setLineLayer } from '@/lib/mapbox';
+import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, fitToPoints, lineFeature, setLineLayer } from '@/lib/mapbox';
 import { searchCities } from '@/lib/geo';
 import { Loader2 } from 'lucide-react';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -48,11 +48,14 @@ export default function AiTripMiniMap({ cities = [] }) {
   // Init map once.
   useEffect(() => {
     if (!containerRef.current || mapRef.current || !MAPBOX_TOKEN) return undefined;
+    const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: STYLE_LIGHT,
+      style: MAP_STYLE,
+      config: baseConfig(dark ? 'DARK' : 'LIGHT'),
       center: [0, 20],
       zoom: 1.5,
+      projection: 'mercator',
       attributionControl: false,
       interactive: true,
     });

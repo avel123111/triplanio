@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { mapboxgl, MAPBOX_TOKEN, styleFor, fitToPoints, lineFeature, setLineLayer } from '@/lib/mapbox';
+import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints, lineFeature, setLineLayer } from '@/lib/mapbox';
 import { countryFlag } from '@/lib/geo';
 import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import { sortVisits } from '@/lib/validation';
@@ -47,6 +47,10 @@ export default function MapView({
   const onCityClickRef = useRef(onCityClick);
   useEffect(() => { onCityClickRef.current = onCityClick; }, [onCityClick]);
 
+  // Current theme captured for the one-time map init (live changes handled below).
+  const schemeRef = useRef(colorScheme);
+  useEffect(() => { schemeRef.current = colorScheme; }, [colorScheme]);
+
   const ordered = useMemo(() => {
     const all = sortVisits(visits).filter((v) => v.latitude && v.longitude);
     return showStartEnd ? all : all.filter((v) => v.kind !== 'start' && v.kind !== 'end');
@@ -57,12 +61,14 @@ export default function MapView({
     [ordered],
   );
 
-  // --- Init map (recreated when the colour scheme changes, like the old key) ---
+  // --- Init map once. Day/night is applied via config (below), not by
+  // re-creating the map — so markers/routes persist across theme toggles. ---
   useEffect(() => {
     if (!containerRef.current || !MAPBOX_TOKEN) return undefined;
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: styleFor(colorScheme),
+      style: MAP_STYLE,
+      config: baseConfig(schemeRef.current),
       center: [0, 20],
       zoom: 2,
       projection: 'mercator',
@@ -81,7 +87,12 @@ export default function MapView({
       mapRef.current = null;
       setReady(false);
     };
-  }, [colorScheme]);
+  }, []);
+
+  // --- Switch day/night in place when the theme changes (no map re-render) ---
+  useEffect(() => {
+    if (mapRef.current && ready) applyBasemapConfig(mapRef.current, colorScheme);
+  }, [colorScheme, ready]);
 
   // --- Draw markers + route lines whenever the data changes ---
   useEffect(() => {

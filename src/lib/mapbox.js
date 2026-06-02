@@ -6,10 +6,26 @@ import mapboxgl from 'mapbox-gl';
 export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 if (MAPBOX_TOKEN) mapboxgl.accessToken = MAPBOX_TOKEN;
 
-// Match the app's light/dark theme toggle (colorScheme LIGHT/DARK).
-export const STYLE_LIGHT = 'mapbox://styles/avel1231/cmdj48my7004r01s8grdu846i';
-export const STYLE_DARK = 'mapbox://styles/avel1231/cmpvw5xmt000y01s7ekeghrxs';
-export const styleFor = (scheme) => (scheme === 'DARK' ? STYLE_DARK : STYLE_LIGHT);
+// One Mapbox Standard style for every map surface. Light/dark is the
+// `lightPreset` config (day/night), switched in place — the map is NOT
+// re-created on theme change. `theme: 'default'`.
+export const MAP_STYLE = 'mapbox://styles/mapbox/standard';
+export const lightPresetFor = (scheme) => (scheme === 'DARK' ? 'night' : 'day');
+
+// Initial style config — passed to `new mapboxgl.Map({ config })` to avoid a flash.
+export const baseConfig = (scheme) => ({ basemap: { theme: 'default', lightPreset: lightPresetFor(scheme) } });
+
+// Apply/refresh basemap config after the style is ready (for live theme toggling).
+export function applyBasemapConfig(map, scheme) {
+  if (!map) return;
+  const set = () => {
+    try {
+      map.setConfigProperty('basemap', 'theme', 'default');
+      map.setConfigProperty('basemap', 'lightPreset', lightPresetFor(scheme));
+    } catch { /* style/config not ready */ }
+  };
+  if (map.isStyleLoaded()) set(); else map.once('style.load', set);
+}
 
 // Fit the map to a set of [lng, lat] points. Single point → centered; empty → no-op.
 export function fitToPoints(map, points, opts = {}) {
