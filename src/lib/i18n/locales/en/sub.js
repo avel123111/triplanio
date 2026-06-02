@@ -43,6 +43,7 @@ export default {
   // Billing periods (rendered after the price loaded from Stripe)
   'sub.period_month': '/mo',
   'sub.period_year': '/yr',
+  'sub.period_once': 'one-time',
 
   // Plans - Pro Single-Trip Pass
   'sub.plan_trip_title': 'Pro Single-Trip Pass',

@@ -24,11 +24,13 @@ export default {
   'telegram.open_bot': 'Open Triplanio bot in Telegram',
   'telegram.waiting_hint': 'Press Start in Telegram, then come back - the panel updates automatically.',
 
-  // - Shared unlink modal (trip settings + account) -   'telegram.unlink_title': 'Unlink Telegram?',
+  // - Shared unlink modal (trip settings + account)
+  'telegram.unlink_title': 'Unlink Telegram?',
   'telegram.unlink_body': 'Are you sure? {handle} will stop receiving notifications for this trip - check-ins, transfers, cancellation deadlines and chat mentions.',
   'telegram.unlink_confirm': 'Unlink',
 
-  // - Account-level "Connected accounts" section -   'telegram.account_section_title': 'Connected accounts',
+  // - Account-level "Connected accounts" section
+  'telegram.account_section_title': 'Connected accounts',
   'telegram.account_section_subtitle': 'Accounts for trip notifications',
   'telegram.connected': 'Connected',
   'telegram.linked_trips': 'Linked trips',

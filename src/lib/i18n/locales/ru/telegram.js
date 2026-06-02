@@ -24,11 +24,13 @@ export default {
   'telegram.open_bot': 'Открыть Triplanio-бот в Telegram',
   'telegram.waiting_hint': 'Нажмите Start в Telegram и вернитесь сюда - панель обновится автоматически.',
 
-  // - Общая модалка отвязки (настройки путешествия + аккаунт) -   'telegram.unlink_title': 'Отвязать Telegram?',
+  // - Общая модалка отвязки (настройки путешествия + аккаунт)
+  'telegram.unlink_title': 'Отвязать Telegram?',
   'telegram.unlink_body': 'Ты уверены? На {handle} перестанут приходить уведомления об этом путешествии - заезды, переезды, дедлайны отмены и упоминания в чате.',
   'telegram.unlink_confirm': 'Отвязать',
 
-  // - Секция «Подключённые аккаунты» в настройках аккаунта -   'telegram.account_section_title': 'Подключённые аккаунты',
+  // - Секция «Подключённые аккаунты» в настройках аккаунта
+  'telegram.account_section_title': 'Подключённые аккаунты',
   'telegram.account_section_subtitle': 'Аккаунты для уведомлений по путешествиям',
   'telegram.connected': 'Подключён',
   'telegram.linked_trips': 'Привязанные путешествия',
