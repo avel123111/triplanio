@@ -7,7 +7,7 @@ import React from 'react';
  * Props:
  *  - segments: array of { key, label, colorClass, raw? }
  *  - height: px (default 18)
- *  - onSegmentClick: optional (segment) => void — makes each segment a button
+ *  - onSegmentClick: optional (segment) => void - makes each segment a button
  */
 export default function CalendarSegmentBar({ segments, height = 18, onSegmentClick }) {
   if (!segments || segments.length === 0) return <div style={{ height }} />;

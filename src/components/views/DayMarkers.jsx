@@ -5,7 +5,7 @@ import { dayKey } from '@/lib/time';
 /**
  * Renders compact date badges in the timeline rail for every day inside a
  * city visit that has at least one event (activity, hotel check-in/out).
- * Only the date badge is drawn — no event chips, no labels — to keep the
+ * Only the date badge is drawn - no event chips, no labels - to keep the
  * rail clean and provide a quick temporal scan of the visit.
  *
  * The first day of the visit is skipped (already shown by the visit's
@@ -28,7 +28,7 @@ export default function DayMarkers({ visit, hotels, activities, outboundDayKey =
   }
 
   // Only render a date badge when there's at least one ACTIVITY that day.
-  // Hotel check-in/out days are intentionally skipped — they're shown by the
+  // Hotel check-in/out days are intentionally skipped - they're shown by the
   // visit anchor (first day) and the outbound transfer (last day) respectively,
   // so adding extra badges for them creates duplicate-looking date markers.
   const hasActivity = (k) => activities.some(a => dayKey(a.start_datetime, tz) === k);

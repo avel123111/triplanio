@@ -4,7 +4,7 @@ import { BedDouble, Car, CalendarX } from 'lucide-react';
 
 /**
  * Static (non-draggable) 1-hour block on the week grid for "point" events
- * that have no end_datetime — hotel check-in/out, hotel free-cancellation
+ * that have no end_datetime - hotel check-in/out, hotel free-cancellation
  * deadline, car rental pickup/drop-off.
  *
  * Clicking the block opens the parent entity's view dialog (handled by the

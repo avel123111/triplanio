@@ -3,14 +3,14 @@ import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
 
 /**
- * PaymentSuccessDialog — shown after a successful Stripe checkout return.
+ * PaymentSuccessDialog - shown after a successful Stripe checkout return.
  * Self-contained controlled overlay (no ModalHost dependency).
  *
  * Props:
- *   open          — boolean
- *   onOpenChange  — (open: boolean) => void
- *   planLabel     — optional purchased plan name (e.g. "Pro Monthly")
- *   priceLabel    — optional price string (e.g. "€9.99/мес"); shown only if known
+ *   open          - boolean
+ *   onOpenChange  - (open: boolean) => void
+ *   planLabel     - optional purchased plan name (e.g. "Pro Monthly")
+ *   priceLabel    - optional price string (e.g. "€9.99/мес"); shown only if known
  */
 export default function PaymentSuccessDialog({ open, onOpenChange, planLabel, priceLabel }) {
   if (!open) return null;
@@ -32,7 +32,7 @@ export default function PaymentSuccessDialog({ open, onOpenChange, planLabel, pr
           </div>
           <h2 style={{ marginBottom: 8 }}>Подписка активирована</h2>
           <div className="muted" style={{ fontSize: 14, lineHeight: 1.55, maxWidth: 360, margin: '0 auto 14px' }}>
-            Pro подключён. Все фичи доступны во всех твоих трипах. Подтверждение придёт на e-mail.
+            Pro подключён. Все фичи доступны во всех твоих путешествиях. Подтверждение придёт на e-mail.
           </div>
           {chip && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: 'var(--warm-tint)', color: 'var(--warm)', borderRadius: 999, fontSize: 12.5, fontWeight: 600 }}>

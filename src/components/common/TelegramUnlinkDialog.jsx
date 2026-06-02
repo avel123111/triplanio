@@ -5,7 +5,7 @@ import { useT } from '@/lib/i18n/I18nContext';
 /**
  * Shared destructive confirm for removing a Telegram binding.
  *
- * Used in two places (single source of truth — matches the design modal):
+ * Used in two places (single source of truth - matches the design modal):
  *   - Trip settings (SettingsLens → TelegramSection): remove a bound chat from a trip.
  *   - Account settings (ScreenAccount → ConnectedAccountsSection): unlink a trip.
  *
@@ -13,8 +13,8 @@ import { useT } from '@/lib/i18n/I18nContext';
  * deletion is the caller's `onConfirm` (telegramDisconnect({ tripId, integrationId })).
  *
  * Props:
- *   handle    — display string for the chat (@username or first name), shown in the body.
- *   onConfirm — called when the user confirms; the dialog closes itself afterwards.
+ *   handle    - display string for the chat (@username or first name), shown in the body.
+ *   onConfirm - called when the user confirms; the dialog closes itself afterwards.
  */
 export default function TelegramUnlinkDialog({ handle, onConfirm }) {
   const t = useT();

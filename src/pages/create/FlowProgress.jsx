@@ -1,11 +1,11 @@
 import React from 'react';
 
 // =====================================================================
-// FLOW PROGRESS — counter-style progress bar for the unified create flow.
+// FLOW PROGRESS - counter-style progress bar for the unified create flow.
 //   steps:   [{ label }]
 //   current: 0-based index of the active step
 //   accent:  theme color (brand for manual, ai for AI entry)
-//   onJump(i): optional — clickable segments (only past/current steps jump)
+//   onJump(i): optional - clickable segments (only past/current steps jump)
 // =====================================================================
 export default function FlowProgress({ steps, current = 0, accent = 'var(--brand)', onJump, nextLabel }) {
   return (

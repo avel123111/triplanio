@@ -17,9 +17,9 @@ function scorePassword(pw) {
 }
 const STRENGTH_LABELS = [
   'Используйте 8+ символов, цифры и заглавные.',
-  'Слабый — добавьте длину или регистр.',
-  'Средний — добавьте цифру или символ.',
-  'Хороший — почти.',
+  'Слабый - добавь длину или регистр.',
+  'Средний - добавь цифру или символ.',
+  'Хороший - почти.',
   'Надёжный.',
 ];
 
@@ -118,7 +118,7 @@ export default function Login() {
   const [sentEmail, setSentEmail] = useState('');
   const pwScore = scorePassword(password);
 
-  // Redirect if already logged in — but never on the recovery route, where the
+  // Redirect if already logged in - but never on the recovery route, where the
   // session belongs to a password reset still in progress.
   useEffect(() => {
     if (isRecoveryRoute) return;
@@ -178,12 +178,11 @@ export default function Login() {
     if (error) { setError(error.message); setIsLoading(false); }
   };
 
-  // Google One Tap credential handler — exchanges the Google JWT for a
+  // Google One Tap credential handler - exchanges the Google JWT for a
   // Supabase session via signInWithIdToken. AuthContext picks up SIGNED_IN
   // and handles profile creation + redirect to /trips.
   // `nonce` is the RAW nonce: Google embedded its SHA-256 hash in the id_token,
-  // Supabase re-hashes the raw value and compares. Both sides must agree —
-  // omitting it while the token carries a nonce throws "Passed nonce and nonce
+  // Supabase re-hashes the raw value and compares. Both sides must agree -   // omitting it while the token carries a nonce throws "Passed nonce and nonce
   // in id_token should either both exist or not".
   const handleOneTapCredential = async (response, nonce) => {
     setIsLoading(true);
@@ -200,7 +199,7 @@ export default function Login() {
         return;
       }
       // Success: AuthContext picks up SIGNED_IN but does not navigate, and this
-      // page stays mounted on /login — redirect explicitly (same as email login
+      // page stays mounted on /login - redirect explicitly (same as email login
       // and the Google redirect flow's redirectTo). Keep isLoading=true so the
       // buttons don't flash re-enabled before the navigation tears the page down.
       window.location.href = '/trips';
@@ -345,7 +344,7 @@ export default function Login() {
               <>
                 <div className="eyebrow">Вход в аккаунт</div>
                 <h1 className="auth__h1">С возвращением.</h1>
-                <p className="lede">Откройте свои маршруты, бюджеты и общие планы — там, где вы их оставили.</p>
+                <p className="lede">Открой свои маршруты, бюджеты и общие планы - там, где ты их оставили.</p>
 
                 <div className="socials">
                   <button type="button" className="btn-social" onClick={handleGoogle} disabled={isLoading}>
@@ -414,7 +413,7 @@ export default function Login() {
               <>
                 <div className="eyebrow">Создать аккаунт</div>
                 <h1 className="auth__h1">Спланируйте первую поездку.</h1>
-                <p className="lede">Бесплатно, без карты. Соберите маршрут, бюджет и компанию — в одном месте.</p>
+                <p className="lede">Бесплатно, без карты. Соберите маршрут, бюджет и компанию - в одном месте.</p>
 
                 <div className="socials">
                   <button type="button" className="btn-social" onClick={handleGoogle} disabled={isLoading}>
@@ -435,7 +434,7 @@ export default function Login() {
                       <label className="field__label" htmlFor="s-name">Имя</label>
                     </div>
                     <input className="auth-input" id="s-name" type="text" autoComplete="name"
-                      placeholder="Как к вам обращаться" required value={name}
+                      placeholder="Как к тебе обращаться" required value={name}
                       onChange={e => setName(e.target.value)} disabled={isLoading} />
                   </div>
 
@@ -490,7 +489,7 @@ export default function Login() {
               <>
                 <div className="eyebrow">Восстановление</div>
                 <h1 className="auth__h1">Сбросьте пароль.</h1>
-                <p className="lede">Введите email, на который зарегистрирован аккаунт — пришлём ссылку для смены пароля.</p>
+                <p className="lede">Введи email, на который зарегистрирован аккаунт - пришлём ссылку для смены пароля.</p>
 
                 {error && <div className="auth-error">{error}</div>}
 
@@ -526,7 +525,7 @@ export default function Login() {
                 <p className="lede" style={{ margin: '14px auto 0', maxWidth: '36ch' }}>
                   Ссылка ушла на{' '}
                   <span className="confirm__email">{sentEmail}</span>.
-                  <br />Не пришло за пару минут — посмотрите в «Спам».
+                  <br />Не пришло за пару минут - посмотрите в «Спам».
                 </p>
                 <div className="confirm__actions">
                   <a className="btn-ghost" href="https://mail.google.com" target="_blank" rel="noopener noreferrer">
@@ -548,7 +547,7 @@ export default function Login() {
               <>
                 <div className="eyebrow">Новый пароль</div>
                 <h1 className="auth__h1">Придумайте новый пароль.</h1>
-                <p className="lede">Введите новый пароль дважды — он заменит старый для входа в аккаунт.</p>
+                <p className="lede">Введи новый пароль дважды - он заменит старый для входа в аккаунт.</p>
 
                 {error && <div className="auth-error">{error}</div>}
 
@@ -576,7 +575,7 @@ export default function Login() {
 
                   <div className="field">
                     <div className="field__top">
-                      <label className="field__label" htmlFor="rp-pw2">Повторите пароль</label>
+                      <label className="field__label" htmlFor="rp-pw2">Повтори пароль</label>
                     </div>
                     <div className="input-wrap">
                       <input className="auth-input auth-input--trail" id="rp-pw2"
@@ -620,7 +619,7 @@ export default function Login() {
                   Пароль обновлён.
                 </h2>
                 <p className="lede" style={{ margin: '14px auto 0', maxWidth: '34ch' }}>
-                  Готово — войдите в аккаунт с новым паролем. Старый больше не работает.
+                  Готово - войдите в аккаунт с новым паролем. Старый больше не работает.
                 </p>
                 <div className="confirm__actions" style={{ gridTemplateColumns: '1fr' }}>
                   <button type="button" className="btn-primary" onClick={finishToLogin}>
@@ -656,11 +655,11 @@ export default function Login() {
               Вся поездка. <span className="accent">Один</span> красивый план.
             </h2>
             <p className="brand-col__sub">
-              Маршруты в нескольких городах, общие планы, бюджеты в любой валюте — и AI, который берёт на себя рутину.
+              Маршруты в нескольких городах, общие планы, бюджеты в любой валюте - и ИИ, который берёт на себя рутину.
             </p>
           </header>
 
-          <div className="preview" role="img" aria-label="Превью маршрута Иберия — Лето 2026">
+          <div className="preview" role="img" aria-label="Превью маршрута Иберия - Лето 2026">
             <div className="preview__stage">
               <div className="appframe">
                 <div className="appframe__bar">
@@ -672,7 +671,7 @@ export default function Login() {
                 <div className="appframe__body">
                   <div className="trip-head">
                     <div className="trip-head__meta">Маршрут · 12.07 → 23.07</div>
-                    <div className="trip-head__title">Иберия — Лето '26</div>
+                    <div className="trip-head__title">Иберия - Лето '26</div>
                     <div className="trip-head__cities">
                       <span className="city-chip"><span className="dot" style={{ background: 'var(--brand)' }} /> Lisbon</span>
                       <span className="city-chip"><span className="dot" style={{ background: 'var(--warm)' }} /> Porto</span>

@@ -1,8 +1,8 @@
 // Centralized query-cache helpers for TripView's progressive data loading.
 //
 // TripView splits its data into two parallel requests:
-//   ['trip-shell',   tripId] — trip + cityVisits (renders skeleton/header fast)
-//   ['trip-content', tripId] — hotels/activities/transfers/services/members
+//   ['trip-shell',   tripId] - trip + cityVisits (renders skeleton/header fast)
+//   ['trip-content', tripId] - hotels/activities/transfers/services/members
 //
 // Any mutation that touches a trip's contents should invalidate BOTH via
 // invalidateTripData(qc, tripId) so the user-visible state stays consistent

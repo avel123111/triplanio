@@ -1,11 +1,11 @@
 /**
- * CalendarLens — calendar tab inside TripView.
+ * CalendarLens - calendar tab inside TripView.
  *
  * Props:
- *   stream   — array of stream events (from buildEventStream)
- *   visits   — array of cityVisit rows
- *   trip     — trip object with start_date / end_date
- *   isLoading — boolean
+ *   stream   - array of stream events (from buildEventStream)
+ *   visits   - array of cityVisit rows
+ *   trip     - trip object with start_date / end_date
+ *   isLoading - boolean
  */
 import React, { useState, useMemo } from 'react';
 import { Icon } from '../design/icons';
@@ -79,7 +79,7 @@ function MonthView({ cells, eventsByDay, spans, inTripDays }) {
                 }}>{d}</div>
               )}
 
-              {/* City span bars — start on this day, extend right */}
+              {/* City span bars - start on this day, extend right */}
               {cellSpans.map((s, si) => (
                 <div key={si} style={{
                   position: 'absolute', left: 4, top: 28,
@@ -204,7 +204,7 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
 
   // Month grid data
   const { cells, year, monthNum, monthLabel } = useMemo(() => {
-    if (!currentMonth) return { cells: [], year: 0, monthNum: 0, monthLabel: '—' };
+    if (!currentMonth) return { cells: [], year: 0, monthNum: 0, monthLabel: '-' };
     const y = currentMonth.year;
     const m = currentMonth.month;
     const firstDay = currentMonth.startOf('month');
@@ -242,7 +242,7 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
       const cStart = start < mStart ? mStart : start;
       const cEnd   = end   > mEnd   ? mEnd   : end;
       if (cStart > cEnd) return [];
-      return [{ from: cStart.day, to: cEnd.day, label: v.city_name || '—', c: 'var(--brand)' }];
+      return [{ from: cStart.day, to: cEnd.day, label: v.city_name || '-', c: 'var(--brand)' }];
     });
   }, [visits, currentMonth]);
 
@@ -300,7 +300,7 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
     return {
       weekDays:  days,
       weekEvents: wEvents,
-      weekLabel: `${weekStart.day} — ${weekEnd.day}`,
+      weekLabel: `${weekStart.day} - ${weekEnd.day}`,
     };
   }, [stream, visits, baseDateStr, weekOffset]);
 
@@ -334,7 +334,7 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
           )}
         </h2>
         <Btn variant="ghost" size="sm" icon="back" onClick={goBack} />
-        <Btn variant="ghost" size="sm" onClick={goHome}>К старту трипа</Btn>
+        <Btn variant="ghost" size="sm" onClick={goHome}>К старту путешествия</Btn>
         <Btn variant="ghost" size="sm" icon="chev" onClick={goFwd} />
         <div className="tweaks__seg" style={{ marginLeft: 6 }}>
           <button className={view === 'month' ? 'active' : ''} onClick={() => setView('month')}>Месяц</button>

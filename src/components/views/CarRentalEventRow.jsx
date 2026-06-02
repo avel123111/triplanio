@@ -23,14 +23,14 @@ export default function CarRentalEventRow({ kind, time, service, onClick }) {
       className="block w-full text-left hover:opacity-90 transition"
     >
       <div className="relative">
-        {/* Rail icon — absolute over the parent's w-10 spacer column */}
+        {/* Rail icon - absolute over the parent's w-10 spacer column */}
         <div
           data-rail-anchor="true"
           className="absolute -left-[3.5rem] top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-xl flex items-center justify-center bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
         >
           <Car className="w-4 h-4" />
         </div>
-        {/* Card body — time chip on the LEFT, matching other timeline events */}
+        {/* Card body - time chip on the LEFT, matching other timeline events */}
         <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-border bg-card">
           <div className="shrink-0 px-2.5 py-1 rounded-md text-xs font-semibold tabular-nums bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
             {time.toFormat('HH:mm')}

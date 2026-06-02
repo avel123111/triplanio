@@ -1,6 +1,6 @@
 // Helpers for the calendar lane bars (cities / hotels).
 //
-// Each calendar cell (a day) can host 1..N "segments" — short-lived membership
+// Each calendar cell (a day) can host 1..N "segments" - short-lived membership
 // of a single city or hotel that day. When there are 2-3 segments in the same
 // cell, we split the cell into equal columns (no time-weighted slicing).
 

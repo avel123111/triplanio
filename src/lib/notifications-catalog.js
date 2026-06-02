@@ -1,5 +1,5 @@
 /**
- * Notifications Catalog — single source of truth that documents every
+ * Notifications Catalog - single source of truth that documents every
  * notification the app sends.
  *
  * This is a STATIC catalog maintained by developers. When you add, remove
@@ -118,7 +118,7 @@ export const NOTIFICATIONS = [
     audience: 'All active Telegram users on the trip',
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
-    hardcodedText: { ru: '⏰ Через 24 часа истекает бесплатная отмена отеля\n\n🧳 {trip}\n🏨 {hotel} — {city}\n📅 Дедлайн: {datetime}' },
+    hardcodedText: { ru: '⏰ Через 24 часа истекает бесплатная отмена отеля\\n\\n🧳 {trip}\\n🏨 {hotel} - {city}\\n📅 Дедлайн: {datetime}' },
     comment: 'Deduplicated per (user, event_id) via TelegramReminderLog. RUSSIAN ONLY.',
   },
   {
@@ -129,7 +129,7 @@ export const NOTIFICATIONS = [
     audience: 'All active Telegram users on the trip',
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
-    hardcodedText: { ru: '🏨 Завтра заезд в отель (через 24 часа)\n\n🧳 {trip}\n🏨 {hotel} — {city}\n📅 Заезд: {datetime}\n📍 {address}\n🔖 Бронь: {booking_ref}' },
+    hardcodedText: { ru: '🏨 Завтра заезд в отель (через 24 часа)\\n\\n🧳 {trip}\\n🏨 {hotel} - {city}\\n📅 Заезд: {datetime}\\n📍 {address}\\n🔖 Бронь: {booking_ref}' },
     comment: 'Includes hotel name, address, booking ref. RUSSIAN ONLY.',
   },
   {
@@ -140,7 +140,7 @@ export const NOTIFICATIONS = [
     audience: 'All active Telegram users on the trip',
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
-    hardcodedText: { ru: '🧳 Через 18 часов выезд из отеля\n\n🧳 {trip}\n🏨 {hotel} — {city}\n📅 Выезд: {datetime}' },
+    hardcodedText: { ru: '🧳 Через 18 часов выезд из отеля\\n\\n🧳 {trip}\\n🏨 {hotel} - {city}\\n📅 Выезд: {datetime}' },
     comment: 'RUSSIAN ONLY.',
   },
   {
@@ -162,8 +162,8 @@ export const NOTIFICATIONS = [
     audience: 'All active Telegram users on the trip',
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
-    hardcodedText: { ru: '🚗 Через 18 часов — получение арендованного авто\n\n🧳 {trip}\n🏷️ {service_name}' },
-    comment: 'Needs pickup_timezone set on the rental — legacy records without TZ are skipped. RUSSIAN ONLY.',
+    hardcodedText: { ru: '🚗 Через 18 часов - получение арендованного авто\\n\\n🧳 {trip}\\n🏷️ {service_name}' },
+    comment: 'Needs pickup_timezone set on the rental - legacy records without TZ are skipped. RUSSIAN ONLY.',
   },
   {
     id: 'telegram.car_rental_end',
@@ -173,7 +173,7 @@ export const NOTIFICATIONS = [
     audience: 'All active Telegram users on the trip',
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
-    hardcodedText: { ru: '🚗 Через 18 часов — возврат арендованного авто\n\n🧳 {trip}\n🏷️ {service_name}' },
+    hardcodedText: { ru: '🚗 Через 18 часов - возврат арендованного авто\\n\\n🧳 {trip}\\n🏷️ {service_name}' },
     comment: 'RUSSIAN ONLY.',
   },
   {
@@ -184,7 +184,7 @@ export const NOTIFICATIONS = [
     audience: 'All active Telegram users on the trip',
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
-    hardcodedText: { ru: '🎟️ Через 4 часа — активность\n\n🧳 {trip}\n📌 {title} — {city}\n📅 Начало: {datetime}\n📍 {address}' },
+    hardcodedText: { ru: '🎟️ Через 4 часа - активность\\n\\n🧳 {trip}\\n📌 {title} - {city}\\n📅 Начало: {datetime}\\n📍 {address}' },
     comment: 'Includes activity title, city, address. RUSSIAN ONLY.',
   },
 ];

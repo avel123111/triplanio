@@ -1,13 +1,13 @@
 /**
- * ChatLens — group chat tab inside TripView.
+ * ChatLens - group chat tab inside TripView.
  *
  * Real-time via Supabase Realtime on chat_messages (filtered by chat_id).
  * Supports @Triplanio AI trigger, mention dropdown, thinking state.
  *
  * Props:
- *   tripId  — string
- *   members — array of trip member rows (for @mention list)
- *   myRole  — string
+ *   tripId  - string
+ *   members - array of trip member rows (for @mention list)
+ *   myRole  - string
  */
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -45,7 +45,7 @@ function isSameDay(a, b) {
 }
 
 // HTML-escape user input, then wrap @triplanio in a colored bold span. Used in
-// the input overlay only — never inside dangerouslySetInnerHTML on user-facing
+// the input overlay only - never inside dangerouslySetInnerHTML on user-facing
 // content that's been roundtripped through the DB.
 function highlightMentions(val) {
   const escaped = (val || '')
@@ -357,9 +357,9 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
     return () => ta.removeEventListener('scroll', sync);
   }, []);
 
-  // Mention list — Triplanio first, then participants (owner + admins + viewers)
+  // Mention list - Triplanio first, then participants (owner + admins + viewers)
   const mentionList = [
-    { name: 'Triplanio', desc: '@Triplanio — отвечает всем', ai: true, handle: 'Triplanio' },
+    { name: 'Triplanio', desc: '@Triplanio - отвечает всем', ai: true, handle: 'Triplanio' },
     ...chatParticipants(members, ownerId).map((m) => {
       const resolved = nameFor(m.user_id);
       return {
@@ -377,7 +377,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
 
   // Build message rows with date dividers. Memoized on [msgs, profiles, user]
   // so typing in the composer (which lives in this same component) does NOT
-  // rebuild every bubble on each keystroke — that was the typing lag.
+  // rebuild every bubble on each keystroke - that was the typing lag.
   const messageRows = useMemo(() => {
     const rows = [];
     for (let i = 0; i < msgs.length; i++) {
@@ -440,7 +440,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>
               <div style={{ fontSize: 28, marginBottom: 10 }}>💬</div>
               <div style={{ fontWeight: 500, marginBottom: 6 }}>Чат пуст</div>
-              <div style={{ fontSize: 12.5 }}>Будь первым — напиши что-нибудь</div>
+              <div style={{ fontSize: 12.5 }}>Будь первым - напиши что-нибудь</div>
             </div>
           ) : messageRows}
         </div>
@@ -479,7 +479,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               width: 280, zIndex: 5,
             }}>
               <div className="eyebrow" style={{ padding: '0 10px 2px', margin: 0 }}>Упомянуть</div>
-              {/* Only @Triplanio is actionable — mentioning a member does nothing,
+              {/* Only @Triplanio is actionable - mentioning a member does nothing,
                   so the popup lists just the assistant. */}
               <button
                 onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
@@ -490,7 +490,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                 <TriplanioAvatar size="sm" />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
-                  <div className="muted" style={{ fontSize: 11.5 }}>@Triplanio — отвечает всем</div>
+                  <div className="muted" style={{ fontSize: 11.5 }}>@Triplanio - отвечает всем</div>
                 </div>
               </button>
             </div>
@@ -500,7 +500,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             <div style={{ flex: 1, position: 'relative' }}>
               {/* Overlay (visible) sits BEHIND a transparent-text textarea: the
                   overlay renders the full text with @Triplanio in bold purple,
-                  the textarea shows only the caret — no double glyphs. */}
+                  the textarea shows only the caret - no double glyphs. */}
               <div
                 ref={ovRef}
                 aria-hidden="true"
@@ -519,7 +519,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               <textarea
                 ref={taRef}
                 className="textarea"
-                placeholder="Напиши сообщение — @ открывает упоминание"
+                placeholder="Напиши сообщение - @ открывает упоминание"
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKey}
@@ -564,7 +564,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               ))
             )}
             <div style={{ borderTop: '1px solid var(--line-2)', paddingTop: 8, marginTop: 4 }}>
-              <ChatMember name="Triplanio" role="@Triplanio — общий" ai />
+              <ChatMember name="Triplanio" role="@Triplanio - общий" ai />
             </div>
           </div>
         </Card>
@@ -573,7 +573,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 12.5, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <li>Отвечает всем участникам</li>
             <li>Предлагает отели, перелёты, активности</li>
-            <li>Может править трип — с согласия владельца</li>
+            <li>Может править путешествие - с согласия владельца</li>
           </ul>
         </Card>
       </aside>

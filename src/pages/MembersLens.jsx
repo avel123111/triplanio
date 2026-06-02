@@ -1,9 +1,9 @@
 /**
- * MembersLens — members tab inside TripView.
+ * MembersLens - members tab inside TripView.
  *
  * Props: tripId, members, trip, user, role, isLoading, queryClient
  *
- * members — trip_members rows from getTripDetails (include: ['content'])
+ * members - trip_members rows from getTripDetails (include: ['content'])
  *   columns: id, trip_id, user_id, invite_email, user_full_name, role, status, invite_token, ...
  */
 import React, { useState } from 'react';
@@ -51,8 +51,8 @@ function StatusDot({ status }) {
 // ─── InviteDialog ─────────────────────────────────────────────────────────────
 
 const ROLES = [
-  { value: 'admin',  label: 'Админ — редактирование всего' },
-  { value: 'viewer', label: 'Зритель — только чтение' },
+  { value: 'admin',  label: 'Админ - редактирование всего' },
+  { value: 'viewer', label: 'Зритель - только чтение' },
 ];
 
 function InviteDialog({ tripId, onSaved, promoteMember }) {
@@ -67,7 +67,7 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
 
   async function inviteByEmail() {
     const trimmed = email.trim().toLowerCase();
-    if (!trimmed.includes('@')) { setErr('Введите корректный e-mail'); return; }
+    if (!trimmed.includes('@')) { setErr('Введи корректный e-mail'); return; }
     setSaving(true);
     setErr('');
     const { data, error } = await supabase.functions.invoke('inviteTripMember', {
@@ -85,7 +85,7 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
 
   async function addOffline() {
     const name = offlineName.trim();
-    if (!name) { setErr('Введите имя'); return; }
+    if (!name) { setErr('Введи имя'); return; }
     setSaving(true);
     setErr('');
     const { data, error } = await supabase.functions.invoke('addOfflineTripMember', {
@@ -98,7 +98,7 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
   }
 
   return (
-    <Dialog title="Пригласить в трип" icon="users" size=""
+    <Dialog title="Пригласить в путешествие" icon="users" size=""
       foot={<>
         <Btn variant="ghost" onClick={() => window.__closeModal?.()}>Закрыть</Btn>
         {tab === 'email' && <Btn variant="primary" icon="send" onClick={inviteByEmail} disabled={saving}>{saving ? 'Отправляю…' : 'Отправить приглашение'}</Btn>}
@@ -119,7 +119,7 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
       {tab !== 'offline' && (
         <Field label="Роль приглашаемого">
           <div className="tweaks__seg" style={{ display: 'flex' }}>
-            {[['viewer', 'Зритель', 'Только смотрит'], ['admin', 'Админ', 'Редактирует трип']].map(([k, lab, sub]) =>
+            {[['viewer', 'Зритель', 'Только смотрит'], ['admin', 'Админ', 'Редактирует путешествие']].map(([k, lab, sub]) =>
               <button key={k} className={role === k ? 'active' : ''} onClick={() => setRole(k)}
                 style={{ flex: 1, flexDirection: 'column', gap: 0, padding: '8px 10px' }}>
                 <div style={{ fontWeight: 500 }}>{lab}</div>
@@ -156,12 +156,12 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
           </div>
         </Field>
         <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
-          Кто откроет ссылку — попадёт на страницу принятия с автоматически выбранной ролью.
+          Кто откроет ссылку - попадёт на страницу принятия с автоматически выбранной ролью.
         </div>
       </>}
 
       {tab === 'offline' && <>
-        <Field label="Имя" hint="без аккаунта — только отображается в участниках">
+        <Field label="Имя" hint="без аккаунта - только отображается в участниках">
           <input className="input" value={offlineName} onChange={e => setOfflineName(e.target.value)} placeholder="Серёжа, мама и т.д." autoFocus />
         </Field>
         <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
@@ -238,7 +238,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   const [removing, setRemoving] = useState(null);
 
   const canManage = myRole === 'owner' || myRole === 'admin';
-  // Resolve display names from profiles. Include the trip owner — they often
+  // Resolve display names from profiles. Include the trip owner - they often
   // have no trip_members row, so members.map alone misses them and the owner
   // ends up showing the email twice.
   const profileIds = [
@@ -281,7 +281,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   }
 
   async function removeMember(memberId) {
-    if (!window.confirm('Убрать участника из трипа?')) return;
+    if (!window.confirm('Убрать участника из путешествия?')) return;
     setOpenMenu(null);
     setRemoving(memberId);
     const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });
@@ -299,7 +299,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   }
 
   // Add trip owner as first "member" if not already in list. Don't seed
-  // user_full_name with the email — leave it empty so the profile resolver
+  // user_full_name with the email - leave it empty so the profile resolver
   // (or the auth user's own name when they are the owner) wins the fallback.
   const ownerId = trip?.created_by || '';
   const allMembers = [...members];
@@ -416,7 +416,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                       <RowMenuItem icon="edit" onClick={() => { setOpenMenu(null); window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />); }}>Изменить роль</RowMenuItem>
                     )}
                     <RowMenuItem icon="trash" danger onClick={() => removeMember(m.id)}>
-                      {m.status === 'pending' ? 'Отменить приглашение' : 'Убрать из трипа'}
+                      {m.status === 'pending' ? 'Отменить приглашение' : 'Убрать из путешествия'}
                     </RowMenuItem>
                   </div>
                 )}
@@ -434,7 +434,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 600, marginBottom: 2 }}>Пригласить ещё участников</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>Отправьте приглашение по e-mail. Получатель увидит трип после регистрации.</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>Отправь приглашение по e-mail. Получатель увидит путешествие после регистрации.</div>
           </div>
           <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>Пригласить</Btn>
         </div>

@@ -22,7 +22,7 @@ export default function TripCard({ trip, visits = [], currentUserRole }) {
   const cityCount = uniqueCityCount(visits);
   const roleMeta = currentUserRole ? ROLE_META[currentUserRole] : null;
   // Live-fetched image from Wikipedia for the first transit city (same source
-  // as CityHero). Not persisted on the trip — purely rendered on the fly.
+  // as CityHero). Not persisted on the trip - purely rendered on the fly.
   const fallbackImg = useCityImageForVisits(trip.cover_image_url ? null : visits);
   const coverImg = trip.cover_image_url || fallbackImg;
 

@@ -1,4 +1,4 @@
-// Translation dictionaries — thin index over modular per-section files.
+// Translation dictionaries - thin index over modular per-section files.
 // Use t('key') in components. Add new strings in lib/i18n/locales/{lang}/{section}.js
 
 import ru from './locales/ru';

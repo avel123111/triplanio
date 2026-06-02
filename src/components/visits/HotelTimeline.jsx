@@ -27,7 +27,7 @@ export default function HotelTimeline({ visit, hotels, onAdd, onEdit, onView }) 
   const tz = visit.timezone || 'UTC';
 
   // Build hotel rows + "no hotel" gap rows.
-  // Skip the initial gap on the arrival day (it's expected — you arrive,
+  // Skip the initial gap on the arrival day (it's expected - you arrive,
   // sightsee, then check in later). Also skip gaps shorter than 12h.
   const rows = [];
   let cursor = visit.start_datetime ? new Date(visit.start_datetime).getTime() : null;

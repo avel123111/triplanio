@@ -11,8 +11,7 @@ const BUCKET = 'trip-covers';
 /**
  * Cover picker shared by TripFormDialog and the AI create wizard. Lets the
  * user pick one of 8 preset gradients or upload a photo to Supabase Storage.
- * Calls `onChange({ cover_image_url, cover_gradient })` with the new pair —
- * choosing a gradient clears the uploaded photo and vice versa.
+ * Calls `onChange({ cover_image_url, cover_gradient })` with the new pair -  * choosing a gradient clears the uploaded photo and vice versa.
  */
 export default function TripCoverPicker({
   coverImageUrl = '',

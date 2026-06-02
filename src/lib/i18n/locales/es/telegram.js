@@ -24,13 +24,11 @@ export default {
   'telegram.open_bot': 'Abrir el bot de Triplanio en Telegram',
   'telegram.waiting_hint': 'Pulsa Start en Telegram y vuelve aquí: el panel se actualizará automáticamente.',
 
-  // — Modal de desvinculación compartido (ajustes del viaje + cuenta) —
-  'telegram.unlink_title': '¿Desvincular Telegram?',
+  // - Modal de desvinculación compartido (ajustes del viaje + cuenta) -   'telegram.unlink_title': '¿Desvincular Telegram?',
   'telegram.unlink_body': '¿Seguro? {handle} dejará de recibir notificaciones de este viaje: entradas, traslados, fechas límite de cancelación y menciones del chat.',
   'telegram.unlink_confirm': 'Desvincular',
 
-  // — Sección «Cuentas conectadas» en los ajustes de la cuenta —
-  'telegram.account_section_title': 'Cuentas conectadas',
+  // - Sección «Cuentas conectadas» en los ajustes de la cuenta -   'telegram.account_section_title': 'Cuentas conectadas',
   'telegram.account_section_subtitle': 'Cuentas para notificaciones de viajes',
   'telegram.connected': 'Conectado',
   'telegram.linked_trips': 'Viajes vinculados',
@@ -46,5 +44,5 @@ export default {
   'telegram.account_empty_benefit_ai': 'Consejos y respuestas del asistente IA sobre tu ruta',
   'telegram.account_empty_benefit_chat': 'Menciones y conversaciones del chat del viaje',
   'telegram.go_to_trips': 'Ir a los viajes',
-  'telegram.coming_soon': '· WhatsApp y Viber — próximamente',
+  'telegram.coming_soon': '· WhatsApp y Viber - próximamente',
 };

@@ -31,7 +31,7 @@ export default {
   'doc.visibility_shared': 'Shared',
   'doc.visibility_shared_desc': 'All trip members will see this document',
   'doc.visibility_private': 'Private',
-  'doc.visibility_private_desc': 'Only you can see — passport, visa, insurance',
+  'doc.visibility_private_desc': 'Only you can see - passport, visa, insurance',
   'doc.title_required': 'Title *',
   'doc.title_placeholder': 'e.g. Travel insurance policy',
   'doc.notes_label': 'Note (optional)',

@@ -5,11 +5,11 @@ export default {
   'budget.empty_hint': 'No expenses yet · tap to open',
   'budget.collab_empty_hint': 'tap to open',
   'budget.see_details': 'See details',
-  'budget.missing_fx_warning': 'No exchange rates for {currencies} — these expenses are not included in the total.',
+  'budget.missing_fx_warning': 'No exchange rates for {currencies} - these expenses are not included in the total.',
   'budget.addon_off_title': 'Enable Trip Budget',
   'budget.addon_off_desc': 'Trip Budget is turned off for this trip. Enable it to plan and track expenses across categories, add custom costs in any currency, and get a full breakdown of your travel spending.',
   'budget.addon_off_go_settings': 'Go to settings',
-  'budget.page_placeholder': 'Budget page is being rebuilt — coming soon.',
+  'budget.page_placeholder': 'Budget page is being rebuilt - coming soon.',
 
   // System categories
   'budget.cat_accommodation': 'Accommodation',
@@ -28,7 +28,7 @@ export default {
   'budget.fx_button': 'Exchange rates',
   'budget.add_expense': 'Add expense',
   'budget.add_category': 'Add category',
-  'budget.fx_warn': 'Some expenses could not be converted — check exchange rates.',
+  'budget.fx_warn': 'Some expenses could not be converted - check exchange rates.',
 
   // Category block
   'budget.no_expenses': 'No expenses',
@@ -36,7 +36,7 @@ export default {
   'budget.category_menu_delete': 'Delete category',
   'budget.category_delete_confirm_title': 'Delete category?',
   'budget.category_delete_confirm_msg': 'Category "{name}" will be deleted. All expenses inside it will be deleted too.',
-  'budget.category_delete_has_expenses': 'Category contains expenses — delete or move them first.',
+  'budget.category_delete_has_expenses': 'Category contains expenses - delete or move them first.',
   'budget.cannot_modify_system': 'System categories cannot be modified.',
 
   // Expense row
@@ -44,7 +44,7 @@ export default {
   'budget.source_transfer': 'Transport',
   'budget.source_activity': 'Activity',
   'budget.source_service': 'Service',
-  'budget.system_expense_hint': 'System expense — edited via its source',
+  'budget.system_expense_hint': 'System expense - edited via its source',
   'budget.expense_delete_confirm_title': 'Delete expense?',
   'budget.expense_delete_confirm_msg': 'Expense "{title}" will be deleted.',
 

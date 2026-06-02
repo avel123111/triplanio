@@ -3,7 +3,7 @@ import { Icon } from './icons';
 import { useIsMobile } from '../hooks/use-mobile';
 
 // =====================================================================
-// Shared components + mock data — converted from global scripts to ES modules
+// Shared components + mock data - converted from global scripts to ES modules
 // =====================================================================
 
 // ----- Avatar -----
@@ -272,7 +272,7 @@ export const WeatherChip = ({ temp, condition, hour, size = "sm" }) => {
   );
 };
 
-// ----- City photo helper — uses gradient placeholder by city -----
+// ----- City photo helper - uses gradient placeholder by city -----
 const CITY_PHOTO = {
   "Лиссабон":  { hue1: 195, hue2: 30,  emoji: "🌊", label: "Лиссабон · Альфама" },
   "Порту":     { hue1: 30,  hue2: 200, emoji: "🍷", label: "Порту · Рибейра" },
@@ -300,7 +300,7 @@ export const CityPhoto = ({ city, h = 80, w = "100%", radius = 10 }) => {
 };
 
 // =====================================================================
-// MODAL HOST — manages a stack of modal dialogs
+// MODAL HOST - manages a stack of modal dialogs
 // =====================================================================
 export function ModalHost() {
   const [stack, setStack] = React.useState([]);
@@ -410,7 +410,7 @@ export const PartnerPill = ({ url, fallback = "Ссылка" }) => {
 };
 
 // =====================================================================
-// BOOKING SUGGESTION CARD — used by AI in chats
+// BOOKING SUGGESTION CARD - used by AI in chats
 // =====================================================================
 export function BookingSuggestionCard({ type, name, partner, url, price, cur, rating, sub, extras }) {
   const p = detectPartner(url || partner);
@@ -449,7 +449,7 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
 }
 
 // =====================================================================
-// SHARED TIMELINE UTILITIES — exported so all screens can use them
+// SHARED TIMELINE UTILITIES - exported so all screens can use them
 // =====================================================================
 
 // ----- Utility: group event stream by date -----
@@ -477,7 +477,7 @@ export function weekday(iso) {
 // ----- Mock event stream -----
 export const STREAM = [
   { type: "hotel-deadline", id: "d1", date: "2026-07-09", time: "23:59", city: "Лиссабон", title: "Дедлайн бесплатной отмены · Memmo Alfama",
-    hotel: "Memmo Alfama", price: 880, cur: "EUR", note: "После — невозвратно. Решить сейчас, ехать ли." },
+    hotel: "Memmo Alfama", price: 880, cur: "EUR", note: "После - невозвратно. Решить сейчас, ехать ли." },
   { type: "flight", id: "f0", date: "2026-07-12", time: "08:35", duration: "4ч 25м", title: "TAP TP 1245",
     from: "SVO", to: "LIS", kind: "plane", carrier: "TAP Portugal", num: "TP 1245", price: 544, cur: "EUR",
     platformUrl: "https://tap.com", depart_loc: "Шереметьево T-D", arrive_loc: "Лиссабон-Портела" },
@@ -507,14 +507,14 @@ export const STREAM = [
   { type: "hotel-checkout", id: "h2-out", date: "2026-07-19", time: "11:00", city: "Порту", title: "Выезд · Torel Avantgarde", hotelId: "h2" },
   { type: "hotel-checkin", id: "h3-in", date: "2026-07-19", time: "16:00", city: "Барселона",
     title: "Заезд · Cotton House", hotelId: "h3", hotel: "Cotton House", address: "Gran Via 670",
-    price: 1340, cur: "EUR", nights: 4, num: "—" },
+    price: 1340, cur: "EUR", nights: 4, num: "-" },
   { type: "car-pickup", id: "cp1", date: "2026-07-19", time: "17:30", city: "Барселона", title: "Получение авто · Sixt",
     address: "Барселона аэропорт T1", platformUrl: "https://sixt.com" },
   { type: "activity", id: "a5", date: "2026-07-20", time: "10:25", duration: "1ч 35м", city: "Барселона",
     title: "Sagrada Família", price: 33, cur: "EUR", category: "sight", address: "C/ Mallorca 401" },
   { type: "activity", id: "a6", date: "2026-07-21", city: "Барселона",
     title: "Парк Гуэль", price: 18, cur: "EUR", category: "sight",
-    warning: "Не указано время — желательно поставить", address: "C/ Olot, 5" },
+    warning: "Не указано время - желательно поставить", address: "C/ Olot, 5" },
   { type: "hotel-checkout", id: "h3-out", date: "2026-07-23", time: "12:00", city: "Барселона", title: "Выезд · Cotton House", hotelId: "h3" },
   { type: "car-return", id: "cr1", date: "2026-07-23", time: "13:00", city: "Барселона", title: "Возврат авто · Sixt",
     address: "Барселона аэропорт T1", platformUrl: "https://sixt.com" },
@@ -554,7 +554,7 @@ function _addDuration(time, dur) {
 
 function TransferCardHub({ e, onClick }) {
   const meta = _transferMeta(e);
-  const arriveTime = e.arrive_time || _addDuration(e.time, e.duration) || "—";
+  const arriveTime = e.arrive_time || _addDuration(e.time, e.duration) || "-";
   return (
     <button onClick={onClick} style={{
       width: "100%", display: "grid", gridTemplateColumns: "auto 1fr auto 1fr auto", gap: 14,
@@ -579,7 +579,7 @@ function TransferCardHub({ e, onClick }) {
           <div style={{ height: 1, flex: 1, borderTop: "1.5px dashed var(--ev-transfer)" }} />
         </div>
         <div className="muted" style={{ fontSize: 10.5, textAlign: "center" }}>
-          {e.carrier}{e.num && e.num !== "—" ? <> · <span className="num">{e.num}</span></> : null}
+          {e.carrier}{e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}
         </div>
       </div>
       <div style={{ textAlign: "right" }}>
@@ -606,7 +606,7 @@ function TransferCardStrip({ e, onClick }) {
     }}
     onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
     onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
-      <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: "var(--ink)" }}>{e.time || "—"}</div>
+      <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: "var(--ink)" }}>{e.time || "-"}</div>
       <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
         <Icon name={meta.icon} size={15} />
       </div>
@@ -619,7 +619,7 @@ function TransferCardStrip({ e, onClick }) {
         </div>
         <div className="muted" style={{ fontSize: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
           {e.duration && <span className="num">{e.duration}</span>}
-          {e.carrier && <span>· {e.carrier}{e.num && e.num !== "—" ? <> · <span className="num">{e.num}</span></> : null}</span>}
+          {e.carrier && <span>· {e.carrier}{e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}</span>}
           {e.platformUrl && <PartnerPill url={e.platformUrl} />}
         </div>
       </div>
@@ -630,7 +630,7 @@ function TransferCardStrip({ e, onClick }) {
 
 function TransferCardStacked({ e, onClick }) {
   const meta = _transferMeta(e);
-  const arriveTime = e.arrive_time || _addDuration(e.time, e.duration) || "—";
+  const arriveTime = e.arrive_time || _addDuration(e.time, e.duration) || "-";
   return (
     <button onClick={onClick} style={{
       width: "100%", display: "flex", alignItems: "center", gap: 14,
@@ -655,7 +655,7 @@ function TransferCardStacked({ e, onClick }) {
         </div>
         <div className="muted" style={{ fontSize: 12, marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
           <span>из {e.from_city || e.from}</span>
-          {e.carrier && <span>· {e.carrier}{e.num && e.num !== "—" ? <> · <span className="num">{e.num}</span></> : null}</span>}
+          {e.carrier && <span>· {e.carrier}{e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}</span>}
           {e.platformUrl && <PartnerPill url={e.platformUrl} />}
         </div>
       </div>
@@ -685,14 +685,14 @@ function _evMeta(e) {
   return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "spark", label: "" };
 }
 
-// ── Mobile transfer row — stacked with a vertical departure→arrival scale ──────
+// ── Mobile transfer row - stacked with a vertical departure→arrival scale ──────
 function EventRowMobileTransfer({ e, onClick }) {
   const meta = _evMeta(e);
-  const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "—";
+  const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "-";
   return (
     <button onClick={onClick} style={{ width: "100%", display: "flex", alignItems: "stretch", gap: 11, padding: "13px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left" }}>
       <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--ink)", minWidth: 42, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
-        <span style={{ whiteSpace: "nowrap" }}>{e.time || "—"}</span>
+        <span style={{ whiteSpace: "nowrap" }}>{e.time || "-"}</span>
         {e.duration && <span className="muted" style={{ fontSize: 10, fontWeight: 500 }}>{e.duration}</span>}
         <span style={{ whiteSpace: "nowrap" }}>{arrive}</span>
       </div>
@@ -706,12 +706,12 @@ function EventRowMobileTransfer({ e, onClick }) {
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.c, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px " + meta.c }} />
       </div>
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 5 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "—"}</div>
+        <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "-"}</div>
         <div className="muted" style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em" }}>{meta.label}</span>
           {e.carrier ? <> · {e.carrier}</> : null}
         </div>
-        <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "—"}</div>
+        <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "-"}</div>
         {(e.price || e.platformUrl) && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
             {e.price ? <span className="num" style={{ fontWeight: 600, fontSize: 13 }}>{fmt(e.price, e.cur)}</span> : null}
@@ -723,14 +723,14 @@ function EventRowMobileTransfer({ e, onClick }) {
   );
 }
 
-// ── Mobile row — stacked layout for hotel / activity / car / deadline events ───
+// ── Mobile row - stacked layout for hotel / activity / car / deadline events ───
 function EventRowMobile({ e, onClick }) {
   if (e.type === "flight" || e.type === "transfer") return <EventRowMobileTransfer e={e} onClick={onClick} />;
   const meta = _evMeta(e);
   return (
     <button onClick={onClick} style={{ width: "100%", padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", minWidth: 42, flexShrink: 0 }}>{e.time || "—"}</span>
+        <span className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", minWidth: 42, flexShrink: 0 }}>{e.time || "-"}</span>
         <div style={{ width: 30, height: 30, borderRadius: 8, background: meta.soft, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
           <Icon name={meta.icon} size={15} />
         </div>
@@ -773,7 +773,7 @@ export function StreamEventRow({ e, onClick, last, editMode }) {
   return <EventRowV11 e={e} onClick={onClick} />;
 }
 
-// ── Desktop v11 event card — flush colour bar + time + icon + title/label/sub ──
+// ── Desktop v11 event card - flush colour bar + time + icon + title/label/sub ──
 function EventRowV11({ e, onClick }) {
   const meta = _evMeta(e);
   const sub = [e.duration, e.address].filter(Boolean).join(" · ");
@@ -787,7 +787,7 @@ function EventRowV11({ e, onClick }) {
       onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
       <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, padding: "13px 16px" }}>
-        <div className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14.5, minWidth: 52, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", flexShrink: 0 }}>{e.time || "—"}</div>
+        <div className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14.5, minWidth: 52, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", flexShrink: 0 }}>{e.time || "-"}</div>
         <div style={{ width: 38, height: 38, borderRadius: 10, background: meta.soft, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
           <Icon name={meta.icon} size={17} />
         </div>
@@ -805,10 +805,10 @@ function EventRowV11({ e, onClick }) {
   );
 }
 
-// ── Desktop v11 transfer card — vertical departure→arrival mini-rail ───────────
+// ── Desktop v11 transfer card - vertical departure→arrival mini-rail ───────────
 function TransferRowV11({ e, onClick }) {
   const meta = _evMeta(e);
-  const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "—";
+  const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "-";
   return (
     <button onClick={onClick} style={{
       width: "100%", display: "flex", alignItems: "stretch", padding: 0, minHeight: 120,
@@ -818,7 +818,7 @@ function TransferRowV11({ e, onClick }) {
       onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
       onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
       <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
-      {/* Card height is fixed on the BUTTON (minHeight:120) — taller than mobile, never
+      {/* Card height is fixed on the BUTTON (minHeight:120) - taller than mobile, never
           collapses. The inner block stretches to it (align-items:stretch), and the
           time / rail / from-to columns (all justify-content:space-between) spread their
           content top→bottom: from anchors to the top, to to the bottom, the rail line
@@ -826,7 +826,7 @@ function TransferRowV11({ e, onClick }) {
       <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "stretch", gap: 12, padding: "13px 16px" }}>
         {/* time / duration / arrive */}
         <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14.5, color: "var(--ink)", minWidth: 52, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
-          <span style={{ whiteSpace: "nowrap" }}>{e.time || "—"}</span>
+          <span style={{ whiteSpace: "nowrap" }}>{e.time || "-"}</span>
           {e.duration && <span className="muted" style={{ fontSize: 10.5, fontWeight: 500 }}>{e.duration}</span>}
           <span style={{ whiteSpace: "nowrap" }}>{arrive}</span>
         </div>
@@ -840,11 +840,11 @@ function TransferRowV11({ e, onClick }) {
           <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
           <span style={{ width: 9, height: 9, borderRadius: "50%", background: meta.c, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px " + meta.c }} />
         </div>
-        {/* from → to — cities (uppercase) anchor the edges, addresses sit inward
+        {/* from → to - cities (uppercase) anchor the edges, addresses sit inward
             next to the label: CITY / addr / label / addr / CITY (desktop). */}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 4 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "—"}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "-"}</div>
             {e.from_address && e.from_address !== e.from && (
               <div className="muted" style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from_address}</div>
             )}
@@ -852,13 +852,13 @@ function TransferRowV11({ e, onClick }) {
           <div className="muted" style={{ fontSize: 11.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>{meta.label}</span>
             {e.carrier ? <> · {e.carrier}</> : null}
-            {e.num && e.num !== "—" ? <> · <span className="num">{e.num}</span></> : null}
+            {e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}
           </div>
           <div style={{ minWidth: 0 }}>
             {e.to_address && e.to_address !== e.to && (
               <div className="muted" style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to_address}</div>
             )}
-            <div style={{ fontSize: 13.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "—"}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "-"}</div>
           </div>
         </div>
         {/* price + chip */}
@@ -874,7 +874,7 @@ function TransferRowV11({ e, onClick }) {
 }
 
 // =====================================================================
-// TRIP IDENTITY STRIP — exported so all screens can use it
+// TRIP IDENTITY STRIP - exported so all screens can use it
 // =====================================================================
 
 function _InfoChip({ icon, color, children }) {
@@ -945,7 +945,7 @@ export function TripIdentityStrip({ compact }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: showCover ? 0 : 8, flexWrap: "wrap" }}>
             <RoleBadge role={TRIP.role} />
             {!tripIsPro && !userHasSub && <Badge variant="quiet">Free</Badge>}
-            {tripIsPro && !userHasSub && !showCover && <Badge variant="warm" icon="pro">Pro · этот трип</Badge>}
+            {tripIsPro && !userHasSub && !showCover && <Badge variant="warm" icon="pro">Pro · это путешествие</Badge>}
           </div>
           {!showCover && <h1 style={{ fontSize: compact ? 26 : 34, marginBottom: 6, marginTop: 4, letterSpacing: "-0.025em" }}>{TRIP.title}</h1>}
           {!showCover && (

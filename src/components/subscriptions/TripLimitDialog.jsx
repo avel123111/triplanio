@@ -6,14 +6,14 @@ import { Loader2, Crown, Check, X, Info } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 
 /**
- * Trip-limit modal (Variant D) — shown for the IN-APP "new trip" action when a
+ * Trip-limit modal (Variant D) - shown for the IN-APP "new trip" action when a
  * free user has hit the 1-active-trip limit. (Direct deep-links to the manual /
  * AI planner show a full-screen blocker instead.)
  *
  * Props:
  *   open, onOpenChange
- *   onProceed              — called when the user is allowed to continue
- *   activeCount, isPro     — pre-computed (preferred); otherwise self-fetched
+ *   onProceed              - called when the user is allowed to continue
+ *   activeCount, isPro     - pre-computed (preferred); otherwise self-fetched
  */
 export default function TripLimitDialog({ open, onOpenChange, onProceed, activeCount: activeCountProp, isPro: isProProp }) {
   const hasPreComputed = typeof activeCountProp === 'number' && typeof isProProp === 'boolean';
@@ -77,15 +77,15 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
   if (!shouldBlock) return null;
 
   const freeRows = [
-    { ok: true,  text: '1 активный трип' },
-    { ok: true,  text: 'Все основные линзы' },
-    { ok: false, text: 'Безлимит трипов' },
+    { ok: true,  text: '1 активное путешествие' },
+    { ok: true,  text: 'Все основные разделы' },
+    { ok: false, text: 'Безлимит путешествий' },
     { ok: false, text: 'ИИ-парсинг броней' },
   ];
   const proRows = [
-    <><b>Безлимит</b> активных трипов</>,
+    <><b>Безлимит</b> активных путешествий</>,
     'ИИ-распознавание броней',
-    'Все линзы во всех трипах',
+    'Все разделы во всех путешествиях',
     'Приоритетная поддержка',
   ];
 
@@ -98,17 +98,17 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
             background: 'linear-gradient(110deg, var(--brand-ink, #1b3a8f) 0%, var(--brand, #2167e2) 55%, #6aa0ff 120%)', color: 'white' }}>
             <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '.04em', background: 'rgba(255,255,255,.18)', padding: '2px 9px', borderRadius: 999, marginBottom: 10 }}>Pro</span>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 6 }}>
-              Планируй сколько угодно трипов.
+              Планируй сколько угодно путешествий.
             </div>
             <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.9)' }}>
-              Ты достиг лимита Free — {state.activeCount} активный трип. Pro снимает ограничение.
+              Ты достиг лимита Free - {state.activeCount} активное путешествие. Pro снимает ограничение.
             </div>
           </div>
 
           {/* Info strip */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, marginBottom: 16, fontSize: 12.5, color: 'var(--muted)' }}>
             <Info className="w-3.5 h-3.5 shrink-0" />
-            Трип активен до последнего дня — прошедшие трипы освобождают слот автоматически.
+            Путешествие активено до последнего дня - прошедшие путешествия освобождают слот автоматически.
           </div>
 
           {/* Two columns */}
@@ -139,7 +139,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           </div>
 
           <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted)', marginTop: 14 }}>
-            Тарифы и цены — на следующем экране.
+            Тарифы и цены - на следующем экране.
           </div>
 
           {/* Footer */}

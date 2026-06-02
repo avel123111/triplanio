@@ -31,7 +31,7 @@ export default {
   'doc.visibility_shared': 'Compartido',
   'doc.visibility_shared_desc': 'Todos los miembros del viaje verán este documento',
   'doc.visibility_private': 'Privado',
-  'doc.visibility_private_desc': 'Solo tú lo ves — pasaporte, visa, seguro',
+  'doc.visibility_private_desc': 'Solo tú lo ves - pasaporte, visa, seguro',
   'doc.title_required': 'Título *',
   'doc.title_placeholder': 'p. ej. Póliza de seguro de viaje',
   'doc.notes_label': 'Nota (opc.)',

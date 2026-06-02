@@ -83,7 +83,7 @@ export default function NotificationsBell({ triggerClassName }) {
   const respondInvite = useMutation({
     mutationFn: async ({ memberId, action }) => {
       // Edge function sets user_id on the member, notifies the inviter, and
-      // marks the invite read — a raw update would skip all of that.
+      // marks the invite read - a raw update would skip all of that.
       const { data, error } = await supabase.functions.invoke('respondTripInvite', {
         body: { member_id: memberId, action },
       });
@@ -172,7 +172,7 @@ export default function NotificationsBell({ triggerClassName }) {
               </div>
               <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Всё прочитано</div>
               <div className="muted" style={{ fontSize: 12, lineHeight: 1.55, maxWidth: 240, margin: '0 auto' }}>
-                Никаких новых приглашений, голосований и правок. Если кто-то добавит тебя в трип — увидишь здесь.
+                Никаких новых приглашений, голосований и правок. Если кто-то добавит тебя в путешествие - увидишь здесь.
               </div>
             </div>
           ) : (

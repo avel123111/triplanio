@@ -1,5 +1,5 @@
 // Fetches public-ish user profile data (full_name + avatar_url) for a list of
-// user ids — via a server-side resolver that enforces "same-trip" authorization.
+// user ids - via a server-side resolver that enforces "same-trip" authorization.
 // Used so participant avatars across the app reflect the same uploaded picture
 // / display name that each user set in their Settings page, without leaking
 // arbitrary User records.

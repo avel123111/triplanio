@@ -18,7 +18,7 @@ import { parseNaive } from '@/lib/naive-time';
 // preserving wall-clock digits (no UTC offset math).
 export function localToUtc(localDateTime, _ianaTz) {
   if (!localDateTime) return null;
-  // Normalise to "yyyy-MM-ddTHH:mm:00.000Z" — strip any tz suffix the input
+  // Normalise to "yyyy-MM-ddTHH:mm:00.000Z" - strip any tz suffix the input
   // might already carry, default seconds/ms to zero.
   const stripped = localDateTime.replace(/(Z|[+-]\d{2}:?\d{2})$/i, '');
   // Accept "yyyy-MM-ddTHH:mm" or "yyyy-MM-ddTHH:mm:ss"
@@ -61,7 +61,7 @@ export function dayLabel(utcIso, _ianaTz) {
 }
 
 // Check overlap between two stored ranges (handles reversed start/end).
-// Reads each ISO as naive wall-clock — same semantics as everywhere else.
+// Reads each ISO as naive wall-clock - same semantics as everywhere else.
 export function rangesOverlap(aStart, aEnd, bStart, bEnd) {
   if (!aStart || !bStart) return false;
   const aS = parseNaive(aStart)?.toMillis() ?? 0;

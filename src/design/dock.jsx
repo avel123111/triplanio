@@ -3,7 +3,7 @@ import { Icon } from './icons';
 import { Avatar, Btn, Badge, BookingSuggestionCard } from './index';
 
 // =====================================================================
-// DOCKED CHAT PANEL — floats on all trip screens
+// DOCKED CHAT PANEL - floats on all trip screens
 // Tabs: group chat + personal AI assistant
 // =====================================================================
 
@@ -56,7 +56,7 @@ function GroupChatMini() {
         </button>
       </div>
       <div className="scrollbar-thin" style={{ flex: 1, overflow: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <BubbleMsg who="Анна Лебедева" time="14:22" text="Закинула черновик плана — посмотрите города и даты, пожалуйста." />
+        <BubbleMsg who="Анна Лебедева" time="14:22" text="Закинула черновик плана - посмотрите города и даты, пожалуйста." />
         <BubbleMsg who="Игорь Мейзинский" time="15:08" text="Лиссабон выглядит коротко. <b>3 дня</b> маловато на Sintra + Belém + город." md />
         <BubbleMsg who="Анна Лебедева" time="10:14" text="@assistant сколько ночей у нас сейчас в Лиссабоне?" />
         <BubbleMsg ai who="ИИ-помощник" time="10:14" text="Сейчас 4 ночи (12 → 16 июля)." />
@@ -133,7 +133,7 @@ function AiChatMini() {
         </button>
       </div>
       <div className="scrollbar-thin" style={{ flex: 1, overflow: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <BubbleMsg ai who="ИИ-помощник" time="10:14" text="Привет, Анна. Я знаю всё про этот трип — спроси что угодно или попроси сделать." />
+        <BubbleMsg ai who="ИИ-помощник" time="10:14" text="Привет, Анна. Я знаю всё про это путешествие - спроси что угодно или попроси сделать." />
         <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
           {[
             "Какой самый загруженный день?",
@@ -147,7 +147,7 @@ function AiChatMini() {
             }}>{h}</button>
           ))}
         </div>
-        <BubbleMsg me text="Найди ужин в Лиссабоне на 14 июля — рыба или морепродукты, средний чек ≤€60/чел." />
+        <BubbleMsg me text="Найди ужин в Лиссабоне на 14 июля - рыба или морепродукты, средний чек ≤€60/чел." />
         <BubbleMsg ai who="ИИ-помощник" time="10:16" text="Вот что я нашёл рядом с твоим отелем в Альфаме:" />
         <BookingSuggestionCard
           type="activity" name="Cervejaria Ramiro"

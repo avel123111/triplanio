@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
 
-// Shared system-stub layout — one visual family with the no-access page
+// Shared system-stub layout - one visual family with the no-access page
 // (mirrors ScreenSystem.jsx §33): icon-in-circle + title + explanation + action.
 export function SystemStub({ icon, tone = 'brand', title, body, primary, secondary }) {
   const colors = {
@@ -44,8 +44,8 @@ export default function PageNotFound() {
       icon="search"
       tone="brand"
       title="Такой страницы не существует"
-      body="Возможно, ссылка устарела или содержит ошибку. Вернись к своим трипам — оттуда легко найти нужное."
-      primary={{ label: user ? 'К моим трипам' : 'На главную', onClick: goHome }}
+      body="Возможно, ссылка устарела или содержит ошибку. Вернись к своим путешествиям - оттуда легко найти нужное."
+      primary={{ label: user ? 'К моим путешествиям' : 'На главную', onClick: goHome }}
     />
   );
 }

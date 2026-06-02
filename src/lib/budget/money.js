@@ -1,11 +1,11 @@
 /**
  * Money / FX helpers for the budget v3 model.
  *
- * Convention: `fx` is the object returned by `useFxRates(mainCurrency)` — i.e.
+ * Convention: `fx` is the object returned by `useFxRates(mainCurrency)` - i.e.
  * { base: <mainCurrency>, rates: { CURR: rate, ... } } where
  *   1 unit of <mainCurrency> = rate units of CURR.
  *
- * `overrides` is `TripBudget.fx_overrides` — a user-defined map
+ * `overrides` is `TripBudget.fx_overrides` - a user-defined map
  *   { CURR: rate } where 1 unit of CURR = rate units of <mainCurrency>.
  * Overrides take precedence over the live FX rates.
  */
@@ -13,7 +13,7 @@
 /**
  * Convert `amount` from `from` currency into the trip's main currency.
  * Returns { value: number, ok: boolean }. `ok=false` means we could not
- * convert (missing rate) — callers should display a "?" badge in that case
+ * convert (missing rate) - callers should display a "?" badge in that case
  * instead of silently summing a wrong number.
  */
 export function toMain(amount, from, mainCurrency, fx, overrides) {

@@ -2,9 +2,9 @@
 // the manual-planner preview map so both providers (Leaflet + Google) look the
 // same.
 
-export const PIN_COLOR = '#2167e2';     // brand — air transfers / default
+export const PIN_COLOR = '#2167e2';     // brand - air transfers / default
 export const GROUND_COLOR = '#1f8a5b';  // ground transfers (train/bus/car/ferry/walk)
-export const MISSING_COLOR = '#94a3b8'; // pale — no transfer added
+export const MISSING_COLOR = '#94a3b8'; // pale - no transfer added
 
 const GROUND = new Set(['train', 'bus', 'car', 'ferry', 'walk']);
 

@@ -13,7 +13,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
  *
  * Additional:
  *   onPlaceSelected?: ({ formatted_address, name, latitude, longitude, place_id }) => void
- *   language?: 'ru' | 'en' | 'es' — overrides the user's app language (rarely needed)
+ *   language?: 'ru' | 'en' | 'es' - overrides the user's app language (rarely needed)
  */
 export default function AddressAutocomplete({
   value,
@@ -119,7 +119,7 @@ export default function AddressAutocomplete({
             description: p.description,
           });
         }
-      } catch { /* ignore — user can still see the address text */ }
+      } catch { /* ignore - user can still see the address text */ }
     }
     // Clear session token after a successful selection (Google billing best practice)
     sessionTokenRef.current = null;

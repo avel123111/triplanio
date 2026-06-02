@@ -14,7 +14,7 @@ export default function StaySectionExpandable({ visit, hotels, onClickHotel, can
   const { t } = useI18nFormat();
 
   // For same-day visits (start_date === end_date) we don't show the
-  // "no hotel booked" prompt — the traveler isn't staying overnight.
+  // "no hotel booked" prompt - the traveler isn't staying overnight.
   // Naive day comparison: timezones are intentionally ignored.
   const isSameDayVisit = (() => {
     if (!visit.start_datetime || !visit.end_datetime) return false;
@@ -52,7 +52,7 @@ export default function StaySectionExpandable({ visit, hotels, onClickHotel, can
 
 function HotelRow({ hotel, onClick }) {
   const { t } = useI18nFormat();
-  // Naive wall-clock — timezone is intentionally ignored.
+  // Naive wall-clock - timezone is intentionally ignored.
   const ci = parseNaive(hotel.check_in_datetime);
   const co = parseNaive(hotel.check_out_datetime);
   const info = hotel.booking_platform ? BOOKING_PLATFORMS[hotel.booking_platform] : null;

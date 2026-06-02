@@ -5,7 +5,7 @@
  * (Cyrillic, etc.), most punctuation, and whitespace with an "Invalid key"
  * error. Upload paths must therefore be sanitised before use. The original,
  * human-readable filename is kept separately (stored as `file_name`) for
- * display — only the storage key is sanitised.
+ * display - only the storage key is sanitised.
  *
  * Uniqueness is always provided by the caller's prefix (a uuid or timestamp),
  * so collapsing characters here is safe: it never causes key collisions.

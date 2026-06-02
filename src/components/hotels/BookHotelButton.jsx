@@ -4,7 +4,7 @@ import BookHotelDialog from './BookHotelDialog';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
- * "Book a stay" button — opens a dialog with platform choices (Booking.com / Airbnb).
+ * "Book a stay" button - opens a dialog with platform choices (Booking.com / Airbnb).
  */
 export default function BookHotelButton({ visit, className = '' }) {
   const t = useT();

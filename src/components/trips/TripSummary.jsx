@@ -6,7 +6,7 @@ import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { parseNaive } from '@/lib/naive-time';
 
 /**
- * "Trip summary" card: full route — all cities in order with local dates.
+ * "Trip summary" card: full route - all cities in order with local dates.
  */
 export default function TripSummary({ visits = [], noFrame = false, hideHeader = false }) {
   const { t, plural, locale } = useI18nFormat();
@@ -48,7 +48,7 @@ export default function TripSummary({ visits = [], noFrame = false, hideHeader =
 }
 
 function RouteRow({ visit, index, isLast, locale, plural }) {
-  // Naive wall-clock — visit.timezone is intentionally ignored.
+  // Naive wall-clock - visit.timezone is intentionally ignored.
   const start = parseNaive(visit.start_datetime)?.setLocale(locale) || null;
   const end = parseNaive(visit.end_datetime)?.setLocale(locale) || null;
 
@@ -63,7 +63,7 @@ function RouteRow({ visit, index, isLast, locale, plural }) {
 
   return (
     <div className="relative flex items-stretch gap-3">
-      {/* index marker column — vertical line passes through circle center */}
+      {/* index marker column - vertical line passes through circle center */}
       <div className="relative shrink-0 w-7 flex flex-col items-center">
         <div className="w-7 h-7 rounded-full bg-card border border-border flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
           {index}

@@ -4,11 +4,11 @@ export default {
   'budget.empty_hint': 'Расходов пока нет · откройте, чтобы добавить',
   'budget.collab_empty_hint': 'откройте, чтобы добавить',
   'budget.see_details': 'Подробнее',
-  'budget.missing_fx_warning': 'Нет курсов для {currencies} — эти расходы не учтены в общей сумме.',
+  'budget.missing_fx_warning': 'Нет курсов для {currencies} - эти расходы не учтены в общей сумме.',
   'budget.addon_off_title': 'Включить «Бюджет поездки»',
   'budget.addon_off_desc': 'Бюджет поездки выключен. Включите его, чтобы планировать и отслеживать расходы по категориям, добавлять траты в любой валюте и видеть полную картину расходов на поездку.',
   'budget.addon_off_go_settings': 'В настройки',
-  'budget.page_placeholder': 'Страница бюджета перерабатывается — скоро будет доступна.',
+  'budget.page_placeholder': 'Страница бюджета перерабатывается - скоро будет доступна.',
 
   // System categories
   'budget.cat_accommodation': 'Проживание',
@@ -27,7 +27,7 @@ export default {
   'budget.fx_button': 'Курсы валют',
   'budget.add_expense': 'Добавить расход',
   'budget.add_category': 'Добавить категорию',
-  'budget.fx_warn': 'Не удалось пересчитать часть расходов — проверьте курсы валют.',
+  'budget.fx_warn': 'Не удалось пересчитать часть расходов - проверьте курсы валют.',
 
   // Category block
   'budget.no_expenses': 'Нет расходов',
@@ -35,7 +35,7 @@ export default {
   'budget.category_menu_delete': 'Удалить категорию',
   'budget.category_delete_confirm_title': 'Удалить категорию?',
   'budget.category_delete_confirm_msg': 'Категория «{name}» будет удалена. Все расходы внутри неё также удалятся.',
-  'budget.category_delete_has_expenses': 'В категории есть расходы — сначала удалите их или переместите.',
+  'budget.category_delete_has_expenses': 'В категории есть расходы - сначала удалите их или переместите.',
   'budget.cannot_modify_system': 'Системные категории нельзя изменять.',
 
   // Expense row
@@ -43,7 +43,7 @@ export default {
   'budget.source_transfer': 'Транспорт',
   'budget.source_activity': 'Активность',
   'budget.source_service': 'Услуга',
-  'budget.system_expense_hint': 'Системный расход — редактируется в источнике',
+  'budget.system_expense_hint': 'Системный расход - редактируется в источнике',
   'budget.expense_delete_confirm_title': 'Удалить расход?',
   'budget.expense_delete_confirm_msg': 'Расход «{title}» будет удалён.',
 
@@ -55,14 +55,14 @@ export default {
   'budget.field_currency': 'Валюта',
   'budget.field_date': 'Дата',
   'budget.field_category': 'Категория',
-  'budget.title_required': 'Введите название',
-  'budget.amount_required': 'Введите сумму больше 0',
+  'budget.title_required': 'Введи название',
+  'budget.amount_required': 'Введи сумму больше 0',
 
   // Category dialog
   'budget.category_new': 'Новая категория',
   'budget.category_rename': 'Переименовать категорию',
   'budget.category_name_placeholder': 'Например: Подарки',
-  'budget.category_name_required': 'Введите название',
+  'budget.category_name_required': 'Введи название',
   'budget.icon_label': 'Иконка',
   'budget.color_label': 'Цвет',
   'budget.icon_color_preview': 'Так будет выглядеть категория',

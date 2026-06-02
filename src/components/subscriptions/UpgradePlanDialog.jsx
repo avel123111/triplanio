@@ -5,7 +5,7 @@ import { Icon } from '@/design/icons';
 import { Btn, Badge, Skeleton } from '@/design/index';
 
 /**
- * UpgradePlanDialog — the production "Стать PRO" screen, rendered as a
+ * UpgradePlanDialog - the production "Стать PRO" screen, rendered as a
  * self-contained controlled overlay in the new design system (no shadcn).
  * API is unchanged so every existing call site keeps working.
  *
@@ -74,7 +74,7 @@ export default function UpgradePlanDialog({ open, onOpenChange, tripId, onUpgrad
 
   const renderPrice = (planType) => {
     const p = prices?.[planType];
-    if (!p) return { price: '—', period: '' };
+    if (!p) return { price: '-', period: '' };
     const amount = (p.unit_amount || 0) / 100;
     const price = fmtMoney(amount, p.currency, { minFraction: 0, maxFraction: 2 });
     let period = '';

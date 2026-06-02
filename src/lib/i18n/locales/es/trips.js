@@ -21,9 +21,9 @@ export default {
   'trips.manual': 'Crear manualmente',
   'trips.manual_desc': 'Paso a paso: ciudades, fechas, hoteles.',
   'trips.ai': 'Comenzar con IA',
-  'trips.ai_desc': 'Describe con palabras — obtén un plan.',
+  'trips.ai_desc': 'Describe con palabras - obtén un plan.',
   'trips.free_limit_title': 'En Free tienes 1 viaje activo',
-  'trips.free_limit_desc': 'Pro — viajes ilimitados, planificador de IA y análisis de reservas.',
+  'trips.free_limit_desc': 'Pro - viajes ilimitados, planificador de IA y análisis de reservas.',
   'trips.upgrade_to_pro': 'Ir a Pro',
   'trips.invited': 'Invitado',
   'trips.shared_badge': 'Compartido',
@@ -36,5 +36,5 @@ export default {
   'trips.manual_title': 'Crear manualmente',
   'trips.manual_desc': 'Paso a paso: ciudades, fechas, hoteles',
   'trips.ai_title': 'Comenzar con IA',
-  'trips.ai_desc': 'Describe tu viaje — obtén un plan completo',
+  'trips.ai_desc': 'Describe tu viaje - obtén un plan completo',
 };

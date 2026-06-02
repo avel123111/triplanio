@@ -25,7 +25,7 @@ const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
   const location = useLocation();
 
-  // Public read-only trip page — no auth needed
+  // Public read-only trip page - no auth needed
   const path = location.pathname;
   if (path.startsWith('/public/trip/')) {
     return (
@@ -36,7 +36,7 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Login + password-recovery pages — always accessible (no auth gating).
+  // Login + password-recovery pages - always accessible (no auth gating).
   // /reset-password is reached from the recovery email; its token creates a
   // session, so it must bypass the authenticated routing below and render the
   // same Login shell (which opens on the new-password form).
@@ -49,9 +49,9 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Design preview — accessible without auth
+  // Design preview - accessible without auth
   if (path === '/ui' || path.startsWith('/ui/')) {
-    // Blog preview — full viewport iframe to static HTML
+    // Blog preview - full viewport iframe to static HTML
     if (path === '/ui/blog' || path.startsWith('/ui/blog')) {
       return (
         <div style={{ position: 'fixed', inset: 0, margin: 0, padding: 0 }}>
@@ -70,7 +70,7 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Landing page at "/" for unauthenticated visitors — only show AFTER auth is resolved
+  // Landing page at "/" for unauthenticated visitors - only show AFTER auth is resolved
   // (not during loading) so returning OAuth users don't see a flash of the landing.
   if (!isAuthenticated && !isLoadingAuth && path === '/') {
     return (
@@ -88,7 +88,7 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Not authenticated and on a non-root path — send to landing
+  // Not authenticated and on a non-root path - send to landing
   if (!isAuthenticated) {
     return (
       <Routes>
@@ -100,11 +100,11 @@ const AuthenticatedApp = () => {
 
   return (
     <>
-      {/* One global Stripe-return handler for the whole logged-in app — shows the
+      {/* One global Stripe-return handler for the whole logged-in app - shows the
           success/fail modal regardless of which screen Stripe came back to. */}
       <StripeReturnModals />
       <Routes>
-      {/* New design — standalone (own app-header, no Layout) */}
+      {/* New design - standalone (own app-header, no Layout) */}
       {/* Logged-in users can still view the landing at "/" (no auto-redirect);
           the landing's CTA takes them into the app. */}
       <Route path="/" element={<LandingPage />} />

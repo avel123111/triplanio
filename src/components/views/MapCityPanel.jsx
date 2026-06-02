@@ -10,15 +10,15 @@ import { useCityImageForVisits } from '@/lib/city-image';
 /**
  * Side / bottom panel shown over the map when a city marker is clicked.
  *
- * Accepts an array of visits (a city may appear more than once — e.g. start
- * and finish in the same place — and then we render one block per visit).
+ * Accepts an array of visits (a city may appear more than once - e.g. start
+ * and finish in the same place - and then we render one block per visit).
  *
  * Sections "Проживание" and "Активности" are hidden for visits with
- * kind === 'start' or 'end' — those points are not meant to host bookings.
+ * kind === 'start' or 'end' - those points are not meant to host bookings.
  *
  * Edit / view of hotels & activities is handled in their own dialogs; visit
  * editing happens in TripEdit. So this panel only shows data + "add" buttons
- * (when canEdit) and opens VIEW dialogs on item click — no pencils here.
+ * (when canEdit) and opens VIEW dialogs on item click - no pencils here.
  */
 export default function MapCityPanel({
   visits,
@@ -86,7 +86,7 @@ export default function MapCityPanel({
         </Button>
       </div>
 
-      {/* Body — one block per visit */}
+      {/* Body - one block per visit */}
       <div className="flex-1 overflow-y-auto">
         {list.map((visit, idx) => (
           <VisitBlock
@@ -107,7 +107,7 @@ export default function MapCityPanel({
         ))}
       </div>
 
-      {/* Footer — close */}
+      {/* Footer - close */}
       <div className="border-t p-3">
         <Button variant="outline" size="sm" className="w-full" onClick={onClose}>
           {t('common.close')}
@@ -122,7 +122,7 @@ function VisitBlock({
   onToggle, onViewHotel, onAddHotel, onViewActivity, onAddActivity,
 }) {
   const { t } = useI18nFormat();
-  // Naive wall-clock — visit.timezone is intentionally ignored.
+  // Naive wall-clock - visit.timezone is intentionally ignored.
   const start = parseNaive(visit.start_datetime);
   const end = parseNaive(visit.end_datetime);
   const range = start && end

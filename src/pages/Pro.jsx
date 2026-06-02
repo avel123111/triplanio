@@ -11,7 +11,7 @@ import HeaderActions from '@/components/HeaderActions';
 import '../design/app.css';
 
 // Full-screen Pro / Pricing page. Replaces the previous UpgradePlanDialog
-// modal — callers navigate here with `/pro?tripId=...&hidePerTrip=1`.
+// modal - callers navigate here with `/pro?tripId=...&hidePerTrip=1`.
 export default function Pro() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
@@ -22,8 +22,7 @@ export default function Pro() {
 
   const tripId = searchParams.get('tripId') || null;
   // pro_trip may only be bought by the trip OWNER. If a non-owner lands here with
-  // a tripId (e.g. a leaked link from a shared trip), hide the per-trip plan —
-  // they can still buy a subscription, but can't buy Pro for someone else's trip.
+  // a tripId (e.g. a leaked link from a shared trip), hide the per-trip plan -   // they can still buy a subscription, but can't buy Pro for someone else's trip.
   const [tripOwner, setTripOwner] = useState(null); // null = unknown
   useEffect(() => {
     if (!tripId) return;
@@ -93,7 +92,7 @@ export default function Pro() {
 
   const renderPrice = (planType) => {
     const p = prices?.[planType];
-    if (!p) return { price: '—', period: '' };
+    if (!p) return { price: '-', period: '' };
     const amount = (p.unit_amount || 0) / 100;
     const price = fmtMoney(amount, p.currency, { minFraction: 0, maxFraction: 2 });
     let period = '';
@@ -147,15 +146,15 @@ export default function Pro() {
             <span>Triplanio Pro</span>
           </div>
           <h1 style={{ fontSize: 44, marginBottom: 10, maxWidth: 720, margin: '0 auto 10px', letterSpacing: '-0.02em' }}>
-            Больше трипов, меньше работы.
+            Больше путешествий, меньше работы.
           </h1>
           <div className="muted" style={{ fontSize: 17, maxWidth: 560, margin: '0 auto', lineHeight: 1.55 }}>
-            ИИ-планировщик с нуля, парсинг бронирований, безлимит трипов и группового планирования.
+            ИИ-планировщик с нуля, парсинг бронирований, безлимит путешествий и группового планирования.
           </div>
           {hidePerTrip && tripId === null && (
             <div className="muted" style={{ fontSize: 13, marginTop: 14 }}>
               <Icon name="info" size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
-              Одноразовый апгрейд одного трипа доступен только внутри конкретного трипа.
+              Одноразовый апгрейд одного путешествия доступен только внутри конкретного путешествия.
             </div>
           )}
         </div>

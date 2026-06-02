@@ -1,12 +1,12 @@
 /**
- * CurrencySelect — searchable currency picker styled for the design/index
+ * CurrencySelect - searchable currency picker styled for the design/index
  * screens (BudgetLens, SettingsLens). A button that opens a popover with a
  * text filter over the shared CURRENCIES list.
  *
  * Props:
- *   value     — selected ISO code (e.g. 'EUR')
- *   onChange  — (code) => void
- *   width     — optional button width (default 110)
+ *   value     - selected ISO code (e.g. 'EUR')
+ *   onChange  - (code) => void
+ *   width     - optional button width (default 110)
  */
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Icon } from '@/design/icons';

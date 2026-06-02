@@ -19,7 +19,7 @@ import { getWeather, weatherInfo } from '@/lib/weather';
 /**
  * Read-only timeline shown on the trip *view* page.
  *
- * MODEL: there are no "city days" or "owner visits" — the timeline is a single
+ * MODEL: there are no "city days" or "owner visits" - the timeline is a single
  * chronological stream of events ordered by their naive (wall-clock) datetime.
  * Each event lives on its own calendar day; the CityHero card is just another
  * event in the stream, anchored to the visit's start_datetime (or pinned right
@@ -33,7 +33,7 @@ import { getWeather, weatherInfo } from '@/lib/weather';
  *  - Days inside the trip range that have NO events still get a separator
  *    plus a faint "nothing planned" placeholder card.
  *
- * Timezones are intentionally IGNORED in this view — see lib/naive-time.js.
+ * Timezones are intentionally IGNORED in this view - see lib/naive-time.js.
  */
 export default function ReadOnlyTimelineView({
   trip, visits = [], hotels = [], activities = [], transfers = [], carRentals = [],
@@ -48,7 +48,7 @@ export default function ReadOnlyTimelineView({
   const dayRefs = useRef({});
   const ordered = useMemo(() => sortVisits(visits), [visits]);
 
-  // Weather: fetch per transit visit (future only — getWeather returns null for past)
+  // Weather: fetch per transit visit (future only - getWeather returns null for past)
   // Result: { [dayKey]: { icon, temp_max, temp_min } }
   const [weatherByDay, setWeatherByDay] = useState({});
   useEffect(() => {
@@ -88,7 +88,7 @@ export default function ReadOnlyTimelineView({
   const hotelsByVisit = useMemo(() => groupBy(hotels, (h) => h.city_visit_id), [hotels]);
   const visitsById = useMemo(() => Object.fromEntries(visits.map((v) => [v.id, v])), [visits]);
 
-  // Inbound transfers per visit — used to find what "brought us" to a city.
+  // Inbound transfers per visit - used to find what "brought us" to a city.
   const inboundByVisit = useMemo(() => groupBy(transfers, (t) => t.to_city_visit_id), [transfers]);
 
   /**
@@ -110,7 +110,7 @@ export default function ReadOnlyTimelineView({
           iso: null,
         });
       } else if (v.kind === 'end') {
-        // End anchor: render at the absolute bottom — always sort after every event.
+        // End anchor: render at the absolute bottom - always sort after every event.
         // Use end_datetime if available, otherwise start_datetime.
         const endIso = v.end_datetime || v.start_datetime;
         events.push({
@@ -238,7 +238,7 @@ export default function ReadOnlyTimelineView({
     return set;
   }, [stream]);
 
-  // Resolve the trip's date range — used to fill in "empty day" placeholders
+  // Resolve the trip's date range - used to fill in "empty day" placeholders
   // between events. Priority:
   //   1. trip.start_date / trip.end_date if both present
   //   2. otherwise: min/max dayKey across the stream
@@ -252,7 +252,7 @@ export default function ReadOnlyTimelineView({
     } else if (eventDayKeys.size > 0) {
       // Fallback: derive range only from "core" events (city arrivals and
       // transfers), NOT from cancellation deadlines / hotel dates that can
-      // precede the actual trip — otherwise we'd generate empty-day placeholders
+      // precede the actual trip - otherwise we'd generate empty-day placeholders
       // for every day between an early cancellation deadline and the first city.
       const coreDayKeys = stream
         .filter(ev => ev.dayKey && (ev.kind === 'city' || ev.kind === 'transfer' || ev.kind === 'transfer-group'))
@@ -621,7 +621,7 @@ function MissingTransferWarn({ fromVisit, toVisit, canEdit, onAddTransfer }) {
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold text-orange-700 dark:text-orange-200">{t('view.missing_transfer_title')}</div>
         <div className="text-xs text-orange-600/80 dark:text-orange-300/80 break-words">
-          {fromVisit?.city_name || '—'} → {toVisit?.city_name || '—'}
+          {fromVisit?.city_name || '-'} → {toVisit?.city_name || '-'}
         </div>
       </div>
       {canEdit && (
@@ -639,9 +639,9 @@ function CityHeaderCard({ visit, hotels, onClickHotel, canEdit, onAddHotel, onEd
 
   return (
     <div className="rounded-2xl border bg-card overflow-hidden">
-      {/* Header: image flush-left, text right. Image has no padding — rounded only on top-left. */}
+      {/* Header: image flush-left, text right. Image has no padding - rounded only on top-left. */}
       <div className="flex flex-row min-h-[96px]">
-        {/* Image — no outer padding, rounded-tl-2xl only */}
+        {/* Image - no outer padding, rounded-tl-2xl only */}
         <div className="w-28 sm:w-36 shrink-0 self-stretch rounded-tl-2xl overflow-hidden">
           <CityHero visit={visit} className="h-full w-full rounded-tl-2xl" />
         </div>
@@ -776,15 +776,15 @@ function DayEventRow({ event, visitsById = {}, onClickTransfer, onClickActivity,
         <EventShell time={time} tone="transfer" icon={<TIcon className="w-4 h-4" />}>
           <div className="min-w-0">
             <div className="text-sm font-medium flex items-center gap-1.5 flex-wrap">
-              <span>{fromV?.city_name || '—'}</span>
+              <span>{fromV?.city_name || '-'}</span>
               <ArrowRight className="w-3 h-3 text-muted-foreground" />
-              <span>{toV?.city_name || '—'}</span>
+              <span>{toV?.city_name || '-'}</span>
               {tr.carrier && <span className="text-xs text-muted-foreground font-normal">· {tr.carrier}</span>}
             </div>
             <div className="text-[11px] text-muted-foreground">
-              {tr.start_datetime ? formatNaive(tr.start_datetime, 'd LLL HH:mm') : '—'}
+              {tr.start_datetime ? formatNaive(tr.start_datetime, 'd LLL HH:mm') : '-'}
               {' → '}
-              {tr.end_datetime ? formatNaive(tr.end_datetime, 'd LLL HH:mm') : '—'}
+              {tr.end_datetime ? formatNaive(tr.end_datetime, 'd LLL HH:mm') : '-'}
               {dur ? ` · ${dur}` : ''}
             </div>
             {bookingUrl && (
@@ -880,7 +880,7 @@ function RowContent({ title, subtitle }) {
 /* --------------------------- Anchors --------------------------- */
 
 /**
- * Start / End anchor card. No left rail circle — the icon lives inside the
+ * Start / End anchor card. No left rail circle - the icon lives inside the
  * card on the left, just like other events.
  */
 function AnchorReadCard({ visit }) {

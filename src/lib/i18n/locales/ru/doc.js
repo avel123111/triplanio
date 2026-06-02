@@ -11,7 +11,7 @@ export default {
   'doc.tab_open_link': 'Открыть ссылку',
 
   // Секции
-  'doc.section_shared': 'Общие документы трипа',
+  'doc.section_shared': 'Общие документы путешествия',
   'doc.section_shared_hint': 'Видят все участники',
   'doc.section_private': 'Личные документы',
   'doc.section_private_hint': 'Только ты их видишь',
@@ -29,9 +29,9 @@ export default {
   'doc.dialog_edit': 'Редактировать документ',
   'doc.visibility_label': 'Видимость документа',
   'doc.visibility_shared': 'Общий',
-  'doc.visibility_shared_desc': 'Все участники трипа увидят документ',
+  'doc.visibility_shared_desc': 'Все участники путешествия увидят документ',
   'doc.visibility_private': 'Личный',
-  'doc.visibility_private_desc': 'Только ты видишь — паспорт, виза, страховка',
+  'doc.visibility_private_desc': 'Только ты видишь - паспорт, виза, страховка',
   'doc.title_required': 'Название *',
   'doc.title_placeholder': 'Например, «Виза в Испанию»',
   'doc.notes_label': 'Заметка (опц.)',

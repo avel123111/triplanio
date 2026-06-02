@@ -19,7 +19,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 
 // =====================================================================
-// TRIP STRUCTURE EDITOR — "Сетка" (grid) design from the trip-structure-*
+// TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
 // prototype, wired to the real id-based model (city_visits + position),
 // computeTripValidation conflicts, lock + save_trip_edit RPC. Live Google map.
 // =====================================================================
@@ -28,8 +28,8 @@ const TKIND = { plane: { icon: 'plane', label: 'Перелёт' }, train: { icon
 const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9'];
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const WD = ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
-const fmtD = (iso) => { const d = toDT(iso); return d ? `${d.day} ${MONTHS[d.month - 1]}` : '—'; };
-const fmtDW = (iso) => { const d = toDT(iso); return d ? `${d.day} ${MONTHS[d.month - 1]}, ${WD[d.weekday]}` : '—'; };
+const fmtD = (iso) => { const d = toDT(iso); return d ? `${d.day} ${MONTHS[d.month - 1]}` : '-'; };
+const fmtDW = (iso) => { const d = toDT(iso); return d ? `${d.day} ${MONTHS[d.month - 1]}, ${WD[d.weekday]}` : '-'; };
 const fmtTime = (iso) => { const d = toDT(iso); return d ? d.toFormat('HH:mm') : null; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
 const dayWord = (n) => (n === 1 ? 'день' : n >= 2 && n <= 4 ? 'дня' : 'дней');
@@ -44,7 +44,7 @@ function recompute(nodes, baseISO) {
   cursor = cursor.startOf('day');
   return nodes.map((n, i) => {
     if (isAnchor(n)) return { ...n, position: i };
-    if (n.kind === 'waypoint') { // single-date transit point — consumes no nights
+    if (n.kind === 'waypoint') { // single-date transit point - consumes no nights
       const d = cursor.set({ hour: 12 });
       return { ...n, start_datetime: d.toISO(), end_datetime: d.toISO(), nights: null, position: i };
     }
@@ -84,8 +84,8 @@ export default function TripStructureEdit() {
   const [dirty, setDirty] = useState(false);
   const [lock, setLock] = useState('acquiring');
   const [saving, setSaving] = useState(false);
-  const [viewEvent, setViewEvent] = useState(null); // {kind,id,warning} — real EventModal
-  const [addLeg, setAddLeg] = useState(null);        // {fromVisit,toVisit} — real transfer create dialog
+  const [viewEvent, setViewEvent] = useState(null); // {kind,id,warning} - real EventModal
+  const [addLeg, setAddLeg] = useState(null);        // {fromVisit,toVisit} - real transfer create dialog
   const [adding, setAdding] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
@@ -216,7 +216,7 @@ export default function TripStructureEdit() {
   });
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
-      toast({ description: kind === 'start' ? 'Старт уже задан — сначала уберите текущий.' : 'Финиш уже задан — сначала уберите текущий.' });
+      toast({ description: kind === 'start' ? 'Старт уже задан - сначала уберите текущий.' : 'Финиш уже задан - сначала уберите текущий.' });
       return;
     }
     const node = {
@@ -264,7 +264,7 @@ export default function TripStructureEdit() {
     const isTmp = (id) => String(id).startsWith('tmp-');
     const p_nodes = draft.nodes.filter((n) => !isTmp(n.id)).map((n) => ({ id: n.id, start_datetime: n.start_datetime ?? null, end_datetime: n.end_datetime ?? null, position: n.position }));
     const p_cities_new = draft.nodes.filter((n) => isTmp(n.id)).map((n) => ({ tmp: n.id, city_name: n.city_name, country: n.country ?? null, country_code: n.country_code ?? null, latitude: n.latitude ?? null, longitude: n.longitude ?? null, timezone: n.timezone ?? null, external_city_id: n.external_city_id ?? null, kind: n.kind || 'transit', start_datetime: n.start_datetime ?? null, end_datetime: n.end_datetime ?? null, position: n.position }));
-    // Bookings are edited/added via real dialogs (already in DB) — structure-only save.
+    // Bookings are edited/added via real dialogs (already in DB) - structure-only save.
     const p_edits = {};
     const p_deletes = { cities: (draft.removed || []).filter((n) => !isTmp(n.id)).map((n) => n.id) };
     const { error } = await supabase.rpc('save_trip_edit', { p_trip: tripId, p_nodes, p_cities_new, p_edits, p_deletes });
@@ -276,7 +276,7 @@ export default function TripStructureEdit() {
     nav(`/trip/${tripId}`);
   };
 
-  // Persistent app-header — rendered in EVERY branch (loading / blocked / error /
+  // Persistent app-header - rendered in EVERY branch (loading / blocked / error /
   // ready) so it never blanks out while the lock RPC + queries resolve. The page
   // title (name · dates · nights) lives in the LEFT column, not here; the header
   // is the global app bar + the editor action buttons.
@@ -313,7 +313,7 @@ export default function TripStructureEdit() {
     </header>
   );
 
-  if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">Не удалось загрузить трип: {String(shellError.message || shellError)}</div></div></>;
+  if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">Не удалось загрузить путешествие: {String(shellError.message || shellError)}</div></div></>;
   if (lock === 'blocked' || lock === 'error') {
     return (
       <>{headerEl}
@@ -321,9 +321,9 @@ export default function TripStructureEdit() {
         <div className={`sev sev--${lock === 'blocked' ? 'warning' : 'error'}`}>
           <span className="sev__icon"><Icon name="warning" size={16} /></span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>{lock === 'blocked' ? 'Трип сейчас редактируется' : 'Не удалось войти в режим редактирования'}</div>
-            <div style={{ fontSize: 12.5 }}>{lock === 'blocked' ? 'Кто-то уже редактирует структуру этого трипа. Попробуйте позже.' : 'Не получилось занять блокировку. Попробуйте ещё раз.'}</div>
-            <div style={{ marginTop: 12 }}><Btn variant="ghost" icon="back" onClick={() => nav(`/trip/${tripId}`)}>Назад к трипу</Btn></div>
+            <div style={{ fontWeight: 600, marginBottom: 2 }}>{lock === 'blocked' ? 'Путешествие сейчас редактируется' : 'Не удалось войти в режим редактирования'}</div>
+            <div style={{ fontSize: 12.5 }}>{lock === 'blocked' ? 'Кто-то уже редактирует структуру этого путешествия. Попробуй позже.' : 'Не получилось занять блокировку. Попробуй ещё раз.'}</div>
+            <div style={{ marginTop: 12 }}><Btn variant="ghost" icon="back" onClick={() => nav(`/trip/${tripId}`)}>Назад к путешествию</Btn></div>
           </div>
         </div>
       </div>
@@ -343,8 +343,7 @@ export default function TripStructureEdit() {
   const membersCount = content?.members?.length || 0;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
-  // A transfer row is flagged (orange "не совпадает") when it has ANY conflict —
-  // date mismatch (D2), non-adjacent (D5) or dangling (D6).
+  // A transfer row is flagged (orange "не совпадает") when it has ANY conflict -   // date mismatch (D2), non-adjacent (D5) or dangling (D6).
   const transferMismatch = (t) => !!t && issues.some((i) => i.transferId === t.id);
   let stayNum = 0;
 
@@ -361,21 +360,21 @@ export default function TripStructureEdit() {
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
     {headerEl}
     <div className="ts-grid" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, overflow: 'hidden' }}>
-        {/* LEFT — page title + cities (scrolling list) */}
+        {/* LEFT - page title + cities (scrolling list) */}
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
           {/* page title */}
           <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: '1px solid var(--line-2)' }}>
             <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>Редактирование структуры</div>
             <h1 style={{ fontSize: 22, lineHeight: 1.15, marginBottom: 6, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
-            <div className="muted num" style={{ fontSize: 12.5 }}>{fmtD(startDate)} – {fmtD(endDate)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights)}` : ''} · {cities.length} {cities.length === 1 ? 'город' : 'городов'}{membersCount > 0 ? ` · ${membersCount} уч.` : ''}</div>
+            <div className="muted num" style={{ fontSize: 12.5 }}>{fmtD(startDate)} - {fmtD(endDate)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights)}` : ''} · {cities.length} {cities.length === 1 ? 'город' : 'городов'}{membersCount > 0 ? ` · ${membersCount} уч.` : ''}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <span className="eyebrow" style={{ fontSize: 10 }}>Старт трипа</span>
+              <span className="eyebrow" style={{ fontSize: 10 }}>Старт путешествия</span>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: 2 }}>
                 <button className="ts-step" onClick={() => shiftStart(-1)} title="раньше"><Icon name="back" size={13} /></button>
                 <span className="num" style={{ padding: '0 8px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDW(startDate)}</span>
                 <button className="ts-step" onClick={() => shiftStart(1)} title="позже"><Icon name="chev" size={13} /></button>
               </div>
-              <span className="muted" style={{ fontSize: 11 }}>двигает весь трип</span>
+              <span className="muted" style={{ fontSize: 11 }}>двигает весь путешествие</span>
             </div>
           </div>
 
@@ -429,7 +428,7 @@ export default function TripStructureEdit() {
           </div>{/* /ts-leftscroll */}
         </div>
 
-        {/* RIGHT — map (top 70%) + warnings (bottom 30%), flush edge-to-edge,
+        {/* RIGHT - map (top 70%) + warnings (bottom 30%), flush edge-to-edge,
             split by a divider, no gap/padding anywhere. Each scrolls on its own. */}
         <div className="ts-col-right" style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--surface)' }}>
           <div className="ts-map" style={{ flex: '7 1 0', minHeight: 0, overflow: 'hidden', borderBottom: '1px solid var(--line)' }}>
@@ -550,7 +549,7 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
           <div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>транзит</div>
           <div className="num" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtD(seg.start_datetime)}</div>
         </div>
-        <span style={{ textAlign: 'center', color: 'var(--muted-2)', fontSize: 12 }}>—</span>
+        <span style={{ textAlign: 'center', color: 'var(--muted-2)', fontSize: 12 }}>-</span>
         <Acts onUp={onUp} onDown={onDown} onRemove={onRemove} />
       </div>
     );
@@ -578,7 +577,7 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
   );
 }
 
-// Empty city-sized slot shown at the hovered gap during drag — replaces the
+// Empty city-sized slot shown at the hovered gap during drag - replaces the
 // transfer plate there so it reads as "the dragged city drops in HERE".
 function DropSlot({ label }) {
   return (
@@ -593,7 +592,7 @@ function DropSlot({ label }) {
 function GridTransfer({ a, b, t, mismatch, first, last, onOpen }) {
   const sameCity = (a.external_city_id && b.external_city_id && a.external_city_id === b.external_city_id) || (a.city_name && a.city_name === b.city_name);
   if (sameCity && !t) {
-    return <div style={{ ...rowStyle(first, last), padding: '5px 11px', fontSize: 11, color: 'var(--muted)', background: 'var(--wash)' }}>тот же город — переезд не нужен</div>;
+    return <div style={{ ...rowStyle(first, last), padding: '5px 11px', fontSize: 11, color: 'var(--muted)', background: 'var(--wash)' }}>тот же город - переезд не нужен</div>;
   }
   if (!t) {
     return <button onClick={onOpen} style={{ ...rowStyle(first, last), display: 'flex', alignItems: 'center', gap: 8, padding: '6px 11px', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', background: 'var(--wash)' }}>
@@ -612,8 +611,8 @@ function GridTransfer({ a, b, t, mismatch, first, last, onOpen }) {
       <span style={{ fontSize: 13, fontWeight: 700, color: fg, whiteSpace: 'nowrap' }}>{meta.label}{mismatch ? ' · не совпадает' : ''}</span>
       <span className="num muted" style={{ fontSize: 10.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtD(t.start_datetime)}{t.carrier ? ' · ' + t.carrier : ''}</span>
     </div>
-    <div><div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>Отпр</div><div className="num" style={{ fontSize: 12, fontWeight: 700, color: dep ? 'var(--ink)' : 'var(--muted-2)' }}>{dep || '—'}</div></div>
-    <div><div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>Приб</div><div className="num" style={{ fontSize: 12, fontWeight: 700, color: arr ? 'var(--ink)' : 'var(--muted-2)' }}>{arr || '—'}</div></div>
+    <div><div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>Отпр</div><div className="num" style={{ fontSize: 12, fontWeight: 700, color: dep ? 'var(--ink)' : 'var(--muted-2)' }}>{dep || '-'}</div></div>
+    <div><div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>Приб</div><div className="num" style={{ fontSize: 12, fontWeight: 700, color: arr ? 'var(--ink)' : 'var(--muted-2)' }}>{arr || '-'}</div></div>
     <span />
     <Icon name="chev" size={13} style={{ color: fg, justifySelf: 'end' }} />
   </button>;
@@ -745,5 +744,5 @@ function WarningPlate({ c, onClick }) {
   );
 }
 
-// (ResolveModal removed — conflicts now open the real EventModal via SourceViewLoader,
+// (ResolveModal removed - conflicts now open the real EventModal via SourceViewLoader,
 //  and "Добавить переезд" opens the real EventEditDialog. TRIP_EDIT_MODE test #8/#9.)

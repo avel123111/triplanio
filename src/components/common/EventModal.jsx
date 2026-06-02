@@ -1,5 +1,5 @@
 /**
- * EventModal — unified, new-design read view for a timeline event
+ * EventModal - unified, new-design read view for a timeline event
  * (hotel / transfer / activity / car rental). Wraps a shadcn Dialog so it
  * composes cleanly inside ordinary React trees.
  *
@@ -243,7 +243,7 @@ function ServiceBody({ entity, accent }) {
           <KV label="Когда">{fmtDT(pickupDisplay)}</KV>
         </div>
       </Section>
-      <Section title={sameLocation ? 'Возврат' : 'Возврат — в другом месте'} accent={accent}>
+      <Section title={sameLocation ? 'Возврат' : 'Возврат - в другом месте'} accent={accent}>
         <div className="grid grid-cols-2 gap-3">
           <KV label="Где">
             {sameLocation ? (
@@ -302,7 +302,7 @@ export default function EventModal(props) {
     return kind === 'service' ? getDetailsDocuments(entity.details || {}) : getEntityDocuments(entity);
   });
   const [uploading, setUploading] = useState(false);
-  // Inline delete-confirm state — same UX as EventEditDialog so the user
+  // Inline delete-confirm state - same UX as EventEditDialog so the user
   // sees one consistent confirm flow regardless of where they hit Delete.
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -399,7 +399,7 @@ export default function EventModal(props) {
           // Patch the trip-content cache OPTIMISTICALLY so a re-open of this
           // modal reads the fresh entity immediately. An invalidate here would
           // trigger an async refetch; reopening before it lands shows the stale
-          // (doc-less) entity — the "appears → gone → appears" flicker.
+          // (doc-less) entity - the "appears → gone → appears" flicker.
           if (entity.trip_id) {
             const COLL = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' }[kind];
             const patch = kind === 'service'
@@ -468,7 +468,7 @@ export default function EventModal(props) {
           </div>
         )}
 
-        {/* Conflict plate (Edit Mode) — below the date/meta strip */}
+        {/* Conflict plate (Edit Mode) - below the date/meta strip */}
         {warning && (
           <div style={{ margin: '12px 22px 0', display: 'flex', alignItems: 'flex-start', gap: 9, padding: '9px 12px', borderRadius: 10, background: 'var(--warning-soft)', border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)', color: 'var(--ink)' }}>
             <span style={{ width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--warning) 22%, transparent)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0, fontSize: 12 }}>⚠️</span>
@@ -498,7 +498,7 @@ export default function EventModal(props) {
           )}
         </div>
 
-        {/* Body — either the inline delete confirm or the normal sections. */}
+        {/* Body - either the inline delete confirm or the normal sections. */}
         {confirmDel ? (
           <div style={{ padding: 22 }}>
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
@@ -508,7 +508,7 @@ export default function EventModal(props) {
               <div className="flex-1 min-w-0">
                 <div className="font-display font-semibold text-base">Удалить {theme.label.toLowerCase()}?</div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  Это действие необратимо. Запись будет удалена из трипа и хронологии.
+                  Это действие необратимо. Запись будет удалена из путешествия и хронологии.
                 </div>
               </div>
             </div>

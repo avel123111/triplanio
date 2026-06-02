@@ -4,7 +4,7 @@ import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { cityColor, hotelColor, segmentsForDay } from '@/lib/calendar/segments';
 import CalendarSegmentBar from './CalendarSegmentBar';
 
-// Short label for point events — keep just the entity name without the "Заезд:"/
+// Short label for point events - keep just the entity name without the "Заезд:"/
 // "Check-in:" prefix, since the design shows compact "time + name" rows.
 function shortLabel(it) {
   if (!it?.raw) return it?.label || '';
@@ -21,8 +21,7 @@ function shortLabel(it) {
 /**
  * Month grid.
  * Each cell stacks: [city bar] [hotel bar] [event rows...].
- * Cities/hotels spanning multiple days are rendered as per-cell segments —
- * if a day hosts 2 cities (a "join" day), the bar splits 50/50, with 3
+ * Cities/hotels spanning multiple days are rendered as per-cell segments -  * if a day hosts 2 cities (a "join" day), the bar splits 50/50, with 3
  * cities → 33/33/33, etc.
  */
 export default function CalendarMonthView({ items, cursor, tripRange, onItemClick, onHotelSegmentClick, onDayClick }) {

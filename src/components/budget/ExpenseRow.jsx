@@ -49,7 +49,7 @@ export default function ExpenseRow({ expense, canEdit, category, onEdit, onDelet
 
   const amountStr = expense.original_amount != null
     ? fmtMoney(expense.original_amount, expense.original_currency || 'EUR')
-    : '—';
+    : '-';
 
   const handleRowClick = () => {
     if (isSystem) setSourceOpen(true);

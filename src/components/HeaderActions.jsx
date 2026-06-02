@@ -8,14 +8,13 @@ import NotificationsBell from '@/components/notifications/NotificationsBell';
  * Shared right-hand header cluster for the new-design pages
  * (Trips, TripView, ManualPlanner): theme toggle · notifications · account.
  *
- * The PRO badge sits next to the avatar (top-right), matching the design —
- * not in the trip breadcrumb.
+ * The PRO badge sits next to the avatar (top-right), matching the design -  * not in the trip breadcrumb.
  *
  * Props:
- *   user          — current user (for avatar + label)
- *   isPro         — boolean; renders the PRO badge by the avatar
- *   isDark        — boolean; picks sun/moon icon
- *   onToggleTheme — () => void
+ *   user          - current user (for avatar + label)
+ *   isPro         - boolean; renders the PRO badge by the avatar
+ *   isDark        - boolean; picks sun/moon icon
+ *   onToggleTheme - () => void
  */
 export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
   const nav = useNavigate();

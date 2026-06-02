@@ -3,16 +3,16 @@ import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
 
 /**
- * TripProInfoDialog — shown to a NON-OWNER participant who hits a Pro gate
+ * TripProInfoDialog - shown to a NON-OWNER participant who hits a Pro gate
  * inside a shared trip. Pro for a trip is controlled by the trip owner
  * (owner subscription OR a one-time pro_trip purchase), so a participant must
- * NOT be routed to checkout — they're told to ask the owner instead.
+ * NOT be routed to checkout - they're told to ask the owner instead.
  *
  * Props:
- *   open          — boolean
- *   onOpenChange  — (open: boolean) => void
- *   feature       — optional feature name to mention
- *   ownerName     — optional owner display name
+ *   open          - boolean
+ *   onOpenChange  - (open: boolean) => void
+ *   feature       - optional feature name to mention
+ *   ownerName     - optional owner display name
  */
 export default function TripProInfoDialog({ open, onOpenChange, feature, ownerName }) {
   const [copied, setCopied] = useState(false);
@@ -24,7 +24,7 @@ export default function TripProInfoDialog({ open, onOpenChange, feature, ownerNa
       await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* clipboard unavailable — ignore */ }
+    } catch { /* clipboard unavailable - ignore */ }
   };
 
   return (
@@ -35,7 +35,7 @@ export default function TripProInfoDialog({ open, onOpenChange, feature, ownerNa
           <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--warm-tint)', color: 'var(--warm)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="lock" size={17} />
           </div>
-          <h2>Pro-функция трипа</h2>
+          <h2>Pro-функция путешествия</h2>
           <button className="icon-btn" onClick={close}><Icon name="close" size={16} /></button>
         </div>
         <div className="dlg__body">
@@ -44,10 +44,10 @@ export default function TripProInfoDialog({ open, onOpenChange, feature, ownerNa
               <Icon name="crown" size={24} />
             </div>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
-              {feature ? `«${feature}» — Pro-функция` : 'Это Pro-функция трипа'}
+              {feature ? `«${feature}» - Pro-функция` : 'Это Pro-функция путешествия'}
             </div>
             <div className="muted" style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 340, margin: '0 auto' }}>
-              Pro-функции этого трипа подключает {ownerName ? <b>{ownerName}</b> : 'владелец трипа'}. Чтобы открыть ИИ-распознавание, бюджет, чат и календарь — попроси владельца оформить Pro для трипа.
+              Pro-функции этого путешествия подключает {ownerName ? <b>{ownerName}</b> : 'владелец путешествия'}. Чтобы открыть ИИ-распознавание, бюджет, чат и календарь - попроси владельца оформить Pro для путешествия.
             </div>
           </div>
         </div>

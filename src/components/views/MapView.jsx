@@ -26,7 +26,7 @@ function markerDom(numbers) {
 }
 
 // ---------------- Main MapView ----------------
-// Pure map surface — the parent supplies chrome (theme toggle, overlays) and
+// Pure map surface - the parent supplies chrome (theme toggle, overlays) and
 // MUST give this component explicit dimensions (it fills 100% × 100%).
 export default function MapView({
   visits,
@@ -62,7 +62,7 @@ export default function MapView({
   );
 
   // --- Init map once. Day/night is applied via config (below), not by
-  // re-creating the map — so markers/routes persist across theme toggles. ---
+  // re-creating the map - so markers/routes persist across theme toggles. ---
   useEffect(() => {
     if (!containerRef.current || !MAPBOX_TOKEN) return undefined;
     const map = new mapboxgl.Map({
@@ -100,7 +100,7 @@ export default function MapView({
     if (!map || !ready) return undefined;
     let cancelled = false;
 
-    // Markers — clear previous, then group visits that share a location.
+    // Markers - clear previous, then group visits that share a location.
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
     const groups = new globalThis.Map();
@@ -121,7 +121,7 @@ export default function MapView({
       markersRef.current.push(marker);
     });
 
-    // Routes — dashed for "no transfer", solid for road/flight/other.
+    // Routes - dashed for "no transfer", solid for road/flight/other.
     const transferByPair = new globalThis.Map();
     transfers.forEach((t) => {
       const k = `${t.from_city_visit_id}__${t.to_city_visit_id}`;
@@ -166,7 +166,7 @@ export default function MapView({
       }
     })();
 
-    // Fit once per distinct set of visits — animate the camera so the map
+    // Fit once per distinct set of visits - animate the camera so the map
     // glides out/in to the route as it changes (e.g. while editing structure).
     // First fit (after load / style reload) is instant; later changes ease.
     if (ordered.length > 0 && fittedSigRef.current !== visitsSignature) {

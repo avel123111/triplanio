@@ -1,9 +1,9 @@
 /**
- * DocsLens — documents tab inside TripView.
+ * DocsLens - documents tab inside TripView.
  *
  * Props:
- *   tripId     — string
- *   isLoading  — boolean (parent loading state, passed as fallback)
+ *   tripId     - string
+ *   isLoading  - boolean (parent loading state, passed as fallback)
  *
  * Reads/writes trip_documents table directly via Supabase client.
  * visibility: 'shared' = all members see it; 'private' = only the creator.
@@ -87,7 +87,7 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
 
       {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
 
-      {/* Visibility — two card buttons, as in base44 */}
+      {/* Visibility - two card buttons, as in base44 */}
       <div style={{ marginBottom: 16 }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>Доступ</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -191,7 +191,7 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
             <div style={{ color: 'var(--muted)', fontSize: 13 }}>
               <Icon name="upload" size={16} style={{ display: 'block', margin: '0 auto 6px' }} />
               {documents.length === 0
-                ? 'Загрузить файлы (PDF / фото) — до 10 МБ каждый'
+                ? 'Загрузить файлы (PDF / фото) - до 10 МБ каждый'
                 : 'Добавить ещё файлы'}
             </div>
           )}
@@ -324,8 +324,8 @@ function DocEmpty({ scope, tripId }) {
       </div>
       <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5, maxWidth: 360, margin: '0 auto 14px' }}>
         {scope === 'personal'
-          ? 'Здесь храни паспорта, визы и страховки — другие участники их не видят.'
-          : 'Чеклисты, общие брони из почты, шаблоны — всё, что нужно всем.'}
+          ? 'Здесь храни паспорта, визы и страховки - другие участники их не видят.'
+          : 'Чеклисты, общие брони из почты, шаблоны - всё, что нужно всем.'}
       </div>
       <Btn variant="ghost" icon="plus"
         onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} defaultVisibility={scope === 'personal' ? 'private' : 'shared'} />)}>
@@ -407,7 +407,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-        <h2 style={{ flex: 1 }}>Документы трипа</h2>
+        <h2 style={{ flex: 1 }}>Документы путешествия</h2>
         <Btn variant="primary" icon="plus"
           onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} />)}>
           Добавить документ
@@ -418,7 +418,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
       <section style={{ marginBottom: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <Icon name="users" size={14} style={{ color: 'var(--brand)' }} />
-          <h3 style={{ marginBottom: 0 }}>Общие документы трипа</h3>
+          <h3 style={{ marginBottom: 0 }}>Общие документы путешествия</h3>
           <Badge variant="quiet">{sharedDocs.length}</Badge>
           <div style={{ flex: 1 }} />
           <div className="muted" style={{ fontSize: 11.5 }}>Видят все участники</div>

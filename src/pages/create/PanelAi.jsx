@@ -14,7 +14,7 @@ function aiBtnStyle() {
 }
 
 // =====================================================================
-// AI ENTRY PANEL — the method-specific entry for the unified create flow.
+// AI ENTRY PANEL - the method-specific entry for the unified create flow.
 // Prompt → generating → draft. Once a draft is accepted, the remaining
 // steps (skeleton / return / review) are the shared manual-planner ones.
 //   ctx: { aiState, prompt, setPrompt, aiComment, cities, hasDraft,
@@ -109,7 +109,7 @@ export default function PanelAi({ ctx }) {
         </div>
       )}
 
-      {/* footer — proceed to skeleton once a draft exists */}
+      {/* footer - proceed to skeleton once a draft exists */}
       <div style={{ marginTop: 28, paddingTop: 18, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 8, alignItems: 'center' }}>
         <div style={{ flex: 1 }} />
         <button onClick={goNext} disabled={aiState !== 'draft'} style={{

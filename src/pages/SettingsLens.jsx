@@ -1,13 +1,13 @@
 /**
- * SettingsLens — trip settings tab inside TripView.
+ * SettingsLens - trip settings tab inside TripView.
  *
  * Props:
- *   tripId      — string
- *   trip        — trip object
- *   members     — array of trip member rows
- *   myRole      — 'owner' | 'admin' | 'viewer'
- *   isPro       — boolean
- *   queryClient — react-query QueryClient (for invalidation)
+ *   tripId      - string
+ *   trip        - trip object
+ *   members     - array of trip member rows
+ *   myRole      - 'owner' | 'admin' | 'viewer'
+ *   isPro       - boolean
+ *   queryClient - react-query QueryClient (for invalidation)
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -38,7 +38,7 @@ const FEATURES = [
 ];
 
 // Default OFF unless explicitly enabled (addons[key] === true). New trips start
-// with every optional/pro feature off — they never auto-enable for anyone.
+// with every optional/pro feature off - they never auto-enable for anyone.
 function featuresFromTrip(trip) {
   const addons = trip?.details?.addons || {};
   const state = {};
@@ -100,7 +100,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
       const { data, error } = await supabase.functions.invoke('telegramStartLink', { body: { tripId } });
       if (cancelled) return;
       if (error || !data?.url) {
-        setErrText('Не удалось создать ссылку. Попробуйте позже.');
+        setErrText('Не удалось создать ссылку. Попробуй позже.');
         setStage('error');
         return;
       }
@@ -147,7 +147,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
     <Dialog title="Привязать Telegram" icon="telegram" size=""
       foot={<Btn variant="ghost" onClick={() => window.__closeModal?.()}>Закрыть</Btn>}>
       <div className="muted" style={{ fontSize: 13, lineHeight: 1.55, marginBottom: 16 }}>
-        Привяжите Telegram, чтобы получать напоминания об отелях, переездах и активностях для этого трипа.
+        Привяжите Telegram, чтобы получать напоминания об отелях, переездах и активностях для этого путешествия.
       </div>
 
       {stage === 'generating' && (
@@ -159,7 +159,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
             Генерируем персональную ссылку
             <span className="ai-dots" style={{ marginLeft: 6 }}><span /><span /><span /></span>
           </div>
-          <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Создаём уникальную ссылку на Triplanio-бота для этого трипа.</div>
+          <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>Создаём уникальную ссылку на Triplanio-бота для этого путешествия.</div>
         </div>
       )}
 
@@ -177,7 +177,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: 13.5 }}>Telegram не подключён</div>
-              <div className="muted" style={{ fontSize: 11.5 }}>Для этого трипа</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>Для этого путешествия</div>
             </div>
             <Badge variant="quiet">Не подключён</Badge>
           </div>
@@ -198,7 +198,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
             Открыть Triplanio-бот в Telegram
           </Btn>
           <div className="muted" style={{ fontSize: 11.5, marginTop: 14, lineHeight: 1.5, textAlign: 'center' }}>
-            После «Старта» в Telegram вернитесь сюда — панель обновится автоматически.
+            После «Старта» в Telegram вернитесь сюда - панель обновится автоматически.
           </div>
         </>
       )}
@@ -221,11 +221,11 @@ function TelegramConnectDialog({ tripId, onLinked }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 14, fontSize: 12.5, lineHeight: 1.55 }}>
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center', flexShrink: 0 }}>1</div>
-              <div>В открывшемся чате нажмите <strong>«Start»</strong>.</div>
+              <div>В открывшемся чате нажми <strong>«Start»</strong>.</div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center', flexShrink: 0 }}>2</div>
-              <div>Вернитесь на эту вкладку — статус обновится автоматически.</div>
+              <div>Вернись на эту вкладку - статус обновится автоматически.</div>
             </div>
           </div>
 
@@ -250,7 +250,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
             <Badge variant="success" icon="check">Активен</Badge>
           </div>
           <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.55, marginBottom: 14 }}>
-            Уведомления для этого трипа теперь будут приходить в Telegram.
+            Уведомления для этого путешествия теперь будут приходить в Telegram.
           </div>
           <Btn variant="primary" icon="check" block onClick={() => window.__closeModal?.()}>Готово</Btn>
         </>
@@ -263,7 +263,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
 // Lists all Telegram bindings of the trip (many chats per trip). Real API:
 // telegramGetIntegration / telegramSetActive / telegramDisconnect.
 // The remove flow uses the shared TelegramUnlinkDialog (same modal as the
-// account-level "Подключённые аккаунты" section — single source of truth).
+// account-level "Подключённые аккаунты" section - single source of truth).
 
 function TelegramSection({ tripId }) {
   const [accounts, setAccounts] = useState(null); // null = loading
@@ -347,7 +347,7 @@ function TelegramSection({ tripId }) {
 
 function ApproverRow({ member, locked }) {
   const [on, setOn] = useState(false);
-  const name = member.user_full_name || member.invite_email || '—';
+  const name = member.user_full_name || member.invite_email || '-';
   const roleLabel = member.role === 'owner' ? 'Владелец' : member.role === 'admin' ? 'Админ' : 'Зритель';
 
   return (
@@ -399,7 +399,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   // Trip-level display toggle. Persisted under details.display via the edge
   // function (trips RLS is owner-only). Architecture note: `display` is an
-  // extensible bag — adding another visibility flag later is just another key.
+  // extensible bag - adding another visibility flag later is just another key.
   async function toggleBookingWarnings() {
     const next = !bookingWarnings;
     setBookingWarnings(next); // optimistic
@@ -416,7 +416,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   // Trip-level toggle for the floating chat widget (the dock button shown on
   // every trip page). Persisted under details.display.chat_widget, same path as
-  // booking_warnings. Independent of the per-user nothing — it's a trip setting.
+  // booking_warnings. Independent of the per-user nothing - it's a trip setting.
   // NOTE: the actual widget is ALSO gated by the `chat` addon in TripView, so
   // turning the addon off hides the widget regardless of this flag.
   async function toggleChatWidget() {
@@ -493,12 +493,12 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   // Leave trip
   async function leaveTrip() {
-    if (!window.confirm('Выйти из трипа? Ты перестанешь видеть его.')) return;
+    if (!window.confirm('Выйти из путешествия? Ты перестанешь видеть его.')) return;
     const myMember = members.find(m => m.user_id === user?.id && m.status === 'active');
-    if (!myMember) { alert('Ошибка: не найдено ваше участие в трипе.'); return; }
+    if (!myMember) { alert('Ошибка: не найдено твоё участие в путешествии.'); return; }
     // Only leave (navigate away) once the backend actually removed the row.
     // removeTripMember now returns a non-2xx with the reason on failure, so we
-    // must read the response — navigating on a silent failure left the user
+    // must read the response - navigating on a silent failure left the user
     // still in the trip ("выход" перебрасывал на /trips, но не выходил).
     const { data, error } = await supabase.functions.invoke('removeTripMember', {
       body: { member_id: myMember.id },
@@ -514,8 +514,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   // Delete trip (owner only)
   async function deleteTrip() {
-    if (!window.confirm('Удалить трип? Это действие необратимо.')) return;
-    if (!window.confirm('Вы уверены? Все данные трипа будут удалены.')) return;
+    if (!window.confirm('Удалить путешествие? Это действие необратимо.')) return;
+    if (!window.confirm('Ты уверены? Все данные путешествия будут удалены.')) return;
     const { error } = await supabase.from('trips').delete().eq('id', tripId);
     if (error) { alert('Ошибка: ' + error.message); return; }
     nav('/trips');
@@ -526,7 +526,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   return (
     <div style={{ maxWidth: 720 }}>
-      <h2 style={{ marginBottom: 18 }}>Настройки трипа</h2>
+      <h2 style={{ marginBottom: 18 }}>Настройки путешествия</h2>
 
       {/* Basic settings */}
       <Card title="Основное" style={{ marginBottom: 16 }}>
@@ -545,7 +545,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
           <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)', margin: 0 }} />
 
-          {/* Warnings — section header + per-warning toggles (design: trip-settings.jsx §29).
+          {/* Warnings - section header + per-warning toggles (design: trip-settings.jsx §29).
               `display` in trip.details is an extensible bag, so future warning/display
               toggles slot in as more rows under this same header. */}
           <div>
@@ -555,7 +555,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 13.5 }}>Предупреждения</div>
-                <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>Бейджи и баннеры о проблемах в плане этого трипа.</div>
+                <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>Бейджи и баннеры о проблемах в плане этого путешествия.</div>
               </div>
             </div>
 
@@ -580,16 +580,16 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </div>
       </Card>
 
-      {/* Chat widget — trip-level toggle for the floating dock button.
+      {/* Chat widget - trip-level toggle for the floating dock button.
           Only shown when the Group Chat addon is on (the widget can't exist
           without it). Hidden entirely otherwise. */}
       {features.chat && (
         <Card title="Виджет чата" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Показывать виджет на страницах трипа</div>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Показывать виджет на страницах путешествия</div>
               <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
-                Плавающая кнопка чата видна на каждой странице этого трипа — быстрый доступ к групповому чату и ИИ-помощнику без перехода на отдельный экран.
+                Плавающая кнопка чата видна на каждой странице этого путешествия - быстрый доступ к групповому чату и ИИ-помощнику без перехода на отдельный экран.
               </div>
             </div>
             <Toggle on={chatWidget} onChange={toggleChatWidget} />
@@ -606,14 +606,14 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             </div>
             <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
               {chatWidget
-                ? 'Закреплён в правом нижнем углу — открывает чат и ИИ-помощника поверх любой страницы трипа.'
+                ? 'Закреплён в правом нижнем углу - открывает чат и ИИ-помощника поверх любой страницы путешествия.'
                 : 'Виджет скрыт. Чат остаётся доступен на отдельной странице «Групповой чат».'}
             </div>
           </div>
         </Card>
       )}
 
-      {/* Telegram — only when the Telegram addon is enabled. */}
+      {/* Telegram - only when the Telegram addon is enabled. */}
       {features.tg && (
         <Card title="Telegram-мост" subtitle="Уведомления в Telegram" style={{ marginBottom: 16 }}>
           <TelegramSection tripId={tripId} />
@@ -637,8 +637,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           {myRole !== 'owner' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13.5 }}>Выйти из трипа</div>
-                <div className="muted" style={{ fontSize: 12 }}>Ты перестанешь видеть трип. Владелец сможет пригласить тебя снова.</div>
+                <div style={{ fontWeight: 600, fontSize: 13.5 }}>Выйти из путешествия</div>
+                <div className="muted" style={{ fontSize: 12 }}>Ты перестанешь видеть путешествие. Владелец сможет пригласить тебя снова.</div>
               </div>
               <Btn variant="danger" onClick={leaveTrip}>Выйти</Btn>
             </div>
@@ -647,7 +647,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>Выйти из трипа</div>
+                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>Выйти из путешествия</div>
                   <div className="muted" style={{ fontSize: 12 }}>Передай владение другому участнику, прежде чем выходить.</div>
                 </div>
                 <Btn variant="danger" disabled>Выйти</Btn>
@@ -655,10 +655,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>Удалить трип</div>
-                  <div className="muted" style={{ fontSize: 12 }}>Безвозвратно. Все данные трипа будут удалены.</div>
+                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>Удалить путешествие</div>
+                  <div className="muted" style={{ fontSize: 12 }}>Безвозвратно. Все данные путешествия будут удалены.</div>
                 </div>
-                <Btn variant="danger-solid" onClick={deleteTrip}>Удалить трип</Btn>
+                <Btn variant="danger-solid" onClick={deleteTrip}>Удалить путешествие</Btn>
               </div>
             </>
           )}

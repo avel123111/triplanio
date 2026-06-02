@@ -1,5 +1,5 @@
 /**
- * ChatWidget — floating chat button + collapsible panel.
+ * ChatWidget - floating chat button + collapsible panel.
  *
  * Mounted by TripView on every lens *except* the dedicated chat lens.
  * Design matches DockedChat from the reference prototype (dock.jsx).
@@ -178,7 +178,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     ta.style.height = next + 'px';
     ta.style.overflowY = ta.scrollHeight > COMPOSER_MAX_H ? 'auto' : 'hidden';
   }, [text, open]);
-  // Re-attach on `open` — the composer (and its refs) only mount when the
+  // Re-attach on `open` - the composer (and its refs) only mount when the
   // widget is open, so an empty-deps effect would never bind the scroll sync.
   useEffect(() => {
     const ta = taRef.current;
@@ -193,7 +193,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     : activeMembers;
   const triplanioMatches = !mentionToken || 'triplanio'.startsWith(mentionToken);
 
-  // Memoized message elements — typing in the composer (same component) must
+  // Memoized message elements - typing in the composer (same component) must
   // NOT rebuild every bubble on each keystroke (that caused the typing lag).
   const messageEls = useMemo(() => msgs.map((m, i) => {
     const prev = i > 0 ? msgs[i - 1] : null;
@@ -254,7 +254,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
         {unread > 0 && (
           <div className="dock__count">{unread > 99 ? '99+' : unread}</div>
         )}
-        {/* Sparkles sub-badge — purely decorative, signals AI is part of the chat */}
+        {/* Sparkles sub-badge - purely decorative, signals AI is part of the chat */}
         <span style={{
           position: 'absolute', bottom: -3, right: -3,
           width: 22, height: 22, borderRadius: '50%',
@@ -272,7 +272,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   // ── Open: panel ──
   return (
     <div className="dock-panel">
-      {/* Tab bar — single "group chat" tab + close */}
+      {/* Tab bar - single "group chat" tab + close */}
       <div className="dock-panel__tabs">
         <button className="dock-panel__tab active" style={{ flex: 1, justifyContent: 'flex-start' }}>
           <MessageCircle size={14} />
@@ -352,7 +352,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             borderRadius: 10, boxShadow: 'var(--shadow-pop)', padding: 4,
             width: 240, zIndex: 5,
           }}>
-            {/* Only @Triplanio is actionable — members aren't mentionable, so the
+            {/* Only @Triplanio is actionable - members aren't mentionable, so the
                 popup lists just the assistant. */}
             <button
               onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
@@ -363,7 +363,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
               <TriplanioAvatar size="sm" />
               <div>
                 <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>@Triplanio — отвечает всем</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>@Triplanio - отвечает всем</div>
               </div>
             </button>
           </div>

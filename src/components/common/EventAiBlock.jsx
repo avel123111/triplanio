@@ -1,19 +1,19 @@
 /**
- * EventAiBlock — unified "parse a booking with AI" widget for the event edit
+ * EventAiBlock - unified "parse a booking with AI" widget for the event edit
  * dialog. Renders six visual states from the designer's prototype:
  *
- *   locked    — non-Pro users: locked card + upgrade CTA
- *   available — collapsed pill (Pro idle)
- *   idle      — textarea + file upload + recognize CTA
- *   uploaded  — file list + recognize CTA
- *   parsing   — spinner + progress
- *   parsed    — success banner + reset
+ *   locked    - non-Pro users: locked card + upgrade CTA
+ *   available - collapsed pill (Pro idle)
+ *   idle      - textarea + file upload + recognize CTA
+ *   uploaded  - file list + recognize CTA
+ *   parsing   - spinner + progress
+ *   parsed    - success banner + reset
  *
  * Recognition runs server-side: the browser uploads the file(s) to Supabase
  * Storage, then calls the `parseBookingWithAi` edge function with
  * { kind, fileUrls }. That function forwards to the n8n webhook, which holds
  * the per-kind prompts + schemas and runs the LLM (Gemini). We only send
- * `kind` and the file URLs — no prompt/schema travels from the client.
+ * `kind` and the file URLs - no prompt/schema travels from the client.
  *
  * `onExtract(data, fileUrl, fileName)` is called with the parsed JSON
  * (hotel → flat field shape, transfer → segments shape) plus the uploaded
@@ -113,7 +113,7 @@ export default function EventAiBlock({
     });
   };
 
-  // Recognition — uploads any local files to Supabase Storage, then calls the
+  // Recognition - uploads any local files to Supabase Storage, then calls the
   // parseBookingWithAi edge function (which forwards to the n8n workflow that
   // holds the per-kind prompts + schemas and runs the LLM).
   const runParse = async () => {
@@ -201,7 +201,7 @@ export default function EventAiBlock({
         <div style={{ flex: 1, minWidth: 200 }}>
           <Title />
           <div className="text-xs text-muted-foreground mt-0.5">
-            Доступно на Pro · вставь текст или загрузи файл — поля заполнятся сами.
+            Доступно на Pro · вставь текст или загрузи файл - поля заполнятся сами.
           </div>
         </div>
         <Button size="sm" onClick={onUpgrade} className="bg-gradient-to-r from-primary via-chart-1 to-chart-3">
@@ -228,7 +228,7 @@ export default function EventAiBlock({
         <div style={{ flex: 1, minWidth: 180 }}>
           <Title />
           <div className="text-xs text-muted-foreground mt-0.5">
-            Вставь текст подтверждения или загрузи файл — поля заполнятся сами.
+            Вставь текст подтверждения или загрузи файл - поля заполнятся сами.
           </div>
         </div>
       </button>
@@ -297,7 +297,7 @@ export default function EventAiBlock({
         <div style={{ flex: 1, minWidth: 200 }}>
           <div className="text-sm font-semibold">ИИ заполнил {parsedFieldCount} {pluralFields(parsedFieldCount)}</div>
           <div className="text-xs text-muted-foreground mt-0.5">
-            Подсвечены фиолетовым. Любое поле можно поправить — пометка ИИ уйдёт.
+            Подсвечены фиолетовым. Любое поле можно поправить - пометка ИИ уйдёт.
           </div>
         </div>
         <Button
@@ -336,7 +336,7 @@ export default function EventAiBlock({
           <div className="text-xs text-muted-foreground mt-0.5">
             {state === 'uploaded'
               ? `${files.length} ${files.length === 1 ? 'файл готов' : 'файла готовы'} к распознаванию`
-              : 'Вставь текст подтверждения или скриншот — поля заполнятся сами.'}
+              : 'Вставь текст подтверждения или скриншот - поля заполнятся сами.'}
           </div>
         </div>
         <button

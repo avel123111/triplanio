@@ -56,7 +56,7 @@ export default function TripCardGrid({ trip, cities, members, isInvited, role })
               </div>
             )}
             
-            {/* Cities & Countries — hidden when no cities */}
+            {/* Cities & Countries - hidden when no cities */}
             <div className="h-5 flex items-center gap-1.5 text-muted-foreground">
               {cityCount > 0 && (
                 <>

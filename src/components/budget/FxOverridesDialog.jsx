@@ -1,5 +1,5 @@
 /**
- * Edits TripBudget.fx_overrides — a map { currencyCode: rate } where
+ * Edits TripBudget.fx_overrides - a map { currencyCode: rate } where
  * 1 unit of currencyCode = rate units of the trip's main currency.
  *
  * The list of editable currencies is derived from the expenses in this trip
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useT } from '@/lib/i18n/I18nContext';
 
 function liveRateToMain(fx, code) {
-  // fx: { base: mainCurrency, rates: { CODE: rate } } — 1 main = rate CODE
+  // fx: { base: mainCurrency, rates: { CODE: rate } } - 1 main = rate CODE
   // → 1 CODE = 1 / rate of main
   const r = fx?.rates?.[code];
   if (!r || !Number.isFinite(Number(r)) || Number(r) <= 0) return null;

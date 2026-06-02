@@ -1,6 +1,6 @@
 // Helpers for the trip chat: queries, read-markers, unread counters.
 //
-// All queries pivot on chat_id (from the chats table — one "group" chat per
+// All queries pivot on chat_id (from the chats table - one "group" chat per
 // trip) and on user_id (uuid) rather than user_email.
 
 import { useEffect, useMemo, useRef } from 'react';
@@ -135,7 +135,7 @@ export function useMyChatRead(tripId, { enabled = true } = {}) {
 
 // ── Unread count ──────────────────────────────────────────────────────────────
 //
-// Direct COUNT-query against the DB — independent of any chat-messages cache.
+// Direct COUNT-query against the DB - independent of any chat-messages cache.
 // Different views (ChatLens, ChatWidget, etc.) load messages under their own
 // query keys; we don't want the badge to depend on which view is mounted.
 
@@ -175,7 +175,7 @@ export function useUnreadChatCount(tripId, { enabled = true } = {}) {
 export function useChatLiveSubscription(tripId, { enabled = true } = {}) {
   const { data: chatId } = useChatId(tripId, { enabled: !!tripId && enabled });
   const qc = useQueryClient();
-  // Unique per hook instance — two consumers (e.g. sidebar badge + widget) must
+  // Unique per hook instance - two consumers (e.g. sidebar badge + widget) must
   // NOT share a Realtime topic name, or the 2nd .subscribe() throws
   // "cannot add postgres_changes callbacks ... after subscribe()".
   const uidRef = useRef(Math.random().toString(36).slice(2));

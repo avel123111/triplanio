@@ -95,7 +95,7 @@ export default function AiTripDraftPreview({ draft, loading }) {
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="w-3 h-3" />
-                  <span>{new Date(city.start_date).toLocaleDateString()} — {new Date(city.end_date).toLocaleDateString()}</span>
+                  <span>{new Date(city.start_date).toLocaleDateString()} - {new Date(city.end_date).toLocaleDateString()}</span>
                 </div>
               </div>
             )}

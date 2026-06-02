@@ -9,7 +9,7 @@ import React, { useEffect, useRef, useState } from 'react';
  *    "07/07/2026" without a time), the input shows that partial value but
  *    its `.value` property comes back as "" (the browser considers it
  *    invalid and refuses to expose the partial value).
- *  - So checking `form.value` is not enough — it looks identical to an empty
+ *  - So checking `form.value` is not enough - it looks identical to an empty
  *    field. We must also look at the DOM input's `validity.badInput`, which
  *    is true precisely in this partial-date case.
  *
@@ -28,7 +28,7 @@ export default function DateTimeInput({
   const ref = useRef(null);
   const [missing, setMissing] = useState(false);
 
-  // Re-check the native validity after every render — the input's value can
+  // Re-check the native validity after every render - the input's value can
   // change without firing onChange (e.g. when the user is mid-typing) and the
   // browser updates `validity.badInput` on the DOM node directly.
   const recheck = () => {

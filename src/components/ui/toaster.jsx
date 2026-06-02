@@ -10,7 +10,7 @@ import {
 
 // Hide toasts whose `open` flag has been flipped to false by the reducer.
 // Our Toast primitive is a plain <div> (not Radix' Toast.Root), so the
-// `open=false` data attribute alone wouldn't remove the DOM — we filter
+// `open=false` data attribute alone wouldn't remove the DOM - we filter
 // here. The close button below dispatches DISMISS_TOAST, which flips `open`
 // to false and triggers a re-render via the toast store listener.
 export function Toaster() {

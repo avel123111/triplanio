@@ -2,7 +2,7 @@
  * Built-in cover gradients for trips. Stored in `trips.cover_gradient` as the
  * `id` string ('gradient_1'..'gradient_8'). The `css` field is used for the
  * full-size cover render; `preview` is the smaller swatch used inside the
- * picker. Names are i18n-agnostic English labels — UI strings live in locale
+ * picker. Names are i18n-agnostic English labels - UI strings live in locale
  * files.
  */
 export const TRIP_GRADIENTS = [

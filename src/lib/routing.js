@@ -10,7 +10,7 @@ const ROAD_PROFILES = {
   walk: 'foot',
 };
 
-// OSRM returns [lon, lat] — we convert to [lat, lon] for Leaflet.
+// OSRM returns [lon, lat] - we convert to [lat, lon] for Leaflet.
 export async function fetchOsrmRoute(fromLat, fromLon, toLat, toLon, transportType) {
   const profile = ROAD_PROFILES[transportType];
   if (!profile) return null;

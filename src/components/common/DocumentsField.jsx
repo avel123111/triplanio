@@ -42,7 +42,7 @@ export default function DocumentsField({
     if (oversize) {
       toast({
         title: 'Файл слишком большой',
-        description: `Максимальный размер — ${maxFileSizeMb} МБ.`,
+        description: `Максимальный размер - ${maxFileSizeMb} МБ.`,
         variant: 'destructive',
       });
       return;
@@ -60,7 +60,7 @@ export default function DocumentsField({
           toast({ title: 'Не удалось загрузить файл', description: upErr.message, variant: 'destructive' });
           continue;
         }
-        // Long-lived signed URL (10 years) — matches the documents lens convention.
+        // Long-lived signed URL (10 years) - matches the documents lens convention.
         const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);
         uploaded.push({ file_url: urlData?.signedUrl || '', file_name: file.name, storage_path: path });
       }

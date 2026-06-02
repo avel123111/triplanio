@@ -37,7 +37,7 @@ export default {
   'common.tomorrow': 'Tomorrow',
   // Blocking validation for date inputs that need a time too.
   'common.time_required': 'Please enter a time as well.',
-  // Small hint next to date/time fields and times — surfaces the IANA timezone
+  // Small hint next to date/time fields and times - surfaces the IANA timezone
   // so the user knows which wall-clock the time refers to (e.g. "Europe/Madrid").
   'common.tz_detected': '{tz}',
   'ai.hotel_title': 'Recognize booking',
@@ -54,7 +54,7 @@ export default {
   'ai.recognize_files_one': 'Recognize {count} file',
   'ai.recognize_files_few': 'Recognize {count} files',
   'ai.recognize_files_many': 'Recognize {count} files',
-  'ai.file_too_large': 'File "{name}" is larger than 5MB — skipped.',
+  'ai.file_too_large': 'File "{name}" is larger than 5MB - skipped.',
   'ai.too_many_files': 'You can upload at most {max} files to AI.',
   'ai.error_files': 'Could not recognize the files',
   'ai.error_link': 'Could not recognize the link',
@@ -64,10 +64,10 @@ export default {
   'car.dropoff_event': 'Car return',
   'car.fallback_name': 'Car rental',
   'ai_plan.title': 'Plan with AI',
-  'ai_plan.desc_initial': 'Describe your trip with words — get a complete draft itinerary.',
+  'ai_plan.desc_initial': 'Describe your trip with words - get a complete draft itinerary.',
   'ai_plan.desc_with_draft': 'Refine your itinerary or describe the trip you want.',
   'ai_plan.page_title': 'Plan with AI',
-  'ai_plan.page_desc': 'Describe the trip you want — get a complete draft itinerary.',
+  'ai_plan.page_desc': 'Describe the trip you want - get a complete draft itinerary.',
   'ai_plan.prompt_label_initial': 'Describe your trip',
   'ai_plan.prompt_label_refine': 'Refine your itinerary',
   'ai_plan.prompt_placeholder_initial': 'e.g., "I want a 10-12 day trip to Iberia in mid-July. We love wine, architecture, and good food. Max 3 cities. End in Barcelona for a getaway."',

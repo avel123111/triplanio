@@ -11,15 +11,14 @@ const t = (iso) => (iso ? new Date(iso).getTime() : null);
  * (localToUtc → entity save) silently drops it, so the user sees a "saved"
  * dialog with no actual change persisted.
  *
- * Returns true if the value is set BUT doesn't contain a time portion —
- * meaning Save should be blocked and an error shown.
+ * Returns true if the value is set BUT doesn't contain a time portion -  * meaning Save should be blocked and an error shown.
  *
  * Empty values are NOT considered missing-time: an empty field is a separate
  * "required" concern handled by each form individually.
  */
 export function isDateOnlyMissingTime(value) {
   if (!value || typeof value !== 'string') return false;
-  // datetime-local values are "YYYY-MM-DDTHH:mm" — anything without the T
+  // datetime-local values are "YYYY-MM-DDTHH:mm" - anything without the T
   // (or with T but no digits after it) means no time was entered.
   const m = value.match(/^\d{4}-\d{2}-\d{2}T(\d{2}):(\d{2})/);
   return !m;
@@ -150,7 +149,7 @@ export function tripWarnings(visits, transfers, _hotels, _activities) {
       }
     }
   }
-  // Large gaps (>24h) — only when both dates exist and both visits are transit
+  // Large gaps (>24h) - only when both dates exist and both visits are transit
   for (let i = 0; i < sortedVisits.length - 1; i++) {
     const a = sortedVisits[i], b = sortedVisits[i + 1];
     if (a.kind === 'start' || a.kind === 'end' || b.kind === 'start' || b.kind === 'end') continue;
@@ -195,7 +194,7 @@ export function sortVisits(visits) {
 
 // Recompute `position` 0..N so it stays consistent with chronology. On equal
 // start_datetime the INCOMING array order wins (the on-screen tie order the
-// user arranged). Returns new visit objects with `position` set. Pure — no DB.
+// user arranged). Returns new visit objects with `position` set. Pure - no DB.
 // Used by the Edit Mode editor and by insert paths so position never drifts
 // from dates (TRIP_EDIT_MODE_TZ §4a).
 export function normalizePositions(visits) {
@@ -213,7 +212,7 @@ export function normalizePositions(visits) {
 }
 
 // =====================================================================
-// STRUCTURED CONFLICT ENGINE — for the Edit Mode editor (TRIP_EDIT_MODE_TZ §5).
+// STRUCTURED CONFLICT ENGINE - for the Edit Mode editor (TRIP_EDIT_MODE_TZ §5).
 // Pure: operates on an in-memory draft, never touches the DB. Produces a sorted
 // (errors first) list of structured issues so the UI can render the conflict
 // panel AND gate Save (hard gate: any open issue blocks save).
@@ -257,7 +256,7 @@ export function computeTripValidation({ visits = [], hotels = [], activities = [
 
   // ---- A. Nodes (dates) ----
   for (const v of ordered) {
-    if (isAnchor(v)) continue;                         // anchors: dates null by design — skip A1/A2
+    if (isAnchor(v)) continue;                         // anchors: dates null by design - skip A1/A2
     if (!v.start_datetime || !v.end_datetime) {
       push('error', 'A1', `У города «${v.city_name}» не заданы даты.`, { cityId: v.id });
       continue;
@@ -275,10 +274,10 @@ export function computeTripValidation({ visits = [], hotels = [], activities = [
     if (gap == null) continue;
     if (gap > 1) push('warn', 'A3-gap', `Разрыв больше дня между «${a.city_name}» и «${b.city_name}».`, { fromId: a.id, toId: b.id });
     else if (gap < 0) push('warn', 'A3-overlap', `«${a.city_name}» и «${b.city_name}» наслаиваются.`, { fromId: a.id, toId: b.id });
-    // gap === 0 (стыковка) и gap === 1 (соседние дни / ночной перелёт) — OK
+    // gap === 0 (стыковка) и gap === 1 (соседние дни / ночной перелёт) - OK
   }
 
-  // ---- B. Hotels (out-of-bounds only — Pavel 2026-06-01) + orphan ----
+  // ---- B. Hotels (out-of-bounds only - Pavel 2026-06-01) + orphan ----
   for (const h of hotels) {
     const v = h.city_visit_id ? byId.get(h.city_visit_id) : null;
     if (!v) { push('error', 'B3', `Бронь «${h.name || 'отель'}» без города.`, { hotelId: h.id }); continue; }
@@ -303,7 +302,7 @@ export function computeTripValidation({ visits = [], hotels = [], activities = [
   // root-cause priority, so a single mistake doesn't fan out into 3+ warnings.
   //   D6 (dangling) → D5 (not adjacent) → D2 (date mismatch).
   // Date checks are SUPPRESSED while the transfer is structurally broken (no
-  // city / not adjacent) — the "expected" days are undefined then. Once the
+  // city / not adjacent) - the "expected" days are undefined then. Once the
   // structural issue is fixed, the date issue (if any) surfaces next.
   for (const tr of transfers) {
     const f = tr.from_city_visit_id ? byId.get(tr.from_city_visit_id) : null;
@@ -317,7 +316,7 @@ export function computeTripValidation({ visits = [], hotels = [], activities = [
     const fi = orderIndex.get(f.id), ti = orderIndex.get(to.id);
     if (fi != null && ti != null && ti !== fi + 1) {
       push('warn', 'D5', `Маршрут не сходится: ${f.city_name} → ${to.city_name} не соседние узлы.`, { transferId: tr.id });
-      continue; // structural — date alignment is meaningless until adjacency is fixed
+      continue; // structural - date alignment is meaningless until adjacency is fixed
     }
     // D2: departure must be on the from-city checkout day AND arrival on the
     // to-city check-in day. Both facets merged into ONE warning naming whichever
@@ -343,8 +342,7 @@ export function computeTripValidation({ visits = [], hotels = [], activities = [
     const k = `${tr.from_city_visit_id}>${tr.to_city_visit_id}`;
     pairCount.set(k, (pairCount.get(k) || 0) + 1);
   }
-  // NB: E1 («нет переезда между соседями») НЕ конфликт в Edit Mode (решение Pavel) —
-  // отсутствие переезда показывается коннектором «+ Добавить переезд» в сетке и
+  // NB: E1 («нет переезда между соседями») НЕ конфликт в Edit Mode (решение Pavel) -   // отсутствие переезда показывается коннектором «+ Добавить переезд» в сетке и
   // плашкой в таймлайне, но НЕ блокирует сохранение. Здесь оставлен только E3 (дубликат).
   for (let i = 0; i < ordered.length - 1; i++) {
     const a = ordered[i], b = ordered[i + 1];

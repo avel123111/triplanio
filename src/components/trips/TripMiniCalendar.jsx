@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
  * and the currently-selected day highlighted.
  *
  * Props:
- * - tripStart, tripEnd: ISO strings (UTC) – defines initial month + scope
+ * - tripStart, tripEnd: ISO strings (UTC) - defines initial month + scope
  * - eventDaysByKey: { 'yyyy-LL-dd': { hasHotel, hasTransfer, hasActivity, hasVisit } }
  * - selectedDayKey: 'yyyy-LL-dd' | null
  * - onSelectDay: (dayKey) => void

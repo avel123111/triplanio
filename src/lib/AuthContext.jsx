@@ -13,8 +13,8 @@ export const AuthProvider = ({ children }) => {
   const loadingForRef = React.useRef(null);
   // Track which user's profile is already loaded & live. Unlike loadingForRef
   // (an in-flight guard that gets cleared in finally), this persists so that a
-  // repeat SIGNED_IN — which supabase-js emits every time the tab regains focus
-  // — does NOT trigger another loadUserProfile()/isLoadingAuth flash that would
+  // repeat SIGNED_IN - which supabase-js emits every time the tab regains focus
+  // - does NOT trigger another loadUserProfile()/isLoadingAuth flash that would
   // unmount the whole app and look like a full page "refresh" on tab switch.
   const loadedUserIdRef = React.useRef(null);
   // Set while a logout is in progress. The SIGNED_OUT handler keeps the spinner
@@ -24,18 +24,18 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check if this is an OAuth callback (PKCE code in URL or implicit hash token).
-    // In that case, don't clear the loading state from getSession() — wait for
+    // In that case, don't clear the loading state from getSession() - wait for
     // onAuthStateChange to fire SIGNED_IN / INITIAL_SESSION with the real session.
     const isOAuthCallback =
       new URLSearchParams(window.location.search).has('code') ||
       window.location.hash.includes('access_token');
 
-    // Primary: check session immediately — reliably handles page refresh
+    // Primary: check session immediately - reliably handles page refresh
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         loadUserProfile(session.user);
       } else if (!isOAuthCallback) {
-        // No session and not an OAuth callback — user is genuinely not logged in
+        // No session and not an OAuth callback - user is genuinely not logged in
         setUser(null);
         setIsAuthenticated(false);
         setIsLoadingAuth(false);
@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }) => {
             loadUserProfile(session.user);
           }
         } else {
-          // Confirmed: no session — clear loading
+          // Confirmed: no session - clear loading
           setUser(null);
           setIsAuthenticated(false);
           setIsLoadingAuth(false);
@@ -75,8 +75,7 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setIsAuthenticated(false);
         if (isLoggingOutRef.current) {
-          // Keep the spinner up until logout()'s redirect to /login fires —
-          // prevents a flash of the public landing during sign-out.
+          // Keep the spinner up until logout()'s redirect to /login fires -           // prevents a flash of the public landing during sign-out.
           setIsLoadingAuth(true);
         } else {
           setIsLoadingAuth(false);
@@ -104,7 +103,7 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (error && error.code === 'PGRST116') {
-        // Profile doesn't exist yet — create it (first login via Google or email)
+        // Profile doesn't exist yet - create it (first login via Google or email)
         const seed = encodeURIComponent(
           authUser.user_metadata?.full_name ||
           authUser.user_metadata?.name ||
@@ -154,8 +153,8 @@ export const AuthProvider = ({ children }) => {
     } finally {
       // Release the in-flight guard. It exists only to dedupe CONCURRENT loads
       // (SIGNED_IN + INITIAL_SESSION firing together on page load). If it stayed
-      // pinned to the user id forever, a later checkUserAuth() — e.g. right after
-      // saving the profile — would early-return and never re-fetch, so the updated
+      // pinned to the user id forever, a later checkUserAuth() - e.g. right after
+      // saving the profile - would early-return and never re-fetch, so the updated
       // name never reached the context and looked like it "didn't save".
       loadingForRef.current = null;
     }
@@ -173,7 +172,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async (shouldRedirect = true) => {
     // Flag the logout so the SIGNED_OUT listener holds the spinner instead of
     // rendering the landing. Show the spinner immediately, then sign out and
-    // hard-redirect to /login — no landing flash in between.
+    // hard-redirect to /login - no landing flash in between.
     isLoggingOutRef.current = true;
     if (shouldRedirect) setIsLoadingAuth(true);
     await supabase.auth.signOut();

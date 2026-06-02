@@ -25,7 +25,7 @@ const buttonVariants = cva(
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-10 rounded-md px-8",
         // 44x44 tap target everywhere (Material/HIG min). Applies on
-        // desktop too — per product decision to keep icon buttons
+        // desktop too - per product decision to keep icon buttons
         // consistently sized across breakpoints.
         icon: "h-11 w-11",
       },

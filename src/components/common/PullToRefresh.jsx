@@ -6,7 +6,7 @@ import { Loader2, ArrowDown } from 'lucide-react';
  *
  * Triggers `onRefresh` (returns a Promise) when the user pulls the page down
  * from the very top by more than THRESHOLD pixels. Designed to be lightweight
- * and additive — it only intercepts touch events when the page is at scrollTop=0
+ * and additive - it only intercepts touch events when the page is at scrollTop=0
  * AND the gesture starts as a downward pull. Otherwise it lets the browser handle
  * normal scrolling.
  *
@@ -66,7 +66,7 @@ export default function PullToRefresh({ onRefresh, children, disabled = false })
     }
   }, [onRefresh, refreshing]);
 
-  // Visual indicator — rotates the arrow as the user pulls past threshold
+  // Visual indicator - rotates the arrow as the user pulls past threshold
   // (when they release, it becomes a spinner).
   const indicatorOpacity = Math.min(1, visualPull / THRESHOLD);
   const indicatorRotate = Math.min(180, (visualPull / THRESHOLD) * 180);
@@ -78,7 +78,7 @@ export default function PullToRefresh({ onRefresh, children, disabled = false })
       onTouchEnd={onTouchEnd}
       onTouchCancel={onTouchEnd}
     >
-      {/* Indicator — absolutely positioned so it doesn't push content layout
+      {/* Indicator - absolutely positioned so it doesn't push content layout
           when not active. Translates down only while pulling/refreshing. */}
       <div
         aria-hidden={visualPull === 0 && !refreshing}

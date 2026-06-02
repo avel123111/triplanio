@@ -1,6 +1,6 @@
 /**
  * Compact picker for the icon + color of a custom BudgetCategory.
- * Used inside CategoryNameDialog. Stateless — controlled by parent.
+ * Used inside CategoryNameDialog. Stateless - controlled by parent.
  */
 import React from 'react';
 import {

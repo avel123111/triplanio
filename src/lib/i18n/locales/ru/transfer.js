@@ -40,12 +40,12 @@ export default {
   'transfer.documents_label': 'Документы',
   'transfer.open_link': 'Открыть',
   // AI gating
-  'transfer.ai_checking': 'Проверяем доступ к AI…',
+  'transfer.ai_checking': 'Проверяем доступ к ИИ…',
   'transfer.ai_button_text': 'Заполнить с помощью ИИ',
-  'transfer.ai_button_hint': '— загрузите билет или вставьте ссылку',
-  'transfer.ai_lock_title': 'AI-распознавание билетов',
-  'transfer.ai_lock_desc_owner': 'Загрузите билет или ссылку — ИИ заполнит все поля автоматически',
-  'transfer.ai_lock_desc_member': 'Обратитесь к владельцу трипа за разблокировкой Pro-функций.',
+  'transfer.ai_button_hint': '- загрузите билет или вставьте ссылку',
+  'transfer.ai_lock_title': 'ИИ-распознавание билетов',
+  'transfer.ai_lock_desc_owner': 'Загрузите билет или ссылку - ИИ заполнит все поля автоматически',
+  'transfer.ai_lock_desc_member': 'Обратитесь к владельцу путешествия за разблокировкой Pro-функций.',
   'transfer.ai_unlock': 'Разблокировать',
   // AI extra segments banner
   'transfer.ai_extra_one': 'ИИ нашёл {count} дополнительный сегмент (пересадка)',

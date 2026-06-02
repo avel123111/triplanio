@@ -1,12 +1,12 @@
 /**
- * BudgetLens — budget tab inside TripView.
+ * BudgetLens - budget tab inside TripView.
  *
  * Props:
  *   tripId, trip, budget, budgetCategories, budgetExpenses, members, cityVisits, isLoading, isPro, queryClient
  *
- * budget          — trip_budgets row (or null if not seeded)
- * budgetCategories — budget_categories rows
- * budgetExpenses   — budget_expenses rows (original_amount, original_currency, source_kind, source_id)
+ * budget          - trip_budgets row (or null if not seeded)
+ * budgetCategories - budget_categories rows
+ * budgetExpenses   - budget_expenses rows (original_amount, original_currency, source_kind, source_id)
  *
  * Display currency = trip.details.main_currency (default EUR). All sums are
  * converted into it via money.js `toMain` (override-aware). Amounts are
@@ -69,7 +69,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
   const [err, setErr] = useState('');
 
   async function save() {
-    if (!title.trim() || !amount || !categoryId) { setErr('Заполните обязательные поля'); return; }
+    if (!title.trim() || !amount || !categoryId) { setErr('Заполни обязательные поля'); return; }
     setSaving(true);
     setErr('');
     const row = {
@@ -139,7 +139,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
         </Field>
         <Field label="Город">
           <select className="select" value={cityName} onChange={e => setCityName(e.target.value)}>
-            <option value="">—</option>
+            <option value="">-</option>
             {cities.map((c, i) => <option key={i} value={c}>{c}</option>)}
           </select>
         </Field>
@@ -187,7 +187,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       if (raw === '' || !Number.isFinite(n) || n <= 0) return;
       const live = liveRateToMain(fx, code);
       // Store as a manual override ONLY when there is no live rate, or the user
-      // actually changed it — otherwise auto rates would get frozen.
+      // actually changed it - otherwise auto rates would get frozen.
       if (live == null || Math.abs(n - live) / live > 0.0001) next[code] = n;
     });
     const { error } = await supabase.from('trip_budgets').update({ fx_overrides: next }).eq('trip_id', tripId);
@@ -203,7 +203,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       <Btn variant="primary" icon="check" onClick={apply} disabled={saving}>{saving ? 'Сохраняю…' : 'Применить'}</Btn>
     </>}>
       <div className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>
-        Дефолтные курсы тянутся автоматически. Если автомат ошибается — поставь свой курс.
+        Дефолтные курсы тянутся автоматически. Если автомат ошибается - поставь свой курс.
       </div>
       {others.length === 0 ? (
         <div className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 14 }}>
@@ -334,7 +334,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, showCategory, catName, m
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {expense.title || '—'}
+          {expense.title || '-'}
         </div>
         <div className="muted" style={{ fontSize: 11.5, display: 'flex', alignItems: 'center', gap: 6 }}>
           {expense.notes && <span>{expense.notes}</span>}
@@ -390,7 +390,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     );
   }
 
-  // Open an expense — system expense → its source event view; manual → edit dialog.
+  // Open an expense - system expense → its source event view; manual → edit dialog.
   function openExpense(expense) {
     const src = expense.source_kind || 'manual';
     if (src === 'manual') { openEditExpense(expense); return; }
@@ -405,7 +405,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
   // Build enriched categories with converted totals.
   // Order: the four canonical system categories first (fixed order matching
-  // base44), then all custom categories — including "food", which was demoted
+  // base44), then all custom categories - including "food", which was demoted
   // from system to custom and must sit with the other custom categories.
   const cats = useMemo(() => {
     const SYSTEM_ORDER = ['accommodation', 'transport', 'activities', 'services'];
@@ -445,12 +445,12 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   }, [budgetExpenses, mainCurrency, fx, overrides]);
   const missingCurrencies = Object.keys(missing);
 
-  // City grouping — flatten all expenses with their category info.
+  // City grouping - flatten all expenses with their category info.
   const cityGroups = useMemo(() => {
     const cityMap = {};
     for (const cat of cats) {
       for (const exp of cat.items) {
-        const city = exp.city_name || '—';
+        const city = exp.city_name || '-';
         if (!cityMap[city]) cityMap[city] = [];
         cityMap[city].push({ ...exp, catColor: cat.color, catIcon: catIcon(cat), catName: cat.name });
       }
@@ -514,7 +514,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                   <div key={cur}>
                     {rate != null
                       ? `1 ${cur} ≈ ${Number(rate.toFixed(4))} ${mainCurrency}`
-                      : `1 ${cur} ≈ — ${mainCurrency}`}
+                      : `1 ${cur} ≈ - ${mainCurrency}`}
                   </div>
                 );
               })}
@@ -534,7 +534,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         </Severity>
       )}
 
-      {/* No-expenses hero — horizontal dashed banner (matches design) */}
+      {/* No-expenses hero - horizontal dashed banner (matches design) */}
       {noExpenses && (
         <div style={{
           marginTop: missingCurrencies.length > 0 ? 14 : 4, marginBottom: 18, padding: 24,
@@ -547,14 +547,14 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Расходов пока нет</div>
             <div className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
-              Брони отелей, переезды и активности появятся здесь автоматически. Свои траты — еду, такси, сувениры — добавляй вручную.
+              Брони отелей, переезды и активности появятся здесь автоматически. Свои траты - еду, такси, сувениры - добавляй вручную.
             </div>
           </div>
           <Btn variant="primary" icon="plus" onClick={openAddExpense}>Первая трата</Btn>
         </div>
       )}
 
-      {/* Grouping controls — always shown (categories exist even before any expense) */}
+      {/* Grouping controls - always shown (categories exist even before any expense) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 22, marginBottom: 14, flexWrap: 'wrap' }}>
         <div className="tweaks__seg">
           <button className={grouping === 'category' ? 'active' : ''} onClick={() => setGrouping('category')}>По категориям</button>
@@ -693,7 +693,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, onOpen, onAdd }) {
                 <Icon name="pin" size={14} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500, fontSize: 13 }}>{g.city === '—' ? 'Без города' : g.city}</div>
+                <div style={{ fontWeight: 500, fontSize: 13 }}>{g.city === '-' ? 'Без города' : g.city}</div>
                 <div className="muted" style={{ fontSize: 11 }}>{g.items.length} {g.items.length === 1 ? 'трата' : 'трат'}</div>
               </div>
               <div className="num" style={{ fontWeight: 600, fontSize: 13 }}>{money(g.total, mainCurrency)}</div>
@@ -707,7 +707,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, onOpen, onAdd }) {
             <Icon name="pin" size={15} />
           </div>
           <div style={{ flex: 1 }}>
-            <h3 style={{ marginBottom: 2 }}>{cur.city === '—' ? 'Без города' : cur.city}</h3>
+            <h3 style={{ marginBottom: 2 }}>{cur.city === '-' ? 'Без города' : cur.city}</h3>
             <div className="muted num" style={{ fontSize: 12 }}>{cur.items.length} {cur.items.length === 1 ? 'трата' : 'трат'} · {money(cur.total, mainCurrency)}</div>
           </div>
         </div>

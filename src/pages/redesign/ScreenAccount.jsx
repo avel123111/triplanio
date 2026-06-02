@@ -136,7 +136,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
           </div>
           <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>Free тариф</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>1 активный трип · без ИИ-помощника, ИИ-парсера и календарной линзы.</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>1 активное путешествие · без ИИ-помощника, ИИ-парсера и календарной разделы.</div>
           </div>
           <Btn
             variant="primary"
@@ -215,7 +215,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
           </div>
           <div className="muted" style={{ fontSize: 12.5 }}>
             <button onClick={onManage} style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 12.5 }}>
-              Отменить — будет действовать до конца года
+              Отменить - будет действовать до конца года
             </button>
           </div>
         </div>
@@ -233,7 +233,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontWeight: 600 }}>
-                Pro отменена{plan?.subscriptionEnd ? ` — действует до ${fmtDate(plan.subscriptionEnd, locale)}` : ''}
+                Pro отменена{plan?.subscriptionEnd ? ` - действует до ${fmtDate(plan.subscriptionEnd, locale)}` : ''}
               </div>
               <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
                 Все Pro-фичи доступны до этой даты. Потом аккаунт перейдёт на Free.
@@ -244,7 +244,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
             </Btn>
           </div>
           <div style={{ padding: 12, background: 'var(--wash)', borderRadius: 10, fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
-            После окончания периода доступ к ИИ-помощнику, парсингу и календарю исчезнет в трипах без отдельного Pro-апгрейда.
+            После окончания периода доступ к ИИ-помощнику, парсингу и календарю исчезнет в путешествиях без отдельного Pro-апгрейда.
           </div>
         </div>
       </Card>
@@ -674,7 +674,7 @@ export default function ScreenAccount() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       <ModalHost />
 
-      {/* ── APP HEADER — standard pattern (back / brand / crumb / actions) ── */}
+      {/* ── APP HEADER - standard pattern (back / brand / crumb / actions) ── */}
       <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
         <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К коллекции">
           <Icon name="back" size={14} />
@@ -698,7 +698,7 @@ export default function ScreenAccount() {
       {/* ── PAGE CONTENT ────────────────────────────────────────────────── */}
       <main style={{ flex: 1, padding: '32px 28px', maxWidth: 760, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
-        {/* Page title row — Cancel + Save sit here, matching the design */}
+        {/* Page title row - Cancel + Save sit here, matching the design */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22, flexWrap: 'wrap' }}>
           <h1 style={{ flex: 1, marginBottom: 0 }}>
             Настройки аккаунта
@@ -717,7 +717,7 @@ export default function ScreenAccount() {
         <Card title="Идентичность" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 16 }}>
 
-            {/* Avatar — background fills the circle, no inner component gap */}
+            {/* Avatar - background fills the circle, no inner component gap */}
             <div
               onMouseEnter={() => setAvatarHover(true)}
               onMouseLeave={() => setAvatarHover(false)}
@@ -870,7 +870,7 @@ export default function ScreenAccount() {
           onSwitchYearly={handleSwitchToYearly}
         />
 
-        {/* Payment error banner — directly under the subscription section */}
+        {/* Payment error banner - directly under the subscription section */}
         {errorMsg && (
           <div style={{ marginBottom: 16 }}>
             <Severity level="error" title="Ошибка" action={
@@ -885,14 +885,14 @@ export default function ScreenAccount() {
         <Card title="E-mail уведомления" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             <SettingRow
-              label="Приглашения в трипы"
-              desc="Когда тебя добавляют в новый трип."
+              label="Приглашения в путешествия"
+              desc="Когда тебя добавляют в новое путешествие."
               on={notifyInvites}
               onChange={setNotifyInvites}
             />
             <SettingRow
-              label="Обновления трипа"
-              desc="Изменения в трипах, где ты участник."
+              label="Обновления путешествия"
+              desc="Изменения в путешествиях, где ты участник."
               on={notifyUpdates}
               onChange={setNotifyUpdates}
               last
@@ -913,7 +913,7 @@ export default function ScreenAccount() {
               <div style={{ fontWeight: 600, fontSize: 13.5 }}>Напиши нам</div>
               <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
                 <a href="mailto:support@triplanio.com" style={{ color: 'var(--brand)' }}>support@triplanio.com</a>
-                {' '}— отвечаем в течение суток.
+                {' '}- отвечаем в течение суток.
               </div>
             </div>
             <Btn variant="ghost" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>
@@ -947,7 +947,7 @@ export default function ScreenAccount() {
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontWeight: 600, fontSize: 13.5 }}>Выйти из аккаунта</div>
               <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
-                Тебе придётся снова войти, чтобы открыть свои трипы. Локальные черновики сохранятся.
+                Тебе придётся снова войти, чтобы открыть свои путешествия. Локальные черновики сохранятся.
               </div>
             </div>
             <Btn variant="ghost" icon="arrow" onClick={logout}>
@@ -962,7 +962,7 @@ export default function ScreenAccount() {
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontWeight: 600 }}>Удалить аккаунт</div>
               <div className="muted" style={{ fontSize: 12.5 }}>
-                Безвозвратно. Все твои трипы, документы и история чатов будут удалены.
+                Безвозвратно. Все твои путешествия, документы и история чатов будут удалены.
               </div>
             </div>
             <Btn variant="danger-solid" onClick={handleDeleteAccount} disabled={deletingAccount}>

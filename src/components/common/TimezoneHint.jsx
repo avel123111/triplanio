@@ -6,14 +6,14 @@ import { useT } from '@/lib/i18n/I18nContext';
  *
  *  - variant="under" (default): used under date/time inputs in EDIT dialogs.
  *      Renders as a small "🕐 Europe/Madrid" line beneath the input.
- *      When `tz` is empty/UTC — returns null (nothing to clarify).
+ *      When `tz` is empty/UTC - returns null (nothing to clarify).
  *
  *  - variant="inline": used inside VIEW dialogs, rendered next to the time
  *      value on the same row. On narrow screens it wraps to the next line
  *      automatically (the parent Row uses `flex-wrap`).
  *
  * UTC is treated as a "no real timezone" fallback used by the codebase when
- * a city has no timezone set — we deliberately don't surface it to users.
+ * a city has no timezone set - we deliberately don't surface it to users.
  */
 export default function TimezoneHint({ tz, variant = 'under' }) {
   const t = useT();

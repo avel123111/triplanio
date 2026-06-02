@@ -35,7 +35,7 @@ export default function TransferGroup({ fromVisit, toVisit, transfers, tripId, o
     );
   }
 
-  // Single transfer — render as before, with a small "+ пересадка" affordance below.
+  // Single transfer - render as before, with a small "+ пересадка" affordance below.
   if (sorted.length === 1) {
     return (
       <div className="space-y-2">
@@ -59,7 +59,7 @@ export default function TransferGroup({ fromVisit, toVisit, transfers, tripId, o
     );
   }
 
-  // 2-3 segments — render collapsible group plashka.
+  // 2-3 segments - render collapsible group plashka.
   const first = sorted[0];
   const last = sorted[sorted.length - 1];
   const startTz = fromVisit.timezone || 'UTC';
@@ -86,9 +86,9 @@ export default function TransferGroup({ fromVisit, toVisit, transfers, tripId, o
             </span>
           </div>
           <div className="text-[11px] text-muted-foreground">
-            {first.start_datetime ? formatInTz(first.start_datetime, startTz, 'd LLL HH:mm') : '—'}
+            {first.start_datetime ? formatInTz(first.start_datetime, startTz, 'd LLL HH:mm') : '-'}
             {' → '}
-            {last.end_datetime ? formatInTz(last.end_datetime, endTz, 'd LLL HH:mm') : '—'}
+            {last.end_datetime ? formatInTz(last.end_datetime, endTz, 'd LLL HH:mm') : '-'}
             {' · '}
             {sorted.map((t, i) => {
               const info = transportInfo(t.transport_type);

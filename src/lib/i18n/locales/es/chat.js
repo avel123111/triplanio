@@ -2,7 +2,7 @@ export default {
   'chat.placeholder': 'Escribe un mensaje… (escribe @ para mencionar a Triplanio AI)',
   'chat.send': 'Enviar',
   'chat.empty_title': 'Aún no hay mensajes',
-  'chat.empty_desc': 'Inicia la conversación — los miembros del viaje verán los nuevos mensajes aquí.',
+  'chat.empty_desc': 'Inicia la conversación - los miembros del viaje verán los nuevos mensajes aquí.',
   'chat.mention_triplanio_name': 'Triplanio',
   'chat.mention_triplanio_hint': 'Asistente IA',
   'chat.ai_thinking': 'Triplanio está pensando…',

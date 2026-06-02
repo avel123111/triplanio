@@ -89,7 +89,7 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     }
   };
 
-  // Edit mode — swap in the unified create/edit dialog. Non-car-rental
+  // Edit mode - swap in the unified create/edit dialog. Non-car-rental
   // services (esim, insurance) stay on the simple ServiceDialog since the
   // unified one only models the rich car-rental shape.
   if (editMode) {

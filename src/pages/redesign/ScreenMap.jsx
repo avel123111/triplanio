@@ -9,10 +9,10 @@ import { countryFlag } from '@/lib/geo';
 import { uniqueCityCount } from '@/lib/trip-cities';
 
 // =====================================================================
-// TRIP MAP — geographic lens — full-bleed Google Maps + scrollable sidebar
+// TRIP MAP - geographic lens - full-bleed Google Maps + scrollable sidebar
 // =====================================================================
 
-// Pretty short date "16 июл" — used in stepper / city card subtitles.
+// Pretty short date "16 июл" - used in stepper / city card subtitles.
 function fmtShortDate(iso) {
   if (!iso) return '';
   try {
@@ -35,7 +35,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
   const [activeIdx, setActiveIdx] = useState(0);
   const [editMode, setEditMode] = useState(false);
 
-  // Real route — visits with coordinates, in trip order. Filter out anchors
+  // Real route - visits with coordinates, in trip order. Filter out anchors
   // when the user hides them via the checkbox.
   const route = useMemo(() => {
     const all = sortVisits(visits).filter(v => v.latitude && v.longitude);
@@ -61,7 +61,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
       background: 'var(--surface)',
     }} className="trip-map-shell">
 
-      {/* MAP — full-bleed Google Maps */}
+      {/* MAP - full-bleed Google Maps */}
       <div style={{
         position: 'relative',
         background: isDark ? '#0e1a2e' : '#dceaf5',
@@ -92,7 +92,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
             </div>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
-                {trip?.title || 'Трип'}
+                {trip?.title || 'Путешествие'}
               </div>
               <div className="num muted" style={{ fontSize: 11, lineHeight: 1.2, marginTop: 1 }}>
                 {cityCount} {cityCount === 1 ? 'город' : cityCount < 5 ? 'города' : 'городов'}
@@ -142,7 +142,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
         </div>
       </div>
 
-      {/* SIDEBAR — sticky stepper + scrolling active city detail */}
+      {/* SIDEBAR - sticky stepper + scrolling active city detail */}
       <aside style={{
         display: 'flex', flexDirection: 'column',
         background: 'var(--surface)',
@@ -181,7 +181,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
   );
 }
 
-// ----- Route stepper — adaptive: horizontal for ≤5 cities, compact list for >5 -----
+// ----- Route stepper - adaptive: horizontal for ≤5 cities, compact list for >5 -----
 function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
   const isLong = route.length > 5;
   const nCities = uniqueCityCount(route); // dedup repeated cities for the count
@@ -281,7 +281,7 @@ function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
   );
 }
 
-// ----- Active city card — real data -----
+// ----- Active city card - real data -----
 const KIND_META = {
   plane: { icon: 'plane', label: 'Перелёт' },
   train: { icon: 'train', label: 'Поезд' },
@@ -357,7 +357,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
         </div>
       </div>
 
-      {/* Transfer row — real "From → To" or "Нет переезда" warning */}
+      {/* Transfer row - real "From → To" or "Нет переезда" warning */}
       {showTransfer && (
         <TransferRow
           transfer={transferIn}
@@ -367,7 +367,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
         />
       )}
 
-      {/* Hotel row — real hotel or "Нет отеля" warning */}
+      {/* Hotel row - real hotel or "Нет отеля" warning */}
       {showHotel && (
         <HotelRow
           hotel={primaryHotel}
@@ -418,7 +418,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
         </div>
       )}
 
-      {/* Footer — "+ Активность" opens EventEditDialog in activity-create mode */}
+      {/* Footer - "+ Активность" opens EventEditDialog in activity-create mode */}
       {!isStart && !isEnd && (
         <div style={{
           display: 'flex', gap: 6, alignItems: 'center',
@@ -454,7 +454,7 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
 
   if (!transfer) {
     const canFork = !!(prevVisit && toCity);
-    // No inbound transfer — show warning row that opens ForkPartnerModal.
+    // No inbound transfer - show warning row that opens ForkPartnerModal.
     return (
       <>
         <button
@@ -481,7 +481,7 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>Нет переезда</div>
             <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>
-              Из «{fromName}» — добавить
+              Из «{fromName}» - добавить
             </div>
           </div>
           <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
@@ -517,7 +517,7 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
     meta.label,
     transfer.duration,
     transfer.carrier,
-  ].filter(Boolean).join(' · ') || '—';
+  ].filter(Boolean).join(' · ') || '-';
 
   return (
     <button
@@ -584,7 +584,7 @@ function HotelRow({ hotel, visit, onOpen }) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>Нет отеля</div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>Не забронирован — нужно выбрать</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>Не забронирован - нужно выбрать</div>
           </div>
           <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
         </button>

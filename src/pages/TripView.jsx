@@ -96,7 +96,7 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
         _ms: parseNaive(h.check_out_datetime)?.toMillis() ?? 0,
       });
     }
-    // Free-cancellation deadline — point event styled by StreamEventRow's
+    // Free-cancellation deadline - point event styled by StreamEventRow's
     // `hotel-deadline` branch (rose accent + warning icon).
     if (h.free_cancellation && h.free_cancellation_until) {
       events.push({
@@ -141,8 +141,8 @@ export function buildEventStream(hotels = [], activities = [], transfers = [], v
     const explicitDate = naiveDayKey(t.start_datetime);
     const toVisit = visits.find(v => v.id === t.to_city_visit_id);
     const fromVisit = visits.find(v => v.id === t.from_city_visit_id);
-    // For dateless transfers anchor to the to-visit's arrival day, or — for
-    // legs into a dateless end anchor — to the from-visit's end day.
+    // For dateless transfers anchor to the to-visit's arrival day, or - for
+    // legs into a dateless end anchor - to the from-visit's end day.
     const fallbackDate = (toVisit && naiveDayKey(toVisit.start_datetime))
       || (fromVisit && naiveDayKey(fromVisit.end_datetime))
       || null;
@@ -202,7 +202,7 @@ function LoadingScreen() {
         {/* Skeleton sidebar */}
         <aside className="app-side">
           <div className="app-side__group">
-            <div className="app-side__group-label">Линзы трипа</div>
+            <div className="app-side__group-label">Разделы путешествия</div>
             {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px' }}>
                 <Skeleton w={15} h={15} r={4} />
@@ -234,7 +234,7 @@ function LoadingScreen() {
               <Skeleton w={80} h={30} r={8} />
             </div>
           </div>
-          {/* Timeline + sidebar skeleton — same building blocks as the loaded
+          {/* Timeline + sidebar skeleton - same building blocks as the loaded
               layout, so nothing reshuffles when shell → content resolves. */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
             <SkeletonTimeline />
@@ -258,9 +258,9 @@ function ErrorScreen({ onBack }) {
       <SystemStub
         icon="lock"
         tone="warm"
-        title="Нет доступа к этому трипу"
-        body="Возможно, тебя нет в списке участников, приглашение отозвали или трип был удалён."
-        primary={{ label: 'К моим трипам', onClick: onBack }}
+        title="Нет доступа к этому путешествию"
+        body="Возможно, тебя нет в списке участников, приглашение отозвали или путешествие был удалёно."
+        primary={{ label: 'К моим путешествиям', onClick: onBack }}
         secondary={{ label: 'Войти другим аккаунтом', onClick: loginOther }}
       />
     </div>
@@ -270,7 +270,7 @@ function ErrorScreen({ onBack }) {
 // ─── TripHeader ───────────────────────────────────────────────────────────────
 
 function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
-  const dateRange = formatTripRange(visits, '—');
+  const dateRange = formatTripRange(visits, '-');
 
   return (
     <header className="app-header">
@@ -289,7 +289,7 @@ function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
           <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
             {trip?.title || '…'}
           </span>
-          {dateRange && dateRange !== '—' && (
+          {dateRange && dateRange !== '-' && (
             <span className="app-header__crumb-dates">{dateRange}</span>
           )}
           {trip?.is_pro_trip && !isPro && (
@@ -320,7 +320,7 @@ const MGMT_ITEMS = [
 ];
 
 // Addon-gated lenses: hidden unless the trip explicitly enabled them.
-// Default OFF — a fresh trip shows none of these until enabled in Settings.
+// Default OFF - a fresh trip shows none of these until enabled in Settings.
 const GATED_LENS_ADDON = { calendar: 'calendar', budget: 'budget', chat: 'chat' };
 
 function isLensVisible(trip, lensId) {
@@ -331,18 +331,18 @@ function isLensVisible(trip, lensId) {
 
 function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true, isOwner, myRole, onUpgrade, onProInfo }) {
   const lensItems = LENS_ITEMS.filter(item => isLensVisible(trip, item.id));
-  // Viewers can't open Settings or Members — hide those menu items entirely.
+  // Viewers can't open Settings or Members - hide those menu items entirely.
   const mgmtItems = MGMT_ITEMS.filter(item =>
     !(myRole === 'viewer' && (item.id === 'settings' || item.id === 'members')));
   // Viewers can't mint a share token (ensureShareToken is owner/admin-only).
   const canShare = myRole !== 'viewer';
-  // Only after Pro state is resolved — avoids the banner flashing on pro trips.
+  // Only after Pro state is resolved - avoids the banner flashing on pro trips.
   const showUpgrade = proResolved && !isPro; // isPro = trip-level Pro (owner sub OR pro_trip)
   const chatUnread = useUnreadChatCount(tripId);
   return (
     <aside className="app-side">
       <div className="app-side__group">
-        <div className="app-side__group-label">Линзы трипа</div>
+        <div className="app-side__group-label">Разделы путешествия</div>
         {lensItems.map(item => (
           <button
             key={item.id}
@@ -373,7 +373,7 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
             </button>
           ))}
           {/* Share opens the same dialog as the header button. Hidden from
-              viewers — ensureShareToken is owner/admin-only (a viewer just
+              viewers - ensureShareToken is owner/admin-only (a viewer just
               gets a 403), matching the header share gate (myRole !== 'viewer'). */}
           {canShare && (
             <button
@@ -388,12 +388,12 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
       )}
       {showUpgrade && (
         <div style={{ margin: '10px 6px 0', padding: 12, borderRadius: 10, background: 'var(--warm-tint)' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warm)', marginBottom: 4 }}>Free-трип</div>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warm)', marginBottom: 4 }}>Free-путешествие</div>
           <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginBottom: 8, lineHeight: 1.45 }}>
             Календарь, бюджет-разбивка, ИИ и чат закрыты Pro.
           </div>
           {isOwner ? (
-            <Btn variant="primary" size="sm" block icon="pro" onClick={onUpgrade}>Апгрейд трипа</Btn>
+            <Btn variant="primary" size="sm" block icon="pro" onClick={onUpgrade}>Апгрейд путешествия</Btn>
           ) : (
             <Btn variant="ghost" size="sm" block icon="lock" onClick={onProInfo}>Подключает владелец</Btn>
           )}
@@ -403,7 +403,7 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
   );
 }
 
-// ─── AddDayButton — shown in edit mode after each day ────────────────────────
+// ─── AddDayButton - shown in edit mode after each day ────────────────────────
 function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
   const [open, setOpen] = useState(false);
   return (
@@ -419,7 +419,7 @@ function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
       </button>
       {open && (
         <>
-          {/* "Add city" lives in the Structure editor now — timeline only adds activities. */}
+          {/* "Add city" lives in the Structure editor now - timeline only adds activities. */}
           <button
             type="button"
             onClick={() => { setOpen(false); onAddActivity?.(dayKey); }}
@@ -461,7 +461,7 @@ function SkeletonTimeline() {
   );
 }
 
-// Right-rail (budget / who's going / services) placeholder — shared by the
+// Right-rail (budget / who's going / services) placeholder - shared by the
 // full-page LoadingScreen and ContextSide so the right column never reshuffles.
 function RightRailSkeleton() {
   return (
@@ -663,7 +663,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
 
   // Show missing-transfer / missing-hotel hints only when (a) the trip-level
   // toggle is on (default on) AND (b) the current user can act on them. Viewers
-  // (Зрители) never see them — they can't add bookings, so it's just noise that
+  // (Зрители) never see them - they can't add bookings, so it's just noise that
   // exposes planning gaps.
   const showBookingWarnings = !isViewer && trip?.details?.display?.booking_warnings !== false;
 
@@ -672,13 +672,13 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
       <EmptyState
         icon="list"
         title="Хронология пуста"
-        body="Добавь отели, переезды и активности — они появятся здесь в хронологическом порядке."
+        body="Добавь отели, переезды и активности - они появятся здесь в хронологическом порядке."
       />
     );
   }
 
   // Determine timeline bounds. Start/end anchors are pure markers and have
-  // no datetimes — derive the trip range from the first/last TRANSIT visit
+  // no datetimes - derive the trip range from the first/last TRANSIT visit
   // (the cities the user actually stays in). Falls back to trip.start_date /
   // trip.end_date when there are no transits with dates.
   const datedTransits = sortVisits(visits)
@@ -692,8 +692,8 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     return (
       <EmptyState
         icon="list"
-        title="Даты трипа не заданы"
-        body="Укажи даты трипа, чтобы увидеть хронологию."
+        title="Даты путешествия не заданы"
+        body="Укажи даты путешествия, чтобы увидеть хронологию."
       />
     );
   }
@@ -757,12 +757,12 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   }
 
   // One ordered walk of TRANSIT cities drives BOTH the render order and the
-  // transfer/warning pairing — so a warning's "from" is always the city shown
+  // transfer/warning pairing - so a warning's "from" is always the city shown
   // directly above it (no sortVisits ↔ visitForDay divergence). Anchors are
   // rendered separately as StreamAnchor.
   const transitCities = ordered.filter(v => v.kind !== 'start' && v.kind !== 'end');
 
-  // Inbound transfer EVENTS (from the stream) for a destination visit — used to
+  // Inbound transfer EVENTS (from the stream) for a destination visit - used to
   // render the actual transfer card above its hero.
   const inboundEventsFor = (visitId) =>
     stream.filter(e => {
@@ -773,7 +773,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   const hasTransferBetween = (prev, city) =>
     !!prev && (inboundByVisit[city.id] || []).some(tr => tr.from_city_visit_id === prev.id);
 
-  // Inbound-transfer event ids — excluded from a day's general event list
+  // Inbound-transfer event ids - excluded from a day's general event list
   // (they belong inside the arrival block, above the city hero).
   const inboundEventIds = new Set();
   for (const c of transitCities) for (const e of inboundEventsFor(c.id)) inboundEventIds.add(e.id);
@@ -810,7 +810,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     const vStart = naiveDayKey(city.start_datetime);
     const vEnd = naiveDayKey(city.end_datetime);
     const nights = nightsBetween(vStart, vEnd);
-    const dateRange = vStart && vEnd ? `${fmtDate(vStart)} — ${fmtDate(vEnd)}` : null;
+    const dateRange = vStart && vEnd ? `${fmtDate(vStart)} - ${fmtDate(vEnd)}` : null;
     out.push(
       <CityHero
         key={`city-${city.id}`}
@@ -866,7 +866,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
 
     rows.push(
       <div key={`day-${day}`} style={{ marginBottom: 24 }}>
-        {/* Date separator — matches design: large bold date */}
+        {/* Date separator - matches design: large bold date */}
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, padding: '12px 0 10px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
@@ -895,7 +895,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
             itinerary so a warning's "from" is always the city directly above. */}
         {arrivingToday.flatMap(c => { const block = renderArrival(c, prevCity); prevCity = c; return block; })}
 
-        {/* Events or placeholder — never show the empty-day placeholder on an
+        {/* Events or placeholder - never show the empty-day placeholder on an
             arrival day (the city hero already fills it). */}
         {dayEvents.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1013,8 +1013,8 @@ function ShareDialog({ trip }) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
       onClick={() => window.__closeModal?.()}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 420, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
-        <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>Поделиться трипом</h2>
-        <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>Скопируй ссылку и отправь участникам — она откроется без входа в аккаунт</div>
+        <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>Поделиться путешествием</h2>
+        <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>Скопируй ссылку и отправь участникам - она откроется без входа в аккаунт</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? 'Генерируем ссылку…' : ''} style={{ flex: 1, fontSize: 12.5 }} onClick={e => e.target.select()} />
           {loading ? (
@@ -1067,7 +1067,7 @@ function MoreMenuDialog({ trip, visits, canEditMode, onEditStructure, onEditMeta
           <button onClick={() => { window.__closeModal?.(); window.__navigate?.('settings'); }} style={itemStyle}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <Icon name="settings" size={16} style={{ color: 'var(--muted)' }} /> Настройки трипа
+            <Icon name="settings" size={16} style={{ color: 'var(--muted)' }} /> Настройки путешествия
           </button>
           <button onClick={() => { window.__closeModal?.(); window.__navigate?.('members'); }} style={itemStyle}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
@@ -1093,7 +1093,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
   const activeMemberCount = members.filter(m => m.status === 'active').length || 1;
   const cities = visits.map(v => v.city_name).filter(Boolean);
   const cityCount = uniqueCityCount(visits); // dedup repeated cities (e.g. Москва … Москва) for the count
-  const dateRange = formatTripRange(visits, '—');
+  const dateRange = formatTripRange(visits, '-');
 
   // Cover priority: uploaded photo → preset gradient → default HSL gradient + SVG waves.
   const gradient = getGradientById(trip?.cover_gradient);
@@ -1131,7 +1131,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
             fontSize: 'clamp(24px, 4vw, 36px)', letterSpacing: '-0.03em', lineHeight: 1,
             textShadow: '0 2px 12px rgba(0,0,0,.3)',
           }}>{trip?.title || '…'}</div>
-          {dateRange && dateRange !== '—' && (
+          {dateRange && dateRange !== '-' && (
             <div className="num" style={{ color: 'rgba(255,255,255,.85)', fontSize: 13, marginTop: 8, fontWeight: 500 }}>
               {dateRange}
             </div>
@@ -1208,8 +1208,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
             <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>Поделиться</Btn>
           )}
           <Btn variant="ghost" size="sm" icon="download" onClick={() => window.print()}>Экспорт</Btn>
-          {/* The "…" menu only holds owner/admin actions (edit, settings, delete) —
-              every item is unavailable to a viewer, so hide the whole button. */}
+          {/* The "…" menu only holds owner/admin actions (edit, settings, delete) -               every item is unavailable to a viewer, so hide the whole button. */}
           {myRole !== 'viewer' && (
             <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canEditMode={canEditMode} onEditStructure={() => { window.__closeModal?.(); nav(`/trip/${trip.id}/edit`); }} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
           )}
@@ -1261,7 +1260,7 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
   // Always show the owner first, then admins, viewers, offline, pending.
   // The owner often isn't a trip_members row (tracked via trip.created_by), so
   // synthesize it when missing. Use the authenticated user's own name when the
-  // owner row is the current user — otherwise leave user_full_name empty and
+  // owner row is the current user - otherwise leave user_full_name empty and
   // let the profile resolver fill it in.
   const orderedMembers = (() => {
     const ownerId = trip?.created_by || user?.id || '';
@@ -1312,10 +1311,10 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
             {hasMissingRate && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: 11.5, color: 'var(--warning)' }}>
                 <Icon name="warning" size={12} />
-                <span>Часть трат не пересчитана — нет курса</span>
+                <span>Часть трат не пересчитана - нет курса</span>
               </div>
             )}
-            {/* Segmented bar — one segment per category */}
+            {/* Segmented bar - one segment per category */}
             <div style={{ height: 8, borderRadius: 4, background: 'var(--wash)', overflow: 'hidden', marginTop: 10, marginBottom: 10, display: 'flex' }}>
               {catBreakdown.map(c => (
                 <div key={c.id} title={c.name} style={{
@@ -1343,7 +1342,7 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
             )}
           </>
         ) : (
-          <div className="muted" style={{ fontSize: 12.5 }}>Бюджет не создан</div>
+          <div className="muted" style={{ fontSize: 12.5 }}>Бюджет не создано</div>
         )}
       </div>
 
@@ -1479,11 +1478,11 @@ export default function TripView() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [transferEdit, setTransferEdit] = useState({ open: false, fromVisit: null, toVisit: null, transfer: null });
   const [hotelEdit, setHotelEdit] = useState({ open: false, visit: null, hotel: null });
-  // Choice dialogs (ForkPartnerModal) — sit between the warning button and the
+  // Choice dialogs (ForkPartnerModal) - sit between the warning button and the
   // edit form so the user can pick a partner before falling back to manual entry.
   const [hotelChoice, setHotelChoice] = useState({ open: false, visit: null });
   const [transferChoice, setTransferChoice] = useState({ open: false, fromVisit: null, toVisit: null });
-  // Right-rail service add — opens ForkPartnerModal for the chosen kind, then
+  // Right-rail service add - opens ForkPartnerModal for the chosen kind, then
   // routes to the right edit dialog when the user picks "Manual".
   const [serviceChoice, setServiceChoice] = useState({ open: false, type: null });
   const [serviceEditCar, setServiceEditCar] = useState({ open: false });
@@ -1541,7 +1540,7 @@ export default function TripView() {
     enabled: !!tripId,
   });
 
-  // Fetch content (hotels, activities, transfers) — only after shell resolves
+  // Fetch content (hotels, activities, transfers) - only after shell resolves
   const { data: contentData, isLoading: loadingContent } = useQuery({
     queryKey: TRIP_CONTENT_KEY(tripId),
     queryFn: async () => {
@@ -1584,7 +1583,7 @@ export default function TripView() {
   // subscription does NOT unlock someone else's trip.
   const [ownerProResolved, setOwnerProResolved] = useState(false);
   // proResolved: have we resolved the owner-subscription state yet? Until then
-  // we DON'T show the "upgrade trip" banner — otherwise it flashes on pro trips
+  // we DON'T show the "upgrade trip" banner - otherwise it flashes on pro trips
   // (is_pro_trip=false but owner has a sub) during the async resolve.
   const [proResolved, setProResolved] = useState(false);
   useEffect(() => {
@@ -1597,15 +1596,15 @@ export default function TripView() {
     return () => { cancelled = true; };
   }, [tripId, trip?.is_pro_trip]);
   const tripIsPro = !!trip?.is_pro_trip || ownerProResolved;
-  // Edit Mode (structure editor) gate — exact current model (TRIP_EDIT_MODE_TZ §2):
+  // Edit Mode (structure editor) gate - exact current model (TRIP_EDIT_MODE_TZ §2):
   // anyone but a viewer; past trips require the trip to be Pro (or owner Pro).
   const canEditMode = myRole !== 'viewer' && (!isTripInPast(visits) || tripIsPro);
   // Structure Edit Mode lock held (by anyone, incl. self in another tab) → freeze
   // timeline mutations (TRIP_EDIT_MODE_TZ §3a). Reflected on load/refetch of the shell.
   const frozen = !!trip?.editing_by;
   // While the trip is being edited in the Structure editor, freeze ALL event
-  // mutations on the timeline (add/edit/delete) — viewing stays allowed (TZ §3a).
-  const frozenNote = () => toast({ description: 'Трип сейчас редактируется в режиме структуры — изменения временно недоступны.' });
+  // mutations on the timeline (add/edit/delete) - viewing stays allowed (TZ §3a).
+  const frozenNote = () => toast({ description: 'Путешествие сейчас редактируется в режиме структуры - изменения временно недоступны.' });
   // Banner can show only once we KNOW the trip isn't pro (or it's instantly a pro_trip).
   const tripProResolved = !!trip?.is_pro_trip || proResolved;
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
@@ -1639,7 +1638,7 @@ export default function TripView() {
           height: (shownLens === 'map' || shownLens === 'chat') ? 'calc(100vh - 56px)' : undefined,
           overflow: (shownLens === 'map' || shownLens === 'chat') ? 'hidden' : undefined,
         }}>
-          {/* Transfer — opened from missing-transfer warnings or edit mode */}
+          {/* Transfer - opened from missing-transfer warnings or edit mode */}
           {transferEdit.fromVisit && transferEdit.toVisit && (
             <EventEditDialog
               open={transferEdit.open}
@@ -1652,7 +1651,7 @@ export default function TripView() {
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
-          {/* Hotel — opened from missing-hotel warnings or edit mode */}
+          {/* Hotel - opened from missing-hotel warnings or edit mode */}
           {hotelEdit.visit && (
             <EventEditDialog
               open={hotelEdit.open}
@@ -1663,7 +1662,7 @@ export default function TripView() {
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
-          {/* Hotel choice — sits between the warning button and the edit form */}
+          {/* Hotel choice - sits between the warning button and the edit form */}
           <ForkPartnerModal
             open={hotelChoice.open}
             onOpenChange={(o) => setHotelChoice(s => ({ ...s, open: o }))}
@@ -1672,7 +1671,7 @@ export default function TripView() {
             tripId={tripId}
             onManual={() => setHotelEdit({ open: true, visit: hotelChoice.visit, hotel: null })}
           />
-          {/* Transfer choice — sits between the warning button and the edit form */}
+          {/* Transfer choice - sits between the warning button and the edit form */}
           <ForkPartnerModal
             open={transferChoice.open}
             onOpenChange={(o) => setTransferChoice(s => ({ ...s, open: o }))}
@@ -1689,7 +1688,7 @@ export default function TripView() {
               })
             }
           />
-          {/* Service choice — opened from the right-rail ServicesWidget */}
+          {/* Service choice - opened from the right-rail ServicesWidget */}
           <ForkPartnerModal
             open={serviceChoice.open}
             onOpenChange={(o) => setServiceChoice(s => ({ ...s, open: o }))}
@@ -1707,7 +1706,7 @@ export default function TripView() {
               }
             }}
           />
-          {/* Car rental edit — opened from the service ForkPartnerModal */}
+          {/* Car rental edit - opened from the service ForkPartnerModal */}
           {serviceEditCar.open && (
             <EventEditDialog
               open={serviceEditCar.open}
@@ -1718,7 +1717,7 @@ export default function TripView() {
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
-          {/* eSIM / Insurance edit — opened from the service ForkPartnerModal */}
+          {/* eSIM / Insurance edit - opened from the service ForkPartnerModal */}
           {serviceEditSimple.open && serviceEditSimple.kind && (
             <ServiceDialog
               open={serviceEditSimple.open}
@@ -1728,7 +1727,7 @@ export default function TripView() {
               service={null}
             />
           )}
-          {/* Activity — add new activity in edit mode */}
+          {/* Activity - add new activity in edit mode */}
           {activityEdit.visit && (
             <EventEditDialog
               key={`activity-${activityEdit.visit?.id}-${activityEdit.activity?.id || 'new'}`}
@@ -1741,7 +1740,7 @@ export default function TripView() {
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
-          {/* SourceViewLoader — opens the read/edit dialog when a timeline event is clicked */}
+          {/* SourceViewLoader - opens the read/edit dialog when a timeline event is clicked */}
           <SourceViewLoader
             kind={eventView.kind}
             id={eventView.id}
@@ -1764,7 +1763,7 @@ export default function TripView() {
               />
               {frozen && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--wash)', border: '1px solid var(--line)', fontSize: 13, color: 'var(--ink-2)' }}>
-                  <Icon name="lock" size={14} /> Трип сейчас редактируется в режиме структуры — изменения временно недоступны.
+                  <Icon name="lock" size={14} /> Путешествие сейчас редактируется в режиме структуры - изменения временно недоступны.
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
@@ -1904,7 +1903,7 @@ export default function TripView() {
             </div>
             <div className="dlg__body">
               <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
-                Полная разбивка бюджета — опциональная Pro-фича трипа. Включи её в настройках трипа, чтобы открыть линзу бюджета.
+                Полная разбивка бюджета - опциональная Pro-фича путешествия. Включи её в настройках путешествия, чтобы открыть раздел бюджета.
               </div>
             </div>
             <div className="dlg__foot">

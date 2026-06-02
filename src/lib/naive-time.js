@@ -1,8 +1,7 @@
 /**
  * Naive datetime utilities for the trip timeline.
  *
- * The trip timeline treats every ISO datetime as a *naive local* timestamp —
- * it ignores any "Z" or timezone offset in the string and reads year/month/day/
+ * The trip timeline treats every ISO datetime as a *naive local* timestamp -  * it ignores any "Z" or timezone offset in the string and reads year/month/day/
  * hour/minute as wall-clock values. This is intentional: the timeline is the
  * one place in the app where the user reads dates as "what was typed in",
  * regardless of what timezone the city / event was stored with.
@@ -38,7 +37,7 @@ export function formatNaive(iso, fmt, locale) {
   return locale ? dt.setLocale(locale).toFormat(fmt) : dt.toFormat(fmt);
 }
 
-/** Milliseconds since epoch for the naive value — used for sorting. */
+/** Milliseconds since epoch for the naive value - used for sorting. */
 export function naiveMillis(iso) {
   const dt = parseNaive(iso);
   return dt ? dt.toMillis() : 0;

@@ -14,9 +14,9 @@ export default function TripAccessDenied() {
     <SystemStub
       icon="lock"
       tone="warm"
-      title="Нет доступа к этому трипу"
-      body="Возможно, тебя нет в списке участников, приглашение отозвали или трип был удалён."
-      primary={{ label: 'К моим трипам', onClick: () => nav('/trips') }}
+      title="Нет доступа к этому путешествию"
+      body="Возможно, тебя нет в списке участников, приглашение отозвали или путешествие был удалёно."
+      primary={{ label: 'К моим путешествиям', onClick: () => nav('/trips') }}
       secondary={{ label: 'Войти другим аккаунтом', onClick: loginOther }}
     />
   );

@@ -1,7 +1,7 @@
 /**
  * Centralized budget constants.
  *
- * SYSTEM_KEYS — fixed enum of system categories. Each trip gets exactly one
+ * SYSTEM_KEYS - fixed enum of system categories. Each trip gets exactly one
  * BudgetCategory per key (kind='system', system_key=<one of these>). Their
  * `name` field stores a translation key (e.g. 'budget.cat_accommodation') that
  * the UI renders via i18n.
@@ -29,7 +29,7 @@ export const SYSTEM_KEY_ORDER = ['accommodation', 'transport', 'activities', 'se
 
 /**
  * Default custom categories seeded on every new trip (and backfilled for old
- * trips). Each is stored as a plain BudgetCategory with kind='custom' — the
+ * trips). Each is stored as a plain BudgetCategory with kind='custom' - the
  * user can rename or delete them freely. The `i18n_key` is used ONLY during
  * seeding to pick the localized name for the trip creator's language; after
  * seeding, the `name` field holds plain text.

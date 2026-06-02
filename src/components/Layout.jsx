@@ -47,7 +47,7 @@ export default function Layout() {
     <div className="min-h-screen bg-background">
       {body}
 
-      {/* Mobile bottom navigation — hidden on sm+ where the header has the user menu. */}
+      {/* Mobile bottom navigation - hidden on sm+ where the header has the user menu. */}
       {showBottomNav && (
         <nav
           className="sm:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-background/95 backdrop-blur-lg"

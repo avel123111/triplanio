@@ -22,7 +22,7 @@ function useTripSubtitle() {
     const days = Math.max(1, Math.round((new Date(range.end) - new Date(range.start)) / msPerDay) + 1);
     const cityCount = uniqueCityCount(visits);
     const cityStr = cityCount > 0 ? ` • ${cityCount} ${plural(cityCount, 'trip.cities_count')}` : '';
-    return `${start} – ${end} • ${days} ${plural(days, 'public.subtitle_days')}${cityStr}`;
+    return `${start} - ${end} • ${days} ${plural(days, 'public.subtitle_days')}${cityStr}`;
   };
 }
 
@@ -38,7 +38,7 @@ export default function PublicTrip() {
   const token = searchParams.get('t') || '';
 
   const [tab, setTab] = useState('timeline');
-  // Single unified view-modal state — one of { kind, data } when open.
+  // Single unified view-modal state - one of { kind, data } when open.
   const [viewing, setViewing] = useState(null);
 
   const { data, isLoading, error } = useQuery({
@@ -83,7 +83,7 @@ export default function PublicTrip() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar — minimal branding, no auth UI. Sticky so it stays on top while scrolling. */}
+      {/* Top bar - minimal branding, no auth UI. Sticky so it stays on top while scrolling. */}
       <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-2">
           <a
@@ -151,8 +151,7 @@ export default function PublicTrip() {
             onClickActivity={(a) => setViewing({ kind: 'activity', data: a })}
             onClickCarRental={(s) => setViewing({ kind: 'service', data: s })}
             canEdit={false}
-            /* Public viewers (Зритель) shouldn't see booking-absence hints —
-               they can't act on them and they expose planning gaps. */
+            /* Public viewers (Зритель) shouldn't see booking-absence hints -                they can't act on them and they expose planning gaps. */
             showBookingWarnings={false}
           />
         )}
@@ -161,7 +160,7 @@ export default function PublicTrip() {
         )}
       </main>
 
-      {/* Unified read-only event modal — kind dispatches to the right body. */}
+      {/* Unified read-only event modal - kind dispatches to the right body. */}
       <EventModal
         open={!!viewing}
         onOpenChange={(o) => { if (!o) setViewing(null); }}

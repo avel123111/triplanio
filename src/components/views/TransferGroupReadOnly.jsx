@@ -51,17 +51,17 @@ export default function TransferGroupReadOnly({
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium flex items-center gap-1.5 flex-wrap">
-            <span>{fromVisit?.city_name || '—'}</span>
+            <span>{fromVisit?.city_name || '-'}</span>
             <ArrowRight className="w-3 h-3 text-muted-foreground" />
-            <span>{toVisit?.city_name || '—'}</span>
+            <span>{toVisit?.city_name || '-'}</span>
             <span className="text-xs text-muted-foreground font-normal">
               {plural(sorted.length, 'transfer.with_layover', { count: sorted.length })}
             </span>
           </div>
           <div className="text-[11px] text-muted-foreground flex items-center flex-wrap gap-x-1">
-            <span>{first?.start_datetime ? formatInTz(first.start_datetime, startTz, 'd LLL HH:mm') : '—'}</span>
+            <span>{first?.start_datetime ? formatInTz(first.start_datetime, startTz, 'd LLL HH:mm') : '-'}</span>
             <span>→</span>
-            <span>{last?.end_datetime ? formatInTz(last.end_datetime, endTz, 'd LLL HH:mm') : '—'}</span>
+            <span>{last?.end_datetime ? formatInTz(last.end_datetime, endTz, 'd LLL HH:mm') : '-'}</span>
             <span className="mx-1">·</span>
             {sorted.map((t, i) => {
               const info = transportInfo(t.transport_type);
@@ -118,9 +118,9 @@ function SegmentRow({ index, transfer, fromVisit, toVisit, onClick }) {
           )}
         </div>
         <div className="text-[11px] text-muted-foreground">
-          {transfer.start_datetime ? formatInTz(transfer.start_datetime, startTz, 'd LLL HH:mm') : '—'}
+          {transfer.start_datetime ? formatInTz(transfer.start_datetime, startTz, 'd LLL HH:mm') : '-'}
           {' → '}
-          {transfer.end_datetime ? formatInTz(transfer.end_datetime, endTz, 'd LLL HH:mm') : '—'}
+          {transfer.end_datetime ? formatInTz(transfer.end_datetime, endTz, 'd LLL HH:mm') : '-'}
           {dur ? ` · ${dur}` : ''}
         </div>
         {normalizeExternalUrl(transfer.booking_url) && (

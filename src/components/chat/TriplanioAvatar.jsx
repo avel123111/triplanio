@@ -9,9 +9,9 @@ import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
  *
  * Props:
  *   - size:      'xs' | 'sm' | 'md'  (default 'sm')
- *   - ring:      boolean — adds a soft ring
+ *   - ring:      boolean - adds a soft ring
  *   - tripId:    trip context for the avatar lookup
- *   - avatarUrl: optional pre-resolved URL — skips the lookup
+ *   - avatarUrl: optional pre-resolved URL - skips the lookup
  *   - className: extra classes for the outer element
  */
 const SIZE_CLASSES = {

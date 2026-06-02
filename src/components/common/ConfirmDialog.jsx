@@ -14,7 +14,7 @@ import { useT } from '@/lib/i18n/I18nContext';
 import { cn } from '@/lib/utils';
 
 /**
- * Reusable confirm/alert dialog — replacement for native window.confirm()/alert().
+ * Reusable confirm/alert dialog - replacement for native window.confirm()/alert().
  *
  * Two modes:
  *  - Confirm (default): two buttons (cancel + action). `onConfirm` is called when

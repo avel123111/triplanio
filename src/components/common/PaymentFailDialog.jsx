@@ -3,14 +3,14 @@ import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
 
 /**
- * PaymentFailDialog — shown when a Stripe checkout is cancelled or errors out.
+ * PaymentFailDialog - shown when a Stripe checkout is cancelled or errors out.
  * Self-contained controlled overlay (no ModalHost dependency).
  *
  * Props:
- *   open          — boolean
- *   onOpenChange  — (open: boolean) => void
- *   code          — optional Stripe decline code (e.g. "card_declined")
- *   onRetry       — called when the user taps "Повторить оплату"
+ *   open          - boolean
+ *   onOpenChange  - (open: boolean) => void
+ *   code          - optional Stripe decline code (e.g. "card_declined")
+ *   onRetry       - called when the user taps "Повторить оплату"
  */
 export default function PaymentFailDialog({ open, onOpenChange, code, onRetry }) {
   if (!open) return null;
@@ -31,7 +31,7 @@ export default function PaymentFailDialog({ open, onOpenChange, code, onRetry })
           <div className="muted" style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 14, maxWidth: 360, margin: '0 auto 14px' }}>
             {code
               ? <>Stripe отклонил карту: <span className="mono" style={{ color: 'var(--ink-2)' }}>{code}</span>. С карты ничего не списано. Проверь данные и повтори.</>
-              : <>Платёж отменён или не завершён. С карты ничего не списано — попробуй ещё раз.</>}
+              : <>Платёж отменён или не завершён. С карты ничего не списано - попробуй ещё раз.</>}
           </div>
           <div style={{ background: 'var(--wash)', padding: 10, borderRadius: 8, fontSize: 12, color: 'var(--muted)', lineHeight: 1.5, maxWidth: 360, margin: '0 auto' }}>
             Если карта работает в других сервисах, попробуй другой способ оплаты или напиши в поддержку.

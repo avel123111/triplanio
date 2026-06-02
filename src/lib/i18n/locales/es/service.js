@@ -42,7 +42,7 @@ export default {
   'service.car_dropoff_ph': 'Aeropuerto / oficina de devolución',
   'service.car_return_different_location': 'Devolver en otra ubicación',
   'service.car_tz_detected': '🕐 {tz}',
-  'service.car_tz_not_detected': 'Zona horaria no detectada — elige una dirección de las sugerencias',
+  'service.car_tz_not_detected': 'Zona horaria no detectada - elige una dirección de las sugerencias',
   'service.car_date_order_error': 'La devolución debe ser posterior a la recogida.',
   'service.car_notes_ph': 'Información adicional',
   'service.car_default_name': 'Alquiler de coche',

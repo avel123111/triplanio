@@ -3,14 +3,14 @@ import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
 
 /**
- * ProLockedDialog — shown when a free user tries to use a Pro-only feature.
+ * ProLockedDialog - shown when a free user tries to use a Pro-only feature.
  * Self-contained controlled overlay (no ModalHost dependency).
  *
  * Props:
- *   open          — boolean
- *   onOpenChange  — (open: boolean) => void
- *   feature       — optional feature name to mention
- *   onUpgrade     — called when the user taps "Перейти к Pro"
+ *   open          - boolean
+ *   onOpenChange  - (open: boolean) => void
+ *   feature       - optional feature name to mention
+ *   onUpgrade     - called when the user taps "Перейти к Pro"
  */
 export default function ProLockedDialog({ open, onOpenChange, feature, onUpgrade }) {
   if (!open) return null;
@@ -35,7 +35,7 @@ export default function ProLockedDialog({ open, onOpenChange, feature, onUpgrade
               {feature ? `«${feature}» доступна в Pro` : 'Доступно в Pro'}
             </div>
             <div className="muted" style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>
-              Подключи Pro-тариф, чтобы открыть расширенные возможности трипа.
+              Подключи Pro-тариф, чтобы открыть расширенные возможности путешествия.
             </div>
           </div>
         </div>

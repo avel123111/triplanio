@@ -67,7 +67,7 @@ export default function Inbox() {
     mutationFn: async ({ memberId, action }) => {
       // Use the edge function: it sets user_id on the member (so the accepter
       // becomes a recognized participant under RLS), notifies the inviter, and
-      // marks the invite notification read — none of which a raw update does.
+      // marks the invite notification read - none of which a raw update does.
       const { data, error } = await supabase.functions.invoke('respondTripInvite', {
         body: { member_id: memberId, action },
       });
@@ -103,7 +103,7 @@ export default function Inbox() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К трипам">
+        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К путешествиям">
           <Icon name="back" size={14} />
         </button>
         <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
@@ -173,9 +173,9 @@ export default function Inbox() {
 
 function InboxEmpty({ onCollection, onAi }) {
   const hints = [
-    { icon: 'users', title: 'Приглашения', desc: 'когда кто-то зовёт в трип' },
+    { icon: 'users', title: 'Приглашения', desc: 'когда кто-то зовёт в путешествие' },
     { icon: 'vote',  title: 'Голосования', desc: 'новые отели и активности' },
-    { icon: 'edit',  title: 'Обновления',  desc: 'правки в общих трипах' },
+    { icon: 'edit',  title: 'Обновления',  desc: 'правки в общих путешествиях' },
   ];
   return (
     <div style={{
@@ -204,7 +204,7 @@ function InboxEmpty({ onCollection, onAi }) {
       </div>
       <h2 style={{ marginBottom: 8, fontSize: 22, letterSpacing: '-0.02em' }}>Инбокс пуст</h2>
       <div className="muted" style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 420, margin: '0 auto 22px' }}>
-        Никаких приглашений, голосований и обновлений. Когда кто-то добавит тебя в трип, проголосует за отель или внесёт правку — увидишь здесь.
+        Никаких приглашений, голосований и обновлений. Когда кто-то добавит тебя в путешествие, проголосует за отель или внесёт правку - увидишь здесь.
       </div>
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10,

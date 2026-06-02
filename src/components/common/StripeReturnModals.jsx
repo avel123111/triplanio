@@ -8,7 +8,7 @@ import PaymentFailDialog from '@/components/common/PaymentFailDialog';
 /**
  * Global Stripe-checkout return handler. Mounted ONCE above all authenticated
  * routes, so the success / fail modal shows no matter which screen Stripe
- * redirected back to (trip, settings, pro, admin, …) — the return path is the
+ * redirected back to (trip, settings, pro, admin, …) - the return path is the
  * caller's current page (see createStripeCheckout success_url/cancel_url with
  * `stripe_status`). Screens must NOT duplicate this.
  */

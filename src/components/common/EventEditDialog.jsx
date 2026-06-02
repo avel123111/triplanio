@@ -1,15 +1,15 @@
 /**
- * EventEditDialog — unified create/edit modal for hotel / transfer / activity /
+ * EventEditDialog - unified create/edit modal for hotel / transfer / activity /
  * car-rental (service kind="car_rental"). Replaces the four legacy dialogs
  * (HotelDialog, TransferDialog, ActivityDialog, CarRentalDialog).
  *
  * The four "kinds" share a single chrome (colour stripe + header + footer +
  * shared AI block) but each renders its own field group. In create mode the
- * top type-picker lets the user switch between kinds — the form is reset to
+ * top type-picker lets the user switch between kinds - the form is reset to
  * the new kind's EMPTY shape on switch.
  *
  * Simple service kinds (esim, insurance) still go through the legacy
- * ServiceDialog — they're a single name+price form and don't fit this layout.
+ * ServiceDialog - they're a single name+price form and don't fit this layout.
  *
  * Visual reference: designer's prototype `event-edit.jsx`.
  */
@@ -49,7 +49,7 @@ function Checkbox({ checked, onCheckedChange, className = '' }) {
   );
 }
 
-// City autocomplete for layover (waypoint) cities — resolves a full city object
+// City autocomplete for layover (waypoint) cities - resolves a full city object
 // (coords + IANA timezone) so the saved waypoint city_visit has real geo data.
 function CityPicker({ value, onPick, placeholder }) {
   const [q, setQ] = useState(value?.city_name || '');
@@ -140,7 +140,7 @@ import EventAiBlock from '@/components/common/EventAiBlock';
 import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Type metadata — colours, icons, copy
+//  Type metadata - colours, icons, copy
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TYPE_META = {
@@ -183,7 +183,7 @@ const TRANSPORT_KINDS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Empty form factories — one per kind. Edit mode hydrates from the entity.
+//  Empty form factories - one per kind. Edit mode hydrates from the entity.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function emptyHotelForm(defCur = 'EUR') {
@@ -211,7 +211,7 @@ function emptyTransferForm(defCur = 'EUR') {
     booking_url: '', booking_platform: '',
     price: '', currency: defCur,
     documents: [], notes: '',
-    // Layover (multi-leg) support — create mode only. When hasLayovers is on,
+    // Layover (multi-leg) support - create mode only. When hasLayovers is on,
     // `segments` is the source of truth and the flat fields above are ignored.
     hasLayovers: false,
     segments: [],
@@ -334,7 +334,7 @@ function serviceToForm(svc) {
   };
 }
 
-// New-mode date defaults — same logic as the legacy dialogs.
+// New-mode date defaults - same logic as the legacy dialogs.
 function defaultsForNewHotel(visit, tz, defCur = 'EUR') {
   if (!visit?.start_datetime || !visit?.end_datetime) return emptyHotelForm(defCur);
   const vs = DateTime.fromISO(visit.start_datetime, { zone: 'utc' }).setZone(tz);
@@ -427,7 +427,7 @@ export default function EventEditDialog({
   const meta = TYPE_META[currentKind] || TYPE_META.hotel;
   const tripId = tripIdProp || entity?.trip_id || visit?.trip_id || fromVisit?.trip_id;
 
-  // Timezones — kept for compatibility but the time helpers ignore them
+  // Timezones - kept for compatibility but the time helpers ignore them
   // since the app now stores naive wall-clock values. Still passed to the
   // TimezoneHint component so the hint label shows the right city.
   const tz = visit?.timezone || 'UTC';
@@ -444,7 +444,7 @@ export default function EventEditDialog({
   const [aiState, setAiState] = useState('available');
 
   // Pro state: null = checking, true/false = resolved. isOwner tells whether the
-  // caller owns this trip — only the owner may be sent to checkout; a participant
+  // caller owns this trip - only the owner may be sent to checkout; a participant
   // is shown the "ask the owner" info dialog instead.
   const [isPro, setIsPro] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
@@ -460,12 +460,12 @@ export default function EventEditDialog({
   // Soft note when an AI-parsed multi-leg booking's endpoints differ from the
   // trip leg the modal was opened for (we keep the trip's endpoints).
   const [aiEndpointWarn, setAiEndpointWarn] = useState(null);
-  // AI-highlighted fields inside layover segments — keyed `${seg.id}.${field}`.
+  // AI-highlighted fields inside layover segments - keyed `${seg.id}.${field}`.
   // Cleared per field when the user edits it (mirrors single-leg aiFields).
   const [aiSegFields, setAiSegFields] = useState(() => new Set());
 
   // Time-missing flags for individual datetime-local inputs (the native input
-  // returns "" when only a date is entered — DateTimeInput reports this so we
+  // returns "" when only a date is entered - DateTimeInput reports this so we
   // can keep Save disabled until a time is also picked).
   const [timeMissing, setTimeMissing] = useState({});
   const anyTimeMissing = Object.values(timeMissing).some(Boolean);
@@ -482,7 +482,7 @@ export default function EventEditDialog({
     setTimeMissing({});
   }, [open, entity?.id, initialKind]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pro check — runs whenever the dialog opens with a tripId we can verify.
+  // Pro check - runs whenever the dialog opens with a tripId we can verify.
   useEffect(() => {
     if (!open) { setIsPro(null); return; }
     if (!tripId) { setIsPro(false); return; }
@@ -494,7 +494,7 @@ export default function EventEditDialog({
     return () => { cancelled = true; };
   }, [open, tripId]);
 
-  // Sync AI block to Pro state — only when not mid-flow (idle/uploaded/parsing/parsed).
+  // Sync AI block to Pro state - only when not mid-flow (idle/uploaded/parsing/parsed).
   useEffect(() => {
     if (isPro === null) return;
     setAiState((prev) => {
@@ -527,7 +527,7 @@ export default function EventEditDialog({
     setTimeMissing((prev) => (prev[key] === missing ? prev : { ...prev, [key]: missing }));
   };
 
-  // Type switcher — only enabled in create mode.
+  // Type switcher - only enabled in create mode.
   const switchKind = (k) => {
     if (isEdit) return;
     setCurrentKind(k);
@@ -583,7 +583,7 @@ export default function EventEditDialog({
     return null;
   }, [currentKind, form.checkInLocal, form.checkOutLocal, visit, tz, t]);
 
-  // Soft warnings — same helpers the legacy dialogs use.
+  // Soft warnings - same helpers the legacy dialogs use.
   const warnings = useMemo(() => {
     if (currentKind === 'hotel') {
       const draft = {
@@ -820,7 +820,7 @@ export default function EventEditDialog({
             let tz = null; try { tz = await getTimezone(best.latitude, best.longitude); } catch { /* ignore */ }
             formSegs[i].toCity = { city_name: best.city_name, country: best.country, country_code: best.country_code, latitude: best.latitude, longitude: best.longitude, timezone: tz, external_city_id: best.external_city_id };
           }
-        } catch { /* leave null — user picks the layover city manually */ }
+        } catch { /* leave null - user picks the layover city manually */ }
       }
       // Endpoints stay the trip's fromVisit/toVisit; warn softly on mismatch.
       const overlaps = (a, b) => {
@@ -831,8 +831,8 @@ export default function EventEditDialog({
       const originName = segs[0].from_city || '';
       const destName = segs[segs.length - 1].to_city || '';
       const w = [];
-      if (fromVisit?.city_name && originName && !overlaps(originName, fromVisit.city_name)) w.push(`старт брони «${originName}» ≠ город трипа «${fromVisit.city_name}»`);
-      if (toVisit?.city_name && destName && !overlaps(destName, toVisit.city_name)) w.push(`финиш брони «${destName}» ≠ город трипа «${toVisit.city_name}»`);
+      if (fromVisit?.city_name && originName && !overlaps(originName, fromVisit.city_name)) w.push(`старт брони «${originName}» ≠ город путешествия «${fromVisit.city_name}»`);
+      if (toVisit?.city_name && destName && !overlaps(destName, toVisit.city_name)) w.push(`финиш брони «${destName}» ≠ город путешествия «${toVisit.city_name}»`);
       // Date mismatch: booking dates vs the trip-leg window (fromVisit … toVisit).
       const dOnly = (iso) => (iso ? String(iso).slice(0, 10) : null);
       const winStart = dOnly(fromVisit?.start_datetime) || dOnly(fromVisit?.end_datetime);
@@ -840,9 +840,9 @@ export default function EventEditDialog({
       const depDay = segs[0]?.departure_date || null;
       const arrDay = segs[segs.length - 1]?.arrival_date || null;
       if (winStart && winEnd && depDay && arrDay && (arrDay < winStart || depDay > winEnd)) {
-        w.push(`даты брони (${depDay} … ${arrDay}) вне дат участка трипа (${winStart} … ${winEnd})`);
+        w.push(`даты брони (${depDay} … ${arrDay}) вне дат участка путешествия (${winStart} … ${winEnd})`);
       }
-      setAiEndpointWarn(w.length ? `Сверь с трипом — ${w.join('; ')}. Концы маршрута берутся из трипа.` : null);
+      setAiEndpointWarn(w.length ? `Сверь с путешествием - ${w.join('; ')}. Концы маршрута берутся из путешествия.` : null);
 
       // Mark AI-filled segment fields for the purple highlight (+ field count).
       const segAi = new Set();
@@ -871,7 +871,7 @@ export default function EventEditDialog({
       return;
     }
 
-    // ── Single leg — flat-form fill (unchanged behavior) ──
+    // ── Single leg - flat-form fill (unchanged behavior) ──
     const filled = new Set();
     const upd = { ...form, hasLayovers: false, segments: [] };
     const setIf = (k, v) => { if (v != null && v !== '') { upd[k] = v; filled.add(k); } };
@@ -930,7 +930,7 @@ export default function EventEditDialog({
             </div>
           </div>
 
-          {/* Inline delete-confirm view — replaces the form when active to
+          {/* Inline delete-confirm view - replaces the form when active to
               avoid nesting Radix modals (which would intercept pointer
               events on the inner buttons). */}
           {confirmDel ? (
@@ -942,7 +942,7 @@ export default function EventEditDialog({
                 <div className="flex-1 min-w-0">
                   <div className="font-display font-semibold text-base">Удалить {meta.label.toLowerCase()}?</div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    Это действие необратимо. Запись будет удалена из трипа и хронологии.
+                    Это действие необратимо. Запись будет удалена из путешествия и хронологии.
                   </div>
                 </div>
               </div>
@@ -950,7 +950,7 @@ export default function EventEditDialog({
           ) : (
           /* Body */
           <div style={{ padding: 22 }}>
-            {/* AI block — only for hotel & transfer (the kinds with parsers). */}
+            {/* AI block - only for hotel & transfer (the kinds with parsers). */}
             {(currentKind === 'hotel' || currentKind === 'transfer') && (
               <EventAiBlock
                 kind={currentKind}
@@ -1100,7 +1100,7 @@ export default function EventEditDialog({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Payload builders — one per kind. Mirrors the legacy dialogs' columns plus
+//  Payload builders - one per kind. Mirrors the legacy dialogs' columns plus
 //  the new lat/lng + flight_number additions.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1202,7 +1202,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user) {
   const wpRows = [];
   for (let i = 0; i < N - 1; i++) {
     const c = segs[i].toCity;
-    if (!c?.city_name) throw new Error('Укажите город пересадки для каждого участка маршрута.');
+    if (!c?.city_name) throw new Error('Укажи город пересадки для каждого участка маршрута.');
     const tz = c.timezone || 'UTC';
     const at = new Date(nodeMsAt(i)).toISOString();
     wpRows.push({
@@ -1217,7 +1217,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user) {
       kind: 'waypoint',
       start_datetime: at,
       end_datetime: at,
-      // Provisional — renumbered authoritatively by normalizePositions below.
+      // Provisional - renumbered authoritatively by normalizePositions below.
       position: 0,
       created_by: user?.id,
     });
@@ -1262,7 +1262,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user) {
   if (error) throw error;
 
   // 4. Renumber positions across the WHOLE trip so the new waypoint(s) thread
-  // cleanly into the node order (no collisions/duplicates) — authoritative for
+  // cleanly into the node order (no collisions/duplicates) - authoritative for
   // both the timeline (sort tie-break) and Edit Mode (position-driven recompute).
   try {
     const { data: allVisits } = await supabase
@@ -1315,8 +1315,7 @@ function buildServicePayload(form, tripId, t) {
     name: form.name.trim() || t('service.car_default_name'),
     price: form.price === '' ? null : Number(form.price),
     currency: form.currency || 'EUR',
-    // Top-level UTC columns mirror details.pickup_at_local/dropoff_at_local —
-    // used by get_pending_reminders to query upcoming car rentals without
+    // Top-level UTC columns mirror details.pickup_at_local/dropoff_at_local -     // used by get_pending_reminders to query upcoming car rentals without
     // scanning JSONB. Legacy *_at_local stays in details for backward
     // compatibility with older records and existing display paths.
     pickup_datetime:  form.pickup_at_local  ? localToUtc(form.pickup_at_local,  pickupTz)              : null,
@@ -1351,7 +1350,7 @@ function buildServicePayload(form, tripId, t) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SectionHeader({ children }) {
-  // Plain heading per the design spec (event-edit.jsx) — no colour bar.
+  // Plain heading per the design spec (event-edit.jsx) - no colour bar.
   return <h3 style={{ margin: '22px 0 14px', fontSize: 15, fontWeight: 600 }}>{children}</h3>;
 }
 
@@ -1443,7 +1442,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
           <Label>Статус оплаты</Label>
           <AiField active={aiFields.has('payment_status')}>
             <select className="select" value={form.payment_status} onChange={(e) => setField('payment_status', e.target.value)}>
-              <option value="">—</option>
+              <option value="">-</option>
               <option value="paid">Оплачено</option>
               <option value="partial">Частично</option>
               <option value="pay_on_arrival">По прибытии</option>
@@ -1509,7 +1508,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
         <div>
           <Label>Номер брони</Label>
           <AiField active={aiFields.has('booking_reference')}>
-            <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="—" />
+            <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
           </AiField>
         </div>
       </div>
@@ -1523,7 +1522,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
         <div>
           <Label>E-mail</Label>
           <AiField active={aiFields.has('email')}>
-            <Input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="—" />
+            <Input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="-" />
           </AiField>
         </div>
       </div>
@@ -1700,7 +1699,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         <div>
           <Label>Номер брони</Label>
           <AiField active={aiFields.has('booking_reference')}>
-            <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="—" />
+            <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
           </AiField>
         </div>
       </div>
@@ -1836,8 +1835,8 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {segs.map((seg, i) => {
         const isFirst = i === 0; const isLast = i === N - 1;
-        const fromName = isFirst ? (fromVisit?.city_name || '—') : (segs[i - 1].toCity?.city_name || '…');
-        const toName = isLast ? (toVisit?.city_name || '—') : (seg.toCity?.city_name || '…');
+        const fromName = isFirst ? (fromVisit?.city_name || '-') : (segs[i - 1].toCity?.city_name || '…');
+        const toName = isLast ? (toVisit?.city_name || '-') : (seg.toCity?.city_name || '…');
         return (
           <React.Fragment key={seg.id}>
             <div style={{ border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--wash-2, var(--wash))', padding: 14 }}>
@@ -1877,7 +1876,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                   <div>
                     <Label>Город</Label>
                     {isLast ? (
-                      <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title="Город прибытия — задан маршрутом трипа" />
+                      <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title="Город прибытия - задан маршрутом путешествия" />
                     ) : (
                       <AiField active={aiOn(seg, 'toCity')}>
                         <CityPicker value={seg.toCity} onPick={(c) => patchSeg(i, { toCity: c })} placeholder="Город пересадки" />
@@ -2054,7 +2053,7 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
             placeholder="Аэропорт Лиссабон (LIS), Sixt Terminal 1"
           />
           {!isEdit && !form.pickup_address?.trim() && (
-            <p className="mt-1 text-xs text-destructive">Укажите адрес получения.</p>
+            <p className="mt-1 text-xs text-destructive">Укажи адрес получения.</p>
           )}
         </div>
         <div>
@@ -2077,7 +2076,7 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
           />
           <span className="text-sm font-medium">Вернуть в другом месте</span>
           {!form.return_different_location && (
-            <span className="text-xs text-muted-foreground">— возврат в том же месте, что и получение</span>
+            <span className="text-xs text-muted-foreground">- возврат в том же месте, что и получение</span>
           )}
         </label>
       </div>
@@ -2158,7 +2157,7 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
         </div>
         <div>
           <Label>Номер брони</Label>
-          <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="—" />
+          <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
         </div>
       </div>
 

@@ -12,7 +12,7 @@ import CityNotesBlock from '@/components/views/CityNotesBlock';
 import { parseNaive } from '@/lib/naive-time';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
-// Naive wall-clock difference — timezone is intentionally ignored.
+// Naive wall-clock difference - timezone is intentionally ignored.
 function nightsBetween(startIso, endIso) {
   const s = parseNaive(startIso)?.startOf('day');
   const e = parseNaive(endIso)?.startOf('day');
@@ -32,7 +32,7 @@ export default function CityVisitCard({
   // user clicks the header to expand the details (hotels / activities / notes).
   const [open, setOpen] = useState(false);
   const nights = nightsBetween(visit.start_datetime, visit.end_datetime);
-  // Same-day visits (0 nights) don't need lodging — hide the "no hotel" warning.
+  // Same-day visits (0 nights) don't need lodging - hide the "no hotel" warning.
   const showNoHotelChip = nights >= 1 && hotels.length === 0;
   // For same-day visits we also hide the inline empty-hotel prompt below.
   const isSameDayVisit = nights === 0;
@@ -97,7 +97,7 @@ export default function CityVisitCard({
             <CityWeather visit={visit} />
           </div>
 
-          {/* Hotels — hide entirely for same-day visits (no overnight). */}
+          {/* Hotels - hide entirely for same-day visits (no overnight). */}
           {!isSameDayVisit && (
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">{t('visit.section_stay')}</div>
@@ -134,7 +134,7 @@ export default function CityVisitCard({
             </button>
           </div>
 
-          {/* Notes — always visible (with edit affordance) */}
+          {/* Notes - always visible (with edit affordance) */}
           <CityNotesBlock
             notes={visit.notes}
             canEdit

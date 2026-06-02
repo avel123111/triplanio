@@ -3,14 +3,14 @@
  *
  * `useCityImageForVisits` returns, on the fly, the Wikipedia/Wikimedia cover
  * image for the FIRST transit city of a trip (the same source used by
- * `CityHero`). Nothing is persisted — the image is just fetched in the
+ * `CityHero`). Nothing is persisted - the image is just fetched in the
  * browser and cached for the page's lifetime.
  */
 
 import { useEffect, useState } from 'react';
 
 // Map country code → preferred Wikipedia language code.
-// Kept in sync with components/views/CityHero.jsx — same heuristic.
+// Kept in sync with components/views/CityHero.jsx - same heuristic.
 const COUNTRY_TO_LANG = {
   RU: 'ru', BY: 'ru', KZ: 'ru', UA: 'uk',
   ES: 'es', MX: 'es', AR: 'es', CO: 'es', CL: 'es', PE: 'es',
@@ -109,7 +109,7 @@ export function useCityImageForVisits(visits) {
 }
 
 /**
- * @deprecated Legacy synchronous API — always returns null.
+ * @deprecated Legacy synchronous API - always returns null.
  * Use `useCityImageForVisits` in React components instead.
  */
 export function getCityFallbackImage() {

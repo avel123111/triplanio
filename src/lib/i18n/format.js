@@ -1,5 +1,5 @@
 // Localization formatters for dynamic data: countries, currencies, plurals,
-// Luxon dates. Lightweight wrappers around Intl.* + Luxon — call from React via
+// Luxon dates. Lightweight wrappers around Intl.* + Luxon - call from React via
 // useI18nFormat() (see I18nContext).
 import { DateTime, Settings } from 'luxon';
 import { localeTag } from './translations';
@@ -92,7 +92,7 @@ export function pluralCategory(count, lang) {
     const cat = new Intl.PluralRules(localeTag(lang)).select(Math.abs(Number(count) || 0));
     if (cat === 'one') return 'one';
     if (cat === 'few') return 'few';
-    return 'many'; // other / many / two — all collapse to many for our 3-form keys
+    return 'many'; // other / many / two - all collapse to many for our 3-form keys
   } catch {
     return Math.abs(count) === 1 ? 'one' : 'many';
   }

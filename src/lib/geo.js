@@ -7,7 +7,7 @@ const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
 
 export async function searchCities(query, lang) {
   if (!query || query.length < 2) return [];
-  // No featureType filter — Nominatim's city filter is too restrictive and misses
+  // No featureType filter - Nominatim's city filter is too restrictive and misses
   // many resort towns / villages / suburbs (e.g. Maspalomas).
   // We request more results and filter to populated places client-side.
   // Caller passes the app language so city/country names come back localized.

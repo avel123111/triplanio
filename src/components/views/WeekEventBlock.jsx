@@ -34,7 +34,7 @@ export default function WeekEventBlock({
   const tz = item.timezone || 'UTC';
 
   // SIMPLE transports (walk / own_transport) have no end_datetime in many
-  // cases — treat them as point events without resize.
+  // cases - treat them as point events without resize.
   const hasEnd = !!item.end && !(item.kind === 'transfer' && SIMPLE_TRANSPORT_TYPES.has(item.transport_type) && !item.end);
 
   // Drag state (transient pixel offsets applied via inline style during gesture).
@@ -152,7 +152,7 @@ export default function WeekEventBlock({
           <div className="font-semibold truncate text-foreground">{item.label}</div>
           <div className="text-[10px] text-muted-foreground">
             {DateTime.fromISO(item.start, { zone: 'utc' }).setZone(tz).toFormat('HH:mm')}
-            {item.end && ` – ${DateTime.fromISO(item.end, { zone: 'utc' }).setZone(tz).toFormat('HH:mm')}`}
+            {item.end && ` - ${DateTime.fromISO(item.end, { zone: 'utc' }).setZone(tz).toFormat('HH:mm')}`}
           </div>
         </div>
       </div>

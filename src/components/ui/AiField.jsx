@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * Wraps a form field. When `active` (AI just filled it), the inner input gets a
  * violet tint via the `.ai-filled` CSS (see index.css) and a small "AI" badge is
- * pinned to the top-right of the field — matching the designer's `field--ai`
+ * pinned to the top-right of the field - matching the designer's `field--ai`
  * look (var(--ai) badge, var(--ai-soft) input fill).
  */
 export default function AiField({ active, children, className = '' }) {

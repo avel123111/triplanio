@@ -6,7 +6,7 @@ import { Icon } from '../../design/icons';
 
 const ROUTE_COLOR = '#5b6cff';
 
-// Build ordered legs (home → cities → return) — self-contained so the map has
+// Build ordered legs (home → cities → return) - self-contained so the map has
 // no dependency on the planner's save logic. Mirrors computeLegs ordering.
 function buildLegs(home, cities, returnCity, finalPoint) {
   const stops = [];
@@ -22,7 +22,7 @@ function buildLegs(home, cities, returnCity, finalPoint) {
 }
 
 // =====================================================================
-// FLOW MAP — full-bleed Mapbox route preview that fills its container.
+// FLOW MAP - full-bleed Mapbox route preview that fills its container.
 // Shared across every step of the unified create flow so the map is the
 // constant spatial anchor (vs. the old small map card).
 // =====================================================================

@@ -7,7 +7,7 @@ export default {
   'sub.limit_title': 'Active trips limit',
   'sub.limit_desc': 'The free plan allows only 1 active trip at a time. You\'ll be able to create a new trip once the current one ends.',
   'sub.limit_hint': 'Tip: a trip is considered active until its last day. Past trips don\'t count towards the limit.',
-  'sub.pro_title': 'Pro Subscription — unlimited active trips',
+  'sub.pro_title': 'Pro Subscription - unlimited active trips',
   'sub.pro_subtitle': 'Plan as many trips at once as you need.',
   'sub.feat_price': '$6/mo or $48/yr (save $24)',
   'sub.feat_ai_all': 'AI voucher recognition on every trip',
@@ -33,7 +33,7 @@ export default {
   'sub.iframe_alert': 'Checkout must be opened in a new tab (not inside an iframe).',
   'sub.upgrade_error': 'Error: {message}',
   'sub.already_active_msg': 'You already have an active subscription. Open Settings to manage your plan.',
-  'sub.recent_pending_msg': 'A recent payment is still being processed. Please wait a few seconds — your plan will update automatically.',
+  'sub.recent_pending_msg': 'A recent payment is still being processed. Please wait a few seconds - your plan will update automatically.',
   'sub.activating_pro': 'Activating your Pro plan…',
   'sub.processing': 'Processing…',
   'sub.choose_plan': 'Choose Plan',
@@ -44,15 +44,15 @@ export default {
   'sub.period_month': '/mo',
   'sub.period_year': '/yr',
 
-  // Plans — Pro Single-Trip Pass
+  // Plans - Pro Single-Trip Pass
   'sub.plan_trip_title': 'Pro Single-Trip Pass',
   'sub.plan_trip_subtitle': 'One-time Pro upgrade for this trip',
-  'sub.plan_trip_desc': 'Unlock AI features for one trip — no subscription needed.',
+  'sub.plan_trip_desc': 'Unlock AI features for one trip - no subscription needed.',
   'sub.plan_trip_feat_1': 'AI voucher recognition (hotels & transfers)',
   'sub.plan_trip_feat_2': 'Shared with all trip members',
-  'sub.plan_trip_feat_3': 'Never expires — even after the trip ends',
+  'sub.plan_trip_feat_3': 'Never expires - even after the trip ends',
 
-  // Plans — Pro Monthly
+  // Plans - Pro Monthly
   'sub.plan_monthly_title': 'Pro Monthly Subscription',
   'sub.plan_monthly_desc': 'Full Pro for all your trips.',
   'sub.plan_monthly_feat_1': 'Unlimited active trips',
@@ -60,7 +60,7 @@ export default {
   'sub.plan_monthly_feat_3': 'All trip members get Pro features',
   'sub.plan_monthly_feat_4': 'Cancel anytime',
 
-  // Plans — Pro Annual
+  // Plans - Pro Annual
   'sub.plan_yearly_title': 'Pro Annual Plan',
   'sub.plan_yearly_desc': 'Pay once a year, save $24.',
   'sub.plan_yearly_feat_1': 'Everything in Pro Monthly',

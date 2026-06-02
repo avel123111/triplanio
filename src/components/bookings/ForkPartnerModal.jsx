@@ -118,7 +118,7 @@ export default function ForkPartnerModal({
     ? t('fork.eyebrow_one')
     : t('fork.eyebrow_many', {
         count,
-        // Russian needs 2–4 → "варианта", 5+ → "вариантов". For other locales
+        // Russian needs 2-4 → "варианта", 5+ → "вариантов". For other locales
         // both keys return the same plural word (e.g. "options").
         variants: count < 5 ? t('fork.variants_few') : t('fork.variants_many'),
       });
@@ -141,7 +141,7 @@ export default function ForkPartnerModal({
         </DialogHeader>
 
         <div className="fork-grid">
-          {/* LEFT — manual */}
+          {/* LEFT - manual */}
           <button
             type="button"
             onClick={handleManual}
@@ -201,7 +201,7 @@ export default function ForkPartnerModal({
             </div>
           </button>
 
-          {/* RIGHT — partners */}
+          {/* RIGHT - partners */}
           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <div className="eyebrow" style={{ marginBottom: 8 }}>
               {eyebrow}

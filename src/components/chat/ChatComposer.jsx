@@ -12,7 +12,7 @@ const MAX_LEN = 4000;
 // geometry (line-height, font, padding, border) exactly matches the textarea
 // and the highlighted "@Triplanio" sits pixel-perfect over the real text.
 //
-// font-medium is applied to BOTH layers — this keeps the textarea's caret
+// font-medium is applied to BOTH layers - this keeps the textarea's caret
 // glyph-for-glyph aligned with the visible overlay text (any weight mismatch
 // between the two layers caused the caret to drift).
 const FIELD_CLS =
@@ -32,7 +32,7 @@ export default function ChatComposer({ onSend, disabled, sending, tripId, botAva
   const t = useT();
   const [text, setText] = useState('');
   const [showMention, setShowMention] = useState(false);
-  // Position of the active "@" — we replace from this index up to caret when
+  // Position of the active "@" - we replace from this index up to caret when
   // the user picks the suggestion.
   const [mentionAnchor, setMentionAnchor] = useState(null);
   const textareaRef = useRef(null);
@@ -48,8 +48,7 @@ export default function ChatComposer({ onSend, disabled, sending, tripId, botAva
       setMentionAnchor(null);
       return;
     }
-    // Scan backward from caret. Stop on "@" — show popup; stop on whitespace —
-    // no popup.
+    // Scan backward from caret. Stop on "@" - show popup; stop on whitespace -     // no popup.
     let i = caretPos - 1;
     while (i >= 0) {
       const ch = value[i];
@@ -173,7 +172,7 @@ export default function ChatComposer({ onSend, disabled, sending, tripId, botAva
       if (start > lastIndex) out.push(text.slice(lastIndex, start));
       // Both overlay AND textarea share the same `font-medium` weight (set on
       // FIELD_CLS) so the caret stays glyph-for-glyph aligned. We highlight
-      // @Triplanio with the primary color only (no weight change) — making
+      // @Triplanio with the primary color only (no weight change) - making
       // the whole textarea font-medium already provides the "bold-ish" look
       // the user expects without introducing per-glyph width differences.
       out.push(

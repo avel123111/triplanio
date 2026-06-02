@@ -6,7 +6,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
- * Share trip dialog — shows a public read-only link.
+ * Share trip dialog - shows a public read-only link.
  * Opens immediately; the link is fetched asynchronously while a spinner is shown.
  */
 export default function ShareTripDialog({ open, onOpenChange, tripId }) {

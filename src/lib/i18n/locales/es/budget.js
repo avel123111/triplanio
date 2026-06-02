@@ -4,11 +4,11 @@ export default {
   'budget.empty_hint': 'Aún sin gastos · pulsa para abrir',
   'budget.collab_empty_hint': 'pulsa para abrir',
   'budget.see_details': 'Ver detalles',
-  'budget.missing_fx_warning': 'Sin tipos de cambio para {currencies} — estos gastos no se incluyen en el total.',
+  'budget.missing_fx_warning': 'Sin tipos de cambio para {currencies} - estos gastos no se incluyen en el total.',
   'budget.addon_off_title': 'Activar Presupuesto del viaje',
   'budget.addon_off_desc': 'El Presupuesto del viaje está desactivado. Actívalo para planificar y registrar gastos por categorías, añadir costes personalizados en cualquier moneda y ver el desglose completo del gasto del viaje.',
   'budget.addon_off_go_settings': 'Ir a ajustes',
-  'budget.page_placeholder': 'La página de presupuesto se está rehaciendo — disponible pronto.',
+  'budget.page_placeholder': 'La página de presupuesto se está rehaciendo - disponible pronto.',
 
   // System categories
   'budget.cat_accommodation': 'Alojamiento',
@@ -27,7 +27,7 @@ export default {
   'budget.fx_button': 'Tipos de cambio',
   'budget.add_expense': 'Añadir gasto',
   'budget.add_category': 'Añadir categoría',
-  'budget.fx_warn': 'No se han podido convertir algunos gastos — revisa los tipos de cambio.',
+  'budget.fx_warn': 'No se han podido convertir algunos gastos - revisa los tipos de cambio.',
 
   // Category block
   'budget.no_expenses': 'Sin gastos',
@@ -35,7 +35,7 @@ export default {
   'budget.category_menu_delete': 'Eliminar categoría',
   'budget.category_delete_confirm_title': '¿Eliminar categoría?',
   'budget.category_delete_confirm_msg': 'La categoría «{name}» será eliminada. Todos los gastos dentro también se eliminarán.',
-  'budget.category_delete_has_expenses': 'La categoría contiene gastos — elimínalos o muévelos primero.',
+  'budget.category_delete_has_expenses': 'La categoría contiene gastos - elimínalos o muévelos primero.',
   'budget.cannot_modify_system': 'Las categorías del sistema no se pueden modificar.',
 
   // Expense row
@@ -43,7 +43,7 @@ export default {
   'budget.source_transfer': 'Transporte',
   'budget.source_activity': 'Actividad',
   'budget.source_service': 'Servicio',
-  'budget.system_expense_hint': 'Gasto del sistema — se edita en su origen',
+  'budget.system_expense_hint': 'Gasto del sistema - se edita en su origen',
   'budget.expense_delete_confirm_title': '¿Eliminar gasto?',
   'budget.expense_delete_confirm_msg': 'El gasto «{title}» será eliminado.',
 

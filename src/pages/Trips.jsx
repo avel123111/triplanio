@@ -36,7 +36,7 @@ function normalizeTrip(trip, visits = [], role = 'member', isPro = false) {
     ...trip,
     coverHue:  strHue(trip.id),
     accentHue: strHue(trip.title || ''),
-    days:      formatTripRange(visits, '—'),
+    days:      formatTripRange(visits, '-'),
     scope:     scopeLabel(visits),
     role,
     // Badge shows only for trips purchased individually as Pro trip.
@@ -149,7 +149,7 @@ function NewTripDialog({ onClose, onManual, onAi }) {
       onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
         style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 440, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
-        <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700 }}>Новый трип</h2>
+        <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700 }}>Новое путешествие</h2>
         <div style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 22 }}>Как хочешь начать?</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <button onClick={onManual} style={{ padding: 20, background: 'var(--surface)', border: '1.5px solid var(--line)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
@@ -166,7 +166,7 @@ function NewTripDialog({ onClose, onManual, onAi }) {
               <Icon name="sparkles" size={19} />
             </div>
             <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--ai)' }}>Начать с ИИ</div>
-            <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5 }}>Описать словами — получить черновик.</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5 }}>Описать словами - получить черновик.</div>
           </button>
         </div>
         <div style={{ marginTop: 16, textAlign: 'right' }}>
@@ -184,7 +184,7 @@ function CollectionEmpty({ onManual, onAi }) {
       <div style={{ width: 96, height: 96, margin: '0 auto 22px', borderRadius: 24, background: 'linear-gradient(135deg, var(--brand-soft), var(--ai-soft))', display: 'grid', placeItems: 'center' }}>
         <Icon name="globe" size={42} style={{ color: 'var(--brand)' }} />
       </div>
-      <h1 style={{ marginBottom: 10 }}>Спланируй первый трип</h1>
+      <h1 style={{ marginBottom: 10 }}>Спланируй первое путешествие</h1>
       <div className="muted" style={{ fontSize: 16, marginBottom: 28, maxWidth: 480, margin: '0 auto 28px' }}>
         Triplanio собирает города, переезды, отели, активности и бюджет в одну картину. Начни с любого.
       </div>
@@ -202,7 +202,7 @@ function CollectionEmpty({ onManual, onAi }) {
             <Icon name="sparkles" size={19} />
           </div>
           <div style={{ fontWeight: 600, marginBottom: 4 }} className="ai-text">Начать с ИИ <Badge variant="warm" style={{ marginLeft: 4 }}>Pro</Badge></div>
-          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>Описать словами — получить черновик и доработать с ассистентом.</div>
+          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>Описать словами - получить черновик и доработать с ассистентом.</div>
         </button>
       </div>
     </div>
@@ -210,7 +210,7 @@ function CollectionEmpty({ onManual, onAi }) {
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
-// Header row + toolbar placeholders — shown only on the very first load, so the
+// Header row + toolbar placeholders - shown only on the very first load, so the
 // loading state mirrors the real page layout instead of a bare grid of boxes.
 function TripsHeaderSkeleton() {
   return (
@@ -382,7 +382,7 @@ export default function Trips() {
       {/* PAGE CONTENT */}
       <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
-        {/* Loading skeleton — shown before we know if there are any trips */}
+        {/* Loading skeleton - shown before we know if there are any trips */}
         {isLoadingData && allTrips.length === 0 && (
           <>
             <TripsHeaderSkeleton />
@@ -390,23 +390,23 @@ export default function Trips() {
           </>
         )}
 
-        {/* Empty collection — only when loading is done and truly no trips */}
+        {/* Empty collection - only when loading is done and truly no trips */}
         {!isLoadingData && allTrips.length === 0 && (
           <CollectionEmpty onManual={() => checkLimit('manual')} onAi={() => checkLimit('ai')} />
         )}
 
-        {/* Normal view — only when we have at least some trips data */}
+        {/* Normal view - only when we have at least some trips data */}
         {allTrips.length > 0 && (
           <>
             {/* Header row */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <h1 style={{ marginBottom: 6 }}>Твои трипы</h1>
+                <h1 style={{ marginBottom: 6 }}>Твои путешествия</h1>
                 <div className="muted" style={{ fontSize: 15 }}>
                   {activeTrips.length} активных · {pastTrips.length} в архиве
                 </div>
               </div>
-              <Btn variant="primary" size="lg" icon="plus" onClick={() => setShowNewTrip(true)}>Новый трип</Btn>
+              <Btn variant="primary" size="lg" icon="plus" onClick={() => setShowNewTrip(true)}>Новое путешествие</Btn>
             </div>
 
             {/* Filters row */}
@@ -437,7 +437,7 @@ export default function Trips() {
               <EmptyState
                 icon={filterMode === 'past' ? 'calendar' : 'search'}
                 title={filterMode === 'past' ? 'В архиве пока ничего нет' : 'По этому запросу ничего не нашлось'}
-                body={filterMode === 'past' ? 'Завершённые трипы будут собираться здесь.' : 'Поправь поиск или переключись на другую вкладку.'}
+                body={filterMode === 'past' ? 'Завершённые путешествия будут собираться здесь.' : 'Поправь поиск или переключись на другую вкладку.'}
               />
             ) : viewMode === 'grid' ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
@@ -452,7 +452,7 @@ export default function Trips() {
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)'; }}
                   >
                     <Icon name="plus" size={22} />
-                    <div style={{ fontWeight: 500 }}>Добавить трип</div>
+                    <div style={{ fontWeight: 500 }}>Добавить путешествие</div>
                     <div style={{ fontSize: 12, textAlign: 'center', maxWidth: 200 }}>Собрать руками или начать с ИИ.</div>
                   </button>
                 )}
@@ -472,8 +472,8 @@ export default function Trips() {
                   <Icon name="sparkles" size={18} />
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 2 }}>На Free доступен 1 активный трип</div>
-                  <div className="muted" style={{ fontSize: 12.5 }}>Pro — безлимит трипов, ИИ-планировщик и парсинг бронирований.</div>
+                  <div style={{ fontWeight: 600, marginBottom: 2 }}>На Free доступен 1 активное путешествие</div>
+                  <div className="muted" style={{ fontSize: 12.5 }}>Pro - безлимит путешествий, ИИ-планировщик и парсинг бронирований.</div>
                 </div>
                 <Btn variant="primary" onClick={openUpgrade}>Перейти к Pro</Btn>
               </div>

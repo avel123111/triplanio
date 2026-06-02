@@ -41,7 +41,7 @@ async function fetchCityImage(cityName, langs) {
 /**
  * City image thumbnail used inside CityHeaderCard.
  * Renders as a rectangle with only the top-left corner rounded (rounded-tl-2xl).
- * No padding or margin — caller controls dimensions via className.
+ * No padding or margin - caller controls dimensions via className.
  */
 export default function CityHero({ visit, className = '' }) {
   const [imgUrl, setImgUrl] = useState(null);

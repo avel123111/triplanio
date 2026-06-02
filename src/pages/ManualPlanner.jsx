@@ -29,12 +29,12 @@ function daysBetweenISO(a, b) {
 }
 
 // ─── Static data ──────────────────────────────────────────────────────────────
-// Unified create-flow steps. The "Транспорт" step was removed — transfers are
+// Unified create-flow steps. The "Транспорт" step was removed - transfers are
 // no longer collected at creation time (added later in the timeline / Edit
 // Mode). "Возврат" is skipped when the last city is marked as the finish point.
 const STEPS = [
   { id: 'home',   num: 1, label: 'Откуда' },
-  { id: 'cities', num: 2, label: 'Скелет трипа' },
+  { id: 'cities', num: 2, label: 'Скелет путешествия' },
   { id: 'return', num: 3, label: 'Возврат' },
   { id: 'review', num: 4, label: 'Финальный драфт' },
 ];
@@ -45,7 +45,7 @@ const storageKey = (userId, method = 'manual') => `triplanio-planner-${method}-$
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// Local YYYY-MM-DD (NOT toISOString — that converts to UTC and, in positive
+// Local YYYY-MM-DD (NOT toISOString - that converts to UTC and, in positive
 // timezones, shifts the date back a day, which broke the ±1-day stepper).
 function ymdLocal(d) {
   const y = d.getFullYear();
@@ -81,11 +81,11 @@ function computeAutoTitle(home, cities) {
   const startName = home?.city_name || cities[0]?.city_name || '';
   const lastName = cities[cities.length - 1]?.city_name || '';
   if (startName && lastName && startName !== lastName) return `${startName} → ${lastName}`;
-  return startName || lastName || 'Новый трип';
+  return startName || lastName || 'Новое путешествие';
 }
 
 function recomputeDates(list) {
-  // Only recompute if the first city has an anchor date — otherwise leave dates alone
+  // Only recompute if the first city has an anchor date - otherwise leave dates alone
   if (list.length === 0 || !list[0].startDate) return list;
   let cursor = new Date(list[0].startDate + 'T00:00:00');
   return list.map((c, i) => {
@@ -232,12 +232,12 @@ function CityAnchorRow({ label, city_name, country, kind }) {
 
 function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, finalPoint, onToggleFinalPoint, onDragStart, onDragEnd, onChange, onRemove, onMoveUp, onMoveDown }) {
   // When the last city is also the final point, the card switches to an
-  // "end-anchor" look — warm orange tones, flag icon, and the nights
+  // "end-anchor" look - warm orange tones, flag icon, and the nights
   // input disappears (the end visit is computed, not entered).
   const isFinalAnchor = isLast && finalPoint;
   const accentColor = isFinalAnchor ? 'var(--warm, #c9603a)' : 'var(--brand)';
   const accentSoft = isFinalAnchor ? 'var(--warm-tint, color-mix(in oklab, var(--warm, #c9603a) 14%, transparent))' : 'var(--brand-soft)';
-  // A city is "invalid" once it has text but no resolved coordinates — i.e. it
+  // A city is "invalid" once it has text but no resolved coordinates - i.e. it
   // wasn't picked from the directory. We block the Next button on these.
   const invalid = !!city.city_name && city.latitude == null;
   const startLabel = city.startDate ? shortDateLabel(city.startDate) : null;
@@ -267,7 +267,7 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
         <Icon name="drag" size={14} />
       </div>
 
-      {/* Number badge — flag icon when this is the final anchor */}
+      {/* Number badge - flag icon when this is the final anchor */}
       <div className="planner-city-row__num" style={{ width: 28, height: 28, borderRadius: '50%', background: accentColor, color: 'white', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
         {isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}
       </div>
@@ -288,7 +288,7 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
         />
       </div>
 
-      {/* Derived date range — read-only. Dates are computed from the trip start
+      {/* Derived date range - read-only. Dates are computed from the trip start
           and each city's nights (city N starts where city N-1 ends), so they
           can't be edited per-row and never drift the trip start. */}
       {!isFinalAnchor && startLabel && (
@@ -297,7 +297,7 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
         </div>
       )}
 
-      {/* Nights stepper — hidden for the final anchor */}
+      {/* Nights stepper - hidden for the final anchor */}
       {!isFinalAnchor && (
         <div className="planner-city-row__nights" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button type="button" title="Меньше ночей" onClick={() => onChange({ nights: Math.max(1, (+city.nights || 1) - 1) })}
@@ -356,10 +356,10 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
         <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.4 }}>
           <span style={{ fontWeight: 600 }}>
             <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: accentColor }} />
-            Это финальная точка трипа
+            Это финальная точка путешествия
           </span>
           <span className="muted" style={{ marginLeft: 6 }}>
-            — возврат не нужен, шаг «Возврат» будет пропущен
+            - возврат не нужен, шаг «Возврат» будет пропущен
           </span>
         </div>
       </div>
@@ -396,9 +396,9 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
 
   return (
     <div>
-      <h1 style={{ marginBottom: 10 }}>Откуда вы вылетаете?</h1>
+      <h1 style={{ marginBottom: 10 }}>Откуда ты вылетаете?</h1>
       <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 540 }}>
-        Это твой дом — точка старта и (обычно) возврата. Из него Triplanio покажет переезды и стоимость билетов.
+        Это твой дом - точка старта и (обычно) возврата. Из него Triplanio покажет переезды и стоимость билетов.
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 200px)', gap: 14, alignItems: 'start' }}>
@@ -434,7 +434,7 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>Подсказать города рядом</div>
-            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>Разреши доступ к геолокации — определим твой город автоматически. Можно отказаться и ввести вручную.</div>
+            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>Разреши доступ к геолокации - определим твой город автоматически. Можно отказаться и ввести вручную.</div>
           </div>
           <Btn variant="primary" size="sm" onClick={requestGeo}>Разрешить</Btn>
         </div>
@@ -481,7 +481,7 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>Геолокация отключена</div>
-            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>Воспользуйся поиском выше — введи название города-хаба или ближайший аэропорт.</div>
+            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>Воспользуйся поиском выше - введи название города-хаба или ближайший аэропорт.</div>
           </div>
           <Btn variant="ghost" size="sm" onClick={() => setGeoState('ask')}>Запросить снова</Btn>
         </div>
@@ -510,12 +510,12 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
   const remove = (id) => setCities(cs => recomputeDates(cs.filter(c => c.id !== id)));
 
   // Cities are laid contiguously from the FIXED trip start (city N starts where
-  // N-1 ends), so any nights / order change re-cascades — but the trip start
+  // N-1 ends), so any nights / order change re-cascades - but the trip start
   // itself never moves (only the top date control changes it).
   const update = (id, patch) => setCities(cs => recomputeDates(cs.map(c => c.id === id ? { ...c, ...patch } : c)));
 
   const endDrag = () => { setDragIdx(null); setOverIdx(null); };
-  // Reorder via splice (no DOM insertion during drag — that breaks native DnD).
+  // Reorder via splice (no DOM insertion during drag - that breaks native DnD).
   const dropAt = (insertIdx) => {
     setCities(cs => {
       if (dragIdx == null || insertIdx == null) return cs;
@@ -540,15 +540,15 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
 
   return (
     <div>
-      <h1 style={{ marginBottom: 10 }}>Скелет трипа</h1>
+      <h1 style={{ marginBottom: 10 }}>Скелет путешествия</h1>
       <div className="muted" style={{ fontSize: 15, marginBottom: 18, maxWidth: 620 }}>
-        Перечисли города в порядке поездки. <b style={{ color: 'var(--ink)' }}>Перетащи</b> карточку за ручку слева — даты пересчитаются автоматически от старта трипа.
+        Перечисли города в порядке поездки. <b style={{ color: 'var(--ink)' }}>Перетащи</b> карточку за ручку слева - даты пересчитаются автоматически от старта путешествия.
       </div>
 
-      {/* Trip-start control — the single date anchor for the whole trip */}
+      {/* Trip-start control - the single date anchor for the whole trip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 12 }}>
         <Icon name="calendar" size={15} style={{ color: 'var(--brand)' }} />
-        <span style={{ fontSize: 13, fontWeight: 600 }}>Старт трипа</span>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>Старт путешествия</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
           <button type="button" title="На день раньше" onClick={() => startDate && setStartDate(addDays(startDate, -1))}
             style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 15, fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>‹</button>
@@ -612,7 +612,7 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
 
       {hasError && !allValid && (
         <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--warning-soft, #fff3cd)', border: '1px solid var(--warning, #e6a817)', borderRadius: 10, fontSize: 13, color: 'var(--ink)' }}>
-          ⚠️ {cities.length === 0 ? 'Добавь хотя бы один город маршрута.' : 'Выбери каждый город из списка подсказок — нераспознанные города выделены красным.'}
+          ⚠️ {cities.length === 0 ? 'Добавь хотя бы один город маршрута.' : 'Выбери каждый город из списка подсказок - нераспознанные города выделены красным.'}
         </div>
       )}
 
@@ -635,7 +635,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         Куда возвращаетесь после <span style={{ color: 'var(--brand)' }}>{lastCityName}</span>?
       </h1>
       <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 540 }}>
-        Чаще всего домой — но иногда удобнее вылететь в другую точку.
+        Чаще всего домой - но иногда удобнее вылететь в другую точку.
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
@@ -644,10 +644,10 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
               <Icon name="flag" size={16} />
             </div>
-            <div style={{ fontWeight: 600 }}>Домой — в {home?.city_name || '…'}</div>
+            <div style={{ fontWeight: 600 }}>Домой - в {home?.city_name || '…'}</div>
           </div>
           <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.4 }}>
-            Обычный возврат. Triplanio добавит обратный переезд от <b>{lastCityName}</b> в трип.
+            Обычный возврат. Triplanio добавит обратный переезд от <b>{lastCityName}</b> в путешествие.
           </div>
         </button>
 
@@ -659,7 +659,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
             <div style={{ fontWeight: 600 }}>В другой город</div>
           </div>
           <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.4 }}>
-            Если едешь дальше или вылетаешь в другую точку — укажи куда.
+            Если едешь дальше или вылетаешь в другую точку - укажи куда.
           </div>
         </button>
       </div>
@@ -670,7 +670,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
           <CityPicker
             value={returnCity}
             onChange={setReturnCity}
-            placeholder="Куда летишь после трипа?"
+            placeholder="Куда летишь после путешествия?"
             autoFocus
           />
         </div>
@@ -702,7 +702,7 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
         {icon ? <Icon name={icon} size={12} /> : num}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 600, color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '—'}</div>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
         <div className="muted" style={{ fontSize: 11.5, marginTop: 1 }}>{sub}</div>
       </div>
     </div>
@@ -740,12 +740,12 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
         <div style={{ width: 72, height: 72, margin: '0 auto 18px', borderRadius: 18, background: 'var(--success-soft, #d4edda)', color: 'var(--success, #27ae60)', display: 'grid', placeItems: 'center' }}>
           <Icon name="check" size={36} />
         </div>
-        <h1 style={{ marginBottom: 8 }}>Трип создан</h1>
+        <h1 style={{ marginBottom: 8 }}>Путешествие создано</h1>
         <div className="muted" style={{ fontSize: 15, maxWidth: 460, margin: '0 auto 22px' }}>
-          «{displayTitle}» — {cities.length} {cities.length < 5 ? 'города' : 'городов'}, {totalNights} ночей. Можно добавлять отели, переезды и активности.
+          «{displayTitle}» - {cities.length} {cities.length < 5 ? 'города' : 'городов'}, {totalNights} ночей. Можно добавлять отели, переезды и активности.
         </div>
         <div style={{ display: 'inline-flex', gap: 8 }}>
-          <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}`)}>Открыть трип →</Btn>
+          <Btn variant="primary" onClick={() => savedTripId && nav(`/trip/${savedTripId}`)}>Открыть путешествие →</Btn>
           <Btn variant="ghost" onClick={() => nav('/trips')}>К коллекции</Btn>
         </div>
       </div>
@@ -756,7 +756,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
     <div>
       <h1 style={{ marginBottom: 10 }}>Финальный драфт</h1>
       <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 620 }}>
-        Проверь, всё ли на месте. После сохранения трип появится в коллекции, и можно будет добавлять детали.
+        Проверь, всё ли на месте. После сохранения путешествие появится в коллекции, и можно будет добавлять детали.
       </div>
 
       {/* Trip card preview */}
@@ -783,7 +783,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
             <div style={{ position: 'absolute', left: 13, top: 14, bottom: 14, width: 2, background: 'var(--line-2)' }} />
             <ReviewRow icon="flag" iconColor="var(--brand)" name={home?.city_name} sub={`${home?.country || ''} · старт`} muted />
             {cities.map((c, i) => (
-              <ReviewRow key={c.id} num={i + 1} name={c.city_name} sub={`${c.country || '—'} · ${c.nights} ${c.nights == 1 ? 'ночь' : c.nights < 5 ? 'ночи' : 'ночей'}${c.startDate ? ` · с ${c.startDate}` : ''}`} />
+              <ReviewRow key={c.id} num={i + 1} name={c.city_name} sub={`${c.country || '-'} · ${c.nights} ${c.nights == 1 ? 'ночь' : c.nights < 5 ? 'ночи' : 'ночей'}${c.startDate ? ` · с ${c.startDate}` : ''}`} />
             ))}
             {returnCity?.city_name && (
               <ReviewRow icon={returnCity.city_name === home?.city_name ? 'flag' : 'globe'} iconColor={returnCity.city_name === home?.city_name ? 'var(--brand)' : 'var(--warm, #e67e22)'} name={returnCity.city_name} sub={`${returnCity.country || ''} · возврат`} muted />
@@ -802,7 +802,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
                 style={{ fontSize: 13, padding: '5px 8px', minWidth: 130 }}
               />
               {!cities[0]?.startDate && (
-                <div style={{ fontSize: 10.5, color: 'var(--warning, #e6a817)', marginTop: 3 }}>Укажи дату — иначе даты не сохранятся</div>
+                <div style={{ fontSize: 10.5, color: 'var(--warning, #e6a817)', marginTop: 3 }}>Укажи дату - иначе даты не сохранятся</div>
               )}
             </div>
             <Stat label="Длительность" value={`${totalNights} ноч.`} />
@@ -812,7 +812,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
       </div>
 
       <div className="field">
-        <label className="field__label">Обложка трипа</label>
+        <label className="field__label">Обложка путешествия</label>
         <TripCoverPicker
           coverImageUrl={cover?.cover_image_url || ''}
           coverGradient={cover?.cover_gradient || ''}
@@ -821,7 +821,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
       </div>
 
       <div className="field">
-        <label className="field__label">Название трипа</label>
+        <label className="field__label">Название путешествия</label>
         <input
           className="input"
           value={tripTitle}
@@ -840,7 +840,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
       {saving && (
         <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, rgba(59,91,219,.12))', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 16, height: 16, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite', flexShrink: 0 }} />
-          <div style={{ flex: 1, fontSize: 13, color: 'var(--ink-2)' }}>Сохраняем трип — секунду…</div>
+          <div style={{ flex: 1, fontSize: 13, color: 'var(--ink-2)' }}>Сохраняем путешествие - секунду…</div>
         </div>
       )}
 
@@ -851,7 +851,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
         {saving ? (
           <Btn variant="primary" disabled>Сохраняем…</Btn>
         ) : (
-          <Btn variant="primary" onClick={onSave}>Сохранить трип</Btn>
+          <Btn variant="primary" onClick={onSave}>Сохранить путешествие</Btn>
         )}
       </FooterNav>
     </div>
@@ -871,7 +871,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
 
-  // 'manual' | 'ai' — only the entry screen differs; from the skeleton onward
+  // 'manual' | 'ai' - only the entry screen differs; from the skeleton onward
   // both methods share the same steps.
   const method = initialMethod;
   const isAi = method === 'ai';
@@ -915,7 +915,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [cities, setCities]         = useState([]);
   const [returnMode, setReturnMode] = useState('home');
   const [returnCity, setReturnCity] = useState(null);
-  const [finalPoint, setFinalPoint] = useState(false); // last city is the finish — skip "return"
+  const [finalPoint, setFinalPoint] = useState(false); // last city is the finish - skip "return"
   const [tripTitle, setTripTitle]   = useState('');
   const [cover, setCover]           = useState({ cover_image_url: '', cover_gradient: 'gradient_1' });
   const [saving, setSaving]         = useState(false);
@@ -930,7 +930,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const [aiComment, setAiComment]           = useState('');
   const [sessionId, setSessionId]           = useState(() => crypto.randomUUID());
 
-  // Restore from sessionStorage on mount — only for the current user
+  // Restore from sessionStorage on mount - only for the current user
   useEffect(() => {
     try {
       const key = storageKey(user?.id, method);
@@ -961,7 +961,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, restored, user?.id]);
 
   // setStartDate cascades to cities (first city anchors all subsequent dates).
-  // Empty/invalid values are IGNORED — the trip start is required and can't be
+  // Empty/invalid values are IGNORED - the trip start is required and can't be
   // cleared from any date control (step 1, step 2 or review).
   const setStartDate = (dateStr) => {
     if (!dateStr) return;
@@ -1038,7 +1038,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   });
   const onGenerate = (promptText) => { if (promptText) planMut.mutate({ promptText }); };
 
-  // Visible steps — "Возврат" is skipped when the last city is the finish point.
+  // Visible steps - "Возврат" is skipped when the last city is the finish point.
   // The entry step's label depends on the method (origin vs AI prompt).
   const entryLabel = isAi ? 'Планирование с ИИ' : 'Откуда';
   const visibleSteps = (finalPoint ? STEPS.filter(s => s.id !== 'return') : STEPS)
@@ -1081,7 +1081,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   };
 
   // When the user marked the last city as the finish, there's no separate
-  // return city — the trip ends at the last transit city.
+  // return city - the trip ends at the last transit city.
   const effectiveReturn = finalPoint ? null : (returnMode === 'home' ? home : returnCity);
   const autoTitle = computeAutoTitle(home, cities);
 
@@ -1096,11 +1096,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       return;
     }
     if (!startDate || !cities[0]?.startDate) {
-      setError('Укажи дату начала трипа — без неё сохранить нельзя.');
+      setError('Укажи дату начала путешествия - без неё сохранить нельзя.');
       return;
     }
     if (!title) {
-      setError('Укажи название трипа.');
+      setError('Укажи название путешествия.');
       return;
     }
 
@@ -1208,7 +1208,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // Transfers and activities are intentionally NOT created at trip-creation
       // time. The "Транспорт" step was removed; the timeline shows a "Нет
       // переезда" affordance. AI now returns a cities-only skeleton (no
-      // activities) — both are added later in the trip view / Edit Mode.
+      // activities) - both are added later in the trip view / Edit Mode.
 
       sessionStorage.removeItem(storageKey(user?.id, method));
       qc.invalidateQueries({ queryKey: ['trips'] });
@@ -1216,7 +1216,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       setSavedTripId(trip.id);
     } catch (err) {
       console.error('Failed to save trip:', err);
-      setError(err.message || 'Не удалось сохранить трип. Попробуй ещё раз.');
+      setError(err.message || 'Не удалось сохранить путешествие. Попробуй ещё раз.');
     } finally {
       setSaving(false);
     }
@@ -1253,10 +1253,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             </div>
             <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700 }}>Достигнут лимит</h2>
             <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24 }}>
-              На Free плане доступен только <strong>1 активный трип</strong>. Дождись окончания текущего или перейди на Pro.
+              На Free плане доступен только <strong>1 активное путешествие</strong>. Дождись окончания текущего или перейди на Pro.
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Btn variant="ghost" onClick={() => nav('/trips')}>← К трипам</Btn>
+              <Btn variant="ghost" onClick={() => nav('/trips')}>← К путешествиям</Btn>
               <Btn variant="primary" onClick={() => nav('/pro?hidePerTrip=1')}>Перейти на Pro</Btn>
             </div>
           </div>
@@ -1279,7 +1279,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         </div>
         <div className="app-header__crumb">
           <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{isAi ? 'Планирование с ИИ' : 'Новый трип'}</span>
+          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{isAi ? 'Планирование с ИИ' : 'Новое путешествие'}</span>
         </div>
         <HeaderActions
           user={user}
@@ -1312,7 +1312,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             accent={isAi ? 'var(--ai)' : '#5b6cff'}
             badge={isAi
               ? { label: 'Маршрут от ИИ', icon: 'sparkles', color: 'var(--ai)' }
-              : { label: 'Ваш маршрут', icon: 'map', color: 'var(--brand)' }}
+              : { label: 'Твой маршрут', icon: 'map', color: 'var(--brand)' }}
           />
         </div>
 

@@ -1,11 +1,11 @@
 /**
  * Count the unique cities in a list of CityVisit records.
- * A "duplicate" is the same physical city — e.g. flying out of Madrid
+ * A "duplicate" is the same physical city - e.g. flying out of Madrid
  * and coming back to Madrid should still count as 1 unique city.
  *
  * Identity is determined by (in order of preference):
- *   1. external_city_id  — when present, this is the canonical id
- *   2. city_name (lowercased & trimmed) + country_code — fallback
+ *   1. external_city_id  - when present, this is the canonical id
+ *   2. city_name (lowercased & trimmed) + country_code - fallback
  */
 export function uniqueCityCount(visits = []) {
   if (!Array.isArray(visits) || visits.length === 0) return 0;
