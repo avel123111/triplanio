@@ -460,6 +460,9 @@ export default function EventEditDialog({
   // Soft note when an AI-parsed multi-leg booking's endpoints differ from the
   // trip leg the modal was opened for (we keep the trip's endpoints).
   const [aiEndpointWarn, setAiEndpointWarn] = useState(null);
+  // AI-highlighted fields inside layover segments — keyed `${seg.id}.${field}`.
+  // Cleared per field when the user edits it (mirrors single-leg aiFields).
+  const [aiSegFields, setAiSegFields] = useState(() => new Set());
 
   // Time-missing flags for individual datetime-local inputs (the native input
   // returns "" when only a date is entered — DateTimeInput reports this so we
@@ -475,7 +478,7 @@ export default function EventEditDialog({
     setForm(buildInitialForm(k, entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
     setAiFields(new Set());
     setExtraSegments([]);
-    setAiEndpointWarn(null);
+    setAiEndpointWarn(null); setAiSegFields(new Set());
     setTimeMissing({});
   }, [open, entity?.id, initialKind]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -531,7 +534,7 @@ export default function EventEditDialog({
     setForm(buildInitialForm(k, null, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
     setAiFields(new Set());
     setExtraSegments([]);
-    setAiEndpointWarn(null);
+    setAiEndpointWarn(null); setAiSegFields(new Set());
     setTimeMissing({});
   };
 
@@ -828,9 +831,31 @@ export default function EventEditDialog({
       const originName = segs[0].from_city || '';
       const destName = segs[segs.length - 1].to_city || '';
       const w = [];
-      if (fromVisit?.city_name && originName && !overlaps(originName, fromVisit.city_name)) w.push(`старт брони «${originName}» ≠ «${fromVisit.city_name}»`);
-      if (toVisit?.city_name && destName && !overlaps(destName, toVisit.city_name)) w.push(`финиш брони «${destName}» ≠ «${toVisit.city_name}»`);
-      setAiEndpointWarn(w.length ? `Концы маршрута взяты из трипа. ${w.join('; ')}.` : null);
+      if (fromVisit?.city_name && originName && !overlaps(originName, fromVisit.city_name)) w.push(`старт брони «${originName}» ≠ город трипа «${fromVisit.city_name}»`);
+      if (toVisit?.city_name && destName && !overlaps(destName, toVisit.city_name)) w.push(`финиш брони «${destName}» ≠ город трипа «${toVisit.city_name}»`);
+      // Date mismatch: booking dates vs the trip-leg window (fromVisit … toVisit).
+      const dOnly = (iso) => (iso ? String(iso).slice(0, 10) : null);
+      const winStart = dOnly(fromVisit?.start_datetime) || dOnly(fromVisit?.end_datetime);
+      const winEnd = dOnly(toVisit?.end_datetime) || dOnly(toVisit?.start_datetime);
+      const depDay = segs[0]?.departure_date || null;
+      const arrDay = segs[segs.length - 1]?.arrival_date || null;
+      if (winStart && winEnd && depDay && arrDay && (arrDay < winStart || depDay > winEnd)) {
+        w.push(`даты брони (${depDay} … ${arrDay}) вне дат участка трипа (${winStart} … ${winEnd})`);
+      }
+      setAiEndpointWarn(w.length ? `Сверь с трипом — ${w.join('; ')}. Концы маршрута берутся из трипа.` : null);
+
+      // Mark AI-filled segment fields for the purple highlight (+ field count).
+      const segAi = new Set();
+      formSegs.forEach((s) => {
+        ['transport_type', 'from_address', 'to_address', 'startLocal', 'endLocal', 'carrier', 'flight_number', 'price'].forEach((k) => {
+          if (s[k] !== '' && s[k] != null) segAi.add(`${s.id}.${k}`);
+        });
+        if (s.toCity) segAi.add(`${s.id}.toCity`);
+      });
+
+      const topFilled = new Set();
+      if (data.booking_url) topFilled.add('booking_url');
+      if (data.booking_platform) topFilled.add('booking_platform');
 
       setForm((prev) => ({
         ...prev,
@@ -840,7 +865,8 @@ export default function EventEditDialog({
         booking_platform: data.booking_platform || prev.booking_platform,
         documents: docs.length ? [...(prev.documents || []), ...docs].slice(0, 50) : prev.documents,
       }));
-      setAiFields(new Set()); // per-field highlight isn't wired in the segment UI
+      setAiFields(topFilled);
+      setAiSegFields(segAi);
       setAiState('parsed');
       return;
     }
@@ -868,7 +894,7 @@ export default function EventEditDialog({
     }
     setForm(upd);
     setAiFields(filled);
-    setAiEndpointWarn(null);
+    setAiEndpointWarn(null); setAiSegFields(new Set());
     setAiState('parsed');
   };
 
@@ -932,8 +958,8 @@ export default function EventEditDialog({
                 setState={setAiState}
                 onExtract={currentKind === 'hotel' ? handleHotelExtract : handleTransferExtract}
                 onUpgrade={openUpgrade}
-                parsedFieldCount={aiFields.size}
-                onReset={() => { setAiFields(new Set()); setExtraSegments([]); setAiEndpointWarn(null); }}
+                parsedFieldCount={aiFields.size + aiSegFields.size}
+                onReset={() => { setAiFields(new Set()); setExtraSegments([]); setAiEndpointWarn(null); setAiSegFields(new Set()); }}
               />
             )}
 
@@ -963,6 +989,8 @@ export default function EventEditDialog({
                   setField={setField}
                   setForm={setForm}
                   aiFields={aiFields}
+                  aiSegFields={aiSegFields}
+                  setAiSegFields={setAiSegFields}
                   fromVisit={fromVisit}
                   toVisit={toVisit}
                   startTz={startTz}
@@ -1518,7 +1546,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
   );
 }
 
-function TransferFields({ form, setField, setForm, aiFields, fromVisit, toVisit, startTz, endTz, setTime, dateOrderError, extraSegments, isEdit, setUploading }) {
+function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, dateOrderError, extraSegments, isEdit, setUploading }) {
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
   const color = TYPE_META.transfer.color;
@@ -1527,7 +1555,7 @@ function TransferFields({ form, setField, setForm, aiFields, fromVisit, toVisit,
       {!isEdit && <LayoverToggle form={form} setForm={setForm} color={color} />}
 
       {form.hasLayovers ? (
-        <SegmentsEditor form={form} setForm={setForm} fromVisit={fromVisit} toVisit={toVisit} setTime={setTime} color={color} />
+        <SegmentsEditor form={form} setForm={setForm} fromVisit={fromVisit} toVisit={toVisit} setTime={setTime} color={color} aiSegFields={aiSegFields} setAiSegFields={setAiSegFields} />
       ) : (
       <>
       <SectionHeader color={color}>Вид транспорта</SectionHeader>
@@ -1776,10 +1804,26 @@ function SegTransportGrid({ value, onChange, color }) {
   );
 }
 
-function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color }) {
+function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiSegFields, setAiSegFields }) {
   const segs = form.segments || [];
   const N = segs.length;
-  const patchSeg = (i, partial) => setForm((prev) => ({ ...prev, segments: prev.segments.map((s, idx) => (idx === i ? { ...s, ...partial } : s)) }));
+  const aiOn = (seg, field) => !!aiSegFields && aiSegFields.has(`${seg.id}.${field}`);
+  const patchSeg = (i, partial) => {
+    const id = segs[i]?.id;
+    setForm((prev) => ({ ...prev, segments: prev.segments.map((s, idx) => (idx === i ? { ...s, ...partial } : s)) }));
+    // Editing a field clears its AI highlight (mirrors single-leg setField).
+    if (id && setAiSegFields) {
+      setAiSegFields((prev) => {
+        if (!prev || !prev.size) return prev;
+        let next = null;
+        Object.keys(partial).forEach((k) => {
+          const key = `${id}.${k}`;
+          if (prev.has(key)) { next = next || new Set(prev); next.delete(key); }
+        });
+        return next || prev;
+      });
+    }
+  };
   const addSegment = () => setForm((prev) => {
     const ss = prev.segments; const last = ss[ss.length - 1];
     const reLast = { ...last, to_address: '', endLocal: '', toCity: null };
@@ -1817,11 +1861,15 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color }) {
                   </div>
                   <div>
                     <Label>Адрес / станция</Label>
-                    <AddressAutocomplete value={seg.from_address} onChange={(v) => patchSeg(i, { from_address: v })} placeholder="Аэропорт, станция, адрес" />
+                    <AiField active={aiOn(seg, 'from_address')}>
+                      <AddressAutocomplete value={seg.from_address} onChange={(v) => patchSeg(i, { from_address: v })} placeholder="Аэропорт, станция, адрес" />
+                    </AiField>
                   </div>
                   <div>
                     <Label>Отправление *</Label>
-                    <DateTimeInput value={seg.startLocal} onChange={(v) => patchSeg(i, { startLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-dep`, v)} className="w-full" />
+                    <AiField active={aiOn(seg, 'startLocal')}>
+                      <DateTimeInput value={seg.startLocal} onChange={(v) => patchSeg(i, { startLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-dep`, v)} className="w-full" />
+                    </AiField>
                   </div>
                 </div>
                 <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
@@ -1831,16 +1879,22 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color }) {
                     {isLast ? (
                       <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title="Город прибытия — задан маршрутом трипа" />
                     ) : (
-                      <CityPicker value={seg.toCity} onPick={(c) => patchSeg(i, { toCity: c })} placeholder="Город пересадки" />
+                      <AiField active={aiOn(seg, 'toCity')}>
+                        <CityPicker value={seg.toCity} onPick={(c) => patchSeg(i, { toCity: c })} placeholder="Город пересадки" />
+                      </AiField>
                     )}
                   </div>
                   <div>
                     <Label>Адрес / станция</Label>
-                    <AddressAutocomplete value={seg.to_address} onChange={(v) => patchSeg(i, { to_address: v })} placeholder="Аэропорт, станция, адрес" />
+                    <AiField active={aiOn(seg, 'to_address')}>
+                      <AddressAutocomplete value={seg.to_address} onChange={(v) => patchSeg(i, { to_address: v })} placeholder="Аэропорт, станция, адрес" />
+                    </AiField>
                   </div>
                   <div>
                     <Label>Прибытие *</Label>
-                    <DateTimeInput value={seg.endLocal} onChange={(v) => patchSeg(i, { endLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-arr`, v)} className="w-full" />
+                    <AiField active={aiOn(seg, 'endLocal')}>
+                      <DateTimeInput value={seg.endLocal} onChange={(v) => patchSeg(i, { endLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-arr`, v)} className="w-full" />
+                    </AiField>
                   </div>
                 </div>
               </div>
@@ -1853,11 +1907,11 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color }) {
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                <div><Label>Перевозчик</Label><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder="Авиакомпания / перевозчик" /></div>
-                <div><Label>Номер рейса / поезда</Label><Input className="font-mono" value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></div>
+                <div><Label>Перевозчик</Label><AiField active={aiOn(seg, 'carrier')}><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder="Авиакомпания / перевозчик" /></AiField></div>
+                <div><Label>Номер рейса / поезда</Label><AiField active={aiOn(seg, 'flight_number')}><Input className="font-mono" value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></AiField></div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                <div><Label>Цена</Label><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></div>
+                <div><Label>Цена</Label><AiField active={aiOn(seg, 'price')}><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></AiField></div>
                 <div><Label>Валюта</Label><CurrencyCombobox value={seg.currency} onChange={(v) => patchSeg(i, { currency: v })} /></div>
               </div>
             </div>
