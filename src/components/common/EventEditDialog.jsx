@@ -116,7 +116,7 @@ import { searchCities, getTimezone } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
-import { hotelWarnings, transferWarnings, activityWarnings } from '@/lib/validation';
+import { hotelWarnings, transferWarnings, activityWarnings, normalizePositions } from '@/lib/validation';
 import { detectPlatformFromUrl, BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { invalidateTripData } from '@/lib/trip-data';
@@ -1125,8 +1125,8 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user) {
       kind: 'waypoint',
       start_datetime: at,
       end_datetime: at,
-      // position follows fromVisit; ordering is carried by start_datetime above.
-      position: (fromVisit?.position ?? 0) + i + 1,
+      // Provisional — renumbered authoritatively by normalizePositions below.
+      position: 0,
       created_by: user?.id,
     });
   }
@@ -1168,6 +1168,27 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user) {
   }));
   const { data, error } = await supabase.from('transfers').insert(trRows).select();
   if (error) throw error;
+
+  // 4. Renumber positions across the WHOLE trip so the new waypoint(s) thread
+  // cleanly into the node order (no collisions/duplicates) — authoritative for
+  // both the timeline (sort tie-break) and Edit Mode (position-driven recompute).
+  try {
+    const { data: allVisits } = await supabase
+      .from('city_visits')
+      .select('id, kind, start_datetime, end_datetime, position')
+      .eq('trip_id', tripId);
+    if (allVisits?.length) {
+      const normalized = normalizePositions(allVisits);
+      const byId = new Map(allVisits.map((v) => [v.id, v.position]));
+      const changed = normalized.filter((v) => byId.get(v.id) !== v.position);
+      await Promise.all(changed.map((v) =>
+        supabase.from('city_visits').update({ position: v.position }).eq('id', v.id)
+      ));
+    }
+  } catch (e) {
+    console.error('waypoint position renumber failed', e);
+  }
+
   return data?.[0];
 }
 
