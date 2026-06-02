@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Input } from '@/components/ui/input';
 
 /**
  * Wrapper around <input type="datetime-local"> that reliably detects the
@@ -47,6 +46,10 @@ export default function DateTimeInput({
     recheck();
   });
 
+  // On unmount, clear any "time missing" flag we may have raised so a removed
+  // input (e.g. a deleted transfer segment) never keeps Save disabled.
+  useEffect(() => () => { onTimeMissingChange?.(false); }, []);
+
   const handleChange = (e) => {
     onChange?.(e.target.value);
     // Defer to next tick so validity reflects the latest DOM state.
@@ -54,14 +57,14 @@ export default function DateTimeInput({
   };
 
   return (
-    <Input
+    <input
       ref={ref}
       type="datetime-local"
       value={value || ''}
       onChange={handleChange}
       onInput={recheck}
       onBlur={recheck}
-      className={className}
+      className={`input num ${className || ''}`}
       {...rest}
     />
   );

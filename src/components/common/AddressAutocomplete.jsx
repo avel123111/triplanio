@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
-import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Loader2, MapPin } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -150,14 +149,14 @@ export default function AddressAutocomplete({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div className="relative">
-          <Input
+          <input
             ref={inputRef}
             value={value || ''}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onFocus={() => { if (predictions.length > 0) setOpen(true); }}
             placeholder={placeholder}
-            className={className}
+            className={`input ${className || ''}`}
             disabled={disabled}
             autoComplete="off"
             {...rest}

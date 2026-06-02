@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Input } from '@/components/ui/input';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { CURRENCIES } from '@/lib/currencies';
 
@@ -25,9 +24,10 @@ export default function CurrencyCombobox({ value, onChange, className = '' }) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={`flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm hover:bg-secondary/30 transition ${className}`}
+          className={`input ${className}`}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', textAlign: 'left' }}
         >
-          <span className={value ? '' : 'text-muted-foreground'}>
+          <span style={value ? undefined : { color: 'var(--muted-2)' }}>
             {current ? `${current.code} · ${current.symbol}` : (value || 'Выбрать…')}
           </span>
           <ChevronDown className="w-3.5 h-3.5 opacity-50" />
@@ -41,13 +41,14 @@ export default function CurrencyCombobox({ value, onChange, className = '' }) {
       >
         <div className="p-2 border-b">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" style={{ zIndex: 1 }} />
+            <input
               autoFocus
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Поиск (USD, Euro, ₽…)"
-              className="pl-8 h-8 text-sm"
+              className="input"
+              style={{ paddingLeft: 32 }}
             />
           </div>
         </div>
