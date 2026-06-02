@@ -37,8 +37,6 @@ import ChatLens from './ChatLens';
 import { uniqueCityCount } from '@/lib/trip-cities';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/redesign/ScreenMap';
-import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
-import PaymentFailDialog from '@/components/common/PaymentFailDialog';
 import TripFormDialog from '@/components/trips/TripFormDialog';
 import { getGradientById } from '@/lib/trip-gradients';
 import '../design/app.css';
@@ -779,6 +777,12 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // (they belong inside the arrival block, above the city hero).
   const inboundEventIds = new Set();
   for (const c of transitCities) for (const e of inboundEventsFor(c.id)) inboundEventIds.add(e.id);
+  // The leg INTO the finish anchor is rendered in the end block below, so keep
+  // it out of the general day list too.
+  const _endAnchor = ordered[ordered.length - 1];
+  if (_endAnchor && _endAnchor.kind === 'end') {
+    for (const e of inboundEventsFor(_endAnchor.id)) inboundEventIds.add(e.id);
+  }
 
   // Renders one city's arrival block: [transfer card | missing-transfer warning]
   // then the CityHero. `prev` = the previously-rendered city (or start anchor).
@@ -922,19 +926,33 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     );
   }
 
-  // Missing transfer into the finish anchor (last rendered city → end), if the
-  // trip has an explicit end anchor and no transfer covers that leg.
+  // Leg INTO the finish anchor (last rendered city → end). If a transfer covers
+  // it, render the transfer card(s); otherwise show the missing-transfer warning.
   const endVisit = ordered[ordered.length - 1];
-  if (showBookingWarnings && endVisit && endVisit.kind === 'end' && prevCity && prevCity.id !== endVisit.id
-      && cityIdentity(prevCity) !== cityIdentity(endVisit) && !hasTransferBetween(prevCity, endVisit)) {
-    rows.push(
-      <div key="mt-end" style={{ marginBottom: 8 }}>
-        <MissingTransferWarning
-          from={prevCity.city_name} to={endVisit.city_name}
-          fromVisit={prevCity} toVisit={endVisit} onAdd={onAddTransfer}
-        />
-      </div>
-    );
+  if (endVisit && endVisit.kind === 'end' && prevCity && prevCity.id !== endVisit.id
+      && cityIdentity(prevCity) !== cityIdentity(endVisit)) {
+    if (hasTransferBetween(prevCity, endVisit)) {
+      const inEndEv = inboundEventsFor(endVisit.id).filter(e => {
+        const tr = (transfers || []).find(t => t.id === e.id);
+        return tr?.from_city_visit_id === prevCity.id;
+      });
+      if (inEndEv.length > 0) {
+        rows.push(
+          <div key="in-end" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+            {inEndEv.map(e => <StreamEventRow key={e.id} e={e} onClick={() => onOpenEvent?.(e)} />)}
+          </div>
+        );
+      }
+    } else if (showBookingWarnings) {
+      rows.push(
+        <div key="mt-end" style={{ marginBottom: 8 }}>
+          <MissingTransferWarning
+            from={prevCity.city_name} to={endVisit.city_name}
+            fromVisit={prevCity} toVisit={endVisit} onAdd={onAddTransfer}
+          />
+        </div>
+      );
+    }
   }
 
   // End anchor
@@ -1474,7 +1492,7 @@ export default function TripView() {
   const [activityEdit, setActivityEdit] = useState({ open: false, visit: null, activity: null, defaultStart: null });
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
   const openUpgrade = () => nav(`/pro?tripId=${tripId}`);
-  // Stripe checkout return is handled globally in Layout (one success/fail modal).
+  // Stripe-return success/fail modal is handled globally by <StripeReturnModals>.
 
   // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
   const openEventView = (e) => {

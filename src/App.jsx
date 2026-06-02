@@ -21,6 +21,7 @@ import LandingPage from '@/pages/Landing/LandingPage';
 import ManualPlanner from '@/pages/ManualPlanner';
 import Inbox from '@/pages/Inbox';
 import Pro from '@/pages/Pro';
+import StripeReturnModals from '@/components/common/StripeReturnModals';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
@@ -100,7 +101,11 @@ const AuthenticatedApp = () => {
   }
 
   return (
-    <Routes>
+    <>
+      {/* One global Stripe-return handler for the whole logged-in app — shows the
+          success/fail modal regardless of which screen Stripe came back to. */}
+      <StripeReturnModals />
+      <Routes>
       {/* New design — standalone (own app-header, no Layout) */}
       {/* Logged-in users can still view the landing at "/" (no auto-redirect);
           the landing's CTA takes them into the app. */}
@@ -120,7 +125,8 @@ const AuthenticatedApp = () => {
         <Route path="/admin/notifications" element={<AdminNotifications />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
-    </Routes>
+      </Routes>
+    </>
   );
 };
 

@@ -1,15 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { Outlet, NavLink, useSearchParams, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import React from 'react';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { Compass, Settings as SettingsIcon } from 'lucide-react';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
-import { supabase } from '@/api/supabaseClient';
 import HeaderActions from '@/components/HeaderActions';
-import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
-import PaymentFailDialog from '@/components/common/PaymentFailDialog';
 
 // Theme toggle has been moved into UserMenu (see components/UserMenu.jsx) so
 // it's reachable on mobile without taking header space, and the dropdown is
@@ -19,50 +15,10 @@ export default function Layout() {
   const { user } = useAuth();
   const { isDark, toggle: toggleTheme } = useTheme();
   const t = useT();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const qc = useQueryClient();
   const nav = useNavigate();
-  const [payModal, setPayModal] = useState(null); // 'success' | 'fail' | null
-  const [planLabel, setPlanLabel] = useState(null);
-  const [priceLabel, setPriceLabel] = useState(null);
 
-  // Centralised handling of Stripe return — works regardless of which page the
-  // upgrade started from. ONE success modal + ONE fail modal, app-wide.
-  useEffect(() => {
-    const status = searchParams.get('stripe_status');
-    if (!status) return;
-    if (status === 'success') {
-      setPayModal('success');
-      qc.invalidateQueries({ queryKey: ['my-pro-status'] });
-      qc.invalidateQueries({ queryKey: ['me'] });
-      // Best-effort plan + price for the success chip (optional).
-      (async () => {
-        try {
-          const planRes = await supabase.functions.invoke('getUserPlan');
-          const type = planRes.data?.subscriptionType;
-          const label = type === 'pro_monthly' ? 'Pro Monthly' : type === 'pro_yearly' ? 'Pro Yearly' : null;
-          setPlanLabel(label);
-          if (type) {
-            const priceRes = await supabase.functions.invoke('getStripePrices', { body: {} });
-            const p = priceRes.data?.prices?.[type];
-            if (p?.unit_amount != null) {
-              const amt = new Intl.NumberFormat('ru-RU', {
-                style: 'currency', currency: (p.currency || 'eur').toUpperCase(),
-                minimumFractionDigits: 0, maximumFractionDigits: 2,
-              }).format(p.unit_amount / 100);
-              const per = p.recurring_interval === 'month' ? '/мес' : p.recurring_interval === 'year' ? '/год' : '';
-              setPriceLabel(amt + per);
-            }
-          }
-        } catch { /* chip is optional */ }
-      })();
-    } else if (status === 'cancel') {
-      setPayModal('fail');
-    }
-    searchParams.delete('stripe_status');
-    searchParams.delete('session_id');
-    setSearchParams(searchParams, { replace: true });
-  }, [searchParams, setSearchParams, qc]);
+  // Stripe-return success/fail modal is handled globally by <StripeReturnModals>
+  // (mounted once in App), so Layout no longer duplicates it.
 
   // Layout now serves only the non-trip admin routes; trip/new-design pages
   // are standalone and render their own header. Bottom-nav shown for logged-in
@@ -104,17 +60,6 @@ export default function Layout() {
         </nav>
       )}
 
-      <PaymentSuccessDialog
-        open={payModal === 'success'}
-        onOpenChange={(o) => { if (!o) setPayModal(null); }}
-        planLabel={planLabel}
-        priceLabel={priceLabel}
-      />
-      <PaymentFailDialog
-        open={payModal === 'fail'}
-        onOpenChange={(o) => { if (!o) setPayModal(null); }}
-        onRetry={() => { setPayModal(null); nav('/pro'); }}
-      />
     </div>
   );
 }
