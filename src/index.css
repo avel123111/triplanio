@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@500;600;700;800&display=swap');
-@import 'leaflet/dist/leaflet.css';
 
 @tailwind base;
 @tailwind components;
@@ -145,20 +144,7 @@ input[type="time"] {
   }
 }
 
-/* Leaflet dark mode tile filter */
-.dark .leaflet-tile {
-  filter: brightness(0.7) invert(1) contrast(0.9) hue-rotate(180deg) saturate(0.6);
-}
-.leaflet-container {
-  background: hsl(var(--muted));
-  font-family: var(--font-sans);
-}
-/* Keep Leaflet below dialog overlay (Radix dialog uses z-index 50) */
-.leaflet-pane,
-.leaflet-top,
-.leaflet-bottom {
-  z-index: 1 !important;
-}
-.leaflet-control {
-  z-index: 2 !important;
-}
+/* Mapbox GL — keep map controls/markers below dialog overlay (Radix uses z-index 50) */
+.mapboxgl-canvas { outline: none; }
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right { z-index: 2 !important; }

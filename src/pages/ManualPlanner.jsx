@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker as LeafletMarker, Polyline, useMap as useLeafletMap } from 'react-leaflet';
-import L from 'leaflet';
-import { APIProvider, Map as GMap, Marker as GMarker, useMap as useGMap, useApiLoadingStatus } from '@vis.gl/react-google-maps';
+import { mapboxgl, MAPBOX_TOKEN, styleFor, fitToPoints, htmlMarkerEl, lineFeature, setLineLayer } from '@/lib/mapbox';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -13,8 +11,8 @@ import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/ge
 import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
 import HeaderActions from '@/components/HeaderActions';
-import { groupMarkers, markerSvg, svgDataUri, markerPixelSize, MISSING_COLOR } from '@/lib/mapRoute';
-import { fetchOsrmRoute, isFlightTransport, isRoadTransport } from '@/lib/routing';
+import { groupMarkers, markerSvg, MISSING_COLOR } from '@/lib/mapRoute';
+import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { getGradientById } from '@/lib/trip-gradients';
 import '../design/app.css';
@@ -236,249 +234,108 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
   );
 }
 
-// ─── Leaflet helpers ──────────────────────────────────────────────────────────
+// ─── Map (Mapbox GL) ──────────────────────────────────────────────────────────
 
-function FitBounds({ positions }) {
-  const map = useLeafletMap();
-  useEffect(() => {
-    if (positions.length === 0) return;
-    if (positions.length === 1) {
-      map.setView(positions[0], 8, { animate: true });
-    } else {
-      try {
-        map.fitBounds(L.latLngBounds(positions).pad(0.35), { maxZoom: 7, animate: true });
-      } catch { /* ignore invalid bounds */ }
-    }
-  }, [JSON.stringify(positions)]); // eslint-disable-line
-  return null;
-}
-
-// ─── Google Maps helpers ──────────────────────────────────────────────────────
-
-// ErrorBoundary — if Google Maps crashes, falls back to Leaflet
-class MapErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false }; }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  render() {
-    if (this.state.hasError) return this.props.fallback || null;
-    return this.props.children;
-  }
-}
-
-// Per-leg route renderer for the PlannerMap. Each leg gets a polyline whose
-// style depends on the chosen transport: dashed pale when no transport,
-// curved geodesic for a flight, road-following for ground transport, solid
-// straight for everything else (ferry, walk, etc.).
 const PLANNER_ROUTE_COLOR = '#5b6cff';
 
-function GLegRoutes({ legs, transport }) {
-  const map = useGMap();
-  const legsSig = legs.map(l => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
-
-  useEffect(() => {
-    if (!map || !window.google) return;
-    const gmaps = window.google.maps;
-    let cancelled = false;
-    const polylines = [];
-
-    const dashedIconBase = {
-      icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 },
-      offset: '0',
-      repeat: '14px',
-    };
-    const addDashed = (path, opacity = 0.4, weight = 2, color = MISSING_COLOR) => {
-      const pl = new gmaps.Polyline({
-        path, geodesic: false, strokeOpacity: 0, strokeWeight: weight, strokeColor: color,
-        icons: [{ ...dashedIconBase, icon: { ...dashedIconBase.icon, strokeOpacity: opacity, strokeColor: color, strokeWeight: weight } }],
-        map,
-      });
-      polylines.push(pl);
-      return pl;
-    };
-    const addGeodesic = (path) => {
-      const pl = new gmaps.Polyline({ path, geodesic: true, strokeOpacity: 1, strokeColor: PLANNER_ROUTE_COLOR, strokeWeight: 3.5, map });
-      polylines.push(pl);
-      return pl;
-    };
-    const addSolid = (path) => {
-      const pl = new gmaps.Polyline({ path, geodesic: false, strokeOpacity: 1, strokeColor: PLANNER_ROUTE_COLOR, strokeWeight: 3.5, map });
-      polylines.push(pl);
-      return pl;
-    };
-
-    for (const leg of legs) {
-      if (!leg.from?.latitude || !leg.to?.latitude) continue;
-      const straight = [
-        { lat: leg.from.latitude, lng: leg.from.longitude },
-        { lat: leg.to.latitude, lng: leg.to.longitude },
-      ];
-      const kind = transport[leg.id]?.kind;
-      if (!kind) { addDashed(straight, 0.4, 2); continue; }
-      if (isFlightTransport(kind)) { addGeodesic(straight); continue; }
-
-      const placeholder = addDashed(straight, 0.6, 2.5, PLANNER_ROUTE_COLOR);
-      if (isRoadTransport(kind)) {
-        (async () => {
-          try {
-            const route = await fetchOsrmRoute(leg.from.latitude, leg.from.longitude, leg.to.latitude, leg.to.longitude, kind);
-            if (cancelled) return;
-            placeholder.setMap(null);
-            const path = route && route.length > 1 ? route.map(([lat, lng]) => ({ lat, lng })) : straight;
-            addSolid(path);
-          } catch { /* keep placeholder */ }
-        })();
-      } else {
-        placeholder.setMap(null);
-        addSolid(straight);
-      }
-    }
-
-    return () => {
-      cancelled = true;
-      polylines.forEach((p) => p.setMap(null));
-    };
-  }, [map, legsSig]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return null;
-}
-
-// Leaflet-side per-leg renderer used as a fallback when Google Maps isn't
-// available. Only knows two styles — dashed (no transport) vs solid — so the
-// signal "transport is picked" still reads on the map without OSRM fetching.
-function LeafletLegRoutes({ legs, transport }) {
-  return (
-    <>
-      {legs.map((leg, i) => {
-        if (!leg.from?.latitude || !leg.to?.latitude) return null;
-        const path = [
-          [leg.from.latitude, leg.from.longitude],
-          [leg.to.latitude, leg.to.longitude],
-        ];
-        const kind = transport[leg.id]?.kind;
-        if (!kind) return <Polyline key={i} positions={path} pathOptions={{ color: MISSING_COLOR, weight: 2, dashArray: '5 7', opacity: 0.55 }} />;
-        return <Polyline key={i} positions={path} pathOptions={{ color: PLANNER_ROUTE_COLOR, weight: 3, opacity: 1 }} />;
-      })}
-    </>
-  );
-}
-
-// Fit Google Map to bounds
-function GFitBounds({ positions }) {
-  const map = useGMap();
-  useEffect(() => {
-    if (!map || !window.google || positions.length === 0) return;
-    if (positions.length === 1) {
-      map.setCenter({ lat: positions[0][0], lng: positions[0][1] });
-      map.setZoom(8);
-    } else {
-      try {
-        const bounds = new window.google.maps.LatLngBounds();
-        positions.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
-        map.fitBounds(bounds);
-      } catch { /* ignore */ }
-    }
-  }, [map, JSON.stringify(positions)]); // eslint-disable-line
-  return null;
-}
-
-function gIcon(labels) {
-  const g = window.google;
-  if (!g?.maps) return undefined;
-  const d = markerPixelSize(false);
-  return { url: svgDataUri(markerSvg(labels, false)), scaledSize: new g.maps.Size(d, d), anchor: new g.maps.Point(d / 2, d / 2) };
-}
-
-// Google Maps inner content — also watches for Google's error overlay and calls onError
-function GoogleMapInner({ groups, positions, legs, transport, onError }) {
-  const map = useGMap();
-  const status = useApiLoadingStatus();
-
-  // Detect the Google Maps DOM error overlay (appears when key is invalid/restricted)
-  useEffect(() => {
-    if (status === 'FAILED') { onError(); return; }
-    if (!map) return;
-    const timer = setTimeout(() => {
-      try {
-        const div = map.getDiv?.();
-        if (div && div.querySelector('.gm-err-container, .gm-err-content')) {
-          onError();
-        }
-      } catch { /* ignore */ }
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [map, status]); // eslint-disable-line
-
-  return (
-    <>
-      <GFitBounds positions={positions} />
-      {groups.map((grp, i) => (
-        <GMarker key={i} position={{ lat: grp.lat, lng: grp.lng }} icon={gIcon(grp.labels)} />
-      ))}
-      {legs?.length > 0 && <GLegRoutes legs={legs} transport={transport} />}
-    </>
-  );
-}
-
-// ─── PlannerMap ───────────────────────────────────────────────────────────────
-
-const GKEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
-
 function PlannerMap({ home, cities, returnCity, transport = {}, finalPoint = false }) {
-  // If Google Maps fails (bad key, billing, restrictions) — fall back to Leaflet
-  const [gmapFailed, setGmapFailed] = useState(false);
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef([]);
+  const readyRef = useRef(false);
 
   const pts = [];
-  if (home?.latitude) pts.push({ lat: home.latitude, lng: home.longitude, label: '🏠', color: '#2167e2', name: home.city_name });
+  if (home?.latitude) pts.push({ lat: home.latitude, lng: home.longitude, label: '🏠', name: home.city_name });
   cities.forEach((c, i) => {
-    if (c.latitude) pts.push({ lat: c.latitude, lng: c.longitude, label: String(i + 1), color: '#2167e2', name: c.city_name });
+    if (c.latitude) pts.push({ lat: c.latitude, lng: c.longitude, label: String(i + 1), name: c.city_name });
   });
   if (returnCity?.latitude && returnCity.city_name !== home?.city_name) {
-    pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: '↩', color: '#c9603a', name: returnCity.city_name });
+    pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: '↩', name: returnCity.city_name });
   }
 
-  const positions = pts.map(p => [p.lat, p.lng]);
+  const positions = pts.map((p) => [p.lng, p.lat]); // [lng, lat] for Mapbox
   const groups = groupMarkers(pts);
   const totalNights = cities.reduce((n, c) => n + (+c.nights || 0), 0);
-  // Legs match the IDs used by StepTransport so the picker's choice maps to
-  // the right polyline. computeLegs already knows how to handle finalPoint.
+  // Legs match the IDs used by StepTransport so the picker's choice maps to the
+  // right polyline. computeLegs already knows how to handle finalPoint.
   const legs = computeLegs(home, cities, returnCity, finalPoint);
 
-  const leafletMap = (
-    <MapContainer
-      center={positions[0] || [50, 15]}
-      zoom={4}
-      style={{ height: 320 }}
-      scrollWheelZoom={false}
-      zoomControl={false}
-      attributionControl={false}
-    >
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-      <FitBounds positions={positions} />
-      <LeafletLegRoutes legs={legs} transport={transport} />
-      {groups.map((grp, i) => {
-        const d = markerPixelSize(false);
-        const icon = L.divIcon({ className: '', html: markerSvg(grp.labels, false), iconSize: [d, d], iconAnchor: [d / 2, d / 2] });
-        return <LeafletMarker key={i} position={[grp.lat, grp.lng]} icon={icon} />;
-      })}
-    </MapContainer>
-  );
+  const ptsKey = pts.map((p) => `${p.lat},${p.lng}`).join('|');
+  const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
-  const googleMap = GKEY && !gmapFailed ? (
-    <MapErrorBoundary fallback={leafletMap}>
-      <APIProvider apiKey={GKEY}>
-        <GMap
-          style={{ height: 320, width: '100%' }}
-          defaultCenter={positions[0] ? { lat: positions[0][0], lng: positions[0][1] } : { lat: 50, lng: 15 }}
-          defaultZoom={4}
-          gestureHandling="cooperative"
-          disableDefaultUI
-          mapTypeId="roadmap"
-        >
-          <GoogleMapInner groups={groups} positions={positions} legs={legs} transport={transport} onError={() => setGmapFailed(true)} />
-        </GMap>
-      </APIProvider>
-    </MapErrorBoundary>
-  ) : null;
+  // Init map once (container is always mounted; empty-state overlays on top).
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current || !MAPBOX_TOKEN) return undefined;
+    const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: styleFor(dark ? 'DARK' : 'LIGHT'),
+      center: positions[0] || [15, 50],
+      zoom: 4,
+      attributionControl: false,
+      cooperativeGestures: true,
+    });
+    mapRef.current = map;
+    map.on('load', () => { readyRef.current = true; });
+    return () => { map.remove(); mapRef.current = null; readyRef.current = false; };
+  }, []);
+
+  // Numbered markers.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    const draw = () => {
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      groups.forEach((g) => {
+        const marker = new mapboxgl.Marker({ element: htmlMarkerEl(markerSvg(g.labels, false)) }).setLngLat([g.lng, g.lat]).addTo(map);
+        markersRef.current.push(marker);
+      });
+      if (positions.length) fitToPoints(map, positions, { padding: 28, maxZoom: 7, singleZoom: 8 });
+    };
+    if (readyRef.current) draw(); else map.once('load', draw);
+    return undefined;
+  }, [ptsKey]);
+
+  // Route lines: dashed = no transport, solid = flight/road/other; road via OSRM.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    let cancelled = false;
+    const draw = () => {
+      const dashed = [];
+      const solid = [];
+      const roadTasks = [];
+      legs.forEach((leg) => {
+        if (!leg.from?.latitude || !leg.to?.latitude) return;
+        const straight = [[leg.from.longitude, leg.from.latitude], [leg.to.longitude, leg.to.latitude]];
+        const kind = transport[leg.id]?.kind;
+        if (!kind) { dashed.push(lineFeature(straight)); return; }
+        if (isFlightTransport(kind)) {
+          const arc = geodesicLine(leg.from.latitude, leg.from.longitude, leg.to.latitude, leg.to.longitude).map(([la, lo]) => [lo, la]);
+          solid.push(lineFeature(arc));
+        } else if (isRoadTransport(kind)) {
+          const idx = solid.length;
+          solid.push(lineFeature(straight));
+          roadTasks.push({ idx, leg, kind });
+        } else {
+          solid.push(lineFeature(straight));
+        }
+      });
+      setLineLayer(map, 'planner-dashed', dashed, { color: MISSING_COLOR, width: 2, dashed: true, opacity: 0.5 });
+      setLineLayer(map, 'planner-solid', solid, { color: PLANNER_ROUTE_COLOR, width: 3.5 });
+      (async () => {
+        for (const task of roadTasks) {
+          const route = await fetchOsrmRoute(task.leg.from.latitude, task.leg.from.longitude, task.leg.to.latitude, task.leg.to.longitude, task.kind);
+          if (cancelled || !mapRef.current) return;
+          const coords = route && route.length > 1 ? route.map(([la, lo]) => [lo, la]) : null;
+          if (coords) { solid[task.idx] = lineFeature(coords); setLineLayer(map, 'planner-solid', solid, { color: PLANNER_ROUTE_COLOR, width: 3.5 }); }
+        }
+      })();
+    };
+    if (readyRef.current) draw(); else map.once('load', draw);
+    return () => { cancelled = true; };
+  }, [legsKey]);
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
@@ -488,16 +345,17 @@ function PlannerMap({ home, cities, returnCity, transport = {}, finalPoint = fal
         <span style={{ fontSize: 11, color: 'var(--muted)' }}>{cities.length} городов</span>
       </div>
 
-      {pts.length === 0 ? (
-        <div style={{ height: 320, display: 'grid', placeItems: 'center', background: 'var(--wash)', color: 'var(--muted)' }}>
-          <div style={{ textAlign: 'center' }}>
-            <Icon name="map" size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
-            <div style={{ fontSize: 13 }}>Добавь города —<br />маршрут появится здесь</div>
+      <div style={{ position: 'relative', height: 320 }}>
+        <div ref={containerRef} style={{ height: 320, width: '100%' }} />
+        {pts.length === 0 && (
+          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'var(--wash)', color: 'var(--muted)' }}>
+            <div style={{ textAlign: 'center' }}>
+              <Icon name="map" size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
+              <div style={{ fontSize: 13 }}>Добавь города —<br />маршрут появится здесь</div>
+            </div>
           </div>
-        </div>
-      ) : (
-        GKEY && !gmapFailed ? googleMap : leafletMap
-      )}
+        )}
+      </div>
 
       <div style={{ padding: '10px 14px', borderTop: '1px solid var(--line-2)', background: 'var(--wash)', fontSize: 11.5, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {home?.city_name && (

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { Sparkles, Info, AlertTriangle, ChevronDown } from 'lucide-react';
-import { APIProvider, Map as GMap, Marker as GMarker, useMap as useGMap, useApiIsLoaded } from '@vis.gl/react-google-maps';
+import { mapboxgl, MAPBOX_TOKEN, STYLE_LIGHT, fitToPoints, htmlMarkerEl, lineFeature, setLineLayer } from '@/lib/mapbox';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
@@ -15,73 +15,23 @@ import { useToast } from '@/components/ui/use-toast';
 import { Icon } from '../design/icons';
 import { Btn } from '@/design/index';
 import HeaderActions from '@/components/HeaderActions';
-import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar';
-import { groupMarkers, markerSvg, svgDataUri, markerPixelSize, MISSING_COLOR } from '@/lib/mapRoute';
+import { groupMarkers, markerSvg, MISSING_COLOR } from '@/lib/mapRoute';
 import '../design/app.css';
 
-const GKEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
-
-// ── Map helpers ───────────────────────────────────────────────────────────────
-
-function GFitBounds({ positions }) {
-  const map = useGMap();
-  useEffect(() => {
-    if (!map || !window.google || positions.length === 0) return;
-    if (positions.length === 1) { map.setCenter({ lat: positions[0][0], lng: positions[0][1] }); map.setZoom(7); return; }
-    try {
-      const bounds = new window.google.maps.LatLngBounds();
-      positions.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
-      map.fitBounds(bounds);
-    } catch {}
-  }, [map, JSON.stringify(positions)]); // eslint-disable-line
-  return null;
-}
-
-function gIcon(labels) {
-  const g = window.google;
-  if (!g?.maps) return undefined;
-  const d = markerPixelSize(false);
-  return { url: svgDataUri(markerSvg(labels, false)), scaledSize: new g.maps.Size(d, d), anchor: new g.maps.Point(d / 2, d / 2) };
-}
-
-// Markers are deferred until the Maps JS API is fully loaded — otherwise
-// gIcon() runs before window.google exists and the pins never appear.
-function GMarkersLayer({ groups }) {
-  const isLoaded = useApiIsLoaded();
-  if (!isLoaded) return null;
-  return groups.map((grp, i) => (
-    <GMarker key={i} position={{ lat: grp.lat, lng: grp.lng }} icon={gIcon(grp.labels)} />
-  ));
-}
-
-function GDashedLines({ pts }) {
-  const map = useGMap();
-  const ptsKey = pts.map(p => `${p.lat},${p.lng}`).join('|');
-  useEffect(() => {
-    if (!map || !window.google || pts.length < 2) return;
-    const gmaps = window.google.maps;
-    const polylines = [];
-    for (let i = 0; i < pts.length - 1; i++) {
-      const pl = new gmaps.Polyline({
-        path: [{ lat: pts[i].lat, lng: pts[i].lng }, { lat: pts[i + 1].lat, lng: pts[i + 1].lng }],
-        geodesic: false, strokeOpacity: 0, strokeWeight: 2,
-        icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.45, scale: 3, strokeColor: MISSING_COLOR, strokeWeight: 2 }, offset: '0', repeat: '14px' }],
-        map,
-      });
-      polylines.push(pl);
-    }
-    return () => polylines.forEach(p => p.setMap(null));
-  }, [map, ptsKey]); // eslint-disable-line
-  return null;
-}
+// ── Map (Mapbox GL) ─────────────────────────────────────────────────────────
 
 function AiPlannerMap({ cities }) {
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef([]);
+  const readyRef = useRef(false);
   const [pts, setPts] = useState([]);
-  const citiesKey = cities.map(c => c.city_name).join(',');
+  const citiesKey = cities.map((c) => c.city_name).join(',');
 
+  // Resolve coordinates for the city list.
   useEffect(() => {
-    if (!cities.length) { setPts([]); return; }
+    if (!cities.length) { setPts([]); return undefined; }
     let cancelled = false;
     (async () => {
       const resolved = await Promise.all(cities.map(async (c, i) => {
@@ -89,43 +39,62 @@ function AiPlannerMap({ cities }) {
           const results = await searchCities(`${c.city_name}${c.country ? ', ' + c.country : ''}`);
           const best = results[0];
           if (!best?.latitude) return null;
-          return { lat: best.latitude, lng: best.longitude, label: String(i + 1), color: '#2167e2', name: c.city_name };
+          return { lat: best.latitude, lng: best.longitude, label: String(i + 1), name: c.city_name };
         } catch { return null; }
       }));
       if (!cancelled) setPts(resolved.filter(Boolean));
     })();
     return () => { cancelled = true; };
-  }, [citiesKey]); // eslint-disable-line
+  }, [citiesKey]);
 
-  if (!pts.length) {
-    return (
-      <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', background: 'var(--wash)', color: 'var(--muted-2)' }}>
-        <div style={{ textAlign: 'center', fontSize: 12.5 }}>
-          <Icon name="map" size={22} style={{ marginBottom: 6, opacity: 0.4 }} />
-          <div>Загрузка…</div>
-        </div>
-      </div>
-    );
-  }
+  // Init map once (container is always mounted, placeholder overlays on top).
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current || !MAPBOX_TOKEN) return undefined;
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: STYLE_LIGHT,
+      center: [0, 20],
+      zoom: 2,
+      attributionControl: false,
+      cooperativeGestures: true,
+    });
+    mapRef.current = map;
+    map.on('load', () => { readyRef.current = true; });
+    return () => { map.remove(); mapRef.current = null; readyRef.current = false; };
+  }, []);
 
-  const positions = pts.map(p => [p.lat, p.lng]);
-  const groups = groupMarkers(pts);
+  // Draw numbered markers + dashed line.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    const draw = () => {
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      const groups = groupMarkers(pts.map((p) => ({ lat: p.lat, lng: p.lng, label: p.label })));
+      groups.forEach((g) => {
+        const marker = new mapboxgl.Marker({ element: htmlMarkerEl(markerSvg(g.labels, false)) }).setLngLat([g.lng, g.lat]).addTo(map);
+        markersRef.current.push(marker);
+      });
+      const lineFeatures = pts.length > 1 ? [lineFeature(pts.map((p) => [p.lng, p.lat]))] : [];
+      setLineLayer(map, 'ai-line', lineFeatures, { color: MISSING_COLOR, width: 2, dashed: true, opacity: 0.45 });
+      if (pts.length) fitToPoints(map, pts.map((p) => [p.lng, p.lat]), { padding: 30, maxZoom: 7 });
+    };
+    if (readyRef.current) draw(); else map.once('load', draw);
+    return undefined;
+  }, [pts]);
 
   return (
-    <APIProvider apiKey={GKEY}>
-      <GMap
-        style={{ height: '100%', width: '100%' }}
-        defaultCenter={{ lat: positions[0][0], lng: positions[0][1] }}
-        defaultZoom={4}
-        gestureHandling="cooperative"
-        disableDefaultUI
-        mapTypeId="roadmap"
-      >
-        <GFitBounds positions={positions} />
-        <GMarkersLayer groups={groups} />
-        <GDashedLines pts={pts} />
-      </GMap>
-    </APIProvider>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      {!pts.length && (
+        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'var(--wash)', color: 'var(--muted-2)' }}>
+          <div style={{ textAlign: 'center', fontSize: 12.5 }}>
+            <Icon name="map" size={22} style={{ marginBottom: 6, opacity: 0.4 }} />
+            <div>Загрузка…</div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
