@@ -1,6 +1,10 @@
 // Code-aligned validation messages. Key = Issue code from validateEntity/validateTrip.
 // Resolved via t('validation.' + issue.code, issue.values). Hyphens only (no em-dash).
 export default {
+  // Conflicts panel (timeline + Edit Mode)
+  'validation.panel_title': 'Предупреждения и конфликты',
+  'validation.panel_subtitle': '{n} в этом трипе - нажми, чтобы открыть событие',
+  'validation.panel_all_clear': 'Конфликтов нет',
   // Trip
   'validation.TRIP_TITLE_REQUIRED': 'Укажи название путешествия',
   'validation.TRIP_START_REQUIRED': 'Укажи дату начала путешествия',
@@ -13,8 +17,8 @@ export default {
   'validation.HOTEL_CHECKIN_REQUIRED': 'Укажи дату и время заезда',
   'validation.HOTEL_CHECKOUT_REQUIRED': 'Укажи дату и время выезда',
   'validation.HOTEL_ORDER': 'Выезд должен быть позже заезда',
-  'validation.HOTEL_CHECKIN_OOB': 'Заезд раньше прибытия в {city}',
-  'validation.HOTEL_CHECKOUT_OOB': 'Выезд позже выезда из {city}',
+  'validation.HOTEL_CHECKIN_OOB': 'Заезд в отель раньше прибытия в {city}',
+  'validation.HOTEL_CHECKOUT_OOB': 'Выезд из отеля позже отъезда из {city}',
   'validation.HOTEL_NO_CITY': 'Отель не привязан к городу',
   // Activity
   'validation.ACT_TITLE_REQUIRED': 'Укажи название активности',

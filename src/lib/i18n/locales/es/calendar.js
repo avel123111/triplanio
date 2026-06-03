@@ -7,7 +7,6 @@ export default {
   'calendar.prev': 'Anterior',
   'calendar.next': 'Siguiente',
   'calendar.trip_start': 'Inicio',
-  'calendar.update_failed': 'No se pudo actualizar el evento',
   'calendar.hotel_checkin': 'Entrada: {name}',
   'calendar.hotel_checkout': 'Salida: {name}',
   'calendar.hotel_cancel_deadline': 'Cancelación gratis hasta: {name}',

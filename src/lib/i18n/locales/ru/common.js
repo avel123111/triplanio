@@ -37,7 +37,6 @@ export default {
   'common.tomorrow': 'Завтра',
   // Blocking validation for date inputs that need a time too.
   'common.tz_detected': '{tz}',
-  'common.time_required': 'Укажите ещё и время.',
   // AI uploader (shared between hotel/transfer)
   'ai.hotel_title': 'Распознать бронирование',
   'ai.transfer_title': 'Распознать билет / бронирование',
@@ -53,7 +52,6 @@ export default {
   'ai.recognize_files_one': 'Распознать {count} файл',
   'ai.recognize_files_few': 'Распознать {count} файла',
   'ai.recognize_files_many': 'Распознать {count} файлов',
-  'ai.file_too_large': 'Файл «{name}» больше 5 МБ - пропущен.',
   'ai.too_many_files': 'Можно загрузить не больше {max} файлов в ИИ.',
   'ai.error_files': 'Не удалось распознать файлы',
   'ai.error_link': 'Не удалось распознать ссылку',

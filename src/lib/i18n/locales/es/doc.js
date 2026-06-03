@@ -6,7 +6,6 @@ export default {
   'doc.tab_empty_owner': 'Sube billetes, seguros, bonos u otros archivos.',
   'doc.tab_empty_viewer': 'El propietario del viaje aún no ha añadido documentos.',
   'doc.tab_add_first': 'Añadir el primer documento',
-  'doc.tab_delete_confirm': '¿Eliminar el documento?',
   'doc.tab_download_file': 'Descargar archivo',
   'doc.tab_open_link': 'Abrir enlace',
 
@@ -32,7 +31,6 @@ export default {
   'doc.visibility_shared_desc': 'Todos los miembros del viaje verán este documento',
   'doc.visibility_private': 'Privado',
   'doc.visibility_private_desc': 'Solo tú lo ves - pasaporte, visa, seguro',
-  'doc.title_required': 'Título *',
   'doc.title_placeholder': 'p. ej. Póliza de seguro de viaje',
   'doc.notes_label': 'Nota (opc.)',
   'doc.notes_placeholder': 'Descripción breve, fecha de caducidad…',
@@ -45,7 +43,6 @@ export default {
   'doc.view_open_link': 'Abrir enlace',
   'doc.view_notes': 'Notas',
   'doc.file_too_big': 'El archivo «{name}» es demasiado grande (máx. 10 MB)',
-  'doc.err_title': 'Escribe un título para el documento',
   'doc.access_label': 'Acceso',
   'doc.visibility_shared_hint': 'Visible para todos los participantes',
   'doc.visibility_private_hint': 'Solo tú lo ves',

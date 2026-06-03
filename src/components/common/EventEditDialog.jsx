@@ -429,6 +429,18 @@ export default function EventEditDialog({
   const [currentKind, setCurrentKind] = useState(initialKind || 'hotel');
   const isEdit = !!entity;
   const meta = TYPE_META[currentKind] || TYPE_META.hotel;
+  // City-contextual header: "Проживание в Париже" / "Переезд Париж → Рим" /
+  // "Активность в Риме". Falls back to the generic new/edit title when the
+  // city context is unknown (e.g. orphan entity or service without a visit).
+  const ctxTitle = useMemo(() => {
+    if ((currentKind === 'hotel' || currentKind === 'activity') && visit?.city_name) {
+      return t(currentKind === 'hotel' ? 'event.title_ctx_hotel' : 'event.title_ctx_activity', { city: visit.city_name });
+    }
+    if (currentKind === 'transfer' && (fromVisit?.city_name || toVisit?.city_name)) {
+      return t('event.title_ctx_transfer', { from: fromVisit?.city_name || '?', to: toVisit?.city_name || '?' });
+    }
+    return null;
+  }, [currentKind, visit, fromVisit, toVisit, t]);
   const tripId = tripIdProp || entity?.trip_id || visit?.trip_id || fromVisit?.trip_id;
 
   // Timezones - kept for compatibility but the time helpers ignore them
@@ -918,7 +930,7 @@ export default function EventEditDialog({
                 {t(meta.labelKey)}
               </div>
               <h2 className="font-display text-xl leading-tight" style={{ letterSpacing: '-0.02em' }}>
-                {isEdit ? t(meta.titleEditKey) : t(meta.titleNewKey)}
+                {ctxTitle || (isEdit ? t(meta.titleEditKey) : t(meta.titleNewKey))}
               </h2>
             </div>
           </div>

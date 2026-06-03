@@ -4,7 +4,6 @@ export default {
   'budget.empty_hint': 'Aún sin gastos · pulsa para abrir',
   'budget.collab_empty_hint': 'pulsa para abrir',
   'budget.see_details': 'Ver detalles',
-  'budget.missing_fx_warning': 'Sin tipos de cambio para {currencies} - estos gastos no se incluyen en el total.',
   'budget.addon_off_title': 'Activar Presupuesto del viaje',
   'budget.addon_off_desc': 'El Presupuesto del viaje está desactivado. Actívalo para planificar y registrar gastos por categorías, añadir costes personalizados en cualquier moneda y ver el desglose completo del gasto del viaje.',
   'budget.addon_off_go_settings': 'Ir a ajustes',
@@ -27,15 +26,10 @@ export default {
   'budget.fx_button': 'Tipos de cambio',
   'budget.add_expense': 'Añadir gasto',
   'budget.add_category': 'Añadir categoría',
-  'budget.fx_warn': 'No se han podido convertir algunos gastos - revisa los tipos de cambio.',
 
   // Category block
   'budget.no_expenses': 'Sin gastos',
   'budget.category_menu_rename': 'Renombrar',
-  'budget.category_menu_delete': 'Eliminar categoría',
-  'budget.category_delete_confirm_title': '¿Eliminar categoría?',
-  'budget.category_delete_confirm_msg': 'La categoría «{name}» será eliminada. Todos los gastos dentro también se eliminarán.',
-  'budget.category_delete_has_expenses': 'La categoría contiene gastos - elimínalos o muévelos primero.',
   'budget.cannot_modify_system': 'Las categorías del sistema no se pueden modificar.',
 
   // Expense row
@@ -44,8 +38,6 @@ export default {
   'budget.source_activity': 'Actividad',
   'budget.source_service': 'Servicio',
   'budget.system_expense_hint': 'Gasto del sistema - se edita en su origen',
-  'budget.expense_delete_confirm_title': '¿Eliminar gasto?',
-  'budget.expense_delete_confirm_msg': 'El gasto «{title}» será eliminado.',
 
   // Expense dialog
   'budget.expense_new': 'Nuevo gasto',
@@ -55,14 +47,11 @@ export default {
   'budget.field_currency': 'Moneda',
   'budget.field_date': 'Fecha',
   'budget.field_category': 'Categoría',
-  'budget.title_required': 'Introduce un título',
-  'budget.amount_required': 'Introduce un importe mayor que 0',
 
   // Category dialog
   'budget.category_new': 'Nueva categoría',
   'budget.category_rename': 'Renombrar categoría',
   'budget.category_name_placeholder': 'Ej.: Regalos',
-  'budget.category_name_required': 'Introduce un nombre',
   'budget.icon_label': 'Icono',
   'budget.color_label': 'Color',
   'budget.icon_color_preview': 'Vista previa de la categoría',
@@ -72,8 +61,6 @@ export default {
   'budget.members_count': '{n} participantes · a partes iguales',
   'budget.fx_rates_label': 'Tipos de cambio',
   'budget.fx_change': 'Editar tipos',
-  'budget.fx_missing_warn_title': 'Sin tipo para {currencies}',
-  'budget.fx_missing_warn_desc': '{n} gasto(s) en {currencies} no están convertidos y no se incluyen en el total.',
   'budget.fx_missing_set_manual': 'Establecer tipo manualmente',
   'budget.group_by_category': 'Por categorías',
   'budget.group_by_city': 'Por ciudades',
@@ -92,7 +79,6 @@ export default {
   'budget.fx_no_other': 'En este viaje solo se usa la moneda principal.',
   'budget.fx_live_rate': 'Actual: {rate}',
   'budget.fx_save': 'Guardar',
-  'budget.err_required': 'Completa los campos obligatorios',
   'budget.edit_expense': 'Editar gasto',
   'budget.manual_expense': 'Gasto manual',
   'budget.deleting': 'Eliminando…',
@@ -102,7 +88,6 @@ export default {
   'budget.fx_manual': '{cur} · manual',
   'budget.fx_auto': '{cur} · automático',
   'budget.fx_not_found': '{cur} · sin tipo de cambio / ponlo a mano',
-  'budget.err_cat_name': 'Escribe un nombre',
   'budget.edit_category': 'Editar categoría',
   'budget.cat_name_ph': 'Recuerdos…',
   'budget.rate_missing': 'Tipo de cambio no disponible',

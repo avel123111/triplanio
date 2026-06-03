@@ -31,7 +31,6 @@ export default {
   
   // States
   'ai_plan.draft_placeholder': 'Your AI-generated itinerary will appear here',
-  'ai_plan.no_draft_error': 'No draft to save. Please generate a trip first.',
   'ai_plan.error_save': 'Failed to save trip. Please try again.',
   'ai_plan.error_plan_title': 'Planning Failed',
   'ai_plan.error_plan_desc': 'Could not generate trip. Please try again.',

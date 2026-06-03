@@ -1,5 +1,9 @@
 // Code-aligned validation messages. Key = Issue code. Hyphens only (no em-dash).
 export default {
+  // Conflicts panel (timeline + Edit Mode)
+  'validation.panel_title': 'Avisos y conflictos',
+  'validation.panel_subtitle': '{n} en este viaje - toca para abrir el evento',
+  'validation.panel_all_clear': 'Sin conflictos',
   // Trip
   'validation.TRIP_TITLE_REQUIRED': 'Indica el nombre del viaje',
   'validation.TRIP_START_REQUIRED': 'Indica la fecha de inicio del viaje',
@@ -12,8 +16,8 @@ export default {
   'validation.HOTEL_CHECKIN_REQUIRED': 'Indica la fecha y hora de entrada',
   'validation.HOTEL_CHECKOUT_REQUIRED': 'Indica la fecha y hora de salida',
   'validation.HOTEL_ORDER': 'La salida debe ser posterior a la entrada',
-  'validation.HOTEL_CHECKIN_OOB': 'La entrada es anterior a la llegada a {city}',
-  'validation.HOTEL_CHECKOUT_OOB': 'La salida es posterior a la partida de {city}',
+  'validation.HOTEL_CHECKIN_OOB': 'La entrada al hotel es anterior a la llegada a {city}',
+  'validation.HOTEL_CHECKOUT_OOB': 'La salida del hotel es posterior a la partida de {city}',
   'validation.HOTEL_NO_CITY': 'El hotel no está vinculado a una ciudad',
   // Activity
   'validation.ACT_TITLE_REQUIRED': 'Indica el nombre de la actividad',

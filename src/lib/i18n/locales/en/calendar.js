@@ -7,7 +7,6 @@ export default {
   'calendar.prev': 'Previous',
   'calendar.next': 'Next',
   'calendar.trip_start': 'Trip start',
-  'calendar.update_failed': 'Could not update event',
   'calendar.hotel_checkin': 'Check-in: {name}',
   'calendar.hotel_checkout': 'Check-out: {name}',
   'calendar.hotel_cancel_deadline': 'Free cancel deadline: {name}',

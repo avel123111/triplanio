@@ -6,7 +6,6 @@ export default {
   'doc.tab_empty_owner': 'Upload tickets, insurance, vouchers or any other files.',
   'doc.tab_empty_viewer': 'The trip owner hasn\'t added any documents yet.',
   'doc.tab_add_first': 'Add first document',
-  'doc.tab_delete_confirm': 'Delete document?',
   'doc.tab_download_file': 'Download file',
   'doc.tab_open_link': 'Open link',
 
@@ -32,7 +31,6 @@ export default {
   'doc.visibility_shared_desc': 'All trip members will see this document',
   'doc.visibility_private': 'Private',
   'doc.visibility_private_desc': 'Only you can see - passport, visa, insurance',
-  'doc.title_required': 'Title *',
   'doc.title_placeholder': 'e.g. Travel insurance policy',
   'doc.notes_label': 'Note (optional)',
   'doc.notes_placeholder': 'Brief description, expiry date…',
@@ -45,7 +43,6 @@ export default {
   'doc.view_open_link': 'Open link',
   'doc.view_notes': 'Notes',
   'doc.file_too_big': 'File "{name}" is too large (max 10 MB)',
-  'doc.err_title': 'Enter a document title',
   'doc.access_label': 'Access',
   'doc.visibility_shared_hint': 'Visible to all participants',
   'doc.visibility_private_hint': 'Only you can see it',

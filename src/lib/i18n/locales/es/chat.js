@@ -6,7 +6,6 @@ export default {
   'chat.mention_triplanio_name': 'Triplanio',
   'chat.mention_triplanio_hint': 'Asistente IA',
   'chat.ai_thinking': 'Triplanio está pensando…',
-  'chat.ai_error': 'No se pudo contactar con Triplanio. Inténtalo de nuevo.',
   'chat.send_hint': 'Enter para enviar, Shift+Enter para nueva línea',
   'chat.mention_all_hint': '@Triplanio - responde a todos',
   'chat.group_title': 'Chat de grupo',

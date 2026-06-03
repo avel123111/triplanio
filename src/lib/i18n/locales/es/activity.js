@@ -9,11 +9,9 @@ export default {
   'activity.empty': 'Aún no hay actividades',
   'activity.dialog_new': 'Añadir actividad',
   'activity.dialog_edit': 'Editar actividad',
-  'activity.title_required': 'Título *',
   'activity.title_placeholder': 'Visita al Coliseo',
   'activity.start_tz': 'Inicio ({tz})',
   'activity.end_tz': 'Fin ({tz})',
-  'activity.date_order_error': 'La hora final debe ser posterior a la inicial.',
   'activity.address_ph': 'Campo de Marte, París',
   'activity.documents_label': 'Documentos',
   'activity.price': 'Precio',
@@ -28,5 +26,4 @@ export default {
   'activity.view_notes': 'Notas',
   'activity.add_btn': 'Añadir actividad',
   'activity.delete_short': 'Eliminar',
-  'activity.delete_prompt': '¿Quitar «{title}»?',
 };

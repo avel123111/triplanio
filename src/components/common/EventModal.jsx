@@ -349,6 +349,7 @@ export default function EventModal(props) {
     if (entity.check_in_datetime && entity.check_out_datetime) {
       metaItems.push({ icon: Calendar, text: `${fmtDate(entity.check_in_datetime)} → ${fmtDate(entity.check_out_datetime)}` });
     }
+    if (visit?.city_name) metaItems.push({ icon: MapIcon, text: visit.city_name });
   } else if (kind === 'transfer') {
     if (entity.start_datetime) metaItems.push({ icon: Calendar, text: fmtDT(entity.start_datetime) });
     const route = [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ');

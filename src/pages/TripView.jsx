@@ -21,7 +21,8 @@ import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
 import { Avatar, Btn, EmptyState, Skeleton, ModalHost, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
 import { SystemStub } from '@/lib/PageNotFound';
-import { sortVisits, cityIdentity } from '@/lib/validation';
+import { sortVisits, cityIdentity, validateTrip, primaryIssues } from '@/lib/validation';
+import { ConflictsPanel } from '@/components/common/ValidationUI';
 import { useToast } from '@/components/ui/use-toast';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -1660,6 +1661,22 @@ export default function TripView() {
     [t, hotels, activities, transfers, visits],
   );
 
+  // Unified engine: same validateTrip that powers Edit Mode, collapsed to <=1
+  // issue per entity so the timeline panel never piles up duplicates.
+  const conflicts = useMemo(
+    () => primaryIssues(validateTrip({ visits, hotels, activities, transfers })),
+    [visits, hotels, activities, transfers],
+  );
+  // Clicking a conflict opens the relevant event (hotel/activity/transfer).
+  // Paired/city issues (CITY_GAP / CITY_OVERLAP / DUP_TRANSFER) are structural -
+  // they have no single event to open, so the row stays informational.
+  const openConflict = (issue) => {
+    if (!issue?.entityId) return;
+    if (issue.entityKind === 'hotel') setEventView({ open: true, kind: 'hotel', id: issue.entityId });
+    else if (issue.entityKind === 'activity') setEventView({ open: true, kind: 'activity', id: issue.entityId });
+    else if (issue.entityKind === 'transfer') setEventView({ open: true, kind: 'transfer', id: issue.entityId });
+  };
+
   // Account-level Pro (header chip). For IN-TRIP gating use tripIsPro below.
   const accountPro = isProActive(user);
   const isOwner = myRole === 'owner';
@@ -1852,6 +1869,14 @@ export default function TripView() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--wash)', border: '1px solid var(--line)', fontSize: 13, color: 'var(--ink-2)' }}>
                   <Icon name="lock" size={14} /> {t('trip.frozen_note')}
                 </div>
+              )}
+              {conflicts.length > 0 && (
+                <ConflictsPanel
+                  issues={conflicts}
+                  ctx={{ hotels, activities, transfers, visits }}
+                  onOpen={openConflict}
+                  style={{ marginBottom: 14 }}
+                />
               )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
                 <TimelineLens

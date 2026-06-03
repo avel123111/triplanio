@@ -6,7 +6,6 @@ export default {
   'doc.tab_empty_owner': 'Загрузите билеты, страховки, ваучеры или другие файлы.',
   'doc.tab_empty_viewer': 'Владелец поездки ещё не добавил документы.',
   'doc.tab_add_first': 'Добавить первый документ',
-  'doc.tab_delete_confirm': 'Удалить документ?',
   'doc.tab_download_file': 'Скачать файл',
   'doc.tab_open_link': 'Открыть ссылку',
 
@@ -32,7 +31,6 @@ export default {
   'doc.visibility_shared_desc': 'Все участники путешествия увидят документ',
   'doc.visibility_private': 'Личный',
   'doc.visibility_private_desc': 'Только ты видишь - паспорт, виза, страховка',
-  'doc.title_required': 'Название *',
   'doc.title_placeholder': 'Например, «Виза в Испанию»',
   'doc.notes_label': 'Заметка (опц.)',
   'doc.notes_placeholder': 'Краткое описание, срок действия…',
@@ -45,7 +43,6 @@ export default {
   'doc.view_open_link': 'Открыть ссылку',
   'doc.view_notes': 'Заметки',
   'doc.file_too_big': 'Файл «{name}» слишком большой (макс. 10 МБ)',
-  'doc.err_title': 'Введи название документа',
   'doc.access_label': 'Доступ',
   'doc.visibility_shared_hint': 'Виден всем участникам',
   'doc.visibility_private_hint': 'Только ты его видишь',

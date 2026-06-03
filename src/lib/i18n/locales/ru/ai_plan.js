@@ -31,7 +31,6 @@ export default {
   
   // States
   'ai_plan.draft_placeholder': 'Здесь появится твой маршрут, созданный ИИ',
-  'ai_plan.no_draft_error': 'Нет черновика для сохранения. Сначала создай путешествие.',
   'ai_plan.error_save': 'Не удалось сохранить путешествие. Попробуй снова.',
   'ai_plan.error_plan_title': 'Планирование не удалось',
   'ai_plan.error_plan_desc': 'Не удалось создать путешествие. Попробуй снова.',

@@ -5,7 +5,6 @@ export default {
   'budget.empty_hint': 'No expenses yet · tap to open',
   'budget.collab_empty_hint': 'tap to open',
   'budget.see_details': 'See details',
-  'budget.missing_fx_warning': 'No exchange rates for {currencies} - these expenses are not included in the total.',
   'budget.addon_off_title': 'Enable Trip Budget',
   'budget.addon_off_desc': 'Trip Budget is turned off for this trip. Enable it to plan and track expenses across categories, add custom costs in any currency, and get a full breakdown of your travel spending.',
   'budget.addon_off_go_settings': 'Go to settings',
@@ -28,15 +27,10 @@ export default {
   'budget.fx_button': 'Exchange rates',
   'budget.add_expense': 'Add expense',
   'budget.add_category': 'Add category',
-  'budget.fx_warn': 'Some expenses could not be converted - check exchange rates.',
 
   // Category block
   'budget.no_expenses': 'No expenses',
   'budget.category_menu_rename': 'Rename',
-  'budget.category_menu_delete': 'Delete category',
-  'budget.category_delete_confirm_title': 'Delete category?',
-  'budget.category_delete_confirm_msg': 'Category "{name}" will be deleted. All expenses inside it will be deleted too.',
-  'budget.category_delete_has_expenses': 'Category contains expenses - delete or move them first.',
   'budget.cannot_modify_system': 'System categories cannot be modified.',
 
   // Expense row
@@ -45,8 +39,6 @@ export default {
   'budget.source_activity': 'Activity',
   'budget.source_service': 'Service',
   'budget.system_expense_hint': 'System expense - edited via its source',
-  'budget.expense_delete_confirm_title': 'Delete expense?',
-  'budget.expense_delete_confirm_msg': 'Expense "{title}" will be deleted.',
 
   // Expense dialog
   'budget.expense_new': 'New expense',
@@ -56,14 +48,11 @@ export default {
   'budget.field_currency': 'Currency',
   'budget.field_date': 'Date',
   'budget.field_category': 'Category',
-  'budget.title_required': 'Enter a title',
-  'budget.amount_required': 'Enter an amount greater than 0',
 
   // Category dialog
   'budget.category_new': 'New category',
   'budget.category_rename': 'Rename category',
   'budget.category_name_placeholder': 'e.g. Gifts',
-  'budget.category_name_required': 'Enter a name',
   'budget.icon_label': 'Icon',
   'budget.color_label': 'Color',
   'budget.icon_color_preview': 'Category preview',
@@ -73,8 +62,6 @@ export default {
   'budget.members_count': '{n} members · split evenly',
   'budget.fx_rates_label': 'Exchange rates',
   'budget.fx_change': 'Edit rates',
-  'budget.fx_missing_warn_title': 'No rate for {currencies}',
-  'budget.fx_missing_warn_desc': '{n} expense(s) in {currencies} are not converted and not included in the total.',
   'budget.fx_missing_set_manual': 'Set rate manually',
   'budget.group_by_category': 'By category',
   'budget.group_by_city': 'By city',
@@ -93,7 +80,6 @@ export default {
   'budget.fx_no_other': 'Only the main currency is used in this trip.',
   'budget.fx_live_rate': 'Live: {rate}',
   'budget.fx_save': 'Save',
-  'budget.err_required': 'Fill in the required fields',
   'budget.edit_expense': 'Edit expense',
   'budget.manual_expense': 'Manual expense',
   'budget.deleting': 'Deleting…',
@@ -103,7 +89,6 @@ export default {
   'budget.fx_manual': '{cur} · manual',
   'budget.fx_auto': '{cur} · automatic',
   'budget.fx_not_found': '{cur} · rate not found / set manually',
-  'budget.err_cat_name': 'Enter a name',
   'budget.edit_category': 'Edit category',
   'budget.cat_name_ph': 'Souvenirs…',
   'budget.rate_missing': 'Rate unavailable',

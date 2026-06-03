@@ -8,7 +8,6 @@ export default {
   'visit.timezone': 'Часовой пояс',
   'visit.search_city': 'Найти город…',
   'visit.duration_nights': 'ночей',
-  'visit.delete_confirm': 'Удалить {city}? Также будут удалены: {hotels} отелей, {acts} активностей, {transfers} трансферов.',
   'visit.add_destination': 'Добавить направление',
   'visit.no_cities_title': 'Пока нет городов',
   'visit.no_cities_subtitle': 'Начни с добавления первого города путешествия.',
@@ -31,8 +30,6 @@ export default {
   'visit.anchor_dates_hint_end': 'Даты для конечной точки не нужны - она используется только для построения маршрута.',
   'visit.notes_placeholder': 'Что нужно знать про этот город…',
   'visit.same_day_hint': 'Можно выехать из одного города и приехать в другой в один и тот же день.',
-  'visit.order_error': 'Дата отъезда не может быть раньше прибытия.',
-  'visit.overlap_error': 'Период пересекается с посещением «{city}». Граничный день общим быть может, но даты не должны перекрываться.',
   'visit.save_changes': 'Сохранить изменения',
   'visit.btn_add': 'Добавить город',
   // Map / city card extras

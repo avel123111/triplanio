@@ -12,6 +12,7 @@ import { getTimezone } from '@/lib/geo';
 import MapView from '@/components/views/MapView';
 import SourceViewLoader from '@/components/budget/SourceViewLoader';
 import EventEditDialog from '@/components/common/EventEditDialog';
+import { ConflictsPanel } from '@/components/common/ValidationUI';
 import { useToast } from '@/components/ui/use-toast';
 import HeaderActions from '@/components/HeaderActions';
 import { useAuth } from '@/lib/AuthContext';
@@ -175,6 +176,11 @@ export default function TripStructureEdit() {
       level: i.level === 'error' ? 'error' : 'warn',
       code: i.code,
       message: t(`validation.${i.code}`, i.values),
+      // raw refs for describeIssue/ConflictsPanel:
+      entityKind: i.entityKind,
+      entityId: i.entityId,
+      values: i.values,
+      // aliases consumed by openConflict / cityConflicts / transferMismatch:
       cityId: i.entityKind === 'city' ? i.entityId : undefined,
       hotelId: i.entityKind === 'hotel' ? i.entityId : undefined,
       activityId: i.entityKind === 'activity' ? i.entityId : undefined,
@@ -453,8 +459,10 @@ export default function TripStructureEdit() {
           <div className="ts-map" style={{ flex: '7 1 0', minHeight: 0, overflow: 'hidden', borderBottom: '1px solid var(--line)' }}>
             <MapView visits={draft.nodes} transfers={liveTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
-          <div className="ts-warn" style={{ flex: '3 1 0', minHeight: 0, display: 'flex' }}>
-            <WarningsPanel issues={issues} errors={errors} warns={warns} onOpen={openConflict} />
+          <div className="ts-warn" style={{ flex: '3 1 0', minHeight: 0, overflow: 'auto', padding: 9 }}>
+            {issues.length > 0
+              ? <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
+              : <div className="sev sev--success" style={{ margin: 4 }}><span className="sev__icon"><Icon name="check" size={16} /></span><div style={{ fontSize: 13 }}>{t('validation.panel_all_clear')}</div></div>}
           </div>
         </div>
       </div>
@@ -718,65 +726,6 @@ function RemovedTray({ removed, onRestore }) {
   </div>;
 }
 
-// ---- warnings panel (yellow plates) ----
-const PLATE_META = { hotel: { icon: 'bed', labelKey: 'event.type_hotel' }, transfer: { icon: 'train', labelKey: 'event.type_transfer' }, activity: { icon: 'spark', labelKey: 'event.type_activity' }, city: { icon: 'pin', labelKey: 'event.city' } };
-function plateType(code) {
-  if (code[0] === 'B') return 'hotel';
-  if (code[0] === 'C') return 'activity';
-  if (code[0] === 'D') return 'transfer';
-  if (code === 'E1' || code === 'E3') return 'transfer';
-  return 'city';
-}
-function WarningsPanel({ issues, errors, warns, onOpen }) {
-  const t = useT();
-  const has = issues.length > 0;
-  return (
-    <div style={{ flex: 1, width: '100%', minWidth: 0, background: 'var(--surface)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '10px 13px', borderBottom: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
-        <div style={{ width: 26, height: 26, borderRadius: 7, background: has ? 'var(--warning-soft)' : 'var(--success-soft)', color: has ? 'var(--warning)' : 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name={has ? 'warning' : 'check'} size={15} /></div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>{t('tse.conflicts')}</div>
-          <div className="muted" style={{ fontSize: 11, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{has ? t('tse.click_to_fix') : t('tse.all_consistent')}</div>
-        </div>
-        {has && <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-          {errors > 0 && <span style={{ padding: '3px 8px', borderRadius: 999, background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 11.5, fontWeight: 700 }}>{errors}</span>}
-          {warns > 0 && <span style={{ padding: '3px 8px', borderRadius: 999, background: 'var(--warning-soft)', color: 'var(--warning)', fontSize: 11.5, fontWeight: 700 }}>{warns}</span>}
-        </div>}
-      </div>
-      {!has ? (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24, color: 'var(--muted)' }}>
-          <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center', marginBottom: 14 }}><Icon name="check" size={26} /></div>
-          <div style={{ fontWeight: 600, color: 'var(--ink)', fontSize: 15, marginBottom: 6 }}>{t('tse.no_conflicts')}</div>
-          <div style={{ fontSize: 12.5, lineHeight: 1.5, maxWidth: 250 }}>{t('tse.no_conflicts_desc')}</div>
-        </div>
-      ) : (
-        <div className="scrollbar-thin" style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 9, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {issues.map((c, i) => <WarningPlate key={i} c={c} onClick={() => onOpen(c)} />)}
-        </div>
-      )}
-    </div>
-  );
-}
-function WarningPlate({ c, onClick }) {
-  const t = useT();
-  const type = plateType(c.code);
-  const tm = PLATE_META[type];
-  const isError = c.level === 'error';
-  const stripe = isError ? 'var(--danger)' : 'var(--warning)';
-  return (
-    <button onClick={onClick} style={{ display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, borderRadius: 9, border: '1px solid color-mix(in srgb, ' + stripe + ' 40%, transparent)', background: isError ? 'var(--danger-soft)' : 'var(--warning-soft)', padding: '7px 10px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-        <span style={{ width: 20, height: 20, borderRadius: 6, background: 'color-mix(in srgb, ' + stripe + ' 22%, transparent)', color: stripe, display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name={tm.icon} size={12} /></span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink)' }}>{t(tm.labelKey)}</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: stripe }}>
-          <span style={{ width: 4, height: 4, borderRadius: '50%', background: stripe }} />{isError ? t('tse.link_broken') : t('tse.mismatch')}
-        </span>
-        <span className="num" style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted-2)' }}>{c.code}</span>
-      </div>
-      <div style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.45 }}>{c.message}</div>
-    </button>
-  );
-}
 
 // (ResolveModal removed - conflicts now open the real EventModal via SourceViewLoader,
 //  and "Добавить переезд" opens the real EventEditDialog. TRIP_EDIT_MODE test #8/#9.)

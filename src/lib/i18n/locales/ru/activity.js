@@ -10,11 +10,9 @@ export default {
   // Dialog
   'activity.dialog_new': 'Добавить активность',
   'activity.dialog_edit': 'Редактировать активность',
-  'activity.title_required': 'Название *',
   'activity.title_placeholder': 'Экскурсия в Колизей',
   'activity.start_tz': 'Начало ({tz})',
   'activity.end_tz': 'Окончание ({tz})',
-  'activity.date_order_error': 'Время окончания должно быть позже начала.',
   'activity.address_ph': 'Шан-де-Марс, Париж',
   'activity.documents_label': 'Документы',
   'activity.price': 'Стоимость',
@@ -30,5 +28,4 @@ export default {
   'activity.view_notes': 'Заметки',
   'activity.add_btn': 'Добавить активность',
   'activity.delete_short': 'Удалить',
-  'activity.delete_prompt': 'Убрать «{title}»?',
 };

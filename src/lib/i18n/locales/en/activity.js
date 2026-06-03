@@ -9,11 +9,9 @@ export default {
   'activity.empty': 'No activities yet',
   'activity.dialog_new': 'Add activity',
   'activity.dialog_edit': 'Edit activity',
-  'activity.title_required': 'Title *',
   'activity.title_placeholder': 'Colosseum tour',
   'activity.start_tz': 'Start ({tz})',
   'activity.end_tz': 'End ({tz})',
-  'activity.date_order_error': 'End time must be after start time.',
   'activity.address_ph': 'Champ de Mars, Paris',
   'activity.documents_label': 'Documents',
   'activity.price': 'Price',
@@ -28,5 +26,4 @@ export default {
   'activity.view_notes': 'Notes',
   'activity.add_btn': 'Add activity',
   'activity.delete_short': 'Delete',
-  'activity.delete_prompt': 'Remove "{title}"?',
 };

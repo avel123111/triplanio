@@ -36,7 +36,6 @@ export default {
   'common.yesterday': 'Yesterday',
   'common.tomorrow': 'Tomorrow',
   // Blocking validation for date inputs that need a time too.
-  'common.time_required': 'Please enter a time as well.',
   // Small hint next to date/time fields and times - surfaces the IANA timezone
   // so the user knows which wall-clock the time refers to (e.g. "Europe/Madrid").
   'common.tz_detected': '{tz}',
@@ -54,7 +53,6 @@ export default {
   'ai.recognize_files_one': 'Recognize {count} file',
   'ai.recognize_files_few': 'Recognize {count} files',
   'ai.recognize_files_many': 'Recognize {count} files',
-  'ai.file_too_large': 'File "{name}" is larger than 5MB - skipped.',
   'ai.too_many_files': 'You can upload at most {max} files to AI.',
   'ai.error_files': 'Could not recognize the files',
   'ai.error_link': 'Could not recognize the link',

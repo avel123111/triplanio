@@ -37,7 +37,6 @@ export default {
   'common.tomorrow': 'Mañana',
   // Blocking validation for date inputs that need a time too.
   'common.tz_detected': '{tz}',
-  'common.time_required': 'Indica también la hora.',
   'ai.hotel_title': 'Reconocer reserva',
   'ai.transfer_title': 'Reconocer billete / reserva',
   'ai.hotel_url_placeholder': 'Pega un enlace de reserva (Booking, Airbnb…)',
@@ -52,7 +51,6 @@ export default {
   'ai.recognize_files_one': 'Reconocer {count} archivo',
   'ai.recognize_files_few': 'Reconocer {count} archivos',
   'ai.recognize_files_many': 'Reconocer {count} archivos',
-  'ai.file_too_large': 'El archivo «{name}» supera 5 MB - omitido.',
   'ai.too_many_files': 'Solo puedes subir un máximo de {max} archivos a la IA.',
   'ai.error_files': 'No se pudieron reconocer los archivos',
   'ai.error_link': 'No se pudo reconocer el enlace',

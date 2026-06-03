@@ -7,7 +7,6 @@ export default {
   'trip.cover_upload': 'Загрузить обложку',
   'trip.create': 'Создать путешествие',
   'trip.update': 'Обновить путешествие',
-  'trip.delete_confirm': 'Удалить это путешествие? Все города, отели, активности и трансферы будут удалены.',
   'trip.show_notes': 'Показать заметки',
   'trip.hide_notes': 'Скрыть заметки',
   // Plural rules for "city" are handled via formatPlural() - keys kept for fallback
@@ -30,7 +29,6 @@ export default {
   'trip.copy_link': 'Скопировать ссылку',
   'trip.link_copied': 'Скопировано!',
   'trip.export_pdf': 'Экспорт в PDF',
-  'trip.export_pdf_error': 'Не удалось экспортировать PDF',
   'trip.settings': 'Настройки путешествия',
   // Trip settings page
   'trip.settings_title': 'Настройки путешествия',
@@ -41,7 +39,6 @@ export default {
   'trip.display_currency_hint': 'Основная валюта бюджета поездки. Расходы в других валютах автоматически пересчитываются в неё.',
   'trip.addon_pro_only': 'PRO',
   'trip.addon_coming_soon': 'Скоро',
-  'trip.addon_pro_locked_alert': 'Аддон доступен только в Pro. Купите Pro для путешествия или подписку, чтобы включить.',
   'trip.addon_settings': 'Настройки',
   'trip.addon_activation': 'Активация',
   'trip.addon_activation_hint': 'Включить или выключить этот аддон для путешествия.',
@@ -65,12 +62,10 @@ export default {
   'trip.notif_daily_desc': 'Сводка всей активности за день.',
   'trip.copy': 'Дублировать',
   'trip.delete': 'Удалить',
-  'trip.delete_trip_confirm': 'Удалить эту поездку? Все события будут удалены.',
   'trip.delete_pro_confirm_title': 'Вы удаляете Pro-путешествие',
   'trip.delete_pro_confirm_desc': 'Это Pro-путешествие - разовая покупка Pro для него будет утеряна. Вы уверены, что хотите удалить?',
   'trip.copy_confirm_title': 'Скопировать эту поездку?',
   'trip.copy_confirm_desc': 'Будет создана полная копия со всеми городами, отелями, активностями и трансферами. Участники путешествия не копируются.',
-  'trip.copy_error': 'Не удалось скопировать поездку',
   'trip.link_error': 'Не удалось получить ссылку',
   // Share dialog
   'share.dialog_title': 'Поделиться путешествием',
@@ -135,7 +130,6 @@ export default {
   'ai_plan.error_plan_title': 'Не удалось спланировать',
   'ai_plan.error_plan_desc': 'Попробуйте ещё раз.',
   'ai_plan.error_save': 'Не удалось сохранить путешествие.',
-  'ai_plan.no_draft_error': 'Нет черновика для сохранения',
   'ai_plan.default_trip_title': 'Новое путешествие',
   // Draft preview
   'ai_plan.draft_untitled': 'Без названия',
@@ -150,7 +144,6 @@ export default {
   'trip_edit.back': 'Назад к путешествию',
   'trip_edit.view': 'Посмотреть путешествие',
   'trip_edit.edit_trip': 'Название и обложка',
-  'trip_edit.delete_visit_confirm': 'Удалить {city}? Также будет удалено: {hotels} отелей, {acts} активностей, {transfers} трансферов.',
   'trip_edit.add_transfer_title': 'Добавить трансфер?',
   'trip_edit.add_transfer_desc': 'Соедините {from} → {to} трансфером.',
   'trip_edit.skip': 'Пропустить',

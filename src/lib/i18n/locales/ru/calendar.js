@@ -7,7 +7,6 @@ export default {
   'calendar.prev': 'Назад',
   'calendar.next': 'Вперёд',
   'calendar.trip_start': 'Начало',
-  'calendar.update_failed': 'Не удалось обновить событие',
   'calendar.hotel_checkin': 'Заезд: {name}',
   'calendar.hotel_checkout': 'Выезд: {name}',
   'calendar.hotel_cancel_deadline': 'Бесплатная отмена до: {name}',

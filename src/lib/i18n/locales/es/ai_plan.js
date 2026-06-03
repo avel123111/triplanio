@@ -31,7 +31,6 @@ export default {
   
   // States
   'ai_plan.draft_placeholder': 'Tu itinerario generado por IA aparecerá aquí',
-  'ai_plan.no_draft_error': 'No hay borrador para guardar. Primero genera un viaje.',
   'ai_plan.error_save': 'Error al guardar el viaje. Inténtalo de nuevo.',
   'ai_plan.error_plan_title': 'Error al Planificar',
   'ai_plan.error_plan_desc': 'No se pudo generar el viaje. Inténtalo de nuevo.',

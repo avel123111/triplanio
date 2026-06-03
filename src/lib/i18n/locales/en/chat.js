@@ -6,7 +6,6 @@ export default {
   'chat.mention_triplanio_name': 'Triplanio',
   'chat.mention_triplanio_hint': 'AI assistant',
   'chat.ai_thinking': 'Triplanio is thinking…',
-  'chat.ai_error': 'Triplanio could not be reached. Please try again.',
   'chat.send_hint': 'Enter to send, Shift+Enter for new line',
   'chat.mention_all_hint': '@Triplanio - replies to everyone',
   'chat.group_title': 'Group chat',
