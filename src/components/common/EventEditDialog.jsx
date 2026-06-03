@@ -52,6 +52,7 @@ function Checkbox({ checked, onCheckedChange, className = '' }) {
 // City autocomplete for layover (waypoint) cities - resolves a full city object
 // (coords + IANA timezone) so the saved waypoint city_visit has real geo data.
 function CityPicker({ value, onPick, placeholder }) {
+  const { t } = useI18nFormat();
   const [q, setQ] = useState(value?.city_name || '');
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
@@ -79,7 +80,7 @@ function CityPicker({ value, onPick, placeholder }) {
       <input
         className="input"
         value={q}
-        placeholder={placeholder || 'Город пересадки'}
+        placeholder={placeholder || t('event.layover_city_ph')}
         onChange={(e) => { setQ(e.target.value); if (value) onPick(null); run(e.target.value); }}
         onFocus={() => results.length > 0 && setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 180)}
@@ -146,23 +147,23 @@ import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 const TYPE_META = {
   hotel: {
     color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)',
-    Icon: Bed, label: 'Отель',
-    titleNew: 'Новый отель', titleEdit: 'Редактировать отель',
+    Icon: Bed, labelKey: 'event.type_hotel',
+    titleNewKey: 'event.title_new_hotel', titleEditKey: 'event.title_edit_hotel',
   },
   transfer: {
     color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)',
-    Icon: Plane, label: 'Трансфер',
-    titleNew: 'Новый переезд', titleEdit: 'Редактировать переезд',
+    Icon: Plane, labelKey: 'event.type_transfer',
+    titleNewKey: 'event.title_new_transfer', titleEditKey: 'event.title_edit_transfer',
   },
   activity: {
     color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)',
-    Icon: Camera, label: 'Активность',
-    titleNew: 'Новая активность', titleEdit: 'Редактировать активность',
+    Icon: Camera, labelKey: 'event.type_activity',
+    titleNewKey: 'event.title_new_activity', titleEditKey: 'event.title_edit_activity',
   },
   service: {
     color: 'var(--ev-car)', soft: 'var(--ev-car-soft)',
-    Icon: CarIcon, label: 'Аренда авто',
-    titleNew: 'Новая аренда авто', titleEdit: 'Редактировать аренду',
+    Icon: CarIcon, labelKey: 'event.type_car',
+    titleNewKey: 'event.title_new_car', titleEditKey: 'event.title_edit_car',
   },
 };
 
@@ -174,12 +175,12 @@ const TABLE_BY_KIND = {
 };
 
 const TRANSPORT_KINDS = [
-  { id: 'plane', Icon: Plane,      label: 'Самолёт' },
-  { id: 'train', Icon: Train,      label: 'Поезд' },
-  { id: 'bus',   Icon: Bus,        label: 'Автобус' },
-  { id: 'car',   Icon: CarIcon,    label: 'На авто' },
-  { id: 'ferry', Icon: Ship,       label: 'Паром' },
-  { id: 'walk',  Icon: Footprints, label: 'Пешком' },
+  { id: 'plane', Icon: Plane,      labelKey: 'event.tk_plane' },
+  { id: 'train', Icon: Train,      labelKey: 'event.tk_train' },
+  { id: 'bus',   Icon: Bus,        labelKey: 'event.tk_bus' },
+  { id: 'car',   Icon: CarIcon,    labelKey: 'event.tk_car' },
+  { id: 'ferry', Icon: Ship,       labelKey: 'event.tk_ferry' },
+  { id: 'walk',  Icon: Footprints, labelKey: 'event.tk_walk' },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -658,7 +659,7 @@ export default function EventEditDialog({
         // Layover transfer (create mode): build a chain of separate transfer
         // rows through waypoint city_visits (TRIP_EDIT_MODE_TZ §11).
         if (!entity && form.hasLayovers && Array.isArray(form.segments) && form.segments.length >= 2) {
-          return saveLayoverChain(form, fromVisit, toVisit, tripId, user);
+          return saveLayoverChain(form, fromVisit, toVisit, tripId, user, t);
         }
         const payload = buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz);
         const created = await upsert('transfers', entity, payload, user);
@@ -703,7 +704,7 @@ export default function EventEditDialog({
     },
     onError: (err) => {
       toast({
-        title: 'Не удалось сохранить',
+        title: t('event.save_failed'),
         description: err?.message || String(err),
         variant: 'destructive',
       });
@@ -723,7 +724,7 @@ export default function EventEditDialog({
     },
     onError: (err) => {
       toast({
-        title: 'Не удалось удалить',
+        title: t('event.delete_failed'),
         description: err?.message || String(err),
         variant: 'destructive',
       });
@@ -831,8 +832,8 @@ export default function EventEditDialog({
       const originName = segs[0].from_city || '';
       const destName = segs[segs.length - 1].to_city || '';
       const w = [];
-      if (fromVisit?.city_name && originName && !overlaps(originName, fromVisit.city_name)) w.push(`старт брони «${originName}» ≠ город путешествия «${fromVisit.city_name}»`);
-      if (toVisit?.city_name && destName && !overlaps(destName, toVisit.city_name)) w.push(`финиш брони «${destName}» ≠ город путешествия «${toVisit.city_name}»`);
+      if (fromVisit?.city_name && originName && !overlaps(originName, fromVisit.city_name)) w.push(t('event.warn_start_mismatch', { booking: originName, trip: fromVisit.city_name }));
+      if (toVisit?.city_name && destName && !overlaps(destName, toVisit.city_name)) w.push(t('event.warn_finish_mismatch', { booking: destName, trip: toVisit.city_name }));
       // Date mismatch: booking dates vs the trip-leg window (fromVisit … toVisit).
       const dOnly = (iso) => (iso ? String(iso).slice(0, 10) : null);
       const winStart = dOnly(fromVisit?.start_datetime) || dOnly(fromVisit?.end_datetime);
@@ -840,9 +841,9 @@ export default function EventEditDialog({
       const depDay = segs[0]?.departure_date || null;
       const arrDay = segs[segs.length - 1]?.arrival_date || null;
       if (winStart && winEnd && depDay && arrDay && (arrDay < winStart || depDay > winEnd)) {
-        w.push(`даты брони (${depDay} … ${arrDay}) вне дат участка путешествия (${winStart} … ${winEnd})`);
+        w.push(t('event.warn_dates_outside', { from: depDay, to: arrDay, winStart, winEnd }));
       }
-      setAiEndpointWarn(w.length ? `Сверь с путешествием - ${w.join('; ')}. Концы маршрута берутся из путешествия.` : null);
+      setAiEndpointWarn(w.length ? t('event.warn_check_trip', { details: w.join('; ') }) : null);
 
       // Mark AI-filled segment fields for the purple highlight (+ field count).
       const segAi = new Set();
@@ -922,10 +923,10 @@ export default function EventEditDialog({
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
-                {meta.label}
+                {t(meta.labelKey)}
               </div>
               <h2 className="font-display text-xl leading-tight" style={{ letterSpacing: '-0.02em' }}>
-                {isEdit ? meta.titleEdit : meta.titleNew}
+                {isEdit ? t(meta.titleEditKey) : t(meta.titleNewKey)}
               </h2>
             </div>
           </div>
@@ -940,9 +941,9 @@ export default function EventEditDialog({
                   <Trash2 className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-display font-semibold text-base">Удалить {meta.label.toLowerCase()}?</div>
+                  <div className="font-display font-semibold text-base">{t('event.delete_q', { label: t(meta.labelKey).toLowerCase() })}</div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    Это действие необратимо. Запись будет удалена из путешествия и хронологии.
+                    {t('event.delete_irreversible')}
                   </div>
                 </div>
               </div>
@@ -1050,7 +1051,7 @@ export default function EventEditDialog({
               <>
                 <div style={{ flex: 1 }} />
                 <button className="btn btn--ghost" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>
-                  Отмена
+                  {t('common.cancel')}
                 </button>
                 <button
                   className="btn"
@@ -1059,7 +1060,7 @@ export default function EventEditDialog({
                   style={{ background: 'var(--danger)', borderColor: 'var(--danger)', color: '#fff' }}
                 >
                   {deleteMut.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />Удалить
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />{t('common.delete')}
                 </button>
               </>
             ) : (
@@ -1071,11 +1072,11 @@ export default function EventEditDialog({
                     disabled={deleteMut.isPending}
                     style={{ color: 'var(--danger)' }}
                   >
-                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />Удалить
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />{t('common.delete')}
                   </button>
                 )}
                 <div style={{ flex: 1 }} />
-                <button className="btn btn--ghost" onClick={() => onOpenChange(false)}>Отмена</button>
+                <button className="btn btn--ghost" onClick={() => onOpenChange(false)}>{t('common.cancel')}</button>
                 <button
                   className="btn btn--primary"
                   onClick={() => saveMut.mutate()}
@@ -1083,7 +1084,7 @@ export default function EventEditDialog({
                   style={{ background: meta.color, borderColor: meta.color, color: '#fff' }}
                 >
                   {saveMut.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
-                  {isEdit ? 'Сохранить' : 'Создать'}
+                  {isEdit ? t('common.save') : t('event.create')}
                 </button>
               </>
             )}
@@ -1178,7 +1179,7 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
 // segments[i].toCity (for i < N-1) is a chosen layover city → one waypoint
 // city_visit each. Then one transfer row per segment, between adjacent nodes:
 //   fromVisit → wp1 → … → wp(N-1) → toVisit.
-async function saveLayoverChain(form, fromVisit, toVisit, tripId, user) {
+async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
   const segs = form.segments;
   const N = segs.length;
 
@@ -1202,7 +1203,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user) {
   const wpRows = [];
   for (let i = 0; i < N - 1; i++) {
     const c = segs[i].toCity;
-    if (!c?.city_name) throw new Error('Укажи город пересадки для каждого участка маршрута.');
+    if (!c?.city_name) throw new Error(t('event.err_layover_city'));
     const tz = c.timezone || 'UTC';
     const at = new Date(nodeMsAt(i)).toISOString();
     wpRows.push({
@@ -1360,21 +1361,22 @@ function SectionHeader({ children }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, hotelRangeError, setUploading }) {
+  const { t } = useI18nFormat();
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
   const color = TYPE_META.hotel.color;
   return (
     <>
-      <SectionHeader color={color}>Об отеле</SectionHeader>
+      <SectionHeader color={color}>{t('event.hotel_about')}</SectionHeader>
       <div className="space-y-3">
         <div>
-          <Label>Название *</Label>
+          <Label>{t('event.name_req')}</Label>
           <AiField active={aiFields.has('name')}>
             <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Memmo Alfama" />
           </AiField>
         </div>
         <div>
-          <Label>Адрес</Label>
+          <Label>{t('event.address')}</Label>
           <AiField active={aiFields.has('address')}>
             <AddressAutocomplete
               value={form.address}
@@ -1390,10 +1392,10 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
         </div>
       </div>
 
-      <SectionHeader color={color}>Заезд и выезд</SectionHeader>
+      <SectionHeader color={color}>{t('event.checkin_checkout')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="min-w-0">
-          <Label>Заезд *</Label>
+          <Label>{t('event.checkin_req')}</Label>
           <AiField active={aiFields.has('checkInLocal')}>
             <DateTimeInput
               value={form.checkInLocal}
@@ -1405,7 +1407,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
           <TimezoneHint tz={tz} />
         </div>
         <div className="min-w-0">
-          <Label>Выезд *</Label>
+          <Label>{t('event.checkout_req')}</Label>
           <AiField active={aiFields.has('checkOutLocal')}>
             <DateTimeInput
               value={form.checkOutLocal}
@@ -1418,34 +1420,34 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
         </div>
       </div>
       {dateOrderError && (
-        <p className="mt-1 text-xs text-destructive">Дата выезда должна быть после заезда.</p>
+        <p className="mt-1 text-xs text-destructive">{t('event.checkout_after_checkin')}</p>
       )}
       {hotelRangeError && (
         <p className="mt-1 text-xs text-destructive">{hotelRangeError}</p>
       )}
 
-      <SectionHeader color={color}>Финансы и отмена</SectionHeader>
+      <SectionHeader color={color}>{t('event.finance_cancel')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
         <div>
-          <Label>Цена</Label>
+          <Label>{t('event.price')}</Label>
           <AiField active={aiFields.has('price')}>
             <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
           </AiField>
         </div>
         <div>
-          <Label>Валюта</Label>
+          <Label>{t('event.currency')}</Label>
           <AiField active={aiFields.has('currency')}>
             <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
           </AiField>
         </div>
         <div>
-          <Label>Статус оплаты</Label>
+          <Label>{t('event.payment_status')}</Label>
           <AiField active={aiFields.has('payment_status')}>
             <select className="select" value={form.payment_status} onChange={(e) => setField('payment_status', e.target.value)}>
               <option value="">-</option>
-              <option value="paid">Оплачено</option>
-              <option value="partial">Частично</option>
-              <option value="pay_on_arrival">По прибытии</option>
+              <option value="paid">{t('event.paid')}</option>
+              <option value="partial">{t('event.partial')}</option>
+              <option value="pay_on_arrival">{t('event.on_arrival')}</option>
             </select>
           </AiField>
         </div>
@@ -1455,8 +1457,8 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
           <label className="flex items-start gap-2 cursor-pointer">
             <Checkbox checked={form.free_cancellation} onCheckedChange={(v) => setField('free_cancellation', !!v)} />
             <div className="flex-1">
-              <div className="text-sm font-medium">Есть бесплатная отмена</div>
-              <div className="text-xs text-muted-foreground">До какой даты можно отменить без штрафа</div>
+              <div className="text-sm font-medium">{t('event.free_cancel_have')}</div>
+              <div className="text-xs text-muted-foreground">{t('event.free_cancel_hint')}</div>
               {form.free_cancellation && (
                 <div className="mt-2">
                   <AiField active={aiFields.has('free_cancellation_until_local')}>
@@ -1474,10 +1476,10 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
         </div>
       </AiField>
 
-      <SectionHeader color={color}>Бронирование</SectionHeader>
+      <SectionHeader color={color}>{t('event.booking_section')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
-          <Label>Ссылка на бронирование</Label>
+          <Label>{t('event.booking_url')}</Label>
           <AiField active={aiFields.has('booking_url')}>
             <div className="relative">
               {platformLogo && (
@@ -1499,14 +1501,14 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
               </span>
               {form.booking_url && (
                 <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
-                  <ExternalLink className="w-3 h-3" />Открыть
+                  <ExternalLink className="w-3 h-3" />{t('common.open')}
                 </a>
               )}
             </div>
           )}
         </div>
         <div>
-          <Label>Номер брони</Label>
+          <Label>{t('event.booking_ref')}</Label>
           <AiField active={aiFields.has('booking_reference')}>
             <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
           </AiField>
@@ -1514,7 +1516,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
-          <Label>Телефон</Label>
+          <Label>{t('event.phone')}</Label>
           <AiField active={aiFields.has('phone')}>
             <Input value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="+351 …" />
           </AiField>
@@ -1527,25 +1529,26 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
         </div>
       </div>
 
-      <SectionHeader color={color}>Документы и заметки</SectionHeader>
+      <SectionHeader color={color}>{t('event.docs_notes')}</SectionHeader>
       <AiField active={aiFields.has('documents')}>
         <DocumentsField
           value={form.documents}
           onChange={(docs) => setField('documents', docs)}
           onUploadingChange={setUploading}
-          label="Документы"
+          label={t('event.documents')}
           iconColor="text-primary"
         />
       </AiField>
       <div className="mt-3">
-        <Label>Заметки</Label>
-        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder="Свободные заметки…" />
+        <Label>{t('event.notes')}</Label>
+        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
       </div>
     </>
   );
 }
 
 function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, dateOrderError, extraSegments, isEdit, setUploading }) {
+  const { t } = useI18nFormat();
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
   const color = TYPE_META.transfer.color;
@@ -1557,7 +1560,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         <SegmentsEditor form={form} setForm={setForm} fromVisit={fromVisit} toVisit={toVisit} setTime={setTime} color={color} aiSegFields={aiSegFields} setAiSegFields={setAiSegFields} />
       ) : (
       <>
-      <SectionHeader color={color}>Вид транспорта</SectionHeader>
+      <SectionHeader color={color}>{t('event.transport_kind')}</SectionHeader>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
         {TRANSPORT_KINDS.map((k) => {
           const active = form.transport_type === k.id;
@@ -1578,18 +1581,18 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
               }}
             >
               <Ic className="w-4 h-4" />
-              {k.label}
+              {t(k.labelKey)}
             </button>
           );
         })}
       </div>
 
-      <SectionHeader color={color}>Откуда и куда</SectionHeader>
+      <SectionHeader color={color}>{t('event.from_to')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
-          <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>Откуда</div>
+          <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>{t('event.from')}</div>
           <div>
-            <Label>Адрес / станция</Label>
+            <Label>{t('event.addr_station')}</Label>
             <AiField active={aiFields.has('from_address')}>
               <AddressAutocomplete
                 value={form.from_address}
@@ -1599,12 +1602,12 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
                   if (p.latitude != null) setField('from_latitude', p.latitude);
                   if (p.longitude != null) setField('from_longitude', p.longitude);
                 }}
-                placeholder="Аэропорт, станция, адрес"
+                placeholder={t('event.addr_ph')}
               />
             </AiField>
           </div>
           <div>
-            <Label>Отправление *</Label>
+            <Label>{t('event.departure_req')}</Label>
             <AiField active={aiFields.has('startLocal')}>
               <DateTimeInput
                 value={form.startLocal}
@@ -1617,9 +1620,9 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           </div>
         </div>
         <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
-          <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>Куда</div>
+          <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>{t('event.to')}</div>
           <div>
-            <Label>Адрес / станция</Label>
+            <Label>{t('event.addr_station')}</Label>
             <AiField active={aiFields.has('to_address')}>
               <AddressAutocomplete
                 value={form.to_address}
@@ -1629,12 +1632,12 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
                   if (p.latitude != null) setField('to_latitude', p.latitude);
                   if (p.longitude != null) setField('to_longitude', p.longitude);
                 }}
-                placeholder="Аэропорт, станция, адрес"
+                placeholder={t('event.addr_ph')}
               />
             </AiField>
           </div>
           <div>
-            <Label>Прибытие *</Label>
+            <Label>{t('event.arrival_req')}</Label>
             <AiField active={aiFields.has('endLocal')}>
               <DateTimeInput
                 value={form.endLocal}
@@ -1648,19 +1651,19 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         </div>
       </div>
       {dateOrderError && (
-        <p className="mt-1 text-xs text-destructive">Прибытие должно быть позже отправления.</p>
+        <p className="mt-1 text-xs text-destructive">{t('event.arr_after_dep')}</p>
       )}
 
-      <SectionHeader color={color}>Перевозчик и бронь</SectionHeader>
+      <SectionHeader color={color}>{t('event.carrier_booking')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
-          <Label>Перевозчик</Label>
+          <Label>{t('event.carrier')}</Label>
           <AiField active={aiFields.has('carrier')}>
             <Input value={form.carrier} onChange={(e) => setField('carrier', e.target.value)} placeholder="TAP Air Portugal" />
           </AiField>
         </div>
         <div>
-          <Label>Номер рейса / поезда</Label>
+          <Label>{t('event.flight_train_no')}</Label>
           <AiField active={aiFields.has('flight_number')}>
             <Input className="font-mono" value={form.flight_number} onChange={(e) => setField('flight_number', e.target.value)} placeholder="TP 1379" />
           </AiField>
@@ -1668,7 +1671,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
-          <Label>Ссылка на бронирование</Label>
+          <Label>{t('event.booking_url')}</Label>
           <AiField active={aiFields.has('booking_url')}>
             <div className="relative">
               {platformLogo && (
@@ -1690,14 +1693,14 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
               </span>
               {form.booking_url && (
                 <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
-                  <ExternalLink className="w-3 h-3" />Открыть
+                  <ExternalLink className="w-3 h-3" />{t('common.open')}
                 </a>
               )}
             </div>
           )}
         </div>
         <div>
-          <Label>Номер брони</Label>
+          <Label>{t('event.booking_ref')}</Label>
           <AiField active={aiFields.has('booking_reference')}>
             <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
           </AiField>
@@ -1705,13 +1708,13 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
-          <Label>Цена</Label>
+          <Label>{t('event.price')}</Label>
           <AiField active={aiFields.has('price')}>
             <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
           </AiField>
         </div>
         <div>
-          <Label>Валюта</Label>
+          <Label>{t('event.currency')}</Label>
           <AiField active={aiFields.has('currency')}>
             <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
           </AiField>
@@ -1721,10 +1724,10 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       {extraSegments.length > 0 && (
         <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm space-y-1.5">
           <div className="flex items-center gap-2 font-semibold text-primary">
-            <Sparkles className="w-4 h-4" />ИИ нашёл ещё {extraSegments.length} {extraSegments.length === 1 ? 'сегмент' : 'сегмента'}
+            <Sparkles className="w-4 h-4" />{t('event.ai_found_more', { count: extraSegments.length, seg: extraSegments.length === 1 ? t('event.seg_one') : t('event.seg_few') })}
           </div>
           <div className="text-xs text-muted-foreground">
-            Дополнительные участки маршрута будут созданы как отдельные переезды при сохранении.
+            {t('event.extra_segs_hint')}
           </div>
           <ul className="text-xs space-y-0.5 mt-1">
             {extraSegments.map((s, i) => (
@@ -1738,19 +1741,19 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       </>
       )}
 
-      <SectionHeader color={color}>Документы и заметки</SectionHeader>
+      <SectionHeader color={color}>{t('event.docs_notes')}</SectionHeader>
       <AiField active={aiFields.has('documents')}>
         <DocumentsField
           value={form.documents}
           onChange={(docs) => setField('documents', docs)}
           onUploadingChange={setUploading}
-          label="Документы"
+          label={t('event.documents')}
           iconColor="text-primary"
         />
       </AiField>
       <div className="mt-3">
-        <Label>Заметки</Label>
-        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder="Свободные заметки…" />
+        <Label>{t('event.notes')}</Label>
+        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
       </div>
     </>
   );
@@ -1758,6 +1761,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
 
 // ── Layover (multi-segment) transfer UI ─────────────────────────────────────
 function LayoverToggle({ form, setForm, color }) {
+  const { t } = useI18nFormat();
   const enable = () => setForm((prev) => {
     const seg0 = { ...makeSegment(prev.currency), transport_type: prev.transport_type, from_address: prev.from_address, startLocal: prev.startLocal, carrier: prev.carrier, flight_number: prev.flight_number, booking_reference: prev.booking_reference, price: prev.price, currency: prev.currency };
     const seg1 = { ...makeSegment(prev.currency), to_address: prev.to_address, endLocal: prev.endLocal };
@@ -1770,17 +1774,17 @@ function LayoverToggle({ form, setForm, color }) {
   const n = (form.segments || []).length;
   return (
     <>
-      <SectionHeader color={color}>Маршрут</SectionHeader>
+      <SectionHeader color={color}>{t('trip.sidebar_route')}</SectionHeader>
       <div style={{ padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}>
           <Checkbox checked={form.hasLayovers} onCheckedChange={(v) => (v ? enable() : disable())} />
           <span style={{ flex: 1 }}>
-            <span style={{ display: 'block', fontSize: 13.5, fontWeight: 500 }}>С пересадками</span>
-            <span className="muted" style={{ fontSize: 11.5 }}>Несколько рейсов с пересадкой в промежуточных городах</span>
+            <span style={{ display: 'block', fontSize: 13.5, fontWeight: 500 }}>{t('event.with_layovers')}</span>
+            <span className="muted" style={{ fontSize: 11.5 }}>{t('event.layovers_hint')}</span>
           </span>
         </label>
         {form.hasLayovers && (
-          <span className="num" style={{ fontSize: 11.5, color: 'var(--muted)' }}>{n} сегм. · {Math.max(0, n - 1)} перес.</span>
+          <span className="num" style={{ fontSize: 11.5, color: 'var(--muted)' }}>{t('event.seg_count', { n, c: Math.max(0, n - 1) })}</span>
         )}
       </div>
     </>
@@ -1788,6 +1792,7 @@ function LayoverToggle({ form, setForm, color }) {
 }
 
 function SegTransportGrid({ value, onChange, color }) {
+  const { t } = useI18nFormat();
   return (
     <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
       {TRANSPORT_KINDS.map((k) => {
@@ -1795,7 +1800,7 @@ function SegTransportGrid({ value, onChange, color }) {
         return (
           <button key={k.id} type="button" onClick={() => onChange(k.id)}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'transparent', border: '1.5px solid ' + (active ? color : 'var(--border, hsl(var(--border)))'), color: active ? color : 'inherit', borderRadius: 10, cursor: 'pointer', fontWeight: 500, fontSize: 11.5 }}>
-            <Ic className="w-4 h-4" />{k.label}
+            <Ic className="w-4 h-4" />{t(k.labelKey)}
           </button>
         );
       })}
@@ -1804,6 +1809,7 @@ function SegTransportGrid({ value, onChange, color }) {
 }
 
 function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiSegFields, setAiSegFields }) {
+  const { t } = useI18nFormat();
   const segs = form.segments || [];
   const N = segs.length;
   const aiOn = (seg, field) => !!aiSegFields && aiSegFields.has(`${seg.id}.${field}`);
@@ -1841,56 +1847,56 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
           <React.Fragment key={seg.id}>
             <div style={{ border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--wash-2, var(--wash))', padding: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span className="eyebrow" style={{ color }}>Сегмент {i + 1}</span>
+                <span className="eyebrow" style={{ color }}>{t('event.segment_n', { n: i + 1 })}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 600 }}>
                   {fromName} <ArrowRightMini /> {toName}
                 </span>
                 <div style={{ flex: 1 }} />
-                {N > 2 && <button type="button" className="btn btn--quiet btn--sm" onClick={() => removeSegment(i)} title="Убрать сегмент"><Trash2 className="w-3.5 h-3.5" /></button>}
+                {N > 2 && <button type="button" className="btn btn--quiet btn--sm" onClick={() => removeSegment(i)} title={t('event.remove_segment')}><Trash2 className="w-3.5 h-3.5" /></button>}
               </div>
 
               <SegTransportGrid value={seg.transport_type} onChange={(k) => patchSeg(i, { transport_type: k })} color={color} />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
-                  <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>Откуда {isFirst ? '(старт)' : '(пересадка)'}</div>
+                  <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>{isFirst ? t('event.from_start') : t('event.from_layover')}</div>
                   <div>
-                    <Label>Город</Label>
-                    <input className="input" value={fromName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title="Город задаётся маршрутом / предыдущим сегментом" />
+                    <Label>{t('event.city')}</Label>
+                    <input className="input" value={fromName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_from_route_title')} />
                   </div>
                   <div>
-                    <Label>Адрес / станция</Label>
+                    <Label>{t('event.addr_station')}</Label>
                     <AiField active={aiOn(seg, 'from_address')}>
-                      <AddressAutocomplete value={seg.from_address} onChange={(v) => patchSeg(i, { from_address: v })} placeholder="Аэропорт, станция, адрес" />
+                      <AddressAutocomplete value={seg.from_address} onChange={(v) => patchSeg(i, { from_address: v })} placeholder={t('event.addr_ph')} />
                     </AiField>
                   </div>
                   <div>
-                    <Label>Отправление *</Label>
+                    <Label>{t('event.departure_req')}</Label>
                     <AiField active={aiOn(seg, 'startLocal')}>
                       <DateTimeInput value={seg.startLocal} onChange={(v) => patchSeg(i, { startLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-dep`, v)} className="w-full" />
                     </AiField>
                   </div>
                 </div>
                 <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
-                  <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>Куда {isLast ? '(финиш)' : '(пересадка)'}</div>
+                  <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>{isLast ? t('event.to_finish') : t('event.to_layover')}</div>
                   <div>
-                    <Label>Город</Label>
+                    <Label>{t('event.city')}</Label>
                     {isLast ? (
-                      <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title="Город прибытия - задан маршрутом путешествия" />
+                      <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_arrival_title')} />
                     ) : (
                       <AiField active={aiOn(seg, 'toCity')}>
-                        <CityPicker value={seg.toCity} onPick={(c) => patchSeg(i, { toCity: c })} placeholder="Город пересадки" />
+                        <CityPicker value={seg.toCity} onPick={(c) => patchSeg(i, { toCity: c })} placeholder={t('event.layover_city_ph')} />
                       </AiField>
                     )}
                   </div>
                   <div>
-                    <Label>Адрес / станция</Label>
+                    <Label>{t('event.addr_station')}</Label>
                     <AiField active={aiOn(seg, 'to_address')}>
-                      <AddressAutocomplete value={seg.to_address} onChange={(v) => patchSeg(i, { to_address: v })} placeholder="Аэропорт, станция, адрес" />
+                      <AddressAutocomplete value={seg.to_address} onChange={(v) => patchSeg(i, { to_address: v })} placeholder={t('event.addr_ph')} />
                     </AiField>
                   </div>
                   <div>
-                    <Label>Прибытие *</Label>
+                    <Label>{t('event.arrival_req')}</Label>
                     <AiField active={aiOn(seg, 'endLocal')}>
                       <DateTimeInput value={seg.endLocal} onChange={(v) => patchSeg(i, { endLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-arr`, v)} className="w-full" />
                     </AiField>
@@ -1899,26 +1905,26 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
               </div>
 
               {seg.startLocal && seg.endLocal && new Date(seg.endLocal).getTime() <= new Date(seg.startLocal).getTime() && (
-                <p style={{ marginTop: 8, fontSize: 12, color: 'var(--danger, #e74c3c)' }}>Прибытие должно быть позже отправления.</p>
+                <p style={{ marginTop: 8, fontSize: 12, color: 'var(--danger, #e74c3c)' }}>{t('event.arr_after_dep')}</p>
               )}
               {i > 0 && seg.startLocal && segs[i - 1].endLocal && new Date(seg.startLocal).getTime() < new Date(segs[i - 1].endLocal).getTime() && (
-                <p style={{ marginTop: 8, fontSize: 12, color: 'var(--danger, #e74c3c)' }}>Отправление раньше прибытия предыдущего сегмента.</p>
+                <p style={{ marginTop: 8, fontSize: 12, color: 'var(--danger, #e74c3c)' }}>{t('event.dep_before_prev_arr')}</p>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                <div><Label>Перевозчик</Label><AiField active={aiOn(seg, 'carrier')}><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder="Авиакомпания / перевозчик" /></AiField></div>
-                <div><Label>Номер рейса / поезда</Label><AiField active={aiOn(seg, 'flight_number')}><Input className="font-mono" value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></AiField></div>
+                <div><Label>{t('event.carrier')}</Label><AiField active={aiOn(seg, 'carrier')}><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder={t('event.carrier_ph')} /></AiField></div>
+                <div><Label>{t('event.flight_train_no')}</Label><AiField active={aiOn(seg, 'flight_number')}><Input className="font-mono" value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></AiField></div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                <div><Label>Цена</Label><AiField active={aiOn(seg, 'price')}><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></AiField></div>
-                <div><Label>Валюта</Label><CurrencyCombobox value={seg.currency} onChange={(v) => patchSeg(i, { currency: v })} /></div>
+                <div><Label>{t('event.price')}</Label><AiField active={aiOn(seg, 'price')}><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></AiField></div>
+                <div><Label>{t('event.currency')}</Label><CurrencyCombobox value={seg.currency} onChange={(v) => patchSeg(i, { currency: v })} /></div>
               </div>
             </div>
 
             {!isLast && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 999, background: TYPE_META.transfer.soft, color, fontSize: 12, fontWeight: 600 }}>
-                  Пересадка в {seg.toCity?.city_name || '…'}
+                  {t('event.layover_in', { city: seg.toCity?.city_name || '…' })}
                 </span>
                 <span style={{ flex: 1, height: 1, background: 'var(--line-2)' }} />
               </div>
@@ -1929,7 +1935,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
 
       <button type="button" onClick={addSegment}
         style={{ marginTop: 6, padding: '11px 14px', border: '1.5px dashed ' + color, borderRadius: 10, background: TYPE_META.transfer.soft, color, cursor: 'pointer', fontWeight: 600, fontSize: 12.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-        + Добавить пересадку
+        {t('event.add_layover')}
       </button>
     </div>
   );
@@ -1940,16 +1946,17 @@ function ArrowRightMini() {
 }
 
 function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, dateOrderError, setUploading }) {
+  const { t } = useI18nFormat();
   const color = TYPE_META.activity.color;
   return (
     <>
-      <SectionHeader color={color}>Об активности</SectionHeader>
+      <SectionHeader color={color}>{t('event.activity_about')}</SectionHeader>
       <div>
-        <Label>Название *</Label>
-        <Input value={form.title} onChange={(e) => setField('title', e.target.value)} placeholder="Время Фаду в Bairro Alto" />
+        <Label>{t('event.name_req')}</Label>
+        <Input value={form.title} onChange={(e) => setField('title', e.target.value)} placeholder={t('event.ph_activity_example')} />
       </div>
       <div className="mt-3">
-        <Label>Адрес</Label>
+        <Label>{t('event.address')}</Label>
         <AddressAutocomplete
           value={form.location_address}
           onChange={(v) => setField('location_address', v)}
@@ -1965,10 +1972,10 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, dateOr
         />
       </div>
 
-      <SectionHeader color={color}>Когда</SectionHeader>
+      <SectionHeader color={color}>{t('event.when')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="rounded-lg border bg-secondary/30 p-3">
-          <div className="text-[11px] uppercase tracking-wider font-semibold mb-1" style={{ color }}>Начало</div>
+          <div className="text-[11px] uppercase tracking-wider font-semibold mb-1" style={{ color }}>{t('event.start')}</div>
           <DateTimeInput
             value={form.startLocal}
             onChange={(v) => setField('startLocal', v)}
@@ -1978,7 +1985,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, dateOr
           <TimezoneHint tz={tz} />
         </div>
         <div className="rounded-lg border bg-secondary/30 p-3">
-          <div className="text-[11px] uppercase tracking-wider font-semibold mb-1" style={{ color }}>Конец</div>
+          <div className="text-[11px] uppercase tracking-wider font-semibold mb-1" style={{ color }}>{t('event.end')}</div>
           <DateTimeInput
             value={form.endLocal}
             onChange={(v) => setField('endLocal', v)}
@@ -1989,53 +1996,54 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, dateOr
         </div>
       </div>
       {dateOrderError && (
-        <p className="mt-1 text-xs text-destructive">Конец должен быть позже начала.</p>
+        <p className="mt-1 text-xs text-destructive">{t('event.end_after_start')}</p>
       )}
 
-      <SectionHeader color={color}>Стоимость</SectionHeader>
+      <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <Label>Цена</Label>
+          <Label>{t('event.price')}</Label>
           <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
         </div>
         <div>
-          <Label>Валюта</Label>
+          <Label>{t('event.currency')}</Label>
           <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
         </div>
       </div>
 
-      <SectionHeader color={color}>Документы и заметки</SectionHeader>
+      <SectionHeader color={color}>{t('event.docs_notes')}</SectionHeader>
       <DocumentsField
         value={form.documents}
         onChange={(docs) => setField('documents', docs)}
         onUploadingChange={setUploading}
-        label="Документы"
+        label={t('event.documents')}
         iconColor="text-violet-600 dark:text-violet-300"
       />
       <div className="mt-3">
-        <Label>Заметки</Label>
-        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder="Свободные заметки…" />
+        <Label>{t('event.notes')}</Label>
+        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
       </div>
     </>
   );
 }
 
 function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderError, isEdit, setUploading }) {
+  const { t } = useI18nFormat();
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
   const color = TYPE_META.service.color;
   return (
     <>
-      <SectionHeader color={color}>Авто</SectionHeader>
+      <SectionHeader color={color}>{t('event.car_section')}</SectionHeader>
       <div>
-        <Label>Компания / название *</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Sixt · VW Polo (или аналог)" autoFocus />
+        <Label>{t('event.company_name_req')}</Label>
+        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('event.ph_car_example')} autoFocus />
       </div>
 
-      <SectionHeader color={color}>Получение</SectionHeader>
+      <SectionHeader color={color}>{t('event.pickup')}</SectionHeader>
       <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
         <div>
-          <Label>{isEdit ? 'Адрес получения' : 'Адрес получения *'}</Label>
+          <Label>{isEdit ? t('event.pickup_addr') : t('event.pickup_addr_req')}</Label>
           <AddressAutocomplete
             value={form.pickup_address}
             onChange={(v) => setField('pickup_address', v)}
@@ -2050,14 +2058,14 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
               const tzResolved = await resolveTimezoneFromCoords(p.latitude, p.longitude);
               if (tzResolved) setField('pickup_timezone', tzResolved);
             }}
-            placeholder="Аэропорт Лиссабон (LIS), Sixt Terminal 1"
+            placeholder={t('event.ph_pickup_example')}
           />
           {!isEdit && !form.pickup_address?.trim() && (
-            <p className="mt-1 text-xs text-destructive">Укажи адрес получения.</p>
+            <p className="mt-1 text-xs text-destructive">{t('event.pickup_addr_required')}</p>
           )}
         </div>
         <div>
-          <Label>Дата · время</Label>
+          <Label>{t('event.date_time')}</Label>
           <DateTimeInput
             value={form.pickup_at_local}
             onChange={(v) => setField('pickup_at_local', v)}
@@ -2067,23 +2075,23 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
         </div>
       </div>
 
-      <SectionHeader color={color}>Возврат</SectionHeader>
+      <SectionHeader color={color}>{t('event.return_section')}</SectionHeader>
       <div className="rounded-lg border bg-secondary/30 p-3 mb-3">
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={form.return_different_location}
             onCheckedChange={(v) => setField('return_different_location', v === true)}
           />
-          <span className="text-sm font-medium">Вернуть в другом месте</span>
+          <span className="text-sm font-medium">{t('event.return_diff_place')}</span>
           {!form.return_different_location && (
-            <span className="text-xs text-muted-foreground">- возврат в том же месте, что и получение</span>
+            <span className="text-xs text-muted-foreground">{t('event.return_same_suffix')}</span>
           )}
         </label>
       </div>
       <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
         {form.return_different_location && (
           <div>
-            <Label>Адрес возврата</Label>
+            <Label>{t('event.return_addr')}</Label>
             <AddressAutocomplete
               value={form.dropoff_address}
               onChange={(v) => setField('dropoff_address', v)}
@@ -2098,12 +2106,12 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
                 const tzResolved = await resolveTimezoneFromCoords(p.latitude, p.longitude);
                 if (tzResolved) setField('dropoff_timezone', tzResolved);
               }}
-              placeholder="Барселона · Sixt Sants Estació"
+              placeholder={t('event.ph_return_example')}
             />
           </div>
         )}
         <div>
-          <Label>Дата · время возврата</Label>
+          <Label>{t('event.date_time_return')}</Label>
           <DateTimeInput
             value={form.dropoff_at_local}
             onChange={(v) => setField('dropoff_at_local', v)}
@@ -2112,24 +2120,24 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
           <TimezoneHint tz={form.return_different_location ? form.dropoff_timezone : form.pickup_timezone} />
         </div>
         {dateOrderError && (
-          <p className="text-xs text-destructive">Возврат должен быть позже получения.</p>
+          <p className="text-xs text-destructive">{t('event.return_after_pickup')}</p>
         )}
       </div>
 
-      <SectionHeader color={color}>Финансы и бронь</SectionHeader>
+      <SectionHeader color={color}>{t('event.finance_booking')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
-          <Label>Цена</Label>
+          <Label>{t('event.price')}</Label>
           <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
         </div>
         <div>
-          <Label>Валюта</Label>
+          <Label>{t('event.currency')}</Label>
           <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
-          <Label>Ссылка на бронирование</Label>
+          <Label>{t('event.booking_url')}</Label>
           <div className="relative">
             {platformLogo && (
               <img src={platformLogo} alt="" className="w-5 h-5 absolute left-2.5 top-1/2 -translate-y-1/2 rounded-sm" />
@@ -2149,29 +2157,29 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
               </span>
               {form.booking_url && (
                 <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
-                  <ExternalLink className="w-3 h-3" />Открыть
+                  <ExternalLink className="w-3 h-3" />{t('common.open')}
                 </a>
               )}
             </div>
           )}
         </div>
         <div>
-          <Label>Номер брони</Label>
+          <Label>{t('event.booking_ref')}</Label>
           <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
         </div>
       </div>
 
-      <SectionHeader color={color}>Документы и заметки</SectionHeader>
+      <SectionHeader color={color}>{t('event.docs_notes')}</SectionHeader>
       <DocumentsField
         value={form.documents}
         onChange={(docs) => setField('documents', docs)}
         onUploadingChange={setUploading}
-        label="Документы"
+        label={t('event.documents')}
         iconColor="text-emerald-700 dark:text-emerald-300"
       />
       <div className="mt-3">
-        <Label>Заметки</Label>
-        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder="Например: дополнительный водитель, страховка full…" />
+        <Label>{t('event.notes')}</Label>
+        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph_car')} />
       </div>
     </>
   );

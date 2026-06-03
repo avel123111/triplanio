@@ -79,4 +79,5 @@ export default {
   'transfer.manual_short': 'Добавить бронь вручную',
   'transfer.manual_hint_tickets': 'Если билеты/трансфер уже забронированы',
   'transfer.manual_hint_have_tickets': 'Если билеты уже есть',
+  'transfer.bike': 'Велосипед',
 };

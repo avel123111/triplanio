@@ -16,6 +16,7 @@
  */
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/api/supabaseClient';
@@ -45,21 +46,21 @@ const TRANSPORT_ICONS = {
 
 function eventTheme(kind, entity) {
   if (kind === 'hotel') {
-    return { color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', Icon: Bed, label: 'Проживание' };
+    return { color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', Icon: Bed, labelKey: 'budget.cat_accommodation' };
   }
   if (kind === 'activity') {
     const Icon = entity?.category === 'food' ? Camera : entity?.category === 'sight' ? Camera : Camera;
-    return { color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', Icon, label: 'Активность' };
+    return { color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', Icon, labelKey: 'budget.source_activity' };
   }
   if (kind === 'service') {
-    return { color: 'var(--ev-car)', soft: 'var(--ev-car-soft)', Icon: CarIcon, label: 'Аренда авто' };
+    return { color: 'var(--ev-car)', soft: 'var(--ev-car-soft)', Icon: CarIcon, labelKey: 'service.car_default_name' };
   }
   // transfer
   const tt = entity?.transport_type;
   const Icon = TRANSPORT_ICONS[tt] || Plane;
   return {
     color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)',
-    Icon, label: tt === 'plane' ? 'Перелёт' : 'Переезд',
+    Icon, labelKey: tt === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer',
   };
 }
 
@@ -119,6 +120,7 @@ function KV({ label, children, mono }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function HotelBody({ entity, accent }) {
+  const { t } = useI18n();
   return (
     <>
       {entity.address && (
@@ -127,26 +129,26 @@ function HotelBody({ entity, accent }) {
           <div className="text-sm leading-snug">{entity.address}</div>
         </div>
       )}
-      <Section title="Заезд и выезд" accent={accent}>
+      <Section title={t('event.checkin_checkout')} accent={accent}>
         <div className="grid grid-cols-2 gap-3">
-          <KV label="Заезд">{fmtDT(entity.check_in_datetime)}</KV>
-          <KV label="Выезд">{fmtDT(entity.check_out_datetime)}</KV>
+          <KV label={t('trip.hotel_check_in')}>{fmtDT(entity.check_in_datetime)}</KV>
+          <KV label={t('trip.hotel_check_out')}>{fmtDT(entity.check_out_datetime)}</KV>
         </div>
       </Section>
-      <Section title="Финансы и отмена" accent={accent}>
+      <Section title={t('event.finance_cancel')} accent={accent}>
         <div className="grid grid-cols-2 gap-3">
-          <KV label="Сумма">{fmtPrice(entity.price, entity.currency)}</KV>
-          <KV label="Статус оплаты">{paymentLabel(entity.payment_status)}</KV>
+          <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
+          <KV label={t('hotel.payment_status')}>{paymentLabel(t, entity.payment_status)}</KV>
           {entity.free_cancellation && entity.free_cancellation_until && (
-            <KV label="Бесплатная отмена до">{fmtDT(entity.free_cancellation_until)}</KV>
+            <KV label={t('event.free_cancel_until')}>{fmtDT(entity.free_cancellation_until)}</KV>
           )}
-          <KV label="Номер брони" mono>{entity.booking_reference}</KV>
+          <KV label={t('service.car_booking_ref')} mono>{entity.booking_reference}</KV>
         </div>
       </Section>
       {(entity.phone || entity.email) && (
-        <Section title="Контакты" accent={accent}>
+        <Section title={t('event.contacts')} accent={accent}>
           <div className="grid grid-cols-2 gap-3">
-            <KV label="Телефон">{entity.phone}</KV>
+            <KV label={t('hotel.view_phone')}>{entity.phone}</KV>
             <KV label="E-mail">{entity.email ? <a href={`mailto:${entity.email}`} className="text-primary hover:underline">{entity.email}</a> : null}</KV>
           </div>
         </Section>
@@ -155,14 +157,15 @@ function HotelBody({ entity, accent }) {
   );
 }
 
-function paymentLabel(status) {
-  if (status === 'paid') return 'Оплачено';
-  if (status === 'partial') return 'Частично';
-  if (status === 'pay_on_arrival') return 'По прибытии';
+function paymentLabel(t, status) {
+  if (status === 'paid') return t('event.paid');
+  if (status === 'partial') return t('event.partial');
+  if (status === 'pay_on_arrival') return t('event.on_arrival');
   return status || null;
 }
 
 function TransferBody({ entity, fromVisit, toVisit, accent }) {
+  const { t } = useI18n();
   const fromCity = fromVisit?.city_name || '';
   const toCity = toVisit?.city_name || '';
   const ttIcon = TRANSPORT_ICONS[entity.transport_type] || Plane;
@@ -188,12 +191,12 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
           )}
         </div>
       </div>
-      <Section title="Перевозчик и бронь" accent={accent}>
+      <Section title={t('event.carrier_booking')} accent={accent}>
         <div className="grid grid-cols-2 gap-3">
-          <KV label="Перевозчик">{entity.carrier}</KV>
-          <KV label="Номер рейса" mono>{entity.flight_number}</KV>
-          <KV label="Сумма">{fmtPrice(entity.price, entity.currency)}</KV>
-          <KV label="Номер брони" mono>{entity.booking_reference}</KV>
+          <KV label={t('transfer.carrier')}>{entity.carrier}</KV>
+          <KV label={t('event.flight_number')} mono>{entity.flight_number}</KV>
+          <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
+          <KV label={t('service.car_booking_ref')} mono>{entity.booking_reference}</KV>
         </div>
       </Section>
     </>
@@ -201,6 +204,7 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
 }
 
 function ActivityBody({ entity, accent }) {
+  const { t } = useI18n();
   return (
     <>
       {entity.location_address && (
@@ -209,20 +213,21 @@ function ActivityBody({ entity, accent }) {
           <div className="text-sm leading-snug">{entity.location_address}</div>
         </div>
       )}
-      <Section title="Когда" accent={accent}>
+      <Section title={t('admin.notifications.when')} accent={accent}>
         <div className="grid grid-cols-2 gap-3">
-          <KV label="Начало">{fmtDT(entity.start_datetime)}</KV>
-          <KV label="Конец">{fmtDT(entity.end_datetime)}</KV>
+          <KV label={t('activity.start')}>{fmtDT(entity.start_datetime)}</KV>
+          <KV label={t('event.end')}>{fmtDT(entity.end_datetime)}</KV>
         </div>
       </Section>
-      <Section title="Стоимость" accent={accent}>
-        <KV label="Сумма">{fmtPrice(entity.price, entity.currency)}</KV>
+      <Section title={t('activity.price')} accent={accent}>
+        <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
       </Section>
     </>
   );
 }
 
 function ServiceBody({ entity, accent }) {
+  const { t } = useI18n();
   const d = entity.details || {};
   const sameLocation = !d.dropoff_address || d.dropoff_address === d.pickup_address;
   const price = entity.price ?? d.price;
@@ -237,28 +242,28 @@ function ServiceBody({ entity, accent }) {
     : d.dropoff_at_local;
   return (
     <>
-      <Section title="Получение" accent={accent}>
+      <Section title={t('service.car_pickup')} accent={accent}>
         <div className="grid grid-cols-2 gap-3">
-          <KV label="Где"><div className="leading-snug">{d.pickup_address}</div></KV>
-          <KV label="Когда">{fmtDT(pickupDisplay)}</KV>
+          <KV label={t('event.pickup_where')}><div className="leading-snug">{d.pickup_address}</div></KV>
+          <KV label={t('admin.notifications.when')}>{fmtDT(pickupDisplay)}</KV>
         </div>
       </Section>
-      <Section title={sameLocation ? 'Возврат' : 'Возврат - в другом месте'} accent={accent}>
+      <Section title={sameLocation ? t('service.car_dropoff') : t('event.return_elsewhere')} accent={accent}>
         <div className="grid grid-cols-2 gap-3">
-          <KV label="Где">
+          <KV label={t('event.pickup_where')}>
             {sameLocation ? (
-              <span className="text-xs text-muted-foreground">Возврат в том же месте, что и получение</span>
+              <span className="text-xs text-muted-foreground">{t('event.return_same')}</span>
             ) : (
               <div className="leading-snug">{d.dropoff_address}</div>
             )}
           </KV>
-          <KV label="Когда">{fmtDT(dropoffDisplay)}</KV>
+          <KV label={t('admin.notifications.when')}>{fmtDT(dropoffDisplay)}</KV>
         </div>
       </Section>
-      <Section title="Финансы и бронь" accent={accent}>
+      <Section title={t('event.finance_booking')} accent={accent}>
         <div className="grid grid-cols-2 gap-3">
-          <KV label="Сумма">{fmtPrice(price, cur)}</KV>
-          <KV label="Номер брони" mono>{d.booking_reference}</KV>
+          <KV label={t('budget.field_amount')}>{fmtPrice(price, cur)}</KV>
+          <KV label={t('service.car_booking_ref')} mono>{d.booking_reference}</KV>
         </div>
       </Section>
     </>
@@ -270,6 +275,7 @@ function ServiceBody({ entity, accent }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function EventModal(props) {
+  const { t } = useI18n();
   // Adapt the two call shapes into a single internal shape.
   const legacy = !!props.event;
   const kind = legacy ? props.event.kind : props.kind;
@@ -321,12 +327,13 @@ export default function EventModal(props) {
 
   if (!entity || !kind) return null;
   const theme = eventTheme(kind, entity);
+  const themeLabel = t(theme.labelKey);
 
   // Title + meta strip values
   const title = kind === 'hotel' ? entity.name
     : kind === 'activity' ? entity.title
     : kind === 'service' ? entity.name
-    : (entity.carrier || (entity.flight_number ? `Рейс ${entity.flight_number}` : theme.label));
+    : (entity.carrier || (entity.flight_number ? t('event.flight_n', { number: entity.flight_number }) : themeLabel));
 
   const cur = (kind === 'service' ? (entity.currency || entity.details?.currency) : entity.currency) || 'EUR';
   const price = kind === 'service' ? (entity.price ?? entity.details?.price) : entity.price;
@@ -374,7 +381,7 @@ export default function EventModal(props) {
     const files = Array.from(fileList || []);
     if (!files.length || !canEdit) return;
     const tooBig = files.find((f) => f.size > 10 * 1024 * 1024);
-    if (tooBig) { alert('Файл слишком большой (макс. 10 МБ)'); return; }
+    if (tooBig) { alert(t('event.file_too_big10')); return; }
     setUploading(true);
     try {
       const uploaded = [];
@@ -435,8 +442,8 @@ export default function EventModal(props) {
             <theme.Icon className="w-5 h-5" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{theme.label}</div>
-            <h2 className="font-display text-xl leading-tight" style={{ letterSpacing: '-0.02em' }}>{title || theme.label}</h2>
+            <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{themeLabel}</div>
+            <h2 className="font-display text-xl leading-tight" style={{ letterSpacing: '-0.02em' }}>{title || themeLabel}</h2>
           </div>
         </div>
 
@@ -484,7 +491,7 @@ export default function EventModal(props) {
               onClick={() => window.open(normalizeExternalUrl(bookingUrl), '_blank', 'noopener,noreferrer')}
               style={{ background: theme.color, borderColor: theme.color }}
             >
-              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />Посмотреть бронирование
+              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />{t('event.view_booking')}
             </Button>
           )}
           {mapAddress && (
@@ -493,7 +500,7 @@ export default function EventModal(props) {
               size="sm"
               onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`, '_blank', 'noopener,noreferrer')}
             >
-              <MapIcon className="w-3.5 h-3.5 mr-1.5" />Показать на карте
+              <MapIcon className="w-3.5 h-3.5 mr-1.5" />{t('event.show_on_map')}
             </Button>
           )}
         </div>
@@ -506,9 +513,9 @@ export default function EventModal(props) {
                 <Trash2 className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-display font-semibold text-base">Удалить {theme.label.toLowerCase()}?</div>
+                <div className="font-display font-semibold text-base">{t('event.delete_q', { label: themeLabel.toLowerCase() })}</div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  Это действие необратимо. Запись будет удалена из путешествия и хронологии.
+                  {t('event.delete_irreversible')}
                 </div>
               </div>
             </div>
@@ -521,7 +528,7 @@ export default function EventModal(props) {
           {kind === 'service' && <ServiceBody entity={entity} accent={theme.color} />}
 
           {/* Documents */}
-          <Section title="Документы" accent={theme.color} count={docs.length}>
+          <Section title={t('activity.documents_label')} accent={theme.color} count={docs.length}>
             {docs.length > 0 ? (
               <div className="flex flex-col gap-1.5">
                 {docs.map((d, i) => (
@@ -533,13 +540,13 @@ export default function EventModal(props) {
                     className="flex items-center gap-2.5 px-2.5 py-2 border rounded-md text-sm hover:bg-secondary/50 transition"
                   >
                     <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span className="flex-1 truncate">{d.file_name || 'Файл'}</span>
+                    <span className="flex-1 truncate">{d.file_name || t('event.file_word')}</span>
                     <ExternalLink className="w-3 h-3 text-muted-foreground" />
                   </a>
                 ))}
               </div>
             ) : (
-              <div className="text-xs text-muted-foreground">Документов пока нет</div>
+              <div className="text-xs text-muted-foreground">{t('doc.tab_empty_title')}</div>
             )}
             {canEdit && (
               <label
@@ -555,9 +562,9 @@ export default function EventModal(props) {
                   disabled={uploading}
                 />
                 {uploading ? (
-                  <span className="inline-flex items-center gap-2"><RefreshCw className="w-3.5 h-3.5 animate-spin" />Загрузка…</span>
+                  <span className="inline-flex items-center gap-2"><RefreshCw className="w-3.5 h-3.5 animate-spin" />{t('trip.form_uploading')}</span>
                 ) : (
-                  <span className="inline-flex items-center gap-2"><Upload className="w-3.5 h-3.5" />Перетащи или выбери файлы</span>
+                  <span className="inline-flex items-center gap-2"><Upload className="w-3.5 h-3.5" />{t('event.drop_or_pick')}</span>
                 )}
               </label>
             )}
@@ -565,7 +572,7 @@ export default function EventModal(props) {
 
           {/* Notes */}
           {(entity.notes || entity.details?.notes) && (
-            <Section title="Заметки" accent={theme.color}>
+            <Section title={t('activity.view_notes')} accent={theme.color}>
               <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">{entity.notes || entity.details?.notes}</div>
             </Section>
           )}
@@ -586,7 +593,7 @@ export default function EventModal(props) {
                 onClick={() => setConfirmDel(false)}
                 disabled={deleting}
               >
-                Отмена
+                {t('trip.form_cancel')}
               </Button>
               <Button
                 size="sm"
@@ -605,25 +612,25 @@ export default function EventModal(props) {
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                <Trash2 className="w-3.5 h-3.5 mr-1.5" />{deleting ? 'Удаляем…' : 'Удалить'}
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />{deleting ? t('event.deleting') : t('trip.delete')}
               </Button>
             </>
           ) : (
             <>
               {canEdit && onDelete && (
                 <Button variant="ghost" size="sm" onClick={() => setConfirmDel(true)} className="text-destructive hover:text-destructive">
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />Удалить
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />{t('trip.delete')}
                 </Button>
               )}
               <div style={{ flex: 1 }} />
-              <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Закрыть</Button>
+              <Button variant="outline" size="sm" onClick={() => setOpen(false)}>{t('common.close')}</Button>
               {canEdit && onEdit && (
                 <Button
                   size="sm"
                   onClick={onEdit}
                   style={{ background: theme.color, borderColor: theme.color }}
                 >
-                  <Edit2 className="w-3.5 h-3.5 mr-1.5" />Редактировать
+                  <Edit2 className="w-3.5 h-3.5 mr-1.5" />{t('trip.edit_trip')}
                 </Button>
               )}
             </>

@@ -74,4 +74,5 @@ export default {
   'transfer.manual_short': 'Add booking manually',
   'transfer.manual_hint_tickets': 'If tickets/transfer are already booked',
   'transfer.manual_hint_have_tickets': 'If you already have tickets',
+  'transfer.bike': 'Bicycle',
 };

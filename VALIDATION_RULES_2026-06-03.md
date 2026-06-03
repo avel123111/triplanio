@@ -12,14 +12,63 @@ type Issue = {
   level: 'error' | 'warning';   // error блокирует сохранение, warning — нет
   code: string;                 // стабильный код, напр. 'HOTEL_CHECKIN_OOB'
   scope: 'field' | 'entity' | 'structure';
-  field?: string;               // для инлайн-показа и подсветки поля
+  field?: string;               // модалка: инлайн-показ + подсветка поля
+  // ссылки на сущности — для подсветки строк/счётчиков в Edit Mode:
+  entityKind?: 'hotel'|'activity'|'transfer'|'city'|'service';
+  entityId?: string;            // для одиночной сущности (hotel/activity/transfer/city)
+  fromId?: string; toId?: string; // для парных structure-issue (разрыв/наложение/дубль)
   message: string;              // всегда через t()
   ctx?: Record<string, string>; // {city}, {from}, {to}, {n}…
 };
 ```
 
-`validate(kind, draft, ctx) → Issue[]`. `canSave = issues.every(i => i.level !== 'error')`.
+> `field` обслуживает модалку (инлайн + рамка); `entityId`/`fromId`/`toId` — Edit Mode (подсветка строки перелёта, счётчик конфликтов города, открытие модалки сущности). Один и тот же Issue работает на обе поверхности.
+
+`validateEntity(kind, draft, ctx) → Issue[]`. `canSave = issues.every(i => i.level !== 'error')`.
 Один и тот же тип используют и структурные сущности (трип/город/событие), и обычные формы (бюджет/документы/участники) — ради **одинакового показа везде**.
+
+---
+
+## 1.1 Что такое `validateEntity` и откуда он берётся
+
+`validateEntity` — это **новая чистая функция, которую мы создаём в Ф1** (в `src/lib/validation.js`). Сейчас её НЕТ. Сегодня валидация размазана; мы сводим её в один движок. Это не сторонняя библиотека — мы **консолидируем уже существующую логику**:
+
+- из `hotelWarnings/activityWarnings/transferWarnings` (текущие OOB-проверки, сейчас soft),
+- из ad-hoc проверок в `canSave` (EventEditDialog: required, порядок дат),
+- из примитивов `computeTripValidation` (сравнение по календарным дням в tz: `dayInTz/calDay/dayGap`, `sortVisits`, `cityIdentity`) — **их переиспользуем как есть**.
+
+### Форма модуля (целевая)
+
+```ts
+// ── примитивы (УЖЕ есть, переиспользуем) ──
+// dayInTz, calDay, dayGap, cityIdentity, sortVisits, normalizePositions
+
+// ── правила на ОДНУ сущность (НОВОЕ, ядро) — чистые, возвращают Issue[] ──
+// validateHotel(draft, ctx) / validateActivity / validateTransfer / validateService / validateCity
+
+// ── фасад для МОДАЛКИ (одна сущность, L1+L2 + structure про неё) ──
+export function validateEntity(kind, draft, ctx): Issue[]   // диспатч по kind
+
+// ── фасад для ВСЕГО трипа (Edit Mode, L3) — РЕФАКТОР computeTripValidation ──
+export function validateTrip({ visits, hotels, activities, transfers }): Issue[]
+// внутри: для каждой сущности зовёт validateEntity(...) + добавляет
+// кросс-сущностные structure-issue (CITY_GAP/CITY_OVERLAP/DUP_TRANSFER, adjacency)
+
+// ── вид для таймлайна (анти-куча) ──
+export function primaryIssues(issues): Issue[]   // ≤1 на сущность по приоритету
+```
+
+`ctx` — контекст под kind: `{ visit }` для hotel/activity, `{ fromVisit, toVisit }` для transfer, `{ siblings, tripDates }` для city и т.д.
+
+### Как ложится на нашу схему
+
+| Поверхность | Зовёт | Что получает |
+|---|---|---|
+| **Event-модалка** | `validateEntity(kind, draft, ctx)` | issues одной сущности → инлайн под полями + панель; `canSave = нет error` |
+| **Edit Mode** | `validateTrip(draft)` (= новый `computeTripValidation`) | issues всего трипа → панель + подсветка строк; `primaryIssues` для сетки |
+| **Таймлайн (read)** | `validateTrip` → `primaryIssues` | только показ (аффордансы), без гейта |
+
+Главное: **модалка и Edit Mode используют ОДНИ правила** (validateTrip строится поверх validateEntity), поэтому вердикт по одним данным совпадает по построению — это и есть цель рефактора. `computeTripValidation` не исчезает, а становится `validateTrip`, переиспользуя per-entity функции.
 
 ---
 
@@ -266,3 +315,69 @@ type Issue = {
 9. **Type-to-confirm для удаления трипа** — вместо двойного `confirm` ввод названия трипа (это необратимо + удаляет всё). Опц.
 
 Рекомендую обязательно взять **1, 2, 4, 5** (прямо часть единообразия) + **8** (без неё дубли вернутся). **3, 6, 7, 9** — по решению.
+
+---
+
+## 10. Интеграция с Edit Mode (`computeTripValidation` = слой L3)
+
+Edit Mode уже работает на структурном движке `computeTripValidation` (коды A1–E3) → он становится `validateTrip` (слой L3, строится поверх `validateEntity`). Чтобы новая схема легла без регресса, держим 3 контракта (проверено по `TripStructureEdit.jsx`):
+
+1. **Ссылки на сущности в Issue** (R1). Edit Mode завязан на `cityId/hotelId/activityId/transferId/fromId/toId`:
+   - `transferMismatch(t) = issues.some(i => i.transferId === t.id)` → оранжевая подсветка строки перелёта в сетке;
+   - `cityConflicts(id) = issues.filter(i => i.cityId === id).length` → бейдж-счётчик у города;
+   - `openConflict(c)` → открывает модалку сущности по `hotelId/activityId/transferId` с `warning: c.message`.
+   Поэтому в едином Issue сохраняем `entityId/fromId/toId` (см. §1), не только `field`.
+
+2. **`primaryIssue()` — анти-куча для таймлайна** (R2). `validateEntity` отдаёт полный список (модалке нужны все field-ошибки). Для сетки/плашек Edit Mode — чистый reducer «один issue на сущность по приоритету `structure > entity > field`». Для перелётов воспроизводит текущую иерархию `D6 → D5 → D2` (и `openTransferRow` сохраняет гарантию «≤1»). Обобщаем на отели/активности (сейчас отель может дать B1+B2 двумя плашками — у них иерархии нет).
+
+3. **Гейт = errors-only** (R3). Сейчас `blocked = issues.length > 0` (блок на любом issue, в т.ч. warning). По единому правилу: `blocked = issues.some(i => i.level === 'error')`. Тогда `CITY_GAP`/`DUP_TRANSFER` (warnings) показываются, но НЕ блокируют — консистентно с модалкой. **Это единственное поведенческое изменение Edit Mode** (требует явного подтверждения, т.к. меняет прежнее «любой issue блокирует»).
+
+Сетка перелётов в таймлайне продолжает подсвечиваться `primaryIssue` по `transferId` — поведение «перелёт с ошибкой = оранжевый» сохраняется.
+
+---
+
+## 11. Ф0.5 — Рефактор локалей/ключей (ДО локализации валидации)
+
+Локали (ru/en/es) синхронны: по **1703** ключа в каждой. Из них **110** относятся к ошибкам/варнингам/confirm. Прогон usage по живому коду (pages+components, без redesign) показал: **~52 ключа — ОРФАНЫ (0 использований нигде, в т.ч. в мокапах)**. Их нельзя локализовать «вслепую» — половина переименуется/выпилится.
+
+### Рекомендуемая схема ключей (code-aligned)
+
+Ключ = код Issue/confirm, без разнобоя по неймспейсам:
+- ошибки/варнинги: `validation.<CODE>` → `t('validation.' + issue.code, issue.ctx)` (напр. `validation.HOTEL_CHECKIN_OOB`);
+- подтверждения: `confirm.<CODE>.title` + `confirm.<CODE>.body`.
+
+Плюс: `validateEntity` отдаёт `code`, UI резолвит автоматически → ключи 1:1 с кодами, дрейф невозможен, покрытие видно сразу.
+
+### Три корзины
+
+**A. ВЫПИЛИТЬ (орфаны, 0 использований; ×3 языка ≈ 156 строк).** Группы:
+- *Ключи мёртвых компонентов* (удалённые dialog'и; живой код хардкодит): `hotel.name_required/checkin_required/checkout_required/date_order_error/delete_confirm/delete_prompt`, `activity.title_required/date_order_error/delete_prompt`, `transfer.date_order_error/delete_confirm`, `visit.order_error/overlap_error/delete_confirm`, `service.car_name_required/car_address_required/car_pickup_address_required/car_date_order_error`.
+- *Старые, перекрытые новой локализацией*: `budget.title_required/amount_required/category_name_required` (живут `budget.err_required/err_cat_name`), `budget.category_delete_confirm_*`, `budget.fx_*`/`missing_fx_warning`, `doc.title_required/tab_delete_confirm`, `common.time_required`, `ai.*`, `ai_plan.error_save/no_draft_error`, `chat.ai_error`, `calendar.update_failed`, `trip.copy_*/delete_pro_*/export_pdf_error/addon_pro_locked_alert`.
+- *Дубликаты неймспейсов*: `members.remove_confirm/leave_confirm/offline_name_required` (живут `member.remove_confirm/err_name`, `settings.leave_confirm`), `telegram.connect_error/disconnect_confirm_*` (живёт `settings.tg_link_error`/`telegram.unlink_confirm`), `settings.plan_portal_error/plan_portal_iframe_error/plan_error_prefix` (живут `sub.iframe_alert/upgrade_error`), `trip.delete_confirm/delete_trip_confirm`, `trip_edit.delete_visit_confirm`.
+
+**B. ПЕРЕИСПОЛЬЗОВАТЬ (живые ключи → переименовать в `validation.*`/`confirm.*` при разводке `validateEntity`).** Тексты годные:
+- create-flow: `planner.err_no_cities/err_no_date/err_no_title/err_unrecognized` → TRIP_NO_CITIES / TRIP_START_REQUIRED / TRIP_TITLE_REQUIRED / TRIP_CITY_UNRESOLVED; `trip.cover_too_large` → TRIP_COVER_TOO_LARGE; `trip.form_past_alert` → TRIP_PAST_READONLY.
+- события: `event.pickup_addr_required` → SVC_PICKUP_ADDR_REQUIRED; `event.err_layover_city` → SEG_CITY_REQUIRED; `event.save_failed/delete_failed` → toast.
+- бюджет/доки/участники/sub: `budget.err_required` (split → 3 кода), `doc.err_title`/`doc.load_error`, `member.err_email/err_name/err_remove/err_send_invite`, `members.error_generic`, `sub.iframe_alert/upgrade_error`.
+- confirm: `member.remove_confirm`, `settings.leave_confirm`, `settings.delete_confirm1/2`, `service.delete_confirm`, `doc.delete_confirm`, `telegram.unlink_confirm`, `common.delete_confirm_title`, `budget.expense_delete_confirm_title/msg`.
+
+**C. ДОБАВИТЬ (планируемый код без ключа — сейчас хардкод в живом коде).**
+- field-ошибки `EventEditDialog` (хардкод RU): HOTEL_ORDER, HOTEL_CHECKIN_OOB/CHECKOUT_OOB, ACT_ORDER, TR_ORDER, SVC_ORDER, SEG_ORDER, SEG_BACKSTEP, + *_REQUIRED на даты/время (новые правила).
+- структурные: CITY_OVERLAP, CITY_GAP, TR_DEP_DAY/ARR_DAY, DUP_TRANSFER (тексты в `validation.js` сейчас по-английски).
+- split `budget.err_required` → EXP_TITLE_REQUIRED / EXP_AMOUNT_REQUIRED / EXP_CATEGORY_REQUIRED.
+- confirm-bodies нового формата (title→body) для CONFIRM_DELETE_CITY, CONFIRM_UNLINK_TELEGRAM и т.д.
+
+### Что делать с текущей локализацией ПРЯМО СЕЙЧАС
+
+- **Не тратить силы** на перевод 110 валидационных/confirm-ключей: ~52 удалим, остальные переименуем в `validation.*`/`confirm.*`.
+- **Продолжать** локализовать стабильные UI-лейблы (не-валидационные ключи).
+- Валидацию/confirm локализуем как часть Ф0.5→Ф2: фиксируем неймспейс `validation.*`/`confirm.*`, выпиливаем корзину A, заводим B (перенос текста) + C (новые), и `validateEntity` резолвит по коду.
+
+### Порядок (Ф0.5)
+1. Зафиксировать неймспейс `validation.*` / `confirm.*` (1:1 с кодами Issue/confirm).
+2. Удалить корзину A (≈52 ключа ×3) — заодно с мёртвым кодом (Ф5).
+3. Свести дубли неймспейсов к каноническим (`member.*`, `settings.*`, `sub.*`).
+4. B: перенести тексты живых ключей под новые имена; C: завести новые из хардкода.
+5. Прогон: каждый код из §4/§5/§6 имеет ключ во всех 3 языках; ноль орфанов.
+
+> Полная таблица «код → текущий ключ → действие» строится автоматически из usage-отчёта (скрипт в чате аудита). Источник кодов — §4–§6.

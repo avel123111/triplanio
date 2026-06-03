@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Icon } from '../../design/icons';
 import { Btn } from '../../design/index';
 import MapView from '@/components/views/MapView';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { sortVisits } from '@/lib/validation';
@@ -30,6 +31,7 @@ function nightsBetween(a, b) {
 }
 
 function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities = [], canEdit = false, openEvent }) {
+  const { t } = useI18n();
   const [theme, setTheme] = useState('auto');
   const [anchorsOff, setAnchorsOff] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -92,20 +94,20 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
             </div>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
-                {trip?.title || 'Путешествие'}
+                {trip?.title || t('trip_menu.section_lenses')}
               </div>
               <div className="num muted" style={{ fontSize: 11, lineHeight: 1.2, marginTop: 1 }}>
-                {cityCount} {cityCount === 1 ? 'город' : cityCount < 5 ? 'города' : 'городов'}
+                {cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
               </div>
             </div>
           </div>
 
           {/* Theme controls */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11, padding: 5, display: 'flex', gap: 3 }}>
-            {[['auto', 'Авто'], ['light', 'День'], ['dark', 'Ночь']].map(([t, l]) => (
-              <button key={t} onClick={() => setTheme(t)} style={{
+            {[['auto', t('visit.map_theme_auto')], ['light', t('calendar.day')], ['dark', t('view.map_theme_night')]].map(([val, l]) => (
+              <button key={val} onClick={() => setTheme(val)} style={{
                 padding: '5px 9px', borderRadius: 6, border: 'none',
-                background: theme === t ? 'var(--wash)' : 'transparent',
+                background: theme === val ? 'var(--wash)' : 'transparent',
                 fontSize: 11.5, fontWeight: 500, cursor: 'pointer', color: 'var(--ink)',
               }}>{l}</button>
             ))}
@@ -113,7 +115,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
 
           <label style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11, padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
             <input type="checkbox" checked={!anchorsOff} onChange={() => setAnchorsOff(!anchorsOff)} />
-            <span>Якоря старта/финиша</span>
+            <span>{t('view.map_show_anchors')}</span>
           </label>
         </div>
 
@@ -122,7 +124,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
           <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', zIndex: 5 }}>
             <Btn variant={editMode ? 'primary' : 'ghost'} size="sm" icon="edit" onClick={() => setEditMode(!editMode)}
               style={{ background: editMode ? undefined : 'var(--surface)', boxShadow: editMode ? undefined : 'var(--shadow-soft)' }}>
-              {editMode ? 'Готово' : 'Редактировать'}
+              {editMode ? t('view.edit_mode_done') : t('trip.edit_trip')}
             </Btn>
           </div>
         )}
@@ -133,11 +135,11 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11,
           padding: '10px 14px', fontSize: 11.5, boxShadow: 'var(--shadow-soft)',
         }}>
-          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>Линии маршрута</div>
+          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>{t('view.map_route_lines')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <Legend color="var(--brand)" dashed={false}>Запланирован</Legend>
-            <Legend color="var(--success)" dashed={false}>Наземный (известный)</Legend>
-            <Legend color="var(--warning)" dashed>Не запланирован</Legend>
+            <Legend color="var(--brand)" dashed={false}>{t('view.map_line_planned')}</Legend>
+            <Legend color="var(--success)" dashed={false}>{t('view.map_line_ground')}</Legend>
+            <Legend color="var(--warning)" dashed>{t('view.map_line_unplanned')}</Legend>
           </div>
         </div>
       </div>
@@ -172,7 +174,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
           ) : (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted)' }}>
               <Icon name="pin" size={28} style={{ opacity: 0.4, marginBottom: 10 }} />
-              <div style={{ fontSize: 13 }}>Нет городов на карте</div>
+              <div style={{ fontSize: 13 }}>{t('view.map_no_cities')}</div>
             </div>
           )}
         </div>
@@ -183,11 +185,13 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
 
 // ----- Route stepper - adaptive: horizontal for ≤5 cities, compact list for >5 -----
 function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
+  const { t } = useI18n();
   const isLong = route.length > 5;
   const nCities = uniqueCityCount(route); // dedup repeated cities for the count
+  const citiesWord = nCities === 1 ? t('trip.cities_count_one') : nCities < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many');
   // Has-transfer lookup between consecutive route items (used for the
   // dashed/solid connector line between pills).
-  const transferBetween = (a, b) => transfers.some(t => t.from_city_visit_id === a?.id && t.to_city_visit_id === b?.id);
+  const transferBetween = (a, b) => transfers.some(x => x.from_city_visit_id === a?.id && x.to_city_visit_id === b?.id);
 
   if (!isLong) {
     return (
@@ -198,7 +202,7 @@ function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
           <span className="eyebrow" style={{ flex: 1 }}>
-            Маршрут · {nCities} {nCities === 1 ? 'город' : nCities < 5 ? 'города' : 'городов'}
+            {t('trip.sidebar_route')} · {nCities} {citiesWord}
           </span>
         </div>
         <div className="scrollbar-thin" style={{ display: 'flex', alignItems: 'center', gap: 0, position: 'relative', overflowX: 'auto' }}>
@@ -242,7 +246,7 @@ function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
       maxHeight: 280, display: 'flex', flexDirection: 'column',
     }}>
       <div style={{ padding: '12px 14px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="eyebrow" style={{ flex: 1 }}>Маршрут · {nCities} {nCities === 1 ? 'город' : nCities < 5 ? 'города' : 'городов'}</span>
+        <span className="eyebrow" style={{ flex: 1 }}>{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
       </div>
       <div className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: '0 14px 12px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
@@ -268,7 +272,7 @@ function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.city_name}</div>
                   {nights > 0 && (
-                    <div className="muted num" style={{ fontSize: 10.5 }}>{nights} ноч.</div>
+                    <div className="muted num" style={{ fontSize: 10.5 }}>{nights} {t('ai_plan.unit_nights_short')}</div>
                   )}
                 </div>
                 <Icon name="chev" size={11} style={{ color: activeIdx === i ? 'var(--brand)' : 'var(--muted-2)' }} />
@@ -283,16 +287,17 @@ function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
 
 // ----- Active city card - real data -----
 const KIND_META = {
-  plane: { icon: 'plane', label: 'Перелёт' },
-  train: { icon: 'train', label: 'Поезд' },
-  bus:   { icon: 'bus',   label: 'Автобус' },
-  car:   { icon: 'car',   label: 'На авто' },
-  walk:  { icon: 'walk',  label: 'Пешком' },
-  bike:  { icon: 'walk',  label: 'Велосипед' },
-  ferry: { icon: 'ferry', label: 'Паром' },
+  plane: { icon: 'plane', labelKey: 'trip.tl_flight' },
+  train: { icon: 'train', labelKey: 'transfer.train' },
+  bus:   { icon: 'bus',   labelKey: 'transfer.bus' },
+  car:   { icon: 'car',   labelKey: 'transfer.car' },
+  walk:  { icon: 'walk',  labelKey: 'transfer.walk' },
+  bike:  { icon: 'walk',  labelKey: 'transfer.bike' },
+  ferry: { icon: 'ferry', labelKey: 'transfer.ferry' },
 };
 
 function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activeIdx, canEdit, openEvent }) {
+  const { t } = useI18n();
   const [activityCreateOpen, setActivityCreateOpen] = useState(false);
   // Per-city slices of the trip data.
   const cityHotels = hotels.filter(h => h.city_visit_id === visit?.id);
@@ -338,20 +343,20 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
             </div>
             <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
               {countryFlag(visit?.country_code)} {visit?.country || ''}
-              {isStart && <> · старт</>}
-              {isEnd && <> · финиш</>}
+              {isStart && <> {t('view.map_start_suffix')}</>}
+              {isEnd && <> {t('view.map_finish_suffix')}</>}
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {nights > 0 && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
-              <Icon name="moon" size={12} style={{ color: 'var(--muted)' }} /> {nights} {nights === 1 ? 'ночь' : nights < 5 ? 'ночи' : 'ночей'}
+              <Icon name="moon" size={12} style={{ color: 'var(--muted)' }} /> {nights} {nights === 1 ? t('trip.nights_one') : nights < 5 ? t('trip.nights_few') : t('trip.nights_many')}
             </span>
           )}
           {cityActivities.length > 0 && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
-              <Icon name="cam" size={12} style={{ color: 'var(--warm)' }} /> {cityActivities.length} активн.
+              <Icon name="cam" size={12} style={{ color: 'var(--warm)' }} /> {cityActivities.length} {t('view.map_activities_short')}
             </span>
           )}
         </div>
@@ -379,7 +384,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
       {/* Activities */}
       {cityActivities.length > 0 && (
         <div style={{ padding: '14px 16px 4px' }}>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>В этом городе</div>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>{t('view.map_in_this_city')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
             <div style={{ position: 'absolute', left: 11, top: 6, bottom: 6, width: 2, background: 'var(--line-2)' }} />
             {cityActivities.map(a => (
@@ -427,7 +432,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
           background: 'var(--wash)',
         }}>
           <Btn variant="primary" size="sm" icon="plus" onClick={() => setActivityCreateOpen(true)} style={{ flex: 1 }} disabled={!canEdit}>
-            Активность
+            {t('budget.source_activity')}
           </Btn>
         </div>
       )}
@@ -447,9 +452,10 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
 }
 
 function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
+  const { t } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const fromName = prevVisit?.city_name || 'Предыдущий город';
+  const fromName = prevVisit?.city_name || t('view.map_prev_city');
   const toName = toCity?.city_name || '';
 
   if (!transfer) {
@@ -479,12 +485,12 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
             <Icon name="warning" size={18} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>Нет переезда</div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{t('view.map_no_transfer')}</div>
             <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>
-              Из «{fromName}» - добавить
+              {t('view.map_from_add', { city: fromName })}
             </div>
           </div>
-          <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
+          <Btn variant="ghost" size="sm" icon="plus">{t('view.map_find')}</Btn>
         </button>
         {canFork && (
           <>
@@ -514,7 +520,7 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
 
   const meta = KIND_META[transfer.transport_type] || KIND_META.car;
   const subtitle = [
-    meta.label,
+    t(meta.labelKey),
     transfer.duration,
     transfer.carrier,
   ].filter(Boolean).join(' · ') || '-';
@@ -555,6 +561,7 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
 }
 
 function HotelRow({ hotel, visit, onOpen }) {
+  const { t } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   if (!hotel) {
@@ -583,10 +590,10 @@ function HotelRow({ hotel, visit, onOpen }) {
             <Icon name="warning" size={18} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>Нет отеля</div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>Не забронирован - нужно выбрать</div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{t('hotel.no_hotel_gap')}</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>{t('view.map_hotel_not_booked')}</div>
           </div>
-          <Btn variant="ghost" size="sm" icon="plus">Найти</Btn>
+          <Btn variant="ghost" size="sm" icon="plus">{t('view.map_find')}</Btn>
         </button>
         {canFork && (
           <>
@@ -638,7 +645,7 @@ function HotelRow({ hotel, visit, onOpen }) {
           {hotel.name}
         </div>
         <div className="muted num" style={{ fontSize: 12, marginTop: 2 }}>
-          {[fmtShortDate(hotel.check_in_datetime), fmtShortDate(hotel.check_out_datetime)].filter(Boolean).join(' → ') || 'Заезд → выезд'}
+          {[fmtShortDate(hotel.check_in_datetime), fmtShortDate(hotel.check_out_datetime)].filter(Boolean).join(' → ') || t('view.map_checkin_checkout')}
         </div>
       </div>
       <Icon name="chev" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />

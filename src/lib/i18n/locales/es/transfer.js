@@ -74,4 +74,5 @@ export default {
   'transfer.manual_short': 'Añadir reserva manualmente',
   'transfer.manual_hint_tickets': 'Si los billetes/traslado ya están reservados',
   'transfer.manual_hint_have_tickets': 'Si ya tienes billetes',
+  'transfer.bike': 'Bicicleta',
 };

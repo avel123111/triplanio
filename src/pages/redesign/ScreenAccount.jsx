@@ -90,6 +90,7 @@ function SettingRow({ label, desc, on, onChange, last }) {
 }
 
 function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, portalLoading, onUpgrade, onManage, locale, prices, switchingPlan, onSwitchYearly }) {
+  const { t } = useI18nFormat();
   // Format the live price for a plan; null if not loaded yet.
   const money = (cents, cur) => {
     try {
@@ -119,7 +120,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
 
   if (planLoading) {
     return (
-      <Card title="Подписка" style={{ marginBottom: 16 }}>
+      <Card title={t('account.subscription')} style={{ marginBottom: 16 }}>
         <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: 22, height: 22, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         </div>
@@ -129,14 +130,14 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
 
   if (planState === 'no-sub') {
     return (
-      <Card title="Подписка" subtitle="Сейчас Free" className="ai-card" style={{ marginBottom: 16 }}>
+      <Card title={t('account.subscription')} subtitle={t('account.now_free')} className="ai-card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--wash)', color: 'var(--muted)', display: 'grid', placeItems: 'center' }}>
             <Icon name="user" size={22} />
           </div>
           <div style={{ flex: 1, minWidth: 180 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Free тариф</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>1 активное путешествие · без ИИ-помощника, ИИ-парсера и календарной разделы.</div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('account.free_plan')}</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>{t('account.free_desc')}</div>
           </div>
           <Btn
             variant="primary"
@@ -144,7 +145,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
             disabled={awaitingWebhook}
             onClick={onUpgrade}
           >
-            {awaitingWebhook ? 'Активируем Pro…' : 'Перейти к Pro'}
+            {awaitingWebhook ? t('account.activating_pro') : t('account.go_to_pro')}
           </Btn>
         </div>
       </Card>
@@ -153,7 +154,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
 
   if (planState === 'with-sub') {
     return (
-      <Card title="Подписка" subtitle="Pro · ежемесячная" style={{ marginBottom: 16 }}>
+      <Card title={t('account.subscription')} subtitle={t('account.pro_monthly_sub')} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ padding: 14, background: 'var(--brand-soft)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
@@ -162,23 +163,23 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontWeight: 600 }}>Pro Monthly</div>
               <div className="muted num" style={{ fontSize: 12.5 }}>
-                {(actualMoney || monthlyPrice) ? `${actualMoney || monthlyPrice}/мес` : 'Pro'}
+                {(actualMoney || monthlyPrice) ? `${actualMoney || monthlyPrice}${t('account.per_month_short')}` : 'Pro'}
                 {plan?.subscriptionEnd && (
-                  <> · следующее списание <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b></>
+                  <> · {t('account.next_charge')} <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b></>
                 )}
               </div>
             </div>
             {yearlyPrice && (
               <Btn variant="ghost" size="sm" icon="arrow" disabled={switchingPlan} onClick={onSwitchYearly}>
-                {switchingPlan ? 'Переключаем…' : `Перейти на годовой · ${yearlyPrice}/год`}
+                {switchingPlan ? t('account.switching') : t('account.switch_yearly', { price: yearlyPrice })}
               </Btn>
             )}
             <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={onManage}>
-              {portalLoading ? 'Открываем…' : 'Биллинг-портал'}
+              {portalLoading ? t('account.opening') : t('account.billing_portal')}
             </Btn>
           </div>
           <div className="muted" style={{ fontSize: 12.5 }}>
-            После отмены доступ сохраняется до конца оплаченного периода.
+            {t('account.after_cancel_access')}
           </div>
         </div>
       </Card>
@@ -187,7 +188,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
 
   if (planState === 'annual') {
     return (
-      <Card title="Подписка" subtitle="Pro · годовая · ✓ экономия 33%" style={{ marginBottom: 16, borderColor: 'var(--success)' }}>
+      <Card title={t('account.subscription')} subtitle={t('account.pro_yearly_sub')} style={{ marginBottom: 16, borderColor: 'var(--success)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ padding: 14, background: 'var(--success-soft)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--success)', color: 'white', display: 'grid', placeItems: 'center' }}>
@@ -195,27 +196,27 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                Pro Yearly <Badge variant="success">Активна</Badge>
+                Pro Yearly <Badge variant="success">{t('account.active')}</Badge>
               </div>
               <div className="muted num" style={{ fontSize: 12.5 }}>
-                {(actualMoney || yearlyPrice) ? `${actualMoney || yearlyPrice}/год` : 'Pro'}
+                {(actualMoney || yearlyPrice) ? `${actualMoney || yearlyPrice}${t('account.per_year_short')}` : 'Pro'}
                 {plan?.subscriptionEnd && (
-                  <> · обновится <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b></>
+                  <> · {t('account.renews')} <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b></>
                 )}
-                {(actualMonthlyEq || yearlyMonthlyEq()) && ` · эквивалент ${actualMonthlyEq || yearlyMonthlyEq()}/мес`}
+                {(actualMonthlyEq || yearlyMonthlyEq()) && ` · ${t('account.equivalent')} ${actualMonthlyEq || yearlyMonthlyEq()}${t('account.per_month_short')}`}
               </div>
             </div>
             <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={onManage}>
-              {portalLoading ? 'Открываем…' : 'Биллинг-портал'}
+              {portalLoading ? t('account.opening') : t('account.billing_portal')}
             </Btn>
           </div>
           <div style={{ padding: 12, background: 'var(--wash)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
             <Icon name="info" size={14} style={{ color: 'var(--muted)' }} />
-            <span className="muted" style={{ fontSize: 12.5 }}>Годовая подписка платится раз в год и не списывается ежемесячно.</span>
+            <span className="muted" style={{ fontSize: 12.5 }}>{t('account.yearly_note')}</span>
           </div>
           <div className="muted" style={{ fontSize: 12.5 }}>
             <button onClick={onManage} style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 12.5 }}>
-              Отменить - будет действовать до конца года
+              {t('account.cancel_until_year_end')}
             </button>
           </div>
         </div>
@@ -225,7 +226,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
 
   if (planState === 'cancelled') {
     return (
-      <Card title="Подписка" subtitle="Отменена" style={{ marginBottom: 16, borderColor: 'var(--warning-soft)' }}>
+      <Card title={t('account.subscription')} subtitle={t('account.cancelled_sub')} style={{ marginBottom: 16, borderColor: 'var(--warning-soft)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ padding: 14, background: 'var(--warning-soft)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--warning)', color: 'white', display: 'grid', placeItems: 'center' }}>
@@ -233,18 +234,18 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontWeight: 600 }}>
-                Pro отменена{plan?.subscriptionEnd ? ` - действует до ${fmtDate(plan.subscriptionEnd, locale)}` : ''}
+                {t('account.pro_cancelled')}{plan?.subscriptionEnd ? t('account.active_until_suffix', { date: fmtDate(plan.subscriptionEnd, locale) }) : ''}
               </div>
               <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
-                Все Pro-фичи доступны до этой даты. Потом аккаунт перейдёт на Free.
+                {t('account.cancelled_desc')}
               </div>
             </div>
             <Btn variant="primary" size="sm" icon="refresh" disabled={portalLoading} onClick={onManage}>
-              {portalLoading ? 'Открываем…' : 'Возобновить'}
+              {portalLoading ? t('account.opening') : t('account.resume')}
             </Btn>
           </div>
           <div style={{ padding: 12, background: 'var(--wash)', borderRadius: 10, fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
-            После окончания периода доступ к ИИ-помощнику, парсингу и календарю исчезнет в путешествиях без отдельного Pro-апгрейда.
+            {t('account.cancelled_note')}
           </div>
         </div>
       </Card>
@@ -402,6 +403,7 @@ function ConnectedAccountsSection() {
 
 export default function ScreenAccount() {
   const { user, checkUserAuth, logout } = useAuth();
+  const { t } = useI18nFormat();
   const { lang, setLang } = useI18n();
   const { theme, setTheme } = useTheme();
   const nav = useNavigate();
@@ -519,11 +521,11 @@ export default function ScreenAccount() {
         body: { targetPlan: 'pro_yearly' },
       });
       if (error) throw error;
-      if (!data?.ok) { setErrorMsg('Не удалось сменить план: ' + (data?.code || 'ошибка')); return; }
+      if (!data?.ok) { setErrorMsg(t('account.err_switch_plan') + (data?.code || t('account.error_title'))); return; }
       await loadPlan();
     } catch (e) {
       console.error('changeSubscriptionPlan error:', e);
-      setErrorMsg('Ошибка смены плана: ' + (e.message || String(e)));
+      setErrorMsg(t('account.err_switch_plan_generic') + (e.message || String(e)));
     } finally {
       setSwitchingPlan(false);
     }
@@ -548,7 +550,7 @@ export default function ScreenAccount() {
       setTimeout(() => setSavedFlash(false), 1500);
     } catch (e) {
       console.error('save profile error:', e);
-      setErrorMsg('Ошибка сохранения: ' + (e.message || String(e)));
+      setErrorMsg(t('account.err_save') + (e.message || String(e)));
     } finally {
       setSaving(false);
     }
@@ -576,7 +578,7 @@ export default function ScreenAccount() {
       await checkUserAuth?.();
     } catch (e) {
       console.error('avatar upload error:', e);
-      setErrorMsg('Ошибка загрузки аватара: ' + (e.message || String(e)));
+      setErrorMsg(t('account.err_avatar_upload') + (e.message || String(e)));
     } finally {
       setUploadingAvatar(false);
     }
@@ -599,13 +601,13 @@ export default function ScreenAccount() {
     } catch (e) {
       console.error('avatar remove error:', e);
       setAvatarUrl(prev);
-      setErrorMsg('Ошибка удаления аватара: ' + (e.message || String(e)));
+      setErrorMsg(t('account.err_avatar_remove') + (e.message || String(e)));
     }
   };
 
   const handleManageSubscription = async () => {
     try { if (window.self !== window.top) {
-      setErrorMsg('Для управления подпиской открой Triplanio в отдельной вкладке.');
+      setErrorMsg(t('account.err_portal_iframe'));
       return;
     }} catch { return; }
     setPortalLoading(true);
@@ -616,10 +618,10 @@ export default function ScreenAccount() {
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, '_blank', 'noopener');
-      else setErrorMsg('Не удалось открыть биллинг-портал. Попробуй позже.');
+      else setErrorMsg(t('account.err_portal_open'));
     } catch (e) {
       console.error('billing portal error:', e);
-      setErrorMsg('Ошибка биллинга: ' + (e.message || String(e)));
+      setErrorMsg(t('account.err_billing') + (e.message || String(e)));
     } finally {
       setPortalLoading(false);
     }
@@ -648,7 +650,7 @@ export default function ScreenAccount() {
       await logout();
     } catch (e) {
       console.error('deleteMyAccount error:', e);
-      setErrorMsg('Ошибка удаления: ' + (e.message || String(e)));
+      setErrorMsg(t('account.err_delete') + (e.message || String(e)));
       setDeleteState(null);
     } finally {
       setDeletingAccount(false);
@@ -676,7 +678,7 @@ export default function ScreenAccount() {
 
       {/* ── APP HEADER - standard pattern (back / brand / crumb / actions) ── */}
       <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title="К коллекции">
+        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title={t('notif.to_collection')}>
           <Icon name="back" size={14} />
         </button>
         <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
@@ -685,7 +687,7 @@ export default function ScreenAccount() {
         </div>
         <div className="app-header__crumb">
           <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>Настройки аккаунта</span>
+          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{t('account.title')}</span>
         </div>
         <HeaderActions
           user={user}
@@ -701,20 +703,20 @@ export default function ScreenAccount() {
         {/* Page title row - Cancel + Save sit here, matching the design */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22, flexWrap: 'wrap' }}>
           <h1 style={{ flex: 1, marginBottom: 0 }}>
-            Настройки аккаунта
-            {planState === 'with-sub'  && <Badge variant="warm" icon="pro" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>Pro · подписка</Badge>}
-            {planState === 'annual'    && <Badge variant="warm" icon="pro" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>Pro · годовая</Badge>}
-            {planState === 'cancelled' && <Badge variant="quiet" icon="warning" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>Pro · отменена</Badge>}
+            {t('account.title')}
+            {planState === 'with-sub'  && <Badge variant="warm" icon="pro" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>{t('account.badge_pro_sub')}</Badge>}
+            {planState === 'annual'    && <Badge variant="warm" icon="pro" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>{t('account.badge_pro_yearly')}</Badge>}
+            {planState === 'cancelled' && <Badge variant="quiet" icon="warning" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>{t('account.badge_pro_cancelled')}</Badge>}
           </h1>
-          {savedFlash && <Badge variant="success" icon="check">Сохранено</Badge>}
-          <Btn variant="ghost" onClick={() => nav('/trips')} disabled={saving}>Отмена</Btn>
+          {savedFlash && <Badge variant="success" icon="check">{t('settings.saved')}</Badge>}
+          <Btn variant="ghost" onClick={() => nav('/trips')} disabled={saving}>{t('common.cancel')}</Btn>
           <Btn variant="primary" icon={saving ? undefined : 'check'} disabled={saving} onClick={handleSave}>
-            {saving ? 'Сохранение…' : 'Сохранить'}
+            {saving ? t('auth.saving') : t('common.save')}
           </Btn>
         </div>
 
         {/* Identity */}
-        <Card title="Идентичность" style={{ marginBottom: 16 }}>
+        <Card title={t('account.identity')} style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 16 }}>
 
             {/* Avatar - background fills the circle, no inner component gap */}
@@ -752,7 +754,7 @@ export default function ScreenAccount() {
                 }}>
                   {uploadingAvatar
                     ? <div style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                    : <><Icon name="cam" size={20} /><span>Загрузить</span></>
+                    : <><Icon name="cam" size={20} /><span>{t('common.upload')}</span></>
                   }
                 </div>
               )}
@@ -768,7 +770,7 @@ export default function ScreenAccount() {
 
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: 15 }}>{fullName || user.email}</div>
-              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>Наведи на аватар, чтобы заменить</div>
+              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{t('account.avatar_hint')}</div>
               {avatarUrl && (
                 <div style={{ marginTop: 8 }}>
                   <button
@@ -778,7 +780,7 @@ export default function ScreenAccount() {
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <Icon name="trash" size={12} />
-                    <span>Удалить аватар</span>
+                    <span>{t('account.remove_avatar')}</span>
                   </button>
                 </div>
               )}
@@ -787,12 +789,12 @@ export default function ScreenAccount() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>Отображаемое имя</label>
+              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>{t('account.display_name')}</label>
               <input className="input" value={fullName} onChange={e => setFullName(e.target.value)} />
             </div>
             <div>
               <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>
-                E-mail <Badge variant="quiet" style={{ marginLeft: 4 }}>нередактируемо</Badge>
+                E-mail <Badge variant="quiet" style={{ marginLeft: 4 }}>{t('account.readonly')}</Badge>
               </label>
               <input className="input" value={user.email} readOnly style={{ background: 'var(--wash)', color: 'var(--muted)' }} />
             </div>
@@ -800,12 +802,12 @@ export default function ScreenAccount() {
         </Card>
 
         {/* Preferences */}
-        <Card title="Предпочтения" style={{ marginBottom: 16 }}>
+        <Card title={t('account.preferences')} style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {/* Language */}
             <div>
-              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 6, display: 'block' }}>Язык интерфейса</label>
+              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 6, display: 'block' }}>{t('settings.language')}</label>
               <div style={{ position: 'relative', maxWidth: 260 }}>
                 <button
                   onClick={() => setLangOpen(v => !v)}
@@ -844,11 +846,11 @@ export default function ScreenAccount() {
 
             {/* Theme */}
             <div>
-              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 6, display: 'block' }}>Тема</label>
+              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 6, display: 'block' }}>{t('settings.theme')}</label>
               <div className="tweaks__seg">
-                <button className={theme === 'light'  ? 'active' : ''} onClick={() => setTheme('light')}>Светлая</button>
-                <button className={theme === 'dark'   ? 'active' : ''} onClick={() => setTheme('dark')}>Тёмная</button>
-                <button className={theme === 'system' ? 'active' : ''} onClick={() => setTheme('system')}>Как в системе</button>
+                <button className={theme === 'light'  ? 'active' : ''} onClick={() => setTheme('light')}>{t('settings.theme_light')}</button>
+                <button className={theme === 'dark'   ? 'active' : ''} onClick={() => setTheme('dark')}>{t('settings.theme_dark')}</button>
+                <button className={theme === 'system' ? 'active' : ''} onClick={() => setTheme('system')}>{t('account.theme_system')}</button>
               </div>
             </div>
 
@@ -873,8 +875,8 @@ export default function ScreenAccount() {
         {/* Payment error banner - directly under the subscription section */}
         {errorMsg && (
           <div style={{ marginBottom: 16 }}>
-            <Severity level="error" title="Ошибка" action={
-              <Btn variant="ghost" size="sm" onClick={() => setErrorMsg(null)}>Закрыть</Btn>
+            <Severity level="error" title={t('account.error_title')} action={
+              <Btn variant="ghost" size="sm" onClick={() => setErrorMsg(null)}>{t('common.close')}</Btn>
             }>
               {errorMsg}
             </Severity>
@@ -882,17 +884,17 @@ export default function ScreenAccount() {
         )}
 
         {/* Email notifications */}
-        <Card title="E-mail уведомления" style={{ marginBottom: 16 }}>
+        <Card title={t('account.email_notifs')} style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             <SettingRow
-              label="Приглашения в путешествия"
-              desc="Когда тебя добавляют в новое путешествие."
+              label={t('account.notif_invites')}
+              desc={t('account.notif_invites_desc')}
               on={notifyInvites}
               onChange={setNotifyInvites}
             />
             <SettingRow
-              label="Обновления путешествия"
-              desc="Изменения в путешествиях, где ты участник."
+              label={t('account.notif_updates')}
+              desc={t('account.notif_updates_desc')}
               on={notifyUpdates}
               onChange={setNotifyUpdates}
               last
@@ -904,37 +906,37 @@ export default function ScreenAccount() {
         <ConnectedAccountsSection />
 
         {/* Support */}
-        <Card title="Поддержка" style={{ marginBottom: 16 }}>
+        <Card title={t('account.support')} style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="chat" size={16} />
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Напиши нам</div>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('account.contact_us')}</div>
               <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
                 <a href="mailto:support@triplanio.com" style={{ color: 'var(--brand)' }}>support@triplanio.com</a>
-                {' '}- отвечаем в течение суток.
+                {' '}{t('account.support_reply')}
               </div>
             </div>
             <Btn variant="ghost" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>
-              Написать
+              {t('account.write')}
             </Btn>
           </div>
         </Card>
 
         {/* Legal */}
-        <Card title="Правовая информация" style={{ marginBottom: 16 }}>
+        <Card title={t('account.legal')} style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             <LegalRow
               icon="shield"
-              title="Политика конфиденциальности"
-              desc="Как мы обрабатываем твои данные."
+              title={t('account.privacy_title')}
+              desc={t('account.privacy_desc')}
               href="/privacy"
             />
             <LegalRow
               icon="file"
-              title="Условия использования"
-              desc="Правила сервиса, ответственность, оплата."
+              title={t('account.terms_title')}
+              desc={t('account.terms_desc')}
               href="/terms"
               last
             />
@@ -942,41 +944,41 @@ export default function ScreenAccount() {
         </Card>
 
         {/* Session */}
-        <Card title="Сессия" style={{ marginBottom: 16 }}>
+        <Card title={t('account.session')} style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>Выйти из аккаунта</div>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('account.logout_title')}</div>
               <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
-                Тебе придётся снова войти, чтобы открыть свои путешествия. Локальные черновики сохранятся.
+                {t('account.logout_desc')}
               </div>
             </div>
             <Btn variant="ghost" icon="arrow" onClick={logout}>
-              Выйти
+              {t('auth.logout')}
             </Btn>
           </div>
         </Card>
 
         {/* Danger zone */}
-        <Card title="Опасная зона" style={{ borderColor: 'var(--danger-soft)' }}>
+        <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontWeight: 600 }}>Удалить аккаунт</div>
+              <div style={{ fontWeight: 600 }}>{t('settings.delete_account')}</div>
               <div className="muted" style={{ fontSize: 12.5 }}>
-                Безвозвратно. Все твои путешествия, документы и история чатов будут удалены.
+                {t('account.delete_desc')}
               </div>
             </div>
             <Btn variant="danger-solid" onClick={handleDeleteAccount} disabled={deletingAccount}>
-              Удалить аккаунт
+              {t('settings.delete_account')}
             </Btn>
           </div>
 
           {deleteState === 'blocked' && (
             <div style={{ marginTop: 14 }}>
-              <Severity level="error" title="Сначала отмени подписку">
-                У тебя активная Pro-подписка. Удаление аккаунта заблокировано, пока подписка не закрыта.
+              <Severity level="error" title={t('account.cancel_sub_first')}>
+                {t('account.delete_blocked_desc')}
                 <div style={{ marginTop: 8 }}>
                   <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={handleManageSubscription}>
-                    {portalLoading ? 'Открываем…' : 'Открыть биллинг-портал'}
+                    {portalLoading ? t('account.opening') : t('account.open_billing_portal')}
                   </Btn>
                 </div>
               </Severity>
@@ -985,22 +987,22 @@ export default function ScreenAccount() {
 
           {deleteState === 'confirm' && (
             <div style={{ marginTop: 14 }}>
-              <Severity level="error" title="Подтверди удаление">
-                Действие необратимо. Введи слово <b>УДАЛИТЬ</b> для подтверждения.
+              <Severity level="error" title={t('account.confirm_delete')}>
+                {t('account.confirm_delete_desc_1')} <b>{t('account.delete_word')}</b> {t('account.confirm_delete_desc_2')}
                 <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
                   <input
                     className="input"
-                    placeholder="УДАЛИТЬ"
+                    placeholder={t('account.delete_word')}
                     value={deleteInput}
                     onChange={e => setDeleteInput(e.target.value)}
                     style={{ flex: 1 }}
                   />
                   <Btn
                     variant="danger-solid"
-                    disabled={deleteInput !== 'УДАЛИТЬ' || deletingAccount}
+                    disabled={deleteInput !== t('account.delete_word') || deletingAccount}
                     onClick={performDeleteAccount}
                   >
-                    {deletingAccount ? 'Удаляем…' : 'Удалить навсегда'}
+                    {deletingAccount ? t('account.deleting') : t('account.delete_forever')}
                   </Btn>
                 </div>
               </Severity>

@@ -17,22 +17,21 @@ import HeaderActions from '@/components/HeaderActions';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
+import { useT, useI18n } from '@/lib/i18n/I18nContext';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
 // prototype, wired to the real id-based model (city_visits + position),
 // computeTripValidation conflicts, lock + save_trip_edit RPC. Live Google map.
 // =====================================================================
-const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-const TKIND = { plane: { icon: 'plane', label: 'Перелёт' }, train: { icon: 'train', label: 'Поезд' }, bus: { icon: 'bus', label: 'Автобус' }, car: { icon: 'car', label: 'На авто' }, ferry: { icon: 'ferry', label: 'Паром' } };
+const TKIND = { plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { icon: 'train', labelKey: 'transfer.train' }, bus: { icon: 'bus', labelKey: 'transfer.bus' }, car: { icon: 'car', labelKey: 'event.tk_car' }, ferry: { icon: 'ferry', labelKey: 'transfer.ferry' } };
 const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9'];
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
-const WD = ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
-const fmtD = (iso) => { const d = toDT(iso); return d ? `${d.day} ${MONTHS[d.month - 1]}` : '-'; };
-const fmtDW = (iso) => { const d = toDT(iso); return d ? `${d.day} ${MONTHS[d.month - 1]}, ${WD[d.weekday]}` : '-'; };
+const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d LLL') : '-'; };
+const fmtDW = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d LLL, ccc') : '-'; };
 const fmtTime = (iso) => { const d = toDT(iso); return d ? d.toFormat('HH:mm') : null; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
-const dayWord = (n) => (n === 1 ? 'день' : n >= 2 && n <= 4 ? 'дня' : 'дней');
+const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
 const flagEmoji = (cc) => (cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt(0))) : '📍');
 const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
 const colorFor = (key) => { let h = 0; const s = String(key || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return PALETTE[h % PALETTE.length]; };
@@ -74,6 +73,8 @@ function buildDraft(shell) {
 
 export default function TripStructureEdit() {
   const { tripId } = useParams();
+  const t = useT();
+  const { lang } = useI18n();
   const nav = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -216,7 +217,7 @@ export default function TripStructureEdit() {
   });
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
-      toast({ description: kind === 'start' ? 'Старт уже задан - сначала уберите текущий.' : 'Финиш уже задан - сначала уберите текущий.' });
+      toast({ description: kind === 'start' ? t('tse.start_already_set') : t('tse.end_already_set') });
       return;
     }
     const node = {
@@ -246,7 +247,7 @@ export default function TripStructureEdit() {
     if (c.hotelId) setViewEvent({ kind: 'hotel', id: c.hotelId, warning: c.message });
     else if (c.activityId) setViewEvent({ kind: 'activity', id: c.activityId, warning: c.message });
     else if (c.transferId) setViewEvent({ kind: 'transfer', id: c.transferId, warning: c.message });
-    else toast({ description: `${c.message} Поправьте ночи, порядок или старт города слева.` });
+    else toast({ description: `${c.message} ${t('tse.fix_hint_suffix')}` });
   };
   const openTransferRow = (a, b, t) => {
     if (t) {
@@ -269,7 +270,7 @@ export default function TripStructureEdit() {
     const p_deletes = { cities: (draft.removed || []).filter((n) => !isTmp(n.id)).map((n) => n.id) };
     const { error } = await supabase.rpc('save_trip_edit', { p_trip: tripId, p_nodes, p_cities_new, p_edits, p_deletes });
     setSaving(false);
-    if (error) { alert('Не удалось сохранить: ' + (error.message || error)); return; }
+    if (error) { alert(t('tse.err_save') + (error.message || error)); return; }
     acquiredRef.current = false;
     clearDraftStore();
     invalidateTripData(qc, tripId);
@@ -285,7 +286,7 @@ export default function TripStructureEdit() {
   //   Сброс    = discard all edits but STAY in the editor.
   const headerEl = (
     <header className="app-header">
-      <button className="app-header__crumb-back" onClick={cancelEdit} title="Выйти из редактора">
+      <button className="app-header__crumb-back" onClick={cancelEdit} title={t('tse.exit_editor')}>
         <Icon name="back" size={15} />
       </button>
       <div className="app-header__brand" onClick={cancelEdit} style={{ cursor: 'pointer' }}>
@@ -302,18 +303,18 @@ export default function TripStructureEdit() {
       </div>
       {draft && (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-          {blocked && <Badge variant="warm" icon="warning">{errors ? `${errors} ош.` : `${warns} предупр.`}</Badge>}
-          <Btn variant="ghost" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title="Отменить последнее действие">Шаг назад</Btn>
-          <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title="Сбросить все изменения (остаться в редакторе)">Сброс</Btn>
-          <Btn variant="ghost" size="sm" icon="close" onClick={cancelEdit} title="Сбросить изменения и выйти в таймлайн">Отменить</Btn>
-          <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={onSave}>{saving ? 'Сохраняю…' : 'Сохранить'}</Btn>
+          {blocked && <Badge variant="warm" icon="warning">{errors ? t('tse.errors_short', { n: errors }) : t('tse.warns_short', { n: warns })}</Badge>}
+          <Btn variant="ghost" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
+          <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
+          <Btn variant="ghost" size="sm" icon="close" onClick={cancelEdit} title={t('tse.cancel_title')}>{t('tse.cancel')}</Btn>
+          <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={onSave}>{saving ? t('tse.saving') : t('common.save')}</Btn>
         </div>
       )}
       <HeaderActions user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} />
     </header>
   );
 
-  if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">Не удалось загрузить путешествие: {String(shellError.message || shellError)}</div></div></>;
+  if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">{t('tse.err_load')}{String(shellError.message || shellError)}</div></div></>;
   if (lock === 'blocked' || lock === 'error') {
     return (
       <>{headerEl}
@@ -321,9 +322,9 @@ export default function TripStructureEdit() {
         <div className={`sev sev--${lock === 'blocked' ? 'warning' : 'error'}`}>
           <span className="sev__icon"><Icon name="warning" size={16} /></span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>{lock === 'blocked' ? 'Путешествие сейчас редактируется' : 'Не удалось войти в режим редактирования'}</div>
-            <div style={{ fontSize: 12.5 }}>{lock === 'blocked' ? 'Кто-то уже редактирует структуру этого путешествия. Попробуй позже.' : 'Не получилось занять блокировку. Попробуй ещё раз.'}</div>
-            <div style={{ marginTop: 12 }}><Btn variant="ghost" icon="back" onClick={() => nav(`/trip/${tripId}`)}>Назад к путешествию</Btn></div>
+            <div style={{ fontWeight: 600, marginBottom: 2 }}>{lock === 'blocked' ? t('tse.locked_title') : t('tse.lock_err_title')}</div>
+            <div style={{ fontSize: 12.5 }}>{lock === 'blocked' ? t('tse.locked_desc') : t('tse.lock_err_desc')}</div>
+            <div style={{ marginTop: 12 }}><Btn variant="ghost" icon="back" onClick={() => nav(`/trip/${tripId}`)}>{t('tse.back_to_trip')}</Btn></div>
           </div>
         </div>
       </div>
@@ -354,7 +355,7 @@ export default function TripStructureEdit() {
     const next = ordered[idx + 1];
     if (next) rows.push({ kind: 'leg', a: n, b: next, gap: idx + 1 }); // gap = insert position between a and b
   });
-  const draggedName = dragIdx !== null ? (ordered[dragIdx]?.city_name || 'город') : '';
+  const draggedName = dragIdx !== null ? (ordered[dragIdx]?.city_name || t('event.city')) : '';
 
   return (
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
@@ -364,17 +365,17 @@ export default function TripStructureEdit() {
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
           {/* page title */}
           <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: '1px solid var(--line-2)' }}>
-            <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>Редактирование структуры</div>
+            <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>{t('tse.section_eyebrow')}</div>
             <h1 style={{ fontSize: 22, lineHeight: 1.15, marginBottom: 6, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
-            <div className="muted num" style={{ fontSize: 12.5 }}>{fmtD(startDate)} - {fmtD(endDate)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights)}` : ''} · {cities.length} {cities.length === 1 ? 'город' : 'городов'}{membersCount > 0 ? ` · ${membersCount} уч.` : ''}</div>
+            <div className="muted num" style={{ fontSize: 12.5 }}>{fmtD(startDate, lang)} - {fmtD(endDate, lang)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights, t)}` : ''} · {cities.length} {cities.length === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}{membersCount > 0 ? ` · ${t('tse.members_short', { n: membersCount })}` : ''}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <span className="eyebrow" style={{ fontSize: 10 }}>Старт путешествия</span>
+              <span className="eyebrow" style={{ fontSize: 10 }}>{t('planner.trip_start')}</span>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: 2 }}>
-                <button className="ts-step" onClick={() => shiftStart(-1)} title="раньше"><Icon name="back" size={13} /></button>
+                <button className="ts-step" onClick={() => shiftStart(-1)} title={t('tse.start_earlier')}><Icon name="back" size={13} /></button>
                 <span className="num" style={{ padding: '0 8px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDW(startDate)}</span>
-                <button className="ts-step" onClick={() => shiftStart(1)} title="позже"><Icon name="chev" size={13} /></button>
+                <button className="ts-step" onClick={() => shiftStart(1)} title={t('tse.start_later')}><Icon name="chev" size={13} /></button>
               </div>
-              <span className="muted" style={{ fontSize: 11 }}>двигает весь путешествие</span>
+              <span className="muted" style={{ fontSize: 11 }}>{t('tse.moves_whole_trip')}</span>
             </div>
           </div>
 
@@ -420,7 +421,7 @@ export default function TripStructureEdit() {
             <div onDragOver={(e) => { e.preventDefault(); setOverGap(ordered.length); }}
               onDrop={(e) => { e.preventDefault(); dropAt(ordered.length); }}
               style={{ height: 38, marginTop: 8, borderRadius: 10, border: '2px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line)'), background: overGap === ordered.length ? 'var(--brand-soft)' : 'transparent', display: 'grid', placeItems: 'center', color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', fontSize: 12, fontWeight: 600 }}>
-              Переместить в конец
+              {t('tse.move_to_end')}
             </div>
           )}
           <AddPointButton onOpen={() => setAdding(true)} />
@@ -460,15 +461,15 @@ export default function TripStructureEdit() {
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--danger)' }} />
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '18px 18px 8px' }}>
               <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="trash" size={17} /></div>
-              <div style={{ flex: 1, minWidth: 0 }}><h2 style={{ fontSize: 17, marginBottom: 2 }}>Удалить город «{confirmDel.city_name}»?</h2></div>
+              <div style={{ flex: 1, minWidth: 0 }}><h2 style={{ fontSize: 17, marginBottom: 2 }}>{t('tse.delete_city_q', { city: confirmDel.city_name })}</h2></div>
               <button className="ts-step" onClick={() => setConfirmDel(null)}><Icon name="close" size={16} /></button>
             </div>
             <div style={{ padding: '0 18px 8px', fontSize: 13, lineHeight: 1.55, color: 'var(--ink-2)' }}>
-              Все привязанные брони в этом городе (отели, активности, переезды) тоже будут удалены. Изменение применится при сохранении.
+              {t('tse.delete_city_desc')}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 18px 18px' }}>
-              <Btn variant="ghost" onClick={() => setConfirmDel(null)}>Отмена</Btn>
-              <Btn variant="danger-solid" icon="trash" onClick={() => doRemoveCity(confirmDel.id)}>Удалить город</Btn>
+              <Btn variant="ghost" onClick={() => setConfirmDel(null)}>{t('common.cancel')}</Btn>
+              <Btn variant="danger-solid" icon="trash" onClick={() => doRemoveCity(confirmDel.id)}>{t('tse.delete_city')}</Btn>
             </div>
           </div>
         </div>
@@ -505,28 +506,34 @@ function rowStyle(first, last) {
 const GCOLS = '26px minmax(0,1fr) 62px 62px auto auto';
 
 function Conf({ n }) {
+  const t = useT();
   if (!n) return null;
-  return <span title={`${n} конфликт(а)`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 999, background: 'var(--warning-soft)', color: 'var(--warning)', fontSize: 11, fontWeight: 700 }}><Icon name="warning" size={10} /> {n}</span>;
+  return <span title={t('tse.conflicts_n', { n })} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 999, background: 'var(--warning-soft)', color: 'var(--warning)', fontSize: 11, fontWeight: 700 }}><Icon name="warning" size={10} /> {n}</span>;
 }
 function Acts({ onUp, onDown, onRemove }) {
+  const t = useT();
   return <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-    <button className="ts-step" style={{ width: 23, height: 23 }} onClick={onUp || undefined} disabled={!onUp} title="выше"><Icon name="chev" size={12} style={{ transform: 'rotate(-90deg)' }} /></button>
-    <button className="ts-step" style={{ width: 23, height: 23 }} onClick={onDown || undefined} disabled={!onDown} title="ниже"><Icon name="chev" size={12} style={{ transform: 'rotate(90deg)' }} /></button>
-    {onRemove && <button className="ts-step" style={{ width: 23, height: 23, color: 'var(--muted)' }} onClick={onRemove} title="убрать"><Icon name="trash" size={12} /></button>}
+    <button className="ts-step" style={{ width: 23, height: 23 }} onClick={onUp || undefined} disabled={!onUp} title={t('tse.move_up')}><Icon name="chev" size={12} style={{ transform: 'rotate(-90deg)' }} /></button>
+    <button className="ts-step" style={{ width: 23, height: 23 }} onClick={onDown || undefined} disabled={!onDown} title={t('tse.move_down')}><Icon name="chev" size={12} style={{ transform: 'rotate(90deg)' }} /></button>
+    {onRemove && <button className="ts-step" style={{ width: 23, height: 23, color: 'var(--muted)' }} onClick={onRemove} title={t('tse.remove')}><Icon name="trash" size={12} /></button>}
   </div>;
 }
 function GCell({ label, iso, editable, onPlus }) {
+  const t = useT();
+  const { lang } = useI18n();
   return <div style={{ minWidth: 0 }}>
     <div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>{label}</div>
     <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-      <span className="num" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtD(iso)}</span>
-      {editable ? <button className="ts-step" style={{ width: 16, height: 16, marginLeft: 1 }} onClick={onPlus} title="позже"><Icon name="chev" size={9} /></button>
-        : <span style={{ width: 16, height: 16, display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }} title="следует за прошлым"><Icon name="lock" size={9} /></span>}
+      <span className="num" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtD(iso, lang)}</span>
+      {editable ? <button className="ts-step" style={{ width: 16, height: 16, marginLeft: 1 }} onClick={onPlus} title={t('tse.start_later')}><Icon name="chev" size={9} /></button>
+        : <span style={{ width: 16, height: 16, display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }} title={t('tse.follows_prev')}><Icon name="lock" size={9} /></span>}
     </div>
   </div>;
 }
 
 function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNightsMinus, onNightsPlus, onShiftMinus, onShiftPlus, onUp, onDown, onRemove, drag }) {
+  const t = useT();
+  const { lang } = useI18n();
   const m = metaOf(seg);
   const dragAttrs = {
     draggable: true,
@@ -542,12 +549,12 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
         <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontSize: 13.5 }}>{m.flag}</span>
           <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{seg.city_name}</span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ev-transfer)', textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 6px', borderRadius: 999, background: 'var(--ev-transfer-soft)', whiteSpace: 'nowrap' }}>пересадка</span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ev-transfer)', textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 6px', borderRadius: 999, background: 'var(--ev-transfer-soft)', whiteSpace: 'nowrap' }}>{t('tse.layover')}</span>
           <Conf n={conflictCount} />
         </div>
         <div style={{ gridColumn: '3 / 5', textAlign: 'center' }}>
-          <div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>транзит</div>
-          <div className="num" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtD(seg.start_datetime)}</div>
+          <div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>{t('tse.transit')}</div>
+          <div className="num" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtD(seg.start_datetime, lang)}</div>
         </div>
         <span style={{ textAlign: 'center', color: 'var(--muted-2)', fontSize: 12 }}>-</span>
         <Acts onUp={onUp} onDown={onDown} onRemove={onRemove} />
@@ -565,11 +572,11 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
         {m.country && <span className="muted" style={{ fontSize: 10.5, whiteSpace: 'nowrap' }}>{m.country}</span>}
         <Conf n={conflictCount} />
       </div>
-      <GCell label="Заезд" iso={seg.start_datetime} editable={first} onMinus={onShiftMinus} onPlus={onShiftPlus} />
-      <GCell label="Выезд" iso={seg.end_datetime} editable onMinus={onNightsMinus} onPlus={onNightsPlus} />
+      <GCell label={t('tse.checkin')} iso={seg.start_datetime} editable={first} onMinus={onShiftMinus} onPlus={onShiftPlus} />
+      <GCell label={t('tse.checkout')} iso={seg.end_datetime} editable onMinus={onNightsMinus} onPlus={onNightsPlus} />
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 1, background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 7, padding: 1 }}>
         <button className="ts-step" style={{ width: 20, height: 20 }} onClick={onNightsMinus} disabled={seg.nights <= 1}><Icon name="close" size={9} style={{ transform: 'rotate(45deg)' }} /></button>
-        <span className="num" style={{ minWidth: 26, textAlign: 'center', fontSize: 11.5, fontWeight: 700 }}>{seg.nights}н</span>
+        <span className="num" style={{ minWidth: 26, textAlign: 'center', fontSize: 11.5, fontWeight: 700 }}>{seg.nights}{t('planner.night_short')}</span>
         <button className="ts-step" style={{ width: 20, height: 20 }} onClick={onNightsPlus}><Icon name="plus" size={9} /></button>
       </div>
       <Acts onUp={onUp} onDown={onDown} onRemove={onRemove} />
@@ -580,24 +587,27 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
 // Empty city-sized slot shown at the hovered gap during drag - replaces the
 // transfer plate there so it reads as "the dragged city drops in HERE".
 function DropSlot({ label }) {
+  const t = useT();
   return (
     <div style={{ height: 56, margin: '4px 0', borderRadius: 11, border: '2px dashed var(--brand)', background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', gap: 9, padding: '0 14px', color: 'var(--brand)', pointerEvents: 'none' }}>
       <span style={{ width: 24, height: 24, borderRadius: 6, border: '2px dashed var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="plus" size={13} /></span>
       <span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span>
-      <span style={{ fontSize: 11.5, opacity: 0.75, marginLeft: 'auto' }}>встанет сюда</span>
+      <span style={{ fontSize: 11.5, opacity: 0.75, marginLeft: 'auto' }}>{t('tse.lands_here')}</span>
     </div>
   );
 }
 
 function GridTransfer({ a, b, t, mismatch, first, last, onOpen }) {
+  const tx = useT();
+  const { lang } = useI18n();
   const sameCity = (a.external_city_id && b.external_city_id && a.external_city_id === b.external_city_id) || (a.city_name && a.city_name === b.city_name);
   if (sameCity && !t) {
-    return <div style={{ ...rowStyle(first, last), padding: '5px 11px', fontSize: 11, color: 'var(--muted)', background: 'var(--wash)' }}>тот же город - переезд не нужен</div>;
+    return <div style={{ ...rowStyle(first, last), padding: '5px 11px', fontSize: 11, color: 'var(--muted)', background: 'var(--wash)' }}>{tx('tse.same_city_no_transfer')}</div>;
   }
   if (!t) {
     return <button onClick={onOpen} style={{ ...rowStyle(first, last), display: 'flex', alignItems: 'center', gap: 8, padding: '6px 11px', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', background: 'var(--wash)' }}>
       <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--surface)', border: '1.5px dashed var(--warning)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="plus" size={11} /></span>
-      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)' }}>Добавить переезд</span>
+      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)' }}>{tx('tse.add_transfer')}</span>
       <span className="muted" style={{ fontSize: 10.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.city_name} → {b.city_name}</span>
       <Icon name="chev" size={11} style={{ color: 'var(--muted-2)', marginLeft: 'auto', flexShrink: 0 }} />
     </button>;
@@ -608,43 +618,46 @@ function GridTransfer({ a, b, t, mismatch, first, last, onOpen }) {
   return <button onClick={onOpen} style={{ ...rowStyle(first, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '9px 11px', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', background: mismatch ? 'var(--warning-soft)' : 'var(--ev-transfer-soft)', boxShadow: 'inset 3px 0 0 ' + fg }}>
     <span style={{ width: 24, height: 24, borderRadius: '50%', background: fg, color: 'white', display: 'grid', placeItems: 'center' }}><Icon name={mismatch ? 'warning' : meta.icon} size={13} /></span>
     <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
-      <span style={{ fontSize: 13, fontWeight: 700, color: fg, whiteSpace: 'nowrap' }}>{meta.label}{mismatch ? ' · не совпадает' : ''}</span>
-      <span className="num muted" style={{ fontSize: 10.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtD(t.start_datetime)}{t.carrier ? ' · ' + t.carrier : ''}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: fg, whiteSpace: 'nowrap' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+      <span className="num muted" style={{ fontSize: 10.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtD(t.start_datetime, lang)}{t.carrier ? ' · ' + t.carrier : ''}</span>
     </div>
-    <div><div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>Отпр</div><div className="num" style={{ fontSize: 12, fontWeight: 700, color: dep ? 'var(--ink)' : 'var(--muted-2)' }}>{dep || '-'}</div></div>
-    <div><div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>Приб</div><div className="num" style={{ fontSize: 12, fontWeight: 700, color: arr ? 'var(--ink)' : 'var(--muted-2)' }}>{arr || '-'}</div></div>
+    <div><div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>{tx('tse.dep_short')}</div><div className="num" style={{ fontSize: 12, fontWeight: 700, color: dep ? 'var(--ink)' : 'var(--muted-2)' }}>{dep || '-'}</div></div>
+    <div><div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>{tx('tse.arr_short')}</div><div className="num" style={{ fontSize: 12, fontWeight: 700, color: arr ? 'var(--ink)' : 'var(--muted-2)' }}>{arr || '-'}</div></div>
     <span />
     <Icon name="chev" size={13} style={{ color: fg, justifySelf: 'end' }} />
   </button>;
 }
 
 function GridEndpoint({ node, first, last, onRemove }) {
+  const t = useT();
   const isStart = node.kind === 'start';
   const accent = isStart ? 'var(--success)' : 'var(--warm, var(--brand))';
   const m = metaOf(node);
   return <div
     style={{ ...rowStyle(first, last), display: 'flex', alignItems: 'center', gap: 10, padding: '11px' }}>
     <span style={{ width: 24, height: 24, borderRadius: 6, background: 'color-mix(in srgb, ' + accent + ' 14%, transparent)', color: accent, display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="flag" size={13} /></span>
-    <span style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '.09em', fontWeight: 700, color: accent, flexShrink: 0 }}>{isStart ? 'Старт' : 'Финиш'}</span>
+    <span style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '.09em', fontWeight: 700, color: accent, flexShrink: 0 }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
     <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>{m.flag} {node.city_name}</span>
-    <span className="muted" style={{ fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {isStart ? 'Прилёт' : 'Вылет'}</span>
-    <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', marginLeft: 'auto', flexShrink: 0 }} onClick={onRemove} title="убрать"><Icon name="close" size={13} /></button>
+    <span className="muted" style={{ fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {isStart ? t('tse.arrival_word') : t('tse.departure_word')}</span>
+    <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', marginLeft: 'auto', flexShrink: 0 }} onClick={onRemove} title={t('tse.remove')}><Icon name="close" size={13} /></button>
   </div>;
 }
 
 function AddPointButton({ onOpen }) {
+  const t = useT();
   return <button onClick={onOpen} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 12, padding: '12px', borderRadius: 12, cursor: 'pointer', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, var(--line))', color: 'var(--brand)', fontSize: 13, fontWeight: 600 }}>
-    <Icon name="plus" size={15} /> Добавить точку маршрута
+    <Icon name="plus" size={15} /> {t('tse.add_point_btn')}
   </button>;
 }
 
 const POINT_TYPES = [
-  { id: 'transit', label: 'Город', icon: 'bed', sub: 'Остановка с ночёвками' },
-  { id: 'waypoint', label: 'Пересадка', icon: 'arrowSwap', sub: 'Транзит на 1 день' },
-  { id: 'start', label: 'Старт', icon: 'flag', sub: 'Начало поездки' },
-  { id: 'end', label: 'Финиш', icon: 'flag', sub: 'Конец поездки' },
+  { id: 'transit', labelKey: 'event.city', icon: 'bed', subKey: 'tse.pt_transit_sub' },
+  { id: 'waypoint', labelKey: 'tse.pt_waypoint', icon: 'arrowSwap', subKey: 'tse.pt_waypoint_sub' },
+  { id: 'start', labelKey: 'ai_plan.start', icon: 'flag', subKey: 'tse.pt_start_sub' },
+  { id: 'end', labelKey: 'ai_plan.end', icon: 'flag', subKey: 'tse.pt_end_sub' },
 ];
 function AddPointDialog({ onPick, onClose, hasStart, hasEnd }) {
+  const t = useT();
   const [type, setType] = useState('transit');
   const disabledFor = (id) => (id === 'start' && hasStart) || (id === 'end' && hasEnd);
   const meta = POINT_TYPES.find((p) => p.id === type);
@@ -654,19 +667,19 @@ function AddPointDialog({ onPick, onClose, hasStart, hasEnd }) {
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--brand)' }} />
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '18px 18px 12px' }}>
           <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="pin" size={17} /></div>
-          <div style={{ flex: 1, minWidth: 0 }}><h2 style={{ fontSize: 17, marginBottom: 2 }}>Добавить точку</h2><div className="muted" style={{ fontSize: 12 }}>Выбери тип и город</div></div>
+          <div style={{ flex: 1, minWidth: 0 }}><h2 style={{ fontSize: 17, marginBottom: 2 }}>{t('tse.add_point')}</h2><div className="muted" style={{ fontSize: 12 }}>{t('tse.add_point_hint')}</div></div>
           <button className="ts-step" onClick={onClose}><Icon name="close" size={16} /></button>
         </div>
         <div style={{ padding: '0 18px 18px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7, marginBottom: 10 }}>
             {POINT_TYPES.map((pt) => {
               const dis = disabledFor(pt.id), active = type === pt.id;
-              return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? 'Уже задан' : pt.sub} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 11, cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
-                <Icon name={pt.icon} size={17} /><span style={{ fontSize: 11.5, fontWeight: 600 }}>{pt.label}</span>
+              return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 11, cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
+                <Icon name={pt.icon} size={17} /><span style={{ fontSize: 11.5, fontWeight: 600 }}>{t(pt.labelKey)}</span>
               </button>;
             })}
           </div>
-          <div className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{meta?.sub}</div>
+          <div className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{meta ? t(meta.subKey) : ''}</div>
           <CitySearch onSelect={(c) => onPick(c, type)} />
         </div>
       </div>
@@ -675,9 +688,10 @@ function AddPointDialog({ onPick, onClose, hasStart, hasEnd }) {
 }
 
 function RemovedTray({ removed, onRestore }) {
+  const t = useT();
   if (!removed || removed.length === 0) return null;
   return <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 12, background: 'var(--wash)', border: '1px dashed var(--line)' }}>
-    <div className="eyebrow" style={{ marginBottom: 8 }}>Убраны из маршрута</div>
+    <div className="eyebrow" style={{ marginBottom: 8 }}>{t('tse.removed_from_route')}</div>
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       {removed.map((n) => <button key={n.id} onClick={() => onRestore(n.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>
         <Icon name="plus" size={12} style={{ color: 'var(--brand)' }} /> {flagEmoji(n.country_code)} {n.city_name}
@@ -687,7 +701,7 @@ function RemovedTray({ removed, onRestore }) {
 }
 
 // ---- warnings panel (yellow plates) ----
-const PLATE_META = { hotel: { icon: 'bed', label: 'Отель' }, transfer: { icon: 'train', label: 'Трансфер' }, activity: { icon: 'spark', label: 'Активность' }, city: { icon: 'pin', label: 'Город' } };
+const PLATE_META = { hotel: { icon: 'bed', labelKey: 'event.type_hotel' }, transfer: { icon: 'train', labelKey: 'event.type_transfer' }, activity: { icon: 'spark', labelKey: 'event.type_activity' }, city: { icon: 'pin', labelKey: 'event.city' } };
 function plateType(code) {
   if (code[0] === 'B') return 'hotel';
   if (code[0] === 'C') return 'activity';
@@ -696,14 +710,15 @@ function plateType(code) {
   return 'city';
 }
 function WarningsPanel({ issues, errors, warns, onOpen }) {
+  const t = useT();
   const has = issues.length > 0;
   return (
     <div style={{ flex: 1, width: '100%', minWidth: 0, background: 'var(--surface)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '10px 13px', borderBottom: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
         <div style={{ width: 26, height: 26, borderRadius: 7, background: has ? 'var(--warning-soft)' : 'var(--success-soft)', color: has ? 'var(--warning)' : 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name={has ? 'warning' : 'check'} size={15} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>Конфликты</div>
-          <div className="muted" style={{ fontSize: 11, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{has ? 'Нажми на конфликт, чтобы исправить' : 'Всё согласовано'}</div>
+          <div style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>{t('tse.conflicts')}</div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{has ? t('tse.click_to_fix') : t('tse.all_consistent')}</div>
         </div>
         {has && <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
           {errors > 0 && <span style={{ padding: '3px 8px', borderRadius: 999, background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 11.5, fontWeight: 700 }}>{errors}</span>}
@@ -713,8 +728,8 @@ function WarningsPanel({ issues, errors, warns, onOpen }) {
       {!has ? (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24, color: 'var(--muted)' }}>
           <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center', marginBottom: 14 }}><Icon name="check" size={26} /></div>
-          <div style={{ fontWeight: 600, color: 'var(--ink)', fontSize: 15, marginBottom: 6 }}>Конфликтов нет</div>
-          <div style={{ fontSize: 12.5, lineHeight: 1.5, maxWidth: 250 }}>Отели, переезды и активности совпадают с датами и порядком городов.</div>
+          <div style={{ fontWeight: 600, color: 'var(--ink)', fontSize: 15, marginBottom: 6 }}>{t('tse.no_conflicts')}</div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.5, maxWidth: 250 }}>{t('tse.no_conflicts_desc')}</div>
         </div>
       ) : (
         <div className="scrollbar-thin" style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 9, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -725,6 +740,7 @@ function WarningsPanel({ issues, errors, warns, onOpen }) {
   );
 }
 function WarningPlate({ c, onClick }) {
+  const t = useT();
   const type = plateType(c.code);
   const tm = PLATE_META[type];
   const isError = c.level === 'error';
@@ -733,9 +749,9 @@ function WarningPlate({ c, onClick }) {
     <button onClick={onClick} style={{ display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', flexShrink: 0, borderRadius: 9, border: '1px solid color-mix(in srgb, ' + stripe + ' 40%, transparent)', background: isError ? 'var(--danger-soft)' : 'var(--warning-soft)', padding: '7px 10px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
         <span style={{ width: 20, height: 20, borderRadius: 6, background: 'color-mix(in srgb, ' + stripe + ' 22%, transparent)', color: stripe, display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name={tm.icon} size={12} /></span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink)' }}>{tm.label}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink)' }}>{t(tm.labelKey)}</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: stripe }}>
-          <span style={{ width: 4, height: 4, borderRadius: '50%', background: stripe }} />{isError ? 'связь разорвана' : 'не совпадает'}
+          <span style={{ width: 4, height: 4, borderRadius: '50%', background: stripe }} />{isError ? t('tse.link_broken') : t('tse.mismatch')}
         </span>
         <span className="num" style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted-2)' }}>{c.code}</span>
       </div>

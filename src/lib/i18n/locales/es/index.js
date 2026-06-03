@@ -1,4 +1,5 @@
 import common from './common';
+import event from './event';
 import nav from './nav';
 import trips from './trips';
 import trip from './trip';
@@ -23,10 +24,13 @@ import chat from './chat';
 import admin from './admin';
 import trip_menu from './trip_menu';
 import ai_plan from './ai_plan';
+import planner from './planner';
+import account from './account';
+import tse from './tse';
 
 export default {
-  ...common, ...nav, ...trips, ...trip, ...visit, ...hotel, ...activity,
+  ...common, ...event, ...nav, ...trips, ...trip, ...visit, ...hotel, ...activity,
   ...transfer, ...member, ...notif, ...view, ...settings, ...auth, ...calendar,
   ...doc, ...service, ...sub, ...pub, ...booking, ...telegram, ...budget, ...chat,
-  ...admin, ...trip_menu, ...ai_plan,
+  ...admin, ...trip_menu, ...ai_plan, ...planner, ...account, ...tse,
 };

@@ -71,6 +71,7 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
       events.push({
         type: 'hotel-checkin',
         id: 'h-in-' + h.id,
+        cityVisitId: h.city_visit_id,
         date: naiveDayKey(h.check_in_datetime),
         time: formatNaive(h.check_in_datetime, 'HH:mm'),
         city,
@@ -89,6 +90,7 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
       events.push({
         type: 'hotel-checkout',
         id: 'h-out-' + h.id,
+        cityVisitId: h.city_visit_id,
         date: naiveDayKey(h.check_out_datetime),
         time: formatNaive(h.check_out_datetime, 'HH:mm'),
         city,
@@ -103,6 +105,7 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
       events.push({
         type: 'hotel-deadline',
         id: 'h-cancel-' + h.id,
+        cityVisitId: h.city_visit_id,
         date: naiveDayKey(h.free_cancellation_until),
         time: formatNaive(h.free_cancellation_until, 'HH:mm'),
         city,
@@ -492,15 +495,6 @@ function buildDayList(startIso, endIso) {
   return days;
 }
 
-// Find which visit a day belongs to
-function visitForDay(day, visits) {
-  return visits.find(v => {
-    const s = naiveDayKey(v.start_datetime);
-    const e = naiveDayKey(v.end_datetime);
-    return s && e && day >= s && day <= e;
-  }) || null;
-}
-
 // Count nights between two date strings 'yyyy-MM-dd'
 function nightsBetween(startDay, endDay) {
   const s = parseNaive(startDay);
@@ -719,12 +713,13 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   const hotelsByVisit = {};
   for (const e of stream) {
     if (e.type === 'hotel-checkin') {
-      const visit = visits.find(v => {
-        if (e.city && v.city_name === e.city) return true;
-        const vStart = naiveDayKey(v.start_datetime);
-        const vEnd = naiveDayKey(v.end_datetime);
-        return vStart && vEnd && e.date >= vStart && e.date <= vEnd;
-      });
+      // Bind the hotel to its city strictly by the explicit FK (city_visit_id).
+      // No name/date-range fallback: a date-range guess is ambiguous when two
+      // cities share a calendar day (a one-day pass-through overlapping the next
+      // stay) and would park the hotel under the wrong city's CityHero. If a
+      // hotel has no matching city_visit, it is simply not attached to any hero
+      // and that city renders the standard "no booking" warning instead.
+      const visit = e.cityVisitId ? visits.find(v => v.id === e.cityVisitId) : null;
       if (visit) {
         if (!hotelsByVisit[visit.id]) hotelsByVisit[visit.id] = [];
         if (!hotelsByVisit[visit.id].find(h => h.hotelId === e.hotelId)) {
@@ -768,8 +763,8 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
 
   // One ordered walk of TRANSIT cities drives BOTH the render order and the
   // transfer/warning pairing - so a warning's "from" is always the city shown
-  // directly above it (no sortVisits ↔ visitForDay divergence). Anchors are
-  // rendered separately as StreamAnchor.
+  // directly above it (a single source of order, no per-day visit lookup that
+  // could diverge from it). Anchors are rendered separately as StreamAnchor.
   const transitCities = ordered.filter(v => v.kind !== 'start' && v.kind !== 'end');
 
   // Inbound transfer EVENTS (from the stream) for a destination visit - used to
@@ -841,9 +836,50 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     return out;
   };
 
+  // Out-of-range event days. An event whose date falls before the first trip
+  // day or after the last (e.g. a free-cancellation deadline that lands days
+  // before the trip starts) has no bucket in `days` and would be silently
+  // dropped. Render it as its own plain day block - pre-trip days above the
+  // start anchor, post-trip days after the end anchor - so the event's own day
+  // shows, then the start city, then the trip days.
+  const tripDaySet = new Set(days);
+  const outOfRangeDays = [...new Set(
+    stream.map(e => e.date).filter(d => d && !tripDaySet.has(d))
+  )].sort();
+  const preTripDays = outOfRangeDays.filter(d => d < tripStart);
+  const postTripDays = outOfRangeDays.filter(d => d > tripEnd);
+
+  const renderEventsDay = (day) => {
+    const evs = (eventsByDate[day] || []).filter(e => !inboundEventIds.has(e.id));
+    if (evs.length === 0) return null;
+    return (
+      <div key={`xday-${day}`} style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, padding: '12px 0 10px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+              {fmtDate(day)}
+            </span>
+            <span className="muted" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
+              {weekday(day)}
+            </span>
+          </div>
+          <div style={{ flex: 1, borderBottom: '1px solid var(--line-2)', marginBottom: 6 }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {evs.map((e, idx) => (
+            <StreamEventRow key={e.id} e={e} last={idx === evs.length - 1} onClick={() => onOpenEvent?.(e)} />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const rows = [];
   // Running predecessor across the whole itinerary walk (seed = start anchor).
   let prevCity = ordered[0]?.kind === 'start' ? ordered[0] : null;
+
+  // Pre-trip event days (e.g. a cancellation deadline before the trip starts).
+  for (const d of preTripDays) rows.push(renderEventsDay(d));
 
   // Start anchor
   const startCity = ordered[0]?.city_name || t('ai_plan.start_badge');
@@ -900,30 +936,61 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
           <div style={{ flex: 1, borderBottom: '1px solid var(--line-2)', marginBottom: 6 }} />
         </div>
 
-        {/* Each city arriving this day: [transfer card | missing-transfer
-            warning] then its CityHero. prevCity carries through the whole
-            itinerary so a warning's "from" is always the city directly above. */}
-        {arrivingToday.flatMap(c => { const block = renderArrival(c, prevCity); prevCity = c; return block; })}
-
-        {/* Events or placeholder - never show the empty-day placeholder on an
-            arrival day (the city hero already fills it). */}
-        {dayEvents.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {dayEvents.map((e, idx) => (
-              <StreamEventRow key={e.id} e={e} last={idx === dayEvents.length - 1} onClick={() => onOpenEvent?.(e)} />
-            ))}
-          </div>
-        ) : !isArrival && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '10px 14px',
-            background: 'transparent', border: '1.5px dashed var(--line)',
-            borderRadius: 10, color: 'var(--muted)',
-          }}>
-            <Icon name="info" size={14} />
-            <div style={{ flex: 1, fontSize: 12.5 }}>{t('view.empty_day')}</div>
-          </div>
-        )}
+        {/* Intra-day order = chronological. Each arriving city's block
+            [transfer card | missing-transfer warning] + CityHero is anchored to
+            its inbound transfer's time (or the city's start when there is no
+            transfer). Day events earlier than the first arrival anchor render
+            ABOVE the block(s); the rest render below. This keeps e.g. a hotel
+            checkout (11:00) above a same-day onward flight (12:20) instead of
+            being forced under the new city's hero. Arrival blocks keep their
+            itinerary order, which drives the prevCity transfer/warning pairing. */}
+        {(() => {
+          const blocks = arrivingToday.map(c => {
+            const inEv = inboundEventsFor(c.id);
+            const anchorMs = inEv.length
+              ? Math.min(...inEv.map(e => e._ms ?? Number.POSITIVE_INFINITY))
+              : (parseNaive(c.start_datetime)?.toMillis() ?? Number.NEGATIVE_INFINITY);
+            return { anchorMs, city: c };
+          });
+          const firstAnchorMs = blocks.length
+            ? Math.min(...blocks.map(b => b.anchorMs))
+            : Number.POSITIVE_INFINITY;
+          const sorted = [...dayEvents].sort((a, b) => (a._ms ?? 0) - (b._ms ?? 0));
+          const beforeEvents = sorted.filter(e => (e._ms ?? 0) < firstAnchorMs);
+          const afterEvents = sorted.filter(e => (e._ms ?? 0) >= firstAnchorMs);
+          const blockNodes = blocks.flatMap(b => {
+            const n = renderArrival(b.city, prevCity);
+            prevCity = b.city;
+            return n;
+          });
+          const eventList = (list, mb) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, ...(mb ? { marginBottom: 8 } : null) }}>
+              {list.map((e, idx) => (
+                <StreamEventRow key={e.id} e={e} last={idx === list.length - 1} onClick={() => onOpenEvent?.(e)} />
+              ))}
+            </div>
+          );
+          const hasAny = beforeEvents.length || afterEvents.length || blockNodes.length;
+          return (
+            <>
+              {beforeEvents.length > 0 && eventList(beforeEvents, true)}
+              {blockNodes}
+              {afterEvents.length > 0 && eventList(afterEvents, false)}
+              {/* Empty-day placeholder - never on an arrival day (the hero fills it). */}
+              {!hasAny && !isArrival && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 14px',
+                  background: 'transparent', border: '1.5px dashed var(--line)',
+                  borderRadius: 10, color: 'var(--muted)',
+                }}>
+                  <Icon name="info" size={14} />
+                  <div style={{ flex: 1, fontSize: 12.5 }}>{t('view.empty_day')}</div>
+                </div>
+              )}
+            </>
+          );
+        })()}
         {/* Edit mode: add buttons */}
         {isEditMode && (
           <AddDayButton
@@ -975,6 +1042,9 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
       icon="check"
     />
   );
+
+  // Post-trip event days (e.g. a deadline that lands after the last trip day).
+  for (const d of postTripDays) rows.push(renderEventsDay(d));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>

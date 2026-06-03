@@ -21,6 +21,7 @@
  */
 import React, { useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import { safeStorageName } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
 import { detectPlatformFromUrl } from '@/lib/booking-platforms';
@@ -62,6 +63,7 @@ export default function EventAiBlock({
   parsedFieldCount = 0,
   onReset,
 }) {
+  const { t } = useI18n();
   const [text, setText] = useState('');
   const [files, setFiles] = useState([]); // { file, name, file_url? }
   const [error, setError] = useState(null);
@@ -89,7 +91,7 @@ export default function EventAiBlock({
     setError(null);
     const incoming = Array.from(list).filter((f) => {
       if (f.size > MAX_FILE_BYTES) {
-        setError(`Файл «${f.name}» слишком большой (макс. 5 МБ).`);
+        setError(t('event.ai_file_too_big5', { name: f.name }));
         return false;
       }
       return true;
@@ -98,7 +100,7 @@ export default function EventAiBlock({
     setFiles((prev) => {
       const space = MAX_FILES - prev.length;
       const toAdd = incoming.slice(0, space).map((f) => ({ file: f, name: f.name }));
-      if (incoming.length > space) setError(`Можно загрузить максимум ${MAX_FILES} файлов.`);
+      if (incoming.length > space) setError(t('event.ai_max_files', { max: MAX_FILES }));
       const next = [...prev, ...toAdd];
       if (next.length > 0 && state === 'idle') setState('uploaded');
       return next;
@@ -130,7 +132,7 @@ export default function EventAiBlock({
         // display via `documents` below.
         const path = `ai-uploads/${uid}/${safeStorageName(f.name)}`;
         const { error: upErr } = await supabase.storage.from('documents').upload(path, f.file);
-        if (upErr) throw new Error(upErr.message || 'Не удалось загрузить файл');
+        if (upErr) throw new Error(upErr.message || t('event.ai_upload_error'));
         const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);
         return { ...f, file_url: urlData?.signedUrl || '', storage_path: path };
       }));
@@ -179,7 +181,7 @@ export default function EventAiBlock({
       );
     } catch (e) {
       stopFakeProgress();
-      setError(e?.message || 'Не удалось распознать. Попробуй ещё раз.');
+      setError(e?.message || t('event.ai_parse_error'));
       setState('uploaded');
     }
   };
@@ -201,11 +203,11 @@ export default function EventAiBlock({
         <div style={{ flex: 1, minWidth: 200 }}>
           <Title />
           <div className="text-xs text-muted-foreground mt-0.5">
-            Доступно на Pro · вставь текст или загрузи файл - поля заполнятся сами.
+            {t('event.ai_locked_hint')}
           </div>
         </div>
         <Button size="sm" onClick={onUpgrade} className="bg-gradient-to-r from-primary via-chart-1 to-chart-3">
-          <Sparkles className="w-3.5 h-3.5 mr-1.5" />Перейти к Pro
+          <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('trips.go_pro')}
         </Button>
       </div>
     );
@@ -228,7 +230,7 @@ export default function EventAiBlock({
         <div style={{ flex: 1, minWidth: 180 }}>
           <Title />
           <div className="text-xs text-muted-foreground mt-0.5">
-            Вставь текст подтверждения или загрузи файл - поля заполнятся сами.
+            {t('event.ai_available_hint')}
           </div>
         </div>
       </button>
@@ -257,7 +259,7 @@ export default function EventAiBlock({
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="text-sm font-semibold flex items-center gap-1.5">
-            ИИ читает подтверждение бронирования
+            {t('event.ai_parsing')}
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           </div>
           {files[0]?.name && (
@@ -295,9 +297,9 @@ export default function EventAiBlock({
           <Sparkles className="w-4 h-4" />
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <div className="text-sm font-semibold">ИИ заполнил {parsedFieldCount} {pluralFields(parsedFieldCount)}</div>
+          <div className="text-sm font-semibold">{t('event.ai_filled', { count: parsedFieldCount, fields: pluralFields(t, parsedFieldCount) })}</div>
           <div className="text-xs text-muted-foreground mt-0.5">
-            Подсвечены фиолетовым. Любое поле можно поправить - пометка ИИ уйдёт.
+            {t('event.ai_highlighted_hint')}
           </div>
         </div>
         <Button
@@ -305,13 +307,13 @@ export default function EventAiBlock({
           size="sm"
           onClick={() => { onReset?.(); setText(''); setFiles([]); setState('idle'); }}
         >
-          <RefreshCw className="w-3.5 h-3.5 mr-1.5" />Сбросить
+          <RefreshCw className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_reset')}
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setState('available')}
-          aria-label="Свернуть"
+          aria-label={t('common.less')}
         >
           <ChevronUp className="w-3.5 h-3.5" />
         </Button>
@@ -335,14 +337,14 @@ export default function EventAiBlock({
           <Title />
           <div className="text-xs text-muted-foreground mt-0.5">
             {state === 'uploaded'
-              ? `${files.length} ${files.length === 1 ? 'файл готов' : 'файла готовы'} к распознаванию`
-              : 'Вставь текст подтверждения или скриншот - поля заполнятся сами.'}
+              ? `${files.length} ${files.length === 1 ? t('event.ai_file_ready_one') : t('event.ai_file_ready_many')} ${t('event.ai_files_ready_suffix')}`
+              : t('event.ai_paste_hint')}
           </div>
         </div>
         <button
           type="button"
           onClick={() => setState('available')}
-          title="Свернуть"
+          title={t('common.less')}
           className="w-7 h-7 rounded-md grid place-items-center text-muted-foreground hover:bg-white/40 transition"
         >
           <ChevronUp className="w-3.5 h-3.5" />
@@ -378,7 +380,7 @@ export default function EventAiBlock({
                 type="button"
                 onClick={() => removeFile(i)}
                 className="w-7 h-7 rounded grid place-items-center text-muted-foreground hover:bg-secondary"
-                aria-label="Убрать файл"
+                aria-label={t('event.ai_remove_file')}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -391,7 +393,7 @@ export default function EventAiBlock({
               className="rounded-lg border-2 border-dashed py-1.5 text-center text-xs text-muted-foreground hover:bg-white/40 transition"
               style={{ borderColor: 'var(--ai-soft-12)' }}
             >
-              <Upload className="w-3 h-3 inline-block mr-1.5 mb-0.5" />Добавить ещё файл
+              <Upload className="w-3 h-3 inline-block mr-1.5 mb-0.5" />{t('event.ai_add_more')}
             </button>
           )}
         </div>
@@ -410,15 +412,15 @@ export default function EventAiBlock({
             className="w-full bg-transparent text-sm resize-vertical outline-none p-1.5"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Вставь сюда текст письма с подтверждением, номер брони, ссылку…"
+            placeholder={t('event.ai_textarea_ph')}
             style={{ minHeight: 84 }}
           />
           <div className="flex items-center gap-2 flex-wrap mt-1">
             <Button variant="ghost" size="sm" onClick={() => inputRef.current?.click()}>
-              <Upload className="w-3.5 h-3.5 mr-1.5" />PDF / скриншот
+              <Upload className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_pdf_screenshot')}
             </Button>
             <span className="text-[11px] text-muted-foreground">
-              {dragOver ? 'Брось файл сюда…' : 'или перетащи файл сюда'}
+              {dragOver ? t('event.ai_drop_active') : t('event.ai_drop_idle')}
             </span>
             <div className="flex-1" />
             <Button
@@ -428,7 +430,7 @@ export default function EventAiBlock({
               style={{ background: 'var(--ai)', borderColor: 'var(--ai)' }}
               className="text-white hover:opacity-90"
             >
-              <Sparkles className="w-3.5 h-3.5 mr-1.5" />Распознать
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_recognize')}
             </Button>
           </div>
         </div>
@@ -437,7 +439,7 @@ export default function EventAiBlock({
       {state === 'uploaded' && (
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="ghost" size="sm" onClick={() => setState('idle')}>
-            <Edit3 className="w-3.5 h-3.5 mr-1.5" />+ вставить текст
+            <Edit3 className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_paste_text')}
           </Button>
           <div className="flex-1" />
           <Button
@@ -446,7 +448,7 @@ export default function EventAiBlock({
             style={{ background: 'var(--ai)', borderColor: 'var(--ai)' }}
             className="text-white hover:opacity-90"
           >
-            <Sparkles className="w-3.5 h-3.5 mr-1.5" />Распознать бронь
+            <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_recognize_booking')}
           </Button>
         </div>
       )}
@@ -500,18 +502,19 @@ function AiIcon({ locked }) {
 }
 
 function Title() {
+  const { t } = useI18n();
   return (
     <div className="text-sm font-semibold flex items-center gap-1.5 flex-wrap">
-      Заполнить через ИИ
+      {t('event.ai_fill_title')}
       <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Pro</span>
     </div>
   );
 }
 
-function pluralFields(n) {
-  if (n % 10 === 1 && n % 100 !== 11) return 'поле';
-  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return 'поля';
-  return 'полей';
+function pluralFields(t, n) {
+  if (n % 10 === 1 && n % 100 !== 11) return t('event.field_one');
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return t('event.field_few');
+  return t('event.field_many');
 }
 
 function formatSize(bytes) {
