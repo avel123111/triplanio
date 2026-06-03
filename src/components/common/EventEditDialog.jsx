@@ -897,7 +897,7 @@ export default function EventEditDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="p-0 max-w-2xl max-h-[90vh] overflow-y-auto gap-0 w-[calc(100%-1rem)] sm:w-full" style={{ background: 'var(--surface)' }}>
+        <DialogContent className="p-0 max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden gap-0 w-[calc(100%-1rem)] sm:w-full" style={{ background: 'var(--surface)' }}>
           {/* 4px colour stripe */}
           <div style={{ height: 4, background: meta.color }} />
 
