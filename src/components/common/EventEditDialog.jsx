@@ -118,7 +118,8 @@ import { searchCities, getTimezone } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
-import { hotelWarnings, transferWarnings, activityWarnings, normalizePositions } from '@/lib/validation';
+import { validateEntity, normalizePositions } from '@/lib/validation';
+import { FieldError, IssuesPanel, fieldHasError } from '@/components/common/ValidationUI';
 import { detectPlatformFromUrl, BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { invalidateTripData } from '@/lib/trip-data';
@@ -473,6 +474,15 @@ export default function EventEditDialog({
   const [timeMissing, setTimeMissing] = useState({});
   const anyTimeMissing = Object.values(timeMissing).some(Boolean);
 
+  // Hybrid error display: inline error/border appears once a field is TOUCHED;
+  // the summary panel appears only after a SAVE attempt. Fresh form stays clean.
+  const [touched, setTouched] = useState(() => new Set());
+  const [submitted, setSubmitted] = useState(false);
+  const markTouched = (token) => {
+    if (!token) return;
+    setTouched((prev) => (prev.has(token) ? prev : new Set(prev).add(token)));
+  };
+
   // Re-hydrate form whenever the dialog opens or the entity prop changes.
   useEffect(() => {
     if (!open) return;
@@ -483,6 +493,7 @@ export default function EventEditDialog({
     setExtraSegments([]);
     setAiEndpointWarn(null); setAiSegFields(new Set());
     setTimeMissing({});
+    setTouched(new Set()); setSubmitted(false);
   }, [open, entity?.id, initialKind]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pro check - runs whenever the dialog opens with a tripId we can verify.
@@ -518,8 +529,15 @@ export default function EventEditDialog({
     }
   }, [form.booking_url]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Map a form key to its canonical validation field token (for touched-state).
+  const FIELD_TOKEN = {
+    name: 'name', title: 'title', checkInLocal: 'checkIn', checkOutLocal: 'checkOut',
+    startLocal: 'start', endLocal: 'end', pickup_address: 'pickupAddress',
+    pickup_at_local: 'pickup', dropoff_at_local: 'dropoff',
+  };
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    markTouched(FIELD_TOKEN[key]);
     setAiFields((prev) => {
       if (!prev.has(key)) return prev;
       const next = new Set(prev); next.delete(key); return next;
@@ -539,6 +557,7 @@ export default function EventEditDialog({
     setExtraSegments([]);
     setAiEndpointWarn(null); setAiSegFields(new Set());
     setTimeMissing({});
+    setTouched(new Set()); setSubmitted(false);
   };
 
   const openUpgrade = () => {
@@ -549,106 +568,67 @@ export default function EventEditDialog({
     nav(`/pro?tripId=${tripId || ''}`);
   };
 
-  // ── Date order validation per kind ─────────────────────────────────────
-  const dateOrderError = useMemo(() => {
-    if (currentKind === 'hotel') {
-      const a = localToUtc(form.checkInLocal, tz);
-      const b = localToUtc(form.checkOutLocal, tz);
-      return a && b && new Date(a).getTime() >= new Date(b).getTime();
-    }
-    if (currentKind === 'transfer' && form.hasLayovers) {
-      return false; // validated per-segment in canSave
-    }
-    if (currentKind === 'transfer' || currentKind === 'activity') {
-      const a = localToUtc(form.startLocal, tz);
-      const b = localToUtc(form.endLocal, tz);
-      return a && b && new Date(a).getTime() >= new Date(b).getTime();
-    }
-    if (currentKind === 'service') {
-      if (!form.pickup_at_local || !form.dropoff_at_local) return false;
-      return new Date(form.pickup_at_local).getTime() >= new Date(form.dropoff_at_local).getTime();
-    }
-    return false;
-  }, [currentKind, form, tz]);
+  // ── Unified validation (Ф2): one engine, emits CODES; text via t('validation.'+code).
+  // Modal & Edit Mode share the same rules, so the verdict matches by construction.
+  const vctx = useMemo(() => {
+    if (currentKind === 'hotel' || currentKind === 'activity') return { visit };
+    if (currentKind === 'transfer') return { fromVisit, toVisit };
+    return {};
+  }, [currentKind, visit, fromVisit, toVisit]);
 
-  // Hotel-specific: warn if dates fall outside visit window (in tz days).
-  const hotelRangeError = useMemo(() => {
-    if (currentKind !== 'hotel' || !visit) return null;
-    const dayOf = (iso) => iso
-      ? DateTime.fromISO(iso, { zone: 'utc' }).setZone(tz).toFormat('yyyy-LL-dd')
-      : null;
-    const ci = localToUtc(form.checkInLocal, tz);
-    const co = localToUtc(form.checkOutLocal, tz);
-    const ciDay = dayOf(ci), coDay = dayOf(co);
-    const vsDay = dayOf(visit.start_datetime), veDay = dayOf(visit.end_datetime);
-    if (ciDay && vsDay && ciDay < vsDay) return t('hotel.range_checkin_before');
-    if (coDay && veDay && coDay > veDay) return t('hotel.range_checkout_after');
-    return null;
-  }, [currentKind, form.checkInLocal, form.checkOutLocal, visit, tz, t]);
-
-  // Soft warnings - same helpers the legacy dialogs use.
-  const warnings = useMemo(() => {
+  // Normalize the form to the engine's draft shape using the SAME localToUtc that
+  // the save payloads use, so OOB/order verdicts equal what actually gets stored.
+  const vdraft = useMemo(() => {
     if (currentKind === 'hotel') {
-      const draft = {
-        id: entity?.id,
-        check_in_datetime: localToUtc(form.checkInLocal, tz),
-        check_out_datetime: localToUtc(form.checkOutLocal, tz),
-        name: form.name,
-      };
-      return hotelWarnings(draft, visit, []);
-    }
-    if (currentKind === 'transfer') {
-      const draft = {
-        id: entity?.id,
-        start_datetime: localToUtc(form.startLocal, startTz),
-        end_datetime: localToUtc(form.endLocal, endTz),
-      };
-      return transferWarnings(draft, fromVisit, toVisit);
+      return { id: entity?.id, name: form.name, checkIn: localToUtc(form.checkInLocal, tz), checkOut: localToUtc(form.checkOutLocal, tz) };
     }
     if (currentKind === 'activity') {
-      const draft = {
-        id: entity?.id,
-        start_datetime: localToUtc(form.startLocal, tz),
-        end_datetime: localToUtc(form.endLocal, tz),
-      };
-      return activityWarnings(draft, visit);
-    }
-    return [];
-  }, [currentKind, form, tz, startTz, endTz, entity, visit, fromVisit, toVisit]);
-
-  // ── Save validity ──────────────────────────────────────────────────────
-  const canSave = useMemo(() => {
-    if (dateOrderError || anyTimeMissing || uploading) return false;
-    if (currentKind === 'hotel') {
-      return !!form.name?.trim() && !hotelRangeError;
+      return { id: entity?.id, title: form.title, start: localToUtc(form.startLocal, tz), end: localToUtc(form.endLocal, tz) };
     }
     if (currentKind === 'transfer') {
       if (form.hasLayovers) {
-        const segs = form.segments || [];
-        if (segs.length < 2) return false;
-        let prevArr = null;
-        for (let i = 0; i < segs.length; i++) {
-          const s = segs[i];
-          if (!s.startLocal || !s.endLocal) return false;
-          const dep = new Date(s.startLocal).getTime();
-          const arr = new Date(s.endLocal).getTime();
-          if (!(arr > dep)) return false;                       // arrival must be after departure
-          if (prevArr != null && dep < prevArr) return false;   // can't depart before previous arrival
-          prevArr = arr;
-          if (i < segs.length - 1 && !s.toCity?.city_name) return false; // layover city required
-        }
-        return true;
+        return {
+          id: entity?.id, hasLayovers: true,
+          segments: (form.segments || []).map((s) => ({
+            start: localToUtc(s.startLocal, startTz), end: localToUtc(s.endLocal, endTz), toCity: s.toCity,
+          })),
+        };
       }
-      return !!form.startLocal && !!form.endLocal;
-    }
-    if (currentKind === 'activity') {
-      return !!form.title?.trim() && !!form.startLocal;
+      return { id: entity?.id, start: localToUtc(form.startLocal, startTz), end: localToUtc(form.endLocal, endTz) };
     }
     if (currentKind === 'service') {
-      return !!form.name?.trim() && (isEdit || !!form.pickup_address?.trim());
+      return {
+        id: entity?.id, name: form.name, pickupAddress: form.pickup_address, isEdit,
+        pickup: localToUtc(form.pickup_at_local, tz), dropoff: localToUtc(form.dropoff_at_local, tz),
+      };
     }
-    return false;
-  }, [currentKind, form, dateOrderError, anyTimeMissing, uploading, hotelRangeError, isEdit]);
+    return {};
+  }, [currentKind, form, tz, startTz, endTz, entity, isEdit]);
+
+  const issues = useMemo(() => validateEntity(currentKind, vdraft, vctx), [currentKind, vdraft, vctx]);
+
+  // ── Save validity ──────────────────────────────────────────────────────
+  // Single gate: no blocking errors from the engine (+ not mid-upload / mid-type).
+  const canSave = useMemo(
+    () => !issues.some((i) => i.level === 'error') && !uploading && !anyTimeMissing,
+    [issues, uploading, anyTimeMissing],
+  );
+
+  // Hybrid display: inline issues show for touched fields (or after a save attempt);
+  // the summary panel only after a save attempt.
+  const displayIssues = useMemo(
+    () => issues.filter((i) => submitted || (i.field && touched.has(i.field))),
+    [issues, submitted, touched],
+  );
+  const handleSaveClick = () => {
+    if (!canSave) {
+      setSubmitted(true);
+      const f = issues.find((i) => i.level === 'error' && i.field)?.field;
+      if (f) document.querySelector(`[data-vfield="${CSS.escape(f)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return;
+    }
+    saveMut.mutate();
+  };
 
   // ── Save mutation ──────────────────────────────────────────────────────
   const saveMut = useMutation({
@@ -742,23 +722,29 @@ export default function EventEditDialog({
     setIf('address', data.address);
     setIf('booking_reference', data.booking_reference);
     setIf('payment_status', data.payment_status);
-    if (typeof data.price === 'number') setIf('price', data.price);
+    // No type guard: AI often returns price as a string - populate it, the engine
+    // validates downstream. (§12: don't drop AI values on type/validity.)
+    setIf('price', data.price);
     setIf('currency', data.currency);
-    if (typeof data.free_cancellation === 'boolean') {
-      upd.free_cancellation = data.free_cancellation;
+    if (data.free_cancellation != null) {
+      upd.free_cancellation = !!data.free_cancellation; // closed-type control -> coerce to bool
       filled.add('free_cancellation');
     }
     setIf('phone', data.phone);
     setIf('email', data.email);
     setIf('booking_url', data.booking_url);
     setIf('booking_platform', data.booking_platform);
+    // date+time -> local string. Reject a malformed DATE part so a bad AI value
+    // never blanks a prefilled field (datetime-local can't hold an invalid value).
     const combine = (d, t2) => {
-      if (!d) return '';
+      if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(String(d))) return null;
       const time = t2 && /^\d{1,2}:\d{2}/.test(t2) ? t2.padStart(5, '0').slice(0, 5) : '00:00';
       return `${d}T${time}`;
     };
-    if (data.check_in_date)  { upd.checkInLocal = combine(data.check_in_date,  data.check_in_time);  filled.add('checkInLocal'); }
-    if (data.check_out_date) { upd.checkOutLocal = combine(data.check_out_date, data.check_out_time); filled.add('checkOutLocal'); }
+    const ci = combine(data.check_in_date, data.check_in_time);
+    if (ci) { upd.checkInLocal = ci; filled.add('checkInLocal'); }
+    const co = combine(data.check_out_date, data.check_out_time);
+    if (co) { upd.checkOutLocal = co; filled.add('checkOutLocal'); }
     if (data.free_cancellation_until) {
       upd.free_cancellation_until_local = data.free_cancellation_until.replace(' ', 'T').slice(0, 16);
       filled.add('free_cancellation_until_local');
@@ -782,8 +768,10 @@ export default function EventEditDialog({
       ? data.transfers
       : (Array.isArray(data.segments) && data.segments.length > 0 ? data.segments : [data]);
     const wps = Array.isArray(data.waypoints) ? data.waypoints : [];
+    // Reject a malformed DATE part (return ''), so a bad AI date never produces
+    // an invalid local value. Callers coalesce to '' / skip.
     const combine = (d, t2) => {
-      if (!d) return '';
+      if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(String(d))) return '';
       const time = t2 && /^\d{1,2}:\d{2}/.test(t2) ? t2.padStart(5, '0').slice(0, 5) : '00:00';
       return `${d}T${time}`;
     };
@@ -886,10 +874,12 @@ export default function EventEditDialog({
     setIf('booking_reference', first.booking_reference);
     setIf('from_address', first.from_address);
     setIf('to_address', first.to_address);
-    if (typeof first.price === 'number') setIf('price', first.price);
+    setIf('price', first.price);
     setIf('currency', first.currency);
-    if (first.departure_date) { upd.startLocal = combine(first.departure_date, first.departure_time); filled.add('startLocal'); }
-    if (first.arrival_date)   { upd.endLocal   = combine(first.arrival_date,   first.arrival_time);   filled.add('endLocal'); }
+    const sDep = combine(first.departure_date, first.departure_time);
+    if (sDep) { upd.startLocal = sDep; filled.add('startLocal'); }
+    const sArr = combine(first.arrival_date, first.arrival_time);
+    if (sArr) { upd.endLocal = sArr; filled.add('endLocal'); }
     if (docs.length) { upd.documents = [...(upd.documents || []), ...docs].slice(0, 50); filled.add('documents'); }
     if (first.transport_type && TRANSPORT_KINDS.some((k) => k.id === first.transport_type)) {
       upd.transport_type = first.transport_type;
@@ -981,8 +971,7 @@ export default function EventEditDialog({
                   aiFields={aiFields}
                   tz={tz}
                   setTime={setTime}
-                  dateOrderError={dateOrderError}
-                  hotelRangeError={hotelRangeError}
+                  issues={displayIssues}
                   setUploading={setUploading}
                 />
               )}
@@ -999,7 +988,8 @@ export default function EventEditDialog({
                   startTz={startTz}
                   endTz={endTz}
                   setTime={setTime}
-                  dateOrderError={dateOrderError}
+                  issues={displayIssues}
+                  onTouch={markTouched}
                   extraSegments={extraSegments}
                   isEdit={isEdit}
                   setUploading={setUploading}
@@ -1013,7 +1003,7 @@ export default function EventEditDialog({
                   aiFields={aiFields}
                   tz={tz}
                   setTime={setTime}
-                  dateOrderError={dateOrderError}
+                  issues={displayIssues}
                   setUploading={setUploading}
                 />
               )}
@@ -1024,22 +1014,14 @@ export default function EventEditDialog({
                   setForm={setForm}
                   aiFields={aiFields}
                   setTime={setTime}
-                  dateOrderError={dateOrderError}
+                  issues={displayIssues}
                   isEdit={isEdit}
                   setUploading={setUploading}
                 />
               )}
 
-              {warnings.length > 0 && (
-                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {warnings.map((w, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '9px 12px', borderRadius: 10, background: 'var(--warning-soft)', border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)', color: 'var(--ink)' }}>
-                      <span style={{ width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--warning) 22%, transparent)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><AlertTriangle className="w-3.5 h-3.5" /></span>
-                      <div style={{ fontSize: 12.5, lineHeight: 1.45, alignSelf: 'center' }}>{w}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Summary panel: shown only after a save attempt (hybrid). Click row -> field. */}
+              <IssuesPanel issues={submitted ? issues : []} style={{ marginTop: 12 }} />
             </fieldset>
           </div>
           )}
@@ -1081,9 +1063,10 @@ export default function EventEditDialog({
                 <button className="btn btn--ghost" onClick={() => onOpenChange(false)}>{t('common.cancel')}</button>
                 <button
                   className="btn btn--primary"
-                  onClick={() => saveMut.mutate()}
-                  disabled={!canSave || saveMut.isPending}
-                  style={{ background: meta.color, borderColor: meta.color, color: '#fff' }}
+                  onClick={handleSaveClick}
+                  disabled={uploading || saveMut.isPending}
+                  aria-disabled={!canSave}
+                  style={{ background: meta.color, borderColor: meta.color, color: '#fff', opacity: canSave ? 1 : 0.6 }}
                 >
                   {saveMut.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
                   {isEdit ? t('common.save') : t('event.create')}
@@ -1362,20 +1345,22 @@ function SectionHeader({ children }) {
 //  Field groups per kind
 // ─────────────────────────────────────────────────────────────────────────────
 
-function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, hotelRangeError, setUploading }) {
+function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploading }) {
   const { t } = useI18nFormat();
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
   const color = TYPE_META.hotel.color;
+  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
     <>
       <SectionHeader color={color}>{t('event.hotel_about')}</SectionHeader>
       <div className="space-y-3">
-        <div>
+        <div data-vfield="name" className={inv('name')}>
           <Label>{t('event.name_req')}</Label>
           <AiField active={aiFields.has('name')}>
             <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Memmo Alfama" />
           </AiField>
+          <FieldError issues={issues} field="name" />
         </div>
         <div>
           <Label>{t('event.address')}</Label>
@@ -1396,7 +1381,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
 
       <SectionHeader color={color}>{t('event.checkin_checkout')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="min-w-0">
+        <div className={`min-w-0 ${inv('checkIn')}`} data-vfield="checkIn">
           <Label>{t('event.checkin_req')}</Label>
           <AiField active={aiFields.has('checkInLocal')}>
             <DateTimeInput
@@ -1407,8 +1392,9 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
             />
           </AiField>
           <TimezoneHint tz={tz} />
+          <FieldError issues={issues} field="checkIn" />
         </div>
-        <div className="min-w-0">
+        <div className={`min-w-0 ${inv('checkOut')}`} data-vfield="checkOut">
           <Label>{t('event.checkout_req')}</Label>
           <AiField active={aiFields.has('checkOutLocal')}>
             <DateTimeInput
@@ -1419,14 +1405,9 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
             />
           </AiField>
           <TimezoneHint tz={tz} />
+          <FieldError issues={issues} field="checkOut" />
         </div>
       </div>
-      {dateOrderError && (
-        <p className="mt-1 text-xs text-destructive">{t('event.checkout_after_checkin')}</p>
-      )}
-      {hotelRangeError && (
-        <p className="mt-1 text-xs text-destructive">{hotelRangeError}</p>
-      )}
 
       <SectionHeader color={color}>{t('event.finance_cancel')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
@@ -1549,17 +1530,18 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
   );
 }
 
-function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, dateOrderError, extraSegments, isEdit, setUploading }) {
+function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, issues, onTouch, extraSegments, isEdit, setUploading }) {
   const { t } = useI18nFormat();
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
   const color = TYPE_META.transfer.color;
+  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
     <>
       {!isEdit && <LayoverToggle form={form} setForm={setForm} color={color} />}
 
       {form.hasLayovers ? (
-        <SegmentsEditor form={form} setForm={setForm} fromVisit={fromVisit} toVisit={toVisit} setTime={setTime} color={color} aiSegFields={aiSegFields} setAiSegFields={setAiSegFields} />
+        <SegmentsEditor form={form} setForm={setForm} fromVisit={fromVisit} toVisit={toVisit} setTime={setTime} color={color} aiSegFields={aiSegFields} setAiSegFields={setAiSegFields} issues={issues} onTouch={onTouch} />
       ) : (
       <>
       <SectionHeader color={color}>{t('event.transport_kind')}</SectionHeader>
@@ -1608,7 +1590,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
               />
             </AiField>
           </div>
-          <div>
+          <div className={inv('start')} data-vfield="start">
             <Label>{t('event.departure_req')}</Label>
             <AiField active={aiFields.has('startLocal')}>
               <DateTimeInput
@@ -1619,6 +1601,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
               />
             </AiField>
             <TimezoneHint tz={startTz} />
+            <FieldError issues={issues} field="start" />
           </div>
         </div>
         <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
@@ -1638,7 +1621,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
               />
             </AiField>
           </div>
-          <div>
+          <div className={inv('end')} data-vfield="end">
             <Label>{t('event.arrival_req')}</Label>
             <AiField active={aiFields.has('endLocal')}>
               <DateTimeInput
@@ -1649,12 +1632,10 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
               />
             </AiField>
             <TimezoneHint tz={endTz} />
+            <FieldError issues={issues} field="end" />
           </div>
         </div>
       </div>
-      {dateOrderError && (
-        <p className="mt-1 text-xs text-destructive">{t('event.arr_after_dep')}</p>
-      )}
 
       <SectionHeader color={color}>{t('event.carrier_booking')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
@@ -1810,13 +1791,16 @@ function SegTransportGrid({ value, onChange, color }) {
   );
 }
 
-function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiSegFields, setAiSegFields }) {
+function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiSegFields, setAiSegFields, issues, onTouch }) {
   const { t } = useI18nFormat();
+  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const SEG_TOKEN = { startLocal: 'start', endLocal: 'end', toCity: 'toCity' };
   const segs = form.segments || [];
   const N = segs.length;
   const aiOn = (seg, field) => !!aiSegFields && aiSegFields.has(`${seg.id}.${field}`);
   const patchSeg = (i, partial) => {
     const id = segs[i]?.id;
+    Object.keys(partial).forEach((k) => { if (SEG_TOKEN[k]) onTouch?.(`seg${i}.${SEG_TOKEN[k]}`); });
     setForm((prev) => ({ ...prev, segments: prev.segments.map((s, idx) => (idx === i ? { ...s, ...partial } : s)) }));
     // Editing a field clears its AI highlight (mirrors single-leg setField).
     if (id && setAiSegFields) {
@@ -1872,23 +1856,27 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                       <AddressAutocomplete value={seg.from_address} onChange={(v) => patchSeg(i, { from_address: v })} placeholder={t('event.addr_ph')} />
                     </AiField>
                   </div>
-                  <div>
+                  <div className={inv(`seg${i}.start`)} data-vfield={`seg${i}.start`}>
                     <Label>{t('event.departure_req')}</Label>
                     <AiField active={aiOn(seg, 'startLocal')}>
                       <DateTimeInput value={seg.startLocal} onChange={(v) => patchSeg(i, { startLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-dep`, v)} className="w-full" />
                     </AiField>
+                    <FieldError issues={issues} field={`seg${i}.start`} />
                   </div>
                 </div>
                 <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
                   <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>{isLast ? t('event.to_finish') : t('event.to_layover')}</div>
-                  <div>
+                  <div className={isLast ? '' : inv(`seg${i}.toCity`)} data-vfield={isLast ? undefined : `seg${i}.toCity`}>
                     <Label>{t('event.city')}</Label>
                     {isLast ? (
                       <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_arrival_title')} />
                     ) : (
-                      <AiField active={aiOn(seg, 'toCity')}>
-                        <CityPicker value={seg.toCity} onPick={(c) => patchSeg(i, { toCity: c })} placeholder={t('event.layover_city_ph')} />
-                      </AiField>
+                      <>
+                        <AiField active={aiOn(seg, 'toCity')}>
+                          <CityPicker value={seg.toCity} onPick={(c) => patchSeg(i, { toCity: c })} placeholder={t('event.layover_city_ph')} />
+                        </AiField>
+                        <FieldError issues={issues} field={`seg${i}.toCity`} />
+                      </>
                     )}
                   </div>
                   <div>
@@ -1897,21 +1885,15 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                       <AddressAutocomplete value={seg.to_address} onChange={(v) => patchSeg(i, { to_address: v })} placeholder={t('event.addr_ph')} />
                     </AiField>
                   </div>
-                  <div>
+                  <div className={inv(`seg${i}.end`)} data-vfield={`seg${i}.end`}>
                     <Label>{t('event.arrival_req')}</Label>
                     <AiField active={aiOn(seg, 'endLocal')}>
                       <DateTimeInput value={seg.endLocal} onChange={(v) => patchSeg(i, { endLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-arr`, v)} className="w-full" />
                     </AiField>
+                    <FieldError issues={issues} field={`seg${i}.end`} />
                   </div>
                 </div>
               </div>
-
-              {seg.startLocal && seg.endLocal && new Date(seg.endLocal).getTime() <= new Date(seg.startLocal).getTime() && (
-                <p style={{ marginTop: 8, fontSize: 12, color: 'var(--danger, #e74c3c)' }}>{t('event.arr_after_dep')}</p>
-              )}
-              {i > 0 && seg.startLocal && segs[i - 1].endLocal && new Date(seg.startLocal).getTime() < new Date(segs[i - 1].endLocal).getTime() && (
-                <p style={{ marginTop: 8, fontSize: 12, color: 'var(--danger, #e74c3c)' }}>{t('event.dep_before_prev_arr')}</p>
-              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                 <div><Label>{t('event.carrier')}</Label><AiField active={aiOn(seg, 'carrier')}><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder={t('event.carrier_ph')} /></AiField></div>
@@ -1947,15 +1929,17 @@ function ArrowRightMini() {
   return <span style={{ color: 'var(--muted-2)' }}>→</span>;
 }
 
-function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, dateOrderError, setUploading }) {
+function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues, setUploading }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.activity.color;
+  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
     <>
       <SectionHeader color={color}>{t('event.activity_about')}</SectionHeader>
-      <div>
+      <div data-vfield="title" className={inv('title')}>
         <Label>{t('event.name_req')}</Label>
         <Input value={form.title} onChange={(e) => setField('title', e.target.value)} placeholder={t('event.ph_activity_example')} />
+        <FieldError issues={issues} field="title" />
       </div>
       <div className="mt-3">
         <Label>{t('event.address')}</Label>
@@ -1976,7 +1960,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, dateOr
 
       <SectionHeader color={color}>{t('event.when')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="rounded-lg border bg-secondary/30 p-3">
+        <div className={`rounded-lg border bg-secondary/30 p-3 ${inv('start')}`} data-vfield="start">
           <div className="text-[11px] uppercase tracking-wider font-semibold mb-1" style={{ color }}>{t('event.start')}</div>
           <DateTimeInput
             value={form.startLocal}
@@ -1985,8 +1969,9 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, dateOr
             className="w-full"
           />
           <TimezoneHint tz={tz} />
+          <FieldError issues={issues} field="start" />
         </div>
-        <div className="rounded-lg border bg-secondary/30 p-3">
+        <div className={`rounded-lg border bg-secondary/30 p-3 ${inv('end')}`} data-vfield="end">
           <div className="text-[11px] uppercase tracking-wider font-semibold mb-1" style={{ color }}>{t('event.end')}</div>
           <DateTimeInput
             value={form.endLocal}
@@ -1995,11 +1980,9 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, dateOr
             className="w-full"
           />
           <TimezoneHint tz={tz} />
+          <FieldError issues={issues} field="end" />
         </div>
       </div>
-      {dateOrderError && (
-        <p className="mt-1 text-xs text-destructive">{t('event.end_after_start')}</p>
-      )}
 
       <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2029,22 +2012,24 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, dateOr
   );
 }
 
-function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderError, isEdit, setUploading }) {
+function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading }) {
   const { t } = useI18nFormat();
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
   const color = TYPE_META.service.color;
+  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
     <>
       <SectionHeader color={color}>{t('event.car_section')}</SectionHeader>
-      <div>
+      <div data-vfield="name" className={inv('name')}>
         <Label>{t('event.company_name_req')}</Label>
         <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('event.ph_car_example')} autoFocus />
+        <FieldError issues={issues} field="name" />
       </div>
 
       <SectionHeader color={color}>{t('event.pickup')}</SectionHeader>
       <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
-        <div>
+        <div data-vfield="pickupAddress" className={inv('pickupAddress')}>
           <Label>{isEdit ? t('event.pickup_addr') : t('event.pickup_addr_req')}</Label>
           <AddressAutocomplete
             value={form.pickup_address}
@@ -2062,11 +2047,9 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
             }}
             placeholder={t('event.ph_pickup_example')}
           />
-          {!isEdit && !form.pickup_address?.trim() && (
-            <p className="mt-1 text-xs text-destructive">{t('event.pickup_addr_required')}</p>
-          )}
+          <FieldError issues={issues} field="pickupAddress" />
         </div>
-        <div>
+        <div data-vfield="pickup" className={inv('pickup')}>
           <Label>{t('event.date_time')}</Label>
           <DateTimeInput
             value={form.pickup_at_local}
@@ -2074,6 +2057,7 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
             onTimeMissingChange={(v) => setTime('pickup', v)}
           />
           <TimezoneHint tz={form.pickup_timezone} />
+          <FieldError issues={issues} field="pickup" />
         </div>
       </div>
 
@@ -2112,7 +2096,7 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
             />
           </div>
         )}
-        <div>
+        <div data-vfield="dropoff" className={inv('dropoff')}>
           <Label>{t('event.date_time_return')}</Label>
           <DateTimeInput
             value={form.dropoff_at_local}
@@ -2120,10 +2104,8 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
             onTimeMissingChange={(v) => setTime('dropoff', v)}
           />
           <TimezoneHint tz={form.return_different_location ? form.dropoff_timezone : form.pickup_timezone} />
+          <FieldError issues={issues} field="dropoff" />
         </div>
-        {dateOrderError && (
-          <p className="text-xs text-destructive">{t('event.return_after_pickup')}</p>
-        )}
       </div>
 
       <SectionHeader color={color}>{t('event.finance_booking')}</SectionHeader>

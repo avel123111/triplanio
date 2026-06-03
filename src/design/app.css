@@ -991,3 +991,16 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
   0%, 100% { opacity: 1; }
   50%       { opacity: .45; }
 }
+
+/* Validation: red border on a field wrapper flagged with .tv-invalid (data-vfield) */
+.tv-invalid input,
+.tv-invalid textarea,
+.tv-invalid select,
+.tv-invalid .input {
+  border-color: var(--danger, #e74c3c) !important;
+}
+.tv-invalid input:focus,
+.tv-invalid textarea:focus,
+.tv-invalid .input:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger, #e74c3c) 28%, transparent) !important;
+}

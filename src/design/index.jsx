@@ -539,14 +539,14 @@ export const STREAM = [
 
 // ----- Transfer card helpers -----
 const TRANSFER_KIND_META = {
-  plane: { icon: "plane", label: "Перелёт" },
-  train: { icon: "train", label: "Поезд" },
-  bus:   { icon: "bus",   label: "Автобус" },
-  ferry: { icon: "ferry", label: "Паром" },
-  car:   { icon: "car",   label: "На авто" },
-  walk:  { icon: "walk",  label: "Пешком" },
-  foot:  { icon: "walk",  label: "Пешком" },
-  bike:  { icon: "walk",  label: "Велосипед" }
+  plane: { icon: "plane", label: "Перелёт", labelKey: "tse.tk_plane" },
+  train: { icon: "train", label: "Поезд", labelKey: "transfer.train" },
+  bus:   { icon: "bus",   label: "Автобус", labelKey: "transfer.bus" },
+  ferry: { icon: "ferry", label: "Паром", labelKey: "transfer.ferry" },
+  car:   { icon: "car",   label: "На авто", labelKey: "event.tk_car" },
+  walk:  { icon: "walk",  label: "Пешком", labelKey: "event.tk_walk" },
+  foot:  { icon: "walk",  label: "Пешком", labelKey: "event.tk_walk" },
+  bike:  { icon: "walk",  label: "Велосипед", labelKey: "transfer.bike" }
 };
 
 function _transferMeta(e) {
@@ -681,25 +681,27 @@ function TransferCardStacked({ e, onClick }) {
 function _evMeta(e) {
   if (e.type === "flight" || e.type === "transfer") {
     const tm = _transferMeta(e);
-    return { c: "var(--ev-transfer)", soft: "var(--ev-transfer-soft)", icon: tm.icon, label: tm.label };
+    return { c: "var(--ev-transfer)", soft: "var(--ev-transfer-soft)", icon: tm.icon, label: tm.label, labelKey: tm.labelKey };
   }
   const MAP = {
-    "hotel-checkin":  { c: "var(--ev-hotel)",    soft: "var(--ev-hotel-soft)",    icon: "bed",     label: "Заезд" },
-    "hotel-checkout": { c: "var(--ev-hotel)",    soft: "var(--ev-hotel-soft)",    icon: "bed",     label: "Выезд" },
-    "hotel-deadline": { c: "var(--ev-deadline)", soft: "var(--ev-deadline-soft)", icon: "warning", label: "Дедлайн отмены" },
-    "car-pickup":     { c: "var(--ev-car)",      soft: "var(--ev-car-soft)",      icon: "car",     label: "Получение авто" },
-    "car-return":     { c: "var(--ev-car)",      soft: "var(--ev-car-soft)",      icon: "car",     label: "Возврат авто" },
+    "hotel-checkin":  { c: "var(--ev-hotel)",    soft: "var(--ev-hotel-soft)",    icon: "bed",     label: "Заезд", labelKey: "tse.checkin" },
+    "hotel-checkout": { c: "var(--ev-hotel)",    soft: "var(--ev-hotel-soft)",    icon: "bed",     label: "Выезд", labelKey: "tse.checkout" },
+    "hotel-deadline": { c: "var(--ev-deadline)", soft: "var(--ev-deadline-soft)", icon: "warning", label: "Дедлайн отмены", labelKey: "tl.deadline" },
+    "car-pickup":     { c: "var(--ev-car)",      soft: "var(--ev-car-soft)",      icon: "car",     label: "Получение авто", labelKey: "car.pickup_event" },
+    "car-return":     { c: "var(--ev-car)",      soft: "var(--ev-car-soft)",      icon: "car",     label: "Возврат авто", labelKey: "car.dropoff_event" },
     "activity": {
       c: "var(--ev-activity)", soft: "var(--ev-activity-soft)",
       icon: e.category === "food" ? "cup" : e.category === "sight" ? "cam" : "spark",
       label: e.category === "food" ? "Еда" : e.category === "sight" ? "Достопримечательность" : "Активность",
+      labelKey: e.category === "food" ? "tl.cat_food" : e.category === "sight" ? "tl.cat_sight" : "event.type_activity",
     },
   };
-  return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "spark", label: "" };
+  return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "spark", label: "", labelKey: "" };
 }
 
 // ── Mobile transfer row - stacked with a vertical departure→arrival scale ──────
 function EventRowMobileTransfer({ e, onClick }) {
+  const t = useT();
   const meta = _evMeta(e);
   const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "-";
   return (
@@ -721,7 +723,7 @@ function EventRowMobileTransfer({ e, onClick }) {
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 5 }}>
         <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "-"}</div>
         <div className="muted" style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em" }}>{meta.label}</span>
+          <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em" }}>{t(meta.labelKey)}</span>
           {e.carrier ? <> · {e.carrier}</> : null}
         </div>
         <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "-"}</div>
@@ -738,6 +740,7 @@ function EventRowMobileTransfer({ e, onClick }) {
 
 // ── Mobile row - stacked layout for hotel / activity / car / deadline events ───
 function EventRowMobile({ e, onClick }) {
+  const t = useT();
   if (e.type === "flight" || e.type === "transfer") return <EventRowMobileTransfer e={e} onClick={onClick} />;
   const meta = _evMeta(e);
   return (
@@ -747,7 +750,7 @@ function EventRowMobile({ e, onClick }) {
         <div style={{ width: 30, height: 30, borderRadius: 8, background: meta.soft, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
           <Icon name={meta.icon} size={15} />
         </div>
-        <span style={{ flex: 1, fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meta.label}</span>
+        <span style={{ flex: 1, fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t(meta.labelKey)}</span>
         {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 13.5, flexShrink: 0 }}>{fmt(e.price, e.cur)}</span>}
       </div>
       <div>
@@ -764,6 +767,7 @@ function EventRowMobile({ e, onClick }) {
 }
 
 export function StreamEventRow({ e, onClick, last, editMode }) {
+  const t = useT();
   const isMobile = useIsMobile();
   if (e.type === "transfer-missing") {
     const [hidden, setHidden] = React.useState(false);
@@ -771,9 +775,9 @@ export function StreamEventRow({ e, onClick, last, editMode }) {
     return (
       <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--warning-soft)", border: "1.5px dashed var(--warning)", borderRadius: 12, textAlign: "left" }}>
         <Icon name="warning" size={16} style={{ color: "var(--warning)" }} />
-        <div style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>Нет переезда · {e.from} → {e.to}</div>
-        <Btn variant="primary" size="sm" icon="plus" onClick={onClick}>Добавить переезд</Btn>
-        <button onClick={() => setHidden(true)} title="Скрыть варнинг" style={{ width: 24, height: 24, borderRadius: 6, border: "none", background: "transparent", color: "var(--warning)", cursor: "pointer", display: "grid", placeItems: "center" }}>
+        <div style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>{t('view.map_no_transfer')} · {e.from} → {e.to}</div>
+        <Btn variant="primary" size="sm" icon="plus" onClick={onClick}>{t('tse.add_transfer')}</Btn>
+        <button onClick={() => setHidden(true)} title={t('tl.hide_warning')} style={{ width: 24, height: 24, borderRadius: 6, border: "none", background: "transparent", color: "var(--warning)", cursor: "pointer", display: "grid", placeItems: "center" }}>
           <Icon name="close" size={12} />
         </button>
       </div>
@@ -788,6 +792,7 @@ export function StreamEventRow({ e, onClick, last, editMode }) {
 
 // ── Desktop v11 event card - flush colour bar + time + icon + title/label/sub ──
 function EventRowV11({ e, onClick }) {
+  const t = useT();
   const meta = _evMeta(e);
   const sub = [e.duration, e.address].filter(Boolean).join(" · ");
   return (
@@ -807,7 +812,7 @@ function EventRowV11({ e, onClick }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
             <span style={{ fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</span>
-            {meta.label && <span style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>{meta.label}</span>}
+            {meta.labelKey && <span style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>{t(meta.labelKey)}</span>}
           </div>
           {sub && <div className="muted" style={{ fontSize: 12, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
         </div>
@@ -820,6 +825,7 @@ function EventRowV11({ e, onClick }) {
 
 // ── Desktop v11 transfer card - vertical departure→arrival mini-rail ───────────
 function TransferRowV11({ e, onClick }) {
+  const t = useT();
   const meta = _evMeta(e);
   const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "-";
   return (
@@ -863,7 +869,7 @@ function TransferRowV11({ e, onClick }) {
             )}
           </div>
           <div className="muted" style={{ fontSize: 11.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>{meta.label}</span>
+            <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>{t(meta.labelKey)}</span>
             {e.carrier ? <> · {e.carrier}</> : null}
             {e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}
           </div>

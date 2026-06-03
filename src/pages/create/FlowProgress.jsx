@@ -14,7 +14,7 @@ export default function FlowProgress({ steps, current = 0, accent = 'var(--brand
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: accent }}>
-          Шаг {current + 1} <span style={{ color: 'var(--muted-2)' }}>из {steps.length}</span>
+          {t('planner.step_word')} {current + 1} <span style={{ color: 'var(--muted-2)' }}>{t('planner.of')} {steps.length}</span>
         </span>
         <span style={{ fontSize: 14, fontWeight: 650, color: 'var(--ink)' }}>{steps[current]?.label}</span>
         {current < steps.length - 1 && (

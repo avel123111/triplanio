@@ -18,4 +18,5 @@ export default {
   'calendar.legend_transport': 'Перелёты и переезды',
   'calendar.week_word': 'неделя',
   'calendar.week_no_data': 'Нет данных для этой недели',
+  'calendar.more_count': 'ещё',
 };

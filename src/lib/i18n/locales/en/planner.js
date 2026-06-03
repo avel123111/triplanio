@@ -83,4 +83,6 @@ export default {
   'planner.err_no_session': 'Could not get the session identifier. Sign in again.',
   'planner.err_save_failed': 'Could not save the trip. Try again.',
   'planner.next_label': 'Next',
+  'planner.step_word': 'Step',
+  'planner.of': 'of',
 };

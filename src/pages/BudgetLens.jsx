@@ -23,6 +23,7 @@ import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton, Severity } from '../design/index';
 import CurrencySelect from '@/components/budget/CurrencySelect';
 import SourceViewLoader from '@/components/budget/SourceViewLoader';
+import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── icon helpers ─────────────────────────────────────────────────────────────
 

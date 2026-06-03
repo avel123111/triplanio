@@ -18,4 +18,5 @@ export default {
   'calendar.legend_transport': 'Flights and transfers',
   'calendar.week_word': 'week',
   'calendar.week_no_data': 'No data for this week',
+  'calendar.more_count': 'more',
 };

@@ -44,7 +44,7 @@ function Legend({ color, children }) {
 // ─── MonthView ────────────────────────────────────────────────────────────────
 
 function MonthView({ cells, eventsByDay, spans, inTripDays }) {
-  const { lang } = useI18n();
+  const { t, lang } = useI18n();
   const WD_NAMES = weekdayNames(lang);
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
@@ -106,7 +106,7 @@ function MonthView({ cells, eventsByDay, spans, inTripDays }) {
                   </div>
                 ))}
                 {ev.length > 2 && (
-                  <div style={{ fontSize: 10, color: 'var(--muted)', paddingLeft: 9 }}>+{ev.length - 2} ещё</div>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', paddingLeft: 9 }}>+{ev.length - 2} {t('calendar.more_count')}</div>
                 )}
               </div>
             </div>

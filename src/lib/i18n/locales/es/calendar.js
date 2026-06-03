@@ -18,4 +18,5 @@ export default {
   'calendar.legend_transport': 'Vuelos y traslados',
   'calendar.week_word': 'semana',
   'calendar.week_no_data': 'Sin datos para esta semana',
+  'calendar.more_count': 'más',
 };
