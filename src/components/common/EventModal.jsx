@@ -424,7 +424,7 @@ export default function EventModal(props) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="p-0 max-w-xl max-h-[90vh] overflow-y-auto gap-0 w-[calc(100%-1rem)] sm:w-full">
+      <DialogContent className="p-0 max-w-xl max-h-[90vh] overflow-y-auto gap-0 w-[calc(100%-1rem)] sm:w-full" style={{ background: 'var(--surface)' }}>
         {/* 4px colour stripe */}
         <div style={{ height: 4, background: theme.color }} />
 
