@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sentry } from '@/lib/sentry';
 
 export default class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -12,6 +13,10 @@ export default class AppErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error('[AppErrorBoundary]', error, info);
+    // No-op when Sentry isn't initialised (no DSN, e.g. local dev).
+    Sentry.captureException(error, {
+      contexts: { react: { componentStack: info?.componentStack } },
+    });
   }
 
   render() {
