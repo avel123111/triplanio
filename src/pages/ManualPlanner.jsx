@@ -106,6 +106,7 @@ function recomputeDates(list) {
 
 function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }) {
   const t = useT();
+  const { lang } = useI18n();
   const [q, setQ] = useState(value?.city_name || '');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -122,7 +123,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
     if (query.length < 2) { setResults([]); setOpen(false); return; }
     setLoading(true);
     timerRef.current = setTimeout(async () => {
-      const r = await searchCities(query, 'ru');
+      const r = await searchCities(query, lang);
       setResults(r);
       setLoading(false);
       setOpen(r.length > 0);

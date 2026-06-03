@@ -13,6 +13,7 @@ import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import EventModal from '@/components/common/EventModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
+import { useT } from '@/lib/i18n/I18nContext';
 import ServiceDialog from '@/components/services/ServiceDialog';
 
 const TABLE_BY_KIND = {
@@ -29,6 +30,7 @@ async function getRow(table, id) {
 }
 
 export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false, warning = null }) {
+  const t = useT();
   const qc = useQueryClient();
   const [data, setData] = useState(null);
   const [visit, setVisit] = useState(null);
@@ -123,7 +125,7 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     const table = TABLE_BY_KIND[kind];
     if (!table) return;
     const { error } = await supabase.from(table).delete().eq('id', data.id);
-    if (error) { alert('Не удалось удалить: ' + error.message); throw error; }
+    if (error) { alert(t('event.delete_failed') + ': ' + error.message); throw error; }
     onOpenChange(false);
     invalidate();
   };

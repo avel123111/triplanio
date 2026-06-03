@@ -82,4 +82,5 @@ export default {
   'planner.err_no_title': 'Indica un nombre para el viaje.',
   'planner.err_no_session': 'No se pudo obtener el identificador de la sesión. Vuelve a iniciar sesión.',
   'planner.err_save_failed': 'No se pudo guardar el viaje. Inténtalo de nuevo.',
+  'planner.next_label': 'Siguiente',
 };

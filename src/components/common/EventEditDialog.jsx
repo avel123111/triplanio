@@ -53,6 +53,7 @@ function Checkbox({ checked, onCheckedChange, className = '' }) {
 // (coords + IANA timezone) so the saved waypoint city_visit has real geo data.
 function CityPicker({ value, onPick, placeholder }) {
   const { t } = useI18nFormat();
+  const { lang } = useI18n();
   const [q, setQ] = useState(value?.city_name || '');
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
@@ -64,7 +65,7 @@ function CityPicker({ value, onPick, placeholder }) {
     if (query.trim().length < 2) { setResults([]); setOpen(false); return; }
     setLoading(true);
     tRef.current = setTimeout(async () => {
-      try { const r = await searchCities(query.trim(), 'ru'); setResults(r || []); setOpen((r || []).length > 0); }
+      try { const r = await searchCities(query.trim(), lang); setResults(r || []); setOpen((r || []).length > 0); }
       catch { setResults([]); setOpen(false); }
       finally { setLoading(false); }
     }, 300);
@@ -131,7 +132,7 @@ const withScheme = (u) => {
   return /^https?:\/\//i.test(s) ? s : `https://${s}`;
 };
 import { useToast } from '@/components/ui/use-toast';
-import { useI18nFormat } from '@/lib/i18n/I18nContext';
+import { useI18nFormat, useI18n } from '@/lib/i18n/I18nContext';
 
 import DateTimeInput from '@/components/common/DateTimeInput';
 import TimezoneHint from '@/components/common/TimezoneHint';
@@ -416,6 +417,7 @@ export default function EventEditDialog({
   defaultCurrency = 'EUR',
 }) {
   const { t } = useI18nFormat();
+  const { lang } = useI18n();
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -815,7 +817,7 @@ export default function EventEditDialog({
         if (!name) continue;
         try {
           const cc = code ? ', ' + code : '';
-          const r = await searchCities(`${name}${cc}`, 'ru');
+          const r = await searchCities(`${name}${cc}`, lang);
           const best = r?.[0];
           if (best?.latitude) {
             let tz = null; try { tz = await getTimezone(best.latitude, best.longitude); } catch { /* ignore */ }
@@ -1497,7 +1499,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, dateOrderError, ho
             <div className="mt-1.5 flex items-center gap-2">
               <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${platformInfo.color}`}>
                 {platformLogo && <img src={platformLogo} alt="" className="w-3.5 h-3.5 rounded-sm" />}
-                {platformInfo.label}
+                {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
               </span>
               {form.booking_url && (
                 <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
@@ -1689,7 +1691,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
             <div className="mt-1.5 flex items-center gap-2">
               <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${platformInfo.color}`}>
                 {platformLogo && <img src={platformLogo} alt="" className="w-3.5 h-3.5 rounded-sm" />}
-                {platformInfo.label}
+                {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
               </span>
               {form.booking_url && (
                 <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
@@ -2153,7 +2155,7 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, dateOrderEr
             <div className="mt-1.5 flex items-center gap-2">
               <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${platformInfo.color}`}>
                 {platformLogo && <img src={platformLogo} alt="" className="w-3.5 h-3.5 rounded-sm" />}
-                {platformInfo.label}
+                {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
               </span>
               {form.booking_url && (
                 <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">

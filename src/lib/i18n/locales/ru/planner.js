@@ -82,4 +82,5 @@ export default {
   'planner.err_no_title': 'Укажи название путешествия.',
   'planner.err_no_session': 'Не удалось получить идентификатор из сессии. Перезайди в аккаунт.',
   'planner.err_save_failed': 'Не удалось сохранить путешествие. Попробуй ещё раз.',
+  'planner.next_label': 'Далее',
 };

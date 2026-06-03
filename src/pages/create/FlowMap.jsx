@@ -3,6 +3,7 @@ import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, fitToPoints, htmlMarkerE
 import { groupMarkers, markerSvg, MISSING_COLOR } from '@/lib/mapRoute';
 import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import { Icon } from '../../design/icons';
+import { useT } from '@/lib/i18n/I18nContext';
 
 const ROUTE_COLOR = '#5b6cff';
 
@@ -27,6 +28,7 @@ function buildLegs(home, cities, returnCity, finalPoint) {
 // constant spatial anchor (vs. the old small map card).
 // =====================================================================
 export default function FlowMap({ home, cities = [], returnCity, transport = {}, finalPoint = false, accent = ROUTE_COLOR, badge }) {
+  const t = useT();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -147,9 +149,9 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999,
           fontSize: 11.5, color: 'var(--muted)', boxShadow: 'var(--shadow-soft)',
         }}>
-          <span style={{ fontWeight: 600, color: 'var(--ink-2)' }}>{cities.length}</span> {cities.length < 5 ? 'города' : 'городов'}
+          <span style={{ fontWeight: 600, color: 'var(--ink-2)' }}>{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
           <span style={{ color: 'var(--muted-2)' }}>·</span>
-          <span style={{ fontWeight: 600, color: 'var(--ink-2)' }}>{totalNights}</span> ночей
+          <span style={{ fontWeight: 600, color: 'var(--ink-2)' }}>{totalNights}</span> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
         </div>
       )}
 

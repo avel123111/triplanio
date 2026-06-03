@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icon } from './icons';
 import { useIsMobile } from '../hooks/use-mobile';
+import { useT } from '@/lib/i18n/I18nContext';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
@@ -399,12 +400,13 @@ export const PartnerLogo = ({ url, size = 18 }) => {
   );
 };
 
-export const PartnerPill = ({ url, fallback = "Ссылка" }) => {
+export const PartnerPill = ({ url, fallback }) => {
+  const t = useT();
   const p = detectPartner(url);
   return (
     <span className="partner-pill">
       <PartnerLogo url={url} size={16} />
-      {p?.label || fallback}
+      {p?.label || fallback || t('common.link')}
     </span>
   );
 };
@@ -465,13 +467,24 @@ export function groupByDate(events) {
 const _WEEKDAYS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 const _MONTHS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 
-export function fmtDate(iso) {
+const _LOCMAP = { ru: 'ru-RU', en: 'en-US', es: 'es-ES' };
+// ru output kept byte-identical (Public + ru callers unchanged); en/es via Intl.
+export function fmtDate(iso, loc) {
   const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return '';
+  if (loc && loc !== 'ru') {
+    try { return new Intl.DateTimeFormat(_LOCMAP[loc] || loc, { day: 'numeric', month: 'short' }).format(d); } catch { /* fallthrough */ }
+  }
   return `${d.getDate()} ${_MONTHS[d.getMonth()]}`;
 }
 
-export function weekday(iso) {
-  return _WEEKDAYS[new Date(iso + "T00:00:00").getDay()];
+export function weekday(iso, loc) {
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return '';
+  if (loc && loc !== 'ru') {
+    try { return new Intl.DateTimeFormat(_LOCMAP[loc] || loc, { weekday: 'short' }).format(d); } catch { /* fallthrough */ }
+  }
+  return _WEEKDAYS[d.getDay()];
 }
 
 // ----- Mock event stream -----

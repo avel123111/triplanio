@@ -469,7 +469,7 @@ export default function EventModal(props) {
             {platformInfo && (
               <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium ${platformInfo.color}`}>
                 {platformLogo && <img src={platformLogo} alt="" className="w-3.5 h-3.5 rounded-sm" />}
-                {platformInfo.label}
+                {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
               </span>
             )}
           </div>

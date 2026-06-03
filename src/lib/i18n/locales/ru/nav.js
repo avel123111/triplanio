@@ -10,4 +10,6 @@ export default {
   'nav.budget': 'Бюджет',
   'nav.pro_badge': 'Pro-подписка',
   'nav.admin_panel': 'Админ-панель',
+  'nav.toggle_theme': 'Сменить тему',
+  'nav.account': 'Аккаунт',
 };

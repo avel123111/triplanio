@@ -23,7 +23,7 @@ export const BOOKING_PLATFORMS = {
   yesim:       { label: 'Yesim',        color: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300',            domain: 'yesim.app' },
   safetywing:  { label: 'SafetyWing',   color: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',             domain: 'safetywing.com' },
   worldnomads: { label: 'World Nomads', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300', domain: 'worldnomads.com' },
-  other:    { label: 'Посмотреть бронирование', color: 'bg-secondary text-foreground',                         domain: null },
+  other:    { label: 'Посмотреть бронирование', labelKey: 'event.view_booking', color: 'bg-secondary text-foreground',                         domain: null },
 };
 
 /**

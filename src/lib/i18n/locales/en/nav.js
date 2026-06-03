@@ -10,4 +10,6 @@ export default {
   'nav.budget': 'Budget',
   'nav.pro_badge': 'Pro subscription',
   'nav.admin_panel': 'Admin panel',
+  'nav.toggle_theme': 'Toggle theme',
+  'nav.account': 'Account',
 };

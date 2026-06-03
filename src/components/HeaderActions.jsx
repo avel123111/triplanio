@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/design/icons';
 import { Avatar } from '@/design/index';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
+import { useT } from '@/lib/i18n/I18nContext';
 
 /**
  * Shared right-hand header cluster for the new-design pages
@@ -17,16 +18,17 @@ import NotificationsBell from '@/components/notifications/NotificationsBell';
  *   onToggleTheme - () => void
  */
 export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
+  const t = useT();
   const nav = useNavigate();
   return (
     <div className="app-header__right">
-      <button className="icon-btn" title="Сменить тему" onClick={onToggleTheme}>
+      <button className="icon-btn" title={t('nav.toggle_theme')} onClick={onToggleTheme}>
         <Icon name={isDark ? 'sun' : 'moon'} size={17} />
       </button>
       <NotificationsBell triggerClassName="icon-btn" />
       <button
         className="icon-btn"
-        title={user?.full_name || user?.email || 'Аккаунт'}
+        title={user?.full_name || user?.email || t('nav.account')}
         onClick={() => nav('/settings')}
         style={{ width: 'auto', padding: '0 4px 0 2px', display: 'flex', alignItems: 'center', gap: 6 }}
       >

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useT } from '@/lib/i18n/I18nContext';
 
 // =====================================================================
 // FLOW PROGRESS - counter-style progress bar for the unified create flow.
@@ -8,6 +9,7 @@ import React from 'react';
 //   onJump(i): optional - clickable segments (only past/current steps jump)
 // =====================================================================
 export default function FlowProgress({ steps, current = 0, accent = 'var(--brand)', onJump, nextLabel }) {
+  const t = useT();
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -17,7 +19,7 @@ export default function FlowProgress({ steps, current = 0, accent = 'var(--brand
         <span style={{ fontSize: 14, fontWeight: 650, color: 'var(--ink)' }}>{steps[current]?.label}</span>
         {current < steps.length - 1 && (
           <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--muted)' }}>
-            Далее: {nextLabel || steps[current + 1]?.label}
+            {t('planner.next_label')}: {nextLabel || steps[current + 1]?.label}
           </span>
         )}
       </div>

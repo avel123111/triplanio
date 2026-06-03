@@ -206,4 +206,5 @@ export default {
   'trip.no_transfer': 'No transfer · {from} → {to}',
   'trip.budget_addon_off_desc': 'The full budget breakdown is an optional Pro feature of the trip. Enable it in the trip settings to open the budget section.',
   'trip.edit_structure': 'Edit structure',
+  'trip.svc_add': 'Add {name}',
 };

@@ -94,7 +94,7 @@ export default function PanelAi({ ctx }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600 }}>{c.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 12 }}>{c.country}</span></div>
               </div>
-              <span className="muted num" style={{ fontSize: 12 }}>{c.nights} ноч.</span>
+              <span className="muted num" style={{ fontSize: 12 }}>{c.nights} {t('ai_plan.unit_nights_short')}</span>
             </div>
           ))}
         </div>
@@ -117,8 +117,8 @@ export default function PanelAi({ ctx }) {
           background: aiState !== 'draft' ? 'var(--line)' : AI, color: aiState !== 'draft' ? 'var(--muted-2)' : '#fff',
           fontSize: 13.5, fontWeight: 600, cursor: aiState !== 'draft' ? 'not-allowed' : 'pointer',
         }}>
-          К скелету <Icon name="arrowR" size={15} />
-          <span className="num" style={{ marginLeft: 4, opacity: 0.85 }}>{cities.length ? `· ${cities.length} / ${totalNights}н` : ''}</span>
+          {t('planner.next_label')} <Icon name="arrowR" size={15} />
+          <span className="num" style={{ marginLeft: 4, opacity: 0.85 }}>{cities.length ? `· ${cities.length} / ${totalNights}${t('planner.night_short')}` : ''}</span>
         </button>
       </div>
     </div>

@@ -598,7 +598,7 @@ function useWeatherByDay(visits) {
 }
 
 function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel, isEditMode, onEditNotes, onDeleteCity, onOpenEvent, showBookingWarnings = true }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--line)',
@@ -645,8 +645,8 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 600 }}>{h.hotel}</div>
               <div className="muted num" style={{ fontSize: 11.5, marginTop: 2 }}>
-                {h.checkIn && t('trip.hotel_checkin_date', { date: fmtDate(h.checkIn) })}
-                {h.checkOut && ' · ' + t('trip.hotel_checkout_date', { date: fmtDate(h.checkOut) })}
+                {h.checkIn && t('trip.hotel_checkin_date', { date: fmtDate(h.checkIn, lang) })}
+                {h.checkOut && ' · ' + t('trip.hotel_checkout_date', { date: fmtDate(h.checkOut, lang) })}
                 {h.nights && ` · ${h.nights} ${h.nights === 1 ? t('trip.nights_one') : t('trip.nights_few')}`}
               </div>
             </div>
@@ -661,7 +661,7 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
 }
 
 function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const weatherByDay = useWeatherByDay(visits);  // hook must run before any early return
   if (isLoading) return <SkeletonTimeline />;
 
@@ -815,7 +815,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     const vStart = naiveDayKey(city.start_datetime);
     const vEnd = naiveDayKey(city.end_datetime);
     const nights = nightsBetween(vStart, vEnd);
-    const dateRange = vStart && vEnd ? `${fmtDate(vStart)} - ${fmtDate(vEnd)}` : null;
+    const dateRange = vStart && vEnd ? `${fmtDate(vStart, lang)} - ${fmtDate(vEnd, lang)}` : null;
     out.push(
       <CityHero
         key={`city-${city.id}`}
@@ -857,10 +857,10 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, padding: '12px 0 10px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-              {fmtDate(day)}
+              {fmtDate(day, lang)}
             </span>
             <span className="muted" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
-              {weekday(day)}
+              {weekday(day, lang)}
             </span>
           </div>
           <div style={{ flex: 1, borderBottom: '1px solid var(--line-2)', marginBottom: 6 }} />
@@ -888,7 +888,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     <StreamAnchor
       key="anchor-start"
       label={t('trip.start_city', { city: startCity })}
-      sub={fmtDate(tripStart)}
+      sub={fmtDate(tripStart, lang)}
       color="var(--brand)"
       icon="flag"
     />
@@ -916,10 +916,10 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, padding: '12px 0 10px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-              {fmtDate(day)}
+              {fmtDate(day, lang)}
             </span>
             <span className="muted" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
-              {weekday(day)}
+              {weekday(day, lang)}
             </span>
           </div>
           {dayCity && (
@@ -1037,7 +1037,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     <StreamAnchor
       key="anchor-end"
       label={t('trip.finish_city', { city: endCity })}
-      sub={fmtDate(tripEnd)}
+      sub={fmtDate(tripEnd, lang)}
       color="var(--ink-2)"
       icon="check"
     />
@@ -1526,6 +1526,7 @@ function ServicesWidget({ services = [], onAddService }) {
 }
 
 function ServiceRowEmpty({ icon, name, desc, onClick }) {
+  const { t } = useI18n();
   return (
     <button onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 9, padding: '8px 8px',
@@ -1540,7 +1541,7 @@ function ServiceRowEmpty({ icon, name, desc, onClick }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontWeight: 500 }}>
           <Icon name="plus" size={11} style={{ verticalAlign: -1, marginRight: 3, color: 'var(--brand)' }} />
-          Добавить {name}
+          {t('trip.svc_add', { name })}
         </div>
         <div className="muted" style={{ fontSize: 11 }}>{desc}</div>
       </div>

@@ -206,4 +206,5 @@ export default {
   'trip.no_transfer': 'Sin traslado · {from} → {to}',
   'trip.budget_addon_off_desc': 'El desglose completo del presupuesto es una función Pro opcional del viaje. Actívala en los ajustes del viaje para abrir la sección de presupuesto.',
   'trip.edit_structure': 'Editar la estructura',
+  'trip.svc_add': 'Añadir {name}',
 };
