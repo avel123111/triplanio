@@ -32,37 +32,68 @@ const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(
 const fmtDW = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d LLL, ccc') : '-'; };
 const fmtTime = (iso) => { const d = toDT(iso); return d ? d.toFormat('HH:mm') : null; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
+// Calendar-day helpers. nights/gap are counted by DATE (not by the raw timestamp),
+// so a checkout stored at 23:59 isn't rounded up to an extra night. This is what
+// makes recompute idempotent on load: re-deriving dates from (nights, gap)
+// reproduces exactly what's stored, so editor = timeline = DB.
+const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
+const dayDiff = (aIso, bIso) => { const a = dayOf(aIso), b = dayOf(bIso); return a && b ? Math.round(b.diff(a, 'days').days) : null; };
 const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
 const flagEmoji = (cc) => (cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt(0))) : '📍');
 const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
 const colorFor = (key) => { let h = 0; const s = String(key || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return PALETTE[h % PALETTE.length]; };
 const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.id), flag: flagEmoji(n.country_code), country: n.country || '' });
 
+// Single chain laid out from the trip-start day. Each node carries its own
+// `nights` AND `gap` (= days between the previous node's checkout and this node's
+// check-in, e.g. 1 for an overnight flight). One formula, no special cases:
+//   start = previousEnd + gap;  end = start + nights;  cursor = end
+// Consequences that fall out for free:
+//   • move the start  → cursor moves → ALL nodes shift by the same delta;
+//   • change a middle node's nights → its end moves → ALL nodes AFTER it shift by
+//     the same delta, nodes before it are untouched;
+//   • gaps (night transfers) are preserved, never invented or erased.
+// Pure DATE math → idempotent: with unchanged (nights, gap) it reproduces the
+// stored dates exactly, so opening the editor never moves anything.
 function recompute(nodes, baseISO) {
   const firstTransit = nodes.find((n) => !isAnchor(n));
   let cursor = (baseISO ? toDT(baseISO) : toDT(firstTransit?.start_datetime)) || DateTime.utc();
   cursor = cursor.startOf('day');
+  let seen = false; // the first non-anchor node anchors the trip start (gap forced 0)
   return nodes.map((n, i) => {
     if (isAnchor(n)) return { ...n, position: i };
+    const gap = seen && Number.isFinite(n.gap) ? n.gap : 0;
+    const startDay = cursor.plus({ days: gap });
+    seen = true;
     if (n.kind === 'waypoint') { // single-date transit point - consumes no nights
-      const d = cursor.set({ hour: 12 });
-      return { ...n, start_datetime: d.toISO(), end_datetime: d.toISO(), nights: null, position: i };
+      const d = startDay.set({ hour: 12 });
+      cursor = startDay;
+      return { ...n, start_datetime: d.toISO(), end_datetime: d.toISO(), nights: null, gap, position: i };
     }
-    const nights = Number.isFinite(n.nights) ? n.nights : (nightsBetween(n.start_datetime, n.end_datetime) ?? 1);
-    const start = cursor.set({ hour: 12 });
-    const end = cursor.plus({ days: nights }).set({ hour: 11 });
-    cursor = cursor.plus({ days: nights });
-    return { ...n, start_datetime: start.toISO(), end_datetime: end.toISO(), nights, position: i };
+    const nights = Math.max(0, Number.isFinite(n.nights) ? n.nights : (dayDiff(n.start_datetime, n.end_datetime) ?? 1));
+    const start = startDay.set({ hour: 12 });
+    const end = nights > 0 ? startDay.plus({ days: nights }).set({ hour: 11 }) : start;
+    cursor = startDay.plus({ days: nights });
+    return { ...n, start_datetime: start.toISO(), end_datetime: end.toISO(), nights, gap, position: i };
   });
 }
 
 function buildDraft(shell) {
   const visits = sortVisits(shell?.cityVisits || []);
-  const nodes = visits.map((v, i) => ({
-    ...v,
-    position: Number.isFinite(v.position) ? v.position : i,
-    nights: (isAnchor(v) || v.kind === 'waypoint') ? null : (nightsBetween(v.start_datetime, v.end_datetime) ?? 1),
-  }));
+  // Capture each node's nights AND the gap to the previous node, by DATE, from the
+  // stored values. Dates themselves are kept as-is for display (recompute runs only
+  // on the first real edit). gap=1 → overnight-flight day; gap=0 → same-day handoff.
+  let prevEnd = null; // checkout day of the previous non-anchor node
+  const nodes = visits.map((v, i) => {
+    const base = { ...v, position: Number.isFinite(v.position) ? v.position : i };
+    if (isAnchor(v)) return { ...base, nights: null, gap: null };
+    const sd = dayOf(v.start_datetime), ed = dayOf(v.end_datetime);
+    const isWp = v.kind === 'waypoint';
+    const nights = isWp ? null : Math.max(0, (sd && ed ? Math.round(ed.diff(sd, 'days').days) : 1));
+    const gap = (prevEnd && sd) ? Math.round(sd.diff(prevEnd, 'days').days) : 0;
+    prevEnd = isWp ? sd : (ed || sd);
+    return { ...base, nights, gap };
+  });
   // Draft holds ONLY structure (nodes + removed cities + a FIXED trip start date).
   // Bookings are read LIVE from `content` (edits/adds via real dialogs → DB → refetch).
   const firstTransit = nodes.find((n) => !isAnchor(n));
@@ -195,8 +226,9 @@ export default function TripStructureEdit() {
   const blocked = errors > 0;
 
   // ---- structural edits ----
-  // Trip start (d.startDate) is FIXED until shiftStart changes it; every recompute
-  // lays cities contiguously FROM that fixed date, so reorder/nights never move it.
+  // Trip start (d.startDate) is FIXED until shiftStart changes it. recompute chains
+  // nodes from that date preserving each node's nights+gap, so editing one node only
+  // moves the nodes after it; the start and earlier nodes never move.
   const applyNodes = (nextNodes) => editDraft((d) => ({ ...d, nodes: recompute(nextNodes, d.startDate) }));
   const nudgeNights = (id, delta) => applyNodes(draft.nodes.map((n) => (n.id === id ? { ...n, nights: Math.max(1, Math.min(60, (n.nights || 1) + delta)) } : n)));
   const shiftStart = (delta) => editDraft((d) => {
@@ -213,7 +245,7 @@ export default function TripStructureEdit() {
       const lo = arr[0]?.kind === 'start' ? 1 : 0;
       const hi = arr[arr.length - 1]?.kind === 'end' ? arr.length - 1 : arr.length;
       t = Math.max(lo, Math.min(hi, t));
-      arr.splice(t, 0, m);
+      arr.splice(t, 0, { ...m, gap: 0 }); // dropped node sits flush in its new slot
       return { ...d, nodes: recompute(arr, d.startDate) };
     });
   };
@@ -249,7 +281,7 @@ export default function TripStructureEdit() {
       city_name: city.city_name, country: city.country || null, country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
-      nights: kind === 'transit' ? 2 : null, start_datetime: null, end_datetime: null,
+      nights: kind === 'transit' ? 2 : null, gap: 0, start_datetime: null, end_datetime: null,
     };
     editDraft((d) => {
       const arr = d.nodes.slice();
