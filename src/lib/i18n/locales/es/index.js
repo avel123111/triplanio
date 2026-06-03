@@ -27,10 +27,11 @@ import ai_plan from './ai_plan';
 import planner from './planner';
 import account from './account';
 import tse from './tse';
+import sys from './sys';
 
 export default {
   ...common, ...event, ...nav, ...trips, ...trip, ...visit, ...hotel, ...activity,
   ...transfer, ...member, ...notif, ...view, ...settings, ...auth, ...calendar,
   ...doc, ...service, ...sub, ...pub, ...booking, ...telegram, ...budget, ...chat,
-  ...admin, ...trip_menu, ...ai_plan, ...planner, ...account, ...tse,
+  ...admin, ...trip_menu, ...ai_plan, ...planner, ...account, ...tse, ...sys,
 };

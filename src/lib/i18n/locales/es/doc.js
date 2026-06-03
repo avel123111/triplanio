@@ -69,4 +69,9 @@ export default {
   'doc.page_title': 'Documentos del viaje',
   'doc.add_doc': 'Añadir documento',
   'doc.load_error': 'Error al cargar los documentos: {message}',
+  'doc.file_too_big_title': 'El archivo es demasiado grande',
+  'doc.max_size': 'El tamaño máximo es {mb} MB.',
+  'doc.remove_doc_aria': 'Eliminar documento',
+  'doc.upload_files': 'Subir archivos • hasta {mb}MB cada uno',
+  'doc.remaining': ' (quedan {n})',
 };

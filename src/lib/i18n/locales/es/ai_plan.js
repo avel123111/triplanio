@@ -62,4 +62,7 @@ export default {
   'ai_plan.unit_activities': 'activ.',
   'ai_plan.unit_nights_short': 'n.',
   'ai_plan.unit_activities_short': 'act.',
+  'ai_plan.start_badge': 'Inicio',
+  'ai_plan.end_badge': 'Fin',
+  'ai_plan.map_loading': 'Cargando el mapa…',
 };

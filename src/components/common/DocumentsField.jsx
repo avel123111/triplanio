@@ -3,6 +3,7 @@ import { supabase } from '@/api/supabaseClient';
 import { safeStorageName } from '@/lib/storage';
 import { Paperclip, Upload, X, Loader2, Plus } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useT } from '@/lib/i18n/I18nContext';
 
 /**
  * Multi-file document field. Manages an array of { file_url, file_name }.
@@ -16,12 +17,13 @@ export default function DocumentsField({
   onChange,
   onUploadingChange,
   maxFiles = null,
-  label = 'Документы',
+  label = '',
   iconColor = 'text-primary',
   accept = '*',
   maxFileSizeMb = 10,
 }) {
   const { toast } = useToast();
+  const t = useT();
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 
@@ -41,8 +43,8 @@ export default function DocumentsField({
     const oversize = toUpload.find(f => f.size > maxFileSizeMb * 1024 * 1024);
     if (oversize) {
       toast({
-        title: 'Файл слишком большой',
-        description: `Максимальный размер - ${maxFileSizeMb} МБ.`,
+        title: t('doc.file_too_big_title'),
+        description: t('doc.max_size', { mb: maxFileSizeMb }),
         variant: 'destructive',
       });
       return;
@@ -57,7 +59,7 @@ export default function DocumentsField({
         const path = `attachments/${uid}/${safeStorageName(file.name)}`;
         const { error: upErr } = await supabase.storage.from('documents').upload(path, file);
         if (upErr) {
-          toast({ title: 'Не удалось загрузить файл', description: upErr.message, variant: 'destructive' });
+          toast({ title: t('event.ai_upload_error'), description: upErr.message, variant: 'destructive' });
           continue;
         }
         // Long-lived signed URL (10 years) - matches the documents lens convention.
@@ -82,7 +84,7 @@ export default function DocumentsField({
       <div className="flex items-center justify-between mb-2 gap-2">
         <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
           <Paperclip className={`w-4 h-4 shrink-0 ${iconColor}`} />
-          <span className="truncate">{label}</span>
+          <span className="truncate">{label || t('event.documents')}</span>
           {docs.length > 0 && (
             <span className="text-xs text-muted-foreground font-normal">· {docs.length}</span>
           )}
@@ -100,13 +102,13 @@ export default function DocumentsField({
                 rel="noreferrer"
                 className="text-sm text-primary hover:underline flex-1 min-w-0 break-all"
               >
-                {d.file_name || 'Файл'}
+                {d.file_name || t('event.file_word')}
               </a>
               <button
                 type="button"
                 onClick={() => removeAt(i)}
                 className="p-1 rounded hover:bg-background shrink-0"
-                aria-label="Удалить документ"
+                aria-label={t('doc.remove_doc_aria')}
               >
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
@@ -132,19 +134,19 @@ export default function DocumentsField({
           />
           {uploading ? (
             <div className="flex items-center justify-center gap-2 text-sm text-primary">
-              <Loader2 className="w-4 h-4 animate-spin" />Загрузка…
+              <Loader2 className="w-4 h-4 animate-spin" />{t('common.loading')}
             </div>
           ) : (
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               {docs.length === 0 ? (
                 <>
                   <Upload className="w-4 h-4" />
-                  <span>Загрузить файлы • до {maxFileSizeMb}MB каждый</span>
+                  <span>{t('doc.upload_files', { mb: maxFileSizeMb })}</span>
                 </>
               ) : (
                 <>
                   <Plus className="w-4 h-4" />
-                  <span>Добавить ещё файлы{maxFiles ? ` (осталось ${maxFiles - docs.length})` : ''}</span>
+                  <span>{t('doc.add_more_files')}{maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}</span>
                 </>
               )}
             </div>

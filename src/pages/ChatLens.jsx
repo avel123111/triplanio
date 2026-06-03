@@ -139,7 +139,7 @@ function ChatMember({ name, role, ai, avatarUrl }) {
 // ─── ChatLens (main export) ───────────────────────────────────────────────────
 
 export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
   const scrollRef  = useRef(null);
@@ -429,7 +429,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           {activeMembers.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success)', fontSize: 12 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} />
-              {pluralPeople(activeMembers.length)}
+              {pluralPeople(activeMembers.length, t, lang)}
             </div>
           )}
         </div>

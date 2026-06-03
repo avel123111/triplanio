@@ -20,4 +20,11 @@ export default {
   'chat.ai_can_1': 'Replies to all participants',
   'chat.ai_can_2': 'Suggests hotels, flights, activities',
   'chat.ai_can_3': 'Can edit the trip - with the owner\'s consent',
+  'chat.open_aria': 'Open chat',
+  'chat.open_full_aria': 'Open full chat',
+  'chat.write_first': 'Be the first to write 💬',
+  'chat.widget_composer_ph': 'Message to the group... (@mention)',
+  'chat.people_one': 'person',
+  'chat.people_few': 'people',
+  'chat.people_many': 'people',
 };

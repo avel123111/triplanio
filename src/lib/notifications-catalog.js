@@ -95,7 +95,7 @@ export const NOTIFICATIONS = [
     hardcodedText: {
       ru: '✅ Готово! Теперь я подключён к поездке <b>{trip}</b>. Я буду присылать напоминания о ключевых событиях: заезд/выезд из отеля, отправление трансфера, начало активностей.',
     },
-    comment: 'Confirms successful binding of Telegram chat → trip. RUSSIAN ONLY (tech debt).',
+    comment: 'Confirms successful binding of Telegram chat → trip. Localized ru/en/es in telegramWebhook (T table).',
   },
   {
     id: 'telegram.bot_link_errors',
@@ -108,7 +108,7 @@ export const NOTIFICATIONS = [
     hardcodedText: {
       ru: '❌ Ссылка недействительна / уже использована / срок истёк. Сгенерируйте новую в настройках поездки.',
     },
-    comment: 'Three error variants for invalid/used/expired link tokens. RUSSIAN ONLY.',
+    comment: 'Three error variants for invalid/used/expired link tokens. Localized ru/en/es in telegramWebhook.',
   },
   {
     id: 'telegram.hotel_cancel_deadline',
@@ -119,7 +119,7 @@ export const NOTIFICATIONS = [
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
     hardcodedText: { ru: '⏰ Через 24 часа истекает бесплатная отмена отеля\\n\\n🧳 {trip}\\n🏨 {hotel} - {city}\\n📅 Дедлайн: {datetime}' },
-    comment: 'Deduplicated per (user, event_id) via TelegramReminderLog. RUSSIAN ONLY.',
+    comment: 'Deduplicated per (user, event_id) via TelegramReminderLog. Text formatted by n8n; getPendingReminders passes user_locale (en/es depend on n8n templates).',
   },
   {
     id: 'telegram.hotel_checkin',
@@ -130,7 +130,7 @@ export const NOTIFICATIONS = [
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
     hardcodedText: { ru: '🏨 Завтра заезд в отель (через 24 часа)\\n\\n🧳 {trip}\\n🏨 {hotel} - {city}\\n📅 Заезд: {datetime}\\n📍 {address}\\n🔖 Бронь: {booking_ref}' },
-    comment: 'Includes hotel name, address, booking ref. RUSSIAN ONLY.',
+    comment: 'Includes hotel name, address, booking ref. Text formatted by n8n; getPendingReminders passes user_locale (en/es depend on n8n templates).',
   },
   {
     id: 'telegram.hotel_checkout',
@@ -141,7 +141,7 @@ export const NOTIFICATIONS = [
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
     hardcodedText: { ru: '🧳 Через 18 часов выезд из отеля\\n\\n🧳 {trip}\\n🏨 {hotel} - {city}\\n📅 Выезд: {datetime}' },
-    comment: 'RUSSIAN ONLY.',
+    comment: 'Text formatted by n8n; getPendingReminders passes user_locale (en/es depend on n8n templates).',
   },
   {
     id: 'telegram.transfer_start',
@@ -152,7 +152,7 @@ export const NOTIFICATIONS = [
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
     hardcodedText: { ru: '{transport_icon} {transport_label} через 4 часа\n\n🧳 {trip}\n🛫 Отправление: {datetime}\n📍 Откуда: {from_address}\n📍 Куда: {to_address}\n🏷️ {carrier}\n🔖 Бронь: {booking_ref}' },
-    comment: 'Icon and label depend on transport_type. RUSSIAN ONLY.',
+    comment: 'Icon and label depend on transport_type. Text formatted by n8n; getPendingReminders passes user_locale (en/es depend on n8n templates).',
   },
   {
     id: 'telegram.car_rental_start',
@@ -163,7 +163,7 @@ export const NOTIFICATIONS = [
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
     hardcodedText: { ru: '🚗 Через 18 часов - получение арендованного авто\\n\\n🧳 {trip}\\n🏷️ {service_name}' },
-    comment: 'Needs pickup_timezone set on the rental - legacy records without TZ are skipped. RUSSIAN ONLY.',
+    comment: 'Needs pickup_timezone set on the rental - legacy records without TZ are skipped. Text formatted by n8n; getPendingReminders passes user_locale (en/es depend on n8n templates).',
   },
   {
     id: 'telegram.car_rental_end',
@@ -174,7 +174,7 @@ export const NOTIFICATIONS = [
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
     hardcodedText: { ru: '🚗 Через 18 часов - возврат арендованного авто\\n\\n🧳 {trip}\\n🏷️ {service_name}' },
-    comment: 'RUSSIAN ONLY.',
+    comment: 'Text formatted by n8n; getPendingReminders passes user_locale (en/es depend on n8n templates).',
   },
   {
     id: 'telegram.activity_start',
@@ -185,7 +185,7 @@ export const NOTIFICATIONS = [
     source: 'functions/getPendingReminders (n8n dispatch)',
     i18nKeys: null,
     hardcodedText: { ru: '🎟️ Через 4 часа - активность\\n\\n🧳 {trip}\\n📌 {title} - {city}\\n📅 Начало: {datetime}\\n📍 {address}' },
-    comment: 'Includes activity title, city, address. RUSSIAN ONLY.',
+    comment: 'Includes activity title, city, address. Text formatted by n8n; getPendingReminders passes user_locale (en/es depend on n8n templates).',
   },
 ];
 

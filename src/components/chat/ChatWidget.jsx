@@ -12,6 +12,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { useChatId, useUnreadChatCount, chatParticipants, pluralPeople } from '@/lib/chat';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import TriplanioAvatar from './TriplanioAvatar';
 import ChatMarkdown from './ChatMarkdown';
 import { Avatar } from '@/design/index';
@@ -31,6 +32,7 @@ function highlightMentions(val) {
 
 export default function ChatWidget({ tripId, members = [], tripTitle, ownerId }) {
   const { user } = useAuth();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -247,7 +249,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       <button
         className="dock"
         onClick={() => setOpen(true)}
-        aria-label="Открыть чат"
+        aria-label={t('chat.open_aria')}
         style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, #6a3ee2 100%)' }}
       >
         <MessageCircle size={22} />
@@ -276,7 +278,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       <div className="dock-panel__tabs">
         <button className="dock-panel__tab active" style={{ flex: 1, justifyContent: 'flex-start' }}>
           <MessageCircle size={14} />
-          Чат группы
+          {t('chat.group_title')}
           {unread > 0 && (
             <span style={{
               marginLeft: 4, background: 'var(--warm)', color: 'white',
@@ -290,7 +292,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           className="icon-btn"
           style={{ width: 32, height: 32, flexShrink: 0, marginBottom: 6 }}
           onClick={() => setOpen(false)}
-          aria-label="Закрыть"
+          aria-label={t('common.close')}
         >
           <X size={14} />
         </button>
@@ -310,13 +312,13 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           ))}
         </div>
         <div style={{ flex: 1, fontSize: 12.5 }}>
-          {tripTitle ? <><b>{tripTitle}</b>{' · '}</> : ''}{pluralPeople(activeMembers.length)}
+          {tripTitle ? <><b>{tripTitle}</b>{' · '}</> : ''}{pluralPeople(activeMembers.length, t, lang)}
         </div>
         <button
           className="icon-btn"
           style={{ width: 30, height: 30 }}
           onClick={() => navigate(`/trip/${tripId}?lens=chat`)}
-          aria-label="Открыть полный чат"
+          aria-label={t('chat.open_full_aria')}
         >
           <ExternalLink size={14} />
         </button>
@@ -332,12 +334,12 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       {/* Messages */}
       <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {msgs.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: 13 }}>Напиши первым 💬</div>
+          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: 13 }}>{t('chat.write_first')}</div>
         ) : messageEls}
         {isThinking && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
             <TriplanioAvatar size="xs" />
-            <span style={{ fontSize: 12, color: 'var(--ai)', fontWeight: 500 }}>Triplanio печатает</span>
+            <span style={{ fontSize: 12, color: 'var(--ai)', fontWeight: 500 }}>{t('chat.typing')}</span>
             <span className="ai-dots"><span /><span /><span /></span>
           </div>
         )}
@@ -363,7 +365,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
               <TriplanioAvatar size="sm" />
               <div>
                 <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>@Triplanio - отвечает всем</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>{t('chat.mention_all_hint')}</div>
               </div>
             </button>
           </div>
@@ -385,7 +387,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             <textarea
               ref={taRef}
               className="textarea"
-              placeholder="Сообщение группе... (@упоминание)"
+              placeholder={t('chat.widget_composer_ph')}
               value={text}
               rows={1}
               onChange={(e) => {
@@ -406,7 +408,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           <button
             onClick={sendMessage}
             disabled={sending || !text.trim() || !chatId}
-            aria-label="Отправить"
+            aria-label={t('chat.send')}
             style={{
               width: 38, height: 38, borderRadius: '50%', border: 'none',
               background: 'linear-gradient(135deg, #2167e2 0%, #8b3dff 100%)',

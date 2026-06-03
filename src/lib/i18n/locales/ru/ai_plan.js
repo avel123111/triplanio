@@ -1,16 +1,16 @@
 export default {
   // Page titles
-  'ai_plan.page_title': 'ИИ Планировщик Поездок',
-  'ai_plan.page_desc': 'Спланируйте идеальное путешествие с помощью ИИ',
+  'ai_plan.page_title': 'ИИ-планировщик путешествий',
+  'ai_plan.page_desc': 'Спланируй идеальное путешествие с помощью ИИ',
   
   // Dialog titles
   'ai_plan.title': 'Спланировать с ИИ',
   'ai_plan.page_subtitle': 'Опиши, какое путешествие хочешь - соберу черновик и доработаем вместе.',
-  'ai_plan.desc_initial': 'Опишите вашу поездку мечты, и я создам детальный маршрут',
-  'ai_plan.desc_with_draft': 'Уточните маршрут или сохраните когда будет готово',
+  'ai_plan.desc_initial': 'Опиши путешествие мечты, и я соберу детальный маршрут',
+  'ai_plan.desc_with_draft': 'Уточни маршрут или сохрани, когда будет готово',
   
   // Prompts
-  'ai_plan.prompt_label_initial': 'Ваша идея поездки',
+  'ai_plan.prompt_label_initial': 'Твоя идея путешествия',
   'ai_plan.prompt_label_refine': 'Уточнить или добавить детали',
   'ai_plan.prompt_placeholder_initial': 'Например, 5 дней в Риме с Ватиканом, Колизеем и лучшими ресторанами пасты…',
   'ai_plan.prompt_placeholder_refine': 'Например, добавь однодневную поездку в Тиволи, измени отели на центр города…',
@@ -19,25 +19,25 @@ export default {
   // Actions
   'ai_plan.plan': 'Спланировать',
   'ai_plan.refine': 'Уточнить',
-  'ai_plan.save_trip': 'Сохранить Поездку',
+  'ai_plan.save_trip': 'Сохранить путешествие',
   'ai_plan.restart': 'Начать заново',
   'ai_plan.thinking': 'Думаю…',
-  'ai_plan.saving': 'Сохранение...',
+  'ai_plan.saving': 'Сохранение…',
   
   // City labels
-  'ai_plan.cities': 'Города и Даты',
+  'ai_plan.cities': 'Города и даты',
   'ai_plan.start': 'Старт',
   'ai_plan.end': 'Финиш',
   
   // States
-  'ai_plan.draft_placeholder': 'Здесь появится ваш маршрут, созданный ИИ',
-  'ai_plan.no_draft_error': 'Нет черновика для сохранения. Сначала создайте поездку.',
-  'ai_plan.error_save': 'Не удалось сохранить поездку. Попробуйте снова.',
+  'ai_plan.draft_placeholder': 'Здесь появится твой маршрут, созданный ИИ',
+  'ai_plan.no_draft_error': 'Нет черновика для сохранения. Сначала создай путешествие.',
+  'ai_plan.error_save': 'Не удалось сохранить путешествие. Попробуй снова.',
   'ai_plan.error_plan_title': 'Планирование не удалось',
-  'ai_plan.error_plan_desc': 'Не удалось создать поездку. Попробуй снова.',
+  'ai_plan.error_plan_desc': 'Не удалось создать путешествие. Попробуй снова.',
   
   // Default values
-  'ai_plan.default_trip_title': 'Поездка от ИИ',
+  'ai_plan.default_trip_title': 'Путешествие от ИИ',
 
   // L3 redesign - new layout
   'ai_plan.assistant_label': 'ИИ-помощник',
@@ -47,7 +47,7 @@ export default {
   'ai_plan.status_waiting': 'Жду промпт. Опиши путешествие одним абзацем - соберу черновик и обсудим детали в этом чате.',
   'ai_plan.status_generating': 'Подбираю города и переезды… собираю активности по дням.',
   'ai_plan.status_saving': 'Создаю реальное путешествие - города, переезды и активности материализуются.',
-  'ai_plan.status_ready': 'Черновик готово - можно уточнить промптом или сохранить.',
+  'ai_plan.status_ready': 'Черновик готов - можно уточнить промптом или сохранить.',
   'ai_plan.refine_hint': 'Можно попросить «+1 день в Лиссабоне» или «убрать Севилью».',
   'ai_plan.chip_italy': 'Италия, 10 дней, сентябрь',
   'ai_plan.chip_japan': 'Япония, 14 дней',
@@ -62,4 +62,7 @@ export default {
   'ai_plan.unit_activities': 'активн.',
   'ai_plan.unit_nights_short': 'ноч.',
   'ai_plan.unit_activities_short': 'актив.',
+  'ai_plan.start_badge': 'Старт',
+  'ai_plan.end_badge': 'Финиш',
+  'ai_plan.map_loading': 'Загружаем карту…',
 };

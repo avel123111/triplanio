@@ -10,9 +10,11 @@
  */
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Icon } from '@/design/icons';
+import { useT } from '@/lib/i18n/I18nContext';
 import { CURRENCIES, filterCurrencies } from '@/lib/budget/currencies';
 
 export default function CurrencySelect({ value, onChange, width = 110 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const ref = useRef(null);
@@ -38,7 +40,7 @@ export default function CurrencySelect({ value, onChange, width = 110 }) {
           gap: 6, cursor: 'pointer', textAlign: 'left',
         }}
       >
-        <span>{current ? `${current.code} ${current.symbol || ''}`.trim() : (value || 'Валюта')}</span>
+        <span>{current ? `${current.code} ${current.symbol || ''}`.trim() : (value || t('budget.field_currency'))}</span>
         <Icon name="chev" size={12} style={{ opacity: 0.5 }} />
       </button>
       {open && (
@@ -54,13 +56,13 @@ export default function CurrencySelect({ value, onChange, width = 110 }) {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск (USD, Euro, ₽…)"
+              placeholder={t('common.currency_search_ph')}
               style={{ fontSize: 13 }}
             />
           </div>
           <div style={{ maxHeight: 240, overflowY: 'auto', padding: 4 }}>
             {filtered.length === 0 ? (
-              <div className="muted" style={{ padding: '12px', fontSize: 12, textAlign: 'center' }}>Ничего не найдено</div>
+              <div className="muted" style={{ padding: '12px', fontSize: 12, textAlign: 'center' }}>{t('common.not_found')}</div>
             ) : filtered.map((c) => (
               <button
                 key={c.code}

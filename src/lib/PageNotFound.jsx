@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
+import { useT } from '@/lib/i18n/I18nContext';
 
 // Shared system-stub layout - one visual family with the no-access page
 // (mirrors ScreenSystem.jsx §33): icon-in-circle + title + explanation + action.
@@ -35,6 +36,7 @@ export function SystemStub({ icon, tone = 'brand', title, body, primary, seconda
 }
 
 export default function PageNotFound() {
+  const t = useT();
   const nav = useNavigate();
   const { user } = useAuth();
   // Logged in → back to the trip collection; otherwise → public landing.
@@ -43,9 +45,9 @@ export default function PageNotFound() {
     <SystemStub
       icon="search"
       tone="brand"
-      title="Такой страницы не существует"
-      body="Возможно, ссылка устарела или содержит ошибку. Вернись к своим путешествиям - оттуда легко найти нужное."
-      primary={{ label: user ? 'К моим путешествиям' : 'На главную', onClick: goHome }}
+      title={t('sys.not_found_title')}
+      body={t('sys.not_found_body')}
+      primary={{ label: user ? t('sys.to_my_trips') : t('sys.to_home'), onClick: goHome }}
     />
   );
 }

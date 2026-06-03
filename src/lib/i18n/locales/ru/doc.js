@@ -69,4 +69,9 @@ export default {
   'doc.page_title': 'Документы путешествия',
   'doc.add_doc': 'Добавить документ',
   'doc.load_error': 'Ошибка загрузки документов: {message}',
+  'doc.file_too_big_title': 'Файл слишком большой',
+  'doc.max_size': 'Максимальный размер - {mb} МБ.',
+  'doc.remove_doc_aria': 'Удалить документ',
+  'doc.upload_files': 'Загрузить файлы • до {mb}MB каждый',
+  'doc.remaining': ' (осталось {n})',
 };

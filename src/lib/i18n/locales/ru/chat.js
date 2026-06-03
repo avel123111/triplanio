@@ -20,4 +20,11 @@ export default {
   'chat.ai_can_1': 'Отвечает всем участникам',
   'chat.ai_can_2': 'Предлагает отели, перелёты, активности',
   'chat.ai_can_3': 'Может править путешествие - с согласия владельца',
+  'chat.open_aria': 'Открыть чат',
+  'chat.open_full_aria': 'Открыть полный чат',
+  'chat.write_first': 'Напиши первым 💬',
+  'chat.widget_composer_ph': 'Сообщение группе... (@упоминание)',
+  'chat.people_one': 'человек',
+  'chat.people_few': 'человека',
+  'chat.people_many': 'человек',
 };

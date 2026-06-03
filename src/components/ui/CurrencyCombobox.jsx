@@ -2,8 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { CURRENCIES } from '@/lib/currencies';
+import { useT } from '@/lib/i18n/I18nContext';
 
 export default function CurrencyCombobox({ value, onChange, className = '' }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -28,7 +30,7 @@ export default function CurrencyCombobox({ value, onChange, className = '' }) {
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', textAlign: 'left' }}
         >
           <span style={value ? undefined : { color: 'var(--muted-2)' }}>
-            {current ? `${current.code} · ${current.symbol}` : (value || 'Выбрать…')}
+            {current ? `${current.code} · ${current.symbol}` : (value || t('common.choose'))}
           </span>
           <ChevronDown className="w-3.5 h-3.5 opacity-50" />
         </button>
@@ -46,7 +48,7 @@ export default function CurrencyCombobox({ value, onChange, className = '' }) {
               autoFocus
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Поиск (USD, Euro, ₽…)"
+              placeholder={t('common.currency_search_ph')}
               className="input"
               style={{ paddingLeft: 32 }}
             />
@@ -57,7 +59,7 @@ export default function CurrencyCombobox({ value, onChange, className = '' }) {
           onWheel={(e) => e.stopPropagation()}
         >
           {filtered.length === 0 ? (
-            <div className="px-3 py-4 text-xs text-muted-foreground text-center">Ничего не найдено</div>
+            <div className="px-3 py-4 text-xs text-muted-foreground text-center">{t('common.not_found')}</div>
           ) : filtered.map(c => (
             <button
               key={c.code}

@@ -170,9 +170,9 @@ export default function NotificationsBell({ triggerClassName }) {
                   <Icon name="check" size={10} />
                 </span>
               </div>
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Всё прочитано</div>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{t('notif.all_read')}</div>
               <div className="muted" style={{ fontSize: 12, lineHeight: 1.55, maxWidth: 240, margin: '0 auto' }}>
-                Никаких новых приглашений, голосований и правок. Если кто-то добавит тебя в путешествие - увидишь здесь.
+                {t('notif.all_read_desc')}
               </div>
             </div>
           ) : (
@@ -199,7 +199,7 @@ export default function NotificationsBell({ triggerClassName }) {
             onClick={() => { setOpen(false); nav('/inbox'); }}
             style={{ background: 'transparent', border: 'none', color: 'var(--brand)', fontSize: 13, fontWeight: 500, cursor: 'pointer', padding: '4px 8px' }}
           >
-            Открыть инбокс целиком →
+            {t('notif.open_full_inbox')}
           </button>
         </div>
       </PopoverContent>

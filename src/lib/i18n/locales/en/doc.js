@@ -69,4 +69,9 @@ export default {
   'doc.page_title': 'Trip documents',
   'doc.add_doc': 'Add document',
   'doc.load_error': 'Failed to load documents: {message}',
+  'doc.file_too_big_title': 'File is too large',
+  'doc.max_size': 'Maximum size is {mb} MB.',
+  'doc.remove_doc_aria': 'Remove document',
+  'doc.upload_files': 'Upload files • up to {mb}MB each',
+  'doc.remaining': ' ({n} left)',
 };

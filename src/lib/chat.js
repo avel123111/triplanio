@@ -1,3 +1,4 @@
+import { pluralCategory } from '@/lib/i18n/format';
 // Helpers for the trip chat: queries, read-markers, unread counters.
 //
 // All queries pivot on chat_id (from the chats table - one "group" chat per
@@ -48,15 +49,10 @@ export function chatParticipants(members = [], ownerId = '') {
   return list;
 }
 
-// Russian pluralization for "человек" / "человека".
-export function pluralPeople(n) {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  let word;
-  if (mod10 === 1 && mod100 !== 11) word = 'человек';
-  else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) word = 'человека';
-  else word = 'человек';
-  return `${n} ${word}`;
+// Locale-aware "N people" (ru few/many via Intl.PluralRules; en/es collapse to one/many).
+export function pluralPeople(n, t, lang) {
+  const cat = pluralCategory(n, lang);
+  return `${n} ${t(`chat.people_${cat}`)}`;
 }
 
 // ── Timestamp helpers ─────────────────────────────────────────────────────────

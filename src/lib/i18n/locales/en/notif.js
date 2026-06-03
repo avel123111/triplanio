@@ -30,4 +30,7 @@ export default {
   'notif.inbox_empty': 'Inbox is empty',
   'notif.to_collection': 'To collection',
   'notif.inbox_empty_desc': 'No invitations, votes or updates. When someone adds you to a trip, votes for a hotel or makes an edit, it shows up here.',
+  'notif.all_read': 'All read',
+  'notif.all_read_desc': 'No new invitations, votes or edits. If someone adds you to a trip, you\'ll see it here.',
+  'notif.open_full_inbox': 'Open the full inbox →',
 };
