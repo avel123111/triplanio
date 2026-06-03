@@ -897,7 +897,7 @@ export default function EventEditDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="p-0 max-w-2xl max-h-[90vh] overflow-y-auto gap-0 w-[calc(100%-1rem)] sm:w-full">
+        <DialogContent className="p-0 max-w-2xl max-h-[90vh] overflow-y-auto gap-0 w-[calc(100%-1rem)] sm:w-full" style={{ background: 'var(--surface)' }}>
           {/* 4px colour stripe */}
           <div style={{ height: 4, background: meta.color }} />
 
@@ -1513,8 +1513,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
           value={form.documents}
           onChange={(docs) => setField('documents', docs)}
           onUploadingChange={setUploading}
-          label={t('event.documents')}
-          iconColor="text-primary"
+          bare
         />
       </AiField>
       <div className="mt-3">
@@ -1725,8 +1724,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           value={form.documents}
           onChange={(docs) => setField('documents', docs)}
           onUploadingChange={setUploading}
-          label={t('event.documents')}
-          iconColor="text-primary"
+          bare
         />
       </AiField>
       <div className="mt-3">
@@ -2039,7 +2037,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         value={form.documents}
         onChange={(docs) => setField('documents', docs)}
         onUploadingChange={setUploading}
-        label={t('event.documents')}
+        bare
         iconColor="text-violet-600 dark:text-violet-300"
       />
       <div className="mt-3">
@@ -2196,7 +2194,7 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, isE
         value={form.documents}
         onChange={(docs) => setField('documents', docs)}
         onUploadingChange={setUploading}
-        label={t('event.documents')}
+        bare
         iconColor="text-emerald-700 dark:text-emerald-300"
       />
       <div className="mt-3">

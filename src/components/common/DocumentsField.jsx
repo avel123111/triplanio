@@ -21,6 +21,7 @@ export default function DocumentsField({
   iconColor = 'text-primary',
   accept = '*',
   maxFileSizeMb = 10,
+  bare = false,
 }) {
   const { toast } = useToast();
   const t = useT();
@@ -80,16 +81,18 @@ export default function DocumentsField({
   };
 
   return (
-    <section className="rounded-xl border bg-card p-4">
-      <div className="flex items-center justify-between mb-2 gap-2">
-        <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
-          <Paperclip className={`w-4 h-4 shrink-0 ${iconColor}`} />
-          <span className="truncate">{label || t('event.documents')}</span>
-          {docs.length > 0 && (
-            <span className="text-xs text-muted-foreground font-normal">· {docs.length}</span>
-          )}
+    <section className={bare ? '' : 'rounded-xl border bg-card p-4'}>
+      {!bare && (
+        <div className="flex items-center justify-between mb-2 gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
+            <Paperclip className={`w-4 h-4 shrink-0 ${iconColor}`} />
+            <span className="truncate">{label || t('event.documents')}</span>
+            {docs.length > 0 && (
+              <span className="text-xs text-muted-foreground font-normal">· {docs.length}</span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {docs.length > 0 && (
         <ul className="space-y-1.5 mb-2">
