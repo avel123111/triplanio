@@ -57,6 +57,10 @@ export default {
   'validation.CITY_GAP': 'Разрыв больше дня между «{a}» и «{b}»',
   // Trip-level
   'validation.DUP_TRANSFER': 'Дубликат переезда {a} → {b} ({n})',
+  // AI-парсинг: временные advisory (не сохраняются, не блокируют) - концы берутся из трипа
+  'validation.AI_CITY_MISMATCH_FROM': 'В брони город отправления «{booking}» - в трипе «{trip}». Сверь, та ли это бронь',
+  'validation.AI_CITY_MISMATCH_TO': 'В брони город прибытия «{booking}» - в трипе «{trip}». Сверь, та ли это бронь',
+  'validation.AI_LAYOVER_CITY_MISMATCH': 'Город пересадки не сходится: прилёт «{a}» - вылет «{b}»',
   // Budget / docs / members / chat / share / pro
   'validation.EXP_TITLE_REQUIRED': 'Укажи описание',
   'validation.EXP_AMOUNT_REQUIRED': 'Укажи сумму больше 0',

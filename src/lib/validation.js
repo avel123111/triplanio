@@ -202,6 +202,39 @@ function validateTransferLayover(d = {}, ctx = {}) {
   return out;
 }
 
+// ── Parse-time advisory (TEMPORARY, NOT part of validateEntity) ──────────────
+// City-mismatch between what the AI read from the booking and the trip route.
+// EPHEMERAL by design: the AI's city names are never persisted (the saved
+// transfer uses the trip's city nodes), so this can only be computed at parse
+// time from the raw AI payload - it cannot be re-derived after save and does
+// NOT gate saving (warning-level). Endpoints come from the trip, so we only
+// flag the discrepancy for the user's eyes; the layover-connection check
+// catches leg(i).to_city != leg(i+1).from_city (the same stop named two ways).
+const cityEq = (a, b) => {
+  if (isBlank(a) || isBlank(b)) return true; // nothing to compare -> not a mismatch
+  const x = String(a).trim().toLowerCase(), y = String(b).trim().toLowerCase();
+  return x === y || x.includes(y) || y.includes(x);
+};
+export function transferAiCityAdvisories(data = {}, fromVisit = null, toVisit = null) {
+  const segs = Array.isArray(data.transfers) && data.transfers.length ? data.transfers
+    : (Array.isArray(data.segments) && data.segments.length ? data.segments : [data]);
+  const out = [];
+  const first = segs[0] || {}, last = segs[segs.length - 1] || {};
+  if (fromVisit?.city_name && !isBlank(first.from_city) && !cityEq(first.from_city, fromVisit.city_name)) {
+    out.push(mk('warning', 'AI_CITY_MISMATCH_FROM', 'entity', { values: { booking: first.from_city, trip: fromVisit.city_name } }));
+  }
+  if (toVisit?.city_name && !isBlank(last.to_city) && !cityEq(last.to_city, toVisit.city_name)) {
+    out.push(mk('warning', 'AI_CITY_MISMATCH_TO', 'entity', { values: { booking: last.to_city, trip: toVisit.city_name } }));
+  }
+  for (let i = 0; i < segs.length - 1; i++) {
+    const a = segs[i]?.to_city, b = segs[i + 1]?.from_city;
+    if (!isBlank(a) && !isBlank(b) && !cityEq(a, b)) {
+      out.push(mk('warning', 'AI_LAYOVER_CITY_MISMATCH', 'entity', { values: { a, b } }));
+    }
+  }
+  return out;
+}
+
 function validateService(d = {}, ctx = {}) {
   const out = [];
   const ref = { entityKind: 'service', entityId: d.id };

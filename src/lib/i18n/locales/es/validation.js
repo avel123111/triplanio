@@ -56,6 +56,10 @@ export default {
   'validation.CITY_GAP': 'Hueco de más de un día entre «{a}» y «{b}»',
   // Trip-level
   'validation.DUP_TRANSFER': 'Traslado duplicado {a} → {b} ({n})',
+  // Parsing IA: avisos temporales (no se guardan, no bloquean) - los extremos se toman del viaje
+  'validation.AI_CITY_MISMATCH_FROM': 'La reserva sale de «{booking}» - el viaje indica «{trip}». Comprueba que sea la reserva correcta',
+  'validation.AI_CITY_MISMATCH_TO': 'La reserva llega a «{booking}» - el viaje indica «{trip}». Comprueba que sea la reserva correcta',
+  'validation.AI_LAYOVER_CITY_MISMATCH': 'La ciudad de escala no coincide: llegada «{a}» - salida «{b}»',
   // Budget / docs / members / chat / share / pro
   'validation.EXP_TITLE_REQUIRED': 'Indica una descripción',
   'validation.EXP_AMOUNT_REQUIRED': 'Indica un importe mayor que 0',

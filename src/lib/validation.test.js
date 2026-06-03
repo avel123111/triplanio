@@ -1,7 +1,7 @@
 // Unit tests for the unified validation engine (Ф1). Run: npm test  (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateEntity, validateTrip, primaryIssues } from './validation.js';
+import { validateEntity, validateTrip, primaryIssues, transferAiCityAdvisories } from './validation.js';
 
 const codes = (issues) => issues.map((i) => i.code).sort();
 const has = (issues, code) => issues.some((i) => i.code === code);
@@ -94,6 +94,31 @@ test('layover: endpoints far from trip days -> TR_DEP_DAY + TR_ARR_DAY', () => {
   const issues = validateEntity('transfer', { id: 't1', hasLayovers: true, segments: segs }, { fromVisit: FROM, toVisit: TO });
   assert.ok(has(issues, 'TR_DEP_DAY'));
   assert.ok(has(issues, 'TR_ARR_DAY'));
+});
+
+// ---------- AI city-mismatch advisories (ephemeral, parse-time) ----------
+test('advisory: single transfer city matches trip -> no advisory', () => {
+  const data = { transfers: [{ from_city: 'Lisbon', to_city: 'Porto' }] };
+  assert.deepEqual(transferAiCityAdvisories(data, FROM, TO), []);
+});
+test('advisory: single transfer endpoints differ -> FROM + TO', () => {
+  const data = { transfers: [{ from_city: 'Madrid', to_city: 'Moscow' }] };
+  const adv = transferAiCityAdvisories(data, FROM, TO);
+  assert.ok(has(adv, 'AI_CITY_MISMATCH_FROM'));
+  assert.ok(has(adv, 'AI_CITY_MISMATCH_TO'));
+  assert.ok(adv.every((i) => i.level === 'warning'));
+});
+test('advisory: layover leg connection mismatch -> AI_LAYOVER_CITY_MISMATCH', () => {
+  const data = { transfers: [
+    { from_city: 'Lisbon', to_city: 'Madrid' },
+    { from_city: 'Barcelona', to_city: 'Porto' }, // arrives Madrid, next departs Barcelona
+  ] };
+  const adv = transferAiCityAdvisories(data, FROM, TO);
+  assert.ok(has(adv, 'AI_LAYOVER_CITY_MISMATCH'));
+});
+test('advisory: blank AI cities -> nothing to compare', () => {
+  const data = { transfers: [{}] };
+  assert.deepEqual(transferAiCityAdvisories(data, FROM, TO), []);
 });
 
 // ---------- Service ----------
