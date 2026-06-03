@@ -19,10 +19,9 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import AiField from '@/components/ui/AiField';
 import {
-  Loader2, Sparkles, Trash2, ExternalLink, ChevronDown, ChevronUp, ArrowRight, Repeat,
+  Loader2, Sparkles, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat,
   Bed, Plane, Camera, Car as CarIcon, Train, Bus, Ship, Footprints,
 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
 import { DateTime } from 'luxon';
 
 // ── Design-system form primitives ──────────────────────────────────────────
@@ -1753,15 +1752,21 @@ function LayoverToggle({ form, setForm, color }) {
   const n = (form.segments || []).length;
   return (
     <>
-      <SectionHeader color={color}>{t('trip.sidebar_route')}</SectionHeader>
-      <div style={{ padding: '16px 18px', background: 'var(--wash)', borderRadius: 16, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
-        <Switch checked={form.hasLayovers} onCheckedChange={(v) => (v ? enable() : disable())} />
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', fontSize: 16, fontWeight: 600, color: 'var(--ink)' }}>{t('event.with_layovers')}</span>
-          <span className="muted" style={{ display: 'block', fontSize: 13, marginTop: 1 }}>{t('event.layovers_hint')}</span>
-        </span>
+      <SectionHeader>{t('trip.sidebar_route')}</SectionHeader>
+      <div style={{ padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}>
+          <span style={{ position: 'relative', display: 'inline-block', width: 32, height: 18, flexShrink: 0 }}>
+            <input type="checkbox" checked={form.hasLayovers} onChange={(e) => (e.target.checked ? enable() : disable())} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', margin: 0 }} />
+            <span style={{ position: 'absolute', inset: 0, background: form.hasLayovers ? color : 'var(--line)', borderRadius: 999, transition: 'background .15s' }} />
+            <span style={{ position: 'absolute', top: 2, left: form.hasLayovers ? 16 : 2, width: 14, height: 14, borderRadius: '50%', background: 'white', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,.15)' }} />
+          </span>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: 'block', fontSize: 13.5, fontWeight: 500 }}>{t('event.with_layovers')}</span>
+            <span className="muted" style={{ fontSize: 11.5 }}>{t('event.layovers_hint')}</span>
+          </span>
+        </label>
         {form.hasLayovers && (
-          <span className="num" style={{ fontSize: 13, color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{t('event.seg_count', { n, c: Math.max(0, n - 1) })}</span>
+          <span className="num" style={{ fontSize: 11.5, color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{t('event.seg_count', { n, c: Math.max(0, n - 1) })}</span>
         )}
       </div>
     </>
@@ -1793,12 +1798,12 @@ const fmtDur = (m, t) => {
 function SegTransportGrid({ value, onChange, color }) {
   const { t } = useI18nFormat();
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginBottom: 14 }}>
       {TRANSPORT_KINDS.map((k) => {
         const active = value === k.id; const Ic = k.Icon;
         return (
           <button key={k.id} type="button" onClick={() => onChange(k.id)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'transparent', border: '1.5px solid ' + (active ? color : 'var(--border, hsl(var(--border)))'), color: active ? color : 'inherit', borderRadius: 10, cursor: 'pointer', fontWeight: 500, fontSize: 11.5 }}>
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line-2)'), color: active ? color : 'var(--ink)', borderRadius: 10, cursor: 'pointer', fontWeight: 500, fontSize: 11.5 }}>
             <Ic className="w-4 h-4" />{t(k.labelKey)}
           </button>
         );
@@ -1839,26 +1844,25 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
   });
   const removeSegment = (i) => setForm((prev) => (prev.segments.length <= 2 ? prev : { ...prev, segments: prev.segments.filter((_, idx) => idx !== i) }));
 
-  // Expandable cards: explicit user choice (openMap) overrides the default.
-  // Default = open when the segment is incomplete; a segment with an active
-  // error is always forced open so the inline message can't be hidden.
+  // Expandable cards (default expanded, like the design). A segment with an
+  // active error is always forced open so the inline message can't be hidden.
   const [openMap, setOpenMap] = useState({});
   const segHasErr = (i) => (issues || []).some((it) => it.level === 'error' && typeof it.field === 'string' && it.field.startsWith(`seg${i}.`));
-  const isIncomplete = (seg, isLast) => !seg.startLocal || !seg.endLocal || (!isLast && !seg.toCity?.city_name);
-  const isOpen = (seg, i, isLast) => {
+  const isOpen = (seg, i) => {
     if (segHasErr(i)) return true;
     if (openMap[seg.id] !== undefined) return openMap[seg.id];
-    return isIncomplete(seg, isLast);
+    return true;
   };
-  const toggleOpen = (seg, i, isLast) => setOpenMap((m) => ({ ...m, [seg.id]: !isOpen(seg, i, isLast) }));
+  const toggleOpen = (seg, i) => setOpenMap((m) => ({ ...m, [seg.id]: !isOpen(seg, i) }));
 
+  const cardField = (node) => <div style={{ marginTop: 10 }}>{node}</div>;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {segs.map((seg, i) => {
         const isFirst = i === 0; const isLast = i === N - 1;
         const fromName = isFirst ? (fromVisit?.city_name || '-') : (segs[i - 1].toCity?.city_name || '…');
         const toName = isLast ? (toVisit?.city_name || '-') : (seg.toCity?.city_name || '…');
-        const open = isOpen(seg, i, isLast);
+        const open = isOpen(seg, i);
         const tk = TRANSPORT_OF(seg.transport_type);
         const TIcon = tk.Icon;
         const layCity = seg.toCity?.city_name || '…';
@@ -1867,110 +1871,86 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
         const layDur = layMins != null ? fmtDur(layMins, t) : '';
         return (
           <React.Fragment key={seg.id}>
-            <div style={{ border: '1px solid var(--line)', borderRadius: 14, background: 'var(--surface)', overflow: 'hidden' }}>
-              {/* Expandable header (whole row toggles). */}
-              <div
-                role="button" tabIndex={0}
-                onClick={() => toggleOpen(seg, i, isLast)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleOpen(seg, i, isLast); } }}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, cursor: 'pointer', background: open ? 'var(--wash)' : 'transparent', borderBottom: open ? '1px solid var(--line-2)' : 'none' }}
-              >
-                <span style={{ width: 44, height: 44, borderRadius: 10, background: TYPE_META.transfer.soft, color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                  <TIcon className="w-5 h-5" />
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span className="eyebrow" style={{ color, display: 'block' }}>{t('event.segment_n', { n: i + 1 })} · {t(tk.labelKey)}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 16, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {fromName} <ArrowRight className="w-4 h-4" style={{ color: 'var(--muted-2)', flexShrink: 0 }} /> {toName}
+            <div style={{ border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--wash-2)', overflow: 'hidden' }}>
+              {/* Collapsible header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
+                <button type="button" onClick={() => toggleOpen(seg, i)}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0, minWidth: 0 }}>
+                  <span style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: TYPE_META.transfer.soft, color, display: 'grid', placeItems: 'center' }}>
+                    <TIcon className="w-4 h-4" />
                   </span>
-                </span>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span className="eyebrow" style={{ color, display: 'block' }}>{t('event.segment_n', { n: i + 1 })} · {t(tk.labelKey)}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fromName}</span>
+                      <ArrowRight className="w-3 h-3" style={{ color: 'var(--muted)', flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{toName}</span>
+                    </span>
+                  </span>
+                  <span className="muted" style={{ fontSize: 11.5, flexShrink: 0 }}>{open ? t('event.collapse') : t('event.expand')}</span>
+                  <ChevronDown className="w-4 h-4" style={{ color: 'var(--muted)', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
+                </button>
                 {N > 2 && (
-                  <button type="button" className="btn btn--quiet btn--sm" onClick={(e) => { e.stopPropagation(); removeSegment(i); }} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
+                  <button type="button" className="btn btn--quiet btn--sm" onClick={() => removeSegment(i)} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--muted)', flexShrink: 0 }}>
-                  {open ? t('event.collapse') : t('event.expand')}
-                  {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </span>
               </div>
 
-              {open && (
-                <div style={{ padding: 16 }}>
-                  <div className="eyebrow" style={{ color, marginBottom: 10 }}>{t('event.transport_kind')}</div>
-                  <SegTransportGrid value={seg.transport_type} onChange={(k) => patchSeg(i, { transport_type: k })} color={color} />
+              <div style={{ display: open ? 'block' : 'none', padding: '4px 14px 14px', borderTop: '1px solid var(--line-2)' }}>
+                <div style={{ height: 10 }} />
+                <div className="eyebrow" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
+                <SegTransportGrid value={seg.transport_type} onChange={(k) => patchSeg(i, { transport_type: k })} color={color} />
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
-                      <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>{isFirst ? t('event.from_start') : t('event.from_layover')}</div>
-                      <div>
-                        <Label>{t('event.city')}</Label>
-                        <input className="input" value={fromName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_from_route_title')} />
-                      </div>
-                      <div>
-                        <Label>{t('event.addr_station')}</Label>
-                        <AiField active={aiOn(seg, 'from_address')}>
-                          <AddressAutocomplete value={seg.from_address} onChange={(v) => patchSeg(i, { from_address: v })} placeholder={t('event.addr_ph')} />
-                        </AiField>
-                      </div>
-                      <div className={inv(`seg${i}.start`)} data-vfield={`seg${i}.start`}>
-                        <Label>{t('event.departure_req')}</Label>
-                        <AiField active={aiOn(seg, 'startLocal')}>
-                          <DateTimeInput value={seg.startLocal} onChange={(v) => patchSeg(i, { startLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-dep`, v)} className="w-full" />
-                        </AiField>
-                        <FieldError issues={issues} field={`seg${i}.start`} />
-                      </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 14 }}>
+                  <div style={{ padding: 14, background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--line-2)' }}>
+                    <div className="eyebrow" style={{ marginBottom: 8, color }}>{t('event.from')}</div>
+                    <div>
+                      <Label>{t('event.city')}</Label>
+                      <input className="input" value={fromName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_from_route_title')} />
                     </div>
-                    <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
-                      <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>{isLast ? t('event.to_finish') : t('event.to_layover')}</div>
-                      <div className={isLast ? '' : inv(`seg${i}.toCity`)} data-vfield={isLast ? undefined : `seg${i}.toCity`}>
-                        <Label>{t('event.city')}</Label>
-                        {isLast ? (
-                          <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_arrival_title')} />
-                        ) : (
-                          <>
-                            <AiField active={aiOn(seg, 'toCity')}>
-                              <CityPicker value={seg.toCity} onPick={(c) => patchSeg(i, { toCity: c })} placeholder={t('event.layover_city_ph')} />
-                            </AiField>
-                            <FieldError issues={issues} field={`seg${i}.toCity`} />
-                          </>
-                        )}
-                      </div>
-                      <div>
-                        <Label>{t('event.addr_station')}</Label>
-                        <AiField active={aiOn(seg, 'to_address')}>
-                          <AddressAutocomplete value={seg.to_address} onChange={(v) => patchSeg(i, { to_address: v })} placeholder={t('event.addr_ph')} />
-                        </AiField>
-                      </div>
-                      <div className={inv(`seg${i}.end`)} data-vfield={`seg${i}.end`}>
-                        <Label>{t('event.arrival_req')}</Label>
-                        <AiField active={aiOn(seg, 'endLocal')}>
-                          <DateTimeInput value={seg.endLocal} onChange={(v) => patchSeg(i, { endLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-arr`, v)} className="w-full" />
-                        </AiField>
-                        <FieldError issues={issues} field={`seg${i}.end`} />
-                      </div>
+                    {cardField(<><Label>{t('event.addr_station')}</Label><AiField active={aiOn(seg, 'from_address')}><AddressAutocomplete value={seg.from_address} onChange={(v) => patchSeg(i, { from_address: v })} placeholder={t('event.addr_ph')} /></AiField></>)}
+                    {cardField(<div className={inv(`seg${i}.start`)} data-vfield={`seg${i}.start`}><Label>{t('event.departure_req')}</Label><AiField active={aiOn(seg, 'startLocal')}><DateTimeInput value={seg.startLocal} onChange={(v) => patchSeg(i, { startLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-dep`, v)} className="w-full" /></AiField><FieldError issues={issues} field={`seg${i}.start`} /></div>)}
+                  </div>
+                  <div style={{ padding: 14, background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--line-2)' }}>
+                    <div className="eyebrow" style={{ marginBottom: 8, color }}>{t('event.to')}</div>
+                    <div className={isLast ? '' : inv(`seg${i}.toCity`)} data-vfield={isLast ? undefined : `seg${i}.toCity`}>
+                      <Label>{t('event.city')}</Label>
+                      {isLast ? (
+                        <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_arrival_title')} />
+                      ) : (
+                        <>
+                          <AiField active={aiOn(seg, 'toCity')}>
+                            <CityPicker value={seg.toCity} onPick={(c) => patchSeg(i, { toCity: c })} placeholder={t('event.layover_city_ph')} />
+                          </AiField>
+                          <FieldError issues={issues} field={`seg${i}.toCity`} />
+                        </>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                    <div><Label>{t('event.carrier')}</Label><AiField active={aiOn(seg, 'carrier')}><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder={t('event.carrier_ph')} /></AiField></div>
-                    <div><Label>{t('event.flight_train_no')}</Label><AiField active={aiOn(seg, 'flight_number')}><Input className="font-mono" value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></AiField></div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                    <div><Label>{t('event.price')}</Label><AiField active={aiOn(seg, 'price')}><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></AiField></div>
-                    <div><Label>{t('event.currency')}</Label><CurrencyCombobox value={seg.currency} onChange={(v) => patchSeg(i, { currency: v })} /></div>
+                    {cardField(<><Label>{t('event.addr_station')}</Label><AiField active={aiOn(seg, 'to_address')}><AddressAutocomplete value={seg.to_address} onChange={(v) => patchSeg(i, { to_address: v })} placeholder={t('event.addr_ph')} /></AiField></>)}
+                    {cardField(<div className={inv(`seg${i}.end`)} data-vfield={`seg${i}.end`}><Label>{t('event.arrival_req')}</Label><AiField active={aiOn(seg, 'endLocal')}><DateTimeInput value={seg.endLocal} onChange={(v) => patchSeg(i, { endLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-arr`, v)} className="w-full" /></AiField><FieldError issues={issues} field={`seg${i}.end`} /></div>)}
                   </div>
                 </div>
-              )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <div><Label>{t('event.carrier')}</Label><AiField active={aiOn(seg, 'carrier')}><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder={t('event.carrier_ph')} /></AiField></div>
+                  <div><Label>{t('event.flight_train_no')}</Label><AiField active={aiOn(seg, 'flight_number')}><Input className="font-mono" value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></AiField></div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.5fr', gap: 12 }}>
+                  <div><Label>{t('event.price')}</Label><AiField active={aiOn(seg, 'price')}><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></AiField></div>
+                  <div><Label>{t('event.currency')}</Label><CurrencyCombobox value={seg.currency} onChange={(v) => patchSeg(i, { currency: v })} /></div>
+                </div>
+              </div>
             </div>
 
             {!isLast && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '2px 2px' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 999, background: TYPE_META.transfer.soft, color, fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
-                  <Repeat className="w-3.5 h-3.5" style={{ flexShrink: 0 }} />
-                  <span>{t('event.layover_in', { city: layCity })}</span>
-                  {layDate && <span style={{ opacity: 0.7 }}>· {layDate}</span>}
-                  {layDur && <span style={{ opacity: 0.7 }}>· {layDur}</span>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
+                <span style={{ width: 1, height: 14, background: 'var(--line)', marginLeft: 16 }} />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color, fontSize: 12, fontWeight: 600 }}>
+                  <Repeat className="w-3 h-3" style={{ flexShrink: 0 }} />
+                  {t('event.layover_in', { city: '' }).replace(/\s*$/, '')}&nbsp;<span style={{ fontWeight: 700 }}>{layCity}</span>
+                  {layDate && <span className="num" style={{ fontWeight: 600, opacity: 0.7 }}>· {layDate}</span>}
+                  {layDur && <span className="num" style={{ fontWeight: 600, opacity: 0.7 }}>· {layDur}</span>}
                 </span>
                 <span style={{ flex: 1, height: 1, background: 'var(--line-2)' }} />
               </div>
