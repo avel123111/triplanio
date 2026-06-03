@@ -1,5 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 const BOT_EMAIL = 'info@triplanio.com';
 const BOT_NAME  = 'Triplanio';
@@ -56,6 +57,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ ok: true, id: created.id }, { headers: corsHeaders });
   } catch (err) {
+    await captureEdgeError(err, 'triplanioAiReply');
     console.error('triplanioAiReply error:', err);
     return Response.json({ error: (err as Error).message }, { status: 500, headers: corsHeaders });
   }

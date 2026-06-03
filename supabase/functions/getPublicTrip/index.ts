@@ -1,6 +1,7 @@
 // getPublicTrip — public read-only trip endpoint (no auth; tripId + share_token).
 // Returns trip (ownership stripped) + visits/hotels/transfers/activities/carRentals.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -51,6 +52,7 @@ Deno.serve(async (req) => {
       carRentals,
     }, { headers: corsHeaders });
   } catch (err) {
+    await captureEdgeError(err, 'getPublicTrip');
     console.error('getPublicTrip error:', err);
     return Response.json({ error: String((err as Error)?.message || err) }, { status: 500, headers: corsHeaders });
   }

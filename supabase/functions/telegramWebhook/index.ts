@@ -15,6 +15,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 type Lang = 'ru' | 'en' | 'es';
 
@@ -138,6 +139,7 @@ Deno.serve(async (req) => {
     );
 
   } catch (e) {
+    await captureEdgeError(e, 'telegramWebhook');
     console.error('telegramWebhook error:', e);
     return Response.json(
       { ok: false, reason: 'error', error: (e as Error).message },

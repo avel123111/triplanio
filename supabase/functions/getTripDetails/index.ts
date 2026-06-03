@@ -22,6 +22,7 @@
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -142,6 +143,7 @@ Deno.serve(async (req) => {
     return Response.json(response, { headers: corsHeaders });
 
   } catch (error) {
+    await captureEdgeError(error, 'getTripDetails');
     console.error('getTripDetails error:', error);
     return Response.json(
       { error: error instanceof Error ? error.message : 'Internal error' },

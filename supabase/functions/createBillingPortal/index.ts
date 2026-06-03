@@ -12,6 +12,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -72,6 +73,7 @@ Deno.serve(async (req) => {
     return Response.json({ url: portalSession.url }, { headers: corsHeaders });
 
   } catch (error) {
+    await captureEdgeError(error, 'createBillingPortal');
     console.error('Billing portal error:', error);
     return Response.json(
       { error: error instanceof Error ? error.message : 'Internal error' },

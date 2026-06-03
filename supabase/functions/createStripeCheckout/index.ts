@@ -18,6 +18,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 const VALID_PLANS = ['pro_trip', 'pro_monthly', 'pro_yearly'] as const;
 type PlanType = typeof VALID_PLANS[number];
@@ -184,6 +185,7 @@ Deno.serve(async (req) => {
     return Response.json({ url: session.url }, { headers: corsHeaders });
 
   } catch (error) {
+    await captureEdgeError(error, 'createStripeCheckout');
     console.error('Stripe checkout error:', error);
     return Response.json(
       { error: error instanceof Error ? error.message : 'Internal error' },

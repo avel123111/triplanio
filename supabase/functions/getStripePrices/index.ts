@@ -13,6 +13,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 const LIVE_PRODUCT_IDS = {
   pro_trip: 'prod_UYfZZsZnknkxDj',
@@ -72,6 +73,7 @@ Deno.serve(async (req) => {
     return Response.json({ prices: Object.fromEntries(entries) }, { headers: corsHeaders });
 
   } catch (error) {
+    await captureEdgeError(error, 'getStripePrices');
     console.error('getStripePrices error:', error);
     return Response.json(
       { error: error instanceof Error ? error.message : 'Internal error' },

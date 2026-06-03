@@ -11,6 +11,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 // Reads the EXACT amount the caller is billed from their live Stripe subscription
 // (the price line item), not the public catalog price — so a user on a legacy /
@@ -87,6 +88,7 @@ Deno.serve(async (req) => {
     return Response.json({ plan: 'free', email: user.email }, { headers: corsHeaders });
 
   } catch (error) {
+    await captureEdgeError(error, 'getUserPlan');
     console.error('getUserPlan error:', error);
     return Response.json(
       { error: error instanceof Error ? error.message : 'Internal error' },

@@ -14,6 +14,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 const VALID = ['pro_monthly', 'pro_yearly'];
 const LIVE_PRODUCTS: Record<string, string> = {
@@ -87,6 +88,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ ok: true }, { headers: corsHeaders });
   } catch (e) {
+    await captureEdgeError(e, 'changeSubscriptionPlan');
     console.error('changeSubscriptionPlan error:', e);
     return Response.json({ error: e instanceof Error ? e.message : 'Internal error' }, { status: 500, headers: corsHeaders });
   }

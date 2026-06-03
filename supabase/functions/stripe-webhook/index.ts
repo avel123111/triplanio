@@ -15,6 +15,7 @@
 
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -325,6 +326,7 @@ Deno.serve(async (req) => {
     return Response.json({ received: true });
 
   } catch (error) {
+    await captureEdgeError(error, 'stripe-webhook');
     console.error('Webhook error:', error);
     return Response.json(
       { error: error instanceof Error ? error.message : 'Internal error' },

@@ -16,6 +16,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { fetchTripPayload } from '../_shared/tripPayload.ts';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -32,6 +33,7 @@ Deno.serve(async (req) => {
 
     return await fetchTripPayload(id);
   } catch (err) {
+    await captureEdgeError(err, 'getTripById');
     console.error('getTripById error:', err);
     return Response.json(
       { error: err instanceof Error ? err.message : 'Internal error' },

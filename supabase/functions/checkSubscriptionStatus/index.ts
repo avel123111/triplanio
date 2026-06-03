@@ -4,6 +4,7 @@
 // OWNER has an active Pro subscription. Without a tripId, falls back to the
 // caller's own subscription (used by the trip-creation paywall).
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,6 +72,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ isPro: false, isOwner }, { headers: corsHeaders });
   } catch (error) {
+    await captureEdgeError(error, 'checkSubscriptionStatus');
     console.error('checkSubscriptionStatus error:', error);
     return Response.json({ error: String(error?.message || error) }, { status: 500, headers: corsHeaders });
   }

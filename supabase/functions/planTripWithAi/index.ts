@@ -12,6 +12,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
+import { captureEdgeError } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -63,6 +64,7 @@ Deno.serve(async (req) => {
     const data = await res.json();
     return Response.json(data, { headers: corsHeaders });
   } catch (err) {
+    await captureEdgeError(err, 'planTripWithAi');
     console.error('planTripWithAi error:', err);
     return Response.json(
       { error: err instanceof Error ? err.message : 'Internal error' },
