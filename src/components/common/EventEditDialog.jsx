@@ -502,7 +502,7 @@ export default function EventEditDialog({
     setForm(buildInitialForm(k, entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
     setAiFields(new Set());
     setExtraSegments([]);
-    setAiEndpointWarn(null); setAiSegFields(new Set());
+    setAiSegFields(new Set());
     setTimeMissing({});
     setTouched(new Set()); setSubmitted(false);
   }, [open, entity?.id, initialKind]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -566,7 +566,7 @@ export default function EventEditDialog({
     setForm(buildInitialForm(k, null, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
     setAiFields(new Set());
     setExtraSegments([]);
-    setAiEndpointWarn(null); setAiSegFields(new Set());
+    setAiSegFields(new Set());
     setTimeMissing({});
     setTouched(new Set()); setSubmitted(false);
   };
@@ -881,7 +881,7 @@ export default function EventEditDialog({
     }
     setForm(upd);
     setAiFields(filled);
-    setAiEndpointWarn(null); setAiSegFields(new Set());
+    setAiSegFields(new Set());
     setAiState('parsed');
   };
 
