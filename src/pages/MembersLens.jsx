@@ -14,20 +14,8 @@ import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, Field, Skeleton } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
-
-// ─── edge error helper ──────────────────────────────────────────────────────
-// supabase-js wraps any non-2xx edge response in a FunctionsHttpError whose
-// `.message` is the generic "Edge Function returned a non-2xx status code" and
-// leaves `data` null. The real { error } payload lives on error.context (the
-// Response). This reads it so we can surface the actual reason to the user.
-async function edgeErrorMessage(error, data, fallback = 'Ошибка') {
-  if (data?.error) return data.error;
-  try {
-    const body = await error?.context?.json?.();
-    if (body?.error) return body.error;
-  } catch { /* not JSON / already consumed */ }
-  return error?.message && !/non-2xx/i.test(error.message) ? error.message : fallback;
-}
+import { edgeErrorMessage } from '@/lib/edgeError';
+import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
 // Real roles are owner / admin / viewer. owner is assigned only at creation and
@@ -68,10 +56,11 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const v = useHybridValidation('invite', tab === 'offline' ? { mode: 'offline', name: offlineName } : tab === 'email' ? { mode: 'email', email } : { mode: 'link' });
+  const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
 
   async function inviteByEmail() {
     const trimmed = email.trim().toLowerCase();
-    if (!trimmed.includes('@')) { setErr(t('member.err_email')); return; }
     setSaving(true);
     setErr('');
     const { data, error } = await supabase.functions.invoke('inviteTripMember', {
@@ -89,7 +78,6 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
 
   async function addOffline() {
     const name = offlineName.trim();
-    if (!name) { setErr(t('member.err_name')); return; }
     setSaving(true);
     setErr('');
     const { data, error } = await supabase.functions.invoke('addOfflineTripMember', {
@@ -105,8 +93,8 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
     <Dialog title={t('member.invite_to_trip')} icon="users" size=""
       foot={<>
         <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>
-        {tab === 'email' && <Btn variant="primary" icon="send" onClick={inviteByEmail} disabled={saving}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
-        {tab === 'offline' && <Btn variant="primary" icon="user" onClick={addOffline} disabled={saving}>{saving ? t('member.adding') : t('members.add')}</Btn>}
+        {tab === 'email' && <Btn variant="primary" icon="send" onClick={() => v.attemptSubmit(inviteByEmail)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
+        {tab === 'offline' && <Btn variant="primary" icon="user" onClick={() => v.attemptSubmit(addOffline)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.adding') : t('members.add')}</Btn>}
       </>}>
       <div className="tweaks__seg" style={{ marginBottom: 14, display: 'flex' }}>
         <button className={tab === 'email' ? 'active' : ''} onClick={() => setTab('email')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
@@ -139,7 +127,10 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
 
       {tab === 'email' && <>
         <Field label="E-mail">
-          <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" autoFocus />
+          <div data-vfield="email" className={inv('email')}>
+            <input className="input" type="email" value={email} onChange={e => { setEmail(e.target.value); v.markTouched('email'); }} placeholder="name@example.com" autoFocus />
+          </div>
+          <FieldError issues={v.displayIssues} field="email" />
         </Field>
         <Field label={t('member.message_label')} hint={t('member.message_hint')}>
           <textarea className="textarea" value={message} onChange={e => setMessage(e.target.value)} placeholder={t('member.message_ph')} rows={3} />
@@ -166,13 +157,17 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
 
       {tab === 'offline' && <>
         <Field label={t('members.offline_name')} hint={t('member.offline_name_hint')}>
-          <input className="input" value={offlineName} onChange={e => setOfflineName(e.target.value)} placeholder={t('member.offline_name_ph')} autoFocus />
+          <div data-vfield="name" className={inv('name')}>
+            <input className="input" value={offlineName} onChange={e => { setOfflineName(e.target.value); v.markTouched('name'); }} placeholder={t('member.offline_name_ph')} autoFocus />
+          </div>
+          <FieldError issues={v.displayIssues} field="name" />
         </Field>
         <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
           {t('member.offline_note')}
         </div>
       </>}
 
+      <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
       {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
     </Dialog>
   );

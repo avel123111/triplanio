@@ -15,8 +15,9 @@ import { supabase } from '@/api/supabaseClient';
 import { safeStorageName } from '@/lib/storage';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton } from '../design/index';
+import { Badge, Btn, Dialog, Field, Skeleton } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── query key ────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,8 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
   const fileInputRef = useRef(null);
   const qc   = useQueryClient();
   const { user } = useAuth();
+  const v = useHybridValidation('document', { title });
+  const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
 
   async function uploadFiles(files) {
     if (!files?.length) return;
@@ -63,7 +66,6 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
   }
 
   async function save() {
-    if (!title.trim()) { setErr(t('doc.err_title')); return; }
     setSaving(true); setErr('');
     const { error } = await supabase.from('trip_documents').insert({
       trip_id:    tripId,
@@ -84,9 +86,10 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
     <Dialog title={t('doc.shared_empty')} icon="file" size=""
       foot={<>
         <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
-        <Btn variant="primary" loading={saving} disabled={uploading} onClick={save}>{t('trip.form_save')}</Btn>
+        <Btn variant="primary" loading={saving} disabled={uploading} aria-disabled={!v.canSubmit} onClick={() => v.attemptSubmit(save)}>{t('trip.form_save')}</Btn>
       </>}>
 
+      <IssuesPanel issues={v.panelIssues} style={{ marginBottom: 12 }} />
       {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
 
       {/* Visibility - two card buttons, as in base44 */}
@@ -121,7 +124,10 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
 
       {/* Title */}
       <Field label={t('trip.form_title_required')}>
-        <input className="input" autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder={t('doc.title_ph')} />
+        <div data-vfield="title" className={inv('title')}>
+          <input className="input" autoFocus value={title} onChange={e => { setTitle(e.target.value); v.markTouched('title'); }} placeholder={t('doc.title_ph')} />
+        </div>
+        <FieldError issues={v.displayIssues} field="title" />
       </Field>
 
       {/* Notes */}

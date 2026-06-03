@@ -5,8 +5,9 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
+import { parseEdgeError } from '@/lib/edgeError';
 import { Icon } from '@/design/icons';
-import { Btn, Badge, Skeleton } from '@/design/index';
+import { Btn, Skeleton } from '@/design/index';
 import HeaderActions from '@/components/HeaderActions';
 import '../design/app.css';
 
@@ -69,7 +70,8 @@ export default function Pro() {
       setLoading(false);
     } catch (error) {
       console.error('Upgrade error:', error);
-      const code = error?.response?.data?.code;
+      // supabase-js: the {error, code} body is on error.context, not .response.data.
+      const { code, message } = await parseEdgeError(error);
       if (code === 'SUBSCRIPTION_ALREADY_ACTIVE') {
         try {
           const portal = await supabase.functions.invoke('createBillingPortal', { body: { returnPath: '/settings' } });
@@ -84,8 +86,7 @@ export default function Pro() {
         setLoading(false);
         return;
       }
-      const msg = error?.response?.data?.error || error.message;
-      setErrorMsg(t('sub.upgrade_error', { message: msg }));
+      setErrorMsg(t('sub.upgrade_error', { message: message || error.message }));
       setLoading(false);
     }
   };

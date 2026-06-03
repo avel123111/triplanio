@@ -20,7 +20,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton, Severity } from '../design/index';
+import { Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton, Severity } from '../design/index';
 import CurrencySelect from '@/components/budget/CurrencySelect';
 import SourceViewLoader from '@/components/budget/SourceViewLoader';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
@@ -70,9 +70,10 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState('');
+  const v = useHybridValidation('expense', { title, amount, categoryId });
+  const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
 
   async function save() {
-    if (!title.trim() || !amount || !categoryId) { setErr(t('budget.err_required')); return; }
     setSaving(true);
     setErr('');
     const row = {
@@ -116,19 +117,23 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
         )}
         <div style={{ flex: 1 }} />
         <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
-        <Btn variant="primary" icon="check" onClick={save} disabled={saving}>
+        <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>
           {saving ? t('member.saving') : isEdit ? t('trip.form_save') : t('members.add')}
         </Btn>
       </>}>
       <Field label={t('trip.description')}>
-        <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder={t('budget.desc_ph')} autoFocus />
+        <div data-vfield="title" className={inv('title')}>
+          <input className="input" value={title} onChange={e => { setTitle(e.target.value); v.markTouched('title'); }} placeholder={t('budget.desc_ph')} autoFocus />
+        </div>
+        <FieldError issues={v.displayIssues} field="title" />
       </Field>
       <div className="field-row cols-2" style={{ marginTop: 14 }}>
         <Field label={t('budget.field_amount')}>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input className="input num" type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex: 1 }} />
+          <div style={{ display: 'flex', gap: 6 }} data-vfield="amount" className={inv('amount')}>
+            <input className="input num" type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} style={{ flex: 1 }} />
             <CurrencySelect value={currency} onChange={setCurrency} width={92} />
           </div>
+          <FieldError issues={v.displayIssues} field="amount" />
         </Field>
         <Field label={t('budget.field_date')}>
           <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
@@ -136,9 +141,12 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
       </div>
       <div className="field-row cols-2" style={{ marginTop: 14 }}>
         <Field label={t('budget.field_category')}>
-          <select className="select" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <div data-vfield="categoryId" className={inv('categoryId')}>
+            <select className="select" value={categoryId} onChange={e => { setCategoryId(e.target.value); v.markTouched('categoryId'); }}>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <FieldError issues={v.displayIssues} field="categoryId" />
         </Field>
         <Field label={t('visit.city')}>
           <select className="select" value={cityName} onChange={e => setCityName(e.target.value)}>
@@ -152,6 +160,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
           <textarea className="textarea" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('budget.free_text')} />
         </Field>
       </div>
+      <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
       {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
     </Dialog>
   );
@@ -181,6 +190,8 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const v = useHybridValidation('fx', { rates: values });
+  const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
 
   async function apply() {
     setSaving(true);
@@ -204,7 +215,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
   return (
     <Dialog title={t('budget.fx_button')} icon="wallet" size="" foot={<>
       <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
-      <Btn variant="primary" icon="check" onClick={apply} disabled={saving}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
+      <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
       <div className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>
         {t('budget.fx_intro')}
@@ -225,16 +236,20 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
                 : t('budget.fx_not_found', { cur: mainCurrency });
             const hintColor = (!hasOverride && live == null) ? 'var(--danger)' : 'var(--muted)';
             return (
-              <div key={code} style={{ display: 'grid', gridTemplateColumns: '60px 110px 1fr', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 8 }}>
-                <div className="num" style={{ fontWeight: 600 }}>1 {code}</div>
-                <input className="input num" type="number" step="0.0001" value={values[code] ?? ''}
-                  onChange={e => setValues(v => ({ ...v, [code]: e.target.value }))} placeholder="0.00" />
-                <div style={{ fontSize: 12, color: hintColor }}>{hint}</div>
+              <div key={code} data-vfield={`rate.${code}`} className={inv(`rate.${code}`)}>
+                <div style={{ display: 'grid', gridTemplateColumns: '60px 110px 1fr', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 8 }}>
+                  <div className="num" style={{ fontWeight: 600 }}>1 {code}</div>
+                  <input className="input num" type="number" step="0.0001" value={values[code] ?? ''}
+                    onChange={e => { const val = e.target.value; setValues(s => ({ ...s, [code]: val })); v.markTouched(`rate.${code}`); }} placeholder="0.00" />
+                  <div style={{ fontSize: 12, color: hintColor }}>{hint}</div>
+                </div>
+                <FieldError issues={v.displayIssues} field={`rate.${code}`} />
               </div>
             );
           })}
         </div>
       )}
+      <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
       {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
     </Dialog>
   );
@@ -253,9 +268,10 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
   const [icon, setIcon] = useState(existing?.icon || CAT_ICONS_BUDGET[0]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const v = useHybridValidation('category', { name });
+  const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
 
   async function save() {
-    if (!name.trim()) { setErr(t('budget.err_cat_name')); return; }
     setSaving(true);
     setErr('');
     let error;
@@ -283,10 +299,13 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
     <Dialog title={existing ? t('budget.edit_category') : t('budget.category_new')} icon="wallet" size="sm"
       foot={<>
         <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
-        <Btn variant="primary" icon="check" onClick={save} disabled={saving}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
+        <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
       </>}>
       <Field label={t('trip.title_label')}>
-        <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder={t('budget.cat_name_ph')} autoFocus />
+        <div data-vfield="name" className={inv('name')}>
+          <input className="input" value={name} onChange={e => { setName(e.target.value); v.markTouched('name'); }} placeholder={t('budget.cat_name_ph')} autoFocus />
+        </div>
+        <FieldError issues={v.displayIssues} field="name" />
       </Field>
       <div style={{ marginTop: 14 }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>{t('budget.color_label')}</div>
@@ -313,6 +332,7 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
           ))}
         </div>
       </div>
+      <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
       {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
     </Dialog>
   );

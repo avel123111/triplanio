@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
-import { sortVisits, computeTripValidation } from '@/lib/validation';
+import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
@@ -22,7 +22,7 @@ import { useT, useI18n } from '@/lib/i18n/I18nContext';
 // =====================================================================
 // TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
 // prototype, wired to the real id-based model (city_visits + position),
-// computeTripValidation conflicts, lock + save_trip_edit RPC. Live Google map.
+// validateTrip conflicts (unified engine), lock + save_trip_edit RPC. Live Google map.
 // =====================================================================
 const TKIND = { plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { icon: 'train', labelKey: 'transfer.train' }, bus: { icon: 'bus', labelKey: 'transfer.bus' }, car: { icon: 'car', labelKey: 'event.tk_car' }, ferry: { icon: 'ferry', labelKey: 'transfer.ferry' } };
 const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9'];
@@ -165,10 +165,28 @@ export default function TripStructureEdit() {
   const liveHotels = useMemo(() => (content?.hotels || []).filter((h) => !removedIds.has(h.city_visit_id)), [content, removedIds]);
   const liveActivities = useMemo(() => (content?.activities || []).filter((a) => !removedIds.has(a.city_visit_id)), [content, removedIds]);
   const liveTransfers = useMemo(() => (content?.transfers || []).filter((t) => !removedIds.has(t.from_city_visit_id) && !removedIds.has(t.to_city_visit_id)), [content, removedIds]);
-  const issues = useMemo(() => (draft ? computeTripValidation({ visits: draft.nodes, hotels: liveHotels, activities: liveActivities, transfers: liveTransfers }) : []), [draft, liveHotels, liveActivities, liveTransfers]);
+  // Unified engine: validateTrip emits codes; primaryIssues collapses to <=1 per
+  // entity (anti-pile). Adapt to the shape this screen already consumes
+  // (resolved message + cityId/hotelId/activityId/transferId aliases + 'warn' level).
+  const issues = useMemo(() => {
+    if (!draft) return [];
+    const raw = primaryIssues(validateTrip({ visits: draft.nodes, hotels: liveHotels, activities: liveActivities, transfers: liveTransfers }));
+    return raw.map((i) => ({
+      level: i.level === 'error' ? 'error' : 'warn',
+      code: i.code,
+      message: t(`validation.${i.code}`, i.values),
+      cityId: i.entityKind === 'city' ? i.entityId : undefined,
+      hotelId: i.entityKind === 'hotel' ? i.entityId : undefined,
+      activityId: i.entityKind === 'activity' ? i.entityId : undefined,
+      transferId: i.entityKind === 'transfer' ? i.entityId : undefined,
+      fromId: i.fromId,
+      toId: i.toId,
+    }));
+  }, [draft, liveHotels, liveActivities, liveTransfers, t]);
   const errors = issues.filter((i) => i.level === 'error').length;
   const warns = issues.length - errors;
-  const blocked = issues.length > 0;
+  // R3: only errors block save; warnings (CITY_GAP / DUP_TRANSFER) are shown but allowed.
+  const blocked = errors > 0;
 
   // ---- structural edits ----
   // Trip start (d.startDate) is FIXED until shiftStart changes it; every recompute
@@ -303,7 +321,7 @@ export default function TripStructureEdit() {
       </div>
       {draft && (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-          {blocked && <Badge variant="warm" icon="warning">{errors ? t('tse.errors_short', { n: errors }) : t('tse.warns_short', { n: warns })}</Badge>}
+          {issues.length > 0 && <Badge variant="warm" icon="warning">{errors ? t('tse.errors_short', { n: errors }) : t('tse.warns_short', { n: warns })}</Badge>}
           <Btn variant="ghost" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
           <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
           <Btn variant="ghost" size="sm" icon="close" onClick={cancelEdit} title={t('tse.cancel_title')}>{t('tse.cancel')}</Btn>

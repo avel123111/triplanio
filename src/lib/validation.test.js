@@ -149,6 +149,17 @@ test('fx: invalid non-empty rate is error; empty is ignored', () => {
   assert.ok(bad.every((i) => i.code === 'FX_RATE_INVALID'));
 });
 
+test('document: title required', () => {
+  assert.ok(has(validateEntity('document', { title: '' }), 'DOC_TITLE_REQUIRED'));
+  assert.deepEqual(validateEntity('document', { title: 'Visa' }), []);
+});
+test('invite: email mode vs offline mode', () => {
+  assert.ok(has(validateEntity('invite', { mode: 'email', email: 'bad' }), 'INV_EMAIL_INVALID'));
+  assert.deepEqual(validateEntity('invite', { mode: 'email', email: 'a@b.com' }), []);
+  assert.ok(has(validateEntity('invite', { mode: 'offline', name: '' }), 'INV_NAME_REQUIRED'));
+  assert.deepEqual(validateEntity('invite', { mode: 'offline', name: 'Joe' }), []);
+});
+
 test('primaryIssues: transfer structure beats entity', () => {
   const issues = [
     { level: 'error', code: 'TR_NO_CITY', scope: 'structure', entityKind: 'transfer', entityId: 't1' },
