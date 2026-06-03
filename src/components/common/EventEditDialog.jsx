@@ -19,7 +19,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import AiField from '@/components/ui/AiField';
 import {
-  Loader2, Sparkles, Trash2, ExternalLink, AlertTriangle,
+  Loader2, Sparkles, Trash2, ExternalLink,
   Bed, Plane, Camera, Car as CarIcon, Train, Bus, Ship, Footprints,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
@@ -475,7 +475,6 @@ export default function EventEditDialog({
   const [extraSegments, setExtraSegments] = useState([]);
   // Soft note when an AI-parsed multi-leg booking's endpoints differ from the
   // trip leg the modal was opened for (we keep the trip's endpoints).
-  const [aiEndpointWarn, setAiEndpointWarn] = useState(null);
   // AI-highlighted fields inside layover segments - keyed `${seg.id}.${field}`.
   // Cleared per field when the user edits it (mirrors single-leg aiFields).
   const [aiSegFields, setAiSegFields] = useState(() => new Set());
@@ -825,27 +824,10 @@ export default function EventEditDialog({
           }
         } catch { /* leave null - user picks the layover city manually */ }
       }
-      // Endpoints stay the trip's fromVisit/toVisit; warn softly on mismatch.
-      const overlaps = (a, b) => {
-        if (!a || !b) return false;
-        const x = a.trim().toLowerCase(), y = b.trim().toLowerCase();
-        return x.includes(y) || y.includes(x);
-      };
-      const originName = segs[0].from_city || '';
-      const destName = segs[segs.length - 1].to_city || '';
-      const w = [];
-      if (fromVisit?.city_name && originName && !overlaps(originName, fromVisit.city_name)) w.push(t('event.warn_start_mismatch', { booking: originName, trip: fromVisit.city_name }));
-      if (toVisit?.city_name && destName && !overlaps(destName, toVisit.city_name)) w.push(t('event.warn_finish_mismatch', { booking: destName, trip: toVisit.city_name }));
-      // Date mismatch: booking dates vs the trip-leg window (fromVisit … toVisit).
-      const dOnly = (iso) => (iso ? String(iso).slice(0, 10) : null);
-      const winStart = dOnly(fromVisit?.start_datetime) || dOnly(fromVisit?.end_datetime);
-      const winEnd = dOnly(toVisit?.end_datetime) || dOnly(toVisit?.start_datetime);
-      const depDay = segs[0]?.departure_date || null;
-      const arrDay = segs[segs.length - 1]?.arrival_date || null;
-      if (winStart && winEnd && depDay && arrDay && (arrDay < winStart || depDay > winEnd)) {
-        w.push(t('event.warn_dates_outside', { from: depDay, to: arrDay, winStart, winEnd }));
-      }
-      setAiEndpointWarn(w.length ? t('event.warn_check_trip', { details: w.join('; ') }) : null);
+      // Endpoints stay the trip's fromVisit/toVisit. Mismatches (wrong dates /
+      // cities) are NOT soft-warned here anymore - the parsed chain is a normal
+      // draft and goes through the same validateEntity gate (TR_DEP_DAY /
+      // TR_ARR_DAY block save, SEG_* cover segments).
 
       // Mark AI-filled segment fields for the purple highlight (+ field count).
       const segAi = new Set();
@@ -964,15 +946,8 @@ export default function EventEditDialog({
                 onExtract={currentKind === 'hotel' ? handleHotelExtract : handleTransferExtract}
                 onUpgrade={openUpgrade}
                 parsedFieldCount={aiFields.size + aiSegFields.size}
-                onReset={() => { setAiFields(new Set()); setExtraSegments([]); setAiEndpointWarn(null); setAiSegFields(new Set()); }}
+                onReset={() => { setAiFields(new Set()); setExtraSegments([]); setAiSegFields(new Set()); }}
               />
-            )}
-
-            {aiEndpointWarn && (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '9px 12px', marginBottom: 12, borderRadius: 10, background: 'var(--warning-soft)', border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)', color: 'var(--ink)' }}>
-                <AlertTriangle className="w-3.5 h-3.5" style={{ marginTop: 2, flexShrink: 0, color: 'var(--warning)' }} />
-                <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{aiEndpointWarn}</div>
-              </div>
             )}
 
             <fieldset disabled={aiState === 'parsing'} className={aiState === 'parsing' ? 'opacity-50 pointer-events-none select-none' : ''}>

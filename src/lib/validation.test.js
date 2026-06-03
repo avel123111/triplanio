@@ -77,6 +77,24 @@ test('layover: backstep + missing layover city', () => {
   assert.ok(has(issues, 'SEG_BACKSTEP'));
   assert.ok(has(issues, 'SEG_CITY_REQUIRED'));
 });
+test('layover: endpoints aligned with trip days -> no day errors', () => {
+  const segs = [
+    { start: '2026-07-10T08:00:00', end: '2026-07-10T10:00:00', toCity: { city_name: 'Madrid' } },
+    { start: '2026-07-10T11:00:00', end: '2026-07-10T16:00:00' },
+  ];
+  const issues = validateEntity('transfer', { id: 't1', hasLayovers: true, segments: segs }, { fromVisit: FROM, toVisit: TO });
+  assert.ok(!has(issues, 'TR_DEP_DAY'));
+  assert.ok(!has(issues, 'TR_ARR_DAY'));
+});
+test('layover: endpoints far from trip days -> TR_DEP_DAY + TR_ARR_DAY', () => {
+  const segs = [
+    { start: '2026-07-15T08:00:00', end: '2026-07-15T10:00:00', toCity: { city_name: 'Madrid' } },
+    { start: '2026-07-20T11:00:00', end: '2026-07-20T16:00:00' },
+  ];
+  const issues = validateEntity('transfer', { id: 't1', hasLayovers: true, segments: segs }, { fromVisit: FROM, toVisit: TO });
+  assert.ok(has(issues, 'TR_DEP_DAY'));
+  assert.ok(has(issues, 'TR_ARR_DAY'));
+});
 
 // ---------- Service ----------
 test('service: required + order', () => {

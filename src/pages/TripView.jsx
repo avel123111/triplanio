@@ -1590,7 +1590,7 @@ export default function TripView() {
     if (!kind) return;
     const id = kind === 'hotel' ? e.hotelId : e.id;
     if (!id) return;
-    setEventView({ open: true, kind, id });
+    setEventView({ open: true, kind, id, warning: null });
   };
 
   // Wire window.__navigate so Screen components can navigate
@@ -1672,9 +1672,12 @@ export default function TripView() {
   // they have no single event to open, so the row stays informational.
   const openConflict = (issue) => {
     if (!issue?.entityId) return;
-    if (issue.entityKind === 'hotel') setEventView({ open: true, kind: 'hotel', id: issue.entityId });
-    else if (issue.entityKind === 'activity') setEventView({ open: true, kind: 'activity', id: issue.entityId });
-    else if (issue.entityKind === 'transfer') setEventView({ open: true, kind: 'transfer', id: issue.entityId });
+    const kind = issue.entityKind;
+    if (kind !== 'hotel' && kind !== 'activity' && kind !== 'transfer') return;
+    // Carry the conflict text so EventModal shows it in its warning plate -
+    // same contract Edit Mode uses (openConflict -> warning: c.message).
+    const warning = t(`validation.${issue.code}`, issue.values);
+    setEventView({ open: true, kind, id: issue.entityId, warning });
   };
 
   // Account-level Pro (header chip). For IN-TRIP gating use tripIsPro below.
@@ -1851,6 +1854,7 @@ export default function TripView() {
             open={eventView.open}
             onOpenChange={(o) => setEventView(s => ({ ...s, open: o }))}
             canEdit={myRole !== 'viewer' && !frozen}
+            warning={eventView.warning}
           />
 
           {shownLens === 'timeline' && (

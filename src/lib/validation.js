@@ -166,10 +166,11 @@ function validateTransferSingle(d = {}, ctx = {}) {
   return out;
 }
 
-function validateTransferLayover(d = {}) {
+function validateTransferLayover(d = {}, ctx = {}) {
   const out = [];
   const segs = Array.isArray(d.segments) ? d.segments : [];
-  const ref = { entityKind: 'transfer', entityId: d.id };
+  const from = ctx.fromVisit || null, to = ctx.toVisit || null;
+  const ref = { entityKind: 'transfer', entityId: d.id, values: { from: from?.city_name, to: to?.city_name } };
   if (segs.length < 2) { out.push(mk('error', 'SEG_MIN', 'entity', ref)); return out; }
   let prevArr = null;
   segs.forEach((s, i) => {
@@ -181,6 +182,23 @@ function validateTransferLayover(d = {}) {
     if (s.end) prevArr = _ms(s.end);
     if (i < segs.length - 1 && isBlank(s.toCity?.city_name)) out.push(mk('error', 'SEG_CITY_REQUIRED', 'field', { field: `${f}.toCity`, ...ref }));
   });
+  // Endpoints of the chain must align with the trip-leg days, exactly like a
+  // single transfer (+/-1 day): first departure vs leaving `from`, last arrival
+  // vs reaching `to`. This closes the hole where an AI-parsed layover with
+  // wildly wrong dates passed the engine and could be saved.
+  const first = segs[0], last = segs[segs.length - 1];
+  if (from && first?.start) {
+    const depGap = dayDiff(from.end_datetime, from.timezone, first.start, from.timezone);
+    if (depGap != null && Math.abs(depGap) > TRANSFER_DAY_TOLERANCE) {
+      out.push(mk('error', 'TR_DEP_DAY', 'entity', { field: 'seg0.start', ...ref }));
+    }
+  }
+  if (to && last?.end) {
+    const arrGap = dayDiff(to.start_datetime, to.timezone, last.end, to.timezone);
+    if (arrGap != null && Math.abs(arrGap) > TRANSFER_DAY_TOLERANCE) {
+      out.push(mk('error', 'TR_ARR_DAY', 'entity', { field: `seg${segs.length - 1}.end`, ...ref }));
+    }
+  }
   return out;
 }
 
@@ -277,7 +295,7 @@ export function validateEntity(kind, draft = {}, ctx = {}) {
   switch (kind) {
     case 'hotel': return validateHotel(draft, ctx);
     case 'activity': return validateActivity(draft, ctx);
-    case 'transfer': return draft.hasLayovers ? validateTransferLayover(draft) : validateTransferSingle(draft, ctx);
+    case 'transfer': return draft.hasLayovers ? validateTransferLayover(draft, ctx) : validateTransferSingle(draft, ctx);
     case 'service': return validateService(draft, ctx);
     case 'city': return validateCity(draft);
     case 'trip': return validateTripMeta(draft);
