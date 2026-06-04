@@ -66,4 +66,9 @@ export default {
   'tse.day_one': 'día',
   'tse.day_few': 'días',
   'tse.day_many': 'días',
+  'tse.nights_label': 'Noches',
+  'tse.section_road': 'Trayecto',
+  'tse.add_arrival': 'Añadir llegada',
+  'tse.add_departure': 'Añadir salida',
+  'tse.no_activities': 'Nada planificado aún.',
 };

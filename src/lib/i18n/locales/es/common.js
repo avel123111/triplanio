@@ -64,4 +64,5 @@ export default {
   'common.not_found': 'No se encontró nada',
   'common.currency_search_ph': 'Buscar (USD, Euro, ₽…)',
   'common.link': 'Enlace',
+  'common.done': 'Listo',
 };

@@ -66,4 +66,9 @@ export default {
   'tse.day_one': 'день',
   'tse.day_few': 'дня',
   'tse.day_many': 'дней',
+  'tse.nights_label': 'Ночей',
+  'tse.section_road': 'Дорога',
+  'tse.add_arrival': 'Добавить прибытие',
+  'tse.add_departure': 'Добавить отправление',
+  'tse.no_activities': 'Пока ничего не запланировано.',
 };

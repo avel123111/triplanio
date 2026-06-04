@@ -11,6 +11,7 @@ import CitySearch from '@/components/cities/CitySearch';
 import { getTimezone } from '@/lib/geo';
 import MapView from '@/components/views/MapView';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
+import CityPanel from '@/components/common/CityPanel';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
 import { useToast } from '@/components/ui/use-toast';
@@ -30,7 +31,6 @@ const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d LLL') : '-'; };
 const fmtDW = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d LLL, ccc') : '-'; };
-const fmtTime = (iso) => { const d = toDT(iso); return d ? d.toFormat('HH:mm') : null; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
 // Calendar-day helpers. nights/gap are counted by DATE (not by the raw timestamp),
 // so a checkout stored at 23:59 isn't rounded up to an extra night. This is what
@@ -314,7 +314,7 @@ export default function TripStructureEdit() {
       setLeftPanel({ type: 'event', kind: 'transfer', id: tr.id, warning: issue?.message || null });
       return;
     }
-    setLeftPanel({ type: 'createTransfer', fromVisit: a, toVisit: b });
+    setLeftPanel({ type: 'create', kind: 'transfer', fromVisit: a, toVisit: b });
   };
 
   const onSave = async () => {
@@ -404,6 +404,17 @@ export default function TripStructureEdit() {
   const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
   // A transfer row is flagged (orange "не совпадает") when it has ANY conflict -   // date mismatch (D2), non-adjacent (D5) or dangling (D6).
   const transferMismatch = (t) => !!t && issues.some((i) => i.transferId === t.id);
+  // booking lookups for the inline list cells + city panel
+  const hotelFor = (id) => liveHotels.find((h) => h.city_visit_id === id);
+  const actsFor = (id) => liveActivities.filter((a) => a.city_visit_id === id);
+  const hotelWarnId = (hid) => !!hid && issues.some((i) => i.hotelId === hid);
+  const actWarnId = (aid) => !!aid && issues.some((i) => i.activityId === aid);
+  const arrivalFor = (id) => liveTransfers.find((t) => t.to_city_visit_id === id);
+  const departureFor = (id) => liveTransfers.find((t) => t.from_city_visit_id === id);
+  // panel navigation
+  const openCity = (id) => setLeftPanel({ type: 'city', id });
+  const openEvent = (kind, id) => setLeftPanel({ type: 'event', kind, id, warning: (issues.find((i) => i[`${kind}Id`] === id)?.message) || null });
+  const createBooking = (kind, node) => setLeftPanel({ type: 'create', kind, visit: node });
   let stayNum = 0;
 
   // assemble rows: each node + the connector to the next node
@@ -424,15 +435,41 @@ export default function TripStructureEdit() {
         canEdit onClose={closeLeftPanel}
       />
     );
-  } else if (leftPanel?.type === 'createTransfer') {
+  } else if (leftPanel?.type === 'create') {
     leftPanelEl = (
       <EventEditDialog
-        open variant="panel" kind="transfer" tripId={tripId}
-        fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
+        open variant="panel" kind={leftPanel.kind} tripId={tripId}
+        visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
         defaultCurrency={trip?.details?.main_currency || 'EUR'}
         onOpenChange={(o) => { if (!o) { closeLeftPanel(); qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); } }}
       />
     );
+  } else if (leftPanel?.type === 'city') {
+    const node = ordered.find((n) => n.id === leftPanel.id);
+    if (!node) { leftPanelEl = null; }
+    else {
+      const idx = ordered.indexOf(node);
+      const prev = ordered.slice(0, idx).reverse().find((n) => !isAnchor(n) || n.kind === 'start');
+      const next = ordered.slice(idx + 1).find((n) => !isAnchor(n) || n.kind === 'end');
+      const hotel = hotelFor(node.id);
+      leftPanelEl = (
+        <CityPanel
+          node={node} meta={metaOf(node)}
+          hotel={hotel} acts={actsFor(node.id)}
+          arrival={arrivalFor(node.id)} departure={departureFor(node.id)}
+          prevCity={prev?.city_name} nextCity={next?.city_name}
+          hotelWarn={hotelWarnId(hotel?.id)} isActWarn={(a) => actWarnId(a.id)}
+          onBack={closeLeftPanel}
+          onRemove={() => { closeLeftPanel(); removeCity(node.id); }}
+          onNightsMinus={() => nudgeNights(node.id, -1)} onNightsPlus={() => nudgeNights(node.id, 1)}
+          onOpenHotel={(id) => openEvent('hotel', id)} onAddHotel={() => createBooking('hotel', node)}
+          onOpenActivity={(id) => openEvent('activity', id)} onAddActivity={() => createBooking('activity', node)}
+          onOpenTransfer={(tr) => openEvent('transfer', tr.id)}
+          onAddArrival={() => prev && setLeftPanel({ type: 'create', kind: 'transfer', fromVisit: prev, toVisit: node })}
+          onAddDeparture={() => next && setLeftPanel({ type: 'create', kind: 'transfer', fromVisit: node, toVisit: next })}
+        />
+      );
+    }
   }
 
   return (
@@ -481,13 +518,15 @@ export default function TripStructureEdit() {
               }
               const n = r.node;
               if (isAnchor(n)) return <GridEndpoint key={n.id} node={n} first={first} last={last} onRemove={() => removeEndpoint(n.id)} />;
-              return <GridNode key={n.id} seg={n} stayNum={r.stayNum} first={n === cities[0]} firstRow={first} last={last}
-                conflictCount={cityConflicts(n.id)}
+              const h = hotelFor(n.id); const aa = actsFor(n.id);
+              return <GridNode key={n.id} seg={n} stayNum={r.stayNum}
+                cityConf={cityConflicts(n.id)}
+                hotel={h} hotelWarn={hotelWarnId(h?.id)}
+                acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
+                onOpenCity={() => openCity(n.id)}
+                onHotel={() => (h ? openEvent('hotel', h.id) : createBooking('hotel', n))}
+                onAct={() => (aa.length ? openCity(n.id) : createBooking('activity', n))}
                 onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
-                onShiftMinus={() => shiftStart(-1)} onShiftPlus={() => shiftStart(1)}
-                onUp={r.idx > 0 && !isAnchor(ordered[r.idx - 1]) ? () => moveTo(r.idx, r.idx - 1) : null}
-                onDown={r.idx < ordered.length - 1 && !isAnchor(ordered[r.idx + 1]) ? () => moveTo(r.idx, r.idx + 1) : null}
-                onRemove={() => removeCity(n.id)}
                 drag={{ dragging: dragIdx === r.idx,
                   onDragStart: () => setDragIdx(r.idx),
                   onDragOver: () => { if (dragIdx !== null && dragIdx !== r.idx) setOverGap(r.idx); }, // hovering a city = insert in the gap above it
@@ -572,35 +611,44 @@ function rowStyle(first, last) {
     borderBottomLeftRadius: last ? 14 : 0, borderBottomRightRadius: last ? 14 : 0,
   };
 }
-const GCOLS = '26px minmax(0,1fr) 62px 62px auto auto';
-
 function Conf({ n }) {
   const t = useT();
   if (!n) return null;
-  return <span title={t('tse.conflicts_n', { n })} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 999, background: 'var(--warning-soft)', color: 'var(--warning)', fontSize: 11, fontWeight: 700 }}><Icon name="warning" size={10} /> {n}</span>;
-}
-function Acts({ onUp, onDown, onRemove }) {
-  const t = useT();
-  return <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-    <button className="ts-step" style={{ width: 23, height: 23 }} onClick={onUp || undefined} disabled={!onUp} title={t('tse.move_up')}><Icon name="chev" size={12} style={{ transform: 'rotate(-90deg)' }} /></button>
-    <button className="ts-step" style={{ width: 23, height: 23 }} onClick={onDown || undefined} disabled={!onDown} title={t('tse.move_down')}><Icon name="chev" size={12} style={{ transform: 'rotate(90deg)' }} /></button>
-    {onRemove && <button className="ts-step" style={{ width: 23, height: 23, color: 'var(--muted)' }} onClick={onRemove} title={t('tse.remove')}><Icon name="trash" size={12} /></button>}
-  </div>;
-}
-function GCell({ label, iso, editable, onPlus }) {
-  const t = useT();
-  const { lang } = useI18n();
-  return <div style={{ minWidth: 0 }}>
-    <div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>{label}</div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-      <span className="num" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtD(iso, lang)}</span>
-      {editable ? <button className="ts-step" style={{ width: 16, height: 16, marginLeft: 1 }} onClick={onPlus} title={t('tse.start_later')}><Icon name="chev" size={9} /></button>
-        : <span style={{ width: 16, height: 16, display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }} title={t('tse.follows_prev')}><Icon name="lock" size={9} /></span>}
-    </div>
-  </div>;
+  return <span className="te-warnbadge" title={t('tse.conflicts_n', { n })}><Icon name="warning" size={10} /> {n}</span>;
 }
 
-function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNightsMinus, onNightsPlus, onShiftMinus, onShiftPlus, onUp, onDown, onRemove, drag }) {
+// inline hotel / activity cells (design mockup HotelCell / ActCell)
+function HotelCell({ hotel, warn, onClick }) {
+  const t = useT();
+  if (!hotel) return (
+    <button className="te-cellbtn te-cellbtn--ghost" onClick={onClick} title={t('hotel.add')}>
+      <Icon name="bed" size={14} /> <Icon name="plus" size={12} />
+    </button>
+  );
+  return (
+    <button className={'te-hotelicon' + (warn ? ' is-warn' : '')} onClick={onClick} title={hotel.name}>
+      <Icon name="bed" size={15} style={{ color: warn ? 'var(--warning)' : 'var(--ev-hotel)' }} />
+      {warn && <span className="te-warndot" style={{ position: 'absolute', top: 4, right: 4 }} />}
+    </button>
+  );
+}
+function ActCell({ count, warn, onClick }) {
+  const t = useT();
+  if (!count) return (
+    <button className="te-cellbtn te-cellbtn--ghost" onClick={onClick} title={t('budget.source_activity')}>
+      <Icon name="spark" size={14} /> <Icon name="plus" size={12} />
+    </button>
+  );
+  return (
+    <button className={'te-actchip' + (warn ? ' is-warn' : '')} onClick={onClick} title={count + ''}>
+      <Icon name="spark" size={13} style={{ color: warn ? 'var(--warning)' : 'var(--ev-activity)' }} />
+      <span className="num" style={{ fontWeight: 700, fontSize: 12 }}>{count}</span>
+      {warn && <span className="te-warndot" />}
+    </button>
+  );
+}
+
+function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn, onOpenCity, onHotel, onAct, onNightsMinus, onNightsPlus, drag }) {
   const t = useT();
   const { lang } = useI18n();
   const m = metaOf(seg);
@@ -611,44 +659,38 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
     onDragOver: (e) => { e.preventDefault(); drag.onDragOver(); },
     onDrop: (e) => { e.preventDefault(); drag.onDrop(); },
   };
+  const stop = (e) => e.stopPropagation();
   if (seg.kind === 'waypoint') {
     return (
-      <div {...dragAttrs} style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '9px 11px', background: `color-mix(in srgb, ${m.color} 5%, var(--surface))`, opacity: drag.dragging ? 0.4 : 1, transition: 'opacity .1s ease' }}>
-        <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--surface)', border: '1.5px dashed ' + m.color, color: m.color, display: 'grid', placeItems: 'center', cursor: 'grab' }}><Icon name="arrowSwap" size={11} /></span>
-        <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
-          <span style={{ fontSize: 13.5 }}>{m.flag}</span>
-          <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{seg.city_name}</span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ev-transfer)', textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 6px', borderRadius: 999, background: 'var(--ev-transfer-soft)', whiteSpace: 'nowrap' }}>{t('tse.layover')}</span>
-          <Conf n={conflictCount} />
+      <div className="te-row te-row--wp" {...dragAttrs} style={{ opacity: drag.dragging ? 0.4 : 1 }}>
+        <span className="te-grip"><Icon name="drag" size={14} /></span>
+        <span className="te-row__num te-row__num--wp"><Icon name="arrowSwap" size={11} /></span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.flag} {seg.city_name}</div>
+          <div className="muted" style={{ fontSize: 11.5 }}>{t('tse.layover')} · {fmtD(seg.start_date, lang)}</div>
         </div>
-        <div style={{ gridColumn: '3 / 5', textAlign: 'center' }}>
-          <div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>{t('tse.transit')}</div>
-          <div className="num" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtD(seg.start_date, lang)}</div>
-        </div>
-        <span style={{ textAlign: 'center', color: 'var(--muted-2)', fontSize: 12 }}>-</span>
-        <Acts onUp={onUp} onDown={onDown} onRemove={onRemove} />
       </div>
     );
   }
   return (
-    <div draggable onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; drag.onDragStart(); }} onDragEnd={drag.onDragEnd}
-      onDragOver={(e) => { e.preventDefault(); drag.onDragOver(); }} onDrop={(e) => { e.preventDefault(); drag.onDrop(); }}
-      style={{ ...rowStyle(firstRow, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '14px 11px', opacity: drag.dragging ? 0.4 : 1, transition: 'opacity .1s ease' }}>
-      <span style={{ width: 24, height: 24, borderRadius: 6, background: m.color, color: 'white', fontSize: 11, fontWeight: 700, display: 'grid', placeItems: 'center', cursor: 'grab' }}>{stayNum}</span>
-      <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span style={{ fontSize: 13.5 }}>{m.flag}</span>
-        <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{seg.city_name}</span>
-        {m.country && <span className="muted" style={{ fontSize: 10.5, whiteSpace: 'nowrap' }}>{m.country}</span>}
-        <Conf n={conflictCount} />
+    <div className="te-row" {...dragAttrs} onClick={onOpenCity} style={{ opacity: drag.dragging ? 0.4 : 1 }}>
+      <span className="te-grip" onClick={stop} title={t('tse.move_up')}><Icon name="drag" size={14} /></span>
+      <span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span className="te-cityname">{seg.city_name}</span>
+          {m.country && <span className="muted" style={{ fontSize: 10.5, whiteSpace: 'nowrap' }}>{m.country}</span>}
+          <Conf n={cityConf} />
+        </div>
+        <div className="num muted" style={{ fontSize: 11.5, marginTop: 2 }}>{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
       </div>
-      <GCell label={t('tse.checkin')} iso={seg.start_date} editable={first} onMinus={onShiftMinus} onPlus={onShiftPlus} />
-      <GCell label={t('tse.checkout')} iso={seg.end_date} editable onMinus={onNightsMinus} onPlus={onNightsPlus} />
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 1, background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 7, padding: 1 }}>
-        <button className="ts-step" style={{ width: 20, height: 20 }} onClick={onNightsMinus} disabled={seg.nights <= 1}><Icon name="close" size={9} style={{ transform: 'rotate(45deg)' }} /></button>
-        <span className="num" style={{ minWidth: 26, textAlign: 'center', fontSize: 11.5, fontWeight: 700 }}>{seg.nights}{t('planner.night_short')}</span>
-        <button className="ts-step" style={{ width: 20, height: 20 }} onClick={onNightsPlus}><Icon name="plus" size={9} /></button>
-      </div>
-      <Acts onUp={onUp} onDown={onDown} onRemove={onRemove} />
+      <span className="te-stepper" onClick={stop}>
+        <button className="te-step" onClick={onNightsMinus} disabled={seg.nights <= 1}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
+        <span className="num te-nights">{seg.nights}<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
+        <button className="te-step" onClick={onNightsPlus}><Icon name="plus" size={10} /></button>
+      </span>
+      <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
+      <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
     </div>
   );
 }
@@ -666,35 +708,37 @@ function DropSlot({ label }) {
   );
 }
 
-function GridTransfer({ a, b, t, mismatch, first, last, onOpen }) {
+// transfer connector between two cities (design mockup Connector). ALWAYS shown
+// between n and n+1: a pill when the transfer exists, a "+ переезд" ghost when not.
+function GridTransfer({ a, b, t, mismatch, onOpen }) {
   const tx = useT();
   const { lang } = useI18n();
   const sameCity = (a.external_city_id && b.external_city_id && a.external_city_id === b.external_city_id) || (a.city_name && a.city_name === b.city_name);
   if (sameCity && !t) {
-    return <div style={{ ...rowStyle(first, last), padding: '5px 11px', fontSize: 11, color: 'var(--muted)', background: 'var(--wash)' }}>{tx('tse.same_city_no_transfer')}</div>;
+    return <div className="te-conn"><span className="te-conn__rail" /><span className="muted" style={{ fontSize: 11 }}>{tx('tse.same_city_no_transfer')}</span></div>;
   }
   if (!t) {
-    return <button onClick={onOpen} style={{ ...rowStyle(first, last), display: 'flex', alignItems: 'center', gap: 8, padding: '6px 11px', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', background: 'var(--wash)' }}>
-      <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--surface)', border: '1.5px dashed var(--warning)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="plus" size={11} /></span>
-      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning)' }}>{tx('tse.add_transfer')}</span>
-      <span className="muted" style={{ fontSize: 10.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.city_name} → {b.city_name}</span>
-      <Icon name="chev" size={11} style={{ color: 'var(--muted-2)', marginLeft: 'auto', flexShrink: 0 }} />
-    </button>;
+    return (
+      <div className="te-conn">
+        <span className="te-conn__rail" />
+        <button className="te-conn__pill te-conn__pill--add" onClick={onOpen}>
+          <Icon name="plus" size={12} /> {tx('tse.add_transfer')}
+        </button>
+      </div>
+    );
   }
   const meta = TKIND[t.transport_type] || TKIND.train;
-  const fg = mismatch ? 'var(--warning)' : 'var(--ev-transfer)';
-  const dep = fmtTime(t.start_datetime), arr = fmtTime(t.end_datetime);
-  return <button onClick={onOpen} style={{ ...rowStyle(first, last), display: 'grid', gridTemplateColumns: GCOLS, alignItems: 'center', gap: 9, padding: '9px 11px', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', background: mismatch ? 'var(--warning-soft)' : 'var(--ev-transfer-soft)', boxShadow: 'inset 3px 0 0 ' + fg }}>
-    <span style={{ width: 24, height: 24, borderRadius: '50%', background: fg, color: 'white', display: 'grid', placeItems: 'center' }}><Icon name={mismatch ? 'warning' : meta.icon} size={13} /></span>
-    <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
-      <span style={{ fontSize: 13, fontWeight: 700, color: fg, whiteSpace: 'nowrap' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
-      <span className="num muted" style={{ fontSize: 10.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtD(t.start_datetime, lang)}{t.carrier ? ' · ' + t.carrier : ''}</span>
+  return (
+    <div className="te-conn">
+      <span className="te-conn__rail" />
+      <button className={'te-conn__pill' + (mismatch ? ' is-warn' : '')} onClick={onOpen}>
+        <Icon name={mismatch ? 'warning' : meta.icon} size={13} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
+        <span style={{ fontWeight: 600, fontSize: 12, color: mismatch ? 'var(--warning)' : 'var(--ink-2)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+        <span className="num muted" style={{ fontSize: 11 }}>· {fmtD(t.start_datetime, lang)}</span>
+        {mismatch && <span className="te-warndot" />}
+      </button>
     </div>
-    <div><div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>{tx('tse.dep_short')}</div><div className="num" style={{ fontSize: 12, fontWeight: 700, color: dep ? 'var(--ink)' : 'var(--muted-2)' }}>{dep || '-'}</div></div>
-    <div><div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>{tx('tse.arr_short')}</div><div className="num" style={{ fontSize: 12, fontWeight: 700, color: arr ? 'var(--ink)' : 'var(--muted-2)' }}>{arr || '-'}</div></div>
-    <span />
-    <Icon name="chev" size={13} style={{ color: fg, justifySelf: 'end' }} />
-  </button>;
+  );
 }
 
 function GridEndpoint({ node, first, last, onRemove }) {

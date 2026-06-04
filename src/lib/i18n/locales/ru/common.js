@@ -66,4 +66,5 @@ export default {
   'common.not_found': 'Ничего не найдено',
   'common.currency_search_ph': 'Поиск (USD, Euro, ₽…)',
   'common.link': 'Ссылка',
+  'common.done': 'Готово',
 };
