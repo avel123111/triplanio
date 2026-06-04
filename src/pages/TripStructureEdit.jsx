@@ -1,12 +1,12 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { Icon } from '../design/icons';
-import { Btn, Badge, Skeleton, ModalHost } from '../design/index';
+import { Btn, Badge, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { getTimezone } from '@/lib/geo';
 import MapView from '@/components/views/MapView';
@@ -118,6 +118,7 @@ export default function TripStructureEdit() {
   const t = useT();
   const { lang } = useI18n();
   const nav = useNavigate();
+  const location = useLocation();
   const qc = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -209,12 +210,16 @@ export default function TripStructureEdit() {
     enabled: !!tripId && !loadingShell,
   });
 
-  useEffect(() => {
-    if (draft || !shell || !content) return;
+  // Build the draft SYNCHRONOUSLY during render (not in an effect) the moment
+  // shell+content are available — they're cached from TripView, so the editor
+  // paints on the very first render with no skeleton frame (no entry flicker).
+  if (draft === null && shell && content) {
     if (!baseRef.current) baseRef.current = JSON.stringify(buildDraft(shell, content.transfers));
-    try { const saved = sessionStorage.getItem(DRAFT_KEY); if (saved) { const p = JSON.parse(saved); if (p?.draft) { setDraft(p.draft); setDirty(!!p.dirty); return; } } } catch { /* ignore */ }
-    setDraft(buildDraft(shell, content.transfers));
-  }, [shell, content, draft, DRAFT_KEY]);
+    let initial = null, initialDirty = false;
+    try { const saved = sessionStorage.getItem(DRAFT_KEY); if (saved) { const p = JSON.parse(saved); if (p?.draft) { initial = p.draft; initialDirty = !!p.dirty; } } } catch { /* ignore */ }
+    setDraft(initial || buildDraft(shell, content.transfers));
+    if (initialDirty) setDirty(true);
+  }
 
   useEffect(() => { if (draft && dirty) { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, dirty })); } catch { /* quota */ } } }, [draft, dirty, DRAFT_KEY]);
 
@@ -284,6 +289,25 @@ export default function TripStructureEdit() {
     return [...others, previewTransfer];
   }, [liveTransfers, previewTransfer]);
   useEffect(() => { if (!(leftPanel?.type === 'create' && leftPanel.kind === 'transfer')) setPreviewTransfer(null); }, [leftPanel]);
+  // Open a create form straight away when arriving from a timeline "add manually"
+  // (the warning → partner modal → manual). Intent travels in the route state.
+  const createIntentRef = useRef(false);
+  useEffect(() => {
+    if (createIntentRef.current || !draft) return;
+    const intent = location.state?.create;
+    if (!intent) return;
+    createIntentRef.current = true;
+    const byId = (id) => draft.nodes.find((n) => n.id === id);
+    if (intent.kind === 'hotel') {
+      const v = byId(intent.cityVisitId);
+      if (v) setLeftPanel({ type: 'create', kind: 'hotel', visit: v });
+    } else if (intent.kind === 'transfer') {
+      const fromVisit = byId(intent.fromId), toVisit = byId(intent.toId);
+      if (fromVisit && toVisit) setLeftPanel({ type: 'create', kind: 'transfer', fromVisit, toVisit });
+    }
+    nav(location.pathname + (location.search || ''), { replace: true, state: {} }); // consume the intent
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft]);
   // Native browser prompt on close/refresh while there are unsaved structure edits.
   useEffect(() => {
     const h = (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
@@ -877,8 +901,6 @@ export default function TripStructureEdit() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/* Mounts window.__openModal on the editor screen (Share dialog, etc.). */}
-      <ModalHost />
     </div>
   );
 }
@@ -941,7 +963,7 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
         <span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ fontSize: 13.5, fontWeight: 600 }}>{seg.city_name}</span>
+            <span className="te-cityname" style={{ fontSize: 13.5, fontWeight: 600 }}>{seg.city_name}</span>
             <span className="te-wptag">{t('tse.layover')}</span>
             <Conf n={cityConf} />
           </div>

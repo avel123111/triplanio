@@ -21,7 +21,7 @@ import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
-import { Avatar, Btn, EmptyState, Skeleton, ModalHost, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
+import { Avatar, Btn, EmptyState, Skeleton, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
 import { SystemStub } from '@/lib/PageNotFound';
 import { sortVisits, cityIdentity, validateTrip, primaryIssues } from '@/lib/validation';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
@@ -1684,7 +1684,7 @@ export default function TripView() {
             type="hotel"
             visit={hotelChoice.visit}
             tripId={tripId}
-            onManual={() => setHotelEdit({ open: true, visit: hotelChoice.visit, hotel: null })}
+            onManual={() => { setHotelChoice((s) => ({ ...s, open: false })); nav(`/trip/${tripId}/edit`, { state: { create: { kind: 'hotel', cityVisitId: hotelChoice.visit?.id } } }); }}
           />
           {/* Transfer choice - sits between the warning button and the edit form */}
           <ForkPartnerModal
@@ -1694,14 +1694,7 @@ export default function TripView() {
             fromVisit={transferChoice.fromVisit}
             toVisit={transferChoice.toVisit}
             tripId={tripId}
-            onManual={() =>
-              setTransferEdit({
-                open: true,
-                fromVisit: transferChoice.fromVisit,
-                toVisit: transferChoice.toVisit,
-                transfer: null,
-              })
-            }
+            onManual={() => { setTransferChoice((s) => ({ ...s, open: false })); nav(`/trip/${tripId}/edit`, { state: { create: { kind: 'transfer', fromId: transferChoice.fromVisit?.id, toId: transferChoice.toVisit?.id } } }); }}
           />
           {/* Service choice - opened from the right-rail ServicesWidget */}
           <ForkPartnerModal
@@ -1945,7 +1938,6 @@ export default function TripView() {
         <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />
       )}
 
-      <ModalHost />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

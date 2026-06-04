@@ -52,8 +52,8 @@ function FlightLine({ transfer, dir, warn, onClick, t }) {
   const time = fmtTime(when);
   return (
     <button className={'te-flightline' + (warn ? ' is-warn' : '')} onClick={onClick}>
-      <span className="te-flightline__ic" style={{ background: warn ? 'var(--warning-soft)' : 'var(--ev-transfer-soft)', color: warn ? 'var(--warning)' : 'var(--ev-transfer)' }}>
-        <Icon name={warn ? 'warning' : meta.icon} size={15} />
+      <span className="te-flightline__ic" style={{ background: 'var(--ev-transfer-soft)', color: 'var(--ev-transfer)' }}>
+        <Icon name={meta.icon} size={15} />
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -63,6 +63,7 @@ function FlightLine({ transfer, dir, warn, onClick, t }) {
           {dir === 'in' ? t('tse.arrival_word') : t('tse.departure_word')} · {fmtDate(when)}{time ? ' ' + time : ''}
         </span>
       </span>
+      {warn && <Icon name="warning" size={14} style={{ color: 'var(--warning)', flexShrink: 0 }} />}
       <Icon name="chev" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
     </button>
   );
@@ -134,6 +135,7 @@ export default function CityPanel({
             <span style={{ display: 'block', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hotel.name}</span>
             <span className="num muted" style={{ display: 'block', fontSize: 12, marginTop: 3 }}>{rangeText(hotel.check_in_datetime, hotel.check_out_datetime)}{hotel.price != null ? ' · ' + money(hotel.price, hotel.currency) : ''}</span>
           </span>
+          {hotelWarn && <Icon name="warning" size={14} style={{ color: 'var(--warning)', flexShrink: 0 }} />}
           <Icon name="chev" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
         </button>
       ) : (
