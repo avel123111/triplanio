@@ -73,6 +73,20 @@
   --font-body:    "Inter",ui-sans-serif,system-ui,sans-serif;
   --font-mono:    ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   --display-tracking: -0.022em;
+
+  /* Motion — strong custom curves (built-in easings are too weak).
+     ease-out for enter/hover/press, ease-in-out for on-screen movement. */
+  --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+  /* App type scale — a small, deliberate ladder (derived from the design
+     system's semantic scale). Use these instead of ad-hoc px so the eye
+     gets a rhythm to rest on. */
+  --fs-title:  19px;   /* section / page / panel titles */
+  --fs-strong: 14px;   /* city names, primary row labels */
+  --fs-base:   13px;   /* default UI text */
+  --fs-meta:   12px;   /* dates, secondary meta */
+  --fs-micro:  11px;   /* country tags, column headers, micro-labels */
 }
 
 /* Dark theme */
@@ -420,7 +434,7 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
   background: transparent;
   font-size: 13.5px; font-weight: 500;
   color: var(--ink);
-  transition: background .15s ease, transform .15s ease, color .15s ease, border-color .15s ease;
+  transition: background .15s var(--ease-out), transform .12s var(--ease-out), color .15s ease, border-color .15s ease, box-shadow .15s var(--ease-out);
 }
 .btn--primary {
   background: var(--brand); color: white;
@@ -441,6 +455,9 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
 .btn--lg { padding: 12px 18px; font-size: 14.5px; border-radius: 12px; }
 .btn--block { width: 100%; justify-content: center; }
 .btn[disabled], .btn.is-disabled { opacity: .55; pointer-events: none; }
+/* Every button confirms the press — instant tactile feedback. Placed last so it
+   wins over .btn--primary:hover's translateY on equal specificity. */
+.btn:active:not([disabled]):not(.is-disabled) { transform: scale(0.97); }
 
 .card {
   background: var(--surface);
@@ -507,6 +524,7 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
 .badge--warning { background: var(--warning-soft); color: var(--warning); }
 .badge--ai { background: var(--ai-soft); color: var(--ai); }
 .badge--quiet { background: var(--wash); color: var(--muted); }
+.badge--brand { background: var(--brand-soft); color: var(--brand); }
 .badge--solid { background: var(--brand); color: white; }
 .badge--outline { background: transparent; color: var(--muted); border: 1px solid var(--line); }
 .badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
@@ -1044,8 +1062,8 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-right { min-width: 0; }
 
     /* ---- table header ---- */
-    .te-thead { display: grid; grid-template-columns: 16px 24px minmax(0,1fr) 92px 132px 64px; column-gap: 10px; align-items: center; padding: 12px 12px 0; }
-    .te-th { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-2); white-space: nowrap; }
+    .te-thead { display: grid; grid-template-columns: 16px 24px minmax(0,1fr) 96px 120px 60px; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
+    .te-th { font-size: var(--fs-micro); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted-2); white-space: nowrap; }
     .te-th--c { text-align: center; }
     .te-drop { height: 46px; border: 1.5px dashed var(--brand); border-radius: 13px; background: var(--brand-soft); margin: 4px 0; }
 
@@ -1061,37 +1079,47 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-iconbtn.is-on { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); }
 
     .te-list { flex: 1; min-height: 0; overflow: auto; padding: 6px 14px 30px; }
-    .te-row { position: relative; display: grid; grid-template-columns: 16px 24px minmax(0,1fr) 92px 132px 64px; column-gap: 10px; align-items: center; padding: 12px 4px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; transition: background .12s, border-color .12s, box-shadow .12s; }
+    .te-row { position: relative; display: grid; grid-template-columns: 16px 24px minmax(0,1fr) 96px 120px 60px; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     .te-row:hover { background: var(--wash); border-color: transparent; }
     .te-row:hover .te-cityname { color: var(--brand); }
-    .te-cityname { font-family: var(--font-display); font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; transition: color .12s; }
+    .te-cityname { font-family: var(--font-display); font-size: var(--fs-strong); font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; transition: color .12s; }
     .te-grip { color: var(--muted-2); opacity: .4; cursor: grab; display: grid; place-items: center; transition: opacity .12s; }
     .te-row:hover .te-grip { opacity: 1; }
     .te-row__num { width: 22px; height: 22px; border-radius: 50%; background: var(--brand-soft-12); color: var(--brand); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 12px; }
     .te-row__num.is-warn { background: var(--warning-soft); color: var(--warning); }
     .te-warnbadge { display: inline-flex; align-items: center; gap: 2px; color: var(--warning); font-size: 11px; font-weight: 700; }
-    .te-stepper { display: inline-flex; align-items: center; gap: 1px; background: var(--brand-soft); border: 1px solid var(--brand-soft-12); border-radius: 9px; padding: 2px; justify-self: center; }
-    .te-step { width: 22px; height: 22px; border: none; background: transparent; border-radius: 7px; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: background .12s; }
-    .te-step:hover { background: var(--surface); }
-    .te-step:disabled { opacity: .3; cursor: default; }
-    .te-stepper .te-step { color: var(--brand); }
-    .te-stepper .te-step:hover { background: var(--brand-soft-12); }
-    .te-stepper .te-step:disabled { color: var(--muted-2); }
-    .te-nights { min-width: 24px; text-align: center; font-weight: 700; font-size: 12.5px; }
+    /* Custom nights stepper. Quiet by default (no fill — just the number with
+       hairline +/− that recede), so a column of these doesn't stripe the table.
+       On row hover it lifts into a real segmented control. */
+    .te-stepper { display: inline-flex; align-items: center; gap: 2px; background: transparent; border: 1px solid transparent; border-radius: 10px; padding: 2px; justify-self: center; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), box-shadow .14s var(--ease-out); }
+    .te-row:hover .te-stepper { background: var(--surface); border-color: var(--line); box-shadow: var(--shadow-soft); }
+    .te-step { width: 24px; height: 24px; border: none; background: transparent; border-radius: 8px; color: var(--brand); cursor: pointer; display: grid; place-items: center; opacity: .45; transition: background .12s var(--ease-out), opacity .14s var(--ease-out), transform .1s var(--ease-out); }
+    .te-row:hover .te-step { opacity: 1; }
+    .te-step:hover { background: var(--brand-soft-12); }
+    .te-step:active:not(:disabled) { transform: scale(0.88); }
+    .te-step:disabled { opacity: .25; cursor: default; color: var(--muted-2); }
+    .te-nights { min-width: 30px; text-align: center; font-weight: 700; font-size: var(--fs-meta); color: var(--ink); }
+    .te-nights .muted { margin-left: 1px; }
     .te-cell { flex-shrink: 0; }
     .te-cell--hotel { justify-self: center; min-width: 0; }
     .te-cell--act { justify-self: center; }
-    .te-cellbtn { display: inline-flex; align-items: center; gap: 3px; height: 30px; padding: 0 9px; border-radius: 9px; cursor: pointer; font-family: var(--font-body); }
-    .te-cellbtn--ghost { background: var(--wash); border: 1px dashed var(--line); color: var(--muted-2); }
+    .te-cellbtn { display: inline-flex; align-items: center; gap: 3px; height: 30px; padding: 0 9px; border-radius: 9px; cursor: pointer; font-family: var(--font-body); transition: background .12s var(--ease-out), border-color .12s var(--ease-out), color .12s var(--ease-out), opacity .14s var(--ease-out); }
+    /* Empty add-cells recede so unfilled rows don't read as a column of dashed
+       boxes; they surface on row hover or keyboard focus. */
+    .te-cellbtn--ghost { background: transparent; border: 1px dashed var(--line); color: var(--muted-2); opacity: 0; }
+    .te-row:hover .te-cellbtn--ghost { opacity: 1; }
+    .te-cellbtn--ghost:focus-visible { opacity: 1; outline: 2px solid var(--brand); outline-offset: 1px; }
     .te-cellbtn--ghost:hover { color: var(--brand); border-color: var(--brand); background: var(--brand-soft); }
+    @media (hover: none) { .te-cellbtn--ghost { opacity: 1; } }
     .te-hotelplate { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; width: 100%; height: 30px; padding: 0 10px; border-radius: 9px; background: var(--ev-hotel-soft); border: 1px solid transparent; color: var(--ink); cursor: pointer; font-family: var(--font-body); }
     .te-hotelplate:hover { border-color: var(--ev-hotel); }
     .te-hotelplate.is-warn { background: var(--warning-soft); }
-    .te-hotelicon { position: relative; display: grid; place-items: center; width: 32px; height: 30px; border-radius: 9px; background: var(--ev-hotel-soft); border: 1px solid transparent; cursor: pointer; }
+    .te-hotelicon { position: relative; display: grid; place-items: center; width: 32px; height: 30px; border-radius: 9px; background: var(--ev-hotel-soft); border: 1px solid transparent; cursor: pointer; transition: border-color .12s var(--ease-out), transform .1s var(--ease-out); }
     .te-hotelicon:hover { border-color: var(--ev-hotel); }
     .te-hotelicon.is-warn { background: var(--warning-soft); }
-    .te-actchip { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border-radius: 9px; background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ink); cursor: pointer; font-family: var(--font-body); }
+    .te-actchip { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border-radius: 9px; background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ink); cursor: pointer; font-family: var(--font-body); transition: border-color .12s var(--ease-out), transform .1s var(--ease-out); }
     .te-actchip:hover { border-color: var(--ev-activity); }
+    .te-actchip:active, .te-hotelicon:active, .te-cellbtn:active { transform: scale(0.94); }
     .te-actchip.is-warn { background: var(--warning-soft); }
     .te-rowacts { display: inline-flex; gap: 1px; opacity: 0; transition: opacity .12s; flex-shrink: 0; }
     .te-row:hover .te-rowacts { opacity: 1; }
@@ -1103,16 +1131,18 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-seamwrap { position: relative; }
     .te-seamwrap:not(:first-child) > .te-row,
     .te-seamwrap:not(:first-child) > .te-end { border-top: 1px solid var(--line-2); }
-    .te-end { display: flex; align-items: center; gap: 10px; padding: 13px 4px; background: color-mix(in srgb, var(--wash) 45%, transparent); }
+    .te-end { display: flex; align-items: center; gap: 11px; padding: 15px 6px; background: color-mix(in srgb, var(--wash) 45%, transparent); }
     .te-row__node { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
-    .te-endlabel { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; }
-    .te-wptag { font-size: 10px; font-weight: 700; color: var(--ev-transfer); text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border-radius: 999px; background: var(--ev-transfer-soft); white-space: nowrap; }
+    .te-endlabel { font-size: var(--fs-micro); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    .te-wptag { font-size: var(--fs-micro); font-weight: 700; color: var(--ev-transfer); text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border-radius: 999px; background: var(--ev-transfer-soft); white-space: nowrap; }
     /* transfer chip sitting ON the separator line (its surface bg covers the line) */
-    .te-seam { position: absolute; left: 26px; bottom: 0; transform: translateY(50%); z-index: 4; }
+    .te-seam { position: absolute; left: 26px; bottom: 0; transform: translateY(50%); z-index: 4; animation: teSeamIn .2s var(--ease-out) both; }
+    @keyframes teSeamIn { from { opacity: 0; transform: translateY(50%) scale(0.94); } to { opacity: 1; transform: translateY(50%) scale(1); } }
     /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
        from the empty dashed "+ переезд" add chip below. */
-    .te-seam__pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; background: var(--ev-transfer-soft); border: 1px solid color-mix(in srgb, var(--ev-transfer) 42%, var(--line)); box-shadow: var(--shadow-soft); cursor: pointer; font-family: var(--font-body); white-space: nowrap; }
+    .te-seam__pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; background: var(--ev-transfer-soft); border: 1px solid color-mix(in srgb, var(--ev-transfer) 42%, var(--line)); box-shadow: var(--shadow-soft); cursor: pointer; font-family: var(--font-body); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .14s var(--ease-out), transform .12s var(--ease-out); }
     .te-seam__pill:hover { border-color: var(--ev-transfer); box-shadow: var(--shadow-card, var(--shadow-soft)); }
+    .te-seam__pill:active { transform: scale(0.96); }
     .te-seam__pill.is-warn { border-color: var(--warning); background: var(--warning-soft); }
     .te-seam__pill--add { background: var(--surface); border: 1px dashed var(--line); color: var(--muted); font-size: 11.5px; font-weight: 600; gap: 4px; box-shadow: none; }
     .te-seam__pill--add:hover { color: var(--ev-transfer); border-color: var(--ev-transfer); background: var(--surface); }
@@ -1134,7 +1164,8 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-panel__body { flex: 1; min-height: 0; overflow: auto; padding: 16px 18px 24px; }
     .te-panel__foot { flex-shrink: 0; padding: 12px 18px; border-top: 1px solid var(--line-2); background: var(--wash-2); display: flex; gap: 8px; justify-content: flex-end; }
 
-    .te-ghostadd { display: flex; align-items: center; gap: 11px; width: 100%; padding: 12px 13px; border-radius: 12px; border: 1.5px dashed var(--line); background: var(--surface); cursor: pointer; font-family: var(--font-body); text-align: left; transition: all .12s; }
+    .te-ghostadd { display: flex; align-items: center; gap: 11px; width: 100%; padding: 12px 13px; border-radius: 12px; border: 1.5px dashed var(--line); background: var(--surface); cursor: pointer; font-family: var(--font-body); text-align: left; transition: border-color .12s var(--ease-out), background .12s var(--ease-out), transform .12s var(--ease-out); }
+    .te-ghostadd:active { transform: scale(0.99); }
     .te-ghostadd:hover { border-color: var(--a); background: color-mix(in srgb, var(--a) 6%, var(--surface)); }
     .te-ghostadd__ic { width: 34px; height: 34px; border-radius: 9px; background: color-mix(in srgb, var(--a) 12%, transparent); color: var(--a); display: grid; place-items: center; flex-shrink: 0; }
     .te-fix { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px; cursor: pointer; background: var(--surface); border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent); color: var(--warning); font-size: 11px; font-weight: 700; font-family: var(--font-body); white-space: nowrap; flex-shrink: 0; }
@@ -1160,8 +1191,9 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-addmini:hover { background: var(--brand-soft); }
     .te-manual { display: flex; align-items: center; gap: 13px; width: 100%; padding: 16px; border-radius: 13px; border: 1.5px solid var(--brand); background: var(--surface); box-shadow: 0 0 0 3px var(--brand-soft); cursor: pointer; font-family: var(--font-body); text-align: left; margin-bottom: 18px; }
     .te-manual:hover { background: var(--brand-soft); }
-    .te-partner { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-family: var(--font-body); text-align: left; transition: all .12s; }
+    .te-partner { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-family: var(--font-body); text-align: left; transition: border-color .12s var(--ease-out), box-shadow .12s var(--ease-out), transform .12s var(--ease-out); }
     .te-partner:hover { border-color: var(--brand); box-shadow: var(--shadow-soft); transform: translateY(-1px); }
+    .te-partner:active { transform: translateY(0) scale(0.99); }
     .te-snap { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px; padding: 8px 12px; border-radius: 9px; cursor: pointer; background: var(--brand-soft); border: 1px solid var(--brand-soft-12); color: var(--brand); font-size: 12.5px; font-weight: 600; font-family: var(--font-body); }
     .te-snap:hover { background: var(--brand-soft-12); }
     .te-kindtile { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 58px; flex: 1; padding: 10px 6px; border-radius: 11px; border: 1px solid var(--line); cursor: pointer; font-family: var(--font-body); }
@@ -1171,5 +1203,12 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
       .te-main { grid-template-columns: 1fr; grid-template-rows: 1fr; }
       .te-right { display: none; }
       .te-left { border-right: none; }
+    }
+
+    /* Reduced motion: keep the editor's opacity/color cues, drop all movement. */
+    @media (prefers-reduced-motion: reduce) {
+      .te-seam { animation: none; }
+      .te-row, .te-step, .te-stepper, .te-seam__pill, .te-actchip, .te-hotelicon, .te-cellbtn, .te-ghostadd, .te-partner { transition-property: background, border-color, color, opacity, box-shadow; }
+      .te-step:active, .te-seam__pill:active, .te-actchip:active, .te-hotelicon:active, .te-cellbtn:active, .te-ghostadd:active, .te-partner:active { transform: none; }
     }
 

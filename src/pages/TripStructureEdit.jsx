@@ -152,6 +152,7 @@ export default function TripStructureEdit() {
   useLayoutEffect(() => {
     const prev = prevRectsRef.current;
     if (!prev || prev.size === 0) return;
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { prevRectsRef.current = new Map(); return; }
     rowElRefs.current.forEach((el, id) => {
       if (!el) return;
       const prevTop = prev.get(id);
@@ -161,7 +162,7 @@ export default function TripStructureEdit() {
       el.style.transition = 'none';
       el.style.transform = `translateY(${dy}px)`;
       el.getBoundingClientRect(); // force reflow so the next line animates
-      el.style.transition = 'transform .18s ease';
+      el.style.transition = 'transform .22s cubic-bezier(0.23, 1, 0.32, 1)';
       el.style.transform = '';
     });
     prevRectsRef.current = new Map();
@@ -519,10 +520,12 @@ export default function TripStructureEdit() {
         </div>
       </div>
       {draft && (
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-          {changeCount > 0 && <Badge variant="warm" icon="edit">{t('tse.unsaved_count', { n: changeCount })}</Badge>}
-          <Btn variant="ghost" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
-          <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, marginLeft: 'auto', paddingLeft: 14, borderLeft: '1px solid var(--line)' }}>
+          {changeCount > 0 && <Badge variant="brand" icon="edit">{t('tse.unsaved_count', { n: changeCount })}</Badge>}
+          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Btn variant="quiet" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
+            <Btn variant="quiet" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
+          </div>
           <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={() => onSave()}>{saving ? t('tse.saving') : t('common.save')}</Btn>
         </div>
       )}
@@ -613,7 +616,10 @@ export default function TripStructureEdit() {
   const commitDrag = () => {
     if (dragIdx != null && overGap != null) {
       const order = displayNodes.map((n) => n.id);
-      rowElRefs.current.forEach((el) => { if (el) { el.style.transition = ''; el.style.transform = ''; } });
+      // Snapshot row positions BEFORE the reorder. endDrag() flips dragIdx/overGap
+      // → the FLIP layout effect runs after this commit render and slides every
+      // row from where it was to its settled slot (no snap on drop).
+      captureRects();
       editDraft((d) => {
         const byId = new Map(d.nodes.map((n) => [n.id, n]));
         const nextNodes = order.map((id) => byId.get(id)).filter(Boolean);
@@ -731,7 +737,7 @@ export default function TripStructureEdit() {
           onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)}
         />
       </div>
-      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, overflow: 'hidden' }}>
+      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 65fr) minmax(0, 35fr)', gap: 0, overflow: 'hidden' }}>
         {/* LEFT - page title + cities (scrolling list) */}
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
           <div key={panelKey} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -739,16 +745,16 @@ export default function TripStructureEdit() {
           {/* page title */}
           <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: '1px solid var(--line-2)' }}>
             <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>{t('tse.section_eyebrow')}</div>
-            <h1 style={{ fontSize: 22, lineHeight: 1.15, marginBottom: 6, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
-            <div className="muted num" style={{ fontSize: 12.5 }}>{fmtD(startDate, lang)} - {fmtD(endDate, lang)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights, t)}` : ''} · {cities.length} {cities.length === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}{membersCount > 0 ? ` · ${t('tse.members_short', { n: membersCount })}` : ''}</div>
+            <h1 style={{ fontSize: 'var(--fs-title)', lineHeight: 1.2, marginBottom: 6, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
+            <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{fmtD(startDate, lang)} - {fmtD(endDate, lang)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights, t)}` : ''} · {cities.length} {cities.length === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}{membersCount > 0 ? ` · ${t('tse.members_short', { n: membersCount })}` : ''}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <span className="eyebrow" style={{ fontSize: 10 }}>{t('planner.trip_start')}</span>
+              <span className="eyebrow" style={{ fontSize: 'var(--fs-micro)' }}>{t('planner.trip_start')}</span>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: 2 }}>
                 <button className="ts-step" onClick={() => shiftStart(-1)} title={t('tse.start_earlier')}><Icon name="back" size={13} /></button>
-                <span className="num" style={{ padding: '0 8px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDW(startDate)}</span>
+                <span className="num" style={{ padding: '0 8px', fontSize: 'var(--fs-meta)', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDW(startDate)}</span>
                 <button className="ts-step" onClick={() => shiftStart(1)} title={t('tse.start_later')}><Icon name="chev" size={13} /></button>
               </div>
-              <span className="muted" style={{ fontSize: 11 }}>{t('tse.moves_whole_trip')}</span>
+              <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('tse.moves_whole_trip')}</span>
             </div>
           </div>
 
@@ -816,11 +822,13 @@ export default function TripStructureEdit() {
           )}
           <AddPointButton onOpen={() => setLeftPanel({ type: 'cityadd' })} />
           {outOfPlanTransfers.length > 0 && (
-            <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 12, background: 'var(--warning-soft)', border: '1px dashed color-mix(in srgb, var(--warning) 45%, var(--line))' }}>
-              <div className="eyebrow" style={{ marginBottom: 8, color: 'var(--warning)' }}>{t('tse.transfers_out_of_plan')}</div>
+            <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 12, background: 'var(--wash)', border: '1px solid var(--line-2)' }}>
+              <div className="eyebrow" style={{ marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="warning" size={12} style={{ color: 'var(--warning)' }} /> {t('tse.transfers_out_of_plan')}
+              </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {outOfPlanTransfers.map((tr) => (
-                  <button key={tr.id} onClick={() => openEvent('transfer', tr.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>
+                  <button key={tr.id} onClick={() => openEvent('transfer', tr.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', fontSize: 'var(--fs-meta)', fontWeight: 600, color: 'var(--ink)' }}>
                     <Icon name="warning" size={12} style={{ color: 'var(--warning)' }} /> {nodeName(tr.from_city_visit_id)} → {nodeName(tr.to_city_visit_id)}
                   </button>
                 ))}
@@ -849,12 +857,13 @@ export default function TripStructureEdit() {
               </div>
             )}
             <button
+              className="ts-fab"
               onClick={() => { if (issues.length) setShowWarn((v) => !v); }}
               aria-label={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
               title={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
               style={{ position: 'relative', width: 56, height: 56, borderRadius: '50%', border: 'none', flexShrink: 0,
                 cursor: issues.length ? 'pointer' : 'default', display: 'grid', placeItems: 'center', boxShadow: 'var(--shadow-pop)',
-                background: issues.length ? 'var(--warning)' : 'var(--success)', color: '#fff', transition: 'transform .15s ease' }}
+                background: issues.length ? 'var(--warning)' : 'var(--success)', color: '#fff' }}
             >
               <Icon name={issues.length ? 'warning' : 'check'} size={23} />
               {issues.length > 0 && (
@@ -869,8 +878,8 @@ export default function TripStructureEdit() {
     </div>
 
       {confirmDel && (
-        <div onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)', padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, width: 420, maxWidth: '100%', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="ts-confirm-backdrop" onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)', padding: 16 }}>
+          <div className="ts-confirm-card" onClick={(e) => e.stopPropagation()} style={{ position: 'relative', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, width: 420, maxWidth: '100%', boxShadow: 'var(--shadow-pop)' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--danger)' }} />
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '18px 18px 8px' }}>
               <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="trash" size={17} /></div>
@@ -889,13 +898,26 @@ export default function TripStructureEdit() {
       )}
 
       <style>{`
-        .ts-step { border: none; background: transparent; border-radius: 8px; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; }
+        .ts-step { border: none; background: transparent; border-radius: 8px; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
         .ts-step:hover { background: var(--wash); }
+        .ts-step:active:not(:disabled) { transform: scale(0.9); }
         .ts-step:disabled { opacity: .3; cursor: default; }
         .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 13px; }
-        .te-panefade { animation: tePaneIn .18s ease both; }
-        @keyframes tePaneIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
-        @media (prefers-reduced-motion: reduce) { .te-panefade { animation: none; } }
+        .te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
+        @keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+        /* Warnings FAB: lift on hover, press on click. */
+        .ts-fab { transition: transform .16s var(--ease-out), box-shadow .16s var(--ease-out); }
+        .ts-fab:hover { transform: scale(1.06); }
+        .ts-fab:active { transform: scale(0.96); }
+        /* Delete-confirm: backdrop fades, card scales up from near-full (never from nothing), centered. */
+        .ts-confirm-backdrop { animation: tsBackdropIn .16s var(--ease-out) both; }
+        .ts-confirm-card { transform-origin: center; animation: tsCardIn .2s var(--ease-out) both; }
+        @keyframes tsBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes tsCardIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        @media (prefers-reduced-motion: reduce) {
+          .te-panefade, .ts-confirm-backdrop, .ts-confirm-card { animation: none; }
+          .ts-fab:hover, .ts-fab:active, .ts-step:active { transform: none; }
+        }
         @media (max-width: 1080px) {
           .ts-screen { height: auto !important; min-height: 100vh; overflow: visible !important; }
           .ts-grid { grid-template-columns: 1fr !important; overflow: visible !important; }
