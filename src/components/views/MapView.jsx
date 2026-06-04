@@ -41,8 +41,8 @@ export default function MapView({
   // Falsy/empty → no override (the whole-route auto-fit stays in charge); when
   // it clears after a focus, the camera eases back to the full route.
   focus = null,
-  // Show a flat-map ↔ globe projection toggle button on the map.
-  projectionToggle = false,
+  // Show the on-map control buttons (projection, theme, start/finish toggles).
+  mapControls = false,
   children,
 }) {
   const t = useT();
@@ -52,6 +52,12 @@ export default function MapView({
   const fittedSigRef = useRef('');
   const [ready, setReady] = useState(false);
   const [projection, setProjection] = useState('mercator');
+  // Internal toggles (driven by the on-map control buttons). Seeded from props and
+  // re-synced if the prop changes (e.g. the app theme), but the buttons can override.
+  const [mapScheme, setMapScheme] = useState(colorScheme);
+  const [showSE, setShowSE] = useState(showStartEnd);
+  useEffect(() => { setMapScheme(colorScheme); }, [colorScheme]);
+  useEffect(() => { setShowSE(showStartEnd); }, [showStartEnd]);
   const [error, setError] = useState(MAPBOX_TOKEN ? null : 'No Mapbox token');
 
   // Keep the latest onCityClick without forcing the draw effect to re-run.
@@ -59,13 +65,13 @@ export default function MapView({
   useEffect(() => { onCityClickRef.current = onCityClick; }, [onCityClick]);
 
   // Current theme captured for the one-time map init (live changes handled below).
-  const schemeRef = useRef(colorScheme);
-  useEffect(() => { schemeRef.current = colorScheme; }, [colorScheme]);
+  const schemeRef = useRef(mapScheme);
+  useEffect(() => { schemeRef.current = mapScheme; }, [mapScheme]);
 
   const ordered = useMemo(() => {
     const all = sortVisits(visits).filter((v) => v.latitude && v.longitude);
-    return showStartEnd ? all : all.filter((v) => v.kind !== 'start' && v.kind !== 'end');
-  }, [visits, showStartEnd]);
+    return showSE ? all : all.filter((v) => v.kind !== 'start' && v.kind !== 'end');
+  }, [visits, showSE]);
 
   const visitsSignature = useMemo(
     () => ordered.map((v) => `${v.id}:${v.latitude.toFixed(5)},${v.longitude.toFixed(5)}`).join('|'),
@@ -105,8 +111,8 @@ export default function MapView({
 
   // --- Switch day/night in place when the theme changes (no map re-render) ---
   useEffect(() => {
-    if (mapRef.current && ready) applyBasemapConfig(mapRef.current, colorScheme);
-  }, [colorScheme, ready]);
+    if (mapRef.current && ready) applyBasemapConfig(mapRef.current, mapScheme);
+  }, [mapScheme, ready]);
 
   // --- Projection (flat mercator ↔ globe), applied in place ---
   useEffect(() => {
@@ -233,16 +239,19 @@ export default function MapView({
           {error ? `Map error: ${error}` : <div style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
         </div>
       )}
-      {projectionToggle && ready && (
-        <button
-          type="button"
-          onClick={() => setProjection((p) => (p === 'globe' ? 'mercator' : 'globe'))}
-          title={projection === 'globe' ? t('tse.map_flat') : t('tse.map_globe')}
-          aria-label={projection === 'globe' ? t('tse.map_flat') : t('tse.map_globe')}
-          style={{ position: 'absolute', top: 12, right: 12, zIndex: 6, width: 36, height: 36, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }}
-        >
-          <Icon name={projection === 'globe' ? 'map' : 'globe'} size={17} />
-        </button>
+      {mapControls && ready && (
+        <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[
+            { key: 'proj', title: projection === 'globe' ? t('tse.map_flat') : t('tse.map_globe'), icon: projection === 'globe' ? 'map' : 'globe', on: projection === 'globe', onClick: () => setProjection((p) => (p === 'globe' ? 'mercator' : 'globe')) },
+            { key: 'theme', title: mapScheme === 'DARK' ? t('tse.map_light') : t('tse.map_dark'), icon: mapScheme === 'DARK' ? 'sun' : 'moon', on: mapScheme === 'DARK', onClick: () => setMapScheme((s) => (s === 'DARK' ? 'LIGHT' : 'DARK')) },
+            { key: 'se', title: t('tse.map_startend'), icon: 'flag', on: showSE, onClick: () => setShowSE((v) => !v) },
+          ].map((b) => (
+            <button key={b.key} type="button" onClick={b.onClick} title={b.title} aria-label={b.title}
+              style={{ width: 36, height: 36, borderRadius: 9, border: '1px solid ' + (b.on ? 'color-mix(in srgb, var(--brand) 45%, var(--line))' : 'var(--line)'), background: b.on ? 'var(--brand-soft)' : 'var(--surface)', color: b.on ? 'var(--brand)' : 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }}>
+              <Icon name={b.icon} size={17} />
+            </button>
+          ))}
+        </div>
       )}
       {children}
     </div>

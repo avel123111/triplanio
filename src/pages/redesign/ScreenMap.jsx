@@ -32,25 +32,17 @@ function nightsBetween(a, b) {
 
 function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities = [], canEdit = false, openEvent }) {
   const { t } = useI18n();
-  const [theme, setTheme] = useState('auto');
-  const [anchorsOff, setAnchorsOff] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [editMode, setEditMode] = useState(false);
 
-  // Real route - visits with coordinates, in trip order. Filter out anchors
-  // when the user hides them via the checkbox.
-  const route = useMemo(() => {
-    const all = sortVisits(visits).filter(v => v.latitude && v.longitude);
-    return anchorsOff ? all.filter(v => v.kind !== 'start' && v.kind !== 'end') : all;
-  }, [visits, anchorsOff]);
-  const cityCount = useMemo(() => uniqueCityCount(route), [route]); // dedup repeated cities for the count
+  // Real route - visits with coordinates, in trip order. (Theme + start/finish
+  // visibility are now toggled on the map itself via MapView's control buttons.)
+  const route = useMemo(() => sortVisits(visits).filter(v => v.latitude && v.longitude), [visits]);
 
-  // Reset active when the underlying route shrinks (e.g. anchors toggled off).
   React.useEffect(() => {
     if (activeIdx >= route.length) setActiveIdx(0);
   }, [route.length, activeIdx]);
 
-  const isDark = (theme === 'auto' && document.documentElement.dataset.theme === 'dark') || theme === 'dark';
+  const isDark = document.documentElement.dataset.theme === 'dark';
   const activeVisit = route[activeIdx] || null;
 
   return (
@@ -74,74 +66,14 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
           visits={visits}
           transfers={transfers}
           visitsById={Object.fromEntries(visits.map(v => [v.id, v]))}
-          showStartEnd={!anchorsOff}
+          showStartEnd
+          mapControls
           colorScheme={isDark ? 'DARK' : 'LIGHT'}
           onCityClick={(visitsAtPoint) => {
             const idx = route.findIndex(v => v.id === visitsAtPoint[0]?.id);
             if (idx !== -1) setActiveIdx(idx);
           }}
         />
-
-        {/* Top-left: trip identity + theme + anchors */}
-        <div style={{ position: 'absolute', top: 16, left: 16, display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 360, zIndex: 5 }}>
-          <div style={{
-            background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12,
-            padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10,
-            boxShadow: 'var(--shadow-soft)',
-          }}>
-            <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-              <Icon name="map" size={14} />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
-                {trip?.title || t('trip_menu.section_lenses')}
-              </div>
-              <div className="num muted" style={{ fontSize: 11, lineHeight: 1.2, marginTop: 1 }}>
-                {cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
-              </div>
-            </div>
-          </div>
-
-          {/* Theme controls */}
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11, padding: 5, display: 'flex', gap: 3 }}>
-            {[['auto', t('visit.map_theme_auto')], ['light', t('calendar.day')], ['dark', t('view.map_theme_night')]].map(([val, l]) => (
-              <button key={val} onClick={() => setTheme(val)} style={{
-                padding: '5px 9px', borderRadius: 6, border: 'none',
-                background: theme === val ? 'var(--wash)' : 'transparent',
-                fontSize: 11.5, fontWeight: 500, cursor: 'pointer', color: 'var(--ink)',
-              }}>{l}</button>
-            ))}
-          </div>
-
-          <label style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11, padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
-            <input type="checkbox" checked={!anchorsOff} onChange={() => setAnchorsOff(!anchorsOff)} />
-            <span>{t('view.map_show_anchors')}</span>
-          </label>
-        </div>
-
-        {/* Top-right: edit mode toggle */}
-        {canEdit && (
-          <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', zIndex: 5 }}>
-            <Btn variant={editMode ? 'primary' : 'ghost'} size="sm" icon="edit" onClick={() => setEditMode(!editMode)}
-              style={{ background: editMode ? undefined : 'var(--surface)', boxShadow: editMode ? undefined : 'var(--shadow-soft)' }}>
-              {editMode ? t('view.edit_mode_done') : t('trip.edit_trip')}
-            </Btn>
-          </div>
-        )}
-
-        {/* Legend */}
-        <div style={{
-          position: 'absolute', bottom: 16, left: 16, zIndex: 5,
-          background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11,
-          padding: '10px 14px', fontSize: 11.5, boxShadow: 'var(--shadow-soft)',
-        }}>
-          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>{t('view.map_route_lines')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <Legend color="var(--brand)" dashed={false}>{t('view.map_line_planned')}</Legend>
-            <Legend color="var(--success)" dashed={false}>{t('view.map_line_ground')}</Legend>
-            <Legend color="var(--warning)" dashed>{t('view.map_line_unplanned')}</Legend>
-          </div>
-        </div>
       </div>
 
       {/* SIDEBAR - sticky stepper + scrolling active city detail */}
@@ -155,7 +87,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
           route={route}
           activeIdx={activeIdx}
           setActiveIdx={setActiveIdx}
-          editMode={editMode}
+          editMode={false}
           transfers={transfers}
         />
 

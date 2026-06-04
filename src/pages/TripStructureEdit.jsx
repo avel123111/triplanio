@@ -343,6 +343,20 @@ export default function TripStructureEdit() {
   // Validation NEVER blocks save anymore: every issue is a non-blocking warning.
   // Save is gated only by dirty/saving (and the trip lock, handled separately).
   const blocked = false;
+  // Count of UNSAVED structural changes vs the loaded baseline (added/removed/
+  // moved cities, changed nights/dates/overnight) — shown in the header.
+  const changeCount = useMemo(() => {
+    if (!draft || !dirty || !baseRef.current) return 0;
+    let base; try { base = JSON.parse(baseRef.current); } catch { return 0; }
+    const baseById = new Map((base.nodes || []).map((n) => [n.id, n]));
+    let c = (draft.removed || []).filter((n) => !String(n.id).startsWith('tmp-')).length;
+    for (const n of draft.nodes) {
+      const b = baseById.get(n.id);
+      if (!b) { c++; continue; }
+      if (b.position !== n.position || b.start_date !== n.start_date || b.end_date !== n.end_date || (b.nights || 0) !== (n.nights || 0) || (b.gap || 0) !== (n.gap || 0)) c++;
+    }
+    return c;
+  }, [draft, dirty]);
 
   // ---- structural edits ----
   // Trip start (d.startDate) is FIXED until shiftStart changes it. recompute chains
@@ -463,13 +477,27 @@ export default function TripStructureEdit() {
     const p_edits = {};
     const p_deletes = { cities: (draft.removed || []).filter((n) => !isTmp(n.id)).map((n) => n.id) };
     const { error } = await supabase.rpc('save_trip_edit', { p_trip: tripId, p_nodes, p_cities_new, p_edits, p_deletes });
-    setSaving(false);
-    if (error) { alert(t('tse.err_save') + (error.message || error)); return; }
-    acquiredRef.current = false;
+    if (error) { setSaving(false); alert(t('tse.err_save') + (error.message || error)); return; }
     clearDraftStore();
     invalidateTripData(qc, tripId);
     setPendingLeave(null);
-    nav(typeof dest === 'string' ? dest : `/trip/${tripId}`);
+    // Save + LEAVE (from the unsaved-changes prompt): release the lock and navigate.
+    if (typeof dest === 'string') {
+      acquiredRef.current = false;
+      setSaving(false);
+      nav(dest);
+      return;
+    }
+    // Save + STAY (header button): save_trip_edit released the lock, so re-acquire
+    // it, then rebuild the draft from the freshly-saved server state (new cities get
+    // their real ids; the diff baseline + dirty reset to "saved").
+    try { const lr = await supabase.rpc('acquire_trip_lock', { p_trip: tripId }); acquiredRef.current = !!lr?.data?.ok; } catch { /* keep editing best-effort */ }
+    try { await Promise.all([qc.refetchQueries({ queryKey: TRIP_SHELL_KEY(tripId) }), qc.refetchQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })]); } catch { /* ignore */ }
+    baseRef.current = null;
+    setUndoStack([]);
+    setDirty(false);
+    setDraft(null); // → synchronous rebuild from fresh shell/content on next render
+    setSaving(false);
   };
 
   // Persistent app-header - rendered in EVERY branch (loading / blocked / error /
@@ -498,7 +526,7 @@ export default function TripStructureEdit() {
       </div>
       {draft && (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-          {issues.length > 0 && <Badge variant="warm" icon="warning">{errors ? t('tse.errors_short', { n: errors }) : t('tse.warns_short', { n: warns })}</Badge>}
+          {changeCount > 0 && <Badge variant="warm" icon="edit">{t('tse.unsaved_count', { n: changeCount })}</Badge>}
           <Btn variant="ghost" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
           <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
           <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={() => onSave()}>{saving ? t('tse.saving') : t('common.save')}</Btn>
@@ -816,7 +844,7 @@ export default function TripStructureEdit() {
         {/* RIGHT - full-height map; warnings live in a collapsible overlay widget */}
         <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--surface)' }}>
           <div className="ts-map" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-            <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd projectionToggle
+            <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd mapControls
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
