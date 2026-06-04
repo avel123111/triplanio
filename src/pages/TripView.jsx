@@ -211,7 +211,7 @@ function LoadingScreen() {
           <div className="app-side__group">
             <div className="app-side__group-label">{t('trip.sections_title')}</div>
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px' }}>
                 <Skeleton w={15} h={15} r={4} />
                 <Skeleton w={80 + (i % 3) * 15} h={12} r={4} />
               </div>
@@ -220,7 +220,7 @@ function LoadingScreen() {
           <div className="app-side__group">
             <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
             {[1, 2, 3, 4].map(i => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px' }}>
                 <Skeleton w={15} h={15} r={4} />
                 <Skeleton w={70 + (i % 3) * 10} h={12} r={4} />
               </div>

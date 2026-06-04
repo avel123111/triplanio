@@ -75,9 +75,9 @@ export default function CityPanel({
   onOpenHotel, onAddHotel, onOpenActivity, onAddActivity, onOpenTransfer, onAddArrival, onAddDeparture,
 }) {
   const { t } = useI18n();
-  // Waypoint = a 0-night transit stop: it carries only activities (no hotel /
-  // no arrival·departure of its own); the nights stepper turns it back into a
-  // city when raised above 0.
+  // Waypoint = a 0-night transit stop: it has arrival/departure transfers and
+  // activities like a normal city, but NO hotel (no overnight stay); the nights
+  // stepper turns it back into a city when raised above 0.
   const isWaypoint = node.kind === 'waypoint';
   const nights = isWaypoint ? 0 : (node.nights || 0);
 
@@ -112,8 +112,8 @@ export default function CityPanel({
         </span>
       </div>
 
-      {/* arrival / departure + hotel — cities only (waypoints carry activities only) */}
-      {!isWaypoint && <>
+      {/* arrival / departure — both cities AND waypoints (a transit stop still
+          arrives and leaves; only the hotel is omitted for waypoints). */}
       <SectionLabel>{t('tse.section_road')}</SectionLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {arrival
@@ -124,6 +124,8 @@ export default function CityPanel({
           : nextCity && <GhostAdd icon="plane" accent="var(--muted-2)" label={t('tse.add_departure')} sub={nextCity} onClick={onAddDeparture} />}
       </div>
 
+      {/* hotel — cities only (a 0-night waypoint has no overnight stay) */}
+      {!isWaypoint && <>
       <SectionLabel>{t('budget.cat_accommodation')}</SectionLabel>
       {hotel ? (
         <button className={'te-bookrow' + (hotelWarn ? ' is-warn' : '')} onClick={() => onOpenHotel(hotel.id)}>

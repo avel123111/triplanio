@@ -208,7 +208,10 @@ export default function TripStructureEdit() {
     if (!draft) return [];
     const raw = primaryIssues(validateTrip({ visits: draft.nodes, hotels: liveHotels, activities: liveActivities, transfers: liveTransfers }));
     return raw.map((i) => ({
-      level: i.level === 'error' ? 'error' : 'warn',
+      // All validation issues are advisory in the editor: nothing blocks Save.
+      // Engine-level severity is collapsed to 'warn' so errors never gate saving
+      // and the whole list renders as (orange) warnings.
+      level: 'warn',
       code: i.code,
       message: t(`validation.${i.code}`, i.values),
       // raw refs for describeIssue/ConflictsPanel:
@@ -224,10 +227,11 @@ export default function TripStructureEdit() {
       toId: i.toId,
     }));
   }, [draft, liveHotels, liveActivities, liveTransfers, t]);
-  const errors = issues.filter((i) => i.level === 'error').length;
+  const errors = issues.filter((i) => i.level === 'error').length; // always 0 now (all issues are 'warn')
   const warns = issues.length - errors;
-  // R3: only errors block save; warnings (CITY_GAP / DUP_TRANSFER) are shown but allowed.
-  const blocked = errors > 0;
+  // Validation NEVER blocks save anymore: every issue is a non-blocking warning.
+  // Save is gated only by dirty/saving (and the trip lock, handled separately).
+  const blocked = false;
 
   // ---- structural edits ----
   // Trip start (d.startDate) is FIXED until shiftStart changes it. recompute chains
@@ -636,7 +640,7 @@ export default function TripStructureEdit() {
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           {/* Collapsible warnings: a pill with the count; click → expandable list. */}
-          <div style={{ position: 'absolute', left: 12, bottom: 12, zIndex: 5, width: 'min(360px, calc(100% - 24px))' }}>
+          <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 5, width: 'min(360px, calc(100% - 24px))', textAlign: 'right' }}>
             {showWarn && issues.length > 0 && (
               <div className="scrollbar-thin" style={{ marginBottom: 8, maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 8 }}>
                 <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
@@ -645,7 +649,7 @@ export default function TripStructureEdit() {
             <button
               onClick={() => setShowWarn((v) => !v)}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, boxShadow: 'var(--shadow-soft)',
-                background: issues.length ? 'var(--warning-soft)' : 'var(--surface)', border: '1px solid ' + (issues.length ? 'color-mix(in srgb, var(--warning) 45%, var(--line))' : 'var(--line)'), color: issues.length ? 'var(--warning)' : 'var(--ink-2)' }}
+                background: issues.length ? 'linear-gradient(0deg, var(--warning-soft), var(--warning-soft)), var(--surface)' : 'var(--surface)', border: '1px solid ' + (issues.length ? 'color-mix(in srgb, var(--warning) 45%, var(--line))' : 'var(--line)'), color: issues.length ? 'var(--warning)' : 'var(--ink-2)' }}
             >
               <Icon name={issues.length ? 'warning' : 'check'} size={14} style={{ color: issues.length ? 'var(--warning)' : 'var(--success)' }} />
               {issues.length === 0
