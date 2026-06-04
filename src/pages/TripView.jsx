@@ -1124,38 +1124,75 @@ function ShareDialog({ trip }) {
   );
 }
 
-function MoreMenuDialog({ trip, visits, canEditMode, onEditStructure, onEditMetadata }) {
+function MoreMenuDialog({ trip, visits, canManage = false, canEditMode, onEditStructure, onEditMetadata }) {
   const { t } = useI18n();
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [copying, setCopying] = useState(false);
   const openEditMetadata = () => {
     onEditMetadata?.();
   };
+
+  // Copy trip — available to every participant. The new trip is owned by the
+  // caller; copyTrip strips Pro status + Pro-only addons server-side.
+  const handleCopy = async () => {
+    if (copying) return;
+    setCopying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('copyTrip', { body: { tripId: trip.id } });
+      if (error || data?.error) throw new Error(data?.error || error?.message || 'copy failed');
+      qc.invalidateQueries({ queryKey: ['trips', user?.id] });
+      window.__closeModal?.();
+      toast({ description: t('trip.copy_done') });
+      if (data?.tripId) nav(`/trip/${data.tripId}`);
+    } catch (e) {
+      toast({ description: t('trip.copy_error'), variant: 'destructive' });
+    } finally {
+      setCopying(false);
+    }
+  };
+
   const itemStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 14, color: 'var(--ink)' };
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
       onClick={() => window.__closeModal?.()}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 20, width: 320, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {canEditMode && (
+          {canManage && canEditMode && (
             <button onClick={() => onEditStructure?.()} style={{ ...itemStyle, color: 'var(--brand)', fontWeight: 600 }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <Icon name="map" size={16} style={{ color: 'var(--brand)' }} /> {t('trip.edit_structure')}
             </button>
           )}
-          <button onClick={openEditMetadata} style={itemStyle}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
+          {canManage && (
+            <button onClick={openEditMetadata} style={itemStyle}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <Icon name="edit" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.edit_metadata')}
+            </button>
+          )}
+          {canManage && (
+            <button onClick={() => { window.__closeModal?.(); window.__navigate?.('settings'); }} style={itemStyle}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <Icon name="settings" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.settings_title')}
+            </button>
+          )}
+          {canManage && (
+            <button onClick={() => { window.__closeModal?.(); window.__navigate?.('members'); }} style={itemStyle}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <Icon name="users" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.sidebar_members')}
+            </button>
+          )}
+          {canManage && <div style={{ height: 1, background: 'var(--line-2)', margin: '6px 0' }} />}
+          <button onClick={handleCopy} disabled={copying} style={{ ...itemStyle, opacity: copying ? 0.6 : 1, cursor: copying ? 'default' : 'pointer' }}
+            onMouseEnter={e => { if (!copying) e.currentTarget.style.background = 'var(--wash)'; }}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <Icon name="edit" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.edit_metadata')}
-          </button>
-          <button onClick={() => { window.__closeModal?.(); window.__navigate?.('settings'); }} style={itemStyle}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <Icon name="settings" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.settings_title')}
-          </button>
-          <button onClick={() => { window.__closeModal?.(); window.__navigate?.('members'); }} style={itemStyle}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <Icon name="users" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.sidebar_members')}
+            <Icon name="copy" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.copy')}
           </button>
           <div style={{ height: 1, background: 'var(--line-2)', margin: '6px 0' }} />
           <button onClick={() => window.__closeModal?.()} style={{ ...itemStyle, color: 'var(--muted)' }}>
@@ -1292,10 +1329,10 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
             <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>{t('trip.share')}</Btn>
           )}
           <Btn variant="ghost" size="sm" icon="download" onClick={() => window.print()}>{t('trip.export')}</Btn>
-          {/* The "…" menu only holds owner/admin actions (edit, settings, delete) -               every item is unavailable to a viewer, so hide the whole button. */}
-          {myRole !== 'viewer' && (
-            <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canEditMode={canEditMode} onEditStructure={() => { window.__closeModal?.(); nav(`/trip/${trip.id}/edit`); }} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
-          )}
+          {/* The "…" menu holds owner/admin actions (edit, settings, members) plus
+              Copy trip. Copy is available to every participant (incl. viewers),
+              so the button always renders; manage-only items are gated by canManage. */}
+          <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canManage={myRole !== 'viewer'} canEditMode={canEditMode} onEditStructure={() => { window.__closeModal?.(); nav(`/trip/${trip.id}/edit`); }} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
         </div>
       </div>
     </div>
@@ -1483,51 +1520,81 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
 
 // ─── ServicesWidget ───────────────────────────────────────────────────────────
 
+// trip_services rows carry a `kind` (esim | car_rental | insurance) — there is
+// no `status` column. Mirrors base44 TripServicesCard:
+//   • added services render as solid "booked" cards;
+//   • eSIM / car_rental show a dashed placeholder at the top until added;
+//   • once added, their "add more" option moves under "Ещё" (where insurance
+//     always lives). Keep KIND_META icons in sync with the service kinds.
+const SERVICE_KIND_META = {
+  esim:       { icon: 'esim',   labelKey: 'service.kind.esim',       hintKey: 'service.hint.esim' },
+  car_rental: { icon: 'car',    labelKey: 'service.kind.car_rental', hintKey: 'service.hint.car_rental' },
+  insurance:  { icon: 'shield', labelKey: 'service.kind.insurance',  hintKey: 'service.hint.insurance' },
+};
+
 function ServicesWidget({ services = [], onAddService }) {
   const { t } = useI18n();
   const [moreOpen, setMoreOpen] = useState(false);
-  const activeServices = services.filter(s => s.status === 'active' || s.status === 'booked');
-  const pendingServices = services.filter(s => !s.status || s.status === 'pending');
+
+  const byKind = { esim: [], car_rental: [], insurance: [] };
+  for (const s of services) { if (byKind[s.kind]) byKind[s.kind].push(s); }
+
+  // Top placeholders: only eSIM / car_rental that have NO items yet.
+  const topAddKinds = ['esim', 'car_rental'].filter(k => byKind[k].length === 0);
+  // "Ещё": add-more for esim/car_rental that already have items, plus insurance (always).
+  const moreAddKinds = [];
+  if (byKind.esim.length > 0) moreAddKinds.push('esim');
+  if (byKind.car_rental.length > 0) moreAddKinds.push('car_rental');
+  moreAddKinds.push('insurance');
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
       <h3 style={{ marginBottom: 10, fontSize: 14 }}>{t('trip.sidebar_services')}</h3>
-      {activeServices.length === 0 && pendingServices.length === 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <ServiceRowEmpty icon="esim" name="eSIM" desc={t('trip.svc_roaming')} onClick={() => onAddService?.('esim')} />
-          <ServiceRowEmpty icon="car" name={t('trip.svc_carrental')} desc={t('trip.svc_carrental_desc')} onClick={() => onAddService?.('car_rental')} />
-          {moreOpen
-            ? <ServiceRowEmpty icon="shield" name={t('trip.svc_insurance')} desc={t('trip.svc_not_connected_f')} onClick={() => onAddService?.('insurance')} />
-            : <button onClick={() => setMoreOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: 12, cursor: 'pointer' }}>
-                <Icon name="more" size={12} />
-                <span>{t('trip.services_more')}</span>
-              </button>
-          }
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {activeServices.map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 0' }}>
-              <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                <Icon name="check" size={14} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Added services as booked cards */}
+        {services.map((s) => {
+          const meta = SERVICE_KIND_META[s.kind];
+          return (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 0' }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <Icon name={meta?.icon || 'spark'} size={14} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 500 }}>{s.name || s.service_type}</div>
-                {s.notes && <div className="muted" style={{ fontSize: 11 }}>{s.notes}</div>}
+                <div style={{ fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta ? t(meta.labelKey) : s.name}</div>
+                {s.name && <div className="muted" style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>}
               </div>
             </div>
-          ))}
-          {pendingServices.map((s, i) => (
-            <ServiceRowEmpty key={i} icon="spark" name={s.name || s.service_type} desc={t('trip.svc_not_connected_n')} />
-          ))}
-        </div>
-      )}
+          );
+        })}
+
+        {/* Top dashed placeholders for not-yet-added eSIM / car rental */}
+        {topAddKinds.map((k) => (
+          <ServiceRowEmpty key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} name={t(SERVICE_KIND_META[k].labelKey)} desc={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
+        ))}
+
+        {/* "Ещё" — insurance + add-more for kinds that already have items */}
+        {moreOpen ? (
+          moreAddKinds.map((k) => (
+            <ServiceRowEmpty
+              key={`more-${k}`}
+              icon={SERVICE_KIND_META[k].icon}
+              name={byKind[k].length > 0 ? t('service.add_more', { label: t(SERVICE_KIND_META[k].labelKey) }) : t(SERVICE_KIND_META[k].labelKey)}
+              desc={t(SERVICE_KIND_META[k].hintKey)}
+              onClick={() => onAddService?.(k)}
+            />
+          ))
+        ) : (
+          <button onClick={() => setMoreOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: 12, cursor: 'pointer' }}>
+            <Icon name="more" size={12} />
+            <span>{t('service.more')}</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 function ServiceRowEmpty({ icon, name, desc, onClick }) {
-  const { t } = useI18n();
   return (
     <button onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 9, padding: '8px 8px',
@@ -1540,12 +1607,12 @@ function ServiceRowEmpty({ icon, name, desc, onClick }) {
         <Icon name={icon} size={14} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 500 }}>
-          <Icon name="plus" size={11} style={{ verticalAlign: -1, marginRight: 3, color: 'var(--brand)' }} />
-          {t('trip.svc_add', { name })}
-        </div>
-        <div className="muted" style={{ fontSize: 11 }}>{desc}</div>
+        <div style={{ fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+        <div className="muted" style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</div>
       </div>
+      {/* Trailing "+" — a dedicated flex child, so it sits to the RIGHT of the
+          text instead of stacking above it (the old inline-icon layout bug). */}
+      <Icon name="plus" size={14} style={{ color: 'var(--brand)', flexShrink: 0 }} />
     </button>
   );
 }

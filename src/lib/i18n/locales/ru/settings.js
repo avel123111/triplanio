@@ -76,6 +76,7 @@ export default {
   'settings.approvers_desc': 'Кто голосует «за»',
   'settings.members_loading': 'Участники ещё не загружены.',
   'settings.leave_trip': 'Выйти из путешествия',
+  'settings.leave_btn': 'Выйти',
   'settings.leave_desc': 'Ты перестанешь видеть путешествие. Владелец сможет пригласить тебя снова.',
   'settings.leave_owner_blocked': 'Передай владение другому участнику, прежде чем выходить.',
   'settings.delete_trip': 'Удалить путешествие',

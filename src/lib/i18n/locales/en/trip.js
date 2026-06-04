@@ -64,7 +64,9 @@ export default {
   'trip.delete_pro_confirm_title': 'You are deleting a Pro trip',
   'trip.delete_pro_confirm_desc': 'This is a Pro trip - the one-time upgrade you paid for will be lost. Are you sure you want to delete it?',
   'trip.copy_confirm_title': 'Duplicate this trip?',
-  'trip.copy_confirm_desc': 'A full copy will be created with all cities, hotels, activities and transfers. Trip members are not copied.',
+  'trip.copy_confirm_desc': 'A full copy will be created with all cities, hotels, activities and transfers. Trip members and Pro status are not copied.',
+  'trip.copy_done': 'Trip copied',
+  'trip.copy_error': 'Could not copy the trip',
   'trip.link_error': 'Could not get the link',
   // Share dialog
   'share.dialog_title': 'Share trip',

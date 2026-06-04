@@ -75,6 +75,7 @@ export default {
   'settings.approvers_desc': 'Quién vota «a favor»',
   'settings.members_loading': 'Los participantes aún no se han cargado.',
   'settings.leave_trip': 'Salir del viaje',
+  'settings.leave_btn': 'Salir',
   'settings.leave_desc': 'Dejarás de ver el viaje. El propietario podrá invitarte de nuevo.',
   'settings.leave_owner_blocked': 'Transfiere la propiedad a otro participante antes de salir.',
   'settings.delete_trip': 'Eliminar el viaje',

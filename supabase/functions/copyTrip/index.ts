@@ -74,6 +74,25 @@ Deno.serve(async (req) => {
 
     if (!sourceTrip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
 
+    // --- Sanitize details for the copy ---
+    // The copy is never Pro (is_pro_trip: false), so it must not inherit
+    // Pro-only addons. Mirrors src/lib/tripAddons.js PRO_ONLY_ADDONS — keep in
+    // sync if that set changes. Free addons (calendar_view, hotels_selection)
+    // are preserved.
+    const PRO_ONLY_ADDONS = ['budget', 'chat', 'telegram_assistant'];
+    const sourceDetails = (sourceTrip.details && typeof sourceTrip.details === 'object')
+      ? sourceTrip.details as Record<string, unknown>
+      : {};
+    const sourceAddons = (sourceDetails.addons && typeof sourceDetails.addons === 'object')
+      ? sourceDetails.addons as Record<string, unknown>
+      : null;
+    const copyDetails: Record<string, unknown> = { ...sourceDetails };
+    if (sourceAddons) {
+      const sanitizedAddons = { ...sourceAddons };
+      for (const key of PRO_ONLY_ADDONS) delete sanitizedAddons[key];
+      copyDetails.addons = sanitizedAddons;
+    }
+
     // --- Create new trip ---
     const { data: newTrip, error: tripErr } = await supabaseAdmin
       .from('trips')
@@ -84,7 +103,7 @@ Deno.serve(async (req) => {
         end_date: sourceTrip.end_date,
         cover_image_url: sourceTrip.cover_image_url,
         notes: sourceTrip.notes,
-        details: sourceTrip.details,
+        details: copyDetails,
         is_pro_trip: false, // copy is not automatically pro
         created_by: user.id,
       })

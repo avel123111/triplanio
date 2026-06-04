@@ -646,7 +646,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                 <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('settings.leave_trip')}</div>
                 <div className="muted" style={{ fontSize: 12 }}>{t('settings.leave_desc')}</div>
               </div>
-              <Btn variant="danger" onClick={leaveTrip}>{t('auth.logout')}</Btn>
+              <Btn variant="danger" onClick={leaveTrip}>{t('settings.leave_btn')}</Btn>
             </div>
           )}
           {myRole === 'owner' && (
@@ -656,7 +656,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                   <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('settings.leave_trip')}</div>
                   <div className="muted" style={{ fontSize: 12 }}>{t('settings.leave_owner_blocked')}</div>
                 </div>
-                <Btn variant="danger" disabled>{t('auth.logout')}</Btn>
+                <Btn variant="danger" disabled>{t('settings.leave_btn')}</Btn>
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>

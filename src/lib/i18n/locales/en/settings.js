@@ -75,6 +75,7 @@ export default {
   'settings.approvers_desc': 'Who votes "for"',
   'settings.members_loading': 'Participants are not loaded yet.',
   'settings.leave_trip': 'Leave the trip',
+  'settings.leave_btn': 'Leave',
   'settings.leave_desc': 'You will stop seeing the trip. The owner can invite you again.',
   'settings.leave_owner_blocked': 'Transfer ownership to another participant before leaving.',
   'settings.delete_trip': 'Delete the trip',

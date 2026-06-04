@@ -64,7 +64,9 @@ export default {
   'trip.delete_pro_confirm_title': 'Estás eliminando un viaje Pro',
   'trip.delete_pro_confirm_desc': 'Este es un viaje Pro: se perderá la mejora única que pagaste. ¿Seguro que quieres eliminarlo?',
   'trip.copy_confirm_title': '¿Duplicar este viaje?',
-  'trip.copy_confirm_desc': 'Se creará una copia completa con todas las ciudades, hoteles, actividades y traslados. Los miembros del viaje no se copian.',
+  'trip.copy_confirm_desc': 'Se creará una copia completa con todas las ciudades, hoteles, actividades y traslados. Los miembros del viaje y el estado Pro no se copian.',
+  'trip.copy_done': 'Viaje copiado',
+  'trip.copy_error': 'No se pudo copiar el viaje',
   'trip.link_error': 'No se pudo obtener el enlace',
   // Share dialog
   'share.dialog_title': 'Compartir viaje',
