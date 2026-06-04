@@ -11,8 +11,9 @@ import { formatTripRange, isTripInPast } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 import { isAddonEnabled } from '@/lib/tripAddons';
-import { useUnreadChatCount } from '@/lib/chat';
-import { LENS_ITEMS, MGMT_ITEMS, isLensVisible, EDIT_ITEM, canEditStructure } from '@/lib/tripMenu';
+import { isLensVisible } from '@/lib/tripMenu';
+import TripSidebar from '@/components/trips/TripSidebar';
+import ShareDialog from '@/components/trips/ShareDialog';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
@@ -312,92 +313,6 @@ function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
   );
 }
 
-// ─── TripSidebar ──────────────────────────────────────────────────────────────
-
-function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true, isOwner, myRole, onUpgrade, onProInfo }) {
-  const { t } = useI18n();
-  const navSb = useNavigate();
-  const lensItems = LENS_ITEMS.filter(item => isLensVisible(trip, item.id));
-  // Viewers can't open Settings or Members - hide those menu items entirely.
-  const mgmtItems = MGMT_ITEMS.filter(item =>
-    !(myRole === 'viewer' && (item.id === 'settings' || item.id === 'members')));
-  // Viewers can't mint a share token (ensureShareToken is owner/admin-only).
-  const canShare = myRole !== 'viewer';
-  // Only after Pro state is resolved - avoids the banner flashing on pro trips.
-  const showUpgrade = proResolved && !isPro; // isPro = trip-level Pro (owner sub OR pro_trip)
-  const chatUnread = useUnreadChatCount(tripId);
-  return (
-    <aside className="app-side">
-      <div className="app-side__group">
-        <div className="app-side__group-label">{t('trip.sections_title')}</div>
-        {lensItems.map(item => (
-          <button
-            key={item.id}
-            className={'app-side__item' + (lens === item.id ? ' active' : '')}
-            onClick={() => onNavigate(item.id)}
-          >
-            <Icon name={item.icon} size={15} />
-            {t(item.labelKey)}
-            {item.id === 'chat' && chatUnread > 0 && (
-              <span className="app-side__item-badge" style={{ marginLeft: 'auto', background: 'var(--warm)', color: '#fff', borderRadius: 999, fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
-                {chatUnread > 99 ? '99+' : chatUnread}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-      {(mgmtItems.length > 0 || canShare || canEditStructure(myRole)) && (
-        <div className="app-side__group">
-          <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
-          {canEditStructure(myRole) && (
-            <button
-              className="app-side__item"
-              onClick={() => navSb(`/trip/${tripId}/edit`)}
-            >
-              <Icon name={EDIT_ITEM.icon} size={15} />
-              {t(EDIT_ITEM.labelKey)}
-            </button>
-          )}
-          {mgmtItems.map(item => (
-            <button
-              key={item.id}
-              className={'app-side__item' + (lens === item.id ? ' active' : '')}
-              onClick={() => onNavigate(item.id)}
-            >
-              <Icon name={item.icon} size={15} />
-              {t(item.labelKey)}
-            </button>
-          ))}
-          {/* Share opens the same dialog as the header button. Hidden from
-              viewers - ensureShareToken is owner/admin-only (a viewer just
-              gets a 403), matching the header share gate (myRole !== 'viewer'). */}
-          {canShare && (
-            <button
-              className="app-side__item"
-              onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}
-            >
-              <Icon name="share" size={15} />
-              {t('trip.share')}
-            </button>
-          )}
-        </div>
-      )}
-      {showUpgrade && (
-        <div style={{ margin: '10px 6px 0', padding: 12, borderRadius: 10, background: 'var(--warm-tint)' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warm)', marginBottom: 4 }}>{t('trip_menu.free_trip_title')}</div>
-          <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginBottom: 8, lineHeight: 1.45 }}>
-            {t('trip.pro_locked_lenses')}
-          </div>
-          {isOwner ? (
-            <Btn variant="primary" size="sm" block icon="pro" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
-          ) : (
-            <Btn variant="ghost" size="sm" block icon="lock" onClick={onProInfo}>{t('trip.pro_by_owner')}</Btn>
-          )}
-        </div>
-      )}
-    </aside>
-  );
-}
 
 // ─── AddDayButton - shown in edit mode after each day ────────────────────────
 function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
@@ -1043,73 +958,6 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
 
 // ─── Share / More dialogs ─────────────────────────────────────────────────────
 
-function ShareDialog({ trip }) {
-  const { t } = useI18n();
-  const [shareUrl, setShareUrl] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!trip?.id) return;
-    let cancelled = false;
-    setLoading(true);
-    setError('');
-    supabase.functions.invoke('ensureShareToken', { body: { tripId: trip.id } })
-      .then(({ data, error: invokeErr }) => {
-        if (cancelled) return;
-        if (invokeErr) { console.error('ensureShareToken error:', invokeErr); setError(t('trip.link_error')); return; }
-        const token = data?.shareToken || data?.token;
-        if (token) {
-          setShareUrl(`${window.location.origin}/public/trip/${trip.id}?t=${token}`);
-        } else {
-          setError(t('trip.link_error'));
-        }
-      })
-      .catch(err => { if (!cancelled) { console.error('ensureShareToken error:', err); setError(t('trip.link_error')); } })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [trip?.id]);
-
-  function copyLink() {
-    if (!shareUrl) return;
-    navigator.clipboard?.writeText(shareUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
-      onClick={() => window.__closeModal?.()}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 420, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
-        <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>{t('share.dialog_title')}</h2>
-        <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>{t('trip.share_desc')}</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1, fontSize: 12.5 }} onClick={e => e.target.select()} />
-          {loading ? (
-            <Btn variant="primary" disabled>
-              <span className="spin-mini" style={{
-                display: 'inline-block', width: 14, height: 14,
-                border: '2px solid currentColor', borderRightColor: 'transparent',
-                borderRadius: '50%', animation: 'spin .7s linear infinite',
-                marginRight: 6, verticalAlign: -2,
-              }} />
-              {t('share.generating')}
-            </Btn>
-          ) : (
-            <Btn variant="primary" icon="check" onClick={copyLink} disabled={!shareUrl}>
-              {copied ? t('trip.link_copied') : t('share.copy')}
-            </Btn>
-          )}
-        </div>
-        {error && <div style={{ color: 'var(--danger, #dc2626)', fontSize: 12.5, marginTop: 10 }}>{error}</div>}
-        <div style={{ marginTop: 18, textAlign: 'right' }}>
-          <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function MoreMenuDialog({ trip, visits, canManage = false, canEditMode, onEditStructure, onEditMetadata }) {
   const { t } = useI18n();
@@ -1798,7 +1646,7 @@ export default function TripView() {
         nav={nav}
       />
       <div className="app-body">
-        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} />
+        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)} />
         <main style={{
           minWidth: 0,
           padding: shownLens === 'map' ? 0 : shownLens === 'chat' ? '28px 28px 28px' : '28px 28px 60px',

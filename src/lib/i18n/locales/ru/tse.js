@@ -33,6 +33,7 @@ export default {
   'tse.checkin': 'Заезд',
   'tse.checkout': 'Выезд',
   'tse.layover': 'пересадка',
+  'tse.transit_word': 'транзит',
   'tse.transit': 'транзит',
   'tse.lands_here': 'встанет сюда',
   'tse.same_city_no_transfer': 'тот же город - переезд не нужен',

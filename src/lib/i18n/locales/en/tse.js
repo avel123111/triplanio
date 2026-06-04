@@ -33,6 +33,7 @@ export default {
   'tse.checkin': 'Check-in',
   'tse.checkout': 'Check-out',
   'tse.layover': 'layover',
+  'tse.transit_word': 'transit',
   'tse.transit': 'transit',
   'tse.lands_here': 'lands here',
   'tse.same_city_no_transfer': 'same city - no transfer needed',

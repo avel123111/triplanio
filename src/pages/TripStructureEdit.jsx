@@ -21,7 +21,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
-import { LENS_ITEMS, MGMT_ITEMS, isLensVisible } from '@/lib/tripMenu';
+import TripSidebar from '@/components/trips/TripSidebar';
+import ShareDialog from '@/components/trips/ShareDialog';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
@@ -202,6 +203,19 @@ export default function TripStructureEdit() {
   }, [tripId]);
 
   const trip = shell?.trip;
+  // Trip-level Pro for the shared sidebar's "upgrade" card — owner-aware, exactly
+  // like TripView (a participant's own sub does NOT unlock someone else's trip).
+  const [ownerProResolved, setOwnerProResolved] = useState(false);
+  const [proResolved, setProResolved] = useState(false);
+  useEffect(() => {
+    if (!tripId) return;
+    let cancelled = false;
+    setProResolved(false);
+    supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } })
+      .then((res) => { if (!cancelled) { setOwnerProResolved(!!res.data?.isPro); setProResolved(true); } })
+      .catch(() => { if (!cancelled) { setOwnerProResolved(false); setProResolved(true); } });
+    return () => { cancelled = true; };
+  }, [tripId, trip?.is_pro_trip]);
   // Bookings are read LIVE from content. Exclude bookings of cities slated for
   // deletion (else they'd surface as orphans that block the very save that
   // cascade-deletes them).
@@ -447,6 +461,11 @@ export default function TripStructureEdit() {
   const endDate = seq[seq.length - 1]?.end_date;
   const totalNights = nightsBetween(startDate, endDate);
   const membersCount = content?.members?.length || 0;
+  const myMember = (content?.members || []).find((m) => m.user_id === user?.id);
+  const myRole = myMember?.role || (trip?.created_by === user?.id ? 'owner' : 'viewer');
+  const isOwner = myRole === 'owner';
+  const tripIsPro = !!trip?.is_pro_trip || ownerProResolved;
+  const tripProResolved = !!trip?.is_pro_trip || proResolved;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
   // A transfer row is flagged (orange "не совпадает") when it has ANY conflict -   // date mismatch (D2), non-adjacent (D5) or dangling (D6).
@@ -464,16 +483,9 @@ export default function TripStructureEdit() {
   // hotel/transfer have partner offers → show the PickPanel ("Развилка") first;
   // activities have none → straight to the form.
   const createBooking = (kind, node) => setLeftPanel(kind === 'hotel' ? { type: 'pick', kind, visit: node } : { type: 'create', kind, visit: node });
-  let stayNum = 0;
-
-  // assemble rows: each node + the connector to the next node
-  const rows = [];
-  ordered.forEach((n, idx) => {
-    rows.push({ kind: 'node', node: n, idx, stayNum: n.kind === 'transit' ? ++stayNum : null });
-    const next = ordered[idx + 1];
-    if (next) rows.push({ kind: 'leg', a: n, b: next, gap: idx + 1 }); // gap = insert position between a and b
-  });
-  const draggedName = dragIdx !== null ? (ordered[dragIdx]?.city_name || t('event.city')) : '';
+  // Stay numbering (only nights-cities are numbered).
+  const stayNumById = {};
+  { let sc = 0; ordered.forEach((n) => { if (n.kind === 'transit') stayNumById[n.id] = ++sc; }); }
   // Transfers whose from/to cities are NOT adjacent in the route (or dangle on a
   // removed city) — shown in the "out of plan" tray instead of a connector.
   const adjPairs = new Set();
@@ -571,7 +583,16 @@ export default function TripStructureEdit() {
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
     {headerEl}
     <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
-      <EditorSidebar tripId={tripId} trip={trip} />
+      <div style={{ flex: '0 0 220px', minWidth: 0, display: 'flex', minHeight: 0 }}>
+        <TripSidebar
+          tripId={tripId} trip={trip} isEditScreen
+          onNavigate={(id) => nav(`/trip/${tripId}?lens=${id}`)}
+          isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
+          onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
+          onProInfo={() => nav(`/pro?tripId=${tripId}`)}
+          onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)}
+        />
+      </div>
       <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, overflow: 'hidden' }}>
         {/* LEFT - page title + cities (scrolling list) */}
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
@@ -600,50 +621,59 @@ export default function TripStructureEdit() {
             <span className="te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</span>
           </div>
-          <div>
-            {rows.map((r, i) => {
-              const first = i === 0, last = i === rows.length - 1;
-              if (r.kind === 'leg') {
-                const t = transferFor(r.a.id, r.b.id);
-                const transfer = <GridTransfer key={`leg-${r.a.id}-${r.b.id}`} a={r.a} b={r.b} t={t} mismatch={transferMismatch(t)} first={first} last={last}
-                  onOpen={() => openTransferRow(r.a, r.b, t)} />;
-                // While dragging, every leg is a drop target. The hovered gap
-                // hides its transfer plate and shows a city-sized placeholder
-                // marking exactly where the city lands.
-                if (dragIdx === null) return transfer;
-                const activeGap = overGap === r.gap;
-                return (
-                  <div key={`gap-${r.a.id}-${r.b.id}`}
-                    onDragOver={(e) => { e.preventDefault(); setOverGap(r.gap); }}
-                    onDrop={(e) => { e.preventDefault(); dropAt(r.gap); }}>
-                    {activeGap ? <DropSlot label={draggedName} /> : transfer}
-                  </div>
-                );
+          <div className="te-table">
+            {ordered.map((n, idx) => {
+              const next = ordered[idx + 1];
+              const tr = next ? transferFor(n.id, next.id) : null;
+              const isCity = !isAnchor(n);
+              // Drop target: hovering this row inserts the dragged city ABOVE it.
+              const dropTarget = dragIdx !== null && dragIdx !== idx;
+              const dropHere = dropTarget && overGap === idx;
+              let body;
+              if (isAnchor(n)) {
+                body = <GridEndpoint node={n} onRemove={() => removeEndpoint(n.id)} />;
+              } else if (n.kind === 'waypoint') {
+                const aa = actsFor(n.id);
+                body = <GridNode seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
+                  onOpenCity={() => openCity(n.id)}
+                  drag={{ dragging: dragIdx === idx, onDragStart: () => setDragIdx(idx),
+                    onDragOver: () => { if (dragIdx !== null && dragIdx !== idx) setOverGap(idx); },
+                    onDrop: () => { if (dragIdx !== idx) dropAt(idx); else endDrag(); }, onDragEnd: endDrag }} />;
+              } else {
+                const h = hotelFor(n.id); const aa = actsFor(n.id);
+                body = <GridNode seg={n} stayNum={stayNumById[n.id]} cityConf={cityConflicts(n.id)}
+                  hotel={h} hotelWarn={hotelWarnId(h?.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
+                  onOpenCity={() => openCity(n.id)}
+                  onHotel={() => (h ? openEvent('hotel', h.id) : createBooking('hotel', n))}
+                  onAct={() => (aa.length ? openCity(n.id) : createBooking('activity', n))}
+                  onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
+                  drag={{ dragging: dragIdx === idx, onDragStart: () => setDragIdx(idx),
+                    onDragOver: () => { if (dragIdx !== null && dragIdx !== idx) setOverGap(idx); },
+                    onDrop: () => { if (dragIdx !== idx) dropAt(idx); else endDrag(); }, onDragEnd: endDrag }} />;
               }
-              const n = r.node;
-              if (isAnchor(n)) return <GridEndpoint key={n.id} node={n} first={first} last={last} onRemove={() => removeEndpoint(n.id)} />;
-              const h = hotelFor(n.id); const aa = actsFor(n.id);
-              return <GridNode key={n.id} seg={n} stayNum={r.stayNum}
-                cityConf={cityConflicts(n.id)}
-                hotel={h} hotelWarn={hotelWarnId(h?.id)}
-                acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
-                onOpenCity={() => openCity(n.id)}
-                onHotel={() => (h ? openEvent('hotel', h.id) : createBooking('hotel', n))}
-                onAct={() => (aa.length ? openCity(n.id) : createBooking('activity', n))}
-                onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
-                drag={{ dragging: dragIdx === r.idx,
-                  onDragStart: () => setDragIdx(r.idx),
-                  onDragOver: () => { if (dragIdx !== null && dragIdx !== r.idx) setOverGap(r.idx); }, // hovering a city = insert in the gap above it
-                  onDrop: () => { if (dragIdx !== r.idx) dropAt(r.idx); else endDrag(); },
-                  onDragEnd: endDrag }} />;
+              return (
+                <div className="te-seamwrap" key={n.id}
+                  onDragOver={dropTarget ? (e) => { e.preventDefault(); setOverGap(idx); } : undefined}
+                  onDrop={dropTarget ? (e) => { e.preventDefault(); dropAt(idx); } : undefined}>
+                  {dropHere && <div className="te-dropspacer" />}
+                  {body}
+                  {/* Transfer chip straddles the seam to the next city. Hidden while
+                      dragging so the open slot reads cleanly. */}
+                  {next && dragIdx === null && (
+                    <SeamTransfer a={n} b={next} t={tr} mismatch={transferMismatch(tr)} onOpen={() => openTransferRow(n, next, tr)} />
+                  )}
+                </div>
+              );
             })}
           </div>
 
           {dragIdx !== null && ordered[ordered.length - 1]?.kind !== 'end' && (
             <div onDragOver={(e) => { e.preventDefault(); setOverGap(ordered.length); }}
               onDrop={(e) => { e.preventDefault(); dropAt(ordered.length); }}
-              style={{ height: 38, marginTop: 8, borderRadius: 10, border: '2px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line)'), background: overGap === ordered.length ? 'var(--brand-soft)' : 'transparent', display: 'grid', placeItems: 'center', color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', fontSize: 12, fontWeight: 600 }}>
-              {t('tse.move_to_end')}
+              style={{ marginTop: 8 }}>
+              <div className="te-dropspacer" style={{ height: 40, display: 'grid', placeItems: 'center', color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', fontSize: 12, fontWeight: 600, borderTopColor: overGap === ordered.length ? 'var(--brand)' : 'var(--line)' }}>
+                {t('tse.move_to_end')}
+              </div>
             </div>
           )}
           <AddPointButton onOpen={() => setLeftPanel({ type: 'cityadd' })} />
@@ -736,50 +766,7 @@ export default function TripStructureEdit() {
   );
 }
 
-// Narrow icon-only trip menu for the editor screen; expands on hover. Lens
-// items navigate to /trip/:id?lens=…; "edit" is the current screen (active).
-function EditorSidebar({ tripId, trip }) {
-  const t = useT();
-  const nav = useNavigate();
-  const lensItems = LENS_ITEMS.filter((i) => isLensVisible(trip, i.id));
-  const go = (lensId) => nav(`/trip/${tripId}?lens=${lensId}`);
-  return (
-    <aside className="te-rail">
-      <div className="te-rail__inner scrollbar-thin">
-        <div className="te-rail__group-label">{t('trip.sections_title')}</div>
-        {lensItems.map((it) => (
-          <button key={it.id} className="te-rail__item" onClick={() => go(it.id)} title={t(it.labelKey)}>
-            <span className="te-rail__icon"><Icon name={it.icon} size={16} /></span>
-            <span className="lbl">{t(it.labelKey)}</span>
-          </button>
-        ))}
-        <div className="te-rail__group-label">{t('trip_menu.section_manage')}</div>
-        <button className="te-rail__item active" title={t('trip.edit_structure')}>
-          <span className="te-rail__icon"><Icon name="edit" size={16} /></span>
-          <span className="lbl">{t('trip.edit_structure')}</span>
-        </button>
-        {MGMT_ITEMS.map((it) => (
-          <button key={it.id} className="te-rail__item" onClick={() => go(it.id)} title={t(it.labelKey)}>
-            <span className="te-rail__icon"><Icon name={it.icon} size={16} /></span>
-            <span className="lbl">{t(it.labelKey)}</span>
-          </button>
-        ))}
-      </div>
-    </aside>
-  );
-}
 
-// ---- grouped-table row borders (settings-card look) ----
-function rowStyle(first, last) {
-  return {
-    background: 'var(--surface)',
-    borderLeft: '1px solid var(--line)', borderRight: '1px solid var(--line)',
-    borderTop: first ? '1px solid var(--line)' : 'none',
-    borderBottom: '1px solid ' + (last ? 'var(--line)' : 'var(--line-2)'),
-    borderTopLeftRadius: first ? 14 : 0, borderTopRightRadius: first ? 14 : 0,
-    borderBottomLeftRadius: last ? 14 : 0, borderBottomRightRadius: last ? 14 : 0,
-  };
-}
 function Conf({ n }) {
   const t = useT();
   if (!n) return null;
@@ -831,24 +818,18 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
   const stop = (e) => e.stopPropagation();
   if (seg.kind === 'waypoint') {
     return (
-      <div className="te-row te-row--wp" {...dragAttrs} onClick={onOpenCity} style={{ opacity: drag.dragging ? 0.4 : 1, cursor: 'pointer' }}>
+      <div className="te-wp" {...dragAttrs} onClick={onOpenCity} style={{ opacity: drag.dragging ? 0.4 : 1 }}>
         <span className="te-grip" onClick={stop}><Icon name="drag" size={14} /></span>
-        <span className="te-row__num te-row__num--wp"><Icon name="arrowSwap" size={11} /></span>
-        <div style={{ minWidth: 0 }}>
+        <span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span className="te-cityname" style={{ fontSize: 14 }}>{seg.city_name}</span>
-            <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ev-transfer)', textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 6px', borderRadius: 999, background: 'var(--ev-transfer-soft)', whiteSpace: 'nowrap' }}>{t('tse.layover')}</span>
+            <span style={{ fontSize: 13.5, fontWeight: 600 }}>{seg.city_name}</span>
+            <span className="te-wptag">{t('tse.layover')}</span>
             <Conf n={cityConf} />
           </div>
-          <div className="num muted" style={{ fontSize: 11.5, marginTop: 2 }}>{fmtD(seg.start_date, lang)}</div>
+          <div className="num muted" style={{ fontSize: 11.5, marginTop: 2 }}>{t('tse.transit_word')} · {fmtD(seg.start_date, lang)}</div>
         </div>
-        <span className="te-stepper" onClick={stop}>
-          <button className="te-step" onClick={onNightsMinus} disabled><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
-          <span className="num te-nights">0<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
-          <button className="te-step" onClick={onNightsPlus} title={t('tse.col_destination')}><Icon name="plus" size={10} /></button>
-        </span>
-        <div className="te-cell te-cell--hotel" />
-        <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
+        {acts.length > 0 && <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>}
       </div>
     );
   }
@@ -875,65 +856,61 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
   );
 }
 
-// Empty city-sized slot shown at the hovered gap during drag - replaces the
-// transfer plate there so it reads as "the dragged city drops in HERE".
-function DropSlot({ label }) {
-  const t = useT();
-  return (
-    <div style={{ height: 56, margin: '4px 0', borderRadius: 11, border: '2px dashed var(--brand)', background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', gap: 9, padding: '0 14px', color: 'var(--brand)', pointerEvents: 'none' }}>
-      <span style={{ width: 24, height: 24, borderRadius: 6, border: '2px dashed var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="plus" size={13} /></span>
-      <span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span>
-      <span style={{ fontSize: 11.5, opacity: 0.75, marginLeft: 'auto' }}>{t('tse.lands_here')}</span>
-    </div>
-  );
-}
-
-// transfer connector between two cities (design mockup Connector). ALWAYS shown
-// between n and n+1: a pill when the transfer exists, a "+ переезд" ghost when not.
-function GridTransfer({ a, b, t, mismatch, onOpen }) {
+// Transfer chip that STRADDLES the seam between two city rows (sits on the
+// separator line, its surface bg covering it — it doesn't split the rows). A pill
+// when the transfer exists, a dashed "+ переезд" when not. Click → transport panel
+// (existing) or the "Развилка" pick panel (new). Same-city legs show nothing.
+function SeamTransfer({ a, b, t, mismatch, onOpen }) {
   const tx = useT();
   const { lang } = useI18n();
   const sameCity = (a.external_city_id && b.external_city_id && a.external_city_id === b.external_city_id) || (a.city_name && a.city_name === b.city_name);
-  if (sameCity && !t) {
-    return <div className="te-conn"><span className="te-conn__rail" /><span className="muted" style={{ fontSize: 11 }}>{tx('tse.same_city_no_transfer')}</span></div>;
-  }
+  if (sameCity && !t) return null;
   if (!t) {
     return (
-      <div className="te-conn">
-        <span className="te-conn__rail" />
-        <button className="te-conn__pill te-conn__pill--add" onClick={onOpen}>
-          <Icon name="plus" size={12} /> {tx('tse.add_transfer')}
+      <div className="te-seam">
+        <button className="te-seam__pill te-seam__pill--add" onClick={onOpen} title={`${a.city_name} → ${b.city_name}`}>
+          <Icon name="plus" size={11} /> {tx('tse.add_transfer')}
         </button>
       </div>
     );
   }
   const meta = TKIND[t.transport_type] || TKIND.train;
   return (
-    <div className="te-conn">
-      <span className="te-conn__rail" />
-      <button className={'te-conn__pill' + (mismatch ? ' is-warn' : '')} onClick={onOpen}>
-        <Icon name={mismatch ? 'warning' : meta.icon} size={13} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
-        <span style={{ fontWeight: 600, fontSize: 12, color: mismatch ? 'var(--warning)' : 'var(--ink-2)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
-        <span className="num muted" style={{ fontSize: 11 }}>· {fmtD(t.start_datetime, lang)}</span>
+    <div className="te-seam">
+      <button className={'te-seam__pill' + (mismatch ? ' is-warn' : '')} onClick={onOpen} title={`${a.city_name} → ${b.city_name}`}>
+        <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
+        <span style={{ fontWeight: 600, fontSize: 11.5, color: mismatch ? 'var(--warning)' : 'var(--ink-2)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+        <span className="num muted" style={{ fontSize: 10.5 }}>· {fmtD(t.start_datetime, lang)}</span>
         {mismatch && <span className="te-warndot" />}
       </button>
     </div>
   );
 }
 
-function GridEndpoint({ node, first, last, onRemove }) {
+// Start / Finish anchor row — flag (start) / check (finish) node, label + city,
+// departure/arrival date below. Flat flex row in the itinerary table.
+function GridEndpoint({ node, onRemove }) {
   const t = useT();
+  const { lang } = useI18n();
   const isStart = node.kind === 'start';
-  const accent = isStart ? 'var(--success)' : 'var(--warm, var(--brand))';
+  const accent = isStart ? 'var(--brand)' : 'var(--ink-2)';
+  const soft = isStart ? 'var(--brand-soft)' : 'var(--wash)';
   const m = metaOf(node);
-  return <div
-    style={{ ...rowStyle(first, last), display: 'flex', alignItems: 'center', gap: 10, padding: '11px' }}>
-    <span style={{ width: 24, height: 24, borderRadius: 6, background: 'color-mix(in srgb, ' + accent + ' 14%, transparent)', color: accent, display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="flag" size={13} /></span>
-    <span style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '.09em', fontWeight: 700, color: accent, flexShrink: 0 }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
-    <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>{m.flag} {node.city_name}</span>
-    <span className="muted" style={{ fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {isStart ? t('tse.arrival_word') : t('tse.departure_word')}</span>
-    <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', marginLeft: 'auto', flexShrink: 0 }} onClick={onRemove} title={t('tse.remove')}><Icon name="close" size={13} /></button>
-  </div>;
+  return (
+    <div className="te-end">
+      <span className="te-row__node" style={{ background: soft, color: accent, border: '1px solid ' + (isStart ? 'var(--brand-soft-12, var(--line))' : 'var(--line)') }}><Icon name={isStart ? 'flag' : 'check'} size={12} /></span>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{m.flag} {node.city_name}</span>
+        </div>
+        <div className="num muted" style={{ fontSize: 11.5, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(node.start_date || node.end_date, lang)}
+        </div>
+      </div>
+      <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', flexShrink: 0 }} onClick={onRemove} title={t('tse.remove')}><Icon name="close" size={13} /></button>
+    </div>
+  );
 }
 
 function AddPointButton({ onOpen }) {

@@ -1082,6 +1082,30 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-conn__pill--add { border-style: dashed; color: var(--muted); font-size: 12px; font-weight: 600; gap: 4px; }
     .te-conn__pill--add:hover { color: var(--ev-transfer); border-color: var(--ev-transfer); }
 
+    /* ---- redesigned itinerary: one bordered card, separators between rows,
+       transfers as a chip straddling the seam between two cities ---- */
+    .te-table { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-soft); overflow: hidden; }
+    .te-table .te-row { border-radius: 0; border-color: transparent; }
+    .te-seamwrap { position: relative; }
+    .te-seamwrap:not(:first-child) > .te-row,
+    .te-seamwrap:not(:first-child) > .te-wp,
+    .te-seamwrap:not(:first-child) > .te-end { border-top: 1px solid var(--line-2); }
+    .te-end { display: flex; align-items: center; gap: 10px; padding: 13px 12px; background: color-mix(in srgb, var(--wash) 55%, transparent); }
+    .te-wp { display: flex; align-items: center; gap: 10px; padding: 13px 12px; cursor: pointer; transition: background .12s; }
+    .te-wp:hover { background: var(--wash); }
+    .te-row__node { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
+    .te-endlabel { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; }
+    .te-wptag { font-size: 10px; font-weight: 700; color: var(--ev-transfer); text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border-radius: 999px; background: var(--ev-transfer-soft); white-space: nowrap; }
+    /* transfer chip sitting ON the separator line (its surface bg covers the line) */
+    .te-seam { position: absolute; left: 26px; bottom: 0; transform: translateY(50%); z-index: 4; }
+    .te-seam__pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-soft); cursor: pointer; font-family: var(--font-body); white-space: nowrap; }
+    .te-seam__pill:hover { border-color: var(--ev-transfer); box-shadow: var(--shadow-card, var(--shadow-soft)); }
+    .te-seam__pill.is-warn { border-color: var(--warning); }
+    .te-seam__pill--add { border-style: dashed; color: var(--muted); font-size: 11.5px; font-weight: 600; gap: 4px; box-shadow: none; }
+    .te-seam__pill--add:hover { color: var(--ev-transfer); border-color: var(--ev-transfer); background: var(--surface); }
+    /* drag-and-drop: open a row-sized gap (no filled placeholder) where the city lands */
+    .te-dropspacer { height: 54px; border-top: 2px solid var(--brand); background: transparent; }
+
     .te-adddest { display: grid; grid-template-columns: 16px 24px 1fr; column-gap: 10px; align-items: center; width: 100%; margin-top: 4px; padding: 9px 12px; border-radius: 13px; border: 1px solid transparent; background: transparent; cursor: pointer; transition: background .12s; }
     .te-adddest:hover { background: var(--wash); }
     .te-adddest__num { grid-column: 2; width: 22px; height: 22px; border-radius: 50%; border: 1.5px dashed var(--brand); color: var(--brand); display: grid; place-items: center; }

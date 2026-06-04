@@ -109,7 +109,7 @@ function makeSegment(defCur = 'EUR') {
     id: 'seg-' + (__segUid++), transport_type: 'plane',
     from_address: '', to_address: '', startLocal: '', endLocal: '',
     carrier: '', flight_number: '', booking_reference: '',
-    price: '', currency: defCur, toCity: null,
+    price: '', currency: defCur, toCity: null, day_change: false,
   };
 }
 
@@ -833,6 +833,8 @@ export default function EventEditDialog({
         to_address: s.to_address || '',
         startLocal: s.departure_date ? combine(s.departure_date, s.departure_time) : '',
         endLocal: s.arrival_date ? combine(s.arrival_date, s.arrival_time) : '',
+        // Auto-flag overnight per segment: AI gave an arrival date later than departure.
+        day_change: !!(s.departure_date && s.arrival_date && s.arrival_date > s.departure_date),
         carrier: s.carrier || '',
         flight_number: s.flight_number || '',
         booking_reference: s.booking_reference || '',
@@ -907,6 +909,9 @@ export default function EventEditDialog({
     if (sDep) { upd.startLocal = sDep; filled.add('startLocal'); }
     const sArr = combine(first.arrival_date, first.arrival_time);
     if (sArr) { upd.endLocal = sArr; filled.add('endLocal'); }
+    // Overnight: AI parsed an arrival date later than the departure date → flag it
+    // explicitly at parse time (the form effect is a backup for manual date entry).
+    if (first.departure_date && first.arrival_date && first.arrival_date > first.departure_date) upd.day_change = true;
     if (docs.length) { upd.documents = [...(upd.documents || []), ...docs].slice(0, 50); filled.add('documents'); }
     if (first.transport_type && TRANSPORT_KINDS.some((k) => k.id === first.transport_type)) {
       upd.transport_type = first.transport_type;
@@ -1267,9 +1272,8 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
     from_city_visit_id: nodeIds[i],
     to_city_visit_id: nodeIds[i + 1],
     transport_type: s.transport_type,
-    // Per-segment overnight: this leg crosses into the next day if its arrival
-    // calendar day is after its departure day.
-    day_change: !!((s.endLocal || '').slice(0, 10) && (s.endLocal || '').slice(0, 10) > (s.startLocal || '').slice(0, 10)),
+    // Per-segment overnight flag (auto-raised from this segment's dates, toggle in the editor).
+    day_change: !!s.day_change,
     start_datetime: localToUtc(s.startLocal, 'UTC'),
     end_datetime: localToUtc(s.endLocal, 'UTC'),
     carrier: s.carrier || undefined,
@@ -1884,7 +1888,17 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
   const patchSeg = (i, partial) => {
     const id = segs[i]?.id;
     Object.keys(partial).forEach((k) => { if (SEG_TOKEN[k]) onTouch?.(`seg${i}.${SEG_TOKEN[k]}`); });
-    setForm((prev) => ({ ...prev, segments: prev.segments.map((s, idx) => (idx === i ? { ...s, ...partial } : s)) }));
+    setForm((prev) => ({ ...prev, segments: prev.segments.map((s, idx) => {
+      if (idx !== i) return s;
+      const merged = { ...s, ...partial };
+      // Auto-mark this segment overnight when its arrival day moves past its
+      // departure day (raise-only — the per-segment toggle can switch it back off).
+      if ('startLocal' in partial || 'endLocal' in partial) {
+        const sd = (merged.startLocal || '').slice(0, 10), ed = (merged.endLocal || '').slice(0, 10);
+        if (sd && ed && ed > sd) merged.day_change = true;
+      }
+      return merged;
+    }) }));
     // Editing a field clears its AI highlight (mirrors single-leg setField).
     if (id && setAiSegFields) {
       setAiSegFields((prev) => {
@@ -2002,6 +2016,15 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                   <div><Label>{t('event.price')}</Label><AiField active={aiOn(seg, 'price')}><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></AiField></div>
                   <div><Label>{t('event.currency')}</Label><CurrencyCombobox value={seg.currency} onChange={(v) => patchSeg(i, { currency: v })} /></div>
                 </div>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', marginTop: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
+                  <Checkbox checked={!!seg.day_change} onCheckedChange={(v) => patchSeg(i, { day_change: !!v })} />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
+                      <Moon className="w-4 h-4" /> {t('event.overnight_label')}
+                    </span>
+                    <span style={{ display: 'block', fontSize: 11.5, color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+                  </span>
+                </label>
               </div>
             </div>
 
