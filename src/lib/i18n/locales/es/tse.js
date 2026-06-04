@@ -45,6 +45,8 @@ export default {
   'tse.unsaved_desc': 'Tienes cambios sin guardar en la estructura del viaje. ¿Guardarlos antes de salir?',
   'tse.unsaved_stay': 'Seguir editando',
   'tse.unsaved_leave': 'Salir sin guardar',
+  'tse.map_globe': 'Globo',
+  'tse.map_flat': 'Mapa plano',
   'tse.dep_short': 'Sal',
   'tse.arr_short': 'Lleg',
   'tse.arrival_word': 'Llegada',

@@ -45,6 +45,8 @@ export default {
   'tse.unsaved_desc': 'You have unsaved changes to the trip structure. Save them before leaving?',
   'tse.unsaved_stay': 'Keep editing',
   'tse.unsaved_leave': 'Leave without saving',
+  'tse.map_globe': 'Globe view',
+  'tse.map_flat': 'Flat map',
   'tse.dep_short': 'Dep',
   'tse.arr_short': 'Arr',
   'tse.arrival_word': 'Arrival',

@@ -45,6 +45,8 @@ export default {
   'tse.unsaved_desc': 'У вас есть несохранённые изменения структуры. Сохранить перед выходом?',
   'tse.unsaved_stay': 'Остаться',
   'tse.unsaved_leave': 'Выйти без сохранения',
+  'tse.map_globe': 'Глобус',
+  'tse.map_flat': 'Плоская карта',
   'tse.dep_short': 'Отпр',
   'tse.arr_short': 'Приб',
   'tse.arrival_word': 'Прилёт',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
@@ -20,8 +20,17 @@ export default function TripSidebar({
 }) {
   const { t } = useI18n();
   const navSb = useNavigate();
-  // Collapsed rail: open on arrival, stay open until the mouse actually leaves.
+  // Collapsed rail: open on arrival, stay open until the mouse leaves. But if the
+  // user arrived NOT via the menu (mouse isn't over it), collapse it right away.
   const [railOpen, setRailOpen] = useState(true);
+  const asideRef = useRef(null);
+  useEffect(() => {
+    if (!collapsed) return;
+    const id = requestAnimationFrame(() => {
+      if (asideRef.current && !asideRef.current.matches(':hover')) setRailOpen(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [collapsed]);
   const lensItems = LENS_ITEMS.filter((item) => isLensVisible(trip, item.id));
   // Viewers can't open Settings or Members — hide those entirely.
   const mgmtItems = MGMT_ITEMS.filter((item) =>
@@ -32,6 +41,7 @@ export default function TripSidebar({
   const chatUnread = useUnreadChatCount(tripId);
   return (
     <aside
+      ref={asideRef}
       className={'app-side' + (collapsed ? ' app-side--rail' : '') + (collapsed && railOpen ? ' is-open' : '')}
       onMouseEnter={collapsed ? () => setRailOpen(true) : undefined}
       onMouseLeave={collapsed ? () => setRailOpen(false) : undefined}

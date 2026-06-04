@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Icon } from '@/design/icons';
+import { useT } from '@/lib/i18n/I18nContext';
 import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints, lineFeature, setLineLayer } from '@/lib/mapbox';
 import { countryFlag } from '@/lib/geo';
 import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
@@ -39,13 +41,17 @@ export default function MapView({
   // Falsy/empty → no override (the whole-route auto-fit stays in charge); when
   // it clears after a focus, the camera eases back to the full route.
   focus = null,
+  // Show a flat-map ↔ globe projection toggle button on the map.
+  projectionToggle = false,
   children,
 }) {
+  const t = useT();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const fittedSigRef = useRef('');
   const [ready, setReady] = useState(false);
+  const [projection, setProjection] = useState('mercator');
   const [error, setError] = useState(MAPBOX_TOKEN ? null : 'No Mapbox token');
 
   // Keep the latest onCityClick without forcing the draw effect to re-run.
@@ -101,6 +107,11 @@ export default function MapView({
   useEffect(() => {
     if (mapRef.current && ready) applyBasemapConfig(mapRef.current, colorScheme);
   }, [colorScheme, ready]);
+
+  // --- Projection (flat mercator ↔ globe), applied in place ---
+  useEffect(() => {
+    if (mapRef.current && ready) { try { mapRef.current.setProjection(projection); } catch { /* ignore */ } }
+  }, [projection, ready]);
 
   // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
@@ -204,7 +215,9 @@ export default function MapView({
     // Fit once per distinct set of visits - animate the camera so the map
     // glides out/in to the route as it changes (e.g. while editing structure).
     // First fit (after load / style reload) is instant; later changes ease.
-    if (ordered.length > 0 && fittedSigRef.current !== visitsSignature) {
+    // BUT don't override an active parent focus (e.g. landing straight on a city/
+    // transfer via a create-intent) — the focus effect owns the camera then.
+    if (ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
       fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: fittedSigRef.current !== '' });
       fittedSigRef.current = visitsSignature;
     }
@@ -219,6 +232,17 @@ export default function MapView({
         <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 13, color: 'var(--muted)', pointerEvents: 'none' }}>
           {error ? `Map error: ${error}` : <div style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
         </div>
+      )}
+      {projectionToggle && ready && (
+        <button
+          type="button"
+          onClick={() => setProjection((p) => (p === 'globe' ? 'mercator' : 'globe'))}
+          title={projection === 'globe' ? t('tse.map_flat') : t('tse.map_globe')}
+          aria-label={projection === 'globe' ? t('tse.map_flat') : t('tse.map_globe')}
+          style={{ position: 'absolute', top: 12, right: 12, zIndex: 6, width: 36, height: 36, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }}
+        >
+          <Icon name={projection === 'globe' ? 'map' : 'globe'} size={17} />
+        </button>
       )}
       {children}
     </div>

@@ -177,8 +177,6 @@ export default function TripStructureEdit() {
   };
   // Guarded navigation away: prompt to save first if there are unsaved changes.
   const guardedLeave = (to) => { if (dirty) setPendingLeave(typeof to === 'string' ? to : `/trip/${tripId}`); else leaveNow(to); };
-  // Explicit "cancel editing" button = intentional discard (no prompt).
-  const cancelEdit = () => leaveNow(`/trip/${tripId}`);
   const baseRef = React.useRef(null); // JSON of the originally-loaded draft (for Reset)
   // Every structural mutation funnels through editDraft → snapshot the pre-edit
   // draft onto the undo stack (cap 50), apply, mark dirty. `undo` pops one step.
@@ -503,7 +501,6 @@ export default function TripStructureEdit() {
           {issues.length > 0 && <Badge variant="warm" icon="warning">{errors ? t('tse.errors_short', { n: errors }) : t('tse.warns_short', { n: warns })}</Badge>}
           <Btn variant="ghost" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
           <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
-          <Btn variant="ghost" size="sm" icon="close" onClick={cancelEdit} title={t('tse.cancel_title')}>{t('tse.cancel')}</Btn>
           <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={() => onSave()}>{saving ? t('tse.saving') : t('common.save')}</Btn>
         </div>
       )}
@@ -819,7 +816,7 @@ export default function TripStructureEdit() {
         {/* RIGHT - full-height map; warnings live in a collapsible overlay widget */}
         <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--surface)' }}>
           <div className="ts-map" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-            <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd
+            <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd projectionToggle
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
