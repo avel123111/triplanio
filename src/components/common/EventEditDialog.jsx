@@ -416,6 +416,10 @@ export default function EventEditDialog({
   entity = null,
   defaultStart = null,
   defaultCurrency = 'EUR',
+  // Shell variant. 'dialog' (default) = the shadcn Dialog overlay used app-wide.
+  // 'panel' = render the SAME content inline (no overlay) for the trip-editor
+  // left panel. Behaviour/state are identical; only the outer wrapper differs.
+  variant = 'dialog',
 }) {
   const { t } = useI18nFormat();
   const { lang } = useI18n();
@@ -894,10 +898,8 @@ export default function EventEditDialog({
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
-  return (
+  const inner = (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="p-0 max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden gap-0 w-[calc(100%-1rem)] sm:w-full" style={{ background: 'var(--surface)' }}>
           {/* 4px colour stripe */}
           <div style={{ height: 4, background: meta.color }} />
 
@@ -1069,8 +1071,22 @@ export default function EventEditDialog({
               </>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+    </>
+  );
+
+  return (
+    <>
+      {variant === 'panel' ? (
+        <div className="te-edit-panel-body" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%', overflowY: 'auto', background: 'var(--surface)' }}>
+          {inner}
+        </div>
+      ) : (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="p-0 max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden gap-0 w-[calc(100%-1rem)] sm:w-full" style={{ background: 'var(--surface)' }}>
+            {inner}
+          </DialogContent>
+        </Dialog>
+      )}
 
       <TripProInfoDialog
         open={tripProInfoOpen}
