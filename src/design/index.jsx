@@ -578,7 +578,7 @@ function TransferCardHub({ e, onClick }) {
       border: "1px solid var(--line)", borderLeft: "3px solid var(--ev-transfer)",
       borderRadius: 12, cursor: "pointer", textAlign: "left"
     }}
-    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
+    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "var(--line-hover)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
     onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
       <div style={{ width: 36, height: 36, borderRadius: 9, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
         <Icon name={meta.icon} size={17} />
@@ -620,7 +620,7 @@ function TransferCardStrip({ e, onClick }) {
       border: "1px solid var(--line)", borderLeft: "3px solid var(--ev-transfer)",
       borderRadius: 12, cursor: "pointer", textAlign: "left"
     }}
-    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
+    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "var(--line-hover)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
     onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
       <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: "var(--ink)" }}>{e.time || "-"}</div>
       <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
@@ -654,7 +654,7 @@ function TransferCardStacked({ e, onClick }) {
       border: "1px solid var(--line)", borderLeft: "3px solid var(--ev-transfer)",
       borderRadius: 12, cursor: "pointer", textAlign: "left"
     }}
-    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
+    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "var(--line-hover)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
     onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
       <div style={{ width: 44, height: 44, borderRadius: 11, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
         <Icon name={meta.icon} size={20} />
@@ -804,7 +804,7 @@ function EventRowV11({ e, onClick }) {
       background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14,
       overflow: "hidden", cursor: "pointer", textAlign: "left",
     }}
-      onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
+      onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "var(--line-hover)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
       onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
       <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, padding: "13px 16px" }}>
@@ -837,7 +837,7 @@ function TransferRowV11({ e, onClick }) {
       background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14,
       overflow: "hidden", cursor: "pointer", textAlign: "left",
     }}
-      onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "#dbe1ec"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
+      onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "var(--line-hover)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
       onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
       <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
       {/* Card height is fixed on the BUTTON (minHeight:120) - taller than mobile, never

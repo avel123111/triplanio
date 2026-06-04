@@ -279,7 +279,7 @@ function DocCard({ doc, tripId, scope }) {
         cursor: 'pointer', textAlign: 'left',
         transition: 'border-color .15s, transform .1s',
       }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = '#dbe1ec'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-hover)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.transform = ''; }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{

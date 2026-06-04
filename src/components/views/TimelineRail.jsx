@@ -23,7 +23,7 @@ export default function TimelineRail() {
       className="absolute left-[19px] top-5 bottom-5 w-0.5"
       style={{
         backgroundImage:
-          'linear-gradient(to bottom, hsl(var(--muted-foreground) / 0.55) 50%, transparent 50%)',
+          'linear-gradient(to bottom, color-mix(in srgb, var(--muted-2) 60%, transparent) 50%, transparent 50%)',
         backgroundSize: '2px 8px',
         backgroundRepeat: 'repeat-y',
       }}

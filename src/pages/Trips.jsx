@@ -99,7 +99,7 @@ const TripCard = ({ trip, onClick }) => {
   <button
     onClick={onClick}
     style={{ border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 'var(--radius-card)', padding: 14, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 12, cursor: 'pointer', transition: 'transform .15s, box-shadow .15s, border-color .15s' }}
-    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-card)'; e.currentTarget.style.borderColor = '#dbe1ec'; }}
+    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-card)'; e.currentTarget.style.borderColor = 'var(--line-hover)'; }}
     onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; e.currentTarget.style.borderColor = 'var(--line)'; }}
   >
     <CollectionTripCover trip={trip} />
@@ -125,7 +125,7 @@ const TripRow = ({ trip, onClick }) => {
   const { t } = useI18n();
   return (
   <button onClick={onClick} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 180px 140px 100px 30px', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, cursor: 'pointer', textAlign: 'left', fontSize: 13.5 }}
-    onMouseEnter={e => e.currentTarget.style.borderColor = '#dbe1ec'}
+    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--line-hover)'}
     onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--line)'}>
     <div style={{ width: 44, height: 44, borderRadius: 10, background: `hsl(${trip.coverHue ?? 210}, 50%, 60%)`, position: 'relative' }}>
       {trip.role !== 'owner' && (

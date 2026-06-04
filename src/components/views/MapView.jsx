@@ -7,7 +7,7 @@ import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from
 import { sortVisits } from '@/lib/validation';
 
 const MARKER_COLOR = 'hsl(243 75% 59%)';
-const ROUTE_COLOR = '#5b6cff';
+const ROUTE_COLOR = '#2167e2'; // brand (mapbox paint needs a concrete hex; theme-adaptive route = P1)
 
 // ---------------- Marker DOM (unchanged visual) ----------------
 function markerDom(numbers) {

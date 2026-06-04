@@ -299,7 +299,7 @@ export default function ForkPartnerModal({
     <style>{`
       .fork-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; }
       @media (max-width: 480px) { .fork-grid { grid-template-columns: 1fr; } }
-      .fork-partner-card:hover { border-color: var(--ink-3, #dbe1ec) !important; transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+      .fork-partner-card:hover { border-color: var(--line-hover) !important; transform: translateY(-1px); box-shadow: var(--shadow-soft); }
     `}</style>
   );
 

@@ -464,7 +464,7 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
             border: '1.5px solid ' + (home?.city_name === nearbyCity.city_name ? 'var(--brand)' : 'var(--line)'),
             borderRadius: 11, cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
           }}
-            onMouseEnter={e => { if (home?.city_name !== nearbyCity.city_name) e.currentTarget.style.borderColor = '#dbe1ec'; }}
+            onMouseEnter={e => { if (home?.city_name !== nearbyCity.city_name) e.currentTarget.style.borderColor = 'var(--line-hover)'; }}
             onMouseLeave={e => { if (home?.city_name !== nearbyCity.city_name) e.currentTarget.style.borderColor = 'var(--line)'; }}
           >
             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -1321,7 +1321,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             cities={cities}
             returnCity={effectiveReturn}
             finalPoint={finalPoint}
-            accent={isAi ? 'var(--ai)' : '#5b6cff'}
+            accent={isAi ? '#6a3ee2' : '#2167e2'}
             badge={isAi
               ? { label: t('planner.badge_ai'), icon: 'sparkles', color: 'var(--ai)' }
               : { label: t('planner.badge_mine'), icon: 'map', color: 'var(--brand)' }}

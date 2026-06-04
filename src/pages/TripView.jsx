@@ -1145,7 +1145,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 5,
             padding: '5px 10px 5px 8px', borderRadius: 999,
-            background: '#1f8a5b22', border: '1px solid #1f8a5b33',
+            background: 'var(--success-soft)', border: '1px solid color-mix(in srgb, var(--success) 28%, transparent)',
             fontSize: 12.5, color: 'var(--success)', fontWeight: 600,
           }}>
             <Icon name="users" size={13} />

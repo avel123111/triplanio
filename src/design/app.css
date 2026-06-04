@@ -24,6 +24,7 @@
   --muted-2:#8693a8;
   --line:   #E5E7EB;
   --line-2: #eef0f4;
+  --line-hover: #dbe1ec; /* slightly darker hairline for card/row hover (theme-aware) */
   --wash:   #F7F8FA;
   --wash-2: #fbfbfd;
   --surface: #ffffff;
@@ -106,6 +107,7 @@
   --muted-2:#6a778c;
   --line:   #232a3a;
   --line-2: #1a202d;
+  --line-hover: #2f3a4e; /* dark-theme hover hairline (lighter than --line) */
   --wash:   #0e131c;
   --wash-2: #0a0e16;
   --surface: #131923;

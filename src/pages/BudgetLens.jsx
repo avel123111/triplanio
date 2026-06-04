@@ -511,9 +511,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
             {noExpenses ? t('trip.budget_empty') : `${budgetExpenses.length} ${budgetExpenses.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}`}
           </div>
-          <div style={{ marginTop: 12, height: 6, borderRadius: 3, background: 'var(--wash)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: Math.min((totalSpent / Math.max(totalSpent, 1)) * 100, 100) + '%', background: 'var(--success)' }} />
-          </div>
         </Card>
 
         {/* На одного */}

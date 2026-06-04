@@ -5,7 +5,7 @@ import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from
 import { Icon } from '../../design/icons';
 import { useT } from '@/lib/i18n/I18nContext';
 
-const ROUTE_COLOR = '#5b6cff';
+const ROUTE_COLOR = '#2167e2'; // brand (mapbox paint needs a concrete hex; theme-adaptive route = P1)
 
 // Build ordered legs (home → cities → return) - self-contained so the map has
 // no dependency on the planner's save logic. Mirrors computeLegs ordering.
