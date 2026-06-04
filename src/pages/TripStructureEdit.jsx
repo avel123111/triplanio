@@ -19,7 +19,7 @@ import { useToast } from '@/components/ui/use-toast';
 import HeaderActions from '@/components/HeaderActions';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
-import { isProActive } from '@/lib/subscription';
+import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import TripSidebar from '@/components/trips/TripSidebar';
 import ShareDialog from '@/components/trips/ShareDialog';
@@ -259,19 +259,9 @@ export default function TripStructureEdit() {
   }, [tripId]);
 
   const trip = shell?.trip;
-  // Trip-level Pro for the shared sidebar's "upgrade" card — owner-aware, exactly
-  // like TripView (a participant's own sub does NOT unlock someone else's trip).
-  const [ownerProResolved, setOwnerProResolved] = useState(false);
-  const [proResolved, setProResolved] = useState(false);
-  useEffect(() => {
-    if (!tripId) return;
-    let cancelled = false;
-    setProResolved(false);
-    supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } })
-      .then((res) => { if (!cancelled) { setOwnerProResolved(!!res.data?.isPro); setProResolved(true); } })
-      .catch(() => { if (!cancelled) { setOwnerProResolved(false); setProResolved(true); } });
-    return () => { cancelled = true; };
-  }, [tripId, trip?.is_pro_trip]);
+  // Trip-level Pro for the shared sidebar's "upgrade" card — owner-aware, via the
+  // same CACHED hook as TripView so the card doesn't re-flash on the edit boundary.
+  const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip);
   // Bookings are read LIVE from content. Exclude bookings of cities slated for
   // deletion (else they'd surface as orphans that block the very save that
   // cascade-deletes them).
@@ -574,8 +564,6 @@ export default function TripStructureEdit() {
   const myMember = (content?.members || []).find((m) => m.user_id === user?.id);
   const myRole = myMember?.role || (trip?.created_by === user?.id ? 'owner' : 'viewer');
   const isOwner = myRole === 'owner';
-  const tripIsPro = !!trip?.is_pro_trip || ownerProResolved;
-  const tripProResolved = !!trip?.is_pro_trip || proResolved;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
   // A transfer row is flagged (orange "не совпадает") when it has ANY conflict -   // date mismatch (D2), non-adjacent (D5) or dangling (D6).

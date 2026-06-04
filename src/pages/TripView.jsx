@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange, isTripInPast } from '@/lib/trip-dates';
-import { isProActive } from '@/lib/subscription';
+import { isProActive, useTripProStatus } from '@/lib/subscription';
 import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 import { isAddonEnabled } from '@/lib/tripAddons';
 import { isLensVisible } from '@/lib/tripMenu';
@@ -1581,25 +1581,9 @@ export default function TripView() {
   const accountPro = isProActive(user);
   const isOwner = myRole === 'owner';
 
-  // Trip-level Pro = is_pro_trip OR the OWNER has an active subscription.
-  // is_pro_trip is known instantly; the owner-subscription part is resolved by
-  // the server (checkSubscriptionStatus, owner-aware). A participant's own
-  // subscription does NOT unlock someone else's trip.
-  const [ownerProResolved, setOwnerProResolved] = useState(false);
-  // proResolved: have we resolved the owner-subscription state yet? Until then
-  // we DON'T show the "upgrade trip" banner - otherwise it flashes on pro trips
-  // (is_pro_trip=false but owner has a sub) during the async resolve.
-  const [proResolved, setProResolved] = useState(false);
-  useEffect(() => {
-    if (!tripId) return;
-    let cancelled = false;
-    setProResolved(false);
-    supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } })
-      .then((res) => { if (!cancelled) { setOwnerProResolved(!!res.data?.isPro); setProResolved(true); } })
-      .catch(() => { if (!cancelled) { setOwnerProResolved(false); setProResolved(true); } });
-    return () => { cancelled = true; };
-  }, [tripId, trip?.is_pro_trip]);
-  const tripIsPro = !!trip?.is_pro_trip || ownerProResolved;
+  // Trip-level Pro (owner-aware), resolved via a shared CACHED hook so it doesn't
+  // re-flash when crossing the edit↔trip route boundary. See useTripProStatus.
+  const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip);
   // Edit Mode (structure editor) gate - exact current model (TRIP_EDIT_MODE_TZ §2):
   // anyone but a viewer; past trips require the trip to be Pro (or owner Pro).
   const canEditMode = myRole !== 'viewer' && (!isTripInPast(visits) || tripIsPro);
@@ -1609,8 +1593,6 @@ export default function TripView() {
   // While the trip is being edited in the Structure editor, freeze ALL event
   // mutations on the timeline (add/edit/delete) - viewing stays allowed (TZ §3a).
   const frozenNote = () => toast({ description: t('trip.frozen_note') });
-  // Banner can show only once we KNOW the trip isn't pro (or it's instantly a pro_trip).
-  const tripProResolved = !!trip?.is_pro_trip || proResolved;
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
 
