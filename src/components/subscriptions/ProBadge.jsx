@@ -1,22 +1,26 @@
 import React from 'react';
-import { Crown } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Icon } from '@/design/icons';
 
-export default function ProBadge({ className, size = 'md' }) {
-  const sizeClasses = {
-    sm: 'text-[10px] px-1.5 py-0.5',
-    md: 'text-xs px-2 py-0.5',
-    lg: 'text-sm px-2.5 py-1'
-  };
+// Canonical Pro badge — warm token treatment (matches <Badge variant="warm" icon="pro">).
+// Keeps the { className, size } API so existing callers (TripCard/Grid/ListRow) are unchanged.
+const SIZES = {
+  sm: { fontSize: 'var(--fs-micro)', padding: '2px 7px', icon: 11 },
+  md: { fontSize: 'var(--fs-meta)', padding: '2px 9px', icon: 12 },
+  lg: { fontSize: 'var(--fs-base)', padding: '3px 11px', icon: 13 },
+};
 
+export default function ProBadge({ className = '', size = 'md' }) {
+  const s = SIZES[size] || SIZES.md;
   return (
-    <span className={cn(
-      'inline-flex items-center gap-1 font-semibold rounded-full bg-orange-100 text-orange-600 dark:bg-orange-950/40 dark:text-orange-300',
-      sizeClasses[size],
-      className
-    )}>
-      <Crown className={cn(size === 'sm' ? 'w-3 h-3' : size === 'md' ? 'w-3.5 h-3.5' : 'w-4 h-4')} />
-      Pro
+    <span
+      className={className}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600,
+        borderRadius: 999, background: 'var(--warm-tint)', color: 'var(--warm)',
+        fontSize: s.fontSize, padding: s.padding, lineHeight: 1.2,
+      }}
+    >
+      <Icon name="pro" size={s.icon} /> Pro
     </span>
   );
 }
