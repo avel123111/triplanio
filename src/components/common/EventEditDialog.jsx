@@ -19,7 +19,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import AiField from '@/components/ui/AiField';
 import {
-  Loader2, Sparkles, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat,
+  Loader2, Sparkles, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft,
   Bed, Plane, Camera, Car as CarIcon, Train, Bus, Ship, Footprints,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
@@ -908,6 +908,15 @@ export default function EventEditDialog({
             className="border-b"
             style={{ padding: '16px 22px 14px', background: meta.soft, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}
           >
+            {variant === 'panel' && (
+              <button
+                onClick={() => onOpenChange?.(false)}
+                title={t('common.back')}
+                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
             <div
               style={{
                 width: 40, height: 40, borderRadius: 10,
