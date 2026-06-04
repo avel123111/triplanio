@@ -339,11 +339,11 @@ function serviceToForm(svc) {
 
 // New-mode date defaults - same logic as the legacy dialogs.
 function defaultsForNewHotel(visit, tz, defCur = 'EUR') {
-  if (!visit?.start_datetime || !visit?.end_datetime) return emptyHotelForm(defCur);
-  const vs = DateTime.fromISO(visit.start_datetime, { zone: 'utc' }).setZone(tz);
-  const ve = DateTime.fromISO(visit.end_datetime, { zone: 'utc' }).setZone(tz);
-  const ci = vs.set({ hour: Math.max(vs.hour, 15), minute: 0 });
-  let co = ve.set({ hour: Math.min(ve.hour, 11), minute: 0 });
+  if (!visit?.start_date || !visit?.end_date) return emptyHotelForm(defCur);
+  const vs = DateTime.fromISO(visit.start_date, { zone: tz });
+  const ve = DateTime.fromISO(visit.end_date, { zone: tz });
+  const ci = vs.set({ hour: 15, minute: 0 });
+  let co = ve.set({ hour: 11, minute: 0 });
   if (co <= ci) co = ci.plus({ hours: 1 });
   return {
     ...emptyHotelForm(defCur),
@@ -353,13 +353,13 @@ function defaultsForNewHotel(visit, tz, defCur = 'EUR') {
 }
 
 function defaultsForNewTransfer(fromVisit, toVisit, startTz, endTz, defCur = 'EUR') {
-  const baseStart = fromVisit?.end_datetime || toVisit?.start_datetime;
-  const baseEnd = toVisit?.start_datetime || fromVisit?.end_datetime;
+  const baseStart = fromVisit?.end_date || toVisit?.start_date;
+  const baseEnd = toVisit?.start_date || fromVisit?.end_date;
   const startDt = baseStart
-    ? DateTime.fromISO(baseStart, { zone: 'utc' }).setZone(startTz).set({ hour: 12, minute: 0 })
+    ? DateTime.fromISO(baseStart, { zone: startTz }).set({ hour: 12, minute: 0 })
     : null;
   const endDt = baseEnd
-    ? DateTime.fromISO(baseEnd, { zone: 'utc' }).setZone(endTz).set({ hour: 15, minute: 0 })
+    ? DateTime.fromISO(baseEnd, { zone: endTz }).set({ hour: 15, minute: 0 })
     : null;
   return {
     ...emptyTransferForm(defCur),
@@ -369,8 +369,8 @@ function defaultsForNewTransfer(fromVisit, toVisit, startTz, endTz, defCur = 'EU
 }
 
 function defaultsForNewActivity(visit, tz, defaultStart, defCur = 'EUR') {
-  if (!visit?.start_datetime) return emptyActivityForm(defCur);
-  const visitStart = DateTime.fromISO(visit.start_datetime, { zone: 'utc' }).setZone(tz);
+  if (!visit?.start_date) return emptyActivityForm(defCur);
+  const visitStart = DateTime.fromISO(visit.start_date, { zone: tz });
   const proposed = defaultStart
     ? DateTime.fromISO(defaultStart, { zone: 'utc' }).setZone(tz)
     : visitStart.set({ hour: 10, minute: 0 });
@@ -1169,8 +1169,8 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
   // node date is decoupled from the (possibly later) segment-leg times: we
   // distribute the N-1 waypoints evenly in the gap between the two endpoints.
   const ms = (iso) => { const x = iso ? Date.parse(iso) : NaN; return Number.isNaN(x) ? null : x; };
-  const fromMs = ms(fromVisit?.end_datetime) ?? ms(fromVisit?.start_datetime);
-  const toMs = ms(toVisit?.start_datetime) ?? ms(toVisit?.end_datetime);
+  const fromMs = ms(fromVisit?.end_date) ?? ms(fromVisit?.start_date);
+  const toMs = ms(toVisit?.start_date) ?? ms(toVisit?.end_date);
   const MIN = 60000;
   const nodeMsAt = (i) => { // i: 0..N-2
     if (fromMs != null && toMs != null && toMs > fromMs) return fromMs + ((toMs - fromMs) * (i + 1)) / N;
@@ -1196,8 +1196,8 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
       longitude: c.longitude ?? null,
       timezone: tz,
       kind: 'waypoint',
-      start_datetime: at,
-      end_datetime: at,
+      start_date: at.slice(0, 10),
+      end_date: at.slice(0, 10),
       // Provisional - renumbered authoritatively by normalizePositions below.
       position: 0,
       created_by: user?.id,
@@ -1248,7 +1248,7 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
   try {
     const { data: allVisits } = await supabase
       .from('city_visits')
-      .select('id, kind, start_datetime, end_datetime, position')
+      .select('id, kind, start_date, end_date, position')
       .eq('trip_id', tripId);
     if (allVisits?.length) {
       const normalized = normalizePositions(allVisits);

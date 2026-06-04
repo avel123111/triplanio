@@ -49,8 +49,8 @@ export default function TripSummary({ visits = [], noFrame = false, hideHeader =
 
 function RouteRow({ visit, index, isLast, locale, plural }) {
   // Naive wall-clock - visit.timezone is intentionally ignored.
-  const start = parseNaive(visit.start_datetime)?.setLocale(locale) || null;
-  const end = parseNaive(visit.end_datetime)?.setLocale(locale) || null;
+  const start = parseNaive(visit.start_date)?.setLocale(locale) || null;
+  const end = parseNaive(visit.end_date)?.setLocale(locale) || null;
 
   const sameDay = start && end && start.hasSame(end, 'day');
   const range = start && end

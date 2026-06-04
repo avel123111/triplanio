@@ -148,13 +148,13 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
     const fromVisit = visits.find(v => v.id === tr.from_city_visit_id);
     // For dateless transfers anchor to the to-visit's arrival day, or - for
     // legs into a dateless end anchor - to the from-visit's end day.
-    const fallbackDate = (toVisit && naiveDayKey(toVisit.start_datetime))
-      || (fromVisit && naiveDayKey(fromVisit.end_datetime))
+    const fallbackDate = (toVisit && naiveDayKey(toVisit.start_date))
+      || (fromVisit && naiveDayKey(fromVisit.end_date))
       || null;
     const eventDate = explicitDate || fallbackDate;
     const eventMs = parseNaive(tr.start_datetime)?.toMillis()
-      ?? parseNaive(toVisit?.start_datetime)?.toMillis()
-      ?? parseNaive(fromVisit?.end_datetime)?.toMillis()
+      ?? parseNaive(toVisit?.start_date)?.toMillis()
+      ?? parseNaive(fromVisit?.end_date)?.toMillis()
       ?? 0;
     events.push({
       type: isPlane ? 'flight' : 'transfer',
@@ -578,13 +578,13 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
 function useWeatherByDay(visits) {
   const [weatherByDay, setWeatherByDay] = useState({});
   useEffect(() => {
-    const transit = (visits || []).filter(v => v.kind !== 'start' && v.kind !== 'end' && v.latitude && v.longitude && v.start_datetime && v.end_datetime);
+    const transit = (visits || []).filter(v => v.kind !== 'start' && v.kind !== 'end' && v.latitude && v.longitude && v.start_date && v.end_date);
     if (transit.length === 0) { setWeatherByDay({}); return; }
     let cancelled = false;
     (async () => {
       const map = {};
       for (const v of transit) {
-        const res = await getWeather(v.latitude, v.longitude, naiveDayKey(v.start_datetime), naiveDayKey(v.end_datetime)).catch(() => null);
+        const res = await getWeather(v.latitude, v.longitude, naiveDayKey(v.start_date), naiveDayKey(v.end_date)).catch(() => null);
         if (cancelled || !res?.daily) continue;
         const { time, weather_code, temperature_2m_max } = res.daily;
         (time || []).forEach((d, i) => {
@@ -687,9 +687,9 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // (the cities the user actually stays in). Falls back to trip.start_date /
   // trip.end_date when there are no transits with dates.
   const datedTransits = sortVisits(visits)
-    .filter(v => v.kind !== 'start' && v.kind !== 'end' && v.start_datetime && v.end_datetime);
-  const transitStart = datedTransits.length ? naiveDayKey(datedTransits[0].start_datetime) : null;
-  const transitEnd = datedTransits.length ? naiveDayKey(datedTransits[datedTransits.length - 1].end_datetime) : null;
+    .filter(v => v.kind !== 'start' && v.kind !== 'end' && v.start_date && v.end_date);
+  const transitStart = datedTransits.length ? naiveDayKey(datedTransits[0].start_date) : null;
+  const transitEnd = datedTransits.length ? naiveDayKey(datedTransits[datedTransits.length - 1].end_date) : null;
   const tripStart = transitStart || trip.start_date || null;
   const tripEnd = transitEnd || trip.end_date || null;
 
@@ -813,8 +813,8 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         );
       }
     }
-    const vStart = naiveDayKey(city.start_datetime);
-    const vEnd = naiveDayKey(city.end_datetime);
+    const vStart = naiveDayKey(city.start_date);
+    const vEnd = naiveDayKey(city.end_date);
     const nights = nightsBetween(vStart, vEnd);
     const dateRange = vStart && vEnd ? `${fmtDate(vStart, lang)} - ${fmtDate(vEnd, lang)}` : null;
     out.push(
@@ -899,12 +899,12 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     // All transit cities ARRIVING this day (by start day), in itinerary order.
     // Multiple cities can arrive the same day (e.g. a one-day pass-through that
     // shares its single day with the previous and next city).
-    const arrivingToday = transitCities.filter(c => naiveDayKey(c.start_datetime) === day);
+    const arrivingToday = transitCities.filter(c => naiveDayKey(c.start_date) === day);
     const isArrival = arrivingToday.length > 0;
 
     // Header chip = the latest transit city whose range covers this day.
     const dayCity = [...transitCities].reverse().find(c => {
-      const s = naiveDayKey(c.start_datetime), e = naiveDayKey(c.end_datetime);
+      const s = naiveDayKey(c.start_date), e = naiveDayKey(c.end_date);
       return s && e && day >= s && day <= e;
     }) || null;
 
@@ -950,7 +950,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
             const inEv = inboundEventsFor(c.id);
             const anchorMs = inEv.length
               ? Math.min(...inEv.map(e => e._ms ?? Number.POSITIVE_INFINITY))
-              : (parseNaive(c.start_datetime)?.toMillis() ?? Number.NEGATIVE_INFINITY);
+              : (parseNaive(c.start_date)?.toMillis() ?? Number.NEGATIVE_INFINITY);
             return { anchorMs, city: c };
           });
           const firstAnchorMs = blocks.length
@@ -1900,9 +1900,9 @@ export default function TripView() {
                   onOpenEvent={openEventView}
                   onAddActivityForDay={frozen ? frozenNote : (dayKey) => {
                     const dayVisit = visits.find(v =>
-                      v.kind === 'transit' && v.start_datetime && v.end_datetime &&
-                      naiveDayKey(v.start_datetime) <= dayKey && dayKey <= naiveDayKey(v.end_datetime)
-                    ) || visits.find(v => v.kind === 'transit' && v.start_datetime);
+                      v.kind === 'transit' && v.start_date && v.end_date &&
+                      naiveDayKey(v.start_date) <= dayKey && dayKey <= naiveDayKey(v.end_date)
+                    ) || visits.find(v => v.kind === 'transit' && v.start_date);
                     if (dayVisit) {
                       const tz = dayVisit.timezone || 'UTC';
                       const defaultStart = dayKey

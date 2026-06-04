@@ -57,7 +57,7 @@ const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.
 // stored dates exactly, so opening the editor never moves anything.
 function recompute(nodes, baseISO) {
   const firstTransit = nodes.find((n) => !isAnchor(n));
-  let cursor = (baseISO ? toDT(baseISO) : toDT(firstTransit?.start_datetime)) || DateTime.utc();
+  let cursor = (baseISO ? toDT(baseISO) : toDT(firstTransit?.start_date)) || DateTime.utc();
   cursor = cursor.startOf('day');
   let seen = false; // the first non-anchor node anchors the trip start (gap forced 0)
   return nodes.map((n, i) => {
@@ -66,15 +66,15 @@ function recompute(nodes, baseISO) {
     const startDay = cursor.plus({ days: gap });
     seen = true;
     if (n.kind === 'waypoint') { // single-date transit point - consumes no nights
-      const d = startDay.set({ hour: 12 });
+      const d = startDay.toISODate();
       cursor = startDay;
-      return { ...n, start_datetime: d.toISO(), end_datetime: d.toISO(), nights: null, gap, position: i };
+      return { ...n, start_date: d, end_date: d, nights: null, gap, position: i };
     }
-    const nights = Math.max(0, Number.isFinite(n.nights) ? n.nights : (dayDiff(n.start_datetime, n.end_datetime) ?? 1));
-    const start = startDay.set({ hour: 12 });
-    const end = nights > 0 ? startDay.plus({ days: nights }).set({ hour: 11 }) : start;
+    const nights = Math.max(0, Number.isFinite(n.nights) ? n.nights : (dayDiff(n.start_date, n.end_date) ?? 1));
+    const startD = startDay.toISODate();
+    const endD = (nights > 0 ? startDay.plus({ days: nights }) : startDay).toISODate();
     cursor = startDay.plus({ days: nights });
-    return { ...n, start_datetime: start.toISO(), end_datetime: end.toISO(), nights, gap, position: i };
+    return { ...n, start_date: startD, end_date: endD, nights, gap, position: i };
   });
 }
 
@@ -87,7 +87,7 @@ function buildDraft(shell) {
   const nodes = visits.map((v, i) => {
     const base = { ...v, position: Number.isFinite(v.position) ? v.position : i };
     if (isAnchor(v)) return { ...base, nights: null, gap: null };
-    const sd = dayOf(v.start_datetime), ed = dayOf(v.end_datetime);
+    const sd = dayOf(v.start_date), ed = dayOf(v.end_date);
     const isWp = v.kind === 'waypoint';
     const nights = isWp ? null : Math.max(0, (sd && ed ? Math.round(ed.diff(sd, 'days').days) : 1));
     const gap = (prevEnd && sd) ? Math.round(sd.diff(prevEnd, 'days').days) : 0;
@@ -97,9 +97,7 @@ function buildDraft(shell) {
   // Draft holds ONLY structure (nodes + removed cities + a FIXED trip start date).
   // Bookings are read LIVE from `content` (edits/adds via real dialogs → DB → refetch).
   const firstTransit = nodes.find((n) => !isAnchor(n));
-  const startDate = firstTransit?.start_datetime
-    ? DateTime.fromISO(firstTransit.start_datetime, { zone: 'utc' }).toISO()
-    : (shell?.trip?.start_date ? DateTime.fromISO(`${shell.trip.start_date}T12:00:00`, { zone: 'utc' }).toISO() : null);
+  const startDate = firstTransit?.start_date || (shell?.trip?.start_date || null);
   return { nodes, removed: [], startDate };
 }
 
@@ -281,7 +279,7 @@ export default function TripStructureEdit() {
       city_name: city.city_name, country: city.country || null, country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
-      nights: kind === 'transit' ? 2 : null, gap: 0, start_datetime: null, end_datetime: null,
+      nights: kind === 'transit' ? 2 : null, gap: 0, start_date: null, end_date: null,
     };
     editDraft((d) => {
       const arr = d.nodes.slice();
@@ -319,8 +317,8 @@ export default function TripStructureEdit() {
     if (!draft || blocked || saving) return;
     setSaving(true);
     const isTmp = (id) => String(id).startsWith('tmp-');
-    const p_nodes = draft.nodes.filter((n) => !isTmp(n.id)).map((n) => ({ id: n.id, start_datetime: n.start_datetime ?? null, end_datetime: n.end_datetime ?? null, position: n.position }));
-    const p_cities_new = draft.nodes.filter((n) => isTmp(n.id)).map((n) => ({ tmp: n.id, city_name: n.city_name, country: n.country ?? null, country_code: n.country_code ?? null, latitude: n.latitude ?? null, longitude: n.longitude ?? null, timezone: n.timezone ?? null, external_city_id: n.external_city_id ?? null, kind: n.kind || 'transit', start_datetime: n.start_datetime ?? null, end_datetime: n.end_datetime ?? null, position: n.position }));
+    const p_nodes = draft.nodes.filter((n) => !isTmp(n.id)).map((n) => ({ id: n.id, start_date: n.start_date ?? null, end_date: n.end_date ?? null, position: n.position }));
+    const p_cities_new = draft.nodes.filter((n) => isTmp(n.id)).map((n) => ({ tmp: n.id, city_name: n.city_name, country: n.country ?? null, country_code: n.country_code ?? null, latitude: n.latitude ?? null, longitude: n.longitude ?? null, timezone: n.timezone ?? null, external_city_id: n.external_city_id ?? null, kind: n.kind || 'transit', start_date: n.start_date ?? null, end_date: n.end_date ?? null, position: n.position }));
     // Bookings are edited/added via real dialogs (already in DB) - structure-only save.
     const p_edits = {};
     const p_deletes = { cities: (draft.removed || []).filter((n) => !isTmp(n.id)).map((n) => n.id) };
@@ -394,8 +392,8 @@ export default function TripStructureEdit() {
   const ordered = sortVisits(draft.nodes);
   const seq = ordered.filter((n) => !isAnchor(n));          // cities + waypoints, in order
   const cities = seq.filter((n) => n.kind === 'transit');   // stays only (for count/numbering)
-  const startDate = seq[0]?.start_datetime;
-  const endDate = seq[seq.length - 1]?.end_datetime;
+  const startDate = seq[0]?.start_date;
+  const endDate = seq[seq.length - 1]?.end_date;
   const totalNights = nightsBetween(startDate, endDate);
   const membersCount = content?.members?.length || 0;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
@@ -612,7 +610,7 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
         </div>
         <div style={{ gridColumn: '3 / 5', textAlign: 'center' }}>
           <div style={{ fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted-2)', fontWeight: 700 }}>{t('tse.transit')}</div>
-          <div className="num" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtD(seg.start_datetime, lang)}</div>
+          <div className="num" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtD(seg.start_date, lang)}</div>
         </div>
         <span style={{ textAlign: 'center', color: 'var(--muted-2)', fontSize: 12 }}>-</span>
         <Acts onUp={onUp} onDown={onDown} onRemove={onRemove} />
@@ -630,8 +628,8 @@ function GridNode({ seg, stayNum, first, firstRow, last, conflictCount, onNights
         {m.country && <span className="muted" style={{ fontSize: 10.5, whiteSpace: 'nowrap' }}>{m.country}</span>}
         <Conf n={conflictCount} />
       </div>
-      <GCell label={t('tse.checkin')} iso={seg.start_datetime} editable={first} onMinus={onShiftMinus} onPlus={onShiftPlus} />
-      <GCell label={t('tse.checkout')} iso={seg.end_datetime} editable onMinus={onNightsMinus} onPlus={onNightsPlus} />
+      <GCell label={t('tse.checkin')} iso={seg.start_date} editable={first} onMinus={onShiftMinus} onPlus={onShiftPlus} />
+      <GCell label={t('tse.checkout')} iso={seg.end_date} editable onMinus={onNightsMinus} onPlus={onNightsPlus} />
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 1, background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 7, padding: 1 }}>
         <button className="ts-step" style={{ width: 20, height: 20 }} onClick={onNightsMinus} disabled={seg.nights <= 1}><Icon name="close" size={9} style={{ transform: 'rotate(45deg)' }} /></button>
         <span className="num" style={{ minWidth: 26, textAlign: 'center', fontSize: 11.5, fontWeight: 700 }}>{seg.nights}{t('planner.night_short')}</span>

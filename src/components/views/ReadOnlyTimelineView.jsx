@@ -52,14 +52,14 @@ export default function ReadOnlyTimelineView({
   // Result: { [dayKey]: { icon, temp_max, temp_min } }
   const [weatherByDay, setWeatherByDay] = useState({});
   useEffect(() => {
-    const transitVisits = visits.filter(v => v.kind !== 'start' && v.kind !== 'end' && v.latitude && v.longitude && v.start_datetime && v.end_datetime);
+    const transitVisits = visits.filter(v => v.kind !== 'start' && v.kind !== 'end' && v.latitude && v.longitude && v.start_date && v.end_date);
     if (transitVisits.length === 0) return;
     let cancelled = false;
     (async () => {
       const map = {};
       for (const v of transitVisits) {
-        const startDay = naiveDayKey(v.start_datetime);
-        const endDay = naiveDayKey(v.end_datetime);
+        const startDay = naiveDayKey(v.start_date);
+        const endDay = naiveDayKey(v.end_date);
         const result = await getWeather(v.latitude, v.longitude, startDay, endDay);
         if (cancelled || !result?.daily) continue;
         const { time, weather_code, temperature_2m_max, temperature_2m_min } = result.daily;
@@ -112,7 +112,7 @@ export default function ReadOnlyTimelineView({
       } else if (v.kind === 'end') {
         // End anchor: render at the absolute bottom - always sort after every event.
         // Use end_datetime if available, otherwise start_datetime.
-        const endIso = v.end_datetime || v.start_datetime;
+        const endIso = v.end_date || v.start_date;
         events.push({
           key: `anchor-${v.id}`,
           kind: 'anchor',
@@ -141,8 +141,8 @@ export default function ReadOnlyTimelineView({
         // renders right after the transfer row (same day, subOrder=2 > transfer=1)
         // but before car-pickup or other events at end_datetime.
         sortMs = naiveMillis(latest.start_datetime) + 1;
-      } else if (v.start_datetime) {
-        anchorIso = v.start_datetime;
+      } else if (v.start_date) {
+        anchorIso = v.start_date;
         sortMs = naiveMillis(anchorIso);
       } else {
         continue;
@@ -633,8 +633,8 @@ function MissingTransferWarn({ fromVisit, toVisit, canEdit, onAddTransfer }) {
 
 function CityHeaderCard({ visit, hotels, onClickHotel, canEdit, onAddHotel, onEditVisitNotes, cityIndex }) {
   const { plural, locale } = useI18nFormat();
-  const start = parseNaive(visit.start_datetime);
-  const end = parseNaive(visit.end_datetime);
+  const start = parseNaive(visit.start_date);
+  const end = parseNaive(visit.end_date);
   const nights = start && end ? Math.max(0, Math.round(end.diff(start, 'days').days)) : 0;
 
   return (

@@ -8,7 +8,7 @@ const has = (issues, code) => issues.some((i) => i.code === code);
 
 const VISIT = {
   id: 'c1', city_name: 'Lisbon', country_code: 'PT', timezone: 'UTC', kind: 'transit',
-  start_datetime: '2026-07-07T12:00:00', end_datetime: '2026-07-10T11:00:00', position: 1,
+  start_date: '2026-07-07', end_date: '2026-07-10', position: 1,
 };
 
 // ---------- Hotel ----------
@@ -45,7 +45,7 @@ test('activity: out-of-bounds', () => {
 
 // ---------- Transfer (single) ----------
 const FROM = { ...VISIT, id: 'c1' };
-const TO = { id: 'c2', city_name: 'Porto', timezone: 'UTC', kind: 'transit', start_datetime: '2026-07-10T18:00:00', end_datetime: '2026-07-12T11:00:00' };
+const TO = { id: 'c2', city_name: 'Porto', timezone: 'UTC', kind: 'transit', start_date: '2026-07-10', end_date: '2026-07-12' };
 test('transfer: no city -> TR_NO_CITY only', () => {
   const issues = validateEntity('transfer', { id: 't1', start: '2026-07-10T12:00:00', end: '2026-07-10T15:00:00' }, {});
   assert.deepEqual(codes(issues), ['TR_NO_CITY']);
@@ -149,15 +149,15 @@ test('trip: title/start/cities/unresolved', () => {
 
 // ---------- validateTrip (cross-entity) ----------
 test('validateTrip: 1-day overlap OK, 2-day overlap -> CITY_OVERLAP error', () => {
-  const a = { ...VISIT, id: 'a', end_datetime: '2026-07-10T11:00:00' };
-  const b1 = { id: 'b', city_name: 'B', kind: 'transit', timezone: 'UTC', start_datetime: '2026-07-09T12:00:00', end_datetime: '2026-07-12T11:00:00', position: 2 };
+  const a = { ...VISIT, id: 'a', end_date: '2026-07-10' };
+  const b1 = { id: 'b', city_name: 'B', kind: 'transit', timezone: 'UTC', start_date: '2026-07-09', end_date: '2026-07-12', position: 2 };
   assert.ok(!has(validateTrip({ visits: [a, b1] }), 'CITY_OVERLAP'));
-  const b2 = { ...b1, start_datetime: '2026-07-08T12:00:00' };
+  const b2 = { ...b1, start_date: '2026-07-08' };
   assert.ok(has(validateTrip({ visits: [a, b2] }), 'CITY_OVERLAP'));
 });
 test('validateTrip: duplicate transfer -> DUP_TRANSFER warning', () => {
   const a = { ...VISIT, id: 'a', position: 1 };
-  const b = { id: 'b', city_name: 'B', kind: 'transit', timezone: 'UTC', start_datetime: '2026-07-10T18:00:00', end_datetime: '2026-07-12T11:00:00', position: 2 };
+  const b = { id: 'b', city_name: 'B', kind: 'transit', timezone: 'UTC', start_date: '2026-07-10', end_date: '2026-07-12', position: 2 };
   const tr = { from_city_visit_id: 'a', to_city_visit_id: 'b', start_datetime: '2026-07-10T12:00:00', end_datetime: '2026-07-10T16:00:00' };
   const issues = validateTrip({ visits: [a, b], transfers: [{ id: 't1', ...tr }, { id: 't2', ...tr }] });
   const dup = issues.find((i) => i.code === 'DUP_TRANSFER');

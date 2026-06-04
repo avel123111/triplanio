@@ -13,10 +13,10 @@ import { dayKey } from '@/lib/time';
  */
 export default function DayMarkers({ visit, hotels, activities, outboundDayKey = null }) {
   const tz = visit.timezone || 'UTC';
-  if (!visit.start_datetime || !visit.end_datetime) return null;
+  if (!visit.start_date || !visit.end_date) return null;
 
-  const start = DateTime.fromISO(visit.start_datetime, { zone: 'utc' }).setZone(tz).startOf('day');
-  const end = DateTime.fromISO(visit.end_datetime, { zone: 'utc' }).setZone(tz).startOf('day');
+  const start = DateTime.fromISO(visit.start_date).startOf('day');
+  const end = DateTime.fromISO(visit.end_date).startOf('day');
   if (!start.isValid || !end.isValid) return null;
 
   const firstKey = start.toFormat('yyyy-LL-dd');

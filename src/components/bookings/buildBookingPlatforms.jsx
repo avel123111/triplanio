@@ -31,8 +31,8 @@ const findTicketsOn = (t, name) => (t ? t('booking.find_tickets_on', { name }) :
 // HOTEL: Booking.com, Airbnb
 export function hotelPlatforms(visit, t) {
   const tz = visit?.timezone || 'UTC';
-  const checkin = localDate(visit?.start_datetime, tz);
-  const checkout = ensureNextDay(checkin, localDate(visit?.end_datetime, tz));
+  const checkin = localDate(visit?.start_date, tz);
+  const checkout = ensureNextDay(checkin, localDate(visit?.end_date, tz));
   const cityQuery = `${visit?.city_name || ''}${visit?.country ? ', ' + visit.country : ''}`;
   const slugify = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');

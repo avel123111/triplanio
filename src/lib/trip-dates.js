@@ -5,8 +5,8 @@ export function computeTripRange(visits = []) {
   let minStart = null;
   let maxEnd = null;
   for (const v of visits) {
-    const s = v.start_datetime ? new Date(v.start_datetime).getTime() : null;
-    const e = v.end_datetime ? new Date(v.end_datetime).getTime() : s;
+    const s = v.start_date ? new Date(v.start_date).getTime() : null;
+    const e = v.end_date ? new Date(v.end_date).getTime() : s;
     if (s !== null && (minStart === null || s < minStart)) minStart = s;
     if (e !== null && (maxEnd === null || e > maxEnd)) maxEnd = e;
   }

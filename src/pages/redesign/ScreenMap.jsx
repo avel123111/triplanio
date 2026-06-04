@@ -252,7 +252,7 @@ function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
           <div style={{ position: 'absolute', left: 11, top: 12, bottom: 12, width: 2, background: 'var(--brand-soft-12)' }} />
           {route.map((c, i) => {
-            const nights = nightsBetween(c.start_datetime, c.end_datetime);
+            const nights = nightsBetween(c.start_date, c.end_date);
             return (
               <button key={c.id} onClick={() => setActiveIdx(i)} style={{
                 display: 'grid', gridTemplateColumns: '24px 1fr auto', alignItems: 'center', gap: 10,
@@ -313,7 +313,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
   const showTransfer = !isStart;
   const showHotel = !isStart && !isEnd;
 
-  const nights = nightsBetween(visit?.start_datetime, visit?.end_datetime);
+  const nights = nightsBetween(visit?.start_date, visit?.end_date);
   const primaryHotel = cityHotels[0] || null;
 
   return (

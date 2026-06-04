@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
         supabaseAdmin.from('transfers').select('id, transport_type, carrier, start_datetime, from_address, to_address').eq('trip_id', tripId).then((r) => r.data ?? []),
         supabaseAdmin.from('activities').select('id, title, start_datetime, location_name').eq('trip_id', tripId).then((r) => r.data ?? []),
         supabaseAdmin.from('trip_services').select('id, name, kind, details').eq('trip_id', tripId).then((r) => r.data ?? []),
-        supabaseAdmin.from('city_visits').select('id, city_name, country, start_datetime').eq('trip_id', tripId).then((r) => r.data ?? []),
+        supabaseAdmin.from('city_visits').select('id, city_name, country, start_date').eq('trip_id', tripId).then((r) => r.data ?? []),
       ]);
 
       // Hotel check-in (24h)
@@ -161,8 +161,11 @@ Deno.serve(async (req) => {
       }
 
       // City arrivals (1h)
+      // DEBT (date-only city dates): start_date has no time, so isUpcoming(..., HOUR)
+      // is degenerate (fires only in the hour before UTC midnight). City-arrival
+      // reminder policy is a separate decision (drop vs day-of) — see TRIP_SANDBOX doc.
       for (const cv of cityVisits) {
-        if (!isUpcoming(cv.start_datetime, HOUR)) continue;
+        if (!isUpcoming(cv.start_date, HOUR)) continue;
         if (await hasBeenSent(tripId, userId, 'city_arrival', cv.id)) continue;
         await sendTelegramMessage(botToken, chatId, `🗺️ <b>Arriving in ${cv.city_name} in 1 hour</b>\n${cv.country || ''}`);
         await logSent(tripId, userId, 'city_arrival', cv.id);

@@ -48,12 +48,12 @@ Deno.serve(async (req) => {
     const tripIds = trips.map((t) => t.id);
 
     const { data: visits } = await admin
-      .from('city_visits').select('trip_id, end_datetime').in('trip_id', tripIds);
+      .from('city_visits').select('trip_id, end_date').in('trip_id', tripIds);
 
     const maxEndByTrip = new Map<string, number>();
     for (const v of visits ?? []) {
-      if (!v.end_datetime) continue;
-      const e = new Date(v.end_datetime).getTime();
+      if (!v.end_date) continue;
+      const e = new Date(v.end_date).getTime();
       if (Number.isNaN(e)) continue;
       const cur = maxEndByTrip.get(v.trip_id);
       if (cur === undefined || e > cur) maxEndByTrip.set(v.trip_id, e);

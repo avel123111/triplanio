@@ -1162,8 +1162,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           longitude: home.longitude || null,
           timezone: home.timezone || null,
           kind: 'start',
-          start_datetime: null,
-          end_datetime: null,
+          start_date: null,
+          end_date: null,
           created_by: authId,
         });
       }
@@ -1185,8 +1185,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           longitude: c.longitude || null,
           timezone: c.timezone || null,
           kind: isFinalAnchor ? 'end' : 'transit',
-          start_datetime: isFinalAnchor ? null : (c.startDate ? c.startDate + 'T12:00:00' : null),
-          end_datetime: isFinalAnchor ? null : (c.startDate && c.nights ? addDays(c.startDate, +c.nights) + 'T11:00:00' : null),
+          start_date: isFinalAnchor ? null : (c.startDate || null),
+          end_date: isFinalAnchor ? null : (c.startDate && c.nights ? addDays(c.startDate, +c.nights) : null),
           created_by: authId,
         });
       });

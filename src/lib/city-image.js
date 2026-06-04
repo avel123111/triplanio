@@ -68,8 +68,8 @@ export function pickCoverVisit(visits = []) {
   // Sort by start_datetime so "first transit" = chronologically first intermediate city,
   // not whatever order the list happened to be in.
   const sorted = [...visits].sort((a, b) => {
-    const ta = a?.start_datetime ? new Date(a.start_datetime).getTime() : Number.POSITIVE_INFINITY;
-    const tb = b?.start_datetime ? new Date(b.start_datetime).getTime() : Number.POSITIVE_INFINITY;
+    const ta = a?.start_date ? new Date(a.start_date).getTime() : Number.POSITIVE_INFINITY;
+    const tb = b?.start_date ? new Date(b.start_date).getTime() : Number.POSITIVE_INFINITY;
     return ta - tb;
   });
   return (

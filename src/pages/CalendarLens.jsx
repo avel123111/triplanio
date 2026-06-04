@@ -204,7 +204,7 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
 
   // Base start date from trip or first visit
   const baseDateStr = trip?.start_date
-    || (visits[0] ? naiveDayKey(visits[0].start_datetime) : null);
+    || (visits[0] ? naiveDayKey(visits[0].start_date) : null);
   const baseDate = baseDateStr ? parseNaive(baseDateStr + 'T00:00:00') : null;
 
   // Current month for display (with navigation offset)
@@ -242,8 +242,8 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
   const spans = useMemo(() => {
     if (!currentMonth) return [];
     return visits.flatMap(v => {
-      const start = parseNaive(v.start_datetime);
-      const end   = parseNaive(v.end_datetime);
+      const start = parseNaive(v.start_date);
+      const end   = parseNaive(v.end_date);
       if (!start || !end) return [];
       const mStart = currentMonth.startOf('month');
       const mEnd   = currentMonth.endOf('month');
@@ -258,8 +258,8 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
   const inTripDays = useMemo(() => {
     const set = new Set();
     for (const v of visits) {
-      const start = parseNaive(v.start_datetime);
-      const end   = parseNaive(v.end_datetime);
+      const start = parseNaive(v.start_date);
+      const end   = parseNaive(v.end_date);
       if (!start || !end) continue;
       let cur = start;
       while (cur <= end) {
@@ -283,8 +283,8 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
       const d      = weekStart.plus({ days: i });
       const dayStr = naiveDayKey(d.toISO());
       const city   = visits.find(v => {
-        const s = parseNaive(v.start_datetime);
-        const e = parseNaive(v.end_datetime);
+        const s = parseNaive(v.start_date);
+        const e = parseNaive(v.end_date);
         return s && e && d >= s && d <= e;
       });
       days.push({ wd: WD_NAMES[i], date: d.day, dateStr: dayStr, city: city?.city_name || '' });

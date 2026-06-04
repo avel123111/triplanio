@@ -123,8 +123,8 @@ function VisitBlock({
 }) {
   const { t } = useI18nFormat();
   // Naive wall-clock - visit.timezone is intentionally ignored.
-  const start = parseNaive(visit.start_datetime);
-  const end = parseNaive(visit.end_datetime);
+  const start = parseNaive(visit.start_date);
+  const end = parseNaive(visit.end_date);
   const range = start && end
     ? (start.hasSame(end, 'day')
         ? start.toFormat('d LLL yyyy')
