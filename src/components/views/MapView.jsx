@@ -257,9 +257,10 @@ export default function MapView({
             { key: 'theme', title: mapScheme === 'DARK' ? t('tse.map_light') : t('tse.map_dark'), icon: mapScheme === 'DARK' ? 'sun' : 'moon', onClick: () => setMapScheme((s) => (s === 'DARK' ? 'LIGHT' : 'DARK')) },
             { key: 'se', title: t('tse.map_startend'), icon: showSE ? 'flag' : 'eyeOff', onClick: () => setShowSE((v) => !v) },
           ].map((b) => (
-            // Constant brand-coloured control buttons — only the icon changes per state.
+            // Constant surface-coloured control buttons (white in light theme,
+            // dark in dark theme) — only the icon changes per state.
             <button key={b.key} type="button" onClick={b.onClick} title={b.title} aria-label={b.title}
-              style={{ width: 36, height: 36, borderRadius: 9, border: 'none', background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }}>
+              style={{ width: 36, height: 36, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }}>
               <Icon name={b.icon} size={17} />
             </button>
           ))}

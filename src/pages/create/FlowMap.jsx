@@ -150,7 +150,7 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
           { key: 'se', title: t('tse.map_startend'), icon: showSE ? 'flag' : 'eyeOff', onClick: () => setShowSE((v) => !v) },
         ].map((b) => (
           <button key={b.key} type="button" onClick={b.onClick} title={b.title} aria-label={b.title}
-            style={{ width: 36, height: 36, borderRadius: 9, border: 'none', background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }}>
+            style={{ width: 36, height: 36, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }}>
             <Icon name={b.icon} size={17} />
           </button>
         ))}
