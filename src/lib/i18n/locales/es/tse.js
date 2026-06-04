@@ -38,6 +38,8 @@ export default {
   'tse.same_city_no_transfer': 'misma ciudad - no hace falta transporte',
   'tse.add_transfer': 'Añadir transporte',
   'tse.mismatch_suffix': ' · no coincide',
+  'tse.overnight_title': 'Transporte nocturno (cambio de día): la siguiente ciudad y todas las posteriores se desplazan +1 día',
+  'tse.save_new_city_first': 'Guarda la estructura primero: solo puedes añadir un transporte a una ciudad guardada',
   'tse.dep_short': 'Sal',
   'tse.arr_short': 'Lleg',
   'tse.arrival_word': 'Llegada',

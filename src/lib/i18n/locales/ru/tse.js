@@ -38,6 +38,8 @@ export default {
   'tse.same_city_no_transfer': 'тот же город - переезд не нужен',
   'tse.add_transfer': 'Добавить переезд',
   'tse.mismatch_suffix': ' · не совпадает',
+  'tse.overnight_title': 'Ночной переезд (смена дня): следующий город и все последующие сдвигаются на +1 день',
+  'tse.save_new_city_first': 'Сначала сохраните структуру — переезд можно добавить только к сохранённому городу',
   'tse.dep_short': 'Отпр',
   'tse.arr_short': 'Приб',
   'tse.arrival_word': 'Прилёт',

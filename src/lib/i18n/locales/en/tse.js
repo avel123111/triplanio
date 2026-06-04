@@ -38,6 +38,8 @@ export default {
   'tse.same_city_no_transfer': 'same city - no transfer needed',
   'tse.add_transfer': 'Add transfer',
   'tse.mismatch_suffix': ' · mismatch',
+  'tse.overnight_title': 'Overnight transfer (day change): the next city and all following ones shift +1 day',
+  'tse.save_new_city_first': 'Save the structure first — a transfer can only be added to a saved city',
   'tse.dep_short': 'Dep',
   'tse.arr_short': 'Arr',
   'tse.arrival_word': 'Arrival',
