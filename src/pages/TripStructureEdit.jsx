@@ -496,6 +496,27 @@ export default function TripStructureEdit() {
     }
   }
 
+  // Map camera focus following the open panel: city/hotel/activity → that city;
+  // transfer → both cities. Falsy → whole-route auto-fit stays in charge.
+  const coordOf = (n) => (n && n.latitude != null && n.longitude != null ? [n.longitude, n.latitude] : null);
+  const byId = (id) => draft.nodes.find((n) => n.id === id);
+  let mapFocus = null;
+  if (leftPanel?.type === 'city') {
+    const p = coordOf(byId(leftPanel.id)); if (p) mapFocus = [p];
+  } else if (leftPanel?.type === 'event') {
+    if (leftPanel.kind === 'transfer') {
+      const tr = liveTransfers.find((x) => x.id === leftPanel.id);
+      if (tr) mapFocus = [coordOf(byId(tr.from_city_visit_id)), coordOf(byId(tr.to_city_visit_id))].filter(Boolean);
+    } else {
+      const e = (leftPanel.kind === 'hotel' ? liveHotels : liveActivities).find((x) => x.id === leftPanel.id);
+      const p = e && coordOf(byId(e.city_visit_id)); if (p) mapFocus = [p];
+    }
+  } else if (leftPanel?.type === 'create' || leftPanel?.type === 'pick') {
+    if (leftPanel.kind === 'transfer') mapFocus = [coordOf(leftPanel.fromVisit), coordOf(leftPanel.toVisit)].filter(Boolean);
+    else { const p = coordOf(leftPanel.visit); if (p) mapFocus = [p]; }
+  }
+  if (mapFocus && mapFocus.length === 0) mapFocus = null;
+
   return (
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
     {headerEl}
@@ -594,7 +615,10 @@ export default function TripStructureEdit() {
             split by a divider, no gap/padding anywhere. Each scrolls on its own. */}
         <div className="ts-col-right" style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--surface)' }}>
           <div className="ts-map" style={{ flex: '7 1 0', minHeight: 0, overflow: 'hidden', borderBottom: '1px solid var(--line)' }}>
-            <MapView visits={draft.nodes} transfers={liveTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
+            <MapView visits={draft.nodes} transfers={liveTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd
+              focus={mapFocus}
+              onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
+              colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           <div className="ts-warn" style={{ flex: '3 1 0', minHeight: 0, overflow: 'auto', padding: 9 }}>
             {issues.length > 0

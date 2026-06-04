@@ -34,6 +34,11 @@ export default function MapView({
   showStartEnd = true,
   colorScheme = 'LIGHT',
   onCityClick,
+  // Optional camera focus driven by the parent (e.g. the editor's open panel):
+  // array of [lng,lat] points. 1 point → flyTo the city; 2 → fit both cities.
+  // Falsy/empty → no override (the whole-route auto-fit stays in charge); when
+  // it clears after a focus, the camera eases back to the full route.
+  focus = null,
   children,
 }) {
   const containerRef = useRef(null);
@@ -93,6 +98,33 @@ export default function MapView({
   useEffect(() => {
     if (mapRef.current && ready) applyBasemapConfig(mapRef.current, colorScheme);
   }, [colorScheme, ready]);
+
+  // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
+  // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
+  // this flies to the focused city / fits the two transfer cities, and eases
+  // back to the full route once focus clears. ---
+  const focusSig = useMemo(
+    () => (Array.isArray(focus) && focus.length ? focus.map((p) => p.join(',')).join('|') : ''),
+    [focus],
+  );
+  const hadFocusRef = useRef(false);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    if (focusSig) {
+      hadFocusRef.current = true;
+      if (focus.length === 1) {
+        map.flyTo({ center: focus[0], zoom: 9.5, duration: 700, essential: true });
+      } else {
+        fitToPoints(map, focus, { padding: 110, maxZoom: 9, animate: true });
+      }
+    } else if (hadFocusRef.current) {
+      hadFocusRef.current = false;
+      if (ordered.length > 0) {
+        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: true });
+      }
+    }
+  }, [ready, focusSig]);
 
   // --- Draw markers + route lines whenever the data changes ---
   useEffect(() => {
