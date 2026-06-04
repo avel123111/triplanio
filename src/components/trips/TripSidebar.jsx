@@ -16,7 +16,7 @@ import { useUnreadChatCount } from '@/lib/chat';
 export default function TripSidebar({
   tripId, trip, lens, onNavigate,
   isPro, proResolved = true, isOwner, myRole,
-  onUpgrade, onProInfo, onShare, isEditScreen = false,
+  onUpgrade, onProInfo, onShare, isEditScreen = false, collapsed = false,
 }) {
   const { t } = useI18n();
   const navSb = useNavigate();
@@ -29,7 +29,7 @@ export default function TripSidebar({
   const showUpgrade = proResolved && !isPro;
   const chatUnread = useUnreadChatCount(tripId);
   return (
-    <aside className="app-side">
+    <aside className={'app-side' + (collapsed ? ' app-side--rail' : '')}>
       <div className="app-side__group">
         <div className="app-side__group-label">{t('trip.sections_title')}</div>
         {lensItems.map((item) => (
@@ -39,7 +39,7 @@ export default function TripSidebar({
             onClick={() => onNavigate(item.id)}
           >
             <Icon name={item.icon} size={15} />
-            {t(item.labelKey)}
+            <span className="app-side__label">{t(item.labelKey)}</span>
             {item.id === 'chat' && chatUnread > 0 && (
               <span className="app-side__item-badge" style={{ marginLeft: 'auto', background: 'var(--warm)', color: '#fff', borderRadius: 999, fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
                 {chatUnread > 99 ? '99+' : chatUnread}
@@ -57,7 +57,7 @@ export default function TripSidebar({
               onClick={() => { if (!isEditScreen) navSb(`/trip/${tripId}/edit`); }}
             >
               <Icon name={EDIT_ITEM.icon} size={15} />
-              {t(EDIT_ITEM.labelKey)}
+              <span className="app-side__label">{t(EDIT_ITEM.labelKey)}</span>
             </button>
           )}
           {mgmtItems.map((item) => (
@@ -67,19 +67,19 @@ export default function TripSidebar({
               onClick={() => onNavigate(item.id)}
             >
               <Icon name={item.icon} size={15} />
-              {t(item.labelKey)}
+              <span className="app-side__label">{t(item.labelKey)}</span>
             </button>
           ))}
           {canShare && onShare && (
             <button className="app-side__item" onClick={onShare}>
               <Icon name="share" size={15} />
-              {t('trip.share')}
+              <span className="app-side__label">{t('trip.share')}</span>
             </button>
           )}
         </div>
       )}
       {showUpgrade && (
-        <div style={{ margin: '10px 6px 0', padding: 12, borderRadius: 10, background: 'var(--warm-tint)' }}>
+        <div className="app-side__upgrade" style={{ margin: '10px 6px 0', padding: 12, borderRadius: 10, background: 'var(--warm-tint)' }}>
           <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warm)', marginBottom: 4 }}>{t('trip_menu.free_trip_title')}</div>
           <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginBottom: 8, lineHeight: 1.45 }}>
             {t('trip.pro_locked_lenses')}

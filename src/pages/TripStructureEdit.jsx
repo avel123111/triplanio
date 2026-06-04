@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
@@ -138,7 +138,30 @@ export default function TripStructureEdit() {
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
   const [undoStack, setUndoStack] = useState([]); // history of draft snapshots (JSON) for step-undo
   const endDrag = () => { setDragIdx(null); setOverGap(null); };
-  const dropAt = (gap) => { if (dragIdx !== null) moveTo(dragIdx, gap); endDrag(); };
+  // FLIP refs: animate rows smoothly to their new slot during drag (no placeholder).
+  const rowElRefs = useRef(new Map());     // node id -> row element
+  const prevRectsRef = useRef(new Map());  // node id -> top, captured just before a reorder
+  const setRowRef = (id) => (el) => { if (el) rowElRefs.current.set(id, el); else rowElRefs.current.delete(id); };
+  const captureRects = () => { const m = new Map(); rowElRefs.current.forEach((el, id) => { if (el) m.set(id, el.getBoundingClientRect().top); }); prevRectsRef.current = m; };
+  // FLIP: after the preview order changes, slide each row from where it WAS to
+  // where it is now (.18s) — the list rearranges smoothly instead of snapping.
+  useLayoutEffect(() => {
+    const prev = prevRectsRef.current;
+    if (!prev || prev.size === 0) return;
+    rowElRefs.current.forEach((el, id) => {
+      if (!el) return;
+      const prevTop = prev.get(id);
+      if (prevTop == null) return;
+      const dy = prevTop - el.getBoundingClientRect().top;
+      if (Math.abs(dy) < 0.5) return;
+      el.style.transition = 'none';
+      el.style.transform = `translateY(${dy}px)`;
+      el.getBoundingClientRect(); // force reflow so the next line animates
+      el.style.transition = 'transform .18s ease';
+      el.style.transform = '';
+    });
+    prevRectsRef.current = new Map();
+  }, [dragIdx, overGap]);
   const acquiredRef = React.useRef(false);
   const DRAFT_KEY = `ts-edit-${tripId}`;
   const clearDraftStore = () => { try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } };
@@ -296,20 +319,6 @@ export default function TripStructureEdit() {
     const base = d.startDate ? toDT(d.startDate).plus({ days: delta }).toISO() : null;
     return { ...d, startDate: base, nodes: recompute(d.nodes, base) };
   });
-  const moveTo = (from, to) => {
-    if (from == null || to == null || from === to) return;
-    editDraft((d) => {
-      const arr = sortVisits(d.nodes); // base = exactly the rendered row order (indices match r.idx)
-      if (isAnchor(arr[from])) return d;
-      const [m] = arr.splice(from, 1);
-      let t = to > from ? to - 1 : to;
-      const lo = arr[0]?.kind === 'start' ? 1 : 0;
-      const hi = arr[arr.length - 1]?.kind === 'end' ? arr.length - 1 : arr.length;
-      t = Math.max(lo, Math.min(hi, t));
-      arr.splice(t, 0, { ...m, gap: 0 }); // dropped node sits flush in its new slot
-      return { ...d, nodes: recompute(arr, d.startDate) };
-    });
-  };
   // Remove a city → confirm first. On confirm the city AND its attached bookings
   // leave the draft (the city goes to the tray; on save save_trip_edit deletes the
   // city + children). Bookings are stashed on the node so Restore brings them back.
@@ -486,6 +495,44 @@ export default function TripStructureEdit() {
   // Stay numbering (only nights-cities are numbered).
   const stayNumById = {};
   { let sc = 0; ordered.forEach((n) => { if (n.kind === 'transit') stayNumById[n.id] = ++sc; }); }
+  const origIdxById = new Map(ordered.map((n, i) => [n.id, i]));
+  // Live preview order while dragging: the dragged node is shown already moved to
+  // the hovered slot (FLIP animates the shuffle). Anchors stay pinned at the ends.
+  const displayNodes = (() => {
+    if (dragIdx == null || overGap == null || overGap === dragIdx || overGap === dragIdx + 1) return ordered;
+    const arr = ordered.slice();
+    const [m] = arr.splice(dragIdx, 1);
+    let t = overGap > dragIdx ? overGap - 1 : overGap;
+    const lo = arr[0]?.kind === 'start' ? 1 : 0;
+    const hi = arr[arr.length - 1]?.kind === 'end' ? arr.length - 1 : arr.length;
+    t = Math.max(lo, Math.min(hi, t));
+    arr.splice(t, 0, m);
+    return arr;
+  })();
+  const onRowDragOver = (nodeId) => {
+    if (dragIdx == null) return;
+    const oi = origIdxById.get(nodeId);
+    if (oi == null || oi === dragIdx || oi === overGap) return;
+    captureRects();
+    setOverGap(oi);
+  };
+  const onEndDragOver = () => {
+    if (dragIdx == null || overGap === ordered.length) return;
+    captureRects();
+    setOverGap(ordered.length);
+  };
+  const commitDrag = () => {
+    if (dragIdx != null && overGap != null) {
+      const order = displayNodes.map((n) => n.id);
+      rowElRefs.current.forEach((el) => { if (el) { el.style.transition = ''; el.style.transform = ''; } });
+      editDraft((d) => {
+        const byId = new Map(d.nodes.map((n) => [n.id, n]));
+        const nextNodes = order.map((id) => byId.get(id)).filter(Boolean);
+        return { ...d, nodes: recompute(nextNodes, d.startDate) };
+      });
+    }
+    endDrag();
+  };
   // Transfers whose from/to cities are NOT adjacent in the route (or dangle on a
   // removed city) — shown in the "out of plan" tray instead of a connector.
   const adjPairs = new Set();
@@ -583,9 +630,9 @@ export default function TripStructureEdit() {
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
     {headerEl}
     <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
-      <div style={{ flex: '0 0 220px', minWidth: 0, display: 'flex', minHeight: 0 }}>
+      <div style={{ flex: '0 0 56px', minWidth: 0, position: 'relative', minHeight: 0 }}>
         <TripSidebar
-          tripId={tripId} trip={trip} isEditScreen
+          tripId={tripId} trip={trip} isEditScreen collapsed
           onNavigate={(id) => nav(`/trip/${tripId}?lens=${id}`)}
           isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
           onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
@@ -614,21 +661,26 @@ export default function TripStructureEdit() {
             </div>
           </div>
 
-          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 20px 18px' }}>
-          <div className="te-thead" style={{ padding: '0 0 6px' }}>
+          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 18px' }}>
+          <div className="te-thead" style={{ padding: '0 4px 6px' }}>
             <span className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</span>
           </div>
           <div className="te-table">
-            {ordered.map((n, idx) => {
-              const next = ordered[idx + 1];
+            {displayNodes.map((n) => {
+              const dIdx = ordered.indexOf(n);     // stable index in the real order
+              const next = displayNodes[displayNodes.indexOf(n) + 1];
               const tr = next ? transferFor(n.id, next.id) : null;
-              const isCity = !isAnchor(n);
-              // Drop target: hovering this row inserts the dragged city ABOVE it.
-              const dropTarget = dragIdx !== null && dragIdx !== idx;
-              const dropHere = dropTarget && overGap === idx;
+              const dragging = dragIdx === dIdx;
+              const dragProps = {
+                dragging,
+                onDragStart: () => { setDragIdx(dIdx); setOverGap(null); },
+                onDragOver: () => onRowDragOver(n.id),
+                onDrop: () => commitDrag(),
+                onDragEnd: () => { if (dragIdx != null) endDrag(); },
+              };
               let body;
               if (isAnchor(n)) {
                 body = <GridEndpoint node={n} onRemove={() => removeEndpoint(n.id)} />;
@@ -636,9 +688,8 @@ export default function TripStructureEdit() {
                 const aa = actsFor(n.id);
                 body = <GridNode seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
                   onOpenCity={() => openCity(n.id)}
-                  drag={{ dragging: dragIdx === idx, onDragStart: () => setDragIdx(idx),
-                    onDragOver: () => { if (dragIdx !== null && dragIdx !== idx) setOverGap(idx); },
-                    onDrop: () => { if (dragIdx !== idx) dropAt(idx); else endDrag(); }, onDragEnd: endDrag }} />;
+                  onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
+                  drag={dragProps} />;
               } else {
                 const h = hotelFor(n.id); const aa = actsFor(n.id);
                 body = <GridNode seg={n} stayNum={stayNumById[n.id]} cityConf={cityConflicts(n.id)}
@@ -647,18 +698,16 @@ export default function TripStructureEdit() {
                   onHotel={() => (h ? openEvent('hotel', h.id) : createBooking('hotel', n))}
                   onAct={() => (aa.length ? openCity(n.id) : createBooking('activity', n))}
                   onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
-                  drag={{ dragging: dragIdx === idx, onDragStart: () => setDragIdx(idx),
-                    onDragOver: () => { if (dragIdx !== null && dragIdx !== idx) setOverGap(idx); },
-                    onDrop: () => { if (dragIdx !== idx) dropAt(idx); else endDrag(); }, onDragEnd: endDrag }} />;
+                  drag={dragProps} />;
               }
               return (
-                <div className="te-seamwrap" key={n.id}
-                  onDragOver={dropTarget ? (e) => { e.preventDefault(); setOverGap(idx); } : undefined}
-                  onDrop={dropTarget ? (e) => { e.preventDefault(); dropAt(idx); } : undefined}>
-                  {dropHere && <div className="te-dropspacer" />}
+                <div className="te-seamwrap" key={n.id} ref={setRowRef(n.id)}
+                  style={dragging ? { opacity: 0.45 } : undefined}
+                  onDragOver={dragIdx != null ? (e) => { e.preventDefault(); onRowDragOver(n.id); } : undefined}
+                  onDrop={dragIdx != null ? (e) => { e.preventDefault(); commitDrag(); } : undefined}>
                   {body}
                   {/* Transfer chip straddles the seam to the next city. Hidden while
-                      dragging so the open slot reads cleanly. */}
+                      dragging so the rearranging list reads cleanly. */}
                   {next && dragIdx === null && (
                     <SeamTransfer a={n} b={next} t={tr} mismatch={transferMismatch(tr)} onOpen={() => openTransferRow(n, next, tr)} />
                   )}
@@ -668,12 +717,10 @@ export default function TripStructureEdit() {
           </div>
 
           {dragIdx !== null && ordered[ordered.length - 1]?.kind !== 'end' && (
-            <div onDragOver={(e) => { e.preventDefault(); setOverGap(ordered.length); }}
-              onDrop={(e) => { e.preventDefault(); dropAt(ordered.length); }}
-              style={{ marginTop: 8 }}>
-              <div className="te-dropspacer" style={{ height: 40, display: 'grid', placeItems: 'center', color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', fontSize: 12, fontWeight: 600, borderTopColor: overGap === ordered.length ? 'var(--brand)' : 'var(--line)' }}>
-                {t('tse.move_to_end')}
-              </div>
+            <div onDragOver={(e) => { e.preventDefault(); onEndDragOver(); }}
+              onDrop={(e) => { e.preventDefault(); commitDrag(); }}
+              style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 8, border: '1.5px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line-2)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', fontSize: 12, fontWeight: 600 }}>
+              {t('tse.move_to_end')}
             </div>
           )}
           <AddPointButton onOpen={() => setLeftPanel({ type: 'cityadd' })} />
@@ -703,23 +750,27 @@ export default function TripStructureEdit() {
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
-          {/* Collapsible warnings: a pill with the count; click → expandable list. */}
-          <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 10, width: 'min(360px, calc(100% - 24px))', textAlign: 'right' }}>
+          {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
+          <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, maxWidth: 'calc(100% - 32px)' }}>
             {showWarn && issues.length > 0 && (
-              <div className="scrollbar-thin" style={{ marginBottom: 8, maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 8 }}>
+              <div className="scrollbar-thin" style={{ width: 'min(360px, calc(100vw - 32px))', maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 8 }}>
                 <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
               </div>
             )}
             <button
-              onClick={() => setShowWarn((v) => !v)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, boxShadow: 'var(--shadow-soft)',
-                background: issues.length ? 'linear-gradient(0deg, var(--warning-soft), var(--warning-soft)), var(--surface)' : 'var(--surface)', border: '1px solid ' + (issues.length ? 'color-mix(in srgb, var(--warning) 45%, var(--line))' : 'var(--line)'), color: issues.length ? 'var(--warning)' : 'var(--ink-2)' }}
+              onClick={() => { if (issues.length) setShowWarn((v) => !v); }}
+              aria-label={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
+              title={issues.length ? t('tse.warns_short', { n: warns }) : t('validation.panel_all_clear')}
+              style={{ position: 'relative', width: 56, height: 56, borderRadius: '50%', border: 'none', flexShrink: 0,
+                cursor: issues.length ? 'pointer' : 'default', display: 'grid', placeItems: 'center', boxShadow: 'var(--shadow-pop)',
+                background: issues.length ? 'var(--warning)' : 'var(--success)', color: '#fff', transition: 'transform .15s ease' }}
             >
-              <Icon name={issues.length ? 'warning' : 'check'} size={14} style={{ color: issues.length ? 'var(--warning)' : 'var(--success)' }} />
-              {issues.length === 0
-                ? t('validation.panel_all_clear')
-                : (errors ? t('tse.errors_short', { n: errors }) : t('tse.warns_short', { n: warns }))}
-              {issues.length > 0 && <Icon name="chev" size={13} style={{ transform: showWarn ? 'rotate(-90deg)' : 'rotate(90deg)' }} />}
+              <Icon name={issues.length ? 'warning' : 'check'} size={23} />
+              {issues.length > 0 && (
+                <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 20, height: 20, padding: '0 5px', borderRadius: 999, background: 'var(--surface)', color: 'var(--warning)', border: '2px solid var(--warning)', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+                  {issues.length > 99 ? '99+' : issues.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -829,6 +880,11 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
           </div>
           <div className="num muted" style={{ fontSize: 11.5, marginTop: 2 }}>{t('tse.transit_word')} · {fmtD(seg.start_date, lang)}</div>
         </div>
+        <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
+          <button className="te-step" onClick={onNightsMinus} disabled><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
+          <span className="num te-nights">0<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
+          <button className="te-step" onClick={onNightsPlus} title={t('planner.more_nights')}><Icon name="plus" size={10} /></button>
+        </span>
         {acts.length > 0 && <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>}
       </div>
     );
@@ -880,6 +936,7 @@ function SeamTransfer({ a, b, t, mismatch, onOpen }) {
       <button className={'te-seam__pill' + (mismatch ? ' is-warn' : '')} onClick={onOpen} title={`${a.city_name} → ${b.city_name}`}>
         <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
         <span style={{ fontWeight: 600, fontSize: 11.5, color: mismatch ? 'var(--warning)' : 'var(--ink-2)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+        {t.day_change && <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} title={tx('tse.overnight_title')} />}
         <span className="num muted" style={{ fontSize: 10.5 }}>· {fmtD(t.start_datetime, lang)}</span>
         {mismatch && <span className="te-warndot" />}
       </button>
