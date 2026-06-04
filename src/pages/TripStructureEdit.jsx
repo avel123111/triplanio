@@ -211,6 +211,28 @@ export default function TripStructureEdit() {
 
   useEffect(() => { if (draft && dirty) { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, dirty })); } catch { /* quota */ } } }, [draft, dirty, DRAFT_KEY]);
 
+  // Cities created OUTSIDE the draft (layover waypoints, etc.) arrive via the shell
+  // refetch — merge them into the draft so they appear without a page reload.
+  useEffect(() => {
+    if (!draft || !shell?.cityVisits) return;
+    const known = new Set(draft.nodes.map((n) => n.id));
+    const removed = new Set((draft.removed || []).map((n) => n.id));
+    const missing = shell.cityVisits.filter((v) => v && !known.has(v.id) && !removed.has(v.id) && !String(v.id).startsWith('tmp-'));
+    if (missing.length === 0) return;
+    editDraft((d) => {
+      const add = missing.map((v) => {
+        const base = { ...v, position: Number.isFinite(v.position) ? v.position : 999 };
+        if (isAnchor(v)) return { ...base, nights: null, gap: null };
+        const sd = dayOf(v.start_date), ed = dayOf(v.end_date);
+        const isWp = v.kind === 'waypoint';
+        const nights = isWp ? null : Math.max(0, (sd && ed ? Math.round(ed.diff(sd, 'days').days) : 1));
+        return { ...base, nights, gap: 0 };
+      });
+      return { ...d, nodes: recompute(sortVisits([...d.nodes, ...add]), d.startDate) };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shell]);
+
   useEffect(() => {
     if (!tripId) return;
     let alive = true;
@@ -845,7 +867,7 @@ function HotelCell({ hotel, warn, onClick }) {
   return (
     <button className={'te-hotelicon' + (warn ? ' is-warn' : '')} onClick={onClick} title={hotel.name}>
       <Icon name="bed" size={15} style={{ color: warn ? 'var(--warning)' : 'var(--ev-hotel)' }} />
-      {warn && <span className="te-warndot" style={{ position: 'absolute', top: 4, right: 4 }} />}
+      {warn && <Icon name="warning" size={11} style={{ position: 'absolute', top: 2, right: 2, color: 'var(--warning)' }} />}
     </button>
   );
 }
@@ -860,7 +882,7 @@ function ActCell({ count, warn, onClick }) {
     <button className={'te-actchip' + (warn ? ' is-warn' : '')} onClick={onClick} title={count + ''}>
       <Icon name="spark" size={13} style={{ color: warn ? 'var(--warning)' : 'var(--ev-activity)' }} />
       <span className="num" style={{ fontWeight: 700, fontSize: 12 }}>{count}</span>
-      {warn && <span className="te-warndot" />}
+      {warn && <Icon name="warning" size={11} style={{ color: 'var(--warning)' }} />}
     </button>
   );
 }
@@ -949,7 +971,6 @@ function SeamTransfer({ a, b, t, mismatch, onOpen }) {
         <span style={{ fontWeight: 600, fontSize: 11.5, color: mismatch ? 'var(--warning)' : 'var(--ink-2)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
         {t.day_change && <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} title={tx('tse.overnight_title')} />}
         <span className="num muted" style={{ fontSize: 10.5 }}>· {fmtD(t.start_datetime, lang)}</span>
-        {mismatch && <span className="te-warndot" />}
       </button>
     </div>
   );

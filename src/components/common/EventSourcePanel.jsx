@@ -10,7 +10,7 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, optimisticContentUpdate } from '@/lib/trip-data';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { Btn, Skeleton } from '@/design/index';
@@ -76,9 +76,25 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
     ? [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ') || themeLabel
     : (visit?.city_name || themeLabel);
 
+  const CACHE_KIND = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
   const doDelete = async () => {
     const table = TABLE_BY_KIND[kind];
     if (!table) return;
+    const tripId = data.trip_id;
+    const cacheKind = CACHE_KIND[kind];
+    // Optimistic: drop it from the content cache + close immediately, then delete
+    // in the DB in the background and reconcile (rollback on error).
+    if (tripId && cacheKind) {
+      const prev = qc.getQueryData(TRIP_CONTENT_KEY(tripId));
+      optimisticContentUpdate(qc, tripId, cacheKind, 'remove', { id: data.id });
+      onClose?.();
+      (async () => {
+        const { error } = await supabase.from(table).delete().eq('id', data.id);
+        if (error && prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
+        invalidate();
+      })();
+      return;
+    }
     setDeleting(true);
     const { error } = await supabase.from(table).delete().eq('id', data.id);
     setDeleting(false);

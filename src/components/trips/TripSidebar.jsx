@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
@@ -20,6 +20,8 @@ export default function TripSidebar({
 }) {
   const { t } = useI18n();
   const navSb = useNavigate();
+  // Collapsed rail: open on arrival, stay open until the mouse actually leaves.
+  const [railOpen, setRailOpen] = useState(true);
   const lensItems = LENS_ITEMS.filter((item) => isLensVisible(trip, item.id));
   // Viewers can't open Settings or Members — hide those entirely.
   const mgmtItems = MGMT_ITEMS.filter((item) =>
@@ -29,7 +31,11 @@ export default function TripSidebar({
   const showUpgrade = proResolved && !isPro;
   const chatUnread = useUnreadChatCount(tripId);
   return (
-    <aside className={'app-side' + (collapsed ? ' app-side--rail' : '')}>
+    <aside
+      className={'app-side' + (collapsed ? ' app-side--rail' : '') + (collapsed && railOpen ? ' is-open' : '')}
+      onMouseEnter={collapsed ? () => setRailOpen(true) : undefined}
+      onMouseLeave={collapsed ? () => setRailOpen(false) : undefined}
+    >
       <div className="app-side__group">
         <div className="app-side__group-label">{t('trip.sections_title')}</div>
         {lensItems.map((item) => (

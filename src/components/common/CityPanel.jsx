@@ -156,7 +156,7 @@ export default function CityPanel({
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span>
                 <span className="num muted" style={{ fontSize: 11.5 }}>{fmtDate(a.start_datetime)}{fmtTime(a.start_datetime) ? ' · ' + fmtTime(a.start_datetime) : ''}</span>
               </span>
-              {warn && <span title={t('validation.ACT_START_OOB') || ''} style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--warning)', flexShrink: 0 }} />}
+              {warn && <Icon name="warning" size={12} title={t('validation.ACT_START_OOB') || ''} style={{ color: 'var(--warning)', flexShrink: 0 }} />}
               <Icon name="chev" size={13} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
             </button>
           );
