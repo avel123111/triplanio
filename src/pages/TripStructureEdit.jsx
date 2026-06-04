@@ -10,7 +10,7 @@ import { Btn, Badge, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { getTimezone } from '@/lib/geo';
 import MapView from '@/components/views/MapView';
-import SourceViewLoader from '@/components/budget/SourceViewLoader';
+import EventSourcePanel from '@/components/common/EventSourcePanel';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
 import { useToast } from '@/components/ui/use-toast';
@@ -115,8 +115,12 @@ export default function TripStructureEdit() {
   const [dirty, setDirty] = useState(false);
   const [lock, setLock] = useState('acquiring');
   const [saving, setSaving] = useState(false);
-  const [viewEvent, setViewEvent] = useState(null); // {kind,id,warning} - real EventModal
-  const [addLeg, setAddLeg] = useState(null);        // {fromVisit,toVisit} - real transfer create dialog
+  // Left-column panel FSM (replaces the old view/add modals). null = the city
+  // list; otherwise the left pane swaps in-place to a panel:
+  //   { type:'event', kind, id, warning }    - view/edit/delete a booking (EventSourcePanel)
+  //   { type:'createTransfer', fromVisit, toVisit } - create a transfer (EventEditDialog panel variant)
+  const [leftPanel, setLeftPanel] = useState(null);
+  const closeLeftPanel = () => setLeftPanel(null);
   const [adding, setAdding] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
@@ -298,19 +302,19 @@ export default function TripStructureEdit() {
 
   // ---- conflict / transfer dialogs (REAL app dialogs → write to DB → refetch) ----
   const openConflict = (c) => {
-    if (c.hotelId) setViewEvent({ kind: 'hotel', id: c.hotelId, warning: c.message });
-    else if (c.activityId) setViewEvent({ kind: 'activity', id: c.activityId, warning: c.message });
-    else if (c.transferId) setViewEvent({ kind: 'transfer', id: c.transferId, warning: c.message });
+    if (c.hotelId) setLeftPanel({ type: 'event', kind: 'hotel', id: c.hotelId, warning: c.message });
+    else if (c.activityId) setLeftPanel({ type: 'event', kind: 'activity', id: c.activityId, warning: c.message });
+    else if (c.transferId) setLeftPanel({ type: 'event', kind: 'transfer', id: c.transferId, warning: c.message });
     else toast({ description: `${c.message} ${t('tse.fix_hint_suffix')}` });
   };
-  const openTransferRow = (a, b, t) => {
-    if (t) {
+  const openTransferRow = (a, b, tr) => {
+    if (tr) {
       // Hierarchy guarantees ≤1 issue per transfer → show that real message.
-      const issue = issues.find((i) => i.transferId === t.id);
-      setViewEvent({ kind: 'transfer', id: t.id, warning: issue?.message || null });
+      const issue = issues.find((i) => i.transferId === tr.id);
+      setLeftPanel({ type: 'event', kind: 'transfer', id: tr.id, warning: issue?.message || null });
       return;
     }
-    setAddLeg({ fromVisit: a, toVisit: b });
+    setLeftPanel({ type: 'createTransfer', fromVisit: a, toVisit: b });
   };
 
   const onSave = async () => {
@@ -411,12 +415,33 @@ export default function TripStructureEdit() {
   });
   const draggedName = dragIdx !== null ? (ordered[dragIdx]?.city_name || t('event.city')) : '';
 
+  // Left-column panel (in-place, replaces the old modals). null → city list.
+  let leftPanelEl = null;
+  if (leftPanel?.type === 'event') {
+    leftPanelEl = (
+      <EventSourcePanel
+        kind={leftPanel.kind} id={leftPanel.id} warning={leftPanel.warning}
+        canEdit onClose={closeLeftPanel}
+      />
+    );
+  } else if (leftPanel?.type === 'createTransfer') {
+    leftPanelEl = (
+      <EventEditDialog
+        open variant="panel" kind="transfer" tripId={tripId}
+        fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
+        defaultCurrency={trip?.details?.main_currency || 'EUR'}
+        onOpenChange={(o) => { if (!o) { closeLeftPanel(); qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); } }}
+      />
+    );
+  }
+
   return (
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
     {headerEl}
     <div className="ts-grid" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, overflow: 'hidden' }}>
         {/* LEFT - page title + cities (scrolling list) */}
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
+          {leftPanelEl || (<>
           {/* page title */}
           <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: '1px solid var(--line-2)' }}>
             <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>{t('tse.section_eyebrow')}</div>
@@ -481,6 +506,7 @@ export default function TripStructureEdit() {
           <AddPointButton onOpen={() => setAdding(true)} />
           <RemovedTray removed={draft.removed} onRestore={restoreCity} />
           </div>{/* /ts-leftscroll */}
+          </>)}
         </div>
 
         {/* RIGHT - map (top 70%) + warnings (bottom 30%), flush edge-to-edge,
@@ -497,19 +523,6 @@ export default function TripStructureEdit() {
         </div>
       </div>
 
-      {viewEvent && (
-        <SourceViewLoader
-          kind={viewEvent.kind} id={viewEvent.id} open canEdit warning={viewEvent.warning}
-          onOpenChange={(o) => { if (!o) { setViewEvent(null); qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); } }}
-        />
-      )}
-      {addLeg && (
-        <EventEditDialog
-          open kind="transfer" tripId={tripId} fromVisit={addLeg.fromVisit} toVisit={addLeg.toVisit}
-          defaultCurrency={trip?.details?.main_currency || 'EUR'}
-          onOpenChange={(o) => { if (!o) { setAddLeg(null); qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); } }}
-        />
-      )}
       {adding && <AddPointDialog onPick={onPickCity} onClose={() => setAdding(false)} hasStart={ordered.some((n) => n.kind === 'start')} hasEnd={ordered.some((n) => n.kind === 'end')} />}
       {confirmDel && (
         <div onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)', padding: 16 }}>
@@ -757,5 +770,6 @@ function RemovedTray({ removed, onRestore }) {
 }
 
 
-// (ResolveModal removed - conflicts now open the real EventModal via SourceViewLoader,
-//  and "Добавить переезд" opens the real EventEditDialog. TRIP_EDIT_MODE test #8/#9.)
+// (Conflicts and transfer rows now open in-place LEFT panels: EventSourcePanel
+//  for view/edit/delete, EventEditDialog variant="panel" for transfer create.
+//  The old view/add modals were removed in the panel redesign Ф3.)

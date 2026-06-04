@@ -13,6 +13,7 @@ import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import EventModal from '@/components/common/EventModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
+import { useEntitySource } from '@/components/common/EventViewBody';
 import { useT } from '@/lib/i18n/I18nContext';
 import ServiceDialog from '@/components/services/ServiceDialog';
 
@@ -23,63 +24,18 @@ const TABLE_BY_KIND = {
   service: 'trip_services',
 };
 
-async function getRow(table, id) {
-  const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
-  if (error) throw error;
-  return data;
-}
-
 export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false, warning = null }) {
   const t = useT();
   const qc = useQueryClient();
-  const [data, setData] = useState(null);
-  const [visit, setVisit] = useState(null);
-  const [fromVisit, setFromVisit] = useState(null);
-  const [toVisit, setToVisit] = useState(null);
   const [editMode, setEditMode] = useState(false);
 
-  useEffect(() => {
-    if (!open || !id) return;
-    let cancelled = false;
-    setEditMode(false);
-    (async () => {
-      try {
-        if (kind === 'hotel') {
-          const h = await getRow('hotel_stays', id);
-          if (cancelled) return;
-          setData(h);
-          if (h?.city_visit_id) {
-            const v = await getRow('city_visits', h.city_visit_id).catch(() => null);
-            if (!cancelled) setVisit(v);
-          }
-        } else if (kind === 'transfer') {
-          const tr = await getRow('transfers', id);
-          if (cancelled) return;
-          setData(tr);
-          const [fv, tv] = await Promise.all([
-            tr?.from_city_visit_id ? getRow('city_visits', tr.from_city_visit_id).catch(() => null) : null,
-            tr?.to_city_visit_id ? getRow('city_visits', tr.to_city_visit_id).catch(() => null) : null,
-          ]);
-          if (!cancelled) { setFromVisit(fv); setToVisit(tv); }
-        } else if (kind === 'activity') {
-          const a = await getRow('activities', id);
-          if (cancelled) return;
-          setData(a);
-          if (a?.city_visit_id) {
-            const v = await getRow('city_visits', a.city_visit_id).catch(() => null);
-            if (!cancelled) setVisit(v);
-          }
-        } else if (kind === 'service') {
-          const s = await getRow('trip_services', id);
-          if (cancelled) return;
-          setData(s);
-        }
-      } catch {
-        if (!cancelled) onOpenChange(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [open, kind, id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Reset edit mode whenever a fresh entity is opened.
+  useEffect(() => { if (open) setEditMode(false); }, [open, kind, id]);
+
+  // Shared loader (same fetch used by the editor's left-panel shell).
+  const { data, visit, fromVisit, toVisit } = useEntitySource(kind, id, {
+    open, onError: () => onOpenChange(false),
+  });
 
   if (!open || !data) return null;
 

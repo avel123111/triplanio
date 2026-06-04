@@ -326,6 +326,64 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  Entity source loader (shared by SourceViewLoader modal + editor panel)
+//  Loads a row by (kind,id) plus its related city_visit(s). One loader, two
+//  shells — avoids duplicating the fetch logic.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getEntityRow(table, id) {
+  const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
+  if (error) throw error;
+  return data;
+}
+
+export function useEntitySource(kind, id, { open = true, onError } = {}) {
+  const [data, setData] = useState(null);
+  const [visit, setVisit] = useState(null);
+  const [fromVisit, setFromVisit] = useState(null);
+  const [toVisit, setToVisit] = useState(null);
+
+  React.useEffect(() => {
+    if (!open || !id) return;
+    let cancelled = false;
+    setData(null); setVisit(null); setFromVisit(null); setToVisit(null);
+    (async () => {
+      try {
+        if (kind === 'hotel') {
+          const h = await getEntityRow('hotel_stays', id);
+          if (cancelled) return;
+          setData(h);
+          if (h?.city_visit_id) { const v = await getEntityRow('city_visits', h.city_visit_id).catch(() => null); if (!cancelled) setVisit(v); }
+        } else if (kind === 'transfer') {
+          const tr = await getEntityRow('transfers', id);
+          if (cancelled) return;
+          setData(tr);
+          const [fv, tv] = await Promise.all([
+            tr?.from_city_visit_id ? getEntityRow('city_visits', tr.from_city_visit_id).catch(() => null) : null,
+            tr?.to_city_visit_id ? getEntityRow('city_visits', tr.to_city_visit_id).catch(() => null) : null,
+          ]);
+          if (!cancelled) { setFromVisit(fv); setToVisit(tv); }
+        } else if (kind === 'activity') {
+          const a = await getEntityRow('activities', id);
+          if (cancelled) return;
+          setData(a);
+          if (a?.city_visit_id) { const v = await getEntityRow('city_visits', a.city_visit_id).catch(() => null); if (!cancelled) setVisit(v); }
+        } else if (kind === 'service') {
+          const s = await getEntityRow('trip_services', id);
+          if (cancelled) return;
+          setData(s);
+        }
+      } catch {
+        if (!cancelled) onError?.();
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, kind, id]);
+
+  return { data, visit, fromVisit, toVisit };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  Documents state + inline upload (shared)
 // ─────────────────────────────────────────────────────────────────────────────
 
