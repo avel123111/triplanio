@@ -1472,8 +1472,6 @@ export default function TripView() {
 
   const { isDark, toggle: toggleTheme } = useTheme();
   const [isEditMode, setIsEditMode] = useState(false);
-  const [transferEdit, setTransferEdit] = useState({ open: false, fromVisit: null, toVisit: null, transfer: null });
-  const [hotelEdit, setHotelEdit] = useState({ open: false, visit: null, hotel: null });
   // Choice dialogs (ForkPartnerModal) - sit between the warning button and the
   // edit form so the user can pick a partner before falling back to manual entry.
   const [hotelChoice, setHotelChoice] = useState({ open: false, visit: null });
@@ -1653,30 +1651,6 @@ export default function TripView() {
           height: (shownLens === 'map' || shownLens === 'chat') ? 'calc(100vh - 56px)' : undefined,
           overflow: (shownLens === 'map' || shownLens === 'chat') ? 'hidden' : undefined,
         }}>
-          {/* Transfer - opened from missing-transfer warnings or edit mode */}
-          {transferEdit.fromVisit && transferEdit.toVisit && (
-            <EventEditDialog
-              open={transferEdit.open}
-              onOpenChange={(open) => setTransferEdit(s => ({ ...s, open }))}
-              kind="transfer"
-              tripId={tripId}
-              fromVisit={transferEdit.fromVisit}
-              toVisit={transferEdit.toVisit}
-              entity={transferEdit.transfer}
-              defaultCurrency={trip?.details?.main_currency || 'EUR'}
-            />
-          )}
-          {/* Hotel - opened from missing-hotel warnings or edit mode */}
-          {hotelEdit.visit && (
-            <EventEditDialog
-              open={hotelEdit.open}
-              onOpenChange={(open) => setHotelEdit(s => ({ ...s, open }))}
-              kind="hotel"
-              visit={hotelEdit.visit}
-              entity={hotelEdit.hotel}
-              defaultCurrency={trip?.details?.main_currency || 'EUR'}
-            />
-          )}
           {/* Hotel choice - sits between the warning button and the edit form */}
           <ForkPartnerModal
             open={hotelChoice.open}

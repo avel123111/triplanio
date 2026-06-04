@@ -30,7 +30,7 @@ function nightsBetween(a, b) {
   return Math.max(0, Math.round((e - s) / 86_400_000));
 }
 
-function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities = [], canEdit = false, openEvent }) {
+function ScreenMap({ visits = [], transfers = [], hotels = [], activities = [], canEdit = false, openEvent }) {
   const { t } = useI18n();
   const [activeIdx, setActiveIdx] = useState(0);
 
@@ -87,7 +87,6 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
           route={route}
           activeIdx={activeIdx}
           setActiveIdx={setActiveIdx}
-          editMode={false}
           transfers={transfers}
         />
 
@@ -116,7 +115,7 @@ function ScreenMap({ trip, visits = [], transfers = [], hotels = [], activities 
 }
 
 // ----- Route stepper - adaptive: horizontal for ≤5 cities, compact list for >5 -----
-function RouteStepper({ route, activeIdx, setActiveIdx, editMode, transfers }) {
+function RouteStepper({ route, activeIdx, setActiveIdx, transfers }) {
   const { t } = useI18n();
   const isLong = route.length > 5;
   const nCities = uniqueCityCount(route); // dedup repeated cities for the count
@@ -585,13 +584,5 @@ function HotelRow({ hotel, visit, onOpen }) {
   );
 }
 
-function Legend({ color, dashed, children }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <svg width="30" height="2"><line x1="0" y1="1" x2="30" y2="1" stroke={color} strokeWidth="2" strokeDasharray={dashed ? '4 3' : '0'} /></svg>
-      <span>{children}</span>
-    </div>
-  );
-}
 
 export default ScreenMap;

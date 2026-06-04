@@ -1060,12 +1060,10 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-row:hover { background: var(--wash); border-color: transparent; }
     .te-row:hover .te-cityname { color: var(--brand); }
     .te-cityname { font-family: var(--font-display); font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; transition: color .12s; }
-    .te-row--wp { cursor: default; }
     .te-grip { color: var(--muted-2); opacity: .4; cursor: grab; display: grid; place-items: center; transition: opacity .12s; }
     .te-row:hover .te-grip { opacity: 1; }
     .te-row__num { width: 22px; height: 22px; border-radius: 50%; background: var(--brand-soft-12); color: var(--brand); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 12px; }
     .te-row__num.is-warn { background: var(--warning-soft); color: var(--warning); }
-    .te-row__num--wp { background: transparent; color: var(--ev-transfer); border: 1.5px dashed var(--ev-transfer); font-size: 12px; }
     .te-warnbadge { display: inline-flex; align-items: center; gap: 2px; color: var(--warning); font-size: 11px; font-weight: 700; }
     .te-stepper { display: inline-flex; align-items: center; gap: 1px; background: var(--brand-soft); border: 1px solid var(--brand-soft-12); border-radius: 9px; padding: 2px; justify-self: center; }
     .te-step { width: 22px; height: 22px; border: none; background: transparent; border-radius: 7px; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: background .12s; }
@@ -1090,18 +1088,8 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-actchip { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border-radius: 9px; background: var(--ev-activity-soft); border: 1px solid transparent; color: var(--ink); cursor: pointer; font-family: var(--font-body); }
     .te-actchip:hover { border-color: var(--ev-activity); }
     .te-actchip.is-warn { background: var(--warning-soft); }
-    .te-warndot { width: 6px; height: 6px; border-radius: 50%; background: var(--warning); flex-shrink: 0; }
     .te-rowacts { display: inline-flex; gap: 1px; opacity: 0; transition: opacity .12s; flex-shrink: 0; }
     .te-row:hover .te-rowacts { opacity: 1; }
-
-    /* ---- connector ---- */
-    .te-conn { display: flex; align-items: center; gap: 10px; padding: 1px 12px 1px 24px; min-height: 30px; }
-    .te-conn__rail { width: 2px; align-self: stretch; background: var(--line); margin-left: 13px; flex-shrink: 0; }
-    .te-conn__pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); cursor: pointer; font-family: var(--font-body); margin-left: -2px; white-space: nowrap; }
-    .te-conn__pill:hover { box-shadow: var(--shadow-soft); border-color: var(--ev-transfer); }
-    .te-conn__pill.is-warn { border-color: var(--warning); }
-    .te-conn__pill--add { border-style: dashed; color: var(--muted); font-size: 12px; font-weight: 600; gap: 4px; }
-    .te-conn__pill--add:hover { color: var(--ev-transfer); border-color: var(--ev-transfer); }
 
     /* ---- redesigned itinerary: NO outer frame — just hairline separators
        between rows; transfers are chips straddling the seam between two cities ---- */
@@ -1109,11 +1097,8 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-table .te-row { border-radius: 0; border-color: transparent; }
     .te-seamwrap { position: relative; }
     .te-seamwrap:not(:first-child) > .te-row,
-    .te-seamwrap:not(:first-child) > .te-wp,
     .te-seamwrap:not(:first-child) > .te-end { border-top: 1px solid var(--line-2); }
     .te-end { display: flex; align-items: center; gap: 10px; padding: 13px 4px; background: color-mix(in srgb, var(--wash) 45%, transparent); }
-    .te-wp { display: flex; align-items: center; gap: 10px; padding: 13px 4px; cursor: pointer; transition: background .12s; }
-    .te-wp:hover { background: var(--wash); }
     .te-row__node { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
     .te-endlabel { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; }
     .te-wptag { font-size: 10px; font-weight: 700; color: var(--ev-transfer); text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border-radius: 999px; background: var(--ev-transfer-soft); white-space: nowrap; }
@@ -1126,8 +1111,6 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-seam__pill.is-warn { border-color: var(--warning); background: var(--warning-soft); }
     .te-seam__pill--add { background: var(--surface); border: 1px dashed var(--line); color: var(--muted); font-size: 11.5px; font-weight: 600; gap: 4px; box-shadow: none; }
     .te-seam__pill--add:hover { color: var(--ev-transfer); border-color: var(--ev-transfer); background: var(--surface); }
-    /* drag-and-drop: open a row-sized gap (no filled placeholder) where the city lands */
-    .te-dropspacer { height: 54px; border-top: 2px solid var(--brand); background: transparent; }
 
     .te-adddest { display: grid; grid-template-columns: 16px 24px 1fr; column-gap: 10px; align-items: center; width: 100%; margin-top: 4px; padding: 9px 12px; border-radius: 13px; border: 1px solid transparent; background: transparent; cursor: pointer; transition: background .12s; }
     .te-adddest:hover { background: var(--wash); }
@@ -1185,27 +1168,3 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
       .te-left { border-right: none; }
     }
 
-/* Trip-editor narrow icon rail (expands on hover) — item 2 of editor polish */
-.te-rail { flex: 0 0 52px; position: relative; z-index: 30; }
-.te-rail__inner {
-  position: absolute; inset: 0; width: 52px; overflow: hidden;
-  background: var(--surface); border-right: 1px solid var(--line);
-  transition: width .16s ease; display: flex; flex-direction: column;
-  padding: 12px 8px; gap: 2px;
-}
-.te-rail:hover .te-rail__inner { width: 216px; box-shadow: var(--shadow-pop); }
-.te-rail__item {
-  display: flex; align-items: center; gap: 11px; padding: 9px 8px; border-radius: 9px;
-  border: none; background: transparent; color: var(--ink-2); cursor: pointer;
-  width: 100%; text-align: left; white-space: nowrap; font-size: 13.5px; font-family: var(--font-body);
-}
-.te-rail__item:hover { background: var(--wash); }
-.te-rail__item.active { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
-.te-rail__icon { width: 20px; display: grid; place-items: center; flex-shrink: 0; }
-.te-rail__item .lbl { opacity: 0; transition: opacity .12s ease; }
-.te-rail:hover .te-rail__item .lbl { opacity: 1; }
-.te-rail__group-label {
-  font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted-2);
-  font-weight: 600; padding: 12px 8px 4px; white-space: nowrap; opacity: 0; transition: opacity .12s ease;
-}
-.te-rail:hover .te-rail__group-label { opacity: 1; }
