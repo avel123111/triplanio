@@ -122,7 +122,6 @@ export default function TripStructureEdit() {
   //   { type:'createTransfer', fromVisit, toVisit } - create a transfer (EventEditDialog panel variant)
   const [leftPanel, setLeftPanel] = useState(null);
   const closeLeftPanel = () => setLeftPanel(null);
-  const [adding, setAdding] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
@@ -295,7 +294,7 @@ export default function TripStructureEdit() {
     });
   };
   const onPickCity = async (c, kind) => {
-    setAdding(false);
+    closeLeftPanel();
     let tz = 'UTC';
     try { tz = (await getTimezone(c.latitude, c.longitude)) || 'UTC'; } catch { /* keep */ }
     addCity({ ...c, timezone: tz }, kind);
@@ -428,10 +427,23 @@ export default function TripStructureEdit() {
     if (next) rows.push({ kind: 'leg', a: n, b: next, gap: idx + 1 }); // gap = insert position between a and b
   });
   const draggedName = dragIdx !== null ? (ordered[dragIdx]?.city_name || t('event.city')) : '';
+  // Transfers whose from/to cities are NOT adjacent in the route (or dangle on a
+  // removed city) — shown in the "out of plan" tray instead of a connector.
+  const adjPairs = new Set();
+  for (let k = 0; k < ordered.length - 1; k++) adjPairs.add(`${ordered[k].id}>${ordered[k + 1].id}`);
+  const outOfPlanTransfers = liveTransfers.filter((tr) => !adjPairs.has(`${tr.from_city_visit_id}>${tr.to_city_visit_id}`));
+  const nodeName = (id) => draft.nodes.find((n) => n.id === id)?.city_name || '?';
 
   // Left-column panel (in-place, replaces the old modals). null → city list.
   let leftPanelEl = null;
-  if (leftPanel?.type === 'event') {
+  if (leftPanel?.type === 'cityadd') {
+    leftPanelEl = (
+      <CityAddPanel
+        onPick={onPickCity} onBack={closeLeftPanel}
+        hasStart={ordered.some((n) => n.kind === 'start')} hasEnd={ordered.some((n) => n.kind === 'end')}
+      />
+    );
+  } else if (leftPanel?.type === 'event') {
     leftPanelEl = (
       <EventSourcePanel
         kind={leftPanel.kind} id={leftPanel.id} warning={leftPanel.warning}
@@ -508,6 +520,12 @@ export default function TripStructureEdit() {
           </div>
 
           <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 20px 18px' }}>
+          <div className="te-thead" style={{ padding: '0 0 6px' }}>
+            <span className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</span>
+            <span className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</span>
+            <span className="te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</span>
+            <span className="te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</span>
+          </div>
           <div>
             {rows.map((r, i) => {
               const first = i === 0, last = i === rows.length - 1;
@@ -554,7 +572,19 @@ export default function TripStructureEdit() {
               {t('tse.move_to_end')}
             </div>
           )}
-          <AddPointButton onOpen={() => setAdding(true)} />
+          <AddPointButton onOpen={() => setLeftPanel({ type: 'cityadd' })} />
+          {outOfPlanTransfers.length > 0 && (
+            <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 12, background: 'var(--warning-soft)', border: '1px dashed color-mix(in srgb, var(--warning) 45%, var(--line))' }}>
+              <div className="eyebrow" style={{ marginBottom: 8, color: 'var(--warning)' }}>{t('tse.transfers_out_of_plan')}</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {outOfPlanTransfers.map((tr) => (
+                  <button key={tr.id} onClick={() => openEvent('transfer', tr.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>
+                    <Icon name="warning" size={12} style={{ color: 'var(--warning)' }} /> {nodeName(tr.from_city_visit_id)} → {nodeName(tr.to_city_visit_id)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <RemovedTray removed={draft.removed} onRestore={restoreCity} />
           </div>{/* /ts-leftscroll */}
           </>)}
@@ -574,7 +604,6 @@ export default function TripStructureEdit() {
         </div>
       </div>
 
-      {adding && <AddPointDialog onPick={onPickCity} onClose={() => setAdding(false)} hasStart={ordered.some((n) => n.kind === 'start')} hasEnd={ordered.some((n) => n.kind === 'end')} />}
       {confirmDel && (
         <div onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)', padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, width: 420, maxWidth: '100%', boxShadow: 'var(--shadow-pop)' }}>
@@ -781,32 +810,35 @@ const POINT_TYPES = [
   { id: 'start', labelKey: 'ai_plan.start', icon: 'flag', subKey: 'tse.pt_start_sub' },
   { id: 'end', labelKey: 'ai_plan.end', icon: 'flag', subKey: 'tse.pt_end_sub' },
 ];
-function AddPointDialog({ onPick, onClose, hasStart, hasEnd }) {
+// In-place "add a point" panel (replaces the old modal). Lives in the editor's
+// left column; picks a point type then searches a city.
+function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
   const t = useT();
   const [type, setType] = useState('transit');
   const disabledFor = (id) => (id === 'start' && hasStart) || (id === 'end' && hasEnd);
   const meta = POINT_TYPES.find((p) => p.id === type);
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)', padding: '10vh 16px 16px' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, width: 480, maxWidth: '100%', boxShadow: 'var(--shadow-pop)' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--brand)' }} />
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '18px 18px 12px' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="pin" size={17} /></div>
-          <div style={{ flex: 1, minWidth: 0 }}><h2 style={{ fontSize: 17, marginBottom: 2 }}>{t('tse.add_point')}</h2><div className="muted" style={{ fontSize: 12 }}>{t('tse.add_point_hint')}</div></div>
-          <button className="ts-step" onClick={onClose}><Icon name="close" size={16} /></button>
+    <div className="te-panel">
+      <div className="te-panel__top">
+        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--brand)' }} />
+        <button className="te-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={16} /></button>
+        <span className="te-panel__icon" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="pin" size={16} /></span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="te-panel__title">{t('tse.add_point')}</div>
+          <div className="te-panel__sub">{t('tse.add_point_hint')}</div>
         </div>
-        <div style={{ padding: '0 18px 18px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7, marginBottom: 10 }}>
-            {POINT_TYPES.map((pt) => {
-              const dis = disabledFor(pt.id), active = type === pt.id;
-              return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 11, cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
-                <Icon name={pt.icon} size={17} /><span style={{ fontSize: 11.5, fontWeight: 600 }}>{t(pt.labelKey)}</span>
-              </button>;
-            })}
-          </div>
-          <div className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{meta ? t(meta.subKey) : ''}</div>
-          <CitySearch onSelect={(c) => onPick(c, type)} />
+      </div>
+      <div className="te-panel__body scrollbar-thin">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7, marginBottom: 10 }}>
+          {POINT_TYPES.map((pt) => {
+            const dis = disabledFor(pt.id), active = type === pt.id;
+            return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 11, cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
+              <Icon name={pt.icon} size={17} /><span style={{ fontSize: 11.5, fontWeight: 600 }}>{t(pt.labelKey)}</span>
+            </button>;
+          })}
         </div>
+        <div className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{meta ? t(meta.subKey) : ''}</div>
+        <CitySearch onSelect={(c) => onPick(c, type)} />
       </div>
     </div>
   );

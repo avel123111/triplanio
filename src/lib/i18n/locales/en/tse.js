@@ -71,4 +71,8 @@ export default {
   'tse.add_arrival': 'Add arrival',
   'tse.add_departure': 'Add departure',
   'tse.no_activities': 'Nothing planned yet.',
+  'tse.col_destination': 'Destination',
+  'tse.col_nights': 'Nights',
+  'tse.col_stay': 'Stay',
+  'tse.transfers_out_of_plan': 'Transfers out of plan',
 };

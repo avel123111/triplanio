@@ -71,4 +71,8 @@ export default {
   'tse.add_arrival': 'Añadir llegada',
   'tse.add_departure': 'Añadir salida',
   'tse.no_activities': 'Nada planificado aún.',
+  'tse.col_destination': 'Destino',
+  'tse.col_nights': 'Noches',
+  'tse.col_stay': 'Alojamiento',
+  'tse.transfers_out_of_plan': 'Trayectos fuera del plan',
 };

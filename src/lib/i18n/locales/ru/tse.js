@@ -71,4 +71,8 @@ export default {
   'tse.add_arrival': 'Добавить прибытие',
   'tse.add_departure': 'Добавить отправление',
   'tse.no_activities': 'Пока ничего не запланировано.',
+  'tse.col_destination': 'Направление',
+  'tse.col_nights': 'Ночи',
+  'tse.col_stay': 'Жильё',
+  'tse.transfers_out_of_plan': 'Переезды вне плана',
 };
