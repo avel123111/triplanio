@@ -386,7 +386,11 @@ export function validateTrip({ visits = [], hotels = [], activities = [], transf
     if (f && to) {
       const fi = orderIndex.get(f.id), ti = orderIndex.get(to.id);
       if (fi != null && ti != null && ti !== fi + 1) {
-        issues.push(mk('error', 'TR_NOT_ADJACENT', 'structure', { entityKind: 'transfer', entityId: tr.id, values: { from: f.city_name, to: to.city_name } }));
+        // Q3 (editor redesign): a transfer whose cities aren't adjacent in the
+        // route is "out of plan", not an error — we never auto-delete it and it
+        // must NOT block save. Shown as a soft hint (and, in the editor, in the
+        // "transfers out of plan" tray). Was 'error'; lowered to 'warning'.
+        issues.push(mk('warning', 'TR_NOT_ADJACENT', 'structure', { entityKind: 'transfer', entityId: tr.id, values: { from: f.city_name, to: to.city_name } }));
       }
       const k = `${f.id}>${to.id}`;
       pairCount.set(k, (pairCount.get(k) || 0) + 1);
