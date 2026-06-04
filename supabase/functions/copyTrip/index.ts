@@ -43,13 +43,16 @@ Deno.serve(async (req) => {
       .eq('id', user.id)
       .maybeSingle();
 
+    // Pro = status 'pro' with a non-expired end date. MUST match the canonical
+    // check used by isProActive (client) + getUserPlan/checkSubscriptionStatus
+    // (server). The old 'active'/'pro_trip'/'cancelled' check never matched the
+    // real 'pro' status, so every Pro user was treated as free and hit the
+    // 3-trip limit on copy.
     const now = new Date();
     const isPro =
-      profile?.subscription_status === 'active' ||
-      profile?.subscription_status === 'pro_trip' ||
-      (profile?.subscription_status === 'cancelled' &&
-        profile?.subscription_end_date &&
-        new Date(profile.subscription_end_date) > now);
+      profile?.subscription_status === 'pro' &&
+      !!profile?.subscription_end_date &&
+      new Date(profile.subscription_end_date) > now;
 
     if (!isPro) {
       const { count } = await supabaseAdmin

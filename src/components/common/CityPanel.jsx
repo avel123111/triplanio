@@ -75,7 +75,11 @@ export default function CityPanel({
   onOpenHotel, onAddHotel, onOpenActivity, onAddActivity, onOpenTransfer, onAddArrival, onAddDeparture,
 }) {
   const { t } = useI18n();
-  const nights = node.nights || 0;
+  // Waypoint = a 0-night transit stop: it carries only activities (no hotel /
+  // no arrival·departure of its own); the nights stepper turns it back into a
+  // city when raised above 0.
+  const isWaypoint = node.kind === 'waypoint';
+  const nights = isWaypoint ? 0 : (node.nights || 0);
 
   return (
     <PanelShell
@@ -102,24 +106,24 @@ export default function CityPanel({
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <span className="muted" style={{ fontSize: 12 }}>{t('tse.nights_label')}</span>
         <span className="te-stepper">
-          <button className="te-step" onClick={onNightsMinus} disabled={nights <= 1}><Icon name="close" size={11} style={{ transform: 'rotate(45deg)' }} /></button>
+          <button className="te-step" onClick={onNightsMinus} disabled={nights <= 0}><Icon name="close" size={11} style={{ transform: 'rotate(45deg)' }} /></button>
           <span className="num" style={{ minWidth: 26, textAlign: 'center', fontWeight: 700, fontSize: 13 }}>{nights}</span>
           <button className="te-step" onClick={onNightsPlus}><Icon name="plus" size={11} /></button>
         </span>
       </div>
 
-      {/* arrival / departure */}
+      {/* arrival / departure + hotel — cities only (waypoints carry activities only) */}
+      {!isWaypoint && <>
       <SectionLabel>{t('tse.section_road')}</SectionLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {arrival
           ? <FlightLine transfer={arrival} dir="in" warn={false} onClick={() => onOpenTransfer(arrival)} t={t} />
-          : prevCity && <GhostAdd icon="plane" accent="var(--ev-transfer)" label={t('tse.add_arrival')} sub={prevCity} onClick={onAddArrival} />}
+          : prevCity && <GhostAdd icon="plane" accent="var(--muted-2)" label={t('tse.add_arrival')} sub={prevCity} onClick={onAddArrival} />}
         {departure
           ? <FlightLine transfer={departure} dir="out" warn={false} onClick={() => onOpenTransfer(departure)} t={t} />
-          : nextCity && <GhostAdd icon="plane" accent="var(--ev-transfer)" label={t('tse.add_departure')} sub={nextCity} onClick={onAddDeparture} />}
+          : nextCity && <GhostAdd icon="plane" accent="var(--muted-2)" label={t('tse.add_departure')} sub={nextCity} onClick={onAddDeparture} />}
       </div>
 
-      {/* hotel */}
       <SectionLabel>{t('budget.cat_accommodation')}</SectionLabel>
       {hotel ? (
         <button className={'te-bookrow' + (hotelWarn ? ' is-warn' : '')} onClick={() => onOpenHotel(hotel.id)}>
@@ -131,8 +135,9 @@ export default function CityPanel({
           <Icon name="chev" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
         </button>
       ) : (
-        <GhostAdd icon="bed" accent="var(--ev-hotel)" label={t('hotel.add')} sub={rangeText(node.start_date, node.end_date)} onClick={onAddHotel} />
+        <GhostAdd icon="bed" accent="var(--muted-2)" label={t('hotel.add')} sub={rangeText(node.start_date, node.end_date)} onClick={onAddHotel} />
       )}
+      </>}
 
       {/* activities */}
       <SectionLabel action={<button className="te-addmini" onClick={onAddActivity}><Icon name="plus" size={13} /></button>}>

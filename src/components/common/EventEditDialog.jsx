@@ -1032,10 +1032,11 @@ export default function EventEditDialog({
           </div>
           )}
 
-          {/* Footer */}
+          {/* Footer — pinned to the bottom of the column in panel mode (like CityView) */}
           <div
             className="border-t bg-secondary/30"
-            style={{ padding: '12px 22px', display: 'flex', alignItems: 'center', gap: 8 }}
+            style={{ padding: '12px 22px', display: 'flex', alignItems: 'center', gap: 8,
+              ...(variant === 'panel' ? { position: 'sticky', bottom: 0, background: 'var(--wash-2)', zIndex: 3 } : {}) }}
           >
             {confirmDel ? (
               <>

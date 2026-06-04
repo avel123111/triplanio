@@ -12,6 +12,7 @@ import { isProActive } from '@/lib/subscription';
 import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 import { isAddonEnabled } from '@/lib/tripAddons';
 import { useUnreadChatCount } from '@/lib/chat';
+import { LENS_ITEMS, MGMT_ITEMS, isLensVisible, EDIT_ITEM, canEditStructure } from '@/lib/tripMenu';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
@@ -313,32 +314,9 @@ function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
 
 // ─── TripSidebar ──────────────────────────────────────────────────────────────
 
-const LENS_ITEMS = [
-  { id: 'timeline',  labelKey: 'trip_menu.timeline',   icon: 'list'     },
-  { id: 'map',       labelKey: 'trip_menu.map',         icon: 'map'      },
-  { id: 'calendar',  labelKey: 'trip_menu.calendar',     icon: 'calendar' },
-  { id: 'budget',    labelKey: 'trip.sidebar_budget',        icon: 'wallet'   },
-  { id: 'docs',      labelKey: 'trip_menu.documents',     icon: 'file'     },
-  { id: 'chat',      labelKey: 'trip_menu.chat',           icon: 'chat'     },
-];
-
-const MGMT_ITEMS = [
-  { id: 'members',   labelKey: 'trip.sidebar_members',     icon: 'users'    },
-  { id: 'settings',  labelKey: 'nav.settings',     icon: 'settings' },
-];
-
-// Addon-gated lenses: hidden unless the trip explicitly enabled them.
-// Default OFF - a fresh trip shows none of these until enabled in Settings.
-const GATED_LENS_ADDON = { calendar: 'calendar', budget: 'budget', chat: 'chat' };
-
-function isLensVisible(trip, lensId) {
-  const key = GATED_LENS_ADDON[lensId];
-  if (!key) return true;
-  return trip?.details?.addons?.[key] === true;
-}
-
 function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true, isOwner, myRole, onUpgrade, onProInfo }) {
   const { t } = useI18n();
+  const navSb = useNavigate();
   const lensItems = LENS_ITEMS.filter(item => isLensVisible(trip, item.id));
   // Viewers can't open Settings or Members - hide those menu items entirely.
   const mgmtItems = MGMT_ITEMS.filter(item =>
@@ -368,9 +346,18 @@ function TripSidebar({ tripId, trip, lens, onNavigate, isPro, proResolved = true
           </button>
         ))}
       </div>
-      {(mgmtItems.length > 0 || canShare) && (
+      {(mgmtItems.length > 0 || canShare || canEditStructure(myRole)) && (
         <div className="app-side__group">
           <div className="app-side__group-label">{t('trip_menu.section_manage')}</div>
+          {canEditStructure(myRole) && (
+            <button
+              className="app-side__item"
+              onClick={() => navSb(`/trip/${tripId}/edit`)}
+            >
+              <Icon name={EDIT_ITEM.icon} size={15} />
+              {t(EDIT_ITEM.labelKey)}
+            </button>
+          )}
           {mgmtItems.map(item => (
             <button
               key={item.id}
@@ -1142,13 +1129,19 @@ function MoreMenuDialog({ trip, visits, canManage = false, canEditMode, onEditSt
     setCopying(true);
     try {
       const { data, error } = await supabase.functions.invoke('copyTrip', { body: { tripId: trip.id } });
-      if (error || data?.error) throw new Error(data?.error || error?.message || 'copy failed');
+      // Non-2xx → supabase-js puts the response in error.context; pull the real
+      // server message out of it so failures aren't masked by a generic toast.
+      let serverMsg = data?.error || null;
+      if (!serverMsg && error?.context && typeof error.context.json === 'function') {
+        try { serverMsg = (await error.context.json())?.error || null; } catch { /* ignore */ }
+      }
+      if (error || data?.error) throw new Error(serverMsg || error?.message || 'copy failed');
       qc.invalidateQueries({ queryKey: ['trips', user?.id] });
       window.__closeModal?.();
       toast({ description: t('trip.copy_done') });
       if (data?.tripId) nav(`/trip/${data.tripId}`);
     } catch (e) {
-      toast({ description: t('trip.copy_error'), variant: 'destructive' });
+      toast({ description: e?.message || t('trip.copy_error'), variant: 'destructive' });
     } finally {
       setCopying(false);
     }

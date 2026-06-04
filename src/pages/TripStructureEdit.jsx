@@ -21,6 +21,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { LENS_ITEMS, MGMT_ITEMS, isLensVisible } from '@/lib/tripMenu';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
@@ -122,6 +123,7 @@ export default function TripStructureEdit() {
   //   { type:'createTransfer', fromVisit, toVisit } - create a transfer (EventEditDialog panel variant)
   const [leftPanel, setLeftPanel] = useState(null);
   const closeLeftPanel = () => setLeftPanel(null);
+  const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
@@ -232,7 +234,14 @@ export default function TripStructureEdit() {
   // nodes from that date preserving each node's nights+gap, so editing one node only
   // moves the nodes after it; the start and earlier nodes never move.
   const applyNodes = (nextNodes) => editDraft((d) => ({ ...d, nodes: recompute(nextNodes, d.startDate) }));
-  const nudgeNights = (id, delta) => applyNodes(draft.nodes.map((n) => (n.id === id ? { ...n, nights: Math.max(1, Math.min(60, (n.nights || 1) + delta)) } : n)));
+  // Nights 0..60. Hitting 0 turns a city into a waypoint (a 0-night transit
+  // stop); raising a waypoint above 0 turns it back into a transit city.
+  const nudgeNights = (id, delta) => applyNodes(draft.nodes.map((n) => {
+    if (n.id !== id) return n;
+    const cur = n.kind === 'waypoint' ? 0 : (n.nights || 0);
+    const next = Math.max(0, Math.min(60, cur + delta));
+    return next === 0 ? { ...n, kind: 'waypoint', nights: 0 } : { ...n, kind: 'transit', nights: next };
+  }));
   const shiftStart = (delta) => editDraft((d) => {
     const base = d.startDate ? toDT(d.startDate).plus({ days: delta }).toISO() : null;
     return { ...d, startDate: base, nodes: recompute(d.nodes, base) };
@@ -516,13 +525,19 @@ export default function TripStructureEdit() {
     else { const p = coordOf(leftPanel.visit); if (p) mapFocus = [p]; }
   }
   if (mapFocus && mapFocus.length === 0) mapFocus = null;
+  // Key the left pane on its identity so React remounts it on panel change →
+  // the .te-panefade entry animation replays.
+  const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
 
   return (
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
     {headerEl}
-    <div className="ts-grid" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, overflow: 'hidden' }}>
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+      <EditorSidebar tripId={tripId} trip={trip} />
+      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, overflow: 'hidden' }}>
         {/* LEFT - page title + cities (scrolling list) */}
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
+          <div key={panelKey} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {leftPanelEl || (<>
           {/* page title */}
           <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: '1px solid var(--line-2)' }}>
@@ -609,24 +624,39 @@ export default function TripStructureEdit() {
           <RemovedTray removed={draft.removed} onRestore={restoreCity} />
           </div>{/* /ts-leftscroll */}
           </>)}
+          </div>{/* /te-panefade */}
         </div>
 
-        {/* RIGHT - map (top 70%) + warnings (bottom 30%), flush edge-to-edge,
-            split by a divider, no gap/padding anywhere. Each scrolls on its own. */}
-        <div className="ts-col-right" style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--surface)' }}>
-          <div className="ts-map" style={{ flex: '7 1 0', minHeight: 0, overflow: 'hidden', borderBottom: '1px solid var(--line)' }}>
+        {/* RIGHT - full-height map; warnings live in a collapsible overlay widget */}
+        <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--surface)' }}>
+          <div className="ts-map" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
             <MapView visits={draft.nodes} transfers={liveTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
-          <div className="ts-warn" style={{ flex: '3 1 0', minHeight: 0, overflow: 'auto', padding: 9 }}>
-            {issues.length > 0
-              ? <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
-              : <div className="sev sev--success" style={{ margin: 4 }}><span className="sev__icon"><Icon name="check" size={16} /></span><div style={{ fontSize: 13 }}>{t('validation.panel_all_clear')}</div></div>}
+          {/* Collapsible warnings: a pill with the count; click → expandable list. */}
+          <div style={{ position: 'absolute', left: 12, bottom: 12, zIndex: 5, width: 'min(360px, calc(100% - 24px))' }}>
+            {showWarn && issues.length > 0 && (
+              <div className="scrollbar-thin" style={{ marginBottom: 8, maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 8 }}>
+                <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
+              </div>
+            )}
+            <button
+              onClick={() => setShowWarn((v) => !v)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, boxShadow: 'var(--shadow-soft)',
+                background: issues.length ? 'var(--warning-soft)' : 'var(--surface)', border: '1px solid ' + (issues.length ? 'color-mix(in srgb, var(--warning) 45%, var(--line))' : 'var(--line)'), color: issues.length ? 'var(--warning)' : 'var(--ink-2)' }}
+            >
+              <Icon name={issues.length ? 'warning' : 'check'} size={14} style={{ color: issues.length ? 'var(--warning)' : 'var(--success)' }} />
+              {issues.length === 0
+                ? t('validation.panel_all_clear')
+                : (errors ? t('tse.errors_short', { n: errors }) : t('tse.warns_short', { n: warns }))}
+              {issues.length > 0 && <Icon name="chev" size={13} style={{ transform: showWarn ? 'rotate(-90deg)' : 'rotate(90deg)' }} />}
+            </button>
           </div>
         </div>
       </div>
+    </div>
 
       {confirmDel && (
         <div onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)', padding: 16 }}>
@@ -653,6 +683,9 @@ export default function TripStructureEdit() {
         .ts-step:hover { background: var(--wash); }
         .ts-step:disabled { opacity: .3; cursor: default; }
         .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 13px; }
+        .te-panefade { animation: tePaneIn .18s ease both; }
+        @keyframes tePaneIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .te-panefade { animation: none; } }
         @media (max-width: 1080px) {
           .ts-screen { height: auto !important; min-height: 100vh; overflow: visible !important; }
           .ts-grid { grid-template-columns: 1fr !important; overflow: visible !important; }
@@ -662,6 +695,39 @@ export default function TripStructureEdit() {
         }
       `}</style>
     </div>
+  );
+}
+
+// Narrow icon-only trip menu for the editor screen; expands on hover. Lens
+// items navigate to /trip/:id?lens=…; "edit" is the current screen (active).
+function EditorSidebar({ tripId, trip }) {
+  const t = useT();
+  const nav = useNavigate();
+  const lensItems = LENS_ITEMS.filter((i) => isLensVisible(trip, i.id));
+  const go = (lensId) => nav(`/trip/${tripId}?lens=${lensId}`);
+  return (
+    <aside className="te-rail">
+      <div className="te-rail__inner scrollbar-thin">
+        <div className="te-rail__group-label">{t('trip.sections_title')}</div>
+        {lensItems.map((it) => (
+          <button key={it.id} className="te-rail__item" onClick={() => go(it.id)} title={t(it.labelKey)}>
+            <span className="te-rail__icon"><Icon name={it.icon} size={16} /></span>
+            <span className="lbl">{t(it.labelKey)}</span>
+          </button>
+        ))}
+        <div className="te-rail__group-label">{t('trip_menu.section_manage')}</div>
+        <button className="te-rail__item active" title={t('trip.edit_structure')}>
+          <span className="te-rail__icon"><Icon name="edit" size={16} /></span>
+          <span className="lbl">{t('trip.edit_structure')}</span>
+        </button>
+        {MGMT_ITEMS.map((it) => (
+          <button key={it.id} className="te-rail__item" onClick={() => go(it.id)} title={t(it.labelKey)}>
+            <span className="te-rail__icon"><Icon name={it.icon} size={16} /></span>
+            <span className="lbl">{t(it.labelKey)}</span>
+          </button>
+        ))}
+      </div>
+    </aside>
   );
 }
 
@@ -727,13 +793,24 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
   const stop = (e) => e.stopPropagation();
   if (seg.kind === 'waypoint') {
     return (
-      <div className="te-row te-row--wp" {...dragAttrs} style={{ opacity: drag.dragging ? 0.4 : 1 }}>
-        <span className="te-grip"><Icon name="drag" size={14} /></span>
+      <div className="te-row te-row--wp" {...dragAttrs} onClick={onOpenCity} style={{ opacity: drag.dragging ? 0.4 : 1, cursor: 'pointer' }}>
+        <span className="te-grip" onClick={stop}><Icon name="drag" size={14} /></span>
         <span className="te-row__num te-row__num--wp"><Icon name="arrowSwap" size={11} /></span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.flag} {seg.city_name}</div>
-          <div className="muted" style={{ fontSize: 11.5 }}>{t('tse.layover')} · {fmtD(seg.start_date, lang)}</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <span className="te-cityname" style={{ fontSize: 14 }}>{seg.city_name}</span>
+            <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ev-transfer)', textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 6px', borderRadius: 999, background: 'var(--ev-transfer-soft)', whiteSpace: 'nowrap' }}>{t('tse.layover')}</span>
+            <Conf n={cityConf} />
+          </div>
+          <div className="num muted" style={{ fontSize: 11.5, marginTop: 2 }}>{fmtD(seg.start_date, lang)}</div>
         </div>
+        <span className="te-stepper" onClick={stop}>
+          <button className="te-step" onClick={onNightsMinus} disabled><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
+          <span className="num te-nights">0<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
+          <button className="te-step" onClick={onNightsPlus} title={t('tse.col_destination')}><Icon name="plus" size={10} /></button>
+        </span>
+        <div className="te-cell te-cell--hotel" />
+        <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
       </div>
     );
   }
@@ -750,7 +827,7 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
         <div className="num muted" style={{ fontSize: 11.5, marginTop: 2 }}>{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
       </div>
       <span className="te-stepper" onClick={stop}>
-        <button className="te-step" onClick={onNightsMinus} disabled={seg.nights <= 1}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
+        <button className="te-step" onClick={onNightsMinus} disabled={(seg.nights || 0) <= 0} title={t('tse.col_nights')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
         <span className="num te-nights">{seg.nights}<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
         <button className="te-step" onClick={onNightsPlus}><Icon name="plus" size={10} /></button>
       </span>
