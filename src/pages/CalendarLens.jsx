@@ -202,9 +202,11 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [weekOffset, setWeekOffset]   = useState(0);
 
-  // Base start date from trip or first visit
+  // Base start date from trip or first visit that actually has a date
+  // (kind='start' cities have start_date=null, so we must skip them)
+  const firstDatedVisit = visits.find(v => v.start_date);
   const baseDateStr = trip?.start_date
-    || (visits[0] ? naiveDayKey(visits[0].start_date) : null);
+    || (firstDatedVisit ? naiveDayKey(firstDatedVisit.start_date) : null);
   const baseDate = baseDateStr ? parseNaive(baseDateStr + 'T00:00:00') : null;
 
   // Current month for display (with navigation offset)

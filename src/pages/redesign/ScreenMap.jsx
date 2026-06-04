@@ -30,7 +30,7 @@ function nightsBetween(a, b) {
   return Math.max(0, Math.round((e - s) / 86_400_000));
 }
 
-function ScreenMap({ visits = [], transfers = [], hotels = [], activities = [], canEdit = false, openEvent }) {
+function ScreenMap({ visits = [], transfers = [], hotels = [], activities = [], canEdit = false, openEvent, active = true }) {
   const { t } = useI18n();
   const [activeIdx, setActiveIdx] = useState(0);
 
@@ -68,6 +68,7 @@ function ScreenMap({ visits = [], transfers = [], hotels = [], activities = [], 
           visitsById={Object.fromEntries(visits.map(v => [v.id, v]))}
           showStartEnd
           mapControls
+          active={active}
           colorScheme={isDark ? 'DARK' : 'LIGHT'}
           onCityClick={(visitsAtPoint) => {
             const idx = route.findIndex(v => v.id === visitsAtPoint[0]?.id);

@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, fitToPoints, htmlMarkerEl, lineFeature, setLineLayer } from '@/lib/mapbox';
+import React, { useRef, useEffect, useState } from 'react';
+import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints, htmlMarkerEl, lineFeature, setLineLayer } from '@/lib/mapbox';
 import { groupMarkers, markerSvg, MISSING_COLOR } from '@/lib/mapRoute';
 import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import { Icon } from '../../design/icons';
@@ -33,13 +33,20 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const readyRef = useRef(false);
+  const [ready, setReady] = useState(false);
+  // On-map controls (same set as MapView): projection / theme / start-finish.
+  const [projection, setProjection] = useState('mercator');
+  const [scheme, setScheme] = useState(() => (typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'));
+  const [showSE, setShowSE] = useState(true);
+  useEffect(() => { if (mapRef.current && readyRef.current) { try { mapRef.current.setProjection(projection); } catch { /* ignore */ } } }, [projection]);
+  useEffect(() => { if (mapRef.current && readyRef.current) applyBasemapConfig(mapRef.current, scheme); }, [scheme]);
 
   const pts = [];
-  if (home?.latitude) pts.push({ lat: home.latitude, lng: home.longitude, label: '🏠', name: home.city_name });
+  if (home?.latitude && showSE) pts.push({ lat: home.latitude, lng: home.longitude, label: '🏠', name: home.city_name });
   cities.forEach((c, i) => {
     if (c.latitude) pts.push({ lat: c.latitude, lng: c.longitude, label: String(i + 1), name: c.city_name });
   });
-  if (!finalPoint && returnCity?.latitude && returnCity.city_name !== home?.city_name) {
+  if (!finalPoint && returnCity?.latitude && returnCity.city_name !== home?.city_name && showSE) {
     pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: '↩', name: returnCity.city_name });
   }
 
@@ -66,7 +73,7 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
       cooperativeGestures: true,
     });
     mapRef.current = map;
-    map.on('load', () => { readyRef.current = true; });
+    map.on('load', () => { readyRef.current = true; setReady(true); });
     return () => { map.remove(); mapRef.current = null; readyRef.current = false; };
   }, []);
 
@@ -129,7 +136,25 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
 
   return (
     <div className="flow-map" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: ready ? 1 : 0, transition: 'opacity .3s ease' }} />
+      {!ready && (
+        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'var(--surface)', zIndex: 2 }}>
+          <div style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+        </div>
+      )}
+
+      {ready && <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {[
+          { key: 'proj', title: projection === 'globe' ? t('tse.map_flat') : t('tse.map_globe'), icon: projection === 'globe' ? 'map' : 'globe', onClick: () => setProjection((p) => (p === 'globe' ? 'mercator' : 'globe')) },
+          { key: 'theme', title: scheme === 'DARK' ? t('tse.map_light') : t('tse.map_dark'), icon: scheme === 'DARK' ? 'sun' : 'moon', onClick: () => setScheme((s) => (s === 'DARK' ? 'LIGHT' : 'DARK')) },
+          { key: 'se', title: t('tse.map_startend'), icon: showSE ? 'flag' : 'eyeOff', onClick: () => setShowSE((v) => !v) },
+        ].map((b) => (
+          <button key={b.key} type="button" onClick={b.onClick} title={b.title} aria-label={b.title}
+            style={{ width: 36, height: 36, borderRadius: 9, border: 'none', background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }}>
+            <Icon name={b.icon} size={17} />
+          </button>
+        ))}
+      </div>}
 
       {badge && pts.length > 0 && (
         <div style={{

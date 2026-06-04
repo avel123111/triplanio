@@ -959,7 +959,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
 // ─── Share / More dialogs ─────────────────────────────────────────────────────
 
 
-function MoreMenuDialog({ trip, visits, canManage = false, canEditMode, onEditStructure, onEditMetadata }) {
+function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
   const { t } = useI18n();
   const nav = useNavigate();
   const qc = useQueryClient();
@@ -1001,13 +1001,6 @@ function MoreMenuDialog({ trip, visits, canManage = false, canEditMode, onEditSt
       onClick={() => window.__closeModal?.()}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 20, width: 320, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {canManage && canEditMode && (
-            <button onClick={() => onEditStructure?.()} style={{ ...itemStyle, color: 'var(--brand)', fontWeight: 600 }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <Icon name="map" size={16} style={{ color: 'var(--brand)' }} /> {t('trip.edit_structure')}
-            </button>
-          )}
           {canManage && (
             <button onClick={openEditMetadata} style={itemStyle}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
@@ -1160,9 +1153,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
           {myRole !== 'viewer' && (
             frozen
               ? <Btn variant="ghost" size="sm" icon="lock" disabled>{t('trip.editing')}</Btn>
-              : isEditMode
-                ? <Btn variant="primary" size="sm" icon="check" onClick={onToggleEdit}>{t('view.edit_mode_done')}</Btn>
-                : <Btn variant="ghost" size="sm" icon="edit" onClick={onToggleEdit}>{t('trip.edit_trip')}</Btn>
+              : <Btn variant="ghost" size="sm" icon="edit" disabled={!canEditMode} onClick={() => nav(`/trip/${trip.id}/edit`)}>{t('trip.edit_trip')}</Btn>
           )}
           {/* Only owner/admin can mint a share token (ensureShareToken is admin-only);
               showing this to a viewer just produced a 403 "не удалось создать ссылку". */}
@@ -1173,7 +1164,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
           {/* The "…" menu holds owner/admin actions (edit, settings, members) plus
               Copy trip. Copy is available to every participant (incl. viewers),
               so the button always renders; manage-only items are gated by canManage. */}
-          <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canManage={myRole !== 'viewer'} canEditMode={canEditMode} onEditStructure={() => { window.__closeModal?.(); nav(`/trip/${trip.id}/edit`); }} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
+          <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canManage={myRole !== 'viewer'} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
         </div>
       </div>
     </div>
@@ -1629,6 +1620,11 @@ export default function TripView() {
   let shownLens = isLensVisible(trip, lens) ? lens : 'timeline';
   if (myRole === 'viewer' && VIEWER_BLOCKED_LENSES.has(shownLens)) shownLens = 'timeline';
 
+  // Latch once the map lens has been opened so it stays mounted (hidden) on other
+  // tabs — see the map-lens render below for why.
+  const [mapEverShown, setMapEverShown] = useState(false);
+  useEffect(() => { if (shownLens === 'map') setMapEverShown(true); }, [shownLens]);
+
   if (loadingShell) return <LoadingScreen />;
   if (shellError || (!loadingShell && !trip)) return <ErrorScreen onBack={() => nav('/trips')} />;
 
@@ -1730,6 +1726,7 @@ export default function TripView() {
             onOpenChange={(o) => setEventView(s => ({ ...s, open: o }))}
             canEdit={myRole !== 'viewer' && !frozen}
             warning={eventView.warning}
+            onEditInEditor={canEditMode ? (({ kind, id }) => nav(`/trip/${trip.id}/edit`, { state: { edit: { kind, id } } })) : null}
           />
 
           {shownLens === 'timeline' && (
@@ -1861,16 +1858,22 @@ export default function TripView() {
               ownerId={trip?.created_by}
             />
           )}
-          {shownLens === 'map' && (
-            <ScreenMap
-              trip={trip}
-              visits={visits ?? []}
-              transfers={transfers ?? []}
-              hotels={hotels ?? []}
-              activities={activities ?? []}
-              canEdit={myRole === 'owner' || myRole === 'editor' || myRole === 'admin'}
-              openEvent={(kind, id) => setEventView({ open: true, kind, id })}
-            />
+          {/* Map lens: mount once first opened, then keep it alive but hidden on
+              other tabs so the Mapbox instance (and its loaded tiles/route) is
+              reused instead of re-initialised on every tab switch. */}
+          {mapEverShown && (
+            <div style={{ display: shownLens === 'map' ? 'block' : 'none', height: '100%' }}>
+              <ScreenMap
+                trip={trip}
+                visits={visits ?? []}
+                transfers={transfers ?? []}
+                hotels={hotels ?? []}
+                activities={activities ?? []}
+                canEdit={myRole === 'owner' || myRole === 'editor' || myRole === 'admin'}
+                active={shownLens === 'map'}
+                openEvent={(kind, id) => setEventView({ open: true, kind, id })}
+              />
+            </div>
           )}
         </main>
       </div>

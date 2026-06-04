@@ -293,15 +293,19 @@ export default function TripStructureEdit() {
   useEffect(() => {
     if (createIntentRef.current || !draft) return;
     const intent = location.state?.create;
-    if (!intent) return;
+    const editIntent = location.state?.edit;
+    if (!intent && !editIntent) return;
     createIntentRef.current = true;
     const byId = (id) => draft.nodes.find((n) => n.id === id);
-    if (intent.kind === 'hotel') {
+    if (intent?.kind === 'hotel') {
       const v = byId(intent.cityVisitId);
       if (v) setLeftPanel({ type: 'create', kind: 'hotel', visit: v });
-    } else if (intent.kind === 'transfer') {
+    } else if (intent?.kind === 'transfer') {
       const fromVisit = byId(intent.fromId), toVisit = byId(intent.toId);
       if (fromVisit && toVisit) setLeftPanel({ type: 'create', kind: 'transfer', fromVisit, toVisit });
+    } else if (editIntent?.kind && editIntent?.id) {
+      // Edit-from-timeline: open the entity's panel straight into edit mode.
+      setLeftPanel({ type: 'event', kind: editIntent.kind, id: editIntent.id, autoEdit: true });
     }
     nav(location.pathname + (location.search || ''), { replace: true, state: {} }); // consume the intent
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -470,7 +474,7 @@ export default function TripStructureEdit() {
     if (!draft || blocked || saving) return;
     setSaving(true);
     const isTmp = (id) => String(id).startsWith('tmp-');
-    const p_nodes = draft.nodes.filter((n) => !isTmp(n.id)).map((n) => ({ id: n.id, start_date: n.start_date ?? null, end_date: n.end_date ?? null, position: n.position }));
+    const p_nodes = draft.nodes.filter((n) => !isTmp(n.id)).map((n) => ({ id: n.id, start_date: n.start_date ?? null, end_date: n.end_date ?? null, position: n.position, kind: n.kind || 'transit' }));
     const p_cities_new = draft.nodes.filter((n) => isTmp(n.id)).map((n) => ({ tmp: n.id, city_name: n.city_name, country: n.country ?? null, country_code: n.country_code ?? null, latitude: n.latitude ?? null, longitude: n.longitude ?? null, timezone: n.timezone ?? null, external_city_id: n.external_city_id ?? null, kind: n.kind || 'transit', start_date: n.start_date ?? null, end_date: n.end_date ?? null, position: n.position }));
     // Bookings (incl. each transfer's day_change) are written LIVE via the panels;
     // the structure save only persists the recomputed city dates + positions.
@@ -650,7 +654,7 @@ export default function TripStructureEdit() {
     leftPanelEl = (
       <EventSourcePanel
         kind={leftPanel.kind} id={leftPanel.id} warning={leftPanel.warning}
-        canEdit onClose={closeLeftPanel}
+        autoEdit={leftPanel.autoEdit} canEdit onClose={closeLeftPanel}
       />
     );
   } else if (leftPanel?.type === 'pick') {

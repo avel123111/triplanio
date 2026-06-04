@@ -21,17 +21,23 @@ import { PanelShell, EventPanelBody, kindIcon } from '@/components/common/EventP
 const TABLE_BY_KIND = { hotel: 'hotel_stays', transfer: 'transfers', activity: 'activities', service: 'trip_services' };
 const LABEL_KEY = { hotel: 'budget.cat_accommodation', activity: 'budget.source_activity', service: 'service.car_default_name' };
 
-export default function EventSourcePanel({ kind, id, canEdit = false, warning = null, onClose }) {
+export default function EventSourcePanel({ kind, id, canEdit = false, warning = null, autoEdit = false, onClose }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [editMode, setEditMode] = useState(false);
+  const [editMode, setEditMode] = useState(autoEdit);
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting] = useState(false);
   // Bumped after a live edit so the view re-reads the row (this panel loads the
   // entity directly, so react-query invalidation alone wouldn't refresh it).
   const [refreshKey, setRefreshKey] = useState(0);
 
-  React.useEffect(() => { setEditMode(false); setConfirmDel(false); }, [kind, id]);
+  // Reset view/edit state when a different entity is opened. Skip the first run
+  // so an autoEdit intent (edit-from-timeline) isn't immediately cleared.
+  const firstRef = React.useRef(true);
+  React.useEffect(() => {
+    if (firstRef.current) { firstRef.current = false; return; }
+    setEditMode(false); setConfirmDel(false);
+  }, [kind, id]);
 
   const { data, visit, fromVisit, toVisit } = useEntitySource(kind, id, { open: true, onError: () => onClose?.(), refreshKey });
 

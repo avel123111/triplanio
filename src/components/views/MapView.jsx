@@ -41,6 +41,10 @@ export default function MapView({
   // Falsy/empty → no override (the whole-route auto-fit stays in charge); when
   // it clears after a focus, the camera eases back to the full route.
   focus = null,
+  // When the map is kept mounted but hidden behind another tab, the parent flips
+  // `active` to false. On re-show its container regains size, so the map needs a
+  // resize() (Mapbox can't observe a display:none→block transition).
+  active = true,
   // Show the on-map control buttons (projection, theme, start/finish toggles).
   mapControls = false,
   children,
@@ -108,6 +112,13 @@ export default function MapView({
       setReady(false);
     };
   }, []);
+
+  // --- Resize when re-shown after being hidden behind another tab ---
+  useEffect(() => {
+    if (active && mapRef.current && ready) {
+      requestAnimationFrame(() => { try { mapRef.current.resize(); } catch { /* ignore */ } });
+    }
+  }, [active, ready]);
 
   // --- Switch day/night in place when the theme changes (no map re-render) ---
   useEffect(() => {
@@ -233,21 +244,22 @@ export default function MapView({
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: ready ? 1 : 0, transition: 'opacity .3s ease' }} />
       {!ready && (
-        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 13, color: 'var(--muted)', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 13, color: 'var(--muted)', background: 'var(--surface)', zIndex: 2 }}>
           {error ? `Map error: ${error}` : <div style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
         </div>
       )}
       {mapControls && ready && (
         <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
-            { key: 'proj', title: projection === 'globe' ? t('tse.map_flat') : t('tse.map_globe'), icon: projection === 'globe' ? 'map' : 'globe', on: projection === 'globe', onClick: () => setProjection((p) => (p === 'globe' ? 'mercator' : 'globe')) },
-            { key: 'theme', title: mapScheme === 'DARK' ? t('tse.map_light') : t('tse.map_dark'), icon: mapScheme === 'DARK' ? 'sun' : 'moon', on: mapScheme === 'DARK', onClick: () => setMapScheme((s) => (s === 'DARK' ? 'LIGHT' : 'DARK')) },
-            { key: 'se', title: t('tse.map_startend'), icon: 'flag', on: showSE, onClick: () => setShowSE((v) => !v) },
+            { key: 'proj', title: projection === 'globe' ? t('tse.map_flat') : t('tse.map_globe'), icon: projection === 'globe' ? 'map' : 'globe', onClick: () => setProjection((p) => (p === 'globe' ? 'mercator' : 'globe')) },
+            { key: 'theme', title: mapScheme === 'DARK' ? t('tse.map_light') : t('tse.map_dark'), icon: mapScheme === 'DARK' ? 'sun' : 'moon', onClick: () => setMapScheme((s) => (s === 'DARK' ? 'LIGHT' : 'DARK')) },
+            { key: 'se', title: t('tse.map_startend'), icon: showSE ? 'flag' : 'eyeOff', onClick: () => setShowSE((v) => !v) },
           ].map((b) => (
+            // Constant brand-coloured control buttons — only the icon changes per state.
             <button key={b.key} type="button" onClick={b.onClick} title={b.title} aria-label={b.title}
-              style={{ width: 36, height: 36, borderRadius: 9, border: '1px solid ' + (b.on ? 'color-mix(in srgb, var(--brand) 45%, var(--line))' : 'var(--line)'), background: b.on ? 'var(--brand-soft)' : 'var(--surface)', color: b.on ? 'var(--brand)' : 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }}>
+              style={{ width: 36, height: 36, borderRadius: 9, border: 'none', background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-soft)' }}>
               <Icon name={b.icon} size={17} />
             </button>
           ))}

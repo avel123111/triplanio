@@ -24,7 +24,7 @@ const TABLE_BY_KIND = {
   service: 'trip_services',
 };
 
-export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false, warning = null }) {
+export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false, warning = null, onEditInEditor = null }) {
   const t = useT();
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState(false);
@@ -92,7 +92,7 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
       warning={warning}
       canEdit={canEdit}
       onClose={() => onOpenChange(false)}
-      onEdit={() => setEditMode(true)}
+      onEdit={onEditInEditor ? () => { onOpenChange(false); onEditInEditor({ kind, id: data.id }); } : () => setEditMode(true)}
       onDelete={handleDelete}
     />
   );
