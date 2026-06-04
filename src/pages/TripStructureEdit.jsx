@@ -246,6 +246,30 @@ export default function TripStructureEdit() {
   // nodes from that date preserving each node's nights+gap, so editing one node only
   // moves the nodes after it; the start and earlier nodes never move.
   const applyNodes = (nextNodes) => editDraft((d) => ({ ...d, nodes: recompute(nextNodes, d.startDate) }));
+  // Mirror the live transfers' day_change flag into the draft's city gaps. The
+  // overnight toggle lives in the transfer panels and writes day_change LIVE; this
+  // turns that flag into the date cascade (the destination city + every following
+  // one shift ±1). buildDraft already seeds the gaps on load, so the signature
+  // matches there and this fires ONLY on a real change (panel toggle/edit), marking
+  // the structure dirty so the shifted dates get persisted on Save.
+  const overnightSig = useMemo(
+    () => (liveTransfers || []).filter((tr) => tr.day_change).map((tr) => tr.to_city_visit_id).sort().join(','),
+    [liveTransfers],
+  );
+  useEffect(() => {
+    if (!draft) return;
+    const onSet = new Set(overnightSig ? overnightSig.split(',') : []);
+    const firstId = sortVisits(draft.nodes).find((n) => !isAnchor(n))?.id; // recompute pins this city's gap to 0
+    let changed = false;
+    const next = draft.nodes.map((n) => {
+      if (isAnchor(n)) return n;
+      const want = (onSet.has(n.id) && n.id !== firstId) ? 1 : 0;
+      if ((n.gap || 0) !== want) { changed = true; return { ...n, gap: want }; }
+      return n;
+    });
+    if (changed) applyNodes(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overnightSig]);
   // Nights 0..60. Hitting 0 turns a city into a waypoint (a 0-night transit
   // stop); raising a waypoint above 0 turns it back into a transit city.
   const nudgeNights = (id, delta) => applyNodes(draft.nodes.map((n) => {
@@ -254,12 +278,6 @@ export default function TripStructureEdit() {
     const next = Math.max(0, Math.min(60, cur + delta));
     return next === 0 ? { ...n, kind: 'waypoint', nights: 0 } : { ...n, kind: 'transit', nights: next };
   }));
-  // Overnight / day-change toggle for the leg ENDING at `toId`: flips that city's
-  // gap 0↔1 and recomputes the chain, so the city (and every one after it) shifts
-  // by ±1 day. Persisted to the incoming transfer's day_change on Save (derived
-  // back from the gap). The first city after trip-start has its gap forced to 0 by
-  // recompute, so the toggle is hidden there (nothing before it to push off of).
-  const toggleOvernight = (toId) => applyNodes(draft.nodes.map((n) => (n.id === toId ? { ...n, gap: (n.gap >= 1 ? 0 : 1) } : n)));
   const shiftStart = (delta) => editDraft((d) => {
     const base = d.startDate ? toDT(d.startDate).plus({ days: delta }).toISO() : null;
     return { ...d, startDate: base, nodes: recompute(d.nodes, base) };
@@ -351,17 +369,9 @@ export default function TripStructureEdit() {
     const isTmp = (id) => String(id).startsWith('tmp-');
     const p_nodes = draft.nodes.filter((n) => !isTmp(n.id)).map((n) => ({ id: n.id, start_date: n.start_date ?? null, end_date: n.end_date ?? null, position: n.position }));
     const p_cities_new = draft.nodes.filter((n) => isTmp(n.id)).map((n) => ({ tmp: n.id, city_name: n.city_name, country: n.country ?? null, country_code: n.country_code ?? null, latitude: n.latitude ?? null, longitude: n.longitude ?? null, timezone: n.timezone ?? null, external_city_id: n.external_city_id ?? null, kind: n.kind || 'transit', start_date: n.start_date ?? null, end_date: n.end_date ?? null, position: n.position }));
-    // Bookings are edited/added via real dialogs (already in DB). The ONE structural
-    // field that rides with the save is each transfer's day_change: derive it from
-    // the destination city's gap (overnight = gap >= 1) and send only the changed
-    // ones. PARTIAL transfers_upd (migration 0018) leaves datetimes untouched.
-    const gapById = new Map(draft.nodes.map((n) => [n.id, n.gap || 0]));
-    const transfers_upd = (liveTransfers || []).reduce((acc, tr) => {
-      const dc = (gapById.get(tr.to_city_visit_id) || 0) >= 1;
-      if (!!tr.day_change !== dc) acc.push({ id: tr.id, day_change: dc });
-      return acc;
-    }, []);
-    const p_edits = transfers_upd.length ? { transfers_upd } : {};
+    // Bookings (incl. each transfer's day_change) are written LIVE via the panels;
+    // the structure save only persists the recomputed city dates + positions.
+    const p_edits = {};
     const p_deletes = { cities: (draft.removed || []).filter((n) => !isTmp(n.id)).map((n) => n.id) };
     const { error } = await supabase.rpc('save_trip_edit', { p_trip: tripId, p_nodes, p_cities_new, p_edits, p_deletes });
     setSaving(false);
@@ -595,11 +605,7 @@ export default function TripStructureEdit() {
               const first = i === 0, last = i === rows.length - 1;
               if (r.kind === 'leg') {
                 const t = transferFor(r.a.id, r.b.id);
-                // Overnight toggle: only where a transfer exists and the destination
-                // isn't the trip-start city (recompute pins that city's gap to 0).
-                const canOvernight = !!t && r.b.id !== seq[0]?.id;
                 const transfer = <GridTransfer key={`leg-${r.a.id}-${r.b.id}`} a={r.a} b={r.b} t={t} mismatch={transferMismatch(t)} first={first} last={last}
-                  overnight={(r.b.gap || 0) >= 1} canOvernight={canOvernight} onToggleOvernight={() => toggleOvernight(r.b.id)}
                   onOpen={() => openTransferRow(r.a, r.b, t)} />;
                 // While dragging, every leg is a drop target. The hovered gap
                 // hides its transfer plate and shows a city-sized placeholder
@@ -668,7 +674,7 @@ export default function TripStructureEdit() {
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           {/* Collapsible warnings: a pill with the count; click → expandable list. */}
-          <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 5, width: 'min(360px, calc(100% - 24px))', textAlign: 'right' }}>
+          <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 10, width: 'min(360px, calc(100% - 24px))', textAlign: 'right' }}>
             {showWarn && issues.length > 0 && (
               <div className="scrollbar-thin" style={{ marginBottom: 8, maxHeight: '52vh', overflow: 'auto', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 8 }}>
                 <ConflictsPanel issues={issues} ctx={{ hotels: liveHotels, activities: liveActivities, transfers: liveTransfers, visits: draft.nodes }} onOpen={openConflict} defaultExpanded />
@@ -884,7 +890,7 @@ function DropSlot({ label }) {
 
 // transfer connector between two cities (design mockup Connector). ALWAYS shown
 // between n and n+1: a pill when the transfer exists, a "+ переезд" ghost when not.
-function GridTransfer({ a, b, t, mismatch, onOpen, overnight = false, onToggleOvernight, canOvernight = false }) {
+function GridTransfer({ a, b, t, mismatch, onOpen }) {
   const tx = useT();
   const { lang } = useI18n();
   const sameCity = (a.external_city_id && b.external_city_id && a.external_city_id === b.external_city_id) || (a.city_name && a.city_name === b.city_name);
@@ -911,26 +917,6 @@ function GridTransfer({ a, b, t, mismatch, onOpen, overnight = false, onToggleOv
         <span className="num muted" style={{ fontSize: 11 }}>· {fmtD(t.start_datetime, lang)}</span>
         {mismatch && <span className="te-warndot" />}
       </button>
-      {/* Overnight / day-change: marks this leg as crossing into the next day, so
-          the destination city (and all following) shift +1. Only on real legs. */}
-      {canOvernight && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onToggleOvernight?.(); }}
-          title={tx('tse.overnight_title')}
-          aria-pressed={overnight}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 6, padding: '3px 7px',
-            borderRadius: 999, cursor: 'pointer', fontSize: 11, fontWeight: 700, lineHeight: 1,
-            border: '1px solid ' + (overnight ? 'color-mix(in srgb, var(--brand) 45%, var(--line))' : 'var(--line)'),
-            background: overnight ? 'var(--brand-soft)' : 'var(--surface)',
-            color: overnight ? 'var(--brand)' : 'var(--muted-2)',
-          }}
-        >
-          <Icon name="moon" size={11} />
-          {overnight && <span>+1</span>}
-        </button>
-      )}
     </div>
   );
 }

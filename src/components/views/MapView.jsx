@@ -78,8 +78,11 @@ export default function MapView({
       zoom: 2,
       projection: 'mercator',
       cooperativeGestures: true,
-      attributionControl: true,
+      // Default attribution sits bottom-RIGHT, where the editor's warnings widget
+      // lives — its control would swallow those clicks. Move it bottom-LEFT.
+      attributionControl: false,
     });
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
     mapRef.current = map;
     setReady(false);
     fittedSigRef.current = '';

@@ -7,6 +7,8 @@ export default {
   'event.partial': 'Parcial',
   'event.on_arrival': 'Al llegar',
   'event.carrier_booking': 'Transportista y reserva',
+  'event.overnight_label': 'Transporte nocturno (cambio de día)',
+  'event.overnight_hint': 'La llegada es al día siguiente — la ciudad de destino y las posteriores se desplazan +1 día.',
   'event.flight_number': 'Número de vuelo',
   'event.end': 'Fin',
   'event.pickup_where': 'Dónde',

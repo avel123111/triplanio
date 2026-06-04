@@ -337,7 +337,7 @@ export async function getEntityRow(table, id) {
   return data;
 }
 
-export function useEntitySource(kind, id, { open = true, onError } = {}) {
+export function useEntitySource(kind, id, { open = true, onError, refreshKey = 0 } = {}) {
   const [data, setData] = useState(null);
   const [visit, setVisit] = useState(null);
   const [fromVisit, setFromVisit] = useState(null);
@@ -378,7 +378,9 @@ export function useEntitySource(kind, id, { open = true, onError } = {}) {
       }
     })();
     return () => { cancelled = true; };
-  }, [open, kind, id]);
+    // refreshKey lets callers force a re-fetch after a live edit/toggle (this hook
+    // reads rows directly, not via react-query, so cache invalidation alone misses it).
+  }, [open, kind, id, refreshKey]);
 
   return { data, visit, fromVisit, toVisit };
 }

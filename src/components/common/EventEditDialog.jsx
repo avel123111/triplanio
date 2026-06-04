@@ -20,7 +20,7 @@ import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import AiField from '@/components/ui/AiField';
 import {
   Loader2, Sparkles, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft,
-  Bed, Plane, Camera, Car as CarIcon, Train, Bus, Ship, Footprints,
+  Bed, Plane, Camera, Car as CarIcon, Train, Bus, Ship, Footprints, Moon,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
 
@@ -214,6 +214,9 @@ function emptyTransferForm(defCur = 'EUR') {
     booking_url: '', booking_platform: '',
     price: '', currency: defCur,
     documents: [], notes: '',
+    // Overnight / day-change: this leg crosses into the next day, so the
+    // destination city (and all following) shift +1 in the trip editor.
+    day_change: false,
     // Layover (multi-leg) support - create mode only. When hasLayovers is on,
     // `segments` is the source of truth and the flat fields above are ignored.
     hasLayovers: false,
@@ -275,6 +278,7 @@ function transferToForm(tr, startTz, endTz) {
   return {
     ...emptyTransferForm(),
     transport_type: tr.transport_type || 'plane',
+    day_change: !!tr.day_change,
     startLocal: utcToLocalInput(tr.start_datetime, startTz) || '',
     endLocal: utcToLocalInput(tr.end_datetime, endTz) || '',
     from_address: tr.from_address || '',
@@ -623,13 +627,29 @@ export default function EventEditDialog({
     return {};
   }, [currentKind, form, tz, startTz, endTz, entity, isEdit]);
 
-  const issues = useMemo(() => validateEntity(currentKind, vdraft, vctx), [currentKind, vdraft, vctx]);
+  // Every validation verdict is ADVISORY now: errors are downgraded to 'warn' so
+  // they surface (inline + summary) but never block saving — matching the trip
+  // editor (e.g. a transfer whose dates don't line up with its cities still saves).
+  const issues = useMemo(
+    () => validateEntity(currentKind, vdraft, vctx).map((i) => ({ ...i, level: 'warn' })),
+    [currentKind, vdraft, vctx],
+  );
+
+  // Auto-mark a single transfer as overnight when its arrival calendar day is
+  // after its departure day (raise-only — the user can still switch it off).
+  useEffect(() => {
+    if (currentKind !== 'transfer' || form.hasLayovers || form.day_change) return;
+    const sd = (form.startLocal || '').slice(0, 10), ed = (form.endLocal || '').slice(0, 10);
+    if (sd && ed && ed > sd) setForm((f) => ({ ...f, day_change: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentKind, form.hasLayovers, form.startLocal, form.endLocal]);
 
   // ── Save validity ──────────────────────────────────────────────────────
-  // Single gate: no blocking errors from the engine (+ not mid-upload / mid-type).
+  // Validation never blocks; only genuinely incomplete input does (a half-entered
+  // time that would persist as garbage) or an in-flight file upload.
   const canSave = useMemo(
-    () => !issues.some((i) => i.level === 'error') && !uploading && !anyTimeMissing,
-    [issues, uploading, anyTimeMissing],
+    () => !uploading && !anyTimeMissing,
+    [uploading, anyTimeMissing],
   );
 
   // Hybrid display: inline issues show for touched fields (or after a save attempt);
@@ -672,6 +692,7 @@ export default function EventEditDialog({
               from_city_visit_id: fromVisit?.id,
               to_city_visit_id: toVisit?.id,
               transport_type: seg.transport_type,
+              day_change: !!((seg.end_datetime || '').slice(0, 10) && (seg.end_datetime || '').slice(0, 10) > (seg.start_datetime || '').slice(0, 10)),
               start_datetime: localToUtc(seg.start_datetime, startTz),
               end_datetime: localToUtc(seg.end_datetime, endTz),
               carrier: seg.carrier || undefined,
@@ -1158,6 +1179,7 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
     from_city_visit_id: fromVisit?.id,
     to_city_visit_id: toVisit?.id,
     transport_type: form.transport_type,
+    day_change: !!form.day_change,
     start_datetime: localToUtc(form.startLocal, startTz),
     end_datetime: localToUtc(form.endLocal, endTz),
     carrier: form.carrier || undefined,
@@ -1245,6 +1267,9 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
     from_city_visit_id: nodeIds[i],
     to_city_visit_id: nodeIds[i + 1],
     transport_type: s.transport_type,
+    // Per-segment overnight: this leg crosses into the next day if its arrival
+    // calendar day is after its departure day.
+    day_change: !!((s.endLocal || '').slice(0, 10) && (s.endLocal || '').slice(0, 10) > (s.startLocal || '').slice(0, 10)),
     start_datetime: localToUtc(s.startLocal, 'UTC'),
     end_datetime: localToUtc(s.endLocal, 'UTC'),
     carrier: s.carrier || undefined,
@@ -1656,6 +1681,19 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           </div>
         </div>
       </div>
+
+      {/* Overnight / day-change toggle. When on, the destination city (and every
+          city after it) shifts +1 day in the trip editor. Auto-checked when the
+          arrival date is later than the departure date. */}
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', marginBottom: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
+        <Checkbox checked={!!form.day_change} onCheckedChange={(v) => setField('day_change', !!v)} />
+        <span style={{ minWidth: 0 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
+            <Moon className="w-4 h-4" /> {t('event.overnight_label')}
+          </span>
+          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+        </span>
+      </label>
 
       <SectionHeader color={color}>{t('event.carrier_booking')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">

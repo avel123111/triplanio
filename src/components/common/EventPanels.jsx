@@ -175,10 +175,12 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
   const meta = TKIND[entity.transport_type] || TKIND.plane;
   const docs = getEntityDocuments(entity);
   const dep = fmtTime(entity.start_datetime), arr = fmtTime(entity.end_datetime);
+  const depDate = fmtDate(entity.start_datetime), arrDate = fmtDate(entity.end_datetime);
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 14, alignItems: 'center', padding: '16px', background: 'var(--wash)', borderRadius: 12 }}>
         <div>
+          {depDate && <div className="num muted" style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{depDate}</div>}
           <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700 }}>{dep || '—'}</div>
           <div style={{ fontSize: 13, fontWeight: 600, marginTop: 3 }}>{fromVisit?.city_name || '—'}</div>
           {entity.from_address && <div className="muted" style={{ fontSize: 11, marginTop: 2, lineHeight: 1.3 }}>{entity.from_address}</div>}
@@ -187,6 +189,7 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
           <Icon name={meta.icon} size={20} />
         </div>
         <div style={{ textAlign: 'right' }}>
+          {arrDate && <div className="num muted" style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{arrDate}</div>}
           <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700 }}>{arr || '—'}</div>
           <div style={{ fontSize: 13, fontWeight: 600, marginTop: 3 }}>{toVisit?.city_name || '—'}</div>
           {entity.to_address && <div className="muted" style={{ fontSize: 11, marginTop: 2, lineHeight: 1.3 }}>{entity.to_address}</div>}

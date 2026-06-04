@@ -27,10 +27,14 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
   const [editMode, setEditMode] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Bumped after a live edit so the view re-reads the row (this panel loads the
+  // entity directly, so react-query invalidation alone wouldn't refresh it).
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [togglingDc, setTogglingDc] = useState(false);
 
   React.useEffect(() => { setEditMode(false); setConfirmDel(false); }, [kind, id]);
 
-  const { data, visit, fromVisit, toVisit } = useEntitySource(kind, id, { open: true, onError: () => onClose?.() });
+  const { data, visit, fromVisit, toVisit } = useEntitySource(kind, id, { open: true, onError: () => onClose?.(), refreshKey });
 
   const invalidate = () => {
     const tripId = data?.trip_id;
@@ -57,7 +61,7 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
       <EventEditDialog
         open variant="panel" kind={kind} tripId={data.trip_id} entity={data}
         visit={visit} fromVisit={fromVisit} toVisit={toVisit}
-        onOpenChange={(o) => { if (!o) { setEditMode(false); invalidate(); } }}
+        onOpenChange={(o) => { if (!o) { setEditMode(false); invalidate(); setRefreshKey((k) => k + 1); } }}
       />
     );
   }
@@ -72,6 +76,15 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
   const sub = kind === 'transfer'
     ? [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ') || themeLabel
     : (visit?.city_name || themeLabel);
+
+  const toggleDayChange = async () => {
+    if (kind !== 'transfer' || !data?.id || togglingDc) return;
+    setTogglingDc(true);
+    const { error } = await supabase.from('transfers').update({ day_change: !data.day_change }).eq('id', data.id);
+    setTogglingDc(false);
+    if (error) { alert(t('event.save_failed') + ': ' + error.message); return; }
+    invalidate(); setRefreshKey((k) => k + 1);
+  };
 
   const doDelete = async () => {
     const table = TABLE_BY_KIND[kind];
@@ -119,7 +132,26 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
           </div>
         </div>
       ) : (
+        <>
+        {kind === 'transfer' && canEdit && (
+          <button
+            type="button" onClick={toggleDayChange} disabled={togglingDc}
+            title={t('tse.overnight_title')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left',
+              padding: '10px 12px', marginBottom: 10, borderRadius: 10, cursor: togglingDc ? 'wait' : 'pointer',
+              border: '1px solid ' + (data.day_change ? 'color-mix(in srgb, var(--brand) 45%, var(--line))' : 'var(--line)'),
+              background: data.day_change ? 'var(--brand-soft)' : 'var(--surface)',
+              color: data.day_change ? 'var(--brand)' : 'var(--ink-2)',
+            }}
+          >
+            <Icon name="moon" size={16} />
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{t('event.overnight_label')}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, opacity: data.day_change ? 1 : 0.4 }}>{data.day_change ? '+1' : '—'}</span>
+          </button>
+        )}
         <EventPanelBody kind={kind} entity={data} fromVisit={fromVisit} toVisit={toVisit} />
+        </>
       )}
     </PanelShell>
   );

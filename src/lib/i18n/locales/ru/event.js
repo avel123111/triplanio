@@ -7,6 +7,8 @@ export default {
   'event.partial': 'Частично',
   'event.on_arrival': 'По прибытии',
   'event.carrier_booking': 'Перевозчик и бронь',
+  'event.overnight_label': 'Ночной переезд (смена дня)',
+  'event.overnight_hint': 'Прибытие на следующий день — город назначения и все последующие сдвигаются на +1 день.',
   'event.flight_number': 'Номер рейса',
   'event.end': 'Конец',
   'event.pickup_where': 'Где',
