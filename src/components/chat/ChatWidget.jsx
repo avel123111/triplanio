@@ -219,13 +219,13 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', minWidth: 0, maxWidth: '82%' }}>
           {!grouped && !isMe && (
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2, paddingLeft: 2 }}>
-              <span style={{ fontSize: 11.5, fontWeight: 600, color: isAi ? 'var(--ai)' : 'var(--ink)' }}>{who}</span>
-              <span style={{ fontSize: 10.5, color: 'var(--muted)' }}>{time}</span>
+              <span style={{ fontSize: 'var(--fs-micro)', fontWeight: 600, color: isAi ? 'var(--ai)' : 'var(--ink)' }}>{who}</span>
+              <span style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)' }}>{time}</span>
             </div>
           )}
           <div style={{
             padding: '7px 11px', background: bubbleBg, color: isMe ? '#fff' : 'var(--ink)',
-            fontSize: 13, borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+            fontSize: 'var(--fs-base)', borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
             lineHeight: 1.45, wordBreak: 'break-word',
             opacity: m.__pending ? 0.7 : 1,
           }}>
@@ -235,7 +235,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             />
           </div>
           {isMe && !grouped && (
-            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1, paddingRight: 2 }}>{time}</div>
+            <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 1, paddingRight: 2 }}>{time}</div>
           )}
         </div>
       </div>
@@ -282,7 +282,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           {unread > 0 && (
             <span style={{
               marginLeft: 4, background: 'var(--warm)', color: 'white',
-              borderRadius: 999, fontSize: 10, fontWeight: 700,
+              borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700,
               minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               padding: '0 4px',
             }}>{unread > 99 ? '99+' : unread}</span>
@@ -311,7 +311,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             />
           ))}
         </div>
-        <div style={{ flex: 1, fontSize: 12.5 }}>
+        <div style={{ flex: 1, fontSize: 'var(--fs-meta)' }}>
           {tripTitle ? <><b>{tripTitle}</b>{' · '}</> : ''}{pluralPeople(activeMembers.length, t, lang)}
         </div>
         <button
@@ -334,12 +334,12 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       {/* Messages */}
       <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {msgs.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: 13 }}>{t('chat.write_first')}</div>
+          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: 'var(--fs-base)' }}>{t('chat.write_first')}</div>
         ) : messageEls}
         {isThinking && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
             <TriplanioAvatar size="xs" />
-            <span style={{ fontSize: 12, color: 'var(--ai)', fontWeight: 500 }}>{t('chat.typing')}</span>
+            <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--ai)', fontWeight: 500 }}>{t('chat.typing')}</span>
             <span className="ai-dots"><span /><span /><span /></span>
           </div>
         )}
@@ -364,8 +364,8 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             >
               <TriplanioAvatar size="sm" />
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>{t('chat.mention_all_hint')}</div>
+                <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
+                <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)' }}>{t('chat.mention_all_hint')}</div>
               </div>
             </button>
           </div>
@@ -377,7 +377,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
               aria-hidden="true"
               style={{
                 position: 'absolute', inset: 0,
-                padding: '8px 10px', font: 'inherit', fontSize: 13, lineHeight: 1.4,
+                padding: '8px 10px', font: 'inherit', fontSize: 'var(--fs-base)', lineHeight: 1.4,
                 whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                 color: 'var(--ink)', pointerEvents: 'none',
                 borderRadius: 8, overflow: 'hidden',
@@ -400,7 +400,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
                 position: 'relative', zIndex: 1, background: 'transparent',
                 color: 'transparent', caretColor: 'var(--ink)',
                 minHeight: 38, maxHeight: 90, width: '100%',
-                padding: '8px 10px', fontSize: 13, lineHeight: 1.4, resize: 'none',
+                padding: '8px 10px', fontSize: 'var(--fs-base)', lineHeight: 1.4, resize: 'none',
                 overflowY: 'hidden', display: 'block',
               }}
             />

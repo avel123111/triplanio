@@ -134,8 +134,8 @@ export default function EventModal(props) {
         {/* Conflict plate (Edit Mode) - below the date/meta strip */}
         {warning && (
           <div style={{ margin: '12px 22px 0', display: 'flex', alignItems: 'flex-start', gap: 9, padding: '9px 12px', borderRadius: 10, background: 'var(--warning-soft)', border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)', color: 'var(--ink)' }}>
-            <span style={{ width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--warning) 22%, transparent)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0, fontSize: 12 }}>⚠️</span>
-            <div style={{ fontSize: 12.5, lineHeight: 1.45, alignSelf: 'center' }}>{warning}</div>
+            <span style={{ width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--warning) 22%, transparent)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0, fontSize: 'var(--fs-meta)' }}>⚠️</span>
+            <div style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45, alignSelf: 'center' }}>{warning}</div>
           </div>
         )}
 

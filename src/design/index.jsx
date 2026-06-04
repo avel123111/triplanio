@@ -66,7 +66,7 @@ export const Field = ({ label, hint, sub, ai, error, children, required }) => (
     {label && (
       <label className="field__label">
         {label}{required && <span style={{ color: "var(--danger)" }}>*</span>}
-        {hint && <span className="muted" style={{ fontWeight: 400, fontSize: 11.5, marginLeft: 4 }}>· {hint}</span>}
+        {hint && <span className="muted" style={{ fontWeight: 400, fontSize: 'var(--fs-micro)', marginLeft: 4 }}>· {hint}</span>}
       </label>
     )}
     {children}
@@ -107,7 +107,7 @@ export const Card = ({ variant = "", title, subtitle, action, children, classNam
       <div className="card-h">
         <div style={{ flex: 1 }}>
           {title && <h3>{title}</h3>}
-          {subtitle && <div className="muted" style={{ fontSize: 12.5 }}>{subtitle}</div>}
+          {subtitle && <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{subtitle}</div>}
         </div>
         {action}
       </div>
@@ -131,7 +131,7 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
       <Icon name={icon} size={28} />
     </div>
     <h3 style={{ color: "var(--ink)", marginBottom: 6 }}>{title}</h3>
-    <div style={{ maxWidth: 340, fontSize: 13.5, lineHeight: 1.5 }}>{body}</div>
+    <div style={{ maxWidth: 340, fontSize: 'var(--fs-base)', lineHeight: 1.5 }}>{body}</div>
     {action && <div style={{ marginTop: 18 }}>{action}</div>}
   </div>
 );
@@ -430,10 +430,10 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
         <Icon name={type === "hotel" ? "bed" : type === "flight" ? "plane" : type === "train" ? "train" : "spark"} size={20} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 13.5, marginBottom: 2 }}>{name}</div>
-        <div className="muted" style={{ fontSize: 12 }}>{sub}</div>
+        <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', marginBottom: 2 }}>{name}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{sub}</div>
         {rating && (
-          <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 5, fontSize: 11.5 }}>
+          <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 5, fontSize: 'var(--fs-micro)' }}>
             <Badge variant="success">{rating}/10</Badge>
             <span className="muted">{p?.label || partner}</span>
           </div>
@@ -444,7 +444,7 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
           </div>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-          <div className="num" style={{ fontWeight: 600, fontSize: 15 }}>{fmt(price, cur)}</div>
+          <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fmt(price, cur)}</div>
           <div style={{ flex: 1 }} />
           <Btn variant="ghost" size="sm" icon="external">{p?.label || "Открыть"}</Btn>
         </div>
@@ -585,26 +585,26 @@ function TransferCardHub({ e, onClick }) {
       </div>
       <div>
         <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{e.time}</div>
-        <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 4 }}>{e.from}</div>
-        {e.depart_loc && <div className="muted" style={{ fontSize: 11 }}>{e.depart_loc}</div>}
+        <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginTop: 4 }}>{e.from}</div>
+        {e.depart_loc && <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{e.depart_loc}</div>}
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 80 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
           <div style={{ height: 1, flex: 1, borderTop: "1.5px dashed var(--ev-transfer)" }} />
-          <span className="muted num" style={{ fontSize: 10.5, whiteSpace: "nowrap" }}>{e.duration}</span>
+          <span className="muted num" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap" }}>{e.duration}</span>
           <div style={{ height: 1, flex: 1, borderTop: "1.5px dashed var(--ev-transfer)" }} />
         </div>
-        <div className="muted" style={{ fontSize: 10.5, textAlign: "center" }}>
+        <div className="muted" style={{ fontSize: 'var(--fs-micro)', textAlign: "center" }}>
           {e.carrier}{e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}
         </div>
       </div>
       <div style={{ textAlign: "right" }}>
         <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{arriveTime}</div>
-        <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 4 }}>{e.to}</div>
-        {e.arrive_loc && <div className="muted" style={{ fontSize: 11 }}>{e.arrive_loc}</div>}
+        <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginTop: 4 }}>{e.to}</div>
+        {e.arrive_loc && <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{e.arrive_loc}</div>}
       </div>
       <div style={{ textAlign: "right", borderLeft: "1px solid var(--line-2)", paddingLeft: 14, minWidth: 80 }}>
-        {e.price && <div className="num" style={{ fontWeight: 600, fontSize: 15 }}>{fmt(e.price, e.cur)}</div>}
+        {e.price && <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fmt(e.price, e.cur)}</div>}
         {e.platformUrl && <div style={{ marginTop: 4 }}><PartnerPill url={e.platformUrl} /></div>}
       </div>
     </button>
@@ -628,18 +628,18 @@ function TransferCardStrip({ e, onClick }) {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13.5, fontWeight: 600 }}>{meta.label}</span>
-          <span className="muted" style={{ fontSize: 12.5 }}>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{meta.label}</span>
+          <span className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
             {e.from_city || e.from} <Icon name="arrowR" size={10} style={{ verticalAlign: -1, color: "var(--muted-2)" }} /> {e.to_city || e.to}
           </span>
         </div>
-        <div className="muted" style={{ fontSize: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div className="muted" style={{ fontSize: 'var(--fs-meta)', display: "flex", flexWrap: "wrap", gap: 8 }}>
           {e.duration && <span className="num">{e.duration}</span>}
           {e.carrier && <span>· {e.carrier}{e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}</span>}
           {e.platformUrl && <PartnerPill url={e.platformUrl} />}
         </div>
       </div>
-      {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(e.price, e.cur)}</span>}
+      {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fmt(e.price, e.cur)}</span>}
     </button>
   );
 }
@@ -667,15 +667,15 @@ function TransferCardStacked({ e, onClick }) {
           <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>{e.time}</span>
           <Icon name="arrowR" size={12} style={{ color: "var(--muted-2)" }} />
           <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>{arriveTime}</span>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>· {e.to_city || e.to}</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>· {e.to_city || e.to}</span>
         </div>
-        <div className="muted" style={{ fontSize: 12, marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
           <span>из {e.from_city || e.from}</span>
           {e.carrier && <span>· {e.carrier}{e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}</span>}
           {e.platformUrl && <PartnerPill url={e.platformUrl} />}
         </div>
       </div>
-      {e.price && <div style={{ textAlign: "right", flexShrink: 0 }}><div className="num" style={{ fontWeight: 600, fontSize: 15 }}>{fmt(e.price, e.cur)}</div></div>}
+      {e.price && <div style={{ textAlign: "right", flexShrink: 0 }}><div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fmt(e.price, e.cur)}</div></div>}
     </button>
   );
 }
@@ -709,9 +709,9 @@ function EventRowMobileTransfer({ e, onClick }) {
   const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "-";
   return (
     <button onClick={onClick} style={{ width: "100%", display: "flex", alignItems: "stretch", gap: 11, padding: "13px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left" }}>
-      <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--ink)", minWidth: 42, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
+      <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', color: "var(--ink)", minWidth: 42, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
         <span style={{ whiteSpace: "nowrap" }}>{e.time || "-"}</span>
-        {e.duration && <span className="muted" style={{ fontSize: 10, fontWeight: 500 }}>{e.duration}</span>}
+        {e.duration && <span className="muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 500 }}>{e.duration}</span>}
         <span style={{ whiteSpace: "nowrap" }}>{arrive}</span>
       </div>
       <div style={{ width: 22, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", paddingTop: 3, paddingBottom: 3, flexShrink: 0 }}>
@@ -724,15 +724,15 @@ function EventRowMobileTransfer({ e, onClick }) {
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.c, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px " + meta.c }} />
       </div>
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 5 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "-"}</div>
-        <div className="muted" style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "-"}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em" }}>{t(meta.labelKey)}</span>
           {e.carrier ? <> · {e.carrier}</> : null}
         </div>
-        <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "-"}</div>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "-"}</div>
         {(e.price || e.platformUrl) && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
-            {e.price ? <span className="num" style={{ fontWeight: 600, fontSize: 13 }}>{fmt(e.price, e.cur)}</span> : null}
+            {e.price ? <span className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{fmt(e.price, e.cur)}</span> : null}
             {e.platformUrl && <PartnerPill url={e.platformUrl} />}
           </div>
         )}
@@ -749,17 +749,17 @@ function EventRowMobile({ e, onClick }) {
   return (
     <button onClick={onClick} style={{ width: "100%", padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", minWidth: 42, flexShrink: 0 }}>{e.time || "-"}</span>
+        <span className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", minWidth: 42, flexShrink: 0 }}>{e.time || "-"}</span>
         <div style={{ width: 30, height: 30, borderRadius: 8, background: meta.soft, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
           <Icon name={meta.icon} size={15} />
         </div>
-        <span style={{ flex: 1, fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t(meta.labelKey)}</span>
-        {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 13.5, flexShrink: 0 }}>{fmt(e.price, e.cur)}</span>}
+        <span style={{ flex: 1, fontSize: 'var(--fs-micro)', textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t(meta.labelKey)}</span>
+        {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)', flexShrink: 0 }}>{fmt(e.price, e.cur)}</span>}
       </div>
       <div>
-        <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.3, textWrap: "pretty" }}>{e.title}</div>
+        <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', lineHeight: 1.3, textWrap: "pretty" }}>{e.title}</div>
         {(e.address || e.duration) && (
-          <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 3 }}>
             {e.duration ? <span className="num">{e.duration}</span> : null}{e.duration && e.address ? " · " : ""}{e.address || ""}
           </div>
         )}
@@ -778,7 +778,7 @@ export function StreamEventRow({ e, onClick, last, editMode }) {
     return (
       <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--warning-soft)", border: "1.5px dashed var(--warning)", borderRadius: 12, textAlign: "left" }}>
         <Icon name="warning" size={16} style={{ color: "var(--warning)" }} />
-        <div style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>{t('view.map_no_transfer')} · {e.from} → {e.to}</div>
+        <div style={{ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 600 }}>{t('view.map_no_transfer')} · {e.from} → {e.to}</div>
         <Btn variant="primary" size="sm" icon="plus" onClick={onClick}>{t('tse.add_transfer')}</Btn>
         <button onClick={() => setHidden(true)} title={t('tl.hide_warning')} style={{ width: 24, height: 24, borderRadius: 6, border: "none", background: "transparent", color: "var(--warning)", cursor: "pointer", display: "grid", placeItems: "center" }}>
           <Icon name="close" size={12} />
@@ -808,18 +808,18 @@ function EventRowV11({ e, onClick }) {
       onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
       <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, padding: "13px 16px" }}>
-        <div className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14.5, minWidth: 52, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", flexShrink: 0 }}>{e.time || "-"}</div>
+        <div className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', minWidth: 52, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", flexShrink: 0 }}>{e.time || "-"}</div>
         <div style={{ width: 38, height: 38, borderRadius: 10, background: meta.soft, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
           <Icon name={meta.icon} size={17} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <span style={{ fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</span>
-            {meta.labelKey && <span style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>{t(meta.labelKey)}</span>}
+            <span style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</span>
+            {meta.labelKey && <span style={{ fontSize: 'var(--fs-micro)', textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>{t(meta.labelKey)}</span>}
           </div>
-          {sub && <div className="muted" style={{ fontSize: 12, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
+          {sub && <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
         </div>
-        {e.price != null && <div className="num" style={{ fontWeight: 600, fontSize: 13.5, flexShrink: 0 }}>{fmt(e.price, e.cur)}</div>}
+        {e.price != null && <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)', flexShrink: 0 }}>{fmt(e.price, e.cur)}</div>}
         {e.platformUrl && <PartnerPill url={e.platformUrl} />}
       </div>
     </button>
@@ -847,9 +847,9 @@ function TransferRowV11({ e, onClick }) {
           grows, and duration + icon stay centered. Vertical margin matches mobile (13px). */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "stretch", gap: 12, padding: "13px 16px" }}>
         {/* time / duration / arrive */}
-        <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14.5, color: "var(--ink)", minWidth: 52, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
+        <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', color: "var(--ink)", minWidth: 52, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
           <span style={{ whiteSpace: "nowrap" }}>{e.time || "-"}</span>
-          {e.duration && <span className="muted" style={{ fontSize: 10.5, fontWeight: 500 }}>{e.duration}</span>}
+          {e.duration && <span className="muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 500 }}>{e.duration}</span>}
           <span style={{ whiteSpace: "nowrap" }}>{arrive}</span>
         </div>
         {/* mini rail */}
@@ -866,27 +866,27 @@ function TransferRowV11({ e, onClick }) {
             next to the label: CITY / addr / label / addr / CITY (desktop). */}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 4 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "-"}</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "-"}</div>
             {e.from_address && e.from_address !== e.from && (
-              <div className="muted" style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from_address}</div>
+              <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from_address}</div>
             )}
           </div>
-          <div className="muted" style={{ fontSize: 11.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>{t(meta.labelKey)}</span>
             {e.carrier ? <> · {e.carrier}</> : null}
             {e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}
           </div>
           <div style={{ minWidth: 0 }}>
             {e.to_address && e.to_address !== e.to && (
-              <div className="muted" style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to_address}</div>
+              <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to_address}</div>
             )}
-            <div style={{ fontSize: 13.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "-"}</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "-"}</div>
           </div>
         </div>
         {/* price + chip */}
         {(e.price != null || e.platformUrl) && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 8, flexShrink: 0 }}>
-            {e.price != null && <div className="num" style={{ fontWeight: 600, fontSize: 13.5 }}>{fmt(e.price, e.cur)}</div>}
+            {e.price != null && <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{fmt(e.price, e.cur)}</div>}
             {e.platformUrl && <PartnerPill url={e.platformUrl} />}
           </div>
         )}
@@ -901,7 +901,7 @@ function TransferRowV11({ e, onClick }) {
 
 function _InfoChip({ icon, color, children }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 999, background: "var(--wash)", border: "1px solid var(--line-2)", fontSize: 12.5, color: "var(--ink-2)", fontWeight: 500 }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 999, background: "var(--wash)", border: "1px solid var(--line-2)", fontSize: 'var(--fs-meta)', color: "var(--ink-2)", fontWeight: 500 }}>
       <Icon name={icon} size={13} style={{ color }} />
       {children}
     </span>
@@ -921,12 +921,12 @@ function _RoutePopover({ cities, onClose }) {
         <div style={{ position: "absolute", left: 10, top: 8, bottom: 8, width: 2, background: "var(--line)" }} />
         {cities.map((c, i) => (
           <div key={c} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 6px 6px 28px", position: "relative" }}>
-            <span style={{ position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, borderRadius: "50%", background: "var(--brand)", color: "white", fontSize: 9, fontWeight: 700, display: "grid", placeItems: "center", zIndex: 1 }}>{i + 1}</span>
-            <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{c}</div>
+            <span style={{ position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, borderRadius: "50%", background: "var(--brand)", color: "white", fontSize: 'var(--fs-micro)', fontWeight: 700, display: "grid", placeItems: "center", zIndex: 1 }}>{i + 1}</span>
+            <div style={{ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 500 }}>{c}</div>
           </div>
         ))}
       </div>
-      <button onClick={() => { onClose?.(); window.__navigate?.("map"); }} style={{ marginTop: 6, padding: "6px 10px", width: "100%", textAlign: "center", background: "var(--brand-soft)", border: "none", color: "var(--brand)", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+      <button onClick={() => { onClose?.(); window.__navigate?.("map"); }} style={{ marginTop: 6, padding: "6px 10px", width: "100%", textAlign: "center", background: "var(--brand-soft)", border: "none", color: "var(--brand)", borderRadius: 8, fontSize: 'var(--fs-meta)', fontWeight: 600, cursor: "pointer" }}>
         Открыть на карте →
       </button>
     </div>
@@ -954,10 +954,10 @@ export function TripIdentityStrip({ compact }) {
           <div style={{ position: "absolute", left: 22, right: 22, bottom: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ color: "white", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(26px, 4vw, 38px)", letterSpacing: "-0.03em", lineHeight: 1, textShadow: "0 2px 12px rgba(0,0,0,.3)" }}>{TRIP.title}</div>
-              <div className="num" style={{ color: "rgba(255,255,255,.85)", fontSize: 13, marginTop: 8, fontWeight: 500 }}>{TRIP.start} → {TRIP.end} · {TRIP.year} · {TRIP.duration}</div>
+              <div className="num" style={{ color: "rgba(255,255,255,.85)", fontSize: 'var(--fs-base)', marginTop: 8, fontWeight: 500 }}>{TRIP.start} → {TRIP.end} · {TRIP.year} · {TRIP.duration}</div>
             </div>
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-              {tripIsPro && !userHasSub && <span style={{ background: "rgba(255,255,255,.92)", color: "var(--warm)", padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".04em" }}>PRO</span>}
+              {tripIsPro && !userHasSub && <span style={{ background: "rgba(255,255,255,.92)", color: "var(--warm)", padding: "4px 10px", borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: ".04em" }}>PRO</span>}
             </div>
           </div>
         </div>
@@ -971,7 +971,7 @@ export function TripIdentityStrip({ compact }) {
           </div>
           {!showCover && <h1 style={{ fontSize: compact ? 26 : 34, marginBottom: 6, marginTop: 4, letterSpacing: "-0.025em" }}>{TRIP.title}</h1>}
           {!showCover && (
-            <div className="num" style={{ fontSize: 14, color: "var(--muted)", marginBottom: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div className="num" style={{ fontSize: 'var(--fs-strong)', color: "var(--muted)", marginBottom: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <Icon name="calendar" size={13} style={{ color: "var(--muted-2)" }} />
               <span>{TRIP.start} → {TRIP.end} · {TRIP.year}</span>
               <span style={{ color: "var(--muted-2)" }}>·</span>
@@ -980,7 +980,7 @@ export function TripIdentityStrip({ compact }) {
           )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: showCover ? 14 : 0 }}>
             <span style={{ position: "relative", display: "inline-flex" }}>
-              <button onClick={() => setRouteOpen(!routeOpen)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 999, background: "var(--brand-soft)", border: "1px solid var(--brand-soft-12)", fontSize: 12.5, color: "var(--brand)", fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={() => setRouteOpen(!routeOpen)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 999, background: "var(--brand-soft)", border: "1px solid var(--brand-soft-12)", fontSize: 'var(--fs-meta)', color: "var(--brand)", fontWeight: 600, cursor: "pointer" }}>
                 <Icon name="pin" size={13} />
                 {cities.length} {cities.length === 1 ? "город" : cities.length < 5 ? "города" : "городов"}
                 <Icon name={routeOpen ? "chevD" : "chev"} size={11} />

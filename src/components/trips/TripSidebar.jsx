@@ -57,7 +57,7 @@ export default function TripSidebar({
             <Icon name={item.icon} size={15} />
             <span className="app-side__label">{t(item.labelKey)}</span>
             {item.id === 'chat' && chatUnread > 0 && (
-              <span className="app-side__item-badge" style={{ marginLeft: 'auto', background: 'var(--warm)', color: '#fff', borderRadius: 999, fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
+              <span className="app-side__item-badge" style={{ marginLeft: 'auto', background: 'var(--warm)', color: '#fff', borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
                 {chatUnread > 99 ? '99+' : chatUnread}
               </span>
             )}
@@ -96,8 +96,8 @@ export default function TripSidebar({
       )}
       {showUpgrade && (
         <div className="app-side__upgrade" style={{ margin: '10px 6px 0', padding: 12, borderRadius: 10, background: 'var(--warm-tint)' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--warm)', marginBottom: 4 }}>{t('trip_menu.free_trip_title')}</div>
-          <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginBottom: 8, lineHeight: 1.45 }}>
+          <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, color: 'var(--warm)', marginBottom: 4 }}>{t('trip_menu.free_trip_title')}</div>
+          <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--ink-2)', marginBottom: 8, lineHeight: 1.45 }}>
             {t('trip.pro_locked_lenses')}
           </div>
           {isOwner ? (

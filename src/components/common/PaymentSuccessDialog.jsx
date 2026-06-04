@@ -33,11 +33,11 @@ export default function PaymentSuccessDialog({ open, onOpenChange, planLabel, pr
             <Icon name="check" size={36} />
           </div>
           <h2 style={{ marginBottom: 8 }}>{t('sub.success_title')}</h2>
-          <div className="muted" style={{ fontSize: 14, lineHeight: 1.55, maxWidth: 360, margin: '0 auto 14px' }}>
+          <div className="muted" style={{ fontSize: 'var(--fs-strong)', lineHeight: 1.55, maxWidth: 360, margin: '0 auto 14px' }}>
             {t('sub.success_desc')}
           </div>
           {chip && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: 'var(--warm-tint)', color: 'var(--warm)', borderRadius: 999, fontSize: 12.5, fontWeight: 600 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: 'var(--warm-tint)', color: 'var(--warm)', borderRadius: 999, fontSize: 'var(--fs-meta)', fontWeight: 600 }}>
               <Icon name="pro" size={12} /> {chip}
             </div>
           )}

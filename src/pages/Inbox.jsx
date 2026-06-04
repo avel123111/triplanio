@@ -113,7 +113,7 @@ export default function Inbox() {
         </div>
         <div className="app-header__crumb">
           <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{t('notif.inbox_title')}</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ink-2)' }}>{t('notif.inbox_title')}</span>
         </div>
         <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
       </header>
@@ -143,13 +143,13 @@ export default function Inbox() {
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '36px 24px', color: 'var(--muted)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14 }}>
             <Icon name="bell" size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
-            <div style={{ fontSize: 13.5 }}>{t('notif.filter_empty')}</div>
+            <div style={{ fontSize: 'var(--fs-base)' }}>{t('notif.filter_empty')}</div>
           </div>
         ) : (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
             {groups.map((g, gi) => (
               <div key={g.label}>
-                <div style={{ padding: '10px 18px', fontSize: 11, color: 'var(--muted-2)', letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 600, background: 'var(--wash-2)', borderTop: gi > 0 ? '1px solid var(--line-2)' : 'none', borderBottom: '1px solid var(--line-2)' }}>
+                <div style={{ padding: '10px 18px', fontSize: 'var(--fs-micro)', color: 'var(--muted-2)', letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 600, background: 'var(--wash-2)', borderTop: gi > 0 ? '1px solid var(--line-2)' : 'none', borderBottom: '1px solid var(--line-2)' }}>
                   {t(GROUP_LABEL_KEY[g.label])}
                 </div>
                 {g.items.map((n, ni) => (
@@ -205,7 +205,7 @@ function InboxEmpty({ onCollection, onAi }) {
         </span>
       </div>
       <h2 style={{ marginBottom: 8, fontSize: 22, letterSpacing: '-0.02em' }}>{t('notif.inbox_empty')}</h2>
-      <div className="muted" style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 420, margin: '0 auto 22px' }}>
+      <div className="muted" style={{ fontSize: 'var(--fs-strong)', lineHeight: 1.6, maxWidth: 420, margin: '0 auto 22px' }}>
         {t('notif.inbox_empty_desc')}
       </div>
       <div style={{
@@ -227,8 +227,8 @@ function InboxEmpty({ onCollection, onAi }) {
             }}>
               <Icon name={h.icon} size={14} />
             </div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>{h.title}</div>
-            <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.45 }}>{h.desc}</div>
+            <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginBottom: 2 }}>{h.title}</div>
+            <div className="muted" style={{ fontSize: 'var(--fs-micro)', lineHeight: 1.45 }}>{h.desc}</div>
           </div>
         ))}
       </div>
@@ -276,9 +276,9 @@ function InboxRow({ n, t, dateLocale, last, pending, onRespond }) {
         <Icon name={meta.icon} size={16} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, lineHeight: 1.45, fontWeight: 500 }}>{titleNode}</div>
-        {messageText && <div className="muted" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>{messageNode}</div>}
-        <div className="muted" style={{ fontSize: 11.5, marginTop: 3, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, fontWeight: 500 }}>{titleNode}</div>
+        {messageText && <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, lineHeight: 1.4 }}>{messageNode}</div>}
+        <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span>{time}</span>
           {n.trip_id && (member?.status === 'active' || n.type !== 'trip_invite') && (
             <Link to={`/trip/${n.trip_id}`} style={{ color: 'var(--brand)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 3 }}>

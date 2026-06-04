@@ -161,7 +161,7 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
           position: 'absolute', top: 14, left: 14,
           display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px',
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999,
-          fontSize: 11.5, fontWeight: 650, color: badge.color || accent, boxShadow: 'var(--shadow-soft)',
+          fontSize: 'var(--fs-micro)', fontWeight: 650, color: badge.color || accent, boxShadow: 'var(--shadow-soft)',
         }}>
           <Icon name={badge.icon || 'map'} size={12} /> {badge.label}
         </div>
@@ -172,7 +172,7 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
           position: 'absolute', bottom: 14, left: 14,
           display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px',
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999,
-          fontSize: 11.5, color: 'var(--muted)', boxShadow: 'var(--shadow-soft)',
+          fontSize: 'var(--fs-micro)', color: 'var(--muted)', boxShadow: 'var(--shadow-soft)',
         }}>
           <span style={{ fontWeight: 600, color: 'var(--ink-2)' }}>{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
           <span style={{ color: 'var(--muted-2)' }}>·</span>

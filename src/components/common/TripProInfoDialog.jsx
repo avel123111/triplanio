@@ -48,7 +48,7 @@ export default function TripProInfoDialog({ open, onOpenChange, feature, ownerNa
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
               {feature ? t('sub.trip_pro_feature_named', { feature }) : t('sub.trip_pro_generic')}
             </div>
-            <div className="muted" style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 340, margin: '0 auto' }}>
+            <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, maxWidth: 340, margin: '0 auto' }}>
               {t('sub.trip_pro_desc_pre')}{ownerName ? <b>{ownerName}</b> : t('sub.trip_owner_fallback')}{t('sub.trip_pro_desc_post')}
             </div>
           </div>

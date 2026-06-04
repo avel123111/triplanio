@@ -32,7 +32,7 @@ export default class AppErrorBoundary extends React.Component {
             display: 'grid', placeItems: 'center', fontSize: 24,
           }}>⚠️</div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Что-то пошло не так</h2>
-          <p style={{ margin: 0, color: '#8693a8', fontSize: 14, textAlign: 'center', maxWidth: 400 }}>
+          <p style={{ margin: 0, color: '#8693a8', fontSize: 'var(--fs-strong)', textAlign: 'center', maxWidth: 400 }}>
             {this.state.error?.message || 'Неизвестная ошибка'}
           </p>
           <button
@@ -40,7 +40,7 @@ export default class AppErrorBoundary extends React.Component {
             style={{
               padding: '10px 20px', borderRadius: 10, border: 'none',
               background: '#2167e2', color: 'white', fontWeight: 600,
-              fontSize: 14, cursor: 'pointer',
+              fontSize: 'var(--fs-strong)', cursor: 'pointer',
             }}
           >
             На главную
@@ -48,7 +48,7 @@ export default class AppErrorBoundary extends React.Component {
           {import.meta.env.DEV && (
             <pre style={{
               marginTop: 16, padding: 16, background: '#fff', borderRadius: 8,
-              border: '1px solid #e2e6ef', fontSize: 11, maxWidth: '100%',
+              border: '1px solid #e2e6ef', fontSize: 'var(--fs-micro)', maxWidth: '100%',
               overflow: 'auto', color: '#374257',
             }}>
               {this.state.error?.stack}

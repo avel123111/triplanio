@@ -161,7 +161,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
         </Field>
       </div>
       <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
-      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
     </Dialog>
   );
 }
@@ -217,11 +217,11 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
       <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
-      <div className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>
+      <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginBottom: 14 }}>
         {t('budget.fx_intro')}
       </div>
       {others.length === 0 ? (
-        <div className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 14 }}>
+        <div className="muted" style={{ fontSize: 'var(--fs-base)', textAlign: 'center', padding: 14 }}>
           {t('budget.fx_empty')}
         </div>
       ) : (
@@ -241,7 +241,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
                   <div className="num" style={{ fontWeight: 600 }}>1 {code}</div>
                   <input className="input num" type="number" step="0.0001" value={values[code] ?? ''}
                     onChange={e => { const val = e.target.value; setValues(s => ({ ...s, [code]: val })); v.markTouched(`rate.${code}`); }} placeholder="0.00" />
-                  <div style={{ fontSize: 12, color: hintColor }}>{hint}</div>
+                  <div style={{ fontSize: 'var(--fs-meta)', color: hintColor }}>{hint}</div>
                 </div>
                 <FieldError issues={v.displayIssues} field={`rate.${code}`} />
               </div>
@@ -250,7 +250,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
         </div>
       )}
       <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
-      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
     </Dialog>
   );
 }
@@ -333,7 +333,7 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
         </div>
       </div>
       <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
-      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
     </Dialog>
   );
 }
@@ -359,16 +359,16 @@ function ExpenseRow({ expense, catColor, catIcon: icon, showCategory, catName, m
         <Icon name={icon || SOURCE_ICON[src] || 'wallet'} size={13} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {expense.title || '-'}
         </div>
-        <div className="muted" style={{ fontSize: 11.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="muted" style={{ fontSize: 'var(--fs-micro)', display: 'flex', alignItems: 'center', gap: 6 }}>
           {expense.notes && <span>{expense.notes}</span>}
-          {showCategory && <Badge variant="quiet" style={{ fontSize: 10, padding: '1px 5px' }}>{catName}</Badge>}
-          {!isManual && <Badge variant="quiet" icon="link" style={{ fontSize: 10 }}>{t('budget.expense_auto_badge')}</Badge>}
+          {showCategory && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)', padding: '1px 5px' }}>{catName}</Badge>}
+          {!isManual && <Badge variant="quiet" icon="link" style={{ fontSize: 'var(--fs-micro)' }}>{t('budget.expense_auto_badge')}</Badge>}
         </div>
       </div>
-      <div className="num" style={{ fontWeight: 600, fontSize: 13.5, minWidth: 64, textAlign: 'right', flexShrink: 0 }}>
+      <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)', minWidth: 64, textAlign: 'right', flexShrink: 0 }}>
         {ok ? money(mainAmount, mainCurrency) : (
           <span title={t('budget.rate_missing')} style={{ color: 'var(--danger)' }}>
             {money(expense.original_amount || 0, expense.original_currency || mainCurrency)} ?
@@ -506,31 +506,31 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 22 }}>
         {/* Всего потрачено */}
         <Card>
-          <div className="muted" style={{ fontSize: 12 }}>{t('budget.total_spent')}</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('budget.total_spent')}</div>
           <div className="num" style={{ fontSize: 30, fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(totalSpent, mainCurrency)}</div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 4 }}>
             {noExpenses ? t('trip.budget_empty') : `${budgetExpenses.length} ${budgetExpenses.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}`}
           </div>
         </Card>
 
         {/* На одного */}
         <Card>
-          <div className="muted" style={{ fontSize: 12 }}>{t('budget.per_person_label')}</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('budget.per_person_label')}</div>
           <div className="num" style={{ fontSize: 30, fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')} · {t('budget.split_evenly')}</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 4 }}>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')} · {t('budget.split_evenly')}</div>
         </Card>
 
         {/* Курсы валют */}
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <span className="muted" style={{ fontSize: 12 }}>{t('budget.fx_button')}</span>
+            <span className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('budget.fx_button')}</span>
           </div>
           {foreignCurrencies.length === 0 ? (
-            <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+            <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 8, lineHeight: 1.5 }}>
               {t('budget.fx_empty')}
             </div>
           ) : (
-            <div className="num" style={{ fontSize: 13, color: 'var(--ink)', marginTop: 8, lineHeight: 1.7 }}>
+            <div className="num" style={{ fontSize: 'var(--fs-base)', color: 'var(--ink)', marginTop: 8, lineHeight: 1.7 }}>
               {foreignCurrencies.map(cur => {
                 const ov = overrides[cur];
                 const rate = ov != null ? Number(ov) : liveRateToMain(fx, cur);
@@ -569,8 +569,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
             <Icon name="wallet" size={24} />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{t('budget.no_expenses')}</div>
-            <div className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
+            <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', marginBottom: 4 }}>{t('budget.no_expenses')}</div>
+            <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.5 }}>
               {t('budget.no_expenses_desc')}
             </div>
           </div>
@@ -610,15 +610,15 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                     <Icon name={catIcon(c)} size={14} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       {c.name}
-                      {c.kind === 'custom' && <Badge variant="quiet" style={{ fontSize: 10, padding: '1px 5px' }}>{t('budget.custom_short')}</Badge>}
+                      {c.kind === 'custom' && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)', padding: '1px 5px' }}>{t('budget.custom_short')}</Badge>}
                     </div>
-                    <div className="muted" style={{ fontSize: 11 }}>{empty ? t('budget.empty_word') : `${c.itemCount} ${c.itemCount === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}`}</div>
+                    <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{empty ? t('budget.empty_word') : `${c.itemCount} ${c.itemCount === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}`}</div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div className="num" style={{ fontWeight: 600, fontSize: 13, color: empty ? 'var(--muted-2)' : 'var(--ink)' }}>{money(c.spent, mainCurrency)}</div>
-                    <div className="muted num" style={{ fontSize: 10 }}>/ {money(c.planned_amount || 0, mainCurrency)}</div>
+                    <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color: empty ? 'var(--muted-2)' : 'var(--ink)' }}>{money(c.spent, mainCurrency)}</div>
+                    <div className="muted num" style={{ fontSize: 'var(--fs-micro)' }}>/ {money(c.planned_amount || 0, mainCurrency)}</div>
                   </div>
                 </button>
               );
@@ -634,7 +634,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                 </div>
                 <div style={{ flex: 1 }}>
                   <h3 style={{ marginBottom: 2 }}>{activeCat.name}</h3>
-                  <div className="muted num" style={{ fontSize: 12 }}>{money(activeCat.spent, mainCurrency)}</div>
+                  <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{money(activeCat.spent, mainCurrency)}</div>
                 </div>
                 {activeCat.kind === 'custom' && (
                   <Btn variant="ghost" size="sm" icon="edit" onClick={() => openEditCategory(activeCat)}>{t('visit.change')}</Btn>
@@ -718,10 +718,10 @@ function CityGrouping({ cityGroups, mainCurrency, conv, onOpen, onAdd }) {
                 <Icon name="pin" size={14} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500, fontSize: 13 }}>{g.city === '-' ? t('budget.no_city') : g.city}</div>
-                <div className="muted" style={{ fontSize: 11 }}>{g.items.length} {g.items.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}</div>
+                <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)' }}>{g.city === '-' ? t('budget.no_city') : g.city}</div>
+                <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{g.items.length} {g.items.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}</div>
               </div>
-              <div className="num" style={{ fontWeight: 600, fontSize: 13 }}>{money(g.total, mainCurrency)}</div>
+              <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{money(g.total, mainCurrency)}</div>
             </button>
           );
         })}
@@ -733,7 +733,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, onOpen, onAdd }) {
           </div>
           <div style={{ flex: 1 }}>
             <h3 style={{ marginBottom: 2 }}>{cur.city === '-' ? t('budget.no_city') : cur.city}</h3>
-            <div className="muted num" style={{ fontSize: 12 }}>{cur.items.length} {cur.items.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')} · {money(cur.total, mainCurrency)}</div>
+            <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{cur.items.length} {cur.items.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')} · {money(cur.total, mainCurrency)}</div>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

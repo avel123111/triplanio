@@ -57,12 +57,12 @@ export default function CurrencySelect({ value, onChange, width = 110 }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('common.currency_search_ph')}
-              style={{ fontSize: 13 }}
+              style={{ fontSize: 'var(--fs-base)' }}
             />
           </div>
           <div style={{ maxHeight: 240, overflowY: 'auto', padding: 4 }}>
             {filtered.length === 0 ? (
-              <div className="muted" style={{ padding: '12px', fontSize: 12, textAlign: 'center' }}>{t('common.not_found')}</div>
+              <div className="muted" style={{ padding: '12px', fontSize: 'var(--fs-meta)', textAlign: 'center' }}>{t('common.not_found')}</div>
             ) : filtered.map((c) => (
               <button
                 key={c.code}
@@ -72,12 +72,12 @@ export default function CurrencySelect({ value, onChange, width = 110 }) {
                   width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                   padding: '7px 9px', border: 'none', borderRadius: 7,
                   background: value === c.code ? 'var(--brand-soft)' : 'transparent',
-                  cursor: 'pointer', textAlign: 'left', fontSize: 13,
+                  cursor: 'pointer', textAlign: 'left', fontSize: 'var(--fs-base)',
                 }}
               >
                 <span className="num" style={{ fontWeight: 600, width: 40, flexShrink: 0 }}>{c.code}</span>
-                <span className="muted" style={{ flex: 1, minWidth: 0, fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                <span className="muted" style={{ fontSize: 11.5 }}>{c.symbol}</span>
+                <span className="muted" style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-micro)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{c.symbol}</span>
                 {value === c.code && <Icon name="check" size={12} style={{ color: 'var(--brand)' }} />}
               </button>
             ))}

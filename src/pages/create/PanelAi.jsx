@@ -8,7 +8,7 @@ const AI = 'var(--ai)';
 function aiBtnStyle() {
   return {
     display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 11, border: 'none',
-    background: `linear-gradient(135deg, ${AI} 0%, #7a4ee2 50%, #c66ce2 100%)`, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+    background: `linear-gradient(135deg, ${AI} 0%, #7a4ee2 50%, #c66ce2 100%)`, color: '#fff', fontSize: 'var(--fs-base)', fontWeight: 600, cursor: 'pointer',
     boxShadow: `0 8px 20px -10px color-mix(in srgb, ${AI} 75%, transparent)`,
   };
 }
@@ -39,15 +39,15 @@ export default function PanelAi({ ctx }) {
         </div>
         <div>
           <h1 style={{ marginBottom: 6, letterSpacing: '-0.025em' }}>{t('ai_plan.title')}</h1>
-          <div className="muted" style={{ fontSize: 15, lineHeight: 1.5 }}>{t('ai_plan.page_subtitle')}</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-strong)', lineHeight: 1.5 }}>{t('ai_plan.page_subtitle')}</div>
         </div>
       </div>
 
       <div style={{ background: 'var(--surface)', border: `1.5px solid color-mix(in srgb, ${AI} 22%, var(--line))`, borderRadius: 14, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ width: 24, height: 24, borderRadius: '50%', background: `linear-gradient(135deg, ${AI}, #c66ce2)`, color: '#fff', display: 'grid', placeItems: 'center' }}><Icon name="sparkles" size={12} /></span>
-          <div style={{ fontSize: 13, fontWeight: 600, color: AI }}>{t('ai_plan.assistant_label')}</div>
-          <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto' }}>{t('ai_plan.assistant_hint')}</span>
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: AI }}>{t('ai_plan.assistant_label')}</div>
+          <span className="muted" style={{ fontSize: 'var(--fs-micro)', marginLeft: 'auto' }}>{t('ai_plan.assistant_hint')}</span>
         </div>
         <textarea
           className="textarea"
@@ -56,10 +56,10 @@ export default function PanelAi({ ctx }) {
           onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canPrompt) { e.preventDefault(); onGenerate(prompt.trim()); } }}
           disabled={aiState === 'generating'}
           placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
-          style={{ minHeight: 110, border: 'none', padding: 0, background: 'transparent', fontSize: 14.5, lineHeight: 1.55, width: '100%', resize: 'none' }}
+          style={{ minHeight: 110, border: 'none', padding: 0, background: 'transparent', fontSize: 'var(--fs-strong)', lineHeight: 1.55, width: '100%', resize: 'none' }}
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, alignItems: 'center', gap: 8 }}>
-          <span className="muted" style={{ fontSize: 11 }}>{t('ai_plan.shortcut_hint')}</span>
+          <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('ai_plan.shortcut_hint')}</span>
           {aiState === 'generating' ? (
             <button disabled style={{ ...aiBtnStyle(), opacity: 0.8, cursor: 'default' }}>
               {t('ai_plan.thinking')} <span className="ai-dots" style={{ marginLeft: 4 }}><span /><span /><span /></span>
@@ -75,10 +75,10 @@ export default function PanelAi({ ctx }) {
       </div>
 
       {/* assistant status reply */}
-      <div style={{ marginTop: 14, padding: 14, background: `color-mix(in srgb, ${AI} 7%, transparent)`, borderRadius: 12, fontSize: 13.5, lineHeight: 1.55, color: 'var(--ink-2)' }}>
+      <div style={{ marginTop: 14, padding: 14, background: `color-mix(in srgb, ${AI} 7%, transparent)`, borderRadius: 12, fontSize: 'var(--fs-base)', lineHeight: 1.55, color: 'var(--ink-2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <span style={{ width: 22, height: 22, borderRadius: '50%', background: `linear-gradient(135deg, ${AI}, #c66ce2)`, color: '#fff', display: 'grid', placeItems: 'center' }}><Icon name="sparkles" size={11} /></span>
-          <b style={{ color: AI, fontSize: 12.5 }}>{t('ai_plan.assistant_label')}</b>
+          <b style={{ color: AI, fontSize: 'var(--fs-meta)' }}>{t('ai_plan.assistant_label')}</b>
           {aiState === 'generating' && <span className="ai-dots" style={{ color: AI, marginLeft: 'auto' }}><span /><span /><span /></span>}
         </div>
         <span style={{ whiteSpace: 'pre-wrap' }}>{statusText}</span>
@@ -90,11 +90,11 @@ export default function PanelAi({ ctx }) {
           <div className="eyebrow">{t('ai_plan.draft_label')}</div>
           {cities.map((c, i) => (
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11 }}>
-              <div style={{ width: 24, height: 24, borderRadius: '50%', background: AI, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
+              <div style={{ width: 24, height: 24, borderRadius: '50%', background: AI, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 'var(--fs-micro)', fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{c.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 12 }}>{c.country}</span></div>
+                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{c.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{c.country}</span></div>
               </div>
-              <span className="muted num" style={{ fontSize: 12 }}>{c.nights} {t('ai_plan.unit_nights_short')}</span>
+              <span className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{c.nights} {t('ai_plan.unit_nights_short')}</span>
             </div>
           ))}
         </div>
@@ -104,7 +104,7 @@ export default function PanelAi({ ctx }) {
       {aiState === 'prompt' && (
         <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {[t('ai_plan.chip_italy'), t('ai_plan.chip_japan'), t('ai_plan.chip_balkans')].map((p) => (
-            <button key={p} onClick={() => setPrompt(p)} style={{ padding: '6px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999, fontSize: 12.5, cursor: 'pointer', color: 'var(--ink-2)' }}>{p}</button>
+            <button key={p} onClick={() => setPrompt(p)} style={{ padding: '6px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999, fontSize: 'var(--fs-meta)', cursor: 'pointer', color: 'var(--ink-2)' }}>{p}</button>
           ))}
         </div>
       )}
@@ -115,7 +115,7 @@ export default function PanelAi({ ctx }) {
         <button onClick={goNext} disabled={aiState !== 'draft'} style={{
           display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 11, border: 'none',
           background: aiState !== 'draft' ? 'var(--line)' : AI, color: aiState !== 'draft' ? 'var(--muted-2)' : '#fff',
-          fontSize: 13.5, fontWeight: 600, cursor: aiState !== 'draft' ? 'not-allowed' : 'pointer',
+          fontSize: 'var(--fs-base)', fontWeight: 600, cursor: aiState !== 'draft' ? 'not-allowed' : 'pointer',
         }}>
           {t('planner.next_label')} <Icon name="arrowR" size={15} />
           <span className="num" style={{ marginLeft: 4, opacity: 0.85 }}>{cities.length ? `· ${cities.length} / ${totalNights}${t('planner.night_short')}` : ''}</span>

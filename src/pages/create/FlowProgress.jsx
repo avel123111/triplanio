@@ -13,12 +13,12 @@ export default function FlowProgress({ steps, current = 0, accent = 'var(--brand
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: accent }}>
+        <span style={{ fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: accent }}>
           {t('planner.step_word')} {current + 1} <span style={{ color: 'var(--muted-2)' }}>{t('planner.of')} {steps.length}</span>
         </span>
-        <span style={{ fontSize: 14, fontWeight: 650, color: 'var(--ink)' }}>{steps[current]?.label}</span>
+        <span style={{ fontSize: 'var(--fs-strong)', fontWeight: 650, color: 'var(--ink)' }}>{steps[current]?.label}</span>
         {current < steps.length - 1 && (
-          <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--muted)' }}>
+          <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-micro)', color: 'var(--muted)' }}>
             {t('planner.next_label')}: {nextLabel || steps[current + 1]?.label}
           </span>
         )}

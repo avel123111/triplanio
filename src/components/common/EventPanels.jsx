@@ -66,7 +66,7 @@ function Section({ accent, title, count, children }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <span style={{ width: 3, height: 12, background: accent || 'var(--brand)', borderRadius: 2 }} />
         <span className="eyebrow" style={{ flex: 1 }}>{title}</span>
-        {count != null && count > 0 && <span className="muted" style={{ fontSize: 11 }}>{count}</span>}
+        {count != null && count > 0 && <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{count}</span>}
       </div>
       {children}
     </div>
@@ -77,7 +77,7 @@ function KV({ label, children, mono }) {
   return (
     <div>
       <div className="eyebrow" style={{ marginBottom: 4 }}>{label}</div>
-      <div className={mono ? 'num' : ''} style={{ fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.4 }}>{children}</div>
+      <div className={mono ? 'num' : ''} style={{ fontSize: 'var(--fs-base)', color: 'var(--ink)', lineHeight: 1.4 }}>{children}</div>
     </div>
   );
 }
@@ -88,7 +88,7 @@ function AddressBlock({ address, accent }) {
   return (
     <div style={{ display: 'flex', gap: 10, padding: 12, background: 'var(--wash)', borderRadius: 10, marginTop: 14 }}>
       <Icon name="pin" size={15} style={{ color: accent, marginTop: 2, flexShrink: 0 }} />
-      <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>{address}</div>
+      <div style={{ fontSize: 'var(--fs-base)', color: 'var(--ink-2)', lineHeight: 1.5 }}>{address}</div>
     </div>
   );
 }
@@ -107,13 +107,13 @@ function PartnerPill({ platform, url }) {
 }
 function DocsList({ docs }) {
   const { t } = useI18n();
-  if (!docs || docs.length === 0) return <div className="muted" style={{ fontSize: 12.5, padding: '2px 0' }}>{t('doc.tab_empty_title')}</div>;
+  if (!docs || docs.length === 0) return <div className="muted" style={{ fontSize: 'var(--fs-meta)', padding: '2px 0' }}>{t('doc.tab_empty_title')}</div>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {docs.map((d, i) => (
         <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--line-2)', borderRadius: 9, textDecoration: 'none', color: 'var(--ink)' }}>
           <Icon name="file" size={14} style={{ color: 'var(--muted)' }} />
-          <span style={{ flex: 1, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.file_name || t('event.file_word')}</span>
+          <span style={{ flex: 1, fontSize: 'var(--fs-meta)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.file_name || t('event.file_word')}</span>
           <Icon name="external" size={12} style={{ color: 'var(--muted-2)' }} />
         </a>
       ))}
@@ -124,7 +124,7 @@ function Notes({ accent, notes, t }) {
   if (!notes) return null;
   return (
     <Section accent={accent} title={t('activity.view_notes')}>
-      <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{notes}</div>
+      <div style={{ fontSize: 'var(--fs-base)', color: 'var(--ink-2)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{notes}</div>
     </Section>
   );
 }
@@ -180,19 +180,19 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 14, alignItems: 'center', padding: '16px', background: 'var(--wash)', borderRadius: 12 }}>
         <div>
-          {depDate && <div className="num muted" style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{depDate}</div>}
+          {depDate && <div className="num muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 600, marginBottom: 2 }}>{depDate}</div>}
           <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700 }}>{dep || '—'}</div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginTop: 3 }}>{fromVisit?.city_name || '—'}</div>
-          {entity.from_address && <div className="muted" style={{ fontSize: 11, marginTop: 2, lineHeight: 1.3 }}>{entity.from_address}</div>}
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, marginTop: 3 }}>{fromVisit?.city_name || '—'}</div>
+          {entity.from_address && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, lineHeight: 1.3 }}>{entity.from_address}</div>}
         </div>
         <div style={{ textAlign: 'center', color: accent }}>
           <Icon name={meta.icon} size={20} />
         </div>
         <div style={{ textAlign: 'right' }}>
-          {arrDate && <div className="num muted" style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{arrDate}</div>}
+          {arrDate && <div className="num muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 600, marginBottom: 2 }}>{arrDate}</div>}
           <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700 }}>{arr || '—'}</div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginTop: 3 }}>{toVisit?.city_name || '—'}</div>
-          {entity.to_address && <div className="muted" style={{ fontSize: 11, marginTop: 2, lineHeight: 1.3 }}>{entity.to_address}</div>}
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, marginTop: 3 }}>{toVisit?.city_name || '—'}</div>
+          {entity.to_address && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, lineHeight: 1.3 }}>{entity.to_address}</div>}
         </div>
       </div>
       <Section accent={accent} title={t('event.carrier_booking')}>

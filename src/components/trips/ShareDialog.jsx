@@ -46,9 +46,9 @@ export default function ShareDialog({ trip }) {
       onClick={() => window.__closeModal?.()}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 420, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
         <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>{t('share.dialog_title')}</h2>
-        <div className="muted" style={{ fontSize: 13.5, marginBottom: 18 }}>{t('trip.share_desc')}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-base)', marginBottom: 18 }}>{t('trip.share_desc')}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1, fontSize: 12.5 }} onClick={(e) => e.target.select()} />
+          <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1, fontSize: 'var(--fs-meta)' }} onClick={(e) => e.target.select()} />
           {loading ? (
             <Btn variant="primary" disabled>
               <span className="spin-mini" style={{
@@ -65,7 +65,7 @@ export default function ShareDialog({ trip }) {
             </Btn>
           )}
         </div>
-        {error && <div style={{ color: 'var(--danger, #dc2626)', fontSize: 12.5, marginTop: 10 }}>{error}</div>}
+        {error && <div style={{ color: 'var(--danger, #dc2626)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{error}</div>}
         <div style={{ marginTop: 18, textAlign: 'right' }}>
           <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>
         </div>

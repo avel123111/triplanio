@@ -307,7 +307,7 @@ function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
             <span className="app-header__crumb-dates">{dateRange}</span>
           )}
           {trip?.is_pro_trip && !isPro && (
-            <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '2px 7px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', flexShrink: 0 }}>PRO</span>
+            <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '2px 7px', borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.04em', flexShrink: 0 }}>PRO</span>
           )}
         </div>
       </div>
@@ -327,7 +327,7 @@ function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1.5px dashed var(--line)', background: 'transparent', color: 'var(--muted)', fontSize: 13, cursor: 'pointer', transition: 'color .15s, border-color .15s' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1.5px dashed var(--line)', background: 'transparent', color: 'var(--muted)', fontSize: 'var(--fs-base)', cursor: 'pointer', transition: 'color .15s, border-color .15s' }}
         onMouseEnter={e => { e.currentTarget.style.color = 'var(--ink)'; e.currentTarget.style.borderColor = 'var(--brand)'; }}
         onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.borderColor = 'var(--line)'; }}
       >
@@ -339,7 +339,7 @@ function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
           <button
             type="button"
             onClick={() => { setOpen(false); onAddActivity?.(dayKey); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 'var(--fs-base)', fontWeight: 500, cursor: 'pointer' }}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
             onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
           >
@@ -419,8 +419,8 @@ function StreamAnchor({ label, sub, color, icon }) {
         <Icon name={icon} size={13} />
       </div>
       <div>
-        <div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div>
-        {sub && <div className="muted" style={{ fontSize: 12 }}>{sub}</div>}
+        <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{label}</div>
+        {sub && <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{sub}</div>}
       </div>
     </div>
   );
@@ -441,8 +441,8 @@ function MissingHotelWarning({ city, onAdd }) {
         <Icon name="warning" size={18} />
       </div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>{t('trip.no_booking_in', { city })}</div>
-        <div className="muted" style={{ fontSize: 11.5 }}>{t('trip.add_hotel_prompt')}</div>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{t('trip.no_booking_in', { city })}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('trip.add_hotel_prompt')}</div>
       </div>
       <Btn variant="primary" size="sm" icon="plus" onClick={onAdd}>{t('common.add')}</Btn>
       <button onClick={() => setOpen(false)} style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
@@ -466,7 +466,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
       marginBottom: 8,
     }}>
       <Icon name="warning" size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
-      <div style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>
+      <div style={{ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 600 }}>
         {t('trip.no_transfer', { from, to })}
       </div>
       <Btn variant="primary" size="sm" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
@@ -521,9 +521,9 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
             <h2 style={{ marginBottom: 0, fontSize: 24 }}>{city}</h2>
-            {dateRange && <span className="muted num" style={{ fontSize: 13 }}>{dateRange}</span>}
+            {dateRange && <span className="muted num" style={{ fontSize: 'var(--fs-base)' }}>{dateRange}</span>}
             {nights > 0 && (
-              <span className="muted" style={{ fontSize: 13 }}>
+              <span className="muted" style={{ fontSize: 'var(--fs-base)' }}>
                 · {nights} {nights === 1 ? t('trip.nights_one') : nights < 5 ? t('trip.nights_few') : t('trip.nights_many')}
               </span>
             )}
@@ -550,14 +550,14 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
               <Icon name="bed" size={18} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{h.hotel}</div>
-              <div className="muted num" style={{ fontSize: 11.5, marginTop: 2 }}>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{h.hotel}</div>
+              <div className="muted num" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>
                 {h.checkIn && t('trip.hotel_checkin_date', { date: fmtDate(h.checkIn, lang) })}
                 {h.checkOut && ' · ' + t('trip.hotel_checkout_date', { date: fmtDate(h.checkOut, lang) })}
                 {h.nights && ` · ${h.nights} ${h.nights === 1 ? t('trip.nights_one') : t('trip.nights_few')}`}
               </div>
             </div>
-            {h.price && <div className="num" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(h.price, h.cur || 'EUR')}</div>}
+            {h.price && <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fmt(h.price, h.cur || 'EUR')}</div>}
           </button>
         )) : (
           showBookingWarnings ? <MissingHotelWarning city={city} onAdd={() => onAddHotel?.(visit)} /> : null
@@ -766,7 +766,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
             <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
               {fmtDate(day, lang)}
             </span>
-            <span className="muted" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
+            <span className="muted" style={{ fontSize: 'var(--fs-meta)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
               {weekday(day, lang)}
             </span>
           </div>
@@ -825,18 +825,18 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
             <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
               {fmtDate(day, lang)}
             </span>
-            <span className="muted" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
+            <span className="muted" style={{ fontSize: 'var(--fs-meta)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
               {weekday(day, lang)}
             </span>
           </div>
           {dayCity && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px 2px 6px', borderRadius: 999, background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 11.5, fontWeight: 500, marginBottom: 2 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px 2px 6px', borderRadius: 999, background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 'var(--fs-micro)', fontWeight: 500, marginBottom: 2 }}>
               <Icon name="pin" size={11} />
               {dayCity.city_name}
             </span>
           )}
           {weatherByDay[day] && (
-            <span className="num" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 999, background: 'var(--wash)', color: 'var(--ink)', fontSize: 11.5, fontWeight: 500, marginBottom: 2 }}>
+            <span className="num" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 999, background: 'var(--wash)', color: 'var(--ink)', fontSize: 'var(--fs-micro)', fontWeight: 500, marginBottom: 2 }}>
               <span>{weatherByDay[day].icon}</span><span>{weatherByDay[day].temp}°</span>
             </span>
           )}
@@ -892,7 +892,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
                   borderRadius: 10, color: 'var(--muted)',
                 }}>
                   <Icon name="info" size={14} />
-                  <div style={{ flex: 1, fontSize: 12.5 }}>{t('view.empty_day')}</div>
+                  <div style={{ flex: 1, fontSize: 'var(--fs-meta)' }}>{t('view.empty_day')}</div>
                 </div>
               )}
             </>
@@ -999,7 +999,7 @@ function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
     }
   };
 
-  const itemStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 14, color: 'var(--ink)' };
+  const itemStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 'var(--fs-strong)', color: 'var(--ink)' };
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
       onClick={() => window.__closeModal?.()}>
@@ -1091,7 +1091,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
             textShadow: '0 2px 12px rgba(0,0,0,.3)',
           }}>{trip?.title || '…'}</div>
           {dateRange && dateRange !== '-' && (
-            <div className="num" style={{ color: 'rgba(255,255,255,.85)', fontSize: 13, marginTop: 8, fontWeight: 500 }}>
+            <div className="num" style={{ color: 'rgba(255,255,255,.85)', fontSize: 'var(--fs-base)', marginTop: 8, fontWeight: 500 }}>
               {dateRange}
             </div>
           )}
@@ -1117,7 +1117,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '5px 10px 5px 8px', borderRadius: 999,
                   background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12)',
-                  fontSize: 12.5, color: 'var(--brand)', fontWeight: 600, cursor: 'pointer',
+                  fontSize: 'var(--fs-meta)', color: 'var(--brand)', fontWeight: 600, cursor: 'pointer',
                 }}>
                 <Icon name="pin" size={13} />
                 {cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
@@ -1132,7 +1132,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
                     borderRadius: 12, padding: '10px 12px', boxShadow: 'var(--shadow-pop)', minWidth: 180,
                   }}>
                   {cities.map((c, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 13 }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 'var(--fs-base)' }}>
                       <Icon name="pin" size={12} style={{ color: 'var(--brand)', flexShrink: 0 }} />
                       {c}
                     </div>
@@ -1146,7 +1146,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
             display: 'inline-flex', alignItems: 'center', gap: 5,
             padding: '5px 10px 5px 8px', borderRadius: 999,
             background: 'var(--success-soft)', border: '1px solid color-mix(in srgb, var(--success) 28%, transparent)',
-            fontSize: 12.5, color: 'var(--success)', fontWeight: 600,
+            fontSize: 'var(--fs-meta)', color: 'var(--success)', fontWeight: 600,
           }}>
             <Icon name="users" size={13} />
             {activeMemberCount} {activeMemberCount === 1 ? t('trip.members_count_one') : activeMemberCount < 5 ? t('trip.members_count_few') : t('trip.members_count_many')}
@@ -1251,7 +1251,7 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
       {/* Budget widget */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 14 }}>{t('trip.sidebar_budget')}</h3>
+          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 'var(--fs-strong)' }}>{t('trip.sidebar_budget')}</h3>
           {canManage && (
             <button
               onClick={() => (budgetEnabled ? window.__navigate?.('budget') : onBudgetLocked?.())}
@@ -1267,7 +1267,7 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
               {moneyCtx(totalSpent)}
             </div>
             {hasMissingRate && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: 11.5, color: 'var(--warning)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: 'var(--fs-micro)', color: 'var(--warning)' }}>
                 <Icon name="warning" size={12} />
                 <span>{t('trip.budget_no_rate')}</span>
               </div>
@@ -1288,7 +1288,7 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
             {catBreakdown.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {catBreakdown.map(c => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--fs-meta)' }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
                     <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
                     <span className="num" style={{ fontWeight: 600 }}>{moneyCtx(c.spent)}</span>
@@ -1296,18 +1296,18 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
                 ))}
               </div>
             ) : (
-              <div className="muted" style={{ fontSize: 12 }}>{t('trip.budget_empty')}</div>
+              <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('trip.budget_empty')}</div>
             )}
           </>
         ) : (
-          <div className="muted" style={{ fontSize: 12.5 }}>{t('trip.budget_none')}</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('trip.budget_none')}</div>
         )}
       </div>
 
       {/* Who's going widget */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 14 }}>{t('trip.who_goes')}</h3>
+          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 'var(--fs-strong)' }}>{t('trip.who_goes')}</h3>
           {canManage && (
             <button
               onClick={() => window.__navigate?.('members')}
@@ -1336,11 +1336,11 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
               <div key={m.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (isPending || isOffline) ? 0.65 : 1 }}>
                 <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1.3 }}>
+                  <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1.3 }}>
                     <Icon name={roleIcon} size={11} style={{ color: roleColor, flexShrink: 0 }} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
                   </div>
-                  <div style={{ fontSize: 11, marginTop: 1, color: isPending ? 'var(--warning)' : 'var(--muted)' }}>{roleLabel}</div>
+                  <div style={{ fontSize: 'var(--fs-micro)', marginTop: 1, color: isPending ? 'var(--warning)' : 'var(--muted)' }}>{roleLabel}</div>
                 </div>
               </div>
             );
@@ -1385,7 +1385,7 @@ function ServicesWidget({ services = [], onAddService }) {
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
-      <h3 style={{ marginBottom: 10, fontSize: 14 }}>{t('trip.sidebar_services')}</h3>
+      <h3 style={{ marginBottom: 10, fontSize: 'var(--fs-strong)' }}>{t('trip.sidebar_services')}</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {/* Added services as booked cards */}
         {services.map((s) => {
@@ -1396,8 +1396,8 @@ function ServicesWidget({ services = [], onAddService }) {
                 <Icon name={meta?.icon || 'spark'} size={14} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta ? t(meta.labelKey) : s.name}</div>
-                {s.name && <div className="muted" style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>}
+                <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta ? t(meta.labelKey) : s.name}</div>
+                {s.name && <div className="muted" style={{ fontSize: 'var(--fs-micro)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>}
               </div>
             </div>
           );
@@ -1420,7 +1420,7 @@ function ServicesWidget({ services = [], onAddService }) {
             />
           ))
         ) : (
-          <button onClick={() => setMoreOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: 12, cursor: 'pointer' }}>
+          <button onClick={() => setMoreOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: 'var(--fs-meta)', cursor: 'pointer' }}>
             <Icon name="more" size={12} />
             <span>{t('service.more')}</span>
           </button>
@@ -1443,8 +1443,8 @@ function ServiceRowEmpty({ icon, name, desc, onClick }) {
         <Icon name={icon} size={14} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-        <div className="muted" style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</div>
+        <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-micro)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</div>
       </div>
       {/* Trailing "+" — a dedicated flex child, so it sits to the RIGHT of the
           text instead of stacking above it (the old inline-icon layout bug). */}
@@ -1728,7 +1728,7 @@ export default function TripView() {
                 onToggleEdit={() => setIsEditMode(m => !m)}
               />
               {frozen && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--wash)', border: '1px solid var(--line)', fontSize: 13, color: 'var(--ink-2)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--wash)', border: '1px solid var(--line)', fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>
                   <Icon name="lock" size={14} /> {t('trip.frozen_note')}
                 </div>
               )}
@@ -1883,7 +1883,7 @@ export default function TripView() {
               <button className="icon-btn" onClick={() => setBudgetAddonOff(false)}><Icon name="close" size={16} /></button>
             </div>
             <div className="dlg__body">
-              <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
+              <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
                 {t('trip.budget_addon_off_desc')}
               </div>
             </div>

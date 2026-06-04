@@ -135,10 +135,10 @@ export default function NotificationsBell({ triggerClassName }) {
       <PopoverContent align="end" sideOffset={8} className="p-0 w-[360px] max-w-[calc(100vw-16px)] overflow-hidden rounded-2xl">
         <div className="bell-dd__head">
           <Icon name="bell" size={16} />
-          <div style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{t('notif.title')}</div>
+          <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', flex: 1 }}>{t('notif.title')}</div>
           {unread > 0 && (
             <button onClick={() => markAllRead.mutate()}
-              style={{ background: 'transparent', border: 'none', color: 'var(--brand)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+              style={{ background: 'transparent', border: 'none', color: 'var(--brand)', fontSize: 'var(--fs-meta)', fontWeight: 500, cursor: 'pointer' }}>
               {t('notif.mark_all_read')}
             </button>
           )}
@@ -170,8 +170,8 @@ export default function NotificationsBell({ triggerClassName }) {
                   <Icon name="check" size={10} />
                 </span>
               </div>
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{t('notif.all_read')}</div>
-              <div className="muted" style={{ fontSize: 12, lineHeight: 1.55, maxWidth: 240, margin: '0 auto' }}>
+              <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', marginBottom: 4 }}>{t('notif.all_read')}</div>
+              <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.55, maxWidth: 240, margin: '0 auto' }}>
                 {t('notif.all_read_desc')}
               </div>
             </div>
@@ -197,7 +197,7 @@ export default function NotificationsBell({ triggerClassName }) {
         <div className="bell-dd__foot">
           <button
             onClick={() => { setOpen(false); nav('/inbox'); }}
-            style={{ background: 'transparent', border: 'none', color: 'var(--brand)', fontSize: 13, fontWeight: 500, cursor: 'pointer', padding: '4px 8px' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--brand)', fontSize: 'var(--fs-base)', fontWeight: 500, cursor: 'pointer', padding: '4px 8px' }}
           >
             {t('notif.open_full_inbox')}
           </button>
@@ -248,9 +248,9 @@ function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip
         <Icon name={meta.icon} size={14} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, lineHeight: 1.4, fontWeight: 500 }}>{titleNode}</div>
-        {messageText && <div className="muted" style={{ fontSize: 11.5, marginTop: 2, lineHeight: 1.4 }}>{messageNode}</div>}
-        <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{time}</div>
+        <div style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4, fontWeight: 500 }}>{titleNode}</div>
+        {messageText && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, lineHeight: 1.4 }}>{messageNode}</div>}
+        <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>{time}</div>
 
         {showPending && (
           <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
@@ -259,12 +259,12 @@ function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip
           </div>
         )}
         {isInvite && member?.status === 'active' && (
-          <div style={{ fontSize: 11.5, color: 'var(--success)', marginTop: 4 }}>✓ {t('notif.accepted')}</div>
+          <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--success)', marginTop: 4 }}>✓ {t('notif.accepted')}</div>
         )}
 
         {n.trip_id && (member?.status === 'active' || n.type !== 'trip_invite') && (
           <Link to={`/trip/${n.trip_id}`} onClick={onOpenTrip}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: 'var(--brand)', fontWeight: 500, marginTop: 6 }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-micro)', color: 'var(--brand)', fontWeight: 500, marginTop: 6 }}>
             <Icon name="pin" size={12} />{t('notif.view_trip')}
           </Link>
         )}

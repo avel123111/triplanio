@@ -166,7 +166,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
           onFocus={() => results.length > 0 && setOpen(true)}
           onBlur={handleBlur}
           placeholder={placeholder || t('planner.city_search_ph')}
-          style={{ paddingLeft: 36, paddingRight: loading ? 36 : 12, fontSize: 15 }}
+          style={{ paddingLeft: 36, paddingRight: loading ? 36 : 12, fontSize: 'var(--fs-strong)' }}
           autoFocus={autoFocus}
         />
         {loading && (
@@ -193,8 +193,8 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
             >
               <span style={{ fontSize: 18, flexShrink: 0 }}>{countryFlag(c.country_code)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{c.city_name}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name}</div>
+                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{c.city_name}</div>
+                <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name}</div>
               </div>
             </button>
           ))}
@@ -224,8 +224,8 @@ function CityAnchorRow({ label, city_name, country, kind }) {
         <Icon name={kind === 'home' ? 'flag' : 'check'} size={14} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="eyebrow" style={{ fontSize: 10, marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 13.5, fontWeight: 600 }}>
+        <div className="eyebrow" style={{ fontSize: 'var(--fs-micro)', marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>
           {city_name || <span style={{ color: 'var(--muted)' }}>{t('planner.not_set')}</span>}
           {country && <span className="muted" style={{ fontWeight: 500, marginLeft: 6 }}>{country}</span>}
         </div>
@@ -276,7 +276,7 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
       </div>
 
       {/* Number badge - flag icon when this is the final anchor */}
-      <div className="planner-city-row__num" style={{ width: 28, height: 28, borderRadius: '50%', background: accentColor, color: 'white', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+      <div className="planner-city-row__num" style={{ width: 28, height: 28, borderRadius: '50%', background: accentColor, color: 'white', display: 'grid', placeItems: 'center', fontSize: 'var(--fs-meta)', fontWeight: 700, flexShrink: 0 }}>
         {isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}
       </div>
 
@@ -292,7 +292,7 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
             }
           }}
           placeholder={t('planner.city_ph')}
-          style={{ fontSize: 13.5 }}
+          style={{ fontSize: 'var(--fs-base)' }}
         />
       </div>
 
@@ -300,7 +300,7 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
           and each city's nights (city N starts where city N-1 ends), so they
           can't be edited per-row and never drift the trip start. */}
       {!isFinalAnchor && startLabel && (
-        <div className="planner-city-row__date num" style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap', textAlign: 'right' }}>
+        <div className="planner-city-row__date num" style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', whiteSpace: 'nowrap', textAlign: 'right' }}>
           {startLabel}{endLabel ? ` → ${endLabel}` : ''}
         </div>
       )}
@@ -310,11 +310,11 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
         <div className="planner-city-row__nights" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button type="button" title={t('planner.fewer_nights')} onClick={() => onChange({ nights: Math.max(1, (+city.nights || 1) - 1) })}
             disabled={(+city.nights || 1) <= 1}
-            style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--surface)', cursor: (+city.nights || 1) <= 1 ? 'default' : 'pointer', opacity: (+city.nights || 1) <= 1 ? 0.4 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 15, fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>−</button>
-          <span className="num" style={{ minWidth: 34, textAlign: 'center', fontSize: 12.5, fontWeight: 600 }}>{city.nights || 1}<span className="muted" style={{ fontWeight: 400 }}>{t('planner.night_short')}</span></span>
+            style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--surface)', cursor: (+city.nights || 1) <= 1 ? 'default' : 'pointer', opacity: (+city.nights || 1) <= 1 ? 0.4 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 'var(--fs-strong)', fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>−</button>
+          <span className="num" style={{ minWidth: 34, textAlign: 'center', fontSize: 'var(--fs-meta)', fontWeight: 600 }}>{city.nights || 1}<span className="muted" style={{ fontWeight: 400 }}>{t('planner.night_short')}</span></span>
           <button type="button" title={t('planner.more_nights')} onClick={() => onChange({ nights: Math.min(30, (+city.nights || 1) + 1) })}
             disabled={(+city.nights || 1) >= 30}
-            style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--surface)', cursor: (+city.nights || 1) >= 30 ? 'default' : 'pointer', opacity: (+city.nights || 1) >= 30 ? 0.4 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 15, fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>+</button>
+            style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--surface)', cursor: (+city.nights || 1) >= 30 ? 'default' : 'pointer', opacity: (+city.nights || 1) >= 30 ? 0.4 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 'var(--fs-strong)', fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>+</button>
         </div>
       )}
 
@@ -361,7 +361,7 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
             boxShadow: '0 1px 2px rgba(0,0,0,.15)',
           }} />
         </button>
-        <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.4 }}>
+        <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
           <span style={{ fontWeight: 600 }}>
             <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: accentColor }} />
             {t('planner.final_point')}
@@ -406,7 +406,7 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.home_title')}</h1>
-      <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 540 }}>
+      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 22, maxWidth: 540 }}>
         {t('planner.home_desc')}
       </div>
 
@@ -425,7 +425,7 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
               type="date"
               value={startDate || ''}
               onChange={e => setStartDate?.(e.target.value)}
-              style={{ paddingLeft: 36, fontSize: 14, width: '100%' }}
+              style={{ paddingLeft: 36, fontSize: 'var(--fs-strong)', width: '100%' }}
             />
           </div>
         </div>
@@ -442,8 +442,8 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
             <Icon name="pin" size={20} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
-            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>{t('planner.geo_hint')}</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
+            <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{t('planner.geo_hint')}</div>
           </div>
           <Btn variant="primary" size="sm" onClick={requestGeo}>{t('planner.allow')}</Btn>
         </div>
@@ -452,7 +452,7 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
       {geoState === 'loading' && (
         <div style={{ padding: 18, borderRadius: 12, border: '1.5px dashed var(--line)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ width: 20, height: 20, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
-          <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t('planner.detecting')}</span>
+          <span style={{ fontSize: 'var(--fs-base)', color: 'var(--muted)' }}>{t('planner.detecting')}</span>
         </div>
       )}
 
@@ -471,8 +471,8 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
               <Icon name="plane" size={14} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{nearbyCity.city_name}</div>
-              <div className="muted" style={{ fontSize: 11.5 }}>{countryFlag(nearbyCity.country_code)} {nearbyCity.country} · {t('planner.your_city')}</div>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{nearbyCity.city_name}</div>
+              <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{countryFlag(nearbyCity.country_code)} {nearbyCity.country} · {t('planner.your_city')}</div>
             </div>
             {home?.city_name === nearbyCity.city_name && (
               <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -489,8 +489,8 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
             <Icon name="lock" size={20} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>{t('planner.geo_off')}</div>
-            <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>{t('planner.geo_off_hint')}</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, marginBottom: 2 }}>{t('planner.geo_off')}</div>
+            <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{t('planner.geo_off_hint')}</div>
           </div>
           <Btn variant="ghost" size="sm" onClick={() => setGeoState('ask')}>{t('planner.retry_request')}</Btn>
         </div>
@@ -551,20 +551,20 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.step_cities')}</h1>
-      <div className="muted" style={{ fontSize: 15, marginBottom: 18, maxWidth: 620 }}>
+      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 18, maxWidth: 620 }}>
         {t('planner.cities_desc_1')} <b style={{ color: 'var(--ink)' }}>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
       </div>
 
       {/* Trip-start control - the single date anchor for the whole trip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 12 }}>
         <Icon name="calendar" size={15} style={{ color: 'var(--brand)' }} />
-        <span style={{ fontSize: 13, fontWeight: 600 }}>{t('planner.trip_start')}</span>
+        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{t('planner.trip_start')}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
           <button type="button" title={t('planner.day_earlier')} onClick={() => startDate && setStartDate(addDays(startDate, -1))}
-            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 15, fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>‹</button>
-          <input className="input num" type="date" value={startDate || ''} onChange={(e) => setStartDate(e.target.value)} style={{ fontSize: 13, padding: '6px 8px', width: 150 }} />
+            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 'var(--fs-strong)', fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>‹</button>
+          <input className="input num" type="date" value={startDate || ''} onChange={(e) => setStartDate(e.target.value)} style={{ fontSize: 'var(--fs-base)', padding: '6px 8px', width: 150 }} />
           <button type="button" title={t('planner.day_later')} onClick={() => startDate && setStartDate(addDays(startDate, 1))}
-            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 15, fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>›</button>
+            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 'var(--fs-strong)', fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>›</button>
         </div>
       </div>
 
@@ -573,8 +573,8 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
       {cities.length === 0 ? (
         <div style={{ marginTop: 12, padding: 28, border: '1.5px dashed var(--line)', borderRadius: 12, textAlign: 'center', color: 'var(--muted)' }}>
           <Icon name="pin" size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
-          <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{t('planner.where_to')}</div>
-          <div style={{ fontSize: 12.5, marginBottom: 14 }}>{t('planner.add_first_city')}</div>
+          <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 500, marginBottom: 4 }}>{t('planner.where_to')}</div>
+          <div style={{ fontSize: 'var(--fs-meta)', marginBottom: 14 }}>{t('planner.add_first_city')}</div>
           <Btn variant="primary" onClick={() => addCity()}>{t('planner.add_city')}</Btn>
         </div>
       ) : (
@@ -610,7 +610,7 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '12px 16px', background: 'transparent',
             border: '1.5px dashed var(--line)', borderRadius: 12, cursor: 'pointer',
-            color: 'var(--muted)', fontSize: 13, fontWeight: 500,
+            color: 'var(--muted)', fontSize: 'var(--fs-base)', fontWeight: 500,
           }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.color = 'var(--brand)'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)'; }}
@@ -621,7 +621,7 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
       )}
 
       {hasError && !allValid && (
-        <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--warning-soft, #fff3cd)', border: '1px solid var(--warning, #e6a817)', borderRadius: 10, fontSize: 13, color: 'var(--ink)' }}>
+        <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--warning-soft, #fff3cd)', border: '1px solid var(--warning, #e6a817)', borderRadius: 10, fontSize: 'var(--fs-base)', color: 'var(--ink)' }}>
           ⚠️ {cities.length === 0 ? t('planner.err_no_cities') : t('planner.err_unrecognized')}
         </div>
       )}
@@ -645,7 +645,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
       <h1 style={{ marginBottom: 10 }}>
         {t('planner.return_title_pre')} <span style={{ color: 'var(--brand)' }}>{lastCityName}</span>?
       </h1>
-      <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 540 }}>
+      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 22, maxWidth: 540 }}>
         {t('planner.return_desc')}
       </div>
 
@@ -657,7 +657,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
             </div>
             <div style={{ fontWeight: 600 }}>{t('planner.return_home', { city: home?.city_name || '…' })}</div>
           </div>
-          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.4 }}>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
             {t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}
           </div>
         </button>
@@ -669,7 +669,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
             </div>
             <div style={{ fontWeight: 600 }}>{t('planner.return_other')}</div>
           </div>
-          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.4 }}>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
             {t('planner.return_other_desc')}
           </div>
         </button>
@@ -689,7 +689,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 
       <div style={{ marginTop: 18, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <Icon name="info" size={14} style={{ color: 'var(--muted)', marginTop: 2, flexShrink: 0 }} />
-        <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', lineHeight: 1.5 }}>
           {t('planner.return_info')}
         </div>
       </div>
@@ -709,12 +709,12 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0', position: 'relative', zIndex: 1 }}>
-      <div style={{ width: 28, height: 28, borderRadius: '50%', background: icon ? (iconColor || 'var(--brand)') : 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, border: '3px solid var(--surface)' }}>
+      <div style={{ width: 28, height: 28, borderRadius: '50%', background: icon ? (iconColor || 'var(--brand)') : 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 'var(--fs-micro)', fontWeight: 700, flexShrink: 0, border: '3px solid var(--surface)' }}>
         {icon ? <Icon name={icon} size={12} /> : num}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 600, color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
-        <div className="muted" style={{ fontSize: 11.5, marginTop: 1 }}>{sub}</div>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{sub}</div>
       </div>
     </div>
   );
@@ -723,9 +723,9 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
 function Stat({ label, value, hint }) {
   return (
     <div>
-      <div className="eyebrow" style={{ marginBottom: 3, fontSize: 10 }}>{label}</div>
-      <div style={{ fontSize: 14, fontWeight: 600 }}>{value}</div>
-      {hint && <div className="muted" style={{ fontSize: 11, marginTop: 1 }}>{hint}</div>}
+      <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)' }}>{label}</div>
+      <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 600 }}>{value}</div>
+      {hint && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{hint}</div>}
     </div>
   );
 }
@@ -753,7 +753,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
           <Icon name="check" size={36} />
         </div>
         <h1 style={{ marginBottom: 8 }}>{t('planner.created_title')}</h1>
-        <div className="muted" style={{ fontSize: 15, maxWidth: 460, margin: '0 auto 22px' }}>
+        <div className="muted" style={{ fontSize: 'var(--fs-strong)', maxWidth: 460, margin: '0 auto 22px' }}>
           {t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
         </div>
         <div style={{ display: 'inline-flex', gap: 8 }}>
@@ -767,7 +767,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.step_review')}</h1>
-      <div className="muted" style={{ fontSize: 15, marginBottom: 22, maxWidth: 620 }}>
+      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 22, maxWidth: 620 }}>
         {t('planner.review_desc')}
       </div>
 
@@ -804,17 +804,17 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
 
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
-              <div className="eyebrow" style={{ marginBottom: 3, fontSize: 10 }}>{t('event.start')}</div>
+              <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)' }}>{t('event.start')}</div>
               <input
                 className="input num"
                 type="date"
                 value={cities[0]?.startDate || ''}
                 onChange={e => onStartDateChange && onStartDateChange(e.target.value)}
                 disabled={saving}
-                style={{ fontSize: 13, padding: '5px 8px', minWidth: 130 }}
+                style={{ fontSize: 'var(--fs-base)', padding: '5px 8px', minWidth: 130 }}
               />
               {!cities[0]?.startDate && (
-                <div style={{ fontSize: 10.5, color: 'var(--warning, #e6a817)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
+                <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--warning, #e6a817)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
               )}
             </div>
             <Stat label={t('planner.duration')} value={`${totalNights} ${t('ai_plan.unit_nights_short')}`} />
@@ -844,7 +844,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
       </div>
 
       {error && (
-        <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--danger-soft, #fde8e8)', border: '1px solid var(--danger, #e74c3c)', borderRadius: 10, fontSize: 13, color: 'var(--danger, #e74c3c)' }}>
+        <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--danger-soft, #fde8e8)', border: '1px solid var(--danger, #e74c3c)', borderRadius: 10, fontSize: 'var(--fs-base)', color: 'var(--danger, #e74c3c)' }}>
           {error}
         </div>
       )}
@@ -852,7 +852,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
       {saving && (
         <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, rgba(59,91,219,.12))', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 16, height: 16, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite', flexShrink: 0 }} />
-          <div style={{ flex: 1, fontSize: 13, color: 'var(--ink-2)' }}>{t('planner.saving_msg')}</div>
+          <div style={{ flex: 1, fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>{t('planner.saving_msg')}</div>
         </div>
       )}
 
@@ -1264,7 +1264,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               <Icon name="lock" size={28} />
             </div>
             <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700 }}>{t('planner.limit_title')}</h2>
-            <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24 }}>
+            <p style={{ fontSize: 'var(--fs-strong)', color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24 }}>
               {t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -1291,7 +1291,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         </div>
         <div className="app-header__crumb">
           <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{isAi ? t('planner.step_home_ai') : t('trips.new')}</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ink-2)' }}>{isAi ? t('planner.step_home_ai') : t('trips.new')}</span>
         </div>
         <HeaderActions
           user={user}

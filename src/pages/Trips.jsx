@@ -77,10 +77,10 @@ const CollectionTripCover = ({ trip }) => {
       )}
       <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 6 }}>
         {trip.pro && (
-          <div style={{ background: 'rgba(255,255,255,.92)', color: 'var(--warm)', fontSize: 11, fontWeight: 700, letterSpacing: '.05em', padding: '3px 8px', borderRadius: 999 }}>Pro</div>
+          <div style={{ background: 'rgba(255,255,255,.92)', color: 'var(--warm)', fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.05em', padding: '3px 8px', borderRadius: 999 }}>Pro</div>
         )}
         {trip.role !== 'owner' && (
-          <div style={{ background: 'rgba(15,23,42,.6)', color: 'white', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999, backdropFilter: 'blur(8px)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ background: 'rgba(15,23,42,.6)', color: 'white', fontSize: 'var(--fs-micro)', fontWeight: 600, padding: '3px 8px', borderRadius: 999, backdropFilter: 'blur(8px)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <Icon name="users" size={11} /> {t('trips.shared_badge')}
           </div>
         )}
@@ -106,12 +106,12 @@ const TripCard = ({ trip, onClick }) => {
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 17, letterSpacing: '-0.015em', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trip.title}</div>
-        <div className="muted num" style={{ fontSize: 12.5 }}>{trip.days}</div>
+        <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{trip.days}</div>
       </div>
       {trip.role === 'viewer' && <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>}
       {trip.role === 'admin'  && <Badge>{t('trips.role_admin')}</Badge>}
     </div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--muted)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>
       <Icon name="pin" size={13} />
       <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{trip.scope}</span>
       {trip.status === 'draft' && <Badge variant="warning" dot>{t('ai_plan.draft_label')}</Badge>}
@@ -124,7 +124,7 @@ const TripCard = ({ trip, onClick }) => {
 const TripRow = ({ trip, onClick }) => {
   const { t } = useI18n();
   return (
-  <button onClick={onClick} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 180px 140px 100px 30px', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, cursor: 'pointer', textAlign: 'left', fontSize: 13.5 }}
+  <button onClick={onClick} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 180px 140px 100px 30px', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, cursor: 'pointer', textAlign: 'left', fontSize: 'var(--fs-base)' }}
     onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--line-hover)'}
     onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--line)'}>
     <div style={{ width: 44, height: 44, borderRadius: 10, background: `hsl(${trip.coverHue ?? 210}, 50%, 60%)`, position: 'relative' }}>
@@ -136,9 +136,9 @@ const TripRow = ({ trip, onClick }) => {
     </div>
     <div>
       <div style={{ fontWeight: 600, color: 'var(--ink)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trip.title}</div>
-      <div className="muted" style={{ fontSize: 12 }}>{trip.scope}</div>
+      <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{trip.scope}</div>
     </div>
-    <div className="muted num" style={{ fontSize: 12.5 }}>{trip.days}</div>
+    <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{trip.days}</div>
     <div>
       {trip.role === 'owner'  && <Badge>{t('trips.role_owner')}</Badge>}
       {trip.role === 'admin'  && <Badge>{t('trips.role_admin')}</Badge>}
@@ -159,7 +159,7 @@ function NewTripDialog({ onClose, onManual, onAi }) {
       <div onClick={e => e.stopPropagation()}
         style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 440, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
         <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700 }}>{t('trips.new')}</h2>
-        <div style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 22 }}>{t('trips.choice_subtitle')}</div>
+        <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-strong)', marginBottom: 22 }}>{t('trips.choice_subtitle')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <button onClick={onManual} style={{ padding: 20, background: 'var(--surface)', border: '1.5px solid var(--line)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
             onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand)'}
@@ -168,14 +168,14 @@ function NewTripDialog({ onClose, onManual, onAi }) {
               <Icon name="edit" size={19} />
             </div>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('trips.start_manual')}</div>
-            <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5 }}>{t('trips.manual_desc_short')}</div>
+            <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.manual_desc_short')}</div>
           </button>
           <button onClick={onAi} className="ai-card" style={{ padding: 20, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
               <Icon name="sparkles" size={19} />
             </div>
             <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--ai)' }}>{t('trips.start_with_ai')}</div>
-            <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.5 }}>{t('trips.ai_desc_short')}</div>
+            <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.ai_desc_short')}</div>
           </button>
         </div>
         <div style={{ marginTop: 16, textAlign: 'right' }}>
@@ -204,7 +204,7 @@ function CollectionEmpty({ onManual, onAi }) {
             <Icon name="edit" size={19} />
           </div>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('trips.start_manual')}</div>
-          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>{t('trips.manual_desc_full')}</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.manual_desc_full')}</div>
         </button>
         <button onClick={onAi} style={{ padding: 22, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
           className="ai-card">
@@ -212,7 +212,7 @@ function CollectionEmpty({ onManual, onAi }) {
             <Icon name="sparkles" size={19} />
           </div>
           <div style={{ fontWeight: 600, marginBottom: 4 }} className="ai-text">{t('trips.start_with_ai')} <Badge variant="warm" style={{ marginLeft: 4 }}>Pro</Badge></div>
-          <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>{t('trips.ai_desc_full')}</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.ai_desc_full')}</div>
         </button>
       </div>
     </div>
@@ -413,7 +413,7 @@ export default function Trips() {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <h1 style={{ marginBottom: 6 }}>{t('trips.page_title')}</h1>
-                <div className="muted" style={{ fontSize: 15 }}>
+                <div className="muted" style={{ fontSize: 'var(--fs-strong)' }}>
                   {t('trips.count_summary', { active: activeTrips.length, past: pastTrips.length })}
                 </div>
               </div>
@@ -464,7 +464,7 @@ export default function Trips() {
                   >
                     <Icon name="plus" size={22} />
                     <div style={{ fontWeight: 500 }}>{t('trips.add_trip')}</div>
-                    <div style={{ fontSize: 12, textAlign: 'center', maxWidth: 200 }}>{t('trips.add_trip_sub')}</div>
+                    <div style={{ fontSize: 'var(--fs-meta)', textAlign: 'center', maxWidth: 200 }}>{t('trips.add_trip_sub')}</div>
                   </button>
                 )}
               </div>
@@ -484,7 +484,7 @@ export default function Trips() {
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>{t('trips.free_limit_title')}</div>
-                  <div className="muted" style={{ fontSize: 12.5 }}>{t('trips.free_limit_desc')}</div>
+                  <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('trips.free_limit_desc')}</div>
                 </div>
                 <Btn variant="primary" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
               </div>

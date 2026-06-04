@@ -163,12 +163,12 @@ export default function ForkPartnerModal({
               <ManualIcon size={20} />
             </div>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
+              <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', marginBottom: 4 }}>
                 {t(meta.manualKey)}
               </div>
               <div
                 style={{
-                  fontSize: 12.5,
+                  fontSize: 'var(--fs-meta)',
                   lineHeight: 1.45,
                   color: 'var(--muted)',
                 }}
@@ -183,7 +183,7 @@ export default function ForkPartnerModal({
                 alignItems: 'center',
                 gap: 4,
                 color: meta.color,
-                fontSize: 12.5,
+                fontSize: 'var(--fs-meta)',
                 fontWeight: 600,
               }}
             >
@@ -286,7 +286,7 @@ export default function ForkPartnerModal({
             style={{ color: 'var(--muted)', marginTop: 2, flexShrink: 0 }}
           />
           <div
-            style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}
+            style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', lineHeight: 1.5 }}
           >
             {t('fork.info')}
           </div>

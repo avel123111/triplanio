@@ -90,7 +90,7 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
       </>}>
 
       <IssuesPanel issues={v.panelIssues} style={{ marginBottom: 12 }} />
-      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
+      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginBottom: 12 }}>{err}</div>}
 
       {/* Visibility - two card buttons, as in base44 */}
       <div style={{ marginBottom: 16 }}>
@@ -112,11 +112,11 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
               }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
                 <Icon name={opt.icon} size={13} style={{ color: visibility === opt.value ? 'var(--brand)' : 'var(--muted)' }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: visibility === opt.value ? 'var(--brand)' : 'var(--ink)' }}>
+                <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: visibility === opt.value ? 'var(--brand)' : 'var(--ink)' }}>
                   {opt.label}
                 </span>
               </div>
-              <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{opt.desc}</div>
+              <div className="muted" style={{ fontSize: 'var(--fs-micro)', lineHeight: 1.4 }}>{opt.desc}</div>
             </button>
           ))}
         </div>
@@ -158,7 +158,7 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
             {documents.map((d, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'var(--wash)', borderRadius: 8, border: '1px solid var(--line-2)' }}>
                 <Icon name="file" size={13} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.file_name}</span>
+                <span style={{ flex: 1, fontSize: 'var(--fs-base)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.file_name}</span>
                 <button
                   type="button"
                   onClick={() => setDocuments(prev => prev.filter((_, j) => j !== i))}
@@ -191,12 +191,12 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
             onChange={e => uploadFiles(e.target.files)}
           />
           {uploading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--brand)', fontSize: 13 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--brand)', fontSize: 'var(--fs-base)' }}>
               <div style={{ width: 14, height: 14, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
               {t('common.loading')}
             </div>
           ) : (
-            <div style={{ color: 'var(--muted)', fontSize: 13 }}>
+            <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-base)' }}>
               <Icon name="upload" size={16} style={{ display: 'block', margin: '0 auto 6px' }} />
               {documents.length === 0
                 ? t('doc.upload_label')
@@ -234,12 +234,12 @@ function DocDetailDialog({ doc, tripId }) {
         <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>
       </>}>
       {doc.notes && (
-        <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--ink-2)', marginBottom: 14 }}>{doc.notes}</div>
+        <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--ink-2)', marginBottom: 14 }}>{doc.notes}</div>
       )}
       {doc.link_url && (
         <div style={{ marginBottom: 12 }}>
           <a href={doc.link_url} target="_blank" rel="noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--brand)', fontSize: 13.5 }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--brand)', fontSize: 'var(--fs-base)' }}>
             <Icon name="external" size={13} />
             {doc.link_url}
           </a>
@@ -252,7 +252,7 @@ function DocDetailDialog({ doc, tripId }) {
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--line-2)' }}>
               <Icon name="file" size={14} style={{ color: 'var(--brand)', flexShrink: 0 }} />
               <a href={f.file_url} target="_blank" rel="noreferrer"
-                style={{ fontSize: 13, color: 'var(--brand)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                style={{ fontSize: 'var(--fs-base)', color: 'var(--brand)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {f.file_name || f.file_url}
               </a>
             </div>
@@ -260,7 +260,7 @@ function DocDetailDialog({ doc, tripId }) {
         </div>
       )}
       {!doc.notes && !doc.link_url && !doc.documents?.length && (
-        <div className="muted" style={{ fontSize: 13 }}>{t('doc.no_content')}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>{t('doc.no_content')}</div>
       )}
     </Dialog>
   );
@@ -291,8 +291,8 @@ function DocCard({ doc, tripId, scope }) {
           <Icon name="file" size={17} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</div>
-          <div className="muted" style={{ fontSize: 12 }}>
+          <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
             {(doc.documents?.length || 0)} {doc.documents?.length === 1 ? t('doc.files_count_one') : t('doc.files_count_few')}
             {doc.link_url && t('doc.has_link')}
           </div>
@@ -300,7 +300,7 @@ function DocCard({ doc, tripId, scope }) {
       </div>
       {doc.notes && (
         <div className="muted" style={{
-          fontSize: 12.5, lineHeight: 1.5,
+          fontSize: 'var(--fs-meta)', lineHeight: 1.5,
           overflow: 'hidden', textOverflow: 'ellipsis',
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
         }}>{doc.notes}</div>
@@ -330,10 +330,10 @@ function DocEmpty({ scope, tripId }) {
       }}>
         <Icon name="file" size={26} />
       </div>
-      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+      <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', marginBottom: 4 }}>
         {scope === 'personal' ? t('doc.empty_private') : t('doc.empty_shared')}
       </div>
-      <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.5, maxWidth: 360, margin: '0 auto 14px' }}>
+      <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.5, maxWidth: 360, margin: '0 auto 14px' }}>
         {scope === 'personal'
           ? t('doc.empty_private_desc')
           : t('doc.empty_shared_desc')}
@@ -434,7 +434,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
           <h3 style={{ marginBottom: 0 }}>{t('doc.section_shared')}</h3>
           <Badge variant="quiet">{sharedDocs.length}</Badge>
           <div style={{ flex: 1 }} />
-          <div className="muted" style={{ fontSize: 11.5 }}>{t('doc.section_shared_hint')}</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('doc.section_shared_hint')}</div>
         </div>
         {sharedDocs.length === 0
           ? <DocEmpty scope="shared" tripId={tripId} />
@@ -448,7 +448,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
           <h3 style={{ marginBottom: 0 }}>{t('doc.section_private')}</h3>
           <Badge variant="quiet">{personalDocs.length}</Badge>
           <div style={{ flex: 1 }} />
-          <div className="muted" style={{ fontSize: 11.5 }}>{t('doc.section_private_hint')}</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('doc.section_private_hint')}</div>
         </div>
         {personalDocs.length === 0
           ? <DocEmpty scope="personal" tripId={tripId} />

@@ -59,7 +59,7 @@ export function FieldError({ issues, field, className = '' }) {
   if (!issue) return null;
   const color = issue.level === 'error' ? 'var(--danger, #e74c3c)' : 'var(--warning, #c9a81a)';
   return (
-    <p className={className} style={{ marginTop: 4, fontSize: 12, lineHeight: 1.35, color }}>
+    <p className={className} style={{ marginTop: 4, fontSize: 'var(--fs-meta)', lineHeight: 1.35, color }}>
       {t(`validation.${issue.code}`, issue.values)}
     </p>
   );
@@ -101,7 +101,7 @@ export function IssuesPanel({ issues = [], className = '', style = {} }) {
               display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left',
               padding: '8px 11px', borderRadius: 10, border: `1px solid color-mix(in srgb, ${stripe} 40%, transparent)`,
               background: bg, color: 'var(--ink)', cursor: it.field ? 'pointer' : 'default',
-              fontFamily: 'var(--font-body)', fontSize: 12.5, lineHeight: 1.4,
+              fontFamily: 'var(--font-body)', fontSize: 'var(--fs-meta)', lineHeight: 1.4,
             }}
           >
             <AlertTriangle className="w-3.5 h-3.5" style={{ marginTop: 1, flexShrink: 0, color: stripe }} />
@@ -171,10 +171,10 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
           <AlertTriangle className="w-4 h-4" />
         </span>
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>{t('validation.panel_title')}</span>
-          <span style={{ display: 'block', fontSize: 12.5, color: 'var(--muted)' }}>{t('validation.panel_subtitle', { n: list.length })}</span>
+          <span style={{ display: 'block', fontWeight: 700, fontSize: 'var(--fs-strong)', color: 'var(--ink)' }}>{t('validation.panel_title')}</span>
+          <span style={{ display: 'block', fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{t('validation.panel_subtitle', { n: list.length })}</span>
         </span>
-        <span style={{ minWidth: 24, height: 24, padding: '0 7px', borderRadius: 999, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', fontSize: 12.5, fontWeight: 700, flexShrink: 0 }}>{list.length}</span>
+        <span style={{ minWidth: 24, height: 24, padding: '0 7px', borderRadius: 999, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', fontSize: 'var(--fs-meta)', fontWeight: 700, flexShrink: 0 }}>{list.length}</span>
         <Chevron className="w-4 h-4" style={{ color: 'var(--muted)', flexShrink: 0 }} />
       </button>
       {expanded && (
@@ -193,8 +193,8 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
                   <d.Icon className="w-4 h-4" />
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontWeight: 600, fontSize: 14, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title}</span>
-                  <span style={{ display: 'block', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.35 }}>{d.sub}</span>
+                  <span style={{ display: 'block', fontWeight: 600, fontSize: 'var(--fs-strong)', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title}</span>
+                  <span style={{ display: 'block', fontSize: 'var(--fs-meta)', color: 'var(--muted)', lineHeight: 1.35 }}>{d.sub}</span>
                 </span>
                 <ChevronRight className="w-4 h-4" style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
               </button>

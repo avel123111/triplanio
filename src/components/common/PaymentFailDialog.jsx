@@ -30,12 +30,12 @@ export default function PaymentFailDialog({ open, onOpenChange, code, onRetry })
             <Icon name="error" size={36} />
           </div>
           <h2 style={{ marginBottom: 8 }}>{t('sub.fail_title')}</h2>
-          <div className="muted" style={{ fontSize: 14, lineHeight: 1.55, marginBottom: 14, maxWidth: 360, margin: '0 auto 14px' }}>
+          <div className="muted" style={{ fontSize: 'var(--fs-strong)', lineHeight: 1.55, marginBottom: 14, maxWidth: 360, margin: '0 auto 14px' }}>
             {code
               ? <>{t('sub.fail_declined_pre')}<span className="mono" style={{ color: 'var(--ink-2)' }}>{code}</span>{t('sub.fail_declined_post')}</>
               : <>{t('sub.fail_cancelled')}</>}
           </div>
-          <div style={{ background: 'var(--wash)', padding: 10, borderRadius: 8, fontSize: 12, color: 'var(--muted)', lineHeight: 1.5, maxWidth: 360, margin: '0 auto' }}>
+          <div style={{ background: 'var(--wash)', padding: 10, borderRadius: 8, fontSize: 'var(--fs-meta)', color: 'var(--muted)', lineHeight: 1.5, maxWidth: 360, margin: '0 auto' }}>
             {t('sub.fail_help')}
           </div>
         </div>

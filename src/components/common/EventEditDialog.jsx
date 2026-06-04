@@ -93,8 +93,8 @@ function CityPicker({ value, onPick, placeholder }) {
           {results.map((c) => (
             <button key={c.external_city_id || c.city_name} type="button" onMouseDown={() => pick(c)}
               style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', borderBottom: '1px solid var(--line-2)', background: 'transparent', cursor: 'pointer' }}>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{c.city_name}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name || c.country}</div>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{c.city_name}</div>
+              <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name || c.country}</div>
             </button>
           ))}
         </div>
@@ -1440,7 +1440,7 @@ function buildServicePayload(form, tripId, t) {
 
 function SectionHeader({ children }) {
   // Plain heading per the design spec (event-edit.jsx) - no colour bar.
-  return <h3 style={{ margin: '22px 0 14px', fontSize: 15, fontWeight: 600 }}>{children}</h3>;
+  return <h3 style={{ margin: '22px 0 14px', fontSize: 'var(--fs-strong)', fontWeight: 600 }}>{children}</h3>;
 }
 
 
@@ -1663,7 +1663,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
                 border: '1.5px solid ' + (active ? color : 'var(--border, hsl(var(--border)))'),
                 color: active ? color : 'inherit',
                 borderRadius: 10, cursor: 'pointer',
-                fontWeight: 500, fontSize: 11.5,
+                fontWeight: 500, fontSize: 'var(--fs-micro)',
               }}
             >
               <Ic className="w-4 h-4" />
@@ -1745,10 +1745,10 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', marginBottom: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
         <Checkbox checked={!!form.day_change} onCheckedChange={(v) => setField('day_change', !!v)} />
         <span style={{ minWidth: 0 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 'var(--fs-base)' }}>
             <Moon className="w-4 h-4" /> {t('event.overnight_label')}
           </span>
-          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+          <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
         </span>
       </label>
 
@@ -1880,12 +1880,12 @@ function LayoverToggle({ form, setForm, color }) {
             <span style={{ position: 'absolute', top: 2, left: form.hasLayovers ? 16 : 2, width: 14, height: 14, borderRadius: '50%', background: 'white', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,.15)' }} />
           </span>
           <span style={{ flex: 1 }}>
-            <span style={{ display: 'block', fontSize: 13.5, fontWeight: 500 }}>{t('event.with_layovers')}</span>
-            <span className="muted" style={{ fontSize: 11.5 }}>{t('event.layovers_hint')}</span>
+            <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 500 }}>{t('event.with_layovers')}</span>
+            <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('event.layovers_hint')}</span>
           </span>
         </label>
         {form.hasLayovers && (
-          <span className="num" style={{ fontSize: 11.5, color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{t('event.seg_count', { n, c: Math.max(0, n - 1) })}</span>
+          <span className="num" style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{t('event.seg_count', { n, c: Math.max(0, n - 1) })}</span>
         )}
       </div>
     </>
@@ -1922,7 +1922,7 @@ function SegTransportGrid({ value, onChange, color }) {
         const active = value === k.id; const Ic = k.Icon;
         return (
           <button key={k.id} type="button" onClick={() => onChange(k.id)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line-2)'), color: active ? color : 'var(--ink)', borderRadius: 10, cursor: 'pointer', fontWeight: 500, fontSize: 11.5 }}>
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line-2)'), color: active ? color : 'var(--ink)', borderRadius: 10, cursor: 'pointer', fontWeight: 500, fontSize: 'var(--fs-micro)' }}>
             <Ic className="w-4 h-4" />{t(k.labelKey)}
           </button>
         );
@@ -2010,13 +2010,13 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                   </span>
                   <span style={{ minWidth: 0, flex: 1 }}>
                     <span className="eyebrow" style={{ color, display: 'block' }}>{t('event.segment_n', { n: i + 1 })} · {t(tk.labelKey)}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--fs-strong)', fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fromName}</span>
                       <ArrowRight className="w-3 h-3" style={{ color: 'var(--muted)', flexShrink: 0 }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{toName}</span>
                     </span>
                   </span>
-                  <span className="muted" style={{ fontSize: 11.5, flexShrink: 0 }}>{open ? t('event.collapse') : t('event.expand')}</span>
+                  <span className="muted" style={{ fontSize: 'var(--fs-micro)', flexShrink: 0 }}>{open ? t('event.collapse') : t('event.expand')}</span>
                   <ChevronDown className="w-4 h-4" style={{ color: 'var(--muted)', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
                 </button>
                 {N > 2 && (
@@ -2072,10 +2072,10 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', marginTop: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
                   <Checkbox checked={!!seg.day_change} onCheckedChange={(v) => patchSeg(i, { day_change: !!v })} />
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 'var(--fs-base)' }}>
                       <Moon className="w-4 h-4" /> {t('event.overnight_label')}
                     </span>
-                    <span style={{ display: 'block', fontSize: 11.5, color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+                    <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
                   </span>
                 </label>
               </div>
@@ -2084,7 +2084,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
             {!isLast && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
                 <span style={{ width: 1, height: 14, background: 'var(--line)', marginLeft: 16 }} />
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color, fontSize: 12, fontWeight: 600 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color, fontSize: 'var(--fs-meta)', fontWeight: 600 }}>
                   <Repeat className="w-3 h-3" style={{ flexShrink: 0 }} />
                   {t('event.layover_in', { city: '' }).replace(/\s*$/, '')}&nbsp;<span style={{ fontWeight: 700 }}>{layCity}</span>
                   {layDate && <span className="num" style={{ fontWeight: 600, opacity: 0.7 }}>· {layDate}</span>}
@@ -2098,7 +2098,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
       })}
 
       <button type="button" onClick={addSegment}
-        style={{ marginTop: 6, padding: '11px 14px', border: '1.5px dashed ' + color, borderRadius: 10, background: TYPE_META.transfer.soft, color, cursor: 'pointer', fontWeight: 600, fontSize: 12.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+        style={{ marginTop: 6, padding: '11px 14px', border: '1.5px dashed ' + color, borderRadius: 10, background: TYPE_META.transfer.soft, color, cursor: 'pointer', fontWeight: 600, fontSize: 'var(--fs-meta)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
         {t('event.add_layover')}
       </button>
     </div>

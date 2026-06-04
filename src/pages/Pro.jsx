@@ -135,14 +135,14 @@ export default function Pro() {
         </div>
         <div className="app-header__crumb">
           <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>Pro</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ink-2)' }}>Pro</span>
         </div>
         <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
       </header>
 
       <main style={{ flex: 1, padding: '40px 24px 60px', maxWidth: 1080, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 14px 8px 8px', background: 'var(--brand-soft)', color: 'var(--brand)', borderRadius: 999, fontSize: 13, fontWeight: 600, marginBottom: 18 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 14px 8px 8px', background: 'var(--brand-soft)', color: 'var(--brand)', borderRadius: 999, fontSize: 'var(--fs-base)', fontWeight: 600, marginBottom: 18 }}>
             <img src="/triplanio-logo.svg" style={{ width: 18, height: 18 }} alt="" />
             <span>Triplanio Pro</span>
           </div>
@@ -153,7 +153,7 @@ export default function Pro() {
             {t('sub.hero_sub')}
           </div>
           {hidePerTrip && tripId === null && (
-            <div className="muted" style={{ fontSize: 13, marginTop: 14 }}>
+            <div className="muted" style={{ fontSize: 'var(--fs-base)', marginTop: 14 }}>
               <Icon name="info" size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
               {t('sub.per_trip_note')}
             </div>
@@ -190,12 +190,12 @@ export default function Pro() {
                     }}
                   >
                     {p.popular && (
-                      <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: 'var(--brand)', color: 'white', padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: '.04em', boxShadow: '0 4px 14px rgba(33,103,226,.3)' }}>
+                      <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: 'var(--brand)', color: 'white', padding: '4px 12px', borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.04em', boxShadow: '0 4px 14px rgba(33,103,226,.3)' }}>
                         {t('sub.most_popular')}
                       </div>
                     )}
                     {p.save && (
-                      <div style={{ position: 'absolute', top: 16, right: 16, background: 'var(--success)', color: 'white', padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700 }}>{p.save}</div>
+                      <div style={{ position: 'absolute', top: 16, right: 16, background: 'var(--success)', color: 'white', padding: '3px 10px', borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700 }}>{p.save}</div>
                     )}
                     {selected && (
                       <div style={{ position: 'absolute', top: 16, left: 16, width: 22, height: 22, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', boxShadow: '0 2px 8px rgba(33,103,226,.4)' }}>
@@ -203,15 +203,15 @@ export default function Pro() {
                       </div>
                     )}
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em', marginBottom: 6, marginTop: selected ? 22 : 0 }}>{p.title}</div>
-                    <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 18 }}>{p.caption}</div>
+                    <div style={{ fontSize: 'var(--fs-base)', opacity: 0.7, marginBottom: 18 }}>{p.caption}</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
                       <span className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 600, letterSpacing: '-0.03em' }}>{price}</span>
-                      <span style={{ fontSize: 13, opacity: 0.7 }}>{period}</span>
+                      <span style={{ fontSize: 'var(--fs-base)', opacity: 0.7 }}>{period}</span>
                     </div>
                     <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)', margin: '18px 0' }} />
                     <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {p.features.map((f, i) => (
-                        <li key={i} style={{ display: 'flex', gap: 8, fontSize: 13, lineHeight: 1.4 }}>
+                        <li key={i} style={{ display: 'flex', gap: 8, fontSize: 'var(--fs-base)', lineHeight: 1.4 }}>
                           <Icon name="check" size={14} style={{ flexShrink: 0, marginTop: 2, color: 'var(--success)' }} />
                           <span>{f}</span>
                         </li>
@@ -222,7 +222,7 @@ export default function Pro() {
                       background: selected ? 'var(--brand)' : 'var(--surface)',
                       color: selected ? 'white' : 'var(--ink)',
                       border: '1px solid ' + (selected ? 'var(--brand)' : 'var(--line)'),
-                      borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer',
+                      borderRadius: 10, fontWeight: 600, fontSize: 'var(--fs-strong)', cursor: 'pointer',
                     }}>{selected ? t('sub.selected') : t('sub.select')}</button>
                   </div>
                 );
@@ -230,14 +230,14 @@ export default function Pro() {
         </div>
 
         {errorMsg && (
-          <div style={{ maxWidth: 760, margin: '20px auto 0', padding: '12px 14px', borderRadius: 10, background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 13, lineHeight: 1.5 }}>
+          <div style={{ maxWidth: 760, margin: '20px auto 0', padding: '12px 14px', borderRadius: 10, background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 'var(--fs-base)', lineHeight: 1.5 }}>
             {errorMsg}
           </div>
         )}
 
         <div style={{ marginTop: 30, padding: 18, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <Icon name="lock" size={20} style={{ color: 'var(--muted)' }} />
-          <div style={{ flex: 1, minWidth: 220, fontSize: 13.5 }}>
+          <div style={{ flex: 1, minWidth: 220, fontSize: 'var(--fs-base)' }}>
             <b>{t('sub.secure_checkout')}</b>{t('sub.secure_checkout_meta')}
           </div>
           <Btn variant="primary" size="lg" iconRight="arrow" disabled={loading} onClick={() => !loading && handleUpgrade(picked)}>

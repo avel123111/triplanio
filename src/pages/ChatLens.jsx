@@ -68,7 +68,7 @@ function highlightMentions(val) {
 
 function DateDivider({ date }) {
   return (
-    <div style={{ textAlign: 'center', margin: '12px 0', fontSize: 11, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.1em' }}>
+    <div style={{ textAlign: 'center', margin: '12px 0', fontSize: 'var(--fs-micro)', color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.1em' }}>
       <span style={{ background: 'var(--wash)', padding: '3px 10px', borderRadius: 999 }}>{date}</span>
     </div>
   );
@@ -93,15 +93,15 @@ function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl }) {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', minWidth: 0, maxWidth: '78%' }}>
         {!grouped && !isMe && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 3, paddingLeft: 2 }}>
-            <span style={{ fontWeight: 600, fontSize: 12, color: nameColor }}>{who}</span>
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>{time}</span>
+            <span style={{ fontWeight: 600, fontSize: 'var(--fs-meta)', color: nameColor }}>{who}</span>
+            <span style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)' }}>{time}</span>
           </div>
         )}
         <div style={{
           padding: '8px 12px',
           background: bubbleBg,
           color: bubbleColor,
-          fontSize: 13.5,
+          fontSize: 'var(--fs-base)',
           borderRadius: radius,
           lineHeight: 1.45,
           wordBreak: 'break-word',
@@ -113,7 +113,7 @@ function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl }) {
           />
         </div>
         {isMe && !grouped && (
-          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2, paddingRight: 2 }}>{time}</div>
+          <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 2, paddingRight: 2 }}>{time}</div>
         )}
       </div>
     </div>
@@ -129,8 +129,8 @@ function ChatMember({ name, role, ai, avatarUrl }) {
         ? <TriplanioAvatar size="sm" />
         : <Avatar name={name} photo={avatarUrl || ''} size="sm" style={{ width: 28, height: 28 }} />}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-        <div className="muted" style={{ fontSize: 11 }}>{role}</div>
+        <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{role}</div>
       </div>
     </div>
   );
@@ -427,7 +427,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <h3 style={{ flex: 1, marginBottom: 0 }}>{t('chat.group_title')}</h3>
           {activeMembers.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success)', fontSize: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success)', fontSize: 'var(--fs-meta)' }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} />
               {pluralPeople(activeMembers.length, t, lang)}
             </div>
@@ -442,7 +442,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>
               <div style={{ fontSize: 28, marginBottom: 10 }}>💬</div>
               <div style={{ fontWeight: 500, marginBottom: 6 }}>{t('chat.empty_title')}</div>
-              <div style={{ fontSize: 12.5 }}>{t('chat.empty_desc')}</div>
+              <div style={{ fontSize: 'var(--fs-meta)' }}>{t('chat.empty_desc')}</div>
             </div>
           ) : messageRows}
         </div>
@@ -454,7 +454,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             background: 'var(--ai-soft)',
             borderTop: '1px solid var(--line-2)',
             display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 12, color: 'var(--ai)',
+            fontSize: 'var(--fs-meta)', color: 'var(--ai)',
           }}>
             {/* shimmer bar */}
             <div style={{
@@ -491,8 +491,8 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
               >
                 <TriplanioAvatar size="sm" />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
-                  <div className="muted" style={{ fontSize: 11.5 }}>{t('chat.mention_all_hint')}</div>
+                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
+                  <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('chat.mention_all_hint')}</div>
                 </div>
               </button>
             </div>
@@ -509,7 +509,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                 style={{
                   position: 'absolute', inset: 0,
                   padding: '11px 14px',
-                  font: 'inherit', fontSize: 13.5, lineHeight: 1.4,
+                  font: 'inherit', fontSize: 'var(--fs-base)', lineHeight: 1.4,
                   whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                   color: 'var(--ink)',
                   pointerEvents: 'none',
@@ -531,7 +531,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                   background: 'transparent',
                   color: 'transparent', caretColor: 'var(--ink)',
                   minHeight: 44, maxHeight: 100, width: '100%',
-                  padding: '11px 14px', fontSize: 13.5, lineHeight: 1.4,
+                  padding: '11px 14px', fontSize: 'var(--fs-base)', lineHeight: 1.4,
                   resize: 'none', overflowY: 'hidden', display: 'block',
                 }}
               />
@@ -554,7 +554,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         <Card title={t('chat.members_title')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {activeMembers.length === 0 ? (
-              <div className="muted" style={{ fontSize: 12.5 }}>{t('member.empty')}</div>
+              <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('member.empty')}</div>
             ) : (
               activeMembers.map((m) => (
                 <ChatMember
@@ -572,7 +572,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         </Card>
 
         <Card variant="soft" title={t('chat.ai_can_title')}>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 12.5, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 'var(--fs-meta)', color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <li>{t('chat.ai_can_1')}</li>
             <li>{t('chat.ai_can_2')}</li>
             <li>{t('chat.ai_can_3')}</li>

@@ -39,8 +39,8 @@ function GhostAdd({ icon, label, sub, accent, onClick }) {
     <button className="te-ghostadd" onClick={onClick} style={{ '--a': a }}>
       <span className="te-ghostadd__ic"><Icon name={icon || 'plus'} size={16} /></span>
       <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-        <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{label}</span>
-        {sub && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--muted)', marginTop: 1 }}>{sub}</span>}
+        <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--ink)' }}>{label}</span>
+        {sub && <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 1 }}>{sub}</span>}
       </span>
       <Icon name="plus" size={15} style={{ color: a, flexShrink: 0 }} />
     </button>
@@ -57,9 +57,9 @@ function FlightLine({ transfer, dir, warn, onClick, t }) {
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{transfer.carrier || t(meta.labelKey)}</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{transfer.carrier || t(meta.labelKey)}</span>
         </span>
-        <span className="num muted" style={{ fontSize: 11.5, display: 'block', marginTop: 2 }}>
+        <span className="num muted" style={{ fontSize: 'var(--fs-micro)', display: 'block', marginTop: 2 }}>
           {dir === 'in' ? t('tse.arrival_word') : t('tse.departure_word')} · {fmtDate(when)}{time ? ' ' + time : ''}
         </span>
       </span>
@@ -99,13 +99,13 @@ export default function CityPanel({
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(8,15,30,.72))' }} />
         <div style={{ position: 'absolute', left: 14, right: 14, bottom: 12, color: 'white' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{node.city_name}</div>
-          <div className="num" style={{ fontSize: 12.5, marginTop: 5, opacity: 0.92 }}>{rangeText(node.start_date, node.end_date)}{nights ? ` · ${nights} ${nightWord(nights, t)}` : ''}</div>
+          <div className="num" style={{ fontSize: 'var(--fs-meta)', marginTop: 5, opacity: 0.92 }}>{rangeText(node.start_date, node.end_date)}{nights ? ` · ${nights} ${nightWord(nights, t)}` : ''}</div>
         </div>
       </div>
 
       {/* nights stepper */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-        <span className="muted" style={{ fontSize: 12 }}>{t('tse.nights_label')}</span>
+        <span className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('tse.nights_label')}</span>
         <span className="te-stepper te-stepper--solid" title={t('tse.nights_label')}>
           <button className="te-step" onClick={onNightsMinus} disabled={nights <= 0} aria-label={t('tse.nights_remove')}><Icon name="close" size={11} style={{ transform: 'rotate(45deg)' }} /></button>
           <span className="num te-nights">{nights}</span>
@@ -132,8 +132,8 @@ export default function CityPanel({
         <button className={'te-bookrow' + (hotelWarn ? ' is-warn' : '')} onClick={() => onOpenHotel(hotel.id)}>
           <span style={{ width: 38, height: 38, borderRadius: 10, background: hotelWarn ? 'var(--warning-soft)' : 'var(--ev-hotel-soft)', color: hotelWarn ? 'var(--warning)' : 'var(--ev-hotel)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="bed" size={18} /></span>
           <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-            <span style={{ display: 'block', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hotel.name}</span>
-            <span className="num muted" style={{ display: 'block', fontSize: 12, marginTop: 3 }}>{rangeText(hotel.check_in_datetime, hotel.check_out_datetime)}{hotel.price != null ? ' · ' + money(hotel.price, hotel.currency) : ''}</span>
+            <span style={{ display: 'block', fontSize: 'var(--fs-strong)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hotel.name}</span>
+            <span className="num muted" style={{ display: 'block', fontSize: 'var(--fs-meta)', marginTop: 3 }}>{rangeText(hotel.check_in_datetime, hotel.check_out_datetime)}{hotel.price != null ? ' · ' + money(hotel.price, hotel.currency) : ''}</span>
           </span>
           {hotelWarn && <Icon name="warning" size={14} style={{ color: 'var(--warning)', flexShrink: 0 }} />}
           <Icon name="chev" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
@@ -148,15 +148,15 @@ export default function CityPanel({
         {t('budget.source_activity')} · {acts.length}
       </SectionLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {acts.length === 0 && <div className="muted" style={{ fontSize: 12.5, padding: '2px 2px 6px' }}>{t('tse.no_activities')}</div>}
+        {acts.length === 0 && <div className="muted" style={{ fontSize: 'var(--fs-meta)', padding: '2px 2px 6px' }}>{t('tse.no_activities')}</div>}
         {acts.map((a) => {
           const warn = isActWarn ? isActWarn(a) : false;
           return (
             <button key={a.id} className={'te-actrow' + (warn ? ' is-warn' : '')} onClick={() => onOpenActivity(a.id)}>
               <span className="te-actrow__ic"><Icon name={ACT_ICON[a.category] || 'spark'} size={14} /></span>
               <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span>
-                <span className="num muted" style={{ fontSize: 11.5 }}>{fmtDate(a.start_datetime)}{fmtTime(a.start_datetime) ? ' · ' + fmtTime(a.start_datetime) : ''}</span>
+                <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span>
+                <span className="num muted" style={{ fontSize: 'var(--fs-micro)' }}>{fmtDate(a.start_datetime)}{fmtTime(a.start_datetime) ? ' · ' + fmtTime(a.start_datetime) : ''}</span>
               </span>
               {warn && <Icon name="warning" size={12} title={t('validation.ACT_START_OOB') || ''} style={{ color: 'var(--warning)', flexShrink: 0 }} />}
               <Icon name="chev" size={13} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />

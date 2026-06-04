@@ -98,17 +98,17 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           {/* Hero */}
           <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
             background: 'linear-gradient(110deg, var(--brand-ink, #1b3a8f) 0%, var(--brand, #2167e2) 55%, #6aa0ff 120%)', color: 'white' }}>
-            <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '.04em', background: 'rgba(255,255,255,.18)', padding: '2px 9px', borderRadius: 999, marginBottom: 10 }}>Pro</span>
+            <span style={{ display: 'inline-block', fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.04em', background: 'rgba(255,255,255,.18)', padding: '2px 9px', borderRadius: 999, marginBottom: 10 }}>Pro</span>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 6 }}>
               {t('sub.limit_hero_title')}
             </div>
-            <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.9)' }}>
+            <div style={{ fontSize: 'var(--fs-base)', color: 'rgba(255,255,255,.9)' }}>
               {t('sub.limit_hero_sub', { count: state.activeCount })}
             </div>
           </div>
 
           {/* Info strip */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, marginBottom: 16, fontSize: 12.5, color: 'var(--muted)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, marginBottom: 16, fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>
             <Info className="w-3.5 h-3.5 shrink-0" />
             {t('sub.limit_info')}
           </div>
@@ -116,10 +116,10 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           {/* Two columns */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: 'var(--muted)', marginBottom: 12 }}>{t('sub.limit_now_free')}</div>
+              <div style={{ fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.06em', color: 'var(--muted)', marginBottom: 12 }}>{t('sub.limit_now_free')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {freeRows.map((r, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: r.ok ? 'var(--ink-2)' : 'var(--muted-2)' }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-base)', color: r.ok ? 'var(--ink-2)' : 'var(--muted-2)' }}>
                     {r.ok ? <Check className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--success)' }} />
                           : <X className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--muted-2)' }} />}
                     <span>{r.text}</span>
@@ -128,10 +128,10 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
               </div>
             </div>
             <div style={{ border: '1.5px solid var(--warm)', borderRadius: 12, padding: 16, background: 'var(--warm-tint)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: 'var(--warm)', marginBottom: 12 }}>PRO</div>
+              <div style={{ fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.06em', color: 'var(--warm)', marginBottom: 12 }}>PRO</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {proRows.map((node, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-2)' }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>
                     <Check className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--success)' }} />
                     <span>{node}</span>
                   </div>
@@ -140,7 +140,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
             </div>
           </div>
 
-          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted)', marginTop: 14 }}>
+          <div style={{ textAlign: 'center', fontSize: 'var(--fs-meta)', color: 'var(--muted)', marginTop: 14 }}>
             {t('sub.limit_prices_next')}
           </div>
 

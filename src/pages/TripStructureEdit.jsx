@@ -563,7 +563,7 @@ export default function TripStructureEdit() {
           <span className="sev__icon"><Icon name="warning" size={16} /></span>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, marginBottom: 2 }}>{lock === 'blocked' ? t('tse.locked_title') : t('tse.lock_err_title')}</div>
-            <div style={{ fontSize: 12.5 }}>{lock === 'blocked' ? t('tse.locked_desc') : t('tse.lock_err_desc')}</div>
+            <div style={{ fontSize: 'var(--fs-meta)' }}>{lock === 'blocked' ? t('tse.locked_desc') : t('tse.lock_err_desc')}</div>
             <div style={{ marginTop: 12 }}><Btn variant="ghost" icon="back" onClick={() => nav(`/trip/${tripId}`)}>{t('tse.back_to_trip')}</Btn></div>
           </div>
         </div>
@@ -938,7 +938,7 @@ export default function TripStructureEdit() {
             >
               <Icon name={issues.length ? 'warning' : 'check'} size={23} />
               {issues.length > 0 && (
-                <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 20, height: 20, padding: '0 5px', borderRadius: 999, background: 'var(--surface)', color: 'var(--warning)', border: '2px solid var(--warning)', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+                <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 20, height: 20, padding: '0 5px', borderRadius: 999, background: 'var(--surface)', color: 'var(--warning)', border: '2px solid var(--warning)', fontSize: 'var(--fs-micro)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
                   {issues.length > 99 ? '99+' : issues.length}
                 </span>
               )}
@@ -1043,7 +1043,7 @@ function ActCell({ count, warn, onClick }) {
   return (
     <button className={'te-actchip' + (warn ? ' is-warn' : '')} onClick={onClick} title={count + ''}>
       <Icon name="spark" size={13} style={{ color: warn ? 'var(--warning)' : 'var(--ev-activity)' }} />
-      <span className="num" style={{ fontWeight: 700, fontSize: 12 }}>{count}</span>
+      <span className="num" style={{ fontWeight: 700, fontSize: 'var(--fs-meta)' }}>{count}</span>
       {warn && <Icon name="warning" size={11} style={{ color: 'var(--warning)' }} />}
     </button>
   );
@@ -1074,11 +1074,11 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
         <span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span className="te-cityname" style={{ fontSize: 13.5, fontWeight: 600 }}>{seg.city_name}</span>
+            <span className="te-cityname" style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{seg.city_name}</span>
             <span className="te-wptag">{t('tse.layover')}</span>
             <Conf n={cityConf} />
           </div>
-          <div className="num muted" style={{ fontSize: 11.5, marginTop: 2 }}>{t('tse.transit_word')} · {fmtD(seg.start_date, lang)}</div>
+          <div className="num muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>{t('tse.transit_word')} · {fmtD(seg.start_date, lang)}</div>
         </div>
         <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
           <button className="te-step" onClick={onNightsMinus} disabled aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
@@ -1097,10 +1097,10 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
       <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <span className="te-cityname">{seg.city_name}</span>
-          {m.country && <span className="muted" style={{ fontSize: 10.5, whiteSpace: 'nowrap' }}>{m.country}</span>}
+          {m.country && <span className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: 'nowrap' }}>{m.country}</span>}
           <Conf n={cityConf} />
         </div>
-        <div className="num muted" style={{ fontSize: 11.5, marginTop: 2 }}>{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
+        <div className="num muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
       </div>
       <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
         <button className="te-step" onClick={onNightsMinus} disabled={(seg.nights || 0) <= 0} aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
@@ -1136,9 +1136,9 @@ function SeamTransfer({ a, b, t, mismatch, onOpen }) {
     <div className="te-seam">
       <button className={'te-seam__pill' + (mismatch ? ' is-warn' : '')} onClick={onOpen} title={`${a.city_name} → ${b.city_name}`}>
         <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
-        <span style={{ fontWeight: 600, fontSize: 11.5, color: mismatch ? 'var(--warning)' : 'var(--ink-2)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+        <span style={{ fontWeight: 600, fontSize: 'var(--fs-micro)', color: mismatch ? 'var(--warning)' : 'var(--ink-2)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
         {t.day_change && <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} title={tx('tse.overnight_title')} />}
-        <span className="num muted" style={{ fontSize: 10.5 }}>· {fmtD(t.start_datetime, lang)}</span>
+        <span className="num muted" style={{ fontSize: 'var(--fs-micro)' }}>· {fmtD(t.start_datetime, lang)}</span>
       </button>
     </div>
   );
@@ -1159,9 +1159,9 @@ function GridEndpoint({ node, onRemove }) {
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
-          <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{m.flag} {node.city_name}</span>
+          <span style={{ fontSize: 'var(--fs-strong)', fontWeight: 700, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{m.flag} {node.city_name}</span>
         </div>
-        <div className="num muted" style={{ fontSize: 11.5, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div className="num muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(node.start_date || node.end_date, lang)}
         </div>
       </div>
@@ -1172,7 +1172,7 @@ function GridEndpoint({ node, onRemove }) {
 
 function AddPointButton({ onOpen }) {
   const t = useT();
-  return <button onClick={onOpen} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 12, padding: '12px', borderRadius: 12, cursor: 'pointer', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, var(--line))', color: 'var(--brand)', fontSize: 13, fontWeight: 600 }}>
+  return <button onClick={onOpen} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 12, padding: '12px', borderRadius: 12, cursor: 'pointer', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, var(--line))', color: 'var(--brand)', fontSize: 'var(--fs-base)', fontWeight: 600 }}>
     <Icon name="plus" size={15} /> {t('tse.add_point_btn')}
   </button>;
 }
@@ -1206,11 +1206,11 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
           {POINT_TYPES.map((pt) => {
             const dis = disabledFor(pt.id), active = type === pt.id;
             return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 11, cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
-              <Icon name={pt.icon} size={17} /><span style={{ fontSize: 11.5, fontWeight: 600 }}>{t(pt.labelKey)}</span>
+              <Icon name={pt.icon} size={17} /><span style={{ fontSize: 'var(--fs-micro)', fontWeight: 600 }}>{t(pt.labelKey)}</span>
             </button>;
           })}
         </div>
-        <div className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{meta ? t(meta.subKey) : ''}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginBottom: 10 }}>{meta ? t(meta.subKey) : ''}</div>
         <CitySearch onSelect={(c) => onPick(c, type)} />
       </div>
     </div>
@@ -1223,7 +1223,7 @@ function RemovedTray({ removed, onRestore }) {
   return <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 12, background: 'var(--wash)', border: '1px dashed var(--line)' }}>
     <div className="eyebrow" style={{ marginBottom: 8 }}>{t('tse.removed_from_route')}</div>
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      {removed.map((n) => <button key={n.id} onClick={() => onRestore(n.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>
+      {removed.map((n) => <button key={n.id} onClick={() => onRestore(n.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', fontSize: 'var(--fs-meta)', fontWeight: 600, color: 'var(--ink)' }}>
         <Icon name="plus" size={12} style={{ color: 'var(--brand)' }} /> {flagEmoji(n.country_code)} {n.city_name}
       </button>)}
     </div>

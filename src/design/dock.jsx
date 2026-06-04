@@ -48,7 +48,7 @@ function GroupChatMini() {
           <Avatar name="Лена Краснова" size="sm" style={{ marginLeft: -8 }} />
           <Avatar name="Миша Петров" size="sm" style={{ marginLeft: -8 }} />
         </div>
-        <div style={{ flex: 1, fontSize: 12.5 }}>
+        <div style={{ flex: 1, fontSize: 'var(--fs-meta)' }}>
           <b>Иберия летом</b> · 4 человека
         </div>
         <button className="icon-btn" style={{ width: 30, height: 30 }} onClick={() => {}}>
@@ -90,8 +90,8 @@ function GroupChatMini() {
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", width: "100%", border: "none", background: "transparent", borderRadius: 6, cursor: "pointer", textAlign: "left" }}>
                 <Avatar name={m.name} kind={m.kind} size="sm" />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 500 }}>{m.name}</div>
-                  <div className="muted" style={{ fontSize: 11 }}>{m.desc}</div>
+                  <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500 }}>{m.name}</div>
+                  <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{m.desc}</div>
                 </div>
               </button>
             ))}
@@ -108,7 +108,7 @@ function GroupChatMini() {
               if (last === "@") setShowMention(true);
               else if (last === " " || e.target.value === "") setShowMention(false);
             }}
-            style={{ minHeight: 34, maxHeight: 90, padding: "7px 10px", fontSize: 13 }}
+            style={{ minHeight: 34, maxHeight: 90, padding: "7px 10px", fontSize: 'var(--fs-base)' }}
           />
           <Btn variant="primary" size="sm" icon="send" onClick={() => setText("")} />
         </div>
@@ -125,8 +125,8 @@ function AiChatMini() {
       <div className="dock-panel__head ai-card" style={{ background: "linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.08) 100%)" }}>
         <Avatar kind="ai" size="sm" />
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 600, fontSize: 13 }} className="ai-text">ИИ-помощник</div>
-          <div className="muted" style={{ fontSize: 11 }}>Личный · только ты видишь</div>
+          <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }} className="ai-text">ИИ-помощник</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>Личный · только ты видишь</div>
         </div>
         <button className="icon-btn" style={{ width: 30, height: 30 }} onClick={() => {}}>
           <Icon name="external" size={14} />
@@ -141,7 +141,7 @@ function AiChatMini() {
             "Раздели перелёт с пересадкой",
           ].map((h, i) => (
             <button key={i} onClick={() => setText(h)} style={{
-              padding: "5px 10px", fontSize: 11.5, borderRadius: 999,
+              padding: "5px 10px", fontSize: 'var(--fs-micro)', borderRadius: 999,
               border: "1px solid var(--ai-soft-12)", background: "var(--ai-soft)",
               color: "var(--ai)", cursor: "pointer",
             }}>{h}</button>
@@ -168,7 +168,7 @@ function AiChatMini() {
           <textarea
             className="textarea" placeholder="Спроси или попроси что-то изменить…"
             value={text} onChange={(e) => setText(e.target.value)}
-            style={{ minHeight: 34, maxHeight: 90, padding: "7px 10px", fontSize: 13 }}
+            style={{ minHeight: 34, maxHeight: 90, padding: "7px 10px", fontSize: 'var(--fs-base)' }}
           />
           <Btn variant="ai" size="sm" icon="send" onClick={() => setText("")} />
         </div>
@@ -180,7 +180,7 @@ function AiChatMini() {
 export function BubbleMsg({ who, time, text, md, ai, me }) {
   if (me) return (
     <div style={{ display: "flex", justifyContent: "flex-end" }}>
-      <div style={{ padding: "7px 11px", background: "var(--brand)", color: "white", fontSize: 12.5, borderRadius: 12, borderBottomRightRadius: 4, maxWidth: "85%" }}>{text}</div>
+      <div style={{ padding: "7px 11px", background: "var(--brand)", color: "white", fontSize: 'var(--fs-meta)', borderRadius: 12, borderBottomRightRadius: 4, maxWidth: "85%" }}>{text}</div>
     </div>
   );
   return (
@@ -188,13 +188,13 @@ export function BubbleMsg({ who, time, text, md, ai, me }) {
       <Avatar name={who} kind={ai ? "ai" : undefined} size="sm" />
       <div style={{ flex: 1 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
-          <span style={{ fontWeight: 600, fontSize: 11.5, color: ai ? "var(--ai)" : "var(--ink)" }}>{who}</span>
-          <span className="muted" style={{ fontSize: 10.5 }}>{time}</span>
+          <span style={{ fontWeight: 600, fontSize: 'var(--fs-micro)', color: ai ? "var(--ai)" : "var(--ink)" }}>{who}</span>
+          <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{time}</span>
         </div>
         <div style={{
           display: "inline-block", padding: "7px 11px",
           background: ai ? "var(--ai-soft)" : "var(--wash)",
-          fontSize: 12.5, borderRadius: 12, borderBottomLeftRadius: 4, maxWidth: "85%", lineHeight: 1.4,
+          fontSize: 'var(--fs-meta)', borderRadius: 12, borderBottomLeftRadius: 4, maxWidth: "85%", lineHeight: 1.4,
         }} dangerouslySetInnerHTML={{ __html: md ? text.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>") : text }} />
       </div>
     </div>

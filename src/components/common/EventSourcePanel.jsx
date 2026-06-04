@@ -132,15 +132,15 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
       {warning && (
         <div className="te-fix-note" style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '9px 11px', borderRadius: 10, background: 'var(--warning-soft)', border: '1px solid color-mix(in srgb, var(--warning) 32%, transparent)', marginBottom: 4 }}>
           <Icon name="warning" size={15} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
-          <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.45 }}>{warning}</div>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', color: 'var(--ink-2)', lineHeight: 1.45 }}>{warning}</div>
         </div>
       )}
       {confirmDel ? (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 12, border: '1px solid color-mix(in srgb, var(--danger) 30%, var(--line))', background: 'var(--danger-soft)', marginTop: 8 }}>
           <span style={{ width: 36, height: 36, borderRadius: 9, background: 'color-mix(in srgb, var(--danger) 16%, transparent)', color: 'var(--danger)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="trash" size={17} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>{t('event.delete_q', { label: themeLabel.toLowerCase() })}</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 3, lineHeight: 1.5 }}>{t('event.delete_irreversible')}</div>
+            <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{t('event.delete_q', { label: themeLabel.toLowerCase() })}</div>
+            <div style={{ fontSize: 'var(--fs-base)', color: 'var(--ink-2)', marginTop: 3, lineHeight: 1.5 }}>{t('event.delete_irreversible')}</div>
           </div>
         </div>
       ) : (

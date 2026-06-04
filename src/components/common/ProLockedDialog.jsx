@@ -36,7 +36,7 @@ export default function ProLockedDialog({ open, onOpenChange, feature, onUpgrade
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
               {feature ? t('sub.locked_feature_named', { feature }) : t('sub.locked_generic')}
             </div>
-            <div className="muted" style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>
+            <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>
               {t('sub.locked_desc')}
             </div>
           </div>

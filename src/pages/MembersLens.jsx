@@ -34,8 +34,8 @@ function RoleBadge({ role }) {
 // carry a status pill.
 function StatusDot({ status }) {
   const { t } = useI18n();
-  if (status === 'pending') return <span style={{ color: 'var(--warning)', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--warning)', display: 'inline-block' }} />{t('member.status_pending')}</span>;
-  if (status === 'declined') return <span style={{ color: 'var(--danger)', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block' }} />{t('member.status_declined')}</span>;
+  if (status === 'pending') return <span style={{ color: 'var(--warning)', fontSize: 'var(--fs-meta)', display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--warning)', display: 'inline-block' }} />{t('member.status_pending')}</span>;
+  if (status === 'declined') return <span style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block' }} />{t('member.status_declined')}</span>;
   return null;
 }
 
@@ -115,7 +115,7 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
               <button key={k} className={role === k ? 'active' : ''} onClick={() => setRole(k)}
                 style={{ flex: 1, flexDirection: 'column', gap: 0, padding: '8px 10px' }}>
                 <div style={{ fontWeight: 500 }}>{lab}</div>
-                <div className="muted" style={{ fontSize: 10.5 }}>{sub}</div>
+                <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{sub}</div>
               </button>
             )}
           </div>
@@ -135,7 +135,7 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
         <Field label={t('member.message_label')} hint={t('member.message_hint')}>
           <textarea className="textarea" value={message} onChange={e => setMessage(e.target.value)} placeholder={t('member.message_ph')} rows={3} />
         </Field>
-        <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+        <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 6 }}>
           {t('member.invite_email_note')}
         </div>
       </>}
@@ -144,13 +144,13 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
         <Field label={t('member.invite_link_label')}>
           <div style={{ display: 'flex', gap: 6 }}>
             <input className="input mono" value={`https://triplanio.com/join/4f6b-${role === 'viewer' ? 'v' : 'a'}-x29a`}
-              readOnly style={{ flex: 1, fontSize: 12 }} />
+              readOnly style={{ flex: 1, fontSize: 'var(--fs-meta)' }} />
             <Btn variant="primary" icon="copy" onClick={() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
               {copied ? t('common.copied') : t('share.copy')}
             </Btn>
           </div>
         </Field>
-        <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+        <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 8, lineHeight: 1.5 }}>
           {t('member.invite_link_note')}
         </div>
       </>}
@@ -162,13 +162,13 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
           </div>
           <FieldError issues={v.displayIssues} field="name" />
         </Field>
-        <div className="muted" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+        <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 8, lineHeight: 1.5 }}>
           {t('member.offline_note')}
         </div>
       </>}
 
       <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
-      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
     </Dialog>
   );
 }
@@ -199,7 +199,7 @@ function ChangeRoleDialog({ member, tripId, onSaved }) {
         <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" onClick={save} disabled={saving}>{saving ? t('member.saving') : t('trip.form_save')}</Btn>
       </>}>
-      <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--muted)' }}>
+      <div style={{ marginBottom: 14, fontSize: 'var(--fs-base)', color: 'var(--muted)' }}>
         {member.user_full_name || member.invite_email}
       </div>
       <Field label={t('member.role_label')}>
@@ -207,7 +207,7 @@ function ChangeRoleDialog({ member, tripId, onSaved }) {
           {ROLES.map(r => <option key={r.value} value={r.value}>{t(r.labelKey)}</option>)}
         </select>
       </Field>
-      {err && <div style={{ color: 'var(--danger)', fontSize: 12.5, marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
     </Dialog>
   );
 }
@@ -221,7 +221,7 @@ function RowMenuItem({ icon, danger, onClick, children }) {
       width: '100%', padding: '8px 10px',
       background: 'transparent', border: 'none',
       borderRadius: 7, cursor: 'pointer', textAlign: 'left',
-      fontSize: 13, color: danger ? 'var(--danger)' : 'var(--ink)',
+      fontSize: 'var(--fs-base)', color: danger ? 'var(--danger)' : 'var(--ink)',
     }}
     onMouseEnter={e => e.currentTarget.style.background = danger ? 'var(--danger-soft)' : 'var(--wash)'}
     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -361,12 +361,12 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
             }}>
               <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   {name}
-                  {m.user_id === user?.id && <Badge variant="quiet" style={{ fontSize: 10 }}>{t('member.you_self')}</Badge>}
+                  {m.user_id === user?.id && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)' }}>{t('member.you_self')}</Badge>}
                 </div>
                 {hasRealName && emailLine && (
-                  <div className="muted" style={{ fontSize: 12.5 }}>{emailLine}</div>
+                  <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{emailLine}</div>
                 )}
               </div>
 
@@ -435,7 +435,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 600, marginBottom: 2 }}>{t('member.invite_more_title')}</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>{t('member.invite_more_desc')}</div>
+            <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('member.invite_more_desc')}</div>
           </div>
           <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>{t('members.invite')}</Btn>
         </div>

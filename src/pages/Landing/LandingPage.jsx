@@ -864,23 +864,23 @@ function Hero() {
           <div className="hero__visual reveal" style={{transitionDelay:'120ms'}}>
             <HeroMockup/>
             <div className="float float--budget" aria-hidden="true">
-              <div style={{fontSize:11,color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase'}}>{t('float.trip_budget')}</div>
+              <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase'}}>{t('float.trip_budget')}</div>
               <div style={{display:'flex',alignItems:'baseline',gap:8,marginTop:4}}>
                 <strong style={{fontFamily:'var(--font-display)',fontSize:22,letterSpacing:'-0.02em',fontVariantNumeric:'tabular-nums'}}>€4,820</strong>
-                <span style={{fontSize:11,color:'var(--muted)'}}>· $5,210 · ₽491k</span>
+                <span style={{fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>· $5,210 · ₽491k</span>
               </div>
             </div>
             <div className="float float--chat" aria-hidden="true">
               <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg, var(--brand), #5b8fff)',color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700}}>AI</span>
-                <div style={{fontSize:12.5,lineHeight:1.3}}>
+                <span style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg, var(--brand), #5b8fff)',color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize: 'var(--fs-micro)',fontWeight:700}}>AI</span>
+                <div style={{fontSize: 'var(--fs-meta)',lineHeight:1.3}}>
                   <div style={{fontWeight:600}}>{t('float.leave_at_title')}</div>
-                  <div style={{color:'var(--muted)',fontSize:11.5}}>{t('float.leave_at_sub')}</div>
+                  <div style={{color:'var(--muted)',fontSize: 'var(--fs-micro)'}}>{t('float.leave_at_sub')}</div>
                 </div>
               </div>
             </div>
             <div className="float float--pins" aria-hidden="true">
-              <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11.5,fontWeight:600}}>
+              <div style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-micro)',fontWeight:600}}>
                 <span style={{width:6,height:6,borderRadius:'50%',background:'var(--brand)'}}/>{t('city.lisbon')}
                 <span style={{width:14,height:1,background:'var(--line)'}}/>
                 <span style={{width:6,height:6,borderRadius:'50%',background:'var(--warm)'}}/>{t('city.porto')}
@@ -911,7 +911,7 @@ function Problem() {
             <div className="collage__card collage__card--mail">
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
                 <span style={{width:8,height:8,borderRadius:2,background:'#ea4335'}}/>
-                <span style={{fontSize:11,fontWeight:700,color:'var(--muted)',letterSpacing:'.06em',textTransform:'uppercase'}}>{t('problem.inbox')}</span>
+                <span style={{fontSize: 'var(--fs-micro)',fontWeight:700,color:'var(--muted)',letterSpacing:'.06em',textTransform:'uppercase'}}>{t('problem.inbox')}</span>
               </div>
               {[['B',t('problem.mail1_from'),t('problem.mail1_subj')],['BA',t('problem.mail2_from'),t('problem.mail2_subj')],['CP',t('problem.mail3_from'),t('problem.mail3_subj')]].map(([av,from,subj]) => (
                 <div className="mailrow" key={from}>
@@ -1007,16 +1007,16 @@ function StepThumb({ kind }) {
   const t = useT();
   if (kind === 'create') return (
     <div className="step__thumb" aria-hidden="true">
-      <div style={{fontSize:11,color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('thumb.new_trip')}</div>
+      <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('thumb.new_trip')}</div>
       <div style={{display:'grid',gap:8}}>
-        <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize:12,color:'var(--ink)'}}>
+        <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize: 'var(--fs-meta)',color:'var(--ink)'}}>
           <span style={{color:'var(--muted)',marginRight:8}}>{t('thumb.where')}</span>{t('city.lisbon')} · {t('city.porto')} · {t('city.barcelona')}
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-          <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize:12}}><span style={{color:'var(--muted)',marginRight:6}}>{t('thumb.from')}</span>{t('thumb.from_date')}</div>
-          <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize:12}}><span style={{color:'var(--muted)',marginRight:6}}>{t('thumb.to')}</span>{t('thumb.to_date')}</div>
+          <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize: 'var(--fs-meta)'}}><span style={{color:'var(--muted)',marginRight:6}}>{t('thumb.from')}</span>{t('thumb.from_date')}</div>
+          <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize: 'var(--fs-meta)'}}><span style={{color:'var(--muted)',marginRight:6}}>{t('thumb.to')}</span>{t('thumb.to_date')}</div>
         </div>
-        <div style={{display:'flex',gap:6,fontSize:11.5}}>
+        <div style={{display:'flex',gap:6,fontSize: 'var(--fs-micro)'}}>
           <span style={{background:'rgba(33,103,226,.08)',color:'var(--brand)',padding:'3px 10px',borderRadius:999,fontWeight:600}}>{t('thumb.organizer')}</span>
           <span style={{background:'var(--wash)',color:'var(--muted)',padding:'3px 10px',borderRadius:999,fontWeight:600}}>{t('thumb.travelers')}</span>
         </div>
@@ -1025,11 +1025,11 @@ function StepThumb({ kind }) {
   );
   if (kind === 'ai') return (
     <div className="step__thumb" aria-hidden="true">
-      <div style={{fontSize:11,color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('thumb.ai_planner')}</div>
-      <div style={{background:'var(--wash)',borderRadius:8,padding:'10px 12px',fontSize:12.5,color:'var(--ink-2)',lineHeight:1.5}}>{t('thumb.ai_prompt')}</div>
+      <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('thumb.ai_planner')}</div>
+      <div style={{background:'var(--wash)',borderRadius:8,padding:'10px 12px',fontSize: 'var(--fs-meta)',color:'var(--ink-2)',lineHeight:1.5}}>{t('thumb.ai_prompt')}</div>
       <div style={{display:'grid',gap:6,marginTop:10}}>
         {['thumb.ai_result_1','thumb.ai_result_2','thumb.ai_result_3'].map(k => (
-          <div key={k} style={{fontSize:12,padding:'8px 10px',background:'#fff',border:'1px solid var(--line)',borderRadius:8,display:'flex',alignItems:'center',gap:8}}>
+          <div key={k} style={{fontSize: 'var(--fs-meta)',padding:'8px 10px',background:'#fff',border:'1px solid var(--line)',borderRadius:8,display:'flex',alignItems:'center',gap:8}}>
             <span style={{width:6,height:6,borderRadius:'50%',background:'var(--brand)'}}/>{t(k)}
           </div>
         ))}
@@ -1038,14 +1038,14 @@ function StepThumb({ kind }) {
   );
   return (
     <div className="step__thumb" aria-hidden="true">
-      <div style={{fontSize:11,color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('thumb.day_of_travel')}</div>
+      <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('thumb.day_of_travel')}</div>
       <div style={{display:'grid',gap:8}}>
-        <div style={{display:'flex',alignItems:'center',gap:8,fontSize:12}}>
-          <span style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg, var(--brand), #5b8fff)',color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700}}>AI</span>
+        <div style={{display:'flex',alignItems:'center',gap:8,fontSize: 'var(--fs-meta)'}}>
+          <span style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg, var(--brand), #5b8fff)',color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize: 'var(--fs-micro)',fontWeight:700}}>AI</span>
           <div style={{background:'#eef2f9',padding:'8px 10px',borderRadius:10,borderBottomLeftRadius:4}}>{t('thumb.cancel_msg')}</div>
         </div>
-        <div style={{alignSelf:'flex-end',background:'var(--brand)',color:'#fff',padding:'8px 10px',borderRadius:10,borderBottomRightRadius:4,fontSize:12,maxWidth:'80%'}}>{t('thumb.confirm')}</div>
-        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11.5,color:'var(--muted)'}}>
+        <div style={{alignSelf:'flex-end',background:'var(--brand)',color:'#fff',padding:'8px 10px',borderRadius:10,borderBottomRightRadius:4,fontSize: 'var(--fs-meta)',maxWidth:'80%'}}>{t('thumb.confirm')}</div>
+        <div style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>
           <span style={{width:6,height:6,borderRadius:50,background:'var(--success)'}}/>{t('thumb.confirmed')}
         </div>
       </div>
@@ -1090,7 +1090,7 @@ function ThreeViewsVisual() {
   return (
     <div>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:'1px solid var(--line-2)'}}>
-        <div style={{fontSize:12,color:'var(--muted)',fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase'}}>{t('mockup.trip_title')}</div>
+        <div style={{fontSize: 'var(--fs-meta)',color:'var(--muted)',fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase'}}>{t('mockup.trip_title')}</div>
         <div className="app-tabs">
           {tabs.map(tab => (
             <button key={tab.id} type="button" className={`app-tab ${view===tab.id?'is-active':''}`}
@@ -1115,16 +1115,16 @@ function ThreeViewsVisual() {
       )}
       {view === 'Calendar' && (
         <div style={{padding:22}}>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(7, 1fr)',gap:6,fontSize:11.5}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(7, 1fr)',gap:6,fontSize: 'var(--fs-micro)'}}>
             {['M','T','W','T','F','S','S'].map((d,i) => <div key={i} style={{textAlign:'center',color:'var(--muted)',fontWeight:600,padding:'4px 0'}}>{d}</div>)}
             {Array.from({length:28}).map((_,i) => {
               const day=i+1, inTrip=day>=12&&day<=23;
               const city=day<16?'lis':day<18?'transfer':day<19?'por':'bcn';
               const bg=!inTrip?'transparent':city==='lis'?'rgba(33,103,226,.18)':city==='por'?'rgba(201,96,58,.18)':city==='transfer'?'repeating-linear-gradient(45deg, rgba(33,103,226,.15) 0 4px, rgba(201,96,58,.15) 4px 8px)':'rgba(31,138,91,.18)';
-              return <div key={i} style={{height:38,background:bg,borderRadius:8,display:'flex',alignItems:'flex-start',justifyContent:'flex-start',padding:6,fontSize:11,fontWeight:600,color:inTrip?'var(--ink)':'var(--muted-2)',border:inTrip?0:'1px solid var(--line-2)'}}>{day}</div>;
+              return <div key={i} style={{height:38,background:bg,borderRadius:8,display:'flex',alignItems:'flex-start',justifyContent:'flex-start',padding:6,fontSize: 'var(--fs-micro)',fontWeight:600,color:inTrip?'var(--ink)':'var(--muted-2)',border:inTrip?0:'1px solid var(--line-2)'}}>{day}</div>;
             })}
           </div>
-          <div style={{display:'flex',gap:14,marginTop:12,fontSize:11.5,color:'var(--muted)'}}>
+          <div style={{display:'flex',gap:14,marginTop:12,fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>
             <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(33,103,226,.5)',borderRadius:3,marginRight:6}}/>{t('city.lisbon')}</span>
             <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(201,96,58,.5)',borderRadius:3,marginRight:6}}/>{t('city.porto')}</span>
             <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(31,138,91,.5)',borderRadius:3,marginRight:6}}/>{t('city.barcelona')}</span>
@@ -1141,10 +1141,10 @@ function ThreeViewsVisual() {
               {d:'Jul 18',title:`${t('mockup.tag_flight')} ${t('city.porto')} → BCN`,tagKey:'mockup.tag_flight',color:'var(--brand)'},
               {d:'Jul 21',title:'Sagrada Família',tagKey:'mockup.tag_activity',color:'var(--warm)'},
             ].map((r,i) => (
-              <div key={i} style={{display:'grid',gridTemplateColumns:'70px 1fr auto',alignItems:'center',gap:10,background:'#fff',border:'1px solid var(--line)',borderRadius:10,padding:'10px 12px',fontSize:13}}>
-                <span style={{color:'var(--muted)',fontWeight:600,fontSize:11.5}}>{r.d}</span>
+              <div key={i} style={{display:'grid',gridTemplateColumns:'70px 1fr auto',alignItems:'center',gap:10,background:'#fff',border:'1px solid var(--line)',borderRadius:10,padding:'10px 12px',fontSize: 'var(--fs-base)'}}>
+                <span style={{color:'var(--muted)',fontWeight:600,fontSize: 'var(--fs-micro)'}}>{r.d}</span>
                 <span>{r.title}</span>
-                <span style={{fontSize:11,padding:'2px 8px',borderRadius:999,background:'rgba(33,103,226,.08)',color:r.color,fontWeight:600}}>{t(r.tagKey)}</span>
+                <span style={{fontSize: 'var(--fs-micro)',padding:'2px 8px',borderRadius:999,background:'rgba(33,103,226,.08)',color:r.color,fontWeight:600}}>{t(r.tagKey)}</span>
               </div>
             ))}
           </div>
@@ -1168,7 +1168,7 @@ function PlannerVisual() {
           {icon:'plane',name:t('planner.res_flight'),sub:t('planner.res_flight_sub'),badge:t('planner.badge_flight')},
         ].map((r,i) => (
           <div className="planresult" key={i}>
-            <Icon name={r.icon}/><div><strong>{r.name}</strong><div style={{color:'var(--muted)',fontSize:11.5}}>{r.sub}</div></div>
+            <Icon name={r.icon}/><div><strong>{r.name}</strong><div style={{color:'var(--muted)',fontSize: 'var(--fs-micro)'}}>{r.sub}</div></div>
             <span className="badge">{r.badge}</span>
           </div>
         ))}
@@ -1212,8 +1212,8 @@ function BudgetVisual() {
   return (
     <div className="budget">
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-        <span style={{fontSize:12,color:'var(--muted)',fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase'}}>{t('mini.total')}</span>
-        <span style={{fontSize:11.5,color:'var(--muted)'}}>{t('mini.home_ccy')}</span>
+        <span style={{fontSize: 'var(--fs-meta)',color:'var(--muted)',fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase'}}>{t('mini.total')}</span>
+        <span style={{fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>{t('mini.home_ccy')}</span>
       </div>
       <div className="budget__total"><span className="big">€4,820</span><span className="delta">{t('mini.under_plan')}</span></div>
       <div className="budget__bar">{rows.map(r => <i key={r.k} style={{width:`${r.pct}%`,background:r.color}}/>)}</div>
