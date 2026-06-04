@@ -106,10 +106,10 @@ export default function CityPanel({
       {/* nights stepper */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <span className="muted" style={{ fontSize: 12 }}>{t('tse.nights_label')}</span>
-        <span className="te-stepper">
-          <button className="te-step" onClick={onNightsMinus} disabled={nights <= 0}><Icon name="close" size={11} style={{ transform: 'rotate(45deg)' }} /></button>
-          <span className="num" style={{ minWidth: 26, textAlign: 'center', fontWeight: 700, fontSize: 13 }}>{nights}</span>
-          <button className="te-step" onClick={onNightsPlus}><Icon name="plus" size={11} /></button>
+        <span className="te-stepper te-stepper--solid" title={t('tse.nights_label')}>
+          <button className="te-step" onClick={onNightsMinus} disabled={nights <= 0} aria-label={t('tse.nights_remove')}><Icon name="close" size={11} style={{ transform: 'rotate(45deg)' }} /></button>
+          <span className="num te-nights">{nights}</span>
+          <button className="te-step" onClick={onNightsPlus} aria-label={t('tse.nights_add')}><Icon name="plus" size={11} /></button>
         </span>
       </div>
 

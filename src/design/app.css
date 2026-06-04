@@ -39,6 +39,7 @@
   --danger-soft: rgba(196,54,76,.10);
   --warning:   #c98a1a;
   --warning-soft: rgba(201,138,26,.12);
+  --warning-ink: #8a5d12; /* AA-readable warning text on light surfaces (≥4.5:1) */
   --ai:        #6a3ee2;
   --ai-soft:   rgba(106,62,226,.08);
   --ai-soft-12:rgba(106,62,226,.14);
@@ -119,6 +120,7 @@
   --danger-soft: rgba(229,104,122,.16);
   --warning:   #e0a64b;
   --warning-soft: rgba(224,166,75,.16);
+  --warning-ink: #e8b766; /* light-on-dark: already high-contrast on dark surfaces */
   --ai:        #9c7af0;
   --ai-soft:   rgba(156,122,240,.14);
   --ai-soft-12:rgba(156,122,240,.20);
@@ -454,6 +456,7 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
 .btn--sm { padding: 6px 10px; font-size: 12.5px; }
 .btn--lg { padding: 12px 18px; font-size: 14.5px; border-radius: 12px; }
 .btn--block { width: 100%; justify-content: center; }
+.btn.is-on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand-soft-12); }
 .btn[disabled], .btn.is-disabled { opacity: .55; pointer-events: none; }
 /* Every button confirms the press — instant tactile feedback. Placed last so it
    wins over .btn--primary:hover's translateY on equal specificity. */
@@ -1053,41 +1056,41 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
    Trip-editor panels (te-*) — ported from design mockup trip-editor.jsx.
    Used by the in-place left panels (EventPanels / CityPanel).
    ==================================================================== */
-    .te-screen { height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
-    .te-screen--embed { height: calc(100vh - 56px); margin: -22px -24px -80px; }
-    .te-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; }
-    .te-main--nomap { grid-template-columns: 1fr; }
-    .te-left { min-width: 0; border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; background: var(--surface); }
-    .te-main--nomap .te-left { margin: 0; width: 100%; border-right: none; }
-    .te-right { min-width: 0; }
-
     /* ---- table header ---- */
     .te-thead { display: grid; grid-template-columns: 16px 24px minmax(0,1fr) 96px 120px 60px; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
-    .te-th { font-size: var(--fs-micro); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted-2); white-space: nowrap; }
+    .te-th { font-size: var(--fs-micro); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
     .te-th--c { text-align: center; }
-    .te-drop { height: 46px; border: 1.5px dashed var(--brand); border-radius: 13px; background: var(--brand-soft); margin: 4px 0; }
 
-    /* ---- list ---- */
-    .te-listwrap { display: flex; flex-direction: column; min-height: 0; height: 100%; }
-    .te-header { flex-shrink: 0; padding: 18px 20px 12px; border-bottom: 1px solid var(--line-2); }
-    .te-tabs { display: inline-flex; gap: 2px; background: var(--wash); border: 1px solid var(--line-2); border-radius: 10px; padding: 3px; }
-    .te-tab { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 7px; border: none; background: transparent; color: var(--muted); font-size: 12.5px; font-weight: 600; font-family: var(--font-body); cursor: pointer; white-space: nowrap; }
-    .te-tab.is-active { background: var(--surface); color: var(--brand); box-shadow: var(--shadow-soft); }
-    .te-iconbtn { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; }
-    .te-iconbtn:hover { background: var(--wash); }
-    .te-iconbtn:disabled { opacity: .4; cursor: default; }
-    .te-iconbtn.is-on { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); }
-
-    .te-list { flex: 1; min-height: 0; overflow: auto; padding: 6px 14px 30px; }
+    /* ---- list rows ---- */
     .te-row { position: relative; display: grid; grid-template-columns: 16px 24px minmax(0,1fr) 96px 120px 60px; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     .te-row:hover { background: var(--wash); border-color: transparent; }
     .te-row:hover .te-cityname { color: var(--brand); }
     .te-cityname { font-family: var(--font-display); font-size: var(--fs-strong); font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; transition: color .12s; }
-    .te-grip { color: var(--muted-2); opacity: .4; cursor: grab; display: grid; place-items: center; transition: opacity .12s; }
+    .te-grip { color: var(--muted-2); opacity: .4; cursor: grab; display: grid; place-items: center; transition: opacity .12s; touch-action: none; -webkit-user-select: none; user-select: none; }
     .te-row:hover .te-grip { opacity: 1; }
+    .te-grip:active { cursor: grabbing; }
+    /* Pointer-drag: the lifted row floats above the list (its transform follows the
+       pointer; on release it springs into its slot — managed inline in JS). */
+    .te-row.is-dragging { z-index: 30; background: var(--surface); border-color: var(--line); box-shadow: var(--shadow-pop); cursor: grabbing; }
+    .te-row.is-dragging .te-cityname { color: var(--ink); }
     .te-row__num { width: 22px; height: 22px; border-radius: 50%; background: var(--brand-soft-12); color: var(--brand); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 12px; }
     .te-row__num.is-warn { background: var(--warning-soft); color: var(--warning); }
-    .te-warnbadge { display: inline-flex; align-items: center; gap: 2px; color: var(--warning); font-size: 11px; font-weight: 700; }
+    .te-warnbadge { display: inline-flex; align-items: center; gap: 2px; color: var(--warning-ink); font-size: 11px; font-weight: 700; }
+    /* A11y: keyboard-visible focus rings on editor controls. */
+    .te-step:focus-visible, .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible,
+    .te-seam__pill:focus-visible, .te-actchip:focus-visible, .te-hotelicon:focus-visible, .te-back:focus-visible {
+      outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 8px;
+    }
+    /* A11y: enlarge small icon controls to a ~44px pointer target without growing
+       their visual box (transparent centered hit-area). */
+    .ts-step, .te-addmini, .te-grip { position: relative; }
+    .ts-step::after, .te-addmini::after, .te-grip::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; }
+    .te-step { position: relative; }
+    .te-step::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; }
+    /* Always-on variant of the nights stepper (used in CityPanel, where there's no
+       row hover to reveal it). Same control as the grid — one look, two contexts. */
+    .te-stepper--solid { background: var(--surface); border-color: var(--line); box-shadow: var(--shadow-soft); }
+    .te-stepper--solid .te-step { opacity: 1; }
     /* Custom nights stepper. Quiet by default (no fill — just the number with
        hairline +/− that recede), so a column of these doesn't stripe the table.
        On row hover it lifts into a real segmented control. */
@@ -1111,9 +1114,6 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-cellbtn--ghost:focus-visible { opacity: 1; outline: 2px solid var(--brand); outline-offset: 1px; }
     .te-cellbtn--ghost:hover { color: var(--brand); border-color: var(--brand); background: var(--brand-soft); }
     @media (hover: none) { .te-cellbtn--ghost { opacity: 1; } }
-    .te-hotelplate { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; width: 100%; height: 30px; padding: 0 10px; border-radius: 9px; background: var(--ev-hotel-soft); border: 1px solid transparent; color: var(--ink); cursor: pointer; font-family: var(--font-body); }
-    .te-hotelplate:hover { border-color: var(--ev-hotel); }
-    .te-hotelplate.is-warn { background: var(--warning-soft); }
     .te-hotelicon { position: relative; display: grid; place-items: center; width: 32px; height: 30px; border-radius: 9px; background: var(--ev-hotel-soft); border: 1px solid transparent; cursor: pointer; transition: border-color .12s var(--ease-out), transform .1s var(--ease-out); }
     .te-hotelicon:hover { border-color: var(--ev-hotel); }
     .te-hotelicon.is-warn { background: var(--warning-soft); }
@@ -1146,12 +1146,6 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-seam__pill.is-warn { border-color: var(--warning); background: var(--warning-soft); }
     .te-seam__pill--add { background: var(--surface); border: 1px dashed var(--line); color: var(--muted); font-size: 11.5px; font-weight: 600; gap: 4px; box-shadow: none; }
     .te-seam__pill--add:hover { color: var(--ev-transfer); border-color: var(--ev-transfer); background: var(--surface); }
-
-    .te-adddest { display: grid; grid-template-columns: 16px 24px 1fr; column-gap: 10px; align-items: center; width: 100%; margin-top: 4px; padding: 9px 12px; border-radius: 13px; border: 1px solid transparent; background: transparent; cursor: pointer; transition: background .12s; }
-    .te-adddest:hover { background: var(--wash); }
-    .te-adddest__num { grid-column: 2; width: 22px; height: 22px; border-radius: 50%; border: 1.5px dashed var(--brand); color: var(--brand); display: grid; place-items: center; }
-    .te-adddest__label { grid-column: 3; text-align: left; font-size: 13.5px; font-weight: 600; color: var(--muted); font-family: var(--font-body); transition: color .12s; }
-    .te-adddest:hover .te-adddest__label { color: var(--brand); }
 
     /* ---- panels (shared) ---- */
     .te-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; }
@@ -1196,14 +1190,7 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-partner:active { transform: translateY(0) scale(0.99); }
     .te-snap { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px; padding: 8px 12px; border-radius: 9px; cursor: pointer; background: var(--brand-soft); border: 1px solid var(--brand-soft-12); color: var(--brand); font-size: 12.5px; font-weight: 600; font-family: var(--font-body); }
     .te-snap:hover { background: var(--brand-soft-12); }
-    .te-kindtile { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 58px; flex: 1; padding: 10px 6px; border-radius: 11px; border: 1px solid var(--line); cursor: pointer; font-family: var(--font-body); }
     .te-infogrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-
-    @media (max-width: 980px) {
-      .te-main { grid-template-columns: 1fr; grid-template-rows: 1fr; }
-      .te-right { display: none; }
-      .te-left { border-right: none; }
-    }
 
     /* Reduced motion: keep the editor's opacity/color cues, drop all movement. */
     @media (prefers-reduced-motion: reduce) {

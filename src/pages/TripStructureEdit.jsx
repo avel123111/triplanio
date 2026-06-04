@@ -134,7 +134,16 @@ export default function TripStructureEdit() {
   //   { type:'createTransfer', fromVisit, toVisit } - create a transfer (EventEditDialog panel variant)
   const [leftPanel, setLeftPanel] = useState(null);
   const closeLeftPanel = () => setLeftPanel(null);
+  // A11y: when an in-place left panel opens, move focus into it (its back button
+  // if present) so keyboard/SR users land in the new context; Esc closes it.
+  const leftPaneRef = useRef(null);
+  useEffect(() => {
+    if (!leftPanel || !leftPaneRef.current) return;
+    const el = leftPaneRef.current.querySelector('.te-back, button, [tabindex]') || leftPaneRef.current;
+    requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
+  }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
+  const [showMap, setShowMap] = useState(true); // hide the map to give the itinerary full width
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [pendingLeave, setPendingLeave] = useState(null); // navigation target awaiting the unsaved-changes prompt
@@ -142,19 +151,30 @@ export default function TripStructureEdit() {
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
   const [undoStack, setUndoStack] = useState([]); // history of draft snapshots (JSON) for step-undo
   const endDrag = () => { setDragIdx(null); setOverGap(null); };
-  // FLIP refs: animate rows smoothly to their new slot during drag (no placeholder).
+  // FLIP refs: animate non-dragged rows smoothly to their new slot during drag.
   const rowElRefs = useRef(new Map());     // node id -> row element
   const prevRectsRef = useRef(new Map());  // node id -> top, captured just before a reorder
   const setRowRef = (id) => (el) => { if (el) rowElRefs.current.set(id, el); else rowElRefs.current.delete(id); };
   const captureRects = () => { const m = new Map(); rowElRefs.current.forEach((el, id) => { if (el) m.set(id, el.getBoundingClientRect().top); }); prevRectsRef.current = m; };
+  // Pointer-drag state. dragInfoRef holds the LIVE gesture (id, where the row was
+  // grabbed, whether it actually moved). liveRef mirrors render values the window
+  // listeners need; dragHandlersRef holds the per-render move/end closures behind
+  // two STABLE dispatchers so add/removeEventListener pair up correctly.
+  const dragInfoRef = useRef(null);
+  const liveRef = useRef({ ordered: [], displayNodes: [] });
+  const dragHandlersRef = useRef({ move: () => {}, end: () => {} });
+  const stableMove = useRef((e) => dragHandlersRef.current.move(e)).current;
+  const stableEnd = useRef((e) => dragHandlersRef.current.end(e)).current;
   // FLIP: after the preview order changes, slide each row from where it WAS to
-  // where it is now (.18s) — the list rearranges smoothly instead of snapping.
+  // where it is now — the list rearranges smoothly. The lifted (dragged) row is
+  // skipped: its transform follows the pointer and is managed inline.
   useLayoutEffect(() => {
     const prev = prevRectsRef.current;
     if (!prev || prev.size === 0) return;
     if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { prevRectsRef.current = new Map(); return; }
+    const draggedId = dragInfoRef.current?.id;
     rowElRefs.current.forEach((el, id) => {
-      if (!el) return;
+      if (!el || id === draggedId) return;
       const prevTop = prev.get(id);
       if (prevTop == null) return;
       const dy = prevTop - el.getBoundingClientRect().top;
@@ -162,7 +182,7 @@ export default function TripStructureEdit() {
       el.style.transition = 'none';
       el.style.transform = `translateY(${dy}px)`;
       el.getBoundingClientRect(); // force reflow so the next line animates
-      el.style.transition = 'transform .22s cubic-bezier(0.23, 1, 0.32, 1)';
+      el.style.transition = 'transform .26s cubic-bezier(0.34, 1.28, 0.5, 1)';
       el.style.transform = '';
     });
     prevRectsRef.current = new Map();
@@ -525,6 +545,7 @@ export default function TripStructureEdit() {
           <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <Btn variant="quiet" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
             <Btn variant="quiet" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
+            <Btn variant="quiet" size="sm" icon="map" onClick={() => setShowMap((v) => !v)} className={showMap ? 'is-on' : ''} title={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaLabel={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaPressed={showMap} />
           </div>
           <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={() => onSave()}>{saving ? t('tse.saving') : t('common.save')}</Btn>
         </div>
@@ -587,7 +608,6 @@ export default function TripStructureEdit() {
   // Stay numbering (only nights-cities are numbered).
   const stayNumById = {};
   { let sc = 0; ordered.forEach((n) => { if (n.kind === 'transit') stayNumById[n.id] = ++sc; }); }
-  const origIdxById = new Map(ordered.map((n, i) => [n.id, i]));
   // Live preview order while dragging: the dragged node is shown already moved to
   // the hovered slot (FLIP animates the shuffle). Anchors stay pinned at the ends.
   const displayNodes = (() => {
@@ -601,33 +621,90 @@ export default function TripStructureEdit() {
     arr.splice(t, 0, m);
     return arr;
   })();
-  const onRowDragOver = (nodeId) => {
-    if (dragIdx == null) return;
-    const oi = origIdxById.get(nodeId);
-    if (oi == null || oi === dragIdx || oi === overGap) return;
+  // Keyboard reorder (a11y): move a city one slot up/down, clamped inside the
+  // start/end anchors. Same applyNodes path as drag, so dates recompute identically.
+  const moveNodeById = (id, dir) => {
+    const idx = ordered.findIndex((n) => n.id === id);
+    if (idx < 0 || isAnchor(ordered[idx])) return;
+    const arr = ordered.slice();
+    const [node] = arr.splice(idx, 1);
+    const lo = arr[0]?.kind === 'start' ? 1 : 0;
+    const hi = arr[arr.length - 1]?.kind === 'end' ? arr.length - 1 : arr.length;
+    const j = Math.max(lo, Math.min(hi, idx + dir));
+    if (j === idx) return;
+    arr.splice(j, 0, node);
     captureRects();
-    setOverGap(oi);
+    applyNodes(arr);
   };
-  const onEndDragOver = () => {
-    if (dragIdx == null || overGap === ordered.length) return;
-    captureRects();
-    setOverGap(ordered.length);
+  // Begin a pointer drag from a row's grip. The lifted row then follows the
+  // pointer (transform managed in the move handler); other rows reflow via FLIP.
+  const beginDrag = (e, dIdx, nodeId) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const rowEl = rowElRefs.current.get(nodeId);
+    if (!rowEl) return;
+    e.preventDefault();
+    const rect = rowEl.getBoundingClientRect();
+    dragInfoRef.current = { id: nodeId, grabOffset: e.clientY - rect.top, ty: 0, moved: false, lastTarget: null };
+    setDragIdx(dIdx); setOverGap(null);
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', stableMove);
+    window.addEventListener('pointerup', stableEnd, { once: true });
+    window.addEventListener('pointercancel', stableEnd, { once: true });
   };
-  const commitDrag = () => {
-    if (dragIdx != null && overGap != null) {
-      const order = displayNodes.map((n) => n.id);
-      // Snapshot row positions BEFORE the reorder. endDrag() flips dragIdx/overGap
-      // → the FLIP layout effect runs after this commit render and slides every
-      // row from where it was to its settled slot (no snap on drop).
-      captureRects();
+  // Per-render move/end closures (read live values), reached via the stable
+  // dispatchers above so the window listeners pair up across re-renders.
+  dragHandlersRef.current.move = (e) => {
+    const info = dragInfoRef.current; if (!info) return;
+    info.moved = true;
+    const rowEl = rowElRefs.current.get(info.id);
+    if (rowEl) {
+      const naturalTop = rowEl.getBoundingClientRect().top - info.ty;
+      info.ty = (e.clientY - info.grabOffset) - naturalTop;
+      rowEl.style.transition = 'none';
+      rowEl.style.transform = `translateY(${info.ty}px) scale(1.015)`;
+    }
+    // Hit-test: first row (excluding the lifted one) whose midpoint is below the
+    // pointer = insertion gap; below all → move-to-end (ordered.length).
+    const ord = liveRef.current.ordered || [];
+    let target = ord.length;
+    for (let i = 0; i < ord.length; i++) {
+      const nd = ord[i]; if (nd.id === info.id) continue;
+      const el = rowElRefs.current.get(nd.id); if (!el) continue;
+      const r = el.getBoundingClientRect();
+      if (e.clientY < r.top + r.height / 2) { target = i; break; }
+    }
+    if (target !== info.lastTarget) { info.lastTarget = target; captureRects(); setOverGap(target); }
+  };
+  dragHandlersRef.current.end = () => {
+    window.removeEventListener('pointermove', stableMove);
+    document.body.style.userSelect = '';
+    const info = dragInfoRef.current;
+    const rowEl = info && rowElRefs.current.get(info.id);
+    const order = (liveRef.current.displayNodes || []).map((n) => n.id);
+    if (rowEl) { // spring the lifted row from its pointer position into its slot
+      rowEl.style.transition = 'transform .44s cubic-bezier(0.34, 1.3, 0.5, 1)';
+      rowEl.style.transform = 'translateY(0) scale(1)';
+    }
+    if (!info || !info.moved) { // a click on the grip, not a drag
+      if (rowEl) { rowEl.style.transition = ''; rowEl.style.transform = ''; }
+      dragInfoRef.current = null; endDrag(); return;
+    }
+    // Commit AFTER the settle so the final DOM order lands without a visible jump.
+    setTimeout(() => {
+      if (dragInfoRef.current !== info) return;
       editDraft((d) => {
         const byId = new Map(d.nodes.map((n) => [n.id, n]));
         const nextNodes = order.map((id) => byId.get(id)).filter(Boolean);
         return { ...d, nodes: recompute(nextNodes, d.startDate) };
       });
-    }
-    endDrag();
+      if (rowEl) { rowEl.style.transition = ''; rowEl.style.transform = ''; }
+      dragInfoRef.current = null;
+      endDrag();
+    }, 230);
   };
+  // Mirror live render values for the window listeners (they can't close over
+  // post-early-return locals directly).
+  liveRef.current = { ordered, displayNodes };
   // Transfers whose from/to cities are NOT adjacent in the route (or dangle on a
   // removed city) — shown in the "out of plan" tray instead of a connector.
   const adjPairs = new Set();
@@ -737,10 +814,10 @@ export default function TripStructureEdit() {
           onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)}
         />
       </div>
-      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 65fr) minmax(0, 35fr)', gap: 0, overflow: 'hidden' }}>
+      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: showMap ? 'minmax(0, 60fr) minmax(0, 40fr)' : '1fr', gap: 0, overflow: 'hidden' }}>
         {/* LEFT - page title + cities (scrolling list) */}
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
-          <div key={panelKey} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={leftPanel ? (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } } : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
           {leftPanelEl || (<>
           {/* page title */}
           <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: '1px solid var(--line-2)' }}>
@@ -773,10 +850,8 @@ export default function TripStructureEdit() {
               const dragging = dragIdx === dIdx;
               const dragProps = {
                 dragging,
-                onDragStart: () => { setDragIdx(dIdx); setOverGap(null); },
-                onDragOver: () => onRowDragOver(n.id),
-                onDrop: () => commitDrag(),
-                onDragEnd: () => { if (dragIdx != null) endDrag(); },
+                onGripDown: (e) => beginDrag(e, dIdx, n.id),
+                onMove: (dir) => moveNodeById(n.id, dir),
               };
               let body;
               if (isAnchor(n)) {
@@ -798,13 +873,10 @@ export default function TripStructureEdit() {
                   drag={dragProps} />;
               }
               return (
-                <div className="te-seamwrap" key={n.id} ref={setRowRef(n.id)}
-                  style={dragging ? { opacity: 0.45 } : undefined}
-                  onDragOver={dragIdx != null ? (e) => { e.preventDefault(); onRowDragOver(n.id); } : undefined}
-                  onDrop={dragIdx != null ? (e) => { e.preventDefault(); commitDrag(); } : undefined}>
+                <div className="te-seamwrap" key={n.id} ref={setRowRef(n.id)}>
                   {body}
                   {/* Transfer chip straddles the seam to the next city. Hidden while
-                      dragging so the rearranging list reads cleanly. */}
+                      dragging (adjacency is in flux) so the rail reads cleanly. */}
                   {next && dragIdx === null && (
                     <SeamTransfer a={n} b={next} t={tr} mismatch={transferMismatch(tr)} onOpen={() => openTransferRow(n, next, tr)} />
                   )}
@@ -814,9 +886,7 @@ export default function TripStructureEdit() {
           </div>
 
           {dragIdx !== null && ordered[ordered.length - 1]?.kind !== 'end' && (
-            <div onDragOver={(e) => { e.preventDefault(); onEndDragOver(); }}
-              onDrop={(e) => { e.preventDefault(); commitDrag(); }}
-              style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 8, border: '1.5px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line-2)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', fontSize: 12, fontWeight: 600 }}>
+            <div style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 8, border: '1.5px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line-2)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', fontSize: 'var(--fs-meta)', fontWeight: 600, transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
               {t('tse.move_to_end')}
             </div>
           )}
@@ -841,7 +911,8 @@ export default function TripStructureEdit() {
           </div>{/* /te-panefade */}
         </div>
 
-        {/* RIGHT - full-height map; warnings live in a collapsible overlay widget */}
+        {/* RIGHT - full-height map (hideable); warnings live in a collapsible overlay widget */}
+        {showMap && (
         <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--surface)' }}>
           <div className="ts-map" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
             <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd mapControls
@@ -874,28 +945,23 @@ export default function TripStructureEdit() {
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
 
-      {confirmDel && (
-        <div className="ts-confirm-backdrop" onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)', padding: 16 }}>
-          <div className="ts-confirm-card" onClick={(e) => e.stopPropagation()} style={{ position: 'relative', overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, width: 420, maxWidth: '100%', boxShadow: 'var(--shadow-pop)' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--danger)' }} />
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '18px 18px 8px' }}>
-              <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="trash" size={17} /></div>
-              <div style={{ flex: 1, minWidth: 0 }}><h2 style={{ fontSize: 17, marginBottom: 2 }}>{t('tse.delete_city_q', { city: confirmDel.city_name })}</h2></div>
-              <button className="ts-step" onClick={() => setConfirmDel(null)}><Icon name="close" size={16} /></button>
-            </div>
-            <div style={{ padding: '0 18px 8px', fontSize: 13, lineHeight: 1.55, color: 'var(--ink-2)' }}>
-              {t('tse.delete_city_desc')}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 18px 18px' }}>
-              <Btn variant="ghost" onClick={() => setConfirmDel(null)}>{t('common.cancel')}</Btn>
-              <Btn variant="danger-solid" icon="trash" onClick={() => doRemoveCity(confirmDel.id)}>{t('tse.delete_city')}</Btn>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete-city confirm — AlertDialog (focus-trapped, Esc-closable). */}
+      <AlertDialog open={!!confirmDel} onOpenChange={(o) => { if (!o) setConfirmDel(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('tse.delete_city_q', { city: confirmDel?.city_name })}</AlertDialogTitle>
+            <AlertDialogDescription>{t('tse.delete_city_desc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <Btn variant="danger-solid" icon="trash" onClick={() => confirmDel && doRemoveCity(confirmDel.id)}>{t('tse.delete_city')}</Btn>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <style>{`
         .ts-step { border: none; background: transparent; border-radius: 8px; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
@@ -987,18 +1053,24 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
   const t = useT();
   const { lang } = useI18n();
   const m = metaOf(seg);
-  const dragAttrs = {
-    draggable: true,
-    onDragStart: (e) => { e.dataTransfer.effectAllowed = 'move'; drag.onDragStart(); },
-    onDragEnd: drag.onDragEnd,
-    onDragOver: (e) => { e.preventDefault(); drag.onDragOver(); },
-    onDrop: (e) => { e.preventDefault(); drag.onDrop(); },
-  };
   const stop = (e) => e.stopPropagation();
+  // Drag handle: pointer-drag (lifts the row) + keyboard reorder (a11y). Click is
+  // stopped so grabbing the grip never opens the city panel.
+  const gripEl = (
+    <span className="te-grip" role="button" tabIndex={0} aria-label={t('tse.move_up')}
+      onClick={stop}
+      onPointerDown={(e) => { stop(e); drag.onGripDown(e); }}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowUp') { e.preventDefault(); drag.onMove(-1); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); drag.onMove(1); }
+      }}>
+      <Icon name="drag" size={14} />
+    </span>
+  );
   if (seg.kind === 'waypoint') {
     return (
-      <div className="te-row" {...dragAttrs} onClick={onOpenCity} style={{ opacity: drag.dragging ? 0.4 : 1 }}>
-        <span className="te-grip" onClick={stop}><Icon name="drag" size={14} /></span>
+      <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onClick={onOpenCity}>
+        {gripEl}
         <span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -1009,9 +1081,9 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
           <div className="num muted" style={{ fontSize: 11.5, marginTop: 2 }}>{t('tse.transit_word')} · {fmtD(seg.start_date, lang)}</div>
         </div>
         <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
-          <button className="te-step" onClick={onNightsMinus} disabled><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
+          <button className="te-step" onClick={onNightsMinus} disabled aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
           <span className="num te-nights">0<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
-          <button className="te-step" onClick={onNightsPlus} title={t('planner.more_nights')}><Icon name="plus" size={10} /></button>
+          <button className="te-step" onClick={onNightsPlus} title={t('planner.more_nights')} aria-label={t('tse.nights_add')}><Icon name="plus" size={10} /></button>
         </span>
         <div className="te-cell te-cell--hotel" />
         <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
@@ -1019,8 +1091,8 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
     );
   }
   return (
-    <div className="te-row" {...dragAttrs} onClick={onOpenCity} style={{ opacity: drag.dragging ? 0.4 : 1 }}>
-      <span className="te-grip" onClick={stop} title={t('tse.move_up')}><Icon name="drag" size={14} /></span>
+    <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onClick={onOpenCity}>
+      {gripEl}
       <span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -1030,10 +1102,10 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
         </div>
         <div className="num muted" style={{ fontSize: 11.5, marginTop: 2 }}>{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
       </div>
-      <span className="te-stepper" onClick={stop}>
-        <button className="te-step" onClick={onNightsMinus} disabled={(seg.nights || 0) <= 0} title={t('tse.col_nights')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
+      <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
+        <button className="te-step" onClick={onNightsMinus} disabled={(seg.nights || 0) <= 0} aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
         <span className="num te-nights">{seg.nights}<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
-        <button className="te-step" onClick={onNightsPlus}><Icon name="plus" size={10} /></button>
+        <button className="te-step" onClick={onNightsPlus} aria-label={t('tse.nights_add')}><Icon name="plus" size={10} /></button>
       </span>
       <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
       <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
