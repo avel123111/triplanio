@@ -51,7 +51,7 @@ function FlightLine({ transfer, dir, warn, onClick, t }) {
   const when = dir === 'in' ? transfer.end_datetime : transfer.start_datetime;
   const time = fmtTime(when);
   return (
-    <button className="te-flightline" onClick={onClick}>
+    <button className={'te-flightline' + (warn ? ' is-warn' : '')} onClick={onClick}>
       <span className="te-flightline__ic" style={{ background: warn ? 'var(--warning-soft)' : 'var(--ev-transfer-soft)', color: warn ? 'var(--warning)' : 'var(--ev-transfer)' }}>
         <Icon name={warn ? 'warning' : meta.icon} size={15} />
       </span>
@@ -70,7 +70,7 @@ function FlightLine({ transfer, dir, warn, onClick, t }) {
 
 export default function CityPanel({
   node, meta, hotel, acts = [], arrival, departure, prevCity, nextCity,
-  hotelWarn, isActWarn, onBack, onRemove,
+  hotelWarn, isActWarn, arrivalWarn = false, departureWarn = false, onBack, onRemove,
   onNightsMinus, onNightsPlus,
   onOpenHotel, onAddHotel, onOpenActivity, onAddActivity, onOpenTransfer, onAddArrival, onAddDeparture,
 }) {
@@ -117,10 +117,10 @@ export default function CityPanel({
       <SectionLabel>{t('tse.section_road')}</SectionLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {arrival
-          ? <FlightLine transfer={arrival} dir="in" warn={false} onClick={() => onOpenTransfer(arrival)} t={t} />
+          ? <FlightLine transfer={arrival} dir="in" warn={arrivalWarn} onClick={() => onOpenTransfer(arrival)} t={t} />
           : prevCity && <GhostAdd icon="plane" accent="var(--muted-2)" label={t('tse.add_arrival')} sub={prevCity} onClick={onAddArrival} />}
         {departure
-          ? <FlightLine transfer={departure} dir="out" warn={false} onClick={() => onOpenTransfer(departure)} t={t} />
+          ? <FlightLine transfer={departure} dir="out" warn={departureWarn} onClick={() => onOpenTransfer(departure)} t={t} />
           : nextCity && <GhostAdd icon="plane" accent="var(--muted-2)" label={t('tse.add_departure')} sub={nextCity} onClick={onAddDeparture} />}
       </div>
 
@@ -150,7 +150,7 @@ export default function CityPanel({
         {acts.map((a) => {
           const warn = isActWarn ? isActWarn(a) : false;
           return (
-            <button key={a.id} className="te-actrow" onClick={() => onOpenActivity(a.id)}>
+            <button key={a.id} className={'te-actrow' + (warn ? ' is-warn' : '')} onClick={() => onOpenActivity(a.id)}>
               <span className="te-actrow__ic"><Icon name={ACT_ICON[a.category] || 'spark'} size={14} /></span>
               <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span>

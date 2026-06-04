@@ -6,7 +6,7 @@ import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { Icon } from '../design/icons';
-import { Btn, Badge, Skeleton } from '../design/index';
+import { Btn, Badge, Skeleton, ModalHost } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { getTimezone } from '@/lib/geo';
 import MapView from '@/components/views/MapView';
@@ -23,6 +23,7 @@ import { isProActive } from '@/lib/subscription';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import TripSidebar from '@/components/trips/TripSidebar';
 import ShareDialog from '@/components/trips/ShareDialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
@@ -135,6 +136,7 @@ export default function TripStructureEdit() {
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
+  const [pendingLeave, setPendingLeave] = useState(null); // navigation target awaiting the unsaved-changes prompt
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
   const [undoStack, setUndoStack] = useState([]); // history of draft snapshots (JSON) for step-undo
@@ -166,12 +168,16 @@ export default function TripStructureEdit() {
   const acquiredRef = React.useRef(false);
   const DRAFT_KEY = `ts-edit-${tripId}`;
   const clearDraftStore = () => { try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } };
-  // Отмена редактирования: выбросить черновик, СНЯТЬ лок (статус editing) и вернуться на таймлайн.
-  const cancelEdit = async () => {
+  // Leave the editor for `to`: drop the draft and RELEASE THE EDIT LOCK immediately.
+  const leaveNow = async (to) => {
     clearDraftStore();
     if (acquiredRef.current) { acquiredRef.current = false; try { await supabase.rpc('release_trip_lock', { p_trip: tripId }); } catch { /* ignore */ } }
-    nav(`/trip/${tripId}`);
+    nav(typeof to === 'string' ? to : `/trip/${tripId}`);
   };
+  // Guarded navigation away: prompt to save first if there are unsaved changes.
+  const guardedLeave = (to) => { if (dirty) setPendingLeave(typeof to === 'string' ? to : `/trip/${tripId}`); else leaveNow(to); };
+  // Explicit "cancel editing" button = intentional discard (no prompt).
+  const cancelEdit = () => leaveNow(`/trip/${tripId}`);
   const baseRef = React.useRef(null); // JSON of the originally-loaded draft (for Reset)
   // Every structural mutation funnels through editDraft → snapshot the pre-edit
   // draft onto the undo stack (cap 50), apply, mark dirty. `undo` pops one step.
@@ -195,6 +201,7 @@ export default function TripStructureEdit() {
     queryKey: TRIP_SHELL_KEY(tripId),
     queryFn: async () => { const { data, error } = await supabase.functions.invoke('getTripDetails', { body: { tripId, include: ['shell'] } }); if (error) throw error; return data; },
     enabled: !!tripId,
+    staleTime: 30000, // reuse TripView's cached shell on entry → no reload flicker
   });
   const { data: content, isLoading: loadingContent } = useQuery({
     queryKey: TRIP_CONTENT_KEY(tripId),
@@ -277,6 +284,12 @@ export default function TripStructureEdit() {
     return [...others, previewTransfer];
   }, [liveTransfers, previewTransfer]);
   useEffect(() => { if (!(leftPanel?.type === 'create' && leftPanel.kind === 'transfer')) setPreviewTransfer(null); }, [leftPanel]);
+  // Native browser prompt on close/refresh while there are unsaved structure edits.
+  useEffect(() => {
+    const h = (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [dirty]);
   // Unified engine: validateTrip emits codes; primaryIssues collapses to <=1 per
   // entity (anti-pile). Adapt to the shape this screen already consumes
   // (resolved message + cityId/hotelId/activityId/transferId aliases + 'warn' level).
@@ -417,7 +430,7 @@ export default function TripStructureEdit() {
     setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: a, toVisit: b });
   };
 
-  const onSave = async () => {
+  const onSave = async (dest) => {
     if (!draft || blocked || saving) return;
     setSaving(true);
     const isTmp = (id) => String(id).startsWith('tmp-');
@@ -433,7 +446,8 @@ export default function TripStructureEdit() {
     acquiredRef.current = false;
     clearDraftStore();
     invalidateTripData(qc, tripId);
-    nav(`/trip/${tripId}`);
+    setPendingLeave(null);
+    nav(typeof dest === 'string' ? dest : `/trip/${tripId}`);
   };
 
   // Persistent app-header - rendered in EVERY branch (loading / blocked / error /
@@ -445,10 +459,10 @@ export default function TripStructureEdit() {
   //   Сброс    = discard all edits but STAY in the editor.
   const headerEl = (
     <header className="app-header">
-      <button className="app-header__crumb-back" onClick={cancelEdit} title={t('tse.exit_editor')}>
+      <button className="app-header__crumb-back" onClick={() => guardedLeave(`/trip/${tripId}`)} title={t('tse.exit_editor')}>
         <Icon name="back" size={15} />
       </button>
-      <div className="app-header__brand" onClick={cancelEdit} style={{ cursor: 'pointer' }}>
+      <div className="app-header__brand" onClick={() => guardedLeave('/trips')} style={{ cursor: 'pointer' }}>
         <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
         <span className="app-header__brand-name">Triplanio</span>
       </div>
@@ -466,7 +480,7 @@ export default function TripStructureEdit() {
           <Btn variant="ghost" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
           <Btn variant="ghost" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
           <Btn variant="ghost" size="sm" icon="close" onClick={cancelEdit} title={t('tse.cancel_title')}>{t('tse.cancel')}</Btn>
-          <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={onSave}>{saving ? t('tse.saving') : t('common.save')}</Btn>
+          <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={() => onSave()}>{saving ? t('tse.saving') : t('common.save')}</Btn>
         </div>
       )}
       <HeaderActions user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} />
@@ -490,7 +504,10 @@ export default function TripStructureEdit() {
       </>
     );
   }
-  if (loadingShell || loadingContent || !draft || lock === 'acquiring') {
+  // Don't gate the whole screen on the lock RPC — shell/content are cached (shared
+  // with TripView) so the editor paints instantly; the lock resolves in the
+  // background (and the blocked/error branch above takes over only if it fails).
+  if (loadingShell || loadingContent || !draft) {
     return <>{headerEl}<div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}><Skeleton w="40%" h={28} style={{ marginBottom: 18 }} /><Skeleton w="100%" h={120} style={{ marginBottom: 10 }} /><Skeleton w="100%" h={120} /></div></>;
   }
 
@@ -619,6 +636,7 @@ export default function TripStructureEdit() {
           node={node} meta={metaOf(node)}
           hotel={hotel} acts={actsFor(node.id)}
           arrival={arrivalFor(node.id)} departure={departureFor(node.id)}
+          arrivalWarn={transferMismatch(arrivalFor(node.id))} departureWarn={transferMismatch(departureFor(node.id))}
           prevCity={prev?.city_name} nextCity={next?.city_name}
           hotelWarn={hotelWarnId(hotel?.id)} isActWarn={(a) => actWarnId(a.id)}
           onBack={closeLeftPanel}
@@ -665,7 +683,7 @@ export default function TripStructureEdit() {
       <div style={{ flex: '0 0 56px', minWidth: 0, position: 'relative', minHeight: 0 }}>
         <TripSidebar
           tripId={tripId} trip={trip} isEditScreen collapsed
-          onNavigate={(id) => nav(`/trip/${tripId}?lens=${id}`)}
+          onNavigate={(id) => guardedLeave(`/trip/${tripId}?lens=${id}`)}
           isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
           onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
           onProInfo={() => nav(`/pro?tripId=${tripId}`)}
@@ -845,6 +863,22 @@ export default function TripStructureEdit() {
           .ts-warn { flex: 0 0 auto !important; min-height: 300px; }
         }
       `}</style>
+      {/* Unsaved-changes guard when leaving the editor (menu / logo / back). */}
+      <AlertDialog open={!!pendingLeave} onOpenChange={(o) => { if (!o) setPendingLeave(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('tse.unsaved_title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('tse.unsaved_desc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('tse.unsaved_stay')}</AlertDialogCancel>
+            <Btn variant="ghost" onClick={() => { const to = pendingLeave; setPendingLeave(null); leaveNow(to); }}>{t('tse.unsaved_leave')}</Btn>
+            <AlertDialogAction onClick={() => onSave(pendingLeave)}>{t('common.save')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Mounts window.__openModal on the editor screen (Share dialog, etc.). */}
+      <ModalHost />
     </div>
   );
 }
@@ -865,9 +899,10 @@ function HotelCell({ hotel, warn, onClick }) {
     </button>
   );
   return (
-    <button className={'te-hotelicon' + (warn ? ' is-warn' : '')} onClick={onClick} title={hotel.name}>
+    <button className={'te-hotelicon' + (warn ? ' is-warn' : '')} onClick={onClick} title={hotel.name}
+      style={warn ? { width: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '0 8px' } : undefined}>
       <Icon name="bed" size={15} style={{ color: warn ? 'var(--warning)' : 'var(--ev-hotel)' }} />
-      {warn && <Icon name="warning" size={11} style={{ position: 'absolute', top: 2, right: 2, color: 'var(--warning)' }} />}
+      {warn && <Icon name="warning" size={11} style={{ color: 'var(--warning)' }} />}
     </button>
   );
 }
