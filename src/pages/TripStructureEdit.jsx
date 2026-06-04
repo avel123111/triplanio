@@ -134,6 +134,7 @@ export default function TripStructureEdit() {
   const closeLeftPanel = () => setLeftPanel(null);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
+  const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
   const [undoStack, setUndoStack] = useState([]); // history of draft snapshots (JSON) for step-undo
@@ -246,6 +247,14 @@ export default function TripStructureEdit() {
   const liveHotels = useMemo(() => (content?.hotels || []).filter((h) => !removedIds.has(h.city_visit_id)), [content, removedIds]);
   const liveActivities = useMemo(() => (content?.activities || []).filter((a) => !removedIds.has(a.city_visit_id)), [content, removedIds]);
   const liveTransfers = useMemo(() => (content?.transfers || []).filter((t) => !removedIds.has(t.from_city_visit_id) && !removedIds.has(t.to_city_visit_id)), [content, removedIds]);
+  // While creating a transfer, draw a synthetic leg on the map (shaped by the
+  // picked transport type) so the route appears instantly, before saving.
+  const mapTransfers = useMemo(() => {
+    if (!previewTransfer) return liveTransfers;
+    const others = liveTransfers.filter((t) => !(t.from_city_visit_id === previewTransfer.from_city_visit_id && t.to_city_visit_id === previewTransfer.to_city_visit_id));
+    return [...others, previewTransfer];
+  }, [liveTransfers, previewTransfer]);
+  useEffect(() => { if (!(leftPanel?.type === 'create' && leftPanel.kind === 'transfer')) setPreviewTransfer(null); }, [leftPanel]);
   // Unified engine: validateTrip emits codes; primaryIssues collapses to <=1 per
   // entity (anti-pile). Adapt to the shape this screen already consumes
   // (resolved message + cityId/hotelId/activityId/transferId aliases + 'warn' level).
@@ -571,7 +580,8 @@ export default function TripStructureEdit() {
         open variant="panel" kind={leftPanel.kind} tripId={tripId}
         visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
         defaultCurrency={trip?.details?.main_currency || 'EUR'}
-        onOpenChange={(o) => { if (!o) { closeLeftPanel(); qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); } }}
+        onPreviewTransfer={setPreviewTransfer}
+        onOpenChange={(o) => { if (!o) { setPreviewTransfer(null); closeLeftPanel(); qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); } }}
       />
     );
   } else if (leftPanel?.type === 'city') {
@@ -745,7 +755,7 @@ export default function TripStructureEdit() {
         {/* RIGHT - full-height map; warnings live in a collapsible overlay widget */}
         <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--surface)' }}>
           <div className="ts-map" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-            <MapView visits={draft.nodes} transfers={liveTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd
+            <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
@@ -869,10 +879,10 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
   const stop = (e) => e.stopPropagation();
   if (seg.kind === 'waypoint') {
     return (
-      <div className="te-wp" {...dragAttrs} onClick={onOpenCity} style={{ opacity: drag.dragging ? 0.4 : 1 }}>
+      <div className="te-row" {...dragAttrs} onClick={onOpenCity} style={{ opacity: drag.dragging ? 0.4 : 1 }}>
         <span className="te-grip" onClick={stop}><Icon name="drag" size={14} /></span>
         <span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>
-        <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span style={{ fontSize: 13.5, fontWeight: 600 }}>{seg.city_name}</span>
             <span className="te-wptag">{t('tse.layover')}</span>
@@ -885,7 +895,8 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
           <span className="num te-nights">0<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
           <button className="te-step" onClick={onNightsPlus} title={t('planner.more_nights')}><Icon name="plus" size={10} /></button>
         </span>
-        {acts.length > 0 && <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>}
+        <div className="te-cell te-cell--hotel" />
+        <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
       </div>
     );
   }

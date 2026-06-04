@@ -122,7 +122,7 @@ import { validateEntity, normalizePositions, transferAiCityAdvisories } from '@/
 import { FieldError, IssuesPanel, fieldHasError } from '@/components/common/ValidationUI';
 import { detectPlatformFromUrl, BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
-import { invalidateTripData } from '@/lib/trip-data';
+import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { resolveTimezoneFromCoords } from '@/lib/timezone-resolver';
 
 // Ensure a user-entered URL like "booking.com" opens absolutely (otherwise the
@@ -424,6 +424,9 @@ export default function EventEditDialog({
   // 'panel' = render the SAME content inline (no overlay) for the trip-editor
   // left panel. Behaviour/state are identical; only the outer wrapper differs.
   variant = 'dialog',
+  // Optional (trip editor only): report the in-progress transfer so the map can
+  // draw a live route preview shaped by the picked transport type.
+  onPreviewTransfer = null,
 }) {
   const { t } = useI18nFormat();
   const { lang } = useI18n();
@@ -644,6 +647,18 @@ export default function EventEditDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentKind, form.hasLayovers, form.startLocal, form.endLocal]);
 
+  // Live map route preview while creating a transfer (shaped by transport type).
+  useEffect(() => {
+    if (!onPreviewTransfer) return undefined;
+    if (currentKind === 'transfer' && !form.hasLayovers && fromVisit?.id && toVisit?.id) {
+      onPreviewTransfer({ id: 'preview', from_city_visit_id: fromVisit.id, to_city_visit_id: toVisit.id, transport_type: form.transport_type });
+    } else {
+      onPreviewTransfer(null);
+    }
+    return () => onPreviewTransfer(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentKind, form.hasLayovers, form.transport_type, fromVisit?.id, toVisit?.id]);
+
   // ── Save validity ──────────────────────────────────────────────────────
   // Validation never blocks; only genuinely incomplete input does (a half-entered
   // time that would persist as garbage) or an in-flight file upload.
@@ -658,14 +673,52 @@ export default function EventEditDialog({
     () => issues.filter((i) => submitted || (i.field && touched.has(i.field))),
     [issues, submitted, touched],
   );
+  // Build the DB payload for the current single entity (mirrors saveMut's branches).
+  const buildCurrentPayload = () => {
+    if (currentKind === 'hotel') return buildHotelPayload(form, visit, tz);
+    if (currentKind === 'activity') return buildActivityPayload(form, visit, tz);
+    if (currentKind === 'transfer') return buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz);
+    return buildServicePayload(form, tripId, t);
+  };
+  const OPT_TABLE = { hotel: 'hotel_stays', transfer: 'transfers', activity: 'activities', service: 'trip_services' };
+  const OPT_CACHE = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
+  // A create that touches several rows/cities (layover chain or AI extra segments)
+  // can't be cleanly mirrored optimistically — keep the awaited path for those.
+  const isComplexTransferCreate = currentKind === 'transfer' && !entity
+    && ((form.hasLayovers && Array.isArray(form.segments) && form.segments.length >= 2) || extraSegments.length > 0);
+
   const handleSaveClick = () => {
     if (!canSave) {
       setSubmitted(true);
-      const f = issues.find((i) => i.level === 'error' && i.field)?.field;
+      const f = issues.find((i) => i.field)?.field;
       if (f) document.querySelector(`[data-vfield="${CSS.escape(f)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return;
     }
-    saveMut.mutate();
+    // Optimistic CREATE of a single booking: show it immediately, close the panel,
+    // write to the DB in the background and reconcile. qc is app-level, so this
+    // completes even though the dialog unmounts on close. Edits + complex transfer
+    // creates keep the awaited mutation (avoids the view-panel read race / multi-row).
+    const optimistic = !entity && tripId && OPT_CACHE[currentKind] && !isComplexTransferCreate;
+    if (!optimistic) { saveMut.mutate(); return; }
+    const table = OPT_TABLE[currentKind];
+    const cacheKind = OPT_CACHE[currentKind];
+    const payload = buildCurrentPayload();
+    const tempId = 'tmp-' + Math.random().toString(36).slice(2);
+    const row = { id: tempId, trip_id: tripId, created_by: user?.id, ...payload };
+    const prev = qc.getQueryData(TRIP_CONTENT_KEY(tripId));
+    optimisticContentUpdate(qc, tripId, cacheKind, 'add', row);
+    onOpenChange(false);
+    (async () => {
+      try {
+        const { error } = await supabase.from(table).insert({ ...payload, created_by: user?.id });
+        if (error) throw error;
+        invalidateTripData(qc, tripId);
+      } catch (err) {
+        if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
+        invalidateTripData(qc, tripId);
+        toast({ title: t('event.save_failed'), description: err?.message || String(err), variant: 'destructive' });
+      }
+    })();
   };
 
   // ── Save mutation ──────────────────────────────────────────────────────
