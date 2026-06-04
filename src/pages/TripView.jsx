@@ -135,6 +135,9 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
       category: a.category,
       address: a.location_address,
       duration: a.end_datetime ? formatDuration(t, a.start_datetime, a.end_datetime) : null,
+      // Naive clock end (HH:mm) — used by the calendar week-view to size blocks
+      // by real duration instead of a fixed guess.
+      endTime: a.end_datetime ? formatNaive(a.end_datetime, 'HH:mm') : null,
       _ms: parseNaive(a.start_datetime)?.toMillis() ?? 0,
     });
   }
@@ -175,6 +178,7 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
       cur: tr.currency,
       platformUrl: tr.booking_url,
       duration: tr.end_datetime ? formatDuration(t, tr.start_datetime, tr.end_datetime) : null,
+      endTime: tr.end_datetime ? formatNaive(tr.end_datetime, 'HH:mm') : null,
       _ms: eventMs,
     });
   }
@@ -1814,6 +1818,7 @@ export default function TripView() {
               visits={visits}
               trip={trip}
               isLoading={loadingContent}
+              onOpenEvent={openEventView}
             />
           )}
           {shownLens === 'docs' && (

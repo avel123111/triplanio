@@ -14,8 +14,12 @@ export default {
   'calendar.car_dropoff': 'Car drop-off: {name}',
   'calendar.to_trip_start': 'To trip start',
   'calendar.legend_city': 'City (bar)',
-  'calendar.legend_transport': 'Flights and transfers',
+  'calendar.legend_transport': 'Transfers',
+  'calendar.legend_hotel': 'Stay',
+  'calendar.legend_activity': 'Activities',
+  'calendar.legend_deadline': 'Cancel deadline',
   'calendar.week_word': 'week',
   'calendar.week_no_data': 'No data for this week',
   'calendar.more_count': 'more',
+  'calendar.no_dates': 'Add trip dates to see the calendar',
 };

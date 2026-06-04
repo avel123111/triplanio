@@ -14,8 +14,12 @@ export default {
   'calendar.car_dropoff': 'Возврат авто: {name}',
   'calendar.to_trip_start': 'К старту путешествия',
   'calendar.legend_city': 'Город (полоса)',
-  'calendar.legend_transport': 'Перелёты и переезды',
+  'calendar.legend_transport': 'Переезды',
+  'calendar.legend_hotel': 'Проживание',
+  'calendar.legend_activity': 'Активности',
+  'calendar.legend_deadline': 'Дедлайн отмены',
   'calendar.week_word': 'неделя',
   'calendar.week_no_data': 'Нет данных для этой недели',
   'calendar.more_count': 'ещё',
+  'calendar.no_dates': 'Добавьте даты путешествия, чтобы увидеть календарь',
 };

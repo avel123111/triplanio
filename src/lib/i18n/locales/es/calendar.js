@@ -14,8 +14,12 @@ export default {
   'calendar.car_dropoff': 'Devolución coche: {name}',
   'calendar.to_trip_start': 'Al inicio del viaje',
   'calendar.legend_city': 'Ciudad (barra)',
-  'calendar.legend_transport': 'Vuelos y traslados',
+  'calendar.legend_transport': 'Traslados',
+  'calendar.legend_hotel': 'Alojamiento',
+  'calendar.legend_activity': 'Actividades',
+  'calendar.legend_deadline': 'Límite de cancelación',
   'calendar.week_word': 'semana',
   'calendar.week_no_data': 'Sin datos para esta semana',
   'calendar.more_count': 'más',
+  'calendar.no_dates': 'Añade las fechas del viaje para ver el calendario',
 };

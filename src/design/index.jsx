@@ -76,11 +76,14 @@ export const Field = ({ label, hint, sub, ai, error, children, required }) => (
 );
 
 // ----- Buttons -----
-export const Btn = ({ variant = "ghost", size, icon, iconRight, block, disabled, children, onClick, className = "" }) => (
+export const Btn = ({ variant = "ghost", size, icon, iconRight, block, disabled, children, onClick, className = "", ariaLabel, title, ariaPressed }) => (
   <button
     className={`btn btn--${variant} ${size ? "btn--" + size : ""} ${block ? "btn--block" : ""} ${className}`}
     onClick={onClick}
     disabled={disabled}
+    aria-label={ariaLabel}
+    aria-pressed={ariaPressed}
+    title={title}
   >
     {icon && <Icon name={icon} size={16} />}
     {children}

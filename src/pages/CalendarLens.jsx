@@ -1,114 +1,160 @@
 /**
- * CalendarLens - calendar tab inside TripView.
+ * CalendarLens - calendar tab inside TripView (§15).
+ *
+ * Month view: weekday grid where each week is its own relative row, so a city
+ * stay that crosses a week boundary wraps into a fresh bar per row instead of
+ * overflowing horizontally. Day events are real buttons (open the event panel).
+ *
+ * Week view: a time grid whose hour range adapts to the events present (so an
+ * 06:30 flight or a 23:50 train is never clipped), with an all-day strip for
+ * untimed events and blocks sized by real duration.
  *
  * Props:
- *   stream   - array of stream events (from buildEventStream)
- *   visits   - array of cityVisit rows
- *   trip     - trip object with start_date / end_date
- *   isLoading - boolean
+ *   stream      - array of stream events (from buildEventStream)
+ *   visits      - array of cityVisit rows
+ *   trip        - trip object with start_date / end_date
+ *   isLoading   - boolean
+ *   onOpenEvent - (streamEvent) => void  opens the read/edit panel (TripView.openEventView)
  */
 import React, { useState, useMemo } from 'react';
-import { Info } from 'luxon';
-import { Icon } from '../design/icons';
-import { Btn, Badge, Skeleton } from '../design/index';
+import { Info, DateTime } from 'luxon';
+import { Btn, Skeleton } from '../design/index';
 import { parseNaive, naiveDayKey } from '@/lib/naive-time';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { localeTag } from '@/lib/i18n/translations';
+import './CalendarLens.css';
 
 // Localized month names (1-indexed) and weekday short names (Mon..Sun) via Luxon.
 const monthNames = (lang) => ['', ...Info.months('long', { locale: localeTag(lang) })];
 const weekdayNames = (lang) => Info.weekdays('short', { locale: localeTag(lang) });
 
-// ─── constants ────────────────────────────────────────────────────────────────
-
+// ─── palette ────────────────────────────────────────────────────────────────
+// Aligned with the app's unified event-type tokens (app.css §"Event-type
+// unified palette") so the calendar matches the timeline / editor.
 const EVENT_COLOR = {
-  'hotel-checkin':  'var(--success)',
-  'hotel-checkout': 'var(--success)',
-  activity:         'var(--ai)',
-  flight:           'var(--brand)',
-  transfer:         'var(--brand)',
+  'hotel-checkin':  'var(--ev-hotel)',
+  'hotel-checkout': 'var(--ev-hotel)',
+  'hotel-deadline': 'var(--ev-deadline)',
+  activity:         'var(--ev-activity)',
+  flight:           'var(--ev-transfer)',
+  transfer:         'var(--ev-transfer)',
 };
+const eventColor = (type) => EVENT_COLOR[type] || 'var(--muted)';
 
+// City bars use shades derived from the primary (no rainbow) so consecutive
+// cities read as distinct without introducing unrelated hues.
+const CITY_SHADES = [
+  'var(--brand)',
+  'var(--brand-700)',
+  'color-mix(in srgb, var(--brand) 60%, var(--ink) 40%)',
+  'color-mix(in srgb, var(--brand) 82%, var(--ai) 18%)',
+  'color-mix(in srgb, var(--brand) 68%, #000 32%)',
+];
 
-// ─── Legend ───────────────────────────────────────────────────────────────────
-
-function Legend({ color, children }) {
-  return (
-    <span>
-      <span style={{ display: 'inline-block', width: 10, height: 10, background: color, borderRadius: 2, marginRight: 6, verticalAlign: -1 }} />
-      {children}
-    </span>
-  );
-}
+const BAR_H = 17;   // city bar height (px) — keep in sync with .cal-span
+const BAR_GAP = 2;
 
 // ─── MonthView ────────────────────────────────────────────────────────────────
 
-function MonthView({ cells, eventsByDay, spans, inTripDays }) {
+function MonthView({ weeks, offset, dim, eventsByDay, cityRanges, inTripDays, todayDay, onOpenEvent }) {
   const { t, lang } = useI18n();
   const WD_NAMES = weekdayNames(lang);
+  const [expanded, setExpanded] = useState(() => new Set());
+  const colOf = (day) => (offset + day - 1) % 7;
+
+  const toggle = (day) => setExpanded(prev => {
+    const next = new Set(prev);
+    next.has(day) ? next.delete(day) : next.add(day);
+    return next;
+  });
+
+  // For each week row: clamp every city range to the row and lane-stack overlaps.
+  const barsForWeek = (weekIdx) => {
+    const rowStart = Math.max(1, weekIdx * 7 - offset + 1);
+    const rowEnd = Math.min(dim, weekIdx * 7 + 7 - offset);
+    if (rowStart > rowEnd) return { bars: [], lanes: 0 };
+    const items = [];
+    for (const r of cityRanges) {
+      const a = Math.max(r.startDay, rowStart);
+      const b = Math.min(r.endDay, rowEnd);
+      if (a > b) continue;
+      items.push({ startCol: colOf(a), endCol: colOf(b), label: r.label, color: r.color });
+    }
+    items.sort((x, y) => x.startCol - y.startCol || y.endCol - x.endCol);
+    const laneEnds = [];
+    for (const it of items) {
+      let lane = laneEnds.findIndex(end => end < it.startCol);
+      if (lane === -1) { lane = laneEnds.length; laneEnds.push(it.endCol); }
+      else laneEnds[lane] = it.endCol;
+      it.lane = lane;
+    }
+    return { bars: items, lanes: laneEnds.length };
+  };
+
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-      {/* Weekday header */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--line)' }}>
-        {WD_NAMES.map(w => (
-          <div key={w} style={{
-            padding: '10px 12px', fontSize: 11.5, color: 'var(--muted-2)',
-            letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 600,
-            borderRight: '1px solid var(--line-2)',
-          }}>{w}</div>
-        ))}
-      </div>
+    <div className="cal-scroll">
+      <div className="cal-card cal-month" role="grid" aria-label={t('calendar.month')}>
+        {/* Weekday header */}
+        <div className="cal-wdhead" role="row">
+          {WD_NAMES.map(w => <div key={w} className="cal-wd" role="columnheader">{w}</div>)}
+        </div>
 
-      {/* Day cells */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: 112 }}>
-        {cells.map((d, i) => {
-          const inTrip = d != null && inTripDays.has(d);
-          const ev = d != null ? (eventsByDay[d] || []) : [];
-          const cellSpans = d != null ? spans.filter(s => s.from === d) : [];
-
+        {/* One relative row per week */}
+        {weeks.map((week, wi) => {
+          const { bars, lanes } = barsForWeek(wi);
+          const band = lanes * (BAR_H + BAR_GAP);
           return (
-            <div key={i} style={{
-              borderRight: '1px solid var(--line-2)',
-              borderBottom: '1px solid var(--line-2)',
-              padding: '8px 8px 6px',
-              position: 'relative',
-              background: inTrip ? 'var(--brand-soft)' : 'var(--surface)',
-              opacity: d != null ? 1 : 0.3,
-              overflow: 'visible',
-            }}>
-              {d != null && (
-                <div style={{
-                  fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 13.5,
-                  color: inTrip ? 'var(--brand)' : 'var(--ink-2)',
-                }}>{d}</div>
-              )}
-
-              {/* City span bars - start on this day, extend right */}
-              {cellSpans.map((s, si) => (
-                <div key={si} style={{
-                  position: 'absolute', left: 4, top: 28,
-                  padding: '2px 6px', fontSize: 10.5, fontWeight: 500,
-                  background: s.c, color: 'white', borderRadius: 4,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  width: `calc(${(s.to - s.from + 1) * 100}% + ${(s.to - s.from) * 1}px - 8px)`,
-                  zIndex: 2,
-                }}>{s.label}</div>
-              ))}
-
-              {/* Event dots */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 50, position: 'relative', zIndex: 3 }}>
-                {ev.slice(0, 2).map((e, ei) => (
-                  <div key={ei} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5 }}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: e.c, flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="num">
-                      {e.time && <span className="muted">{e.time} </span>}{e.t}
-                    </span>
+            <div key={wi} className="cal-week" role="row" style={{ '--cal-band': `${band}px` }}>
+              {week.map((d, ci) => {
+                const inTrip = d != null && inTripDays.has(d);
+                const ev = d != null ? (eventsByDay[d] || []) : [];
+                const isOpen = d != null && expanded.has(d);
+                const shown = isOpen ? ev : ev.slice(0, 2);
+                const cls = ['cal-cell'];
+                if (d == null) cls.push('cal-cell--out');
+                if (inTrip) cls.push('cal-cell--trip');
+                if (d === todayDay) cls.push('cal-cell--today');
+                return (
+                  <div key={ci} className={cls.join(' ')} role="gridcell">
+                    {d != null && <div className="cal-daynum">{d}</div>}
+                    <div className="cal-events">
+                      {shown.map((e, ei) => (
+                        <button
+                          key={ei}
+                          type="button"
+                          className="cal-ev"
+                          onClick={() => onOpenEvent?.(e)}
+                          aria-label={`${e.time ? e.time + ' ' : ''}${e.title}`}
+                        >
+                          <span className="cal-ev__dot" style={{ background: eventColor(e.type) }} />
+                          <span className="cal-ev__txt num">
+                            {e.time && <span className="cal-ev__time">{e.time} </span>}{e.title}
+                          </span>
+                        </button>
+                      ))}
+                      {ev.length > 2 && (
+                        <button type="button" className="cal-more" onClick={() => toggle(d)}>
+                          {isOpen ? '−' : `+${ev.length - 2} ${t('calendar.more_count')}`}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                ))}
-                {ev.length > 2 && (
-                  <div style={{ fontSize: 10, color: 'var(--muted)', paddingLeft: 9 }}>+{ev.length - 2} {t('calendar.more_count')}</div>
-                )}
-              </div>
+                );
+              })}
+
+              {/* City bars overlay — wrapped to this week row */}
+              {bars.length > 0 && (
+                <div className="cal-spans" aria-hidden="true">
+                  {bars.map((b, bi) => (
+                    <div key={bi} className="cal-span" style={{
+                      left: `calc(${(b.startCol / 7) * 100}% + 4px)`,
+                      width: `calc(${((b.endCol - b.startCol + 1) / 7) * 100}% - 8px)`,
+                      top: b.lane * (BAR_H + BAR_GAP),
+                      background: b.color,
+                    }}>{b.label}</div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
@@ -119,82 +165,113 @@ function MonthView({ cells, eventsByDay, spans, inTripDays }) {
 
 // ─── WeekView ─────────────────────────────────────────────────────────────────
 
-function WeekView({ days, events }) {
-  const { t } = useI18n();
-  const HOURS = [];
-  for (let h = 8; h <= 22; h++) HOURS.push(h);
-  const HOUR_HEIGHT = 36;
+const HOUR_HEIGHT = 36;
 
+function WeekView({ days, timed, allDay, hourStart, hourEnd, onOpenEvent }) {
+  const { t } = useI18n();
   if (!days.length) {
-    return (
-      <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', border: '1px solid var(--line)', borderRadius: 14 }}>
-        {t('calendar.week_no_data')}
-      </div>
-    );
+    return <div className="cal-card cal-empty">{t('calendar.week_no_data')}</div>;
   }
+  const HOURS = [];
+  for (let h = hourStart; h <= hourEnd; h++) HOURS.push(h);
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-      {/* Day header */}
-      <div style={{ display: 'grid', gridTemplateColumns: '56px repeat(7, 1fr)', borderBottom: '1px solid var(--line)' }}>
-        <div style={{ borderRight: '1px solid var(--line-2)' }} />
-        {days.map((d, i) => (
-          <div key={i} style={{ padding: '10px 8px', borderRight: i < 6 ? '1px solid var(--line-2)' : 'none', textAlign: 'center' }}>
-            <div className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 19, letterSpacing: '-0.02em' }}>{d.date}</div>
-            <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 2 }}>{d.wd}</div>
-            <div className="muted" style={{ fontSize: 11, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.city}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Hour grid + events */}
-      <div style={{ display: 'grid', gridTemplateColumns: '56px repeat(7, 1fr)', position: 'relative' }}>
-        {/* Hours column */}
-        <div style={{ borderRight: '1px solid var(--line-2)' }}>
-          {HOURS.map(h => (
-            <div key={h} style={{ height: HOUR_HEIGHT, fontSize: 10.5, color: 'var(--muted-2)', padding: '2px 6px', textAlign: 'right' }} className="num">
-              {String(h).padStart(2, '0')}:00
+    <div className="cal-scroll">
+      <div className="cal-card cal-week-grid">
+        {/* Day header */}
+        <div className="cal-week-head">
+          <div className="cal-week-head__gutter" />
+          {days.map((d, i) => (
+            <div key={i} className={`cal-week-day${d.isToday ? ' cal-week-day--today' : ''}`}>
+              <div className="cal-wdnum num">{d.date}</div>
+              <div className="cal-wdname">{d.wd}</div>
+              <div className="cal-wdcity">{d.city}</div>
             </div>
           ))}
         </div>
 
-        {/* 7 day columns */}
-        {days.map((d, di) => (
-          <div key={di} style={{
-            position: 'relative',
-            borderRight: di < 6 ? '1px solid var(--line-2)' : 'none',
-            backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent ${HOUR_HEIGHT - 1}px, var(--line-2) ${HOUR_HEIGHT - 1}px, var(--line-2) ${HOUR_HEIGHT}px)`,
-            minHeight: HOURS.length * HOUR_HEIGHT,
-          }}>
-            {events.filter(e => e.day === di).map((e, ei) => {
-              const top = (e.start - HOURS[0]) * HOUR_HEIGHT;
-              const h = (e.end - e.start) * HOUR_HEIGHT;
-              return (
-                <div key={ei} style={{
-                  position: 'absolute', left: 4, right: 4,
-                  top, height: Math.max(h, 22),
-                  background: e.c, color: 'white',
-                  borderRadius: 5, padding: '3px 6px',
-                  fontSize: 11, fontWeight: 500,
-                  overflow: 'hidden', lineHeight: 1.3, cursor: 'pointer',
-                }}>
-                  <div className="num" style={{ fontSize: 10, opacity: 0.85 }}>
-                    {Math.floor(e.start)}:{String(Math.round((e.start % 1) * 60)).padStart(2, '0')}
-                  </div>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.t}</div>
-                </div>
-              );
-            })}
+        {/* All-day strip — only when there are untimed events this week */}
+        {allDay.some(c => c.length > 0) && (
+          <div className="cal-allday">
+            <div className="cal-allday__label">{t('calendar.all_day')}</div>
+            {allDay.map((col, di) => (
+              <div key={di} className="cal-allday__col">
+                {col.map((e, ei) => (
+                  <button
+                    key={ei}
+                    type="button"
+                    className="cal-allday__chip"
+                    style={{ background: eventColor(e.type) }}
+                    onClick={() => onOpenEvent?.(e)}
+                    aria-label={e.title}
+                  >{e.title}</button>
+                ))}
+              </div>
+            ))}
           </div>
-        ))}
+        )}
+
+        {/* Hour grid + timed events */}
+        <div className="cal-week-body">
+          <div className="cal-hours">
+            {HOURS.map(h => (
+              <div key={h} className="cal-hour num" style={{ height: HOUR_HEIGHT }}>
+                {String(h).padStart(2, '0')}:00
+              </div>
+            ))}
+          </div>
+
+          {days.map((d, di) => (
+            <div key={di} className="cal-daycol" style={{
+              backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent ${HOUR_HEIGHT - 1}px, var(--line-2) ${HOUR_HEIGHT - 1}px, var(--line-2) ${HOUR_HEIGHT}px)`,
+              minHeight: HOURS.length * HOUR_HEIGHT,
+            }}>
+              {timed.filter(e => e.day === di).map((e, ei) => {
+                const top = (e.start - hourStart) * HOUR_HEIGHT;
+                const h = Math.max((e.end - e.start) * HOUR_HEIGHT, 22);
+                const mm = String(Math.round((e.start % 1) * 60)).padStart(2, '0');
+                return (
+                  <button key={ei} type="button" className="cal-block" style={{
+                    top, height: h, background: eventColor(e.type),
+                  }} onClick={() => onOpenEvent?.(e.ev)} aria-label={`${Math.floor(e.start)}:${mm} ${e.t}`}>
+                    <div className="cal-block__time num">{Math.floor(e.start)}:{mm}</div>
+                    <div className="cal-block__txt">{e.t}</div>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Legend ─────────────────────────────────────────────────────────────────
+
+function Legend() {
+  const { t } = useI18n();
+  const items = [
+    ['var(--brand)',        t('calendar.legend_city')],
+    ['var(--ev-hotel)',     t('calendar.legend_hotel')],
+    ['var(--ev-activity)',  t('calendar.legend_activity')],
+    ['var(--ev-transfer)',  t('calendar.legend_transport')],
+    ['var(--ev-deadline)',  t('calendar.legend_deadline')],
+  ];
+  return (
+    <div className="cal-legend">
+      {items.map(([c, label]) => (
+        <span key={label} className="cal-legend__item">
+          <span className="cal-legend__sw" style={{ background: c }} />{label}
+        </span>
+      ))}
     </div>
   );
 }
 
 // ─── CalendarLens (main export) ───────────────────────────────────────────────
 
-export default function CalendarLens({ stream, visits, trip, isLoading }) {
+export default function CalendarLens({ stream, visits, trip, isLoading, onOpenEvent }) {
   const { t, lang } = useI18n();
   const MONTH_NAMES = useMemo(() => monthNames(lang), [lang]);
   const WD_NAMES = useMemo(() => weekdayNames(lang), [lang]);
@@ -203,117 +280,140 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
   const [weekOffset, setWeekOffset]   = useState(0);
 
   // Base start date from trip or first visit that actually has a date
-  // (kind='start' cities have start_date=null, so we must skip them)
+  // (kind='start' cities have start_date=null, so we must skip them).
   const firstDatedVisit = visits.find(v => v.start_date);
   const baseDateStr = trip?.start_date
     || (firstDatedVisit ? naiveDayKey(firstDatedVisit.start_date) : null);
   const baseDate = baseDateStr ? parseNaive(baseDateStr + 'T00:00:00') : null;
-
-  // Current month for display (with navigation offset)
   const currentMonth = baseDate ? baseDate.plus({ months: monthOffset }) : null;
+  const today = DateTime.now();
 
-  // Month grid data
-  const { cells, year, monthNum, monthLabel } = useMemo(() => {
-    if (!currentMonth) return { cells: [], year: 0, monthNum: 0, monthLabel: '-' };
+  // ── Month grid: weeks + per-city ranges clamped to the month ──
+  const month = useMemo(() => {
+    if (!currentMonth) return null;
     const y = currentMonth.year;
     const m = currentMonth.month;
-    const firstDay = currentMonth.startOf('month');
-    const daysInMonth = currentMonth.daysInMonth;
-    const offset = firstDay.weekday - 1; // Luxon 1=Mon → offset 0=Mon
-    const result = [];
-    for (let i = 0; i < offset; i++) result.push(null);
-    for (let d = 1; d <= daysInMonth; d++) result.push(d);
-    return { cells: result, year: y, monthNum: m, monthLabel: `${MONTH_NAMES[m]} ${y}` };
-  }, [currentMonth, MONTH_NAMES]);
+    const first = currentMonth.startOf('month');
+    const dim = currentMonth.daysInMonth;
+    const offset = first.weekday - 1; // Luxon 1=Mon → offset 0=Mon
+    const total = Math.ceil((offset + dim) / 7) * 7;
+    const cells = [];
+    for (let i = 0; i < total; i++) {
+      const day = i - offset + 1;
+      cells.push(day >= 1 && day <= dim ? day : null);
+    }
+    const weeks = [];
+    for (let w = 0; w < total / 7; w++) weeks.push(cells.slice(w * 7, w * 7 + 7));
+    return { y, m, offset, dim, weeks };
+  }, [currentMonth]);
 
-  // Events keyed by day-of-month for current month
+  const cityRanges = useMemo(() => {
+    if (!month) return [];
+    const out = [];
+    visits.forEach((v, idx) => {
+      const s = parseNaive(v.start_date);
+      const e = parseNaive(v.end_date);
+      if (!s || !e) return;
+      const mStart = currentMonth.startOf('month');
+      const mEnd = currentMonth.endOf('month');
+      const cs = s < mStart ? mStart : s;
+      const ce = e > mEnd ? mEnd : e;
+      if (cs > ce) return;
+      out.push({
+        startDay: cs.day, endDay: ce.day,
+        label: v.city_name || '—',
+        color: CITY_SHADES[idx % CITY_SHADES.length],
+      });
+    });
+    return out;
+  }, [visits, currentMonth, month]);
+
   const eventsByDay = useMemo(() => {
     const map = {};
+    if (!month) return map;
     for (const e of stream) {
       if (!e.date) continue;
       const dt = parseNaive(e.date + 'T00:00:00');
-      if (!dt || dt.year !== year || dt.month !== monthNum) continue;
-      const d = dt.day;
-      if (!map[d]) map[d] = [];
-      map[d].push({ t: e.title, c: EVENT_COLOR[e.type] || 'var(--muted)', time: e.time || '' });
+      if (!dt || dt.year !== month.y || dt.month !== month.m) continue;
+      (map[dt.day] ||= []).push(e);
     }
     return map;
-  }, [stream, year, monthNum]);
+  }, [stream, month]);
 
-  // City span bars for current month (from visits, clamped to month bounds)
-  const spans = useMemo(() => {
-    if (!currentMonth) return [];
-    return visits.flatMap(v => {
-      const start = parseNaive(v.start_date);
-      const end   = parseNaive(v.end_date);
-      if (!start || !end) return [];
-      const mStart = currentMonth.startOf('month');
-      const mEnd   = currentMonth.endOf('month');
-      const cStart = start < mStart ? mStart : start;
-      const cEnd   = end   > mEnd   ? mEnd   : end;
-      if (cStart > cEnd) return [];
-      return [{ from: cStart.day, to: cEnd.day, label: v.city_name || '-', c: 'var(--brand)' }];
-    });
-  }, [visits, currentMonth]);
-
-  // Set of day-of-month numbers that are within any city visit
   const inTripDays = useMemo(() => {
     const set = new Set();
+    if (!month) return set;
     for (const v of visits) {
-      const start = parseNaive(v.start_date);
-      const end   = parseNaive(v.end_date);
-      if (!start || !end) continue;
-      let cur = start;
-      while (cur <= end) {
-        if (cur.year === year && cur.month === monthNum) set.add(cur.day);
+      const s = parseNaive(v.start_date);
+      const e = parseNaive(v.end_date);
+      if (!s || !e) continue;
+      let cur = s;
+      while (cur <= e) {
+        if (cur.year === month.y && cur.month === month.m) set.add(cur.day);
         cur = cur.plus({ days: 1 });
       }
     }
     return set;
-  }, [visits, year, monthNum]);
+  }, [visits, month]);
 
-  // Week view data
-  const { weekDays, weekEvents, weekLabel } = useMemo(() => {
-    if (!baseDateStr) return { weekDays: [], weekEvents: [], weekLabel: '' };
-    const tripStart = parseNaive(baseDateStr + 'T00:00:00');
-    if (!tripStart) return { weekDays: [], weekEvents: [], weekLabel: '' };
-    const weekStart = tripStart.startOf('week').plus({ weeks: weekOffset });
-    const weekEnd   = weekStart.plus({ days: 6 });
+  const todayDay = month && today.year === month.y && today.month === month.m ? today.day : null;
+
+  // ── Week view data ──
+  const week = useMemo(() => {
+    if (!baseDate) return { days: [], timed: [], allDay: [], hourStart: 8, hourEnd: 22, title: '', label: '' };
+    const weekStart = baseDate.startOf('week').plus({ weeks: weekOffset });
+    const weekEnd = weekStart.plus({ days: 6 });
+    const todayStr = naiveDayKey(today.toISO());
 
     const days = [];
     for (let i = 0; i < 7; i++) {
-      const d      = weekStart.plus({ days: i });
+      const d = weekStart.plus({ days: i });
       const dayStr = naiveDayKey(d.toISO());
-      const city   = visits.find(v => {
+      const city = visits.find(v => {
         const s = parseNaive(v.start_date);
         const e = parseNaive(v.end_date);
         return s && e && d >= s && d <= e;
       });
-      days.push({ wd: WD_NAMES[i], date: d.day, dateStr: dayStr, city: city?.city_name || '' });
+      days.push({ wd: WD_NAMES[i], date: d.day, dateStr: dayStr, city: city?.city_name || '', isToday: dayStr === todayStr });
     }
 
-    const wEvents = [];
+    const parseH = (hhmm) => {
+      const [h, m] = hhmm.split(':');
+      return Number(h) + Number(m || 0) / 60;
+    };
+
+    const timed = [];
+    const allDay = Array.from({ length: 7 }, () => []);
+    let minH = 24, maxH = 0;
     for (const e of stream) {
-      if (!e.date || !e.time) continue;
+      if (!e.date) continue;
       const dayIdx = days.findIndex(d => d.dateStr === e.date);
       if (dayIdx < 0) continue;
-      const [hStr, mStr] = e.time.split(':');
-      const startH = Number(hStr) + Number(mStr || 0) / 60;
-      if (startH < 8 || startH > 22) continue;
-      wEvents.push({
-        day: dayIdx, date: days[dayIdx].date,
-        start: startH, end: Math.min(startH + 1.5, 22),
-        t: e.title, c: EVENT_COLOR[e.type] || 'var(--muted)',
-      });
+      if (!e.time) { allDay[dayIdx].push(e); continue; }
+      const start = parseH(e.time);
+      let end = e.endTime ? parseH(e.endTime) : start + 1;
+      if (end <= start) end = start + 1;           // guard cross-midnight / equal
+      end = Math.min(end, 24);
+      timed.push({ day: dayIdx, start, end, t: e.title, type: e.type, ev: e });
+      minH = Math.min(minH, Math.floor(start));
+      maxH = Math.max(maxH, Math.ceil(end));
+    }
+
+    // Adapt the visible hour range to the events; fall back to a daytime window.
+    let hourStart = 8, hourEnd = 22;
+    if (timed.length) {
+      hourStart = Math.max(0, Math.min(minH, 8));
+      hourEnd = Math.min(24, Math.max(maxH, 20));
     }
 
     return {
-      weekDays:  days,
-      weekEvents: wEvents,
-      weekLabel: `${weekStart.day} - ${weekEnd.day}`,
+      days, timed, allDay, hourStart, hourEnd,
+      title: `${MONTH_NAMES[weekStart.month]} ${weekStart.year}`,
+      label: `${weekStart.day} – ${weekEnd.day}`,
     };
-  }, [stream, visits, baseDateStr, weekOffset, WD_NAMES]);
+  }, [stream, visits, baseDate, weekOffset, WD_NAMES, MONTH_NAMES, today]);
 
+  // ── Loading ──
   if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -327,42 +427,62 @@ export default function CalendarLens({ stream, visits, trip, isLoading }) {
     );
   }
 
+  // ── Empty: no usable dates ──
+  if (!baseDate) {
+    return <div className="cal-card cal-empty">{t('calendar.no_dates')}</div>;
+  }
+
   const goBack = () => view === 'month' ? setMonthOffset(o => o - 1) : setWeekOffset(o => o - 1);
   const goFwd  = () => view === 'month' ? setMonthOffset(o => o + 1) : setWeekOffset(o => o + 1);
   const goHome = () => { setMonthOffset(0); setWeekOffset(0); };
+  const goToday = () => {
+    const now = today.startOf('day');
+    if (view === 'month') {
+      setMonthOffset((now.year - baseDate.year) * 12 + (now.month - baseDate.month));
+    } else {
+      const diff = now.startOf('week').diff(baseDate.startOf('week'), 'weeks').weeks;
+      setWeekOffset(Math.round(diff));
+    }
+  };
+
+  const headerTitle = view === 'month'
+    ? `${MONTH_NAMES[currentMonth.month]} ${currentMonth.year}`
+    : week.title;
 
   return (
     <>
       {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <h2 style={{ flex: 1, marginBottom: 0 }}>
-          {monthLabel}
-          {view === 'week' && weekLabel && (
-            <span className="muted num" style={{ fontSize: 16, fontWeight: 400, marginLeft: 12 }}>
-              · {t('calendar.week_word')} {weekLabel}
-            </span>
+      <div className="cal-toolbar">
+        <h2 className="cal-toolbar__title">
+          {headerTitle}
+          {view === 'week' && week.label && (
+            <span className="cal-toolbar__sub num">· {t('calendar.week_word')} {week.label}</span>
           )}
         </h2>
-        <Btn variant="ghost" size="sm" icon="back" onClick={goBack} />
-        <Btn variant="ghost" size="sm" onClick={goHome}>{t('calendar.to_trip_start')}</Btn>
-        <Btn variant="ghost" size="sm" icon="chev" onClick={goFwd} />
-        <div className="tweaks__seg" style={{ marginLeft: 6 }}>
-          <button className={view === 'month' ? 'active' : ''} onClick={() => setView('month')}>{t('calendar.month')}</button>
-          <button className={view === 'week'  ? 'active' : ''} onClick={() => setView('week')}>{t('calendar.week')}</button>
+        <div className="cal-nav">
+          <Btn variant="ghost" size="sm" icon="back" onClick={goBack} ariaLabel={t('calendar.prev')} />
+          <Btn variant="ghost" size="sm" onClick={goToday}>{t('calendar.today')}</Btn>
+          <Btn variant="ghost" size="sm" onClick={goHome}>{t('calendar.to_trip_start')}</Btn>
+          <Btn variant="ghost" size="sm" icon="chev" onClick={goFwd} ariaLabel={t('calendar.next')} />
+        </div>
+        <div className="tweaks__seg" role="group" aria-label={t('calendar.month') + ' / ' + t('calendar.week')} style={{ marginLeft: 6 }}>
+          <button className={view === 'month' ? 'active' : ''} aria-pressed={view === 'month'} onClick={() => setView('month')}>{t('calendar.month')}</button>
+          <button className={view === 'week'  ? 'active' : ''} aria-pressed={view === 'week'}  onClick={() => setView('week')}>{t('calendar.week')}</button>
         </div>
       </div>
 
       {view === 'month'
-        ? <MonthView cells={cells} eventsByDay={eventsByDay} spans={spans} inTripDays={inTripDays} />
-        : <WeekView days={weekDays} events={weekEvents} />}
+        ? <MonthView
+            weeks={month.weeks} offset={month.offset} dim={month.dim}
+            eventsByDay={eventsByDay} cityRanges={cityRanges}
+            inTripDays={inTripDays} todayDay={todayDay} onOpenEvent={onOpenEvent}
+          />
+        : <WeekView
+            days={week.days} timed={week.timed} allDay={week.allDay}
+            hourStart={week.hourStart} hourEnd={week.hourEnd} onOpenEvent={onOpenEvent}
+          />}
 
-      {/* Legend */}
-      <div style={{ marginTop: 16, fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        <Legend color="var(--brand)">{t('calendar.legend_city')}</Legend>
-        <Legend color="var(--success)">{t('budget.cat_accommodation')}</Legend>
-        <Legend color="var(--ai)">{t('budget.cat_activities')}</Legend>
-        <Legend color="var(--brand)">{t('calendar.legend_transport')}</Legend>
-      </div>
+      <Legend />
     </>
   );
 }
