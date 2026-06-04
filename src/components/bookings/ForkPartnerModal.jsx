@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ExternalLink, Bed, Plane, Car, Wifi, ShieldCheck, Info } from 'lucide-react';
+import { ExternalLink, Bed, Plane, Car, Wifi, ShieldCheck, Info, ArrowLeft } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -87,6 +87,9 @@ export default function ForkPartnerModal({
   trip,
   tripId,
   onManual,
+  // 'dialog' (default) = modal overlay; 'panel' = render inline in the trip
+  // editor's left column (same content, PanelShell-style chrome + back button).
+  variant = 'dialog',
 }) {
   const { t } = useI18nFormat();
   const logClick = usePartnerLogger(tripId);
@@ -125,21 +128,8 @@ export default function ForkPartnerModal({
 
   const ManualIcon = meta.Icon;
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span
-              className="w-7 h-7 rounded-md grid place-items-center shrink-0 text-white"
-              style={{ background: meta.color }}
-            >
-              <ManualIcon className="w-4 h-4" />
-            </span>
-            <span>{t(meta.titleKey)}</span>
-          </DialogTitle>
-        </DialogHeader>
-
+  const body = (
+    <>
         <div className="fork-grid">
           {/* LEFT - manual */}
           <button
@@ -302,27 +292,49 @@ export default function ForkPartnerModal({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t('fork.cancel')}
-          </Button>
-        </DialogFooter>
+    </>
+  );
 
-        <style>{`
-          .fork-grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-            gap: 14px;
-          }
-          @media (max-width: 480px) {
-            .fork-grid { grid-template-columns: 1fr; }
-          }
-          .fork-partner-card:hover {
-            border-color: var(--ink-3, #dbe1ec) !important;
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-soft);
-          }
-        `}</style>
+  const styleTag = (
+    <style>{`
+      .fork-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; }
+      @media (max-width: 480px) { .fork-grid { grid-template-columns: 1fr; } }
+      .fork-partner-card:hover { border-color: var(--ink-3, #dbe1ec) !important; transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+    `}</style>
+  );
+
+  if (variant === 'panel') {
+    return (
+      <div className="te-panel">
+        <div className="te-panel__top">
+          <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: meta.color }} />
+          <button className="te-back" onClick={() => onOpenChange(false)} title={t('fork.cancel')}><ArrowLeft className="w-4 h-4" /></button>
+          <span className="te-panel__icon" style={{ background: meta.colorSoft, color: meta.color }}><ManualIcon className="w-4 h-4" /></span>
+          <div style={{ flex: 1, minWidth: 0 }}><div className="te-panel__title">{t(meta.titleKey)}</div></div>
+        </div>
+        <div className="te-panel__body scrollbar-thin">{body}</div>
+        <div className="te-panel__foot"><Button variant="outline" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Button></div>
+        {styleTag}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="w-7 h-7 rounded-md grid place-items-center shrink-0 text-white" style={{ background: meta.color }}>
+              <ManualIcon className="w-4 h-4" />
+            </span>
+            <span>{t(meta.titleKey)}</span>
+          </DialogTitle>
+        </DialogHeader>
+        {body}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Button>
+        </DialogFooter>
+        {styleTag}
       </DialogContent>
     </Dialog>
   );

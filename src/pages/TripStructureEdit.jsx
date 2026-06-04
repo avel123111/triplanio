@@ -12,6 +12,7 @@ import { getTimezone } from '@/lib/geo';
 import MapView from '@/components/views/MapView';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
 import CityPanel from '@/components/common/CityPanel';
+import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
 import { useToast } from '@/components/ui/use-toast';
@@ -314,7 +315,7 @@ export default function TripStructureEdit() {
       setLeftPanel({ type: 'event', kind: 'transfer', id: tr.id, warning: issue?.message || null });
       return;
     }
-    setLeftPanel({ type: 'create', kind: 'transfer', fromVisit: a, toVisit: b });
+    setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: a, toVisit: b });
   };
 
   const onSave = async () => {
@@ -414,7 +415,9 @@ export default function TripStructureEdit() {
   // panel navigation
   const openCity = (id) => setLeftPanel({ type: 'city', id });
   const openEvent = (kind, id) => setLeftPanel({ type: 'event', kind, id, warning: (issues.find((i) => i[`${kind}Id`] === id)?.message) || null });
-  const createBooking = (kind, node) => setLeftPanel({ type: 'create', kind, visit: node });
+  // hotel/transfer have partner offers → show the PickPanel ("Развилка") first;
+  // activities have none → straight to the form.
+  const createBooking = (kind, node) => setLeftPanel(kind === 'hotel' ? { type: 'pick', kind, visit: node } : { type: 'create', kind, visit: node });
   let stayNum = 0;
 
   // assemble rows: each node + the connector to the next node
@@ -433,6 +436,15 @@ export default function TripStructureEdit() {
       <EventSourcePanel
         kind={leftPanel.kind} id={leftPanel.id} warning={leftPanel.warning}
         canEdit onClose={closeLeftPanel}
+      />
+    );
+  } else if (leftPanel?.type === 'pick') {
+    leftPanelEl = (
+      <ForkPartnerModal
+        open variant="panel" type={leftPanel.kind} tripId={tripId} trip={trip}
+        visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
+        onManual={() => setLeftPanel({ type: 'create', kind: leftPanel.kind, visit: leftPanel.visit, fromVisit: leftPanel.fromVisit, toVisit: leftPanel.toVisit })}
+        onOpenChange={(o) => { if (!o) closeLeftPanel(); }}
       />
     );
   } else if (leftPanel?.type === 'create') {
@@ -465,8 +477,8 @@ export default function TripStructureEdit() {
           onOpenHotel={(id) => openEvent('hotel', id)} onAddHotel={() => createBooking('hotel', node)}
           onOpenActivity={(id) => openEvent('activity', id)} onAddActivity={() => createBooking('activity', node)}
           onOpenTransfer={(tr) => openEvent('transfer', tr.id)}
-          onAddArrival={() => prev && setLeftPanel({ type: 'create', kind: 'transfer', fromVisit: prev, toVisit: node })}
-          onAddDeparture={() => next && setLeftPanel({ type: 'create', kind: 'transfer', fromVisit: node, toVisit: next })}
+          onAddArrival={() => prev && setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: prev, toVisit: node })}
+          onAddDeparture={() => next && setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: node, toVisit: next })}
         />
       );
     }
