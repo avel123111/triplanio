@@ -485,9 +485,8 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                   so the popup lists just the assistant. */}
               <button
                 onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', width: '100%', border: 'none', background: 'transparent', borderRadius: 7, cursor: 'pointer', textAlign: 'left' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                className="dz-rowhover"
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', width: '100%', border: 'none', borderRadius: 7, cursor: 'pointer', textAlign: 'left' }}
               >
                 <TriplanioAvatar size="sm" />
                 <div style={{ flex: 1 }}>

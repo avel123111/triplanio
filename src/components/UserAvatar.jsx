@@ -1,4 +1,5 @@
 import React from 'react';
+import { hashStr } from '@/lib/hash';
 
 /**
  * Unified user avatar.
@@ -28,17 +29,9 @@ const PALETTE = [
   { bg: 'bg-red-500', fg: 'text-white' },
 ];
 
-function hashString(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
-}
-
 export function colorForUser(seed) {
   const key = (seed || '?').toLowerCase().trim();
-  return PALETTE[hashString(key) % PALETTE.length];
+  return PALETTE[hashStr(key) % PALETTE.length];
 }
 
 export function initialsFor(name, email) {

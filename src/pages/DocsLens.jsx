@@ -273,14 +273,12 @@ function DocCard({ doc, tripId, scope }) {
   return (
     <button
       onClick={() => window.__openModal?.(<DocDetailDialog doc={doc} tripId={tripId} />)}
+      className="dz-lift"
       style={{
-        padding: 14, background: 'var(--surface)', border: '1px solid var(--line)',
+        padding: 14, background: 'var(--surface)',
         borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 8,
         cursor: 'pointer', textAlign: 'left',
-        transition: 'border-color .15s, transform .1s',
-      }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--line-hover)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.transform = ''; }}>
+      }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{
           width: 36, height: 36, borderRadius: 9,

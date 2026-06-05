@@ -459,6 +459,28 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
 .btn--lg { padding: 12px 18px; font-size: 14.5px; border-radius: 12px; }
 .btn--block { width: 100%; justify-content: center; }
 .btn.is-on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand-soft-12); }
+
+/* Shared "lift on hover" card — declarative replacement for JS onMouseEnter style
+   mutation. The base border lives here (not inline) so :hover can win over it. */
+.dz-lift { border: 1px solid var(--line); transition: border-color .14s var(--ease-out), box-shadow .14s var(--ease-out), transform .14s var(--ease-out); }
+.dz-lift:hover { border-color: var(--line-hover); transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+.dz-lift:active { transform: translateY(0); }
+.dz-lift--transfer { border-left: 3px solid var(--ev-transfer); }
+.dz-lift--transfer:hover { border-left-color: var(--ev-transfer); }
+@media (prefers-reduced-motion: reduce) { .dz-lift:hover { transform: none; } }
+.dz-xbtn { background: transparent; transition: background .12s var(--ease-out); }
+.dz-xbtn:hover { background: var(--wash); }
+/* Row/menu-item background hover (base transparent lives here so :hover wins). */
+.dz-rowhover { background: transparent; transition: background .12s var(--ease-out); }
+.dz-rowhover:hover { background: var(--wash); }
+/* Border-only hover (list rows). */
+.dz-bord { border: 1px solid var(--line); transition: border-color .14s var(--ease-out); }
+.dz-bord:hover { border-color: var(--line-hover); }
+/* Strong card lift (collection cards): -2px + card shadow. */
+.dz-lift-card { border: 1px solid var(--line); transition: border-color .15s var(--ease-out), box-shadow .15s var(--ease-out), transform .15s var(--ease-out); }
+.dz-lift-card:hover { border-color: var(--line-hover); transform: translateY(-2px); box-shadow: var(--shadow-card); }
+.dz-lift-card:active { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { .dz-lift-card:hover { transform: none; } }
 .btn[disabled], .btn.is-disabled { opacity: .55; pointer-events: none; }
 /* Every button confirms the press — instant tactile feedback. Placed last so it
    wins over .btn--primary:hover's translateY on equal specificity. */

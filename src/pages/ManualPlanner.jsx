@@ -183,13 +183,12 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
             <button
               key={c.external_city_id}
               onMouseDown={() => handleSelect(c)}
+              className="dz-rowhover"
               style={{
                 width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none',
-                borderBottom: '1px solid var(--line-2)', background: 'transparent', cursor: 'pointer',
+                borderBottom: '1px solid var(--line-2)', cursor: 'pointer',
                 display: 'flex', gap: 10, alignItems: 'center',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
-              onMouseLeave={e => e.currentTarget.style.background = ''}
             >
               <span style={{ fontSize: 18, flexShrink: 0 }}>{countryFlag(c.country_code)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>

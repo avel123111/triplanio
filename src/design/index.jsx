@@ -2,6 +2,7 @@ import React from 'react';
 import { Icon } from './icons';
 import { useIsMobile } from '../hooks/use-mobile';
 import { useT } from '@/lib/i18n/I18nContext';
+import { hashStr } from '@/lib/hash';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
@@ -13,7 +14,6 @@ const AVATAR_COLORS = [
   ["#9c4ad9", "#c66ce2"], ["#c98a1a", "#e0a64b"], ["#4a6cd9", "#7a92e8"],
   ["#a83e6a", "#c96792"], ["#3d8aa8", "#5fadc9"]
 ];
-function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
 
 export const Avatar = ({ name = "?", size, role, kind, photo, className = "", style: styleProp }) => {
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
@@ -220,14 +220,12 @@ export const DismissibleSeverity = ({ level = "info", title, children, onDismiss
         {children}
         {action && <div style={{ marginTop: 8 }}>{action}</div>}
       </div>
-      <button onClick={() => { setOpen(false); onDismiss?.(); }} style={{
+      <button onClick={() => { setOpen(false); onDismiss?.(); }} className="dz-xbtn" style={{
         position: "absolute", top: 8, right: 8,
         width: 22, height: 22, borderRadius: 6, border: "none",
-        background: "transparent", color: "var(--muted)", cursor: "pointer",
+        color: "var(--muted)", cursor: "pointer",
         display: "grid", placeItems: "center",
-      }} title="Скрыть"
-        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(0,0,0,.05)"}
-        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+      }} title="Скрыть">
         <Icon name="close" size={12} />
       </button>
     </div>
@@ -572,14 +570,11 @@ function TransferCardHub({ e, onClick }) {
   const meta = _transferMeta(e);
   const arriveTime = e.arrive_time || _addDuration(e.time, e.duration) || "-";
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onClick} className="dz-lift dz-lift--transfer" style={{
       width: "100%", display: "grid", gridTemplateColumns: "auto 1fr auto 1fr auto", gap: 14,
       alignItems: "center", padding: "14px 16px", background: "var(--surface)",
-      border: "1px solid var(--line)", borderLeft: "3px solid var(--ev-transfer)",
       borderRadius: 12, cursor: "pointer", textAlign: "left"
-    }}
-    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "var(--line-hover)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
-    onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
+    }}>
       <div style={{ width: 36, height: 36, borderRadius: 9, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
         <Icon name={meta.icon} size={17} />
       </div>
@@ -614,14 +609,11 @@ function TransferCardHub({ e, onClick }) {
 function TransferCardStrip({ e, onClick }) {
   const meta = _transferMeta(e);
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onClick} className="dz-lift dz-lift--transfer" style={{
       width: "100%", display: "flex", alignItems: "center", gap: 14,
       padding: "12px 14px", background: "var(--surface)",
-      border: "1px solid var(--line)", borderLeft: "3px solid var(--ev-transfer)",
       borderRadius: 12, cursor: "pointer", textAlign: "left"
-    }}
-    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "var(--line-hover)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
-    onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
+    }}>
       <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: "var(--ink)" }}>{e.time || "-"}</div>
       <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
         <Icon name={meta.icon} size={15} />
@@ -648,14 +640,11 @@ function TransferCardStacked({ e, onClick }) {
   const meta = _transferMeta(e);
   const arriveTime = e.arrive_time || _addDuration(e.time, e.duration) || "-";
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onClick} className="dz-lift dz-lift--transfer" style={{
       width: "100%", display: "flex", alignItems: "center", gap: 14,
       padding: "14px 16px", background: "var(--surface)",
-      border: "1px solid var(--line)", borderLeft: "3px solid var(--ev-transfer)",
       borderRadius: 12, cursor: "pointer", textAlign: "left"
-    }}
-    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "var(--line-hover)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
-    onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.borderLeftColor = "var(--ev-transfer)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
+    }}>
       <div style={{ width: 44, height: 44, borderRadius: 11, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
         <Icon name={meta.icon} size={20} />
       </div>
@@ -799,13 +788,11 @@ function EventRowV11({ e, onClick }) {
   const meta = _evMeta(e);
   const sub = [e.duration, e.address].filter(Boolean).join(" · ");
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onClick} className="dz-lift" style={{
       width: "100%", display: "flex", alignItems: "stretch", padding: 0,
-      background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14,
+      background: "var(--surface)", borderRadius: 14,
       overflow: "hidden", cursor: "pointer", textAlign: "left",
-    }}
-      onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "var(--line-hover)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
-      onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
+    }}>
       <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, padding: "13px 16px" }}>
         <div className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', minWidth: 52, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", flexShrink: 0 }}>{e.time || "-"}</div>
@@ -832,13 +819,11 @@ function TransferRowV11({ e, onClick }) {
   const meta = _evMeta(e);
   const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "-";
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onClick} className="dz-lift" style={{
       width: "100%", display: "flex", alignItems: "stretch", padding: 0, minHeight: 120,
-      background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14,
+      background: "var(--surface)", borderRadius: 14,
       overflow: "hidden", cursor: "pointer", textAlign: "left",
-    }}
-      onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = "var(--line-hover)"; ev.currentTarget.style.transform = "translateY(-1px)"; ev.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}
-      onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "var(--line)"; ev.currentTarget.style.transform = ""; ev.currentTarget.style.boxShadow = ""; }}>
+    }}>
       <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
       {/* Card height is fixed on the BUTTON (minHeight:120) - taller than mobile, never
           collapses. The inner block stretches to it (align-items:stretch), and the

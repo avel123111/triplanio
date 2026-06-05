@@ -358,9 +358,8 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
                 popup lists just the assistant. */}
             <button
               onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', width: '100%', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wash)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              className="dz-rowhover"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', width: '100%', border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}
             >
               <TriplanioAvatar size="sm" />
               <div>

@@ -999,37 +999,29 @@ function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
     }
   };
 
-  const itemStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 'var(--fs-strong)', color: 'var(--ink)' };
+  const itemStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 'var(--fs-strong)', color: 'var(--ink)' };
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
       onClick={() => window.__closeModal?.()}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 20, width: 320, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {canManage && (
-            <button onClick={openEditMetadata} style={itemStyle}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <button onClick={openEditMetadata} className="dz-rowhover" style={itemStyle}>
               <Icon name="edit" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.edit_metadata')}
             </button>
           )}
           {canManage && (
-            <button onClick={() => { window.__closeModal?.(); window.__navigate?.('settings'); }} style={itemStyle}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <button onClick={() => { window.__closeModal?.(); window.__navigate?.('settings'); }} className="dz-rowhover" style={itemStyle}>
               <Icon name="settings" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.settings_title')}
             </button>
           )}
           {canManage && (
-            <button onClick={() => { window.__closeModal?.(); window.__navigate?.('members'); }} style={itemStyle}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <button onClick={() => { window.__closeModal?.(); window.__navigate?.('members'); }} className="dz-rowhover" style={itemStyle}>
               <Icon name="users" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.sidebar_members')}
             </button>
           )}
           {canManage && <div style={{ height: 1, background: 'var(--line-2)', margin: '6px 0' }} />}
-          <button onClick={handleCopy} disabled={copying} style={{ ...itemStyle, opacity: copying ? 0.6 : 1, cursor: copying ? 'default' : 'pointer' }}
-            onMouseEnter={e => { if (!copying) e.currentTarget.style.background = 'var(--wash)'; }}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+          <button onClick={handleCopy} disabled={copying} className="dz-rowhover" style={{ ...itemStyle, opacity: copying ? 0.6 : 1, cursor: copying ? 'default' : 'pointer' }}>
             <Icon name="copy" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.copy')}
           </button>
           <div style={{ height: 1, background: 'var(--line-2)', margin: '6px 0' }} />
