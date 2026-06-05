@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Icon } from '../../design/icons';
+import { Icon } from '../design/icons';
 import {
   Badge, Btn, Card, Severity, Toggle, ModalHost,
-} from '../../design/index';
+} from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
@@ -11,7 +11,7 @@ import { isProActive } from '@/lib/subscription';
 import { supabase } from '@/api/supabaseClient';
 import HeaderActions from '@/components/HeaderActions';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
-import '../../design/app.css';
+import '../design/app.css';
 
 // ─── Avatar helpers (inline so we can render directly into the 76×76 circle) ──
 

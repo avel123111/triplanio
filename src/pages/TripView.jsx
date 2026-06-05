@@ -39,7 +39,7 @@ import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
 import { uniqueCityCount } from '@/lib/trip-cities';
 import ChatWidget from '@/components/chat/ChatWidget';
-import ScreenMap from '@/pages/redesign/ScreenMap';
+import ScreenMap from '@/pages/ScreenMap';
 import TripFormDialog from '@/components/trips/TripFormDialog';
 import { getGradientById } from '@/lib/trip-gradients';
 import { useI18n } from '@/lib/i18n/I18nContext';

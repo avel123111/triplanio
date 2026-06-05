@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Icon } from '../../design/icons';
-import { Btn } from '../../design/index';
+import { Icon } from '../design/icons';
+import { Btn } from '../design/index';
 import MapView from '@/components/views/MapView';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
