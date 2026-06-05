@@ -202,8 +202,10 @@
 
 ### P1 — структурные рычаги (1–2 недели, дают 80% «расхламления»)
 - **★ Consolidation-пасс:** общие базовые классы/компоненты `booking-row` / `card` / `chip` / `menu-item` / каркас линзы; переселить 5 линз на эталон `CalendarLens`. *(★ хэндоффа)*
-- Свести два движка: обернуть/привести 16 несущих shadcn-примитивов к токенам; запретить новые импорты `@/components/ui/*`. *(#2 хэндоффа)*
-- Дисплейная типошкала: `fontSize ≥16` → `--fs-display`, расширить eslint-гейт. *(#6 хэндоффа)*
+- Свести два движка: обернуть/привести 16 несущих shadcn-примитивов к токенам; запретить новые импорты `@/components/ui/*`. *(#2 хэндоффа)* — ⏳ визуальная часть ждёт живого QA.
+- ✅ **Выпил мёртвого base44-наследия СДЕЛАНО (2026-06-05):** удалены 24 неиспользуемых файла-leftover'а миграции (старые `TripCard`/`TripCardGrid`/`TripListRow`/`TripListSkeleton`/`TripMiniCalendar`/`TripSummary` — заменены инлайн-версией в `Trips.jsx`; старые `chat/ChatComposer·ChatMessageBubble·MentionRenderer` — заменены `ChatLens`/`ChatWidget`; `views/CarRentalEventRow·DayMarkers·MapCityPanel·MapSettingsBar·TimelineRail`; `design/dock.jsx`; `pages/AiTripPlanner.jsx`; `UserMenu`, `TripAccessDenied`, `DocumentsList`, `PullToRefresh`, `TripDocumentViewDialog`, `BookingLinkButton`, `AiTripDraftPreview`, `AiTripMiniMap`). Каждый проверен (0 path-импортов, не в barrel) + сборка зелёная = доказано dead. Плюс убраны 11 мёртвых импортов (eslint `--fix`, 0 ошибок). Прим.: `TimelineRail`/`CarRentalEventRow` в UI_AUDIT были помечены как «живые» — фактически мертвы (логика инлайнена в ленты).
+- ✅ **Дисплейная типошкала СДЕЛАНА (2026-06-05):** все инлайн-`fontSize` → `--fs-*` (26 точных совпадений = 0 визуальных изменений; 16 внеладдерных приснаплены к ближайшему рунгу по решению Pavel: 17/20→`--fs-xl`, 26/30→`--fs-3xl`, 40→`--fs-hero`). Числовых `fontSize` в jsx больше **нет**. eslint-гейт расширен на весь диапазон (запрещён любой числовой `fontSize`). Сборка зелёная. *(#6 хэндоффа закрыт)*
+  - Попутно: 11 ESLint-ошибок `unused-imports` (мёртвые импорты Button/Check/ArrowRight/PaymentSuccessDialog…) — пре-существующий долг, не блокирует Vercel-сборку; стоит вычистить отдельным проходом.
 - Дедуп условных ховеров → CSS, где можно. *(#4 хэндоффа)*
 
 ### P2 — UX-полировка ядра (параллельно)

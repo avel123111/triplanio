@@ -520,7 +520,7 @@ function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddH
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-            <h2 style={{ marginBottom: 0, fontSize: 24 }}>{city}</h2>
+            <h2 style={{ marginBottom: 0, fontSize: 'var(--fs-2xl)' }}>{city}</h2>
             {dateRange && <span className="muted num" style={{ fontSize: 'var(--fs-base)' }}>{dateRange}</span>}
             {nights > 0 && (
               <span className="muted" style={{ fontSize: 'var(--fs-base)' }}>
@@ -763,7 +763,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
       <div key={`xday-${day}`} style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, padding: '12px 0 10px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+            <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em', color: 'var(--ink)' }}>
               {fmtDate(day, lang)}
             </span>
             <span className="muted" style={{ fontSize: 'var(--fs-meta)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
@@ -822,7 +822,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         {/* Date separator - matches design: large bold date */}
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, padding: '12px 0 10px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+            <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em', color: 'var(--ink)' }}>
               {fmtDate(day, lang)}
             </span>
             <span className="muted" style={{ fontSize: 'var(--fs-meta)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
@@ -1255,7 +1255,7 @@ function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, s
         </div>
         {budget ? (
           <>
-            <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600 }}>
+            <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h2)', fontWeight: 600 }}>
               {moneyCtx(totalSpent)}
             </div>
             {hasMissingRate && (

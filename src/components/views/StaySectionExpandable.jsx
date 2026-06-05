@@ -1,5 +1,5 @@
 import React from 'react';
-import { BedDouble, ArrowRight, ArrowLeft, ExternalLink } from 'lucide-react';
+import { BedDouble, ExternalLink } from 'lucide-react';
 import { BOOKING_PLATFORMS, platformLogoUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import AddHotelButton from '@/components/bookings/AddHotelButton';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';

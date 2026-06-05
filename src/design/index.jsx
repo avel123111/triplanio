@@ -298,7 +298,7 @@ export const CityPhoto = ({ city, h = 80, w = "100%", radius = 10 }) => {
         <path d="M0 60 Q 50 40 100 55 T 200 50 L 200 100 L 0 100 Z" fill="rgba(255,255,255,.5)" />
         <path d="M0 75 Q 60 55 120 70 T 200 65 L 200 100 L 0 100 Z" fill="rgba(255,255,255,.3)" />
       </svg>
-      <div style={{ position: "absolute", top: 6, left: 8, fontSize: 18 }}>{p.emoji}</div>
+      <div style={{ position: "absolute", top: 6, left: 8, fontSize: 'var(--fs-xl)' }}>{p.emoji}</div>
     </div>
   );
 };
@@ -427,7 +427,7 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
       borderRadius: 12, padding: 12,
       display: "flex", gap: 12, maxWidth: 360,
     }}>
-      <div style={{ width: 48, height: 48, borderRadius: 8, background: p?.color || "var(--brand)", color: "white", display: "grid", placeItems: "center", flexShrink: 0, fontSize: 18, fontWeight: 700 }}>
+      <div style={{ width: 48, height: 48, borderRadius: 8, background: p?.color || "var(--brand)", color: "white", display: "grid", placeItems: "center", flexShrink: 0, fontSize: 'var(--fs-xl)', fontWeight: 700 }}>
         <Icon name={type === "hotel" ? "bed" : type === "flight" ? "plane" : type === "train" ? "train" : "spark"} size={20} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -582,7 +582,7 @@ function TransferCardHub({ e, onClick }) {
         <Icon name={meta.icon} size={17} />
       </div>
       <div>
-        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{e.time}</div>
+        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-xl)', fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{e.time}</div>
         <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginTop: 4 }}>{e.from}</div>
         {e.depart_loc && <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{e.depart_loc}</div>}
       </div>
@@ -597,7 +597,7 @@ function TransferCardHub({ e, onClick }) {
         </div>
       </div>
       <div style={{ textAlign: "right" }}>
-        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{arriveTime}</div>
+        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-xl)', fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{arriveTime}</div>
         <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginTop: 4 }}>{e.to}</div>
         {e.arrive_loc && <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{e.arrive_loc}</div>}
       </div>
@@ -617,7 +617,7 @@ function TransferCardStrip({ e, onClick }) {
       padding: "12px 14px", background: "var(--surface)",
       borderRadius: 12, cursor: "pointer", textAlign: "left"
     }}>
-      <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: "var(--ink)" }}>{e.time || "-"}</div>
+      <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-lg)', fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: "var(--ink)" }}>{e.time || "-"}</div>
       <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
         <Icon name={meta.icon} size={15} />
       </div>
@@ -656,9 +656,9 @@ function TransferCardStacked({ e, onClick }) {
           {meta.label} · <span className="num">{e.duration}</span>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>{e.time}</span>
+          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-xl)', fontWeight: 700, letterSpacing: "-0.02em" }}>{e.time}</span>
           <Icon name="arrowR" size={12} style={{ color: "var(--muted-2)" }} />
-          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>{arriveTime}</span>
+          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-xl)', fontWeight: 700, letterSpacing: "-0.02em" }}>{arriveTime}</span>
           <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>· {e.to_city || e.to}</span>
         </div>
         <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>

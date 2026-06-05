@@ -45,7 +45,7 @@ export default function TripProInfoDialog({ open, onOpenChange, feature, ownerNa
             <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--warm-tint)', color: 'var(--warm)', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
               <Icon name="crown" size={24} />
             </div>
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: 'var(--fs-lg)', marginBottom: 8 }}>
               {feature ? t('sub.trip_pro_feature_named', { feature }) : t('sub.trip_pro_generic')}
             </div>
             <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, maxWidth: 340, margin: '0 auto' }}>

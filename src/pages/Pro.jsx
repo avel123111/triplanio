@@ -146,10 +146,10 @@ export default function Pro() {
             <img src="/triplanio-logo.svg" style={{ width: 18, height: 18 }} alt="" />
             <span>Triplanio Pro</span>
           </div>
-          <h1 style={{ fontSize: 44, marginBottom: 10, maxWidth: 720, margin: '0 auto 10px', letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 'var(--fs-hero)', marginBottom: 10, maxWidth: 720, margin: '0 auto 10px', letterSpacing: '-0.02em' }}>
             {t('sub.hero_title')}
           </h1>
-          <div className="muted" style={{ fontSize: 17, maxWidth: 560, margin: '0 auto', lineHeight: 1.55 }}>
+          <div className="muted" style={{ fontSize: 'var(--fs-xl)', maxWidth: 560, margin: '0 auto', lineHeight: 1.55 }}>
             {t('sub.hero_sub')}
           </div>
           {hidePerTrip && tripId === null && (
@@ -160,7 +160,7 @@ export default function Pro() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${plans.length}, minmax(0, 1fr))`, gap: 14, maxWidth: hidePerTrip ? 760 : 'none', margin: '0 auto' }}>
+        <div role="radiogroup" aria-label={t('sub.choose_plan')} style={{ display: 'grid', gridTemplateColumns: `repeat(${plans.length}, minmax(0, 1fr))`, gap: 14, maxWidth: hidePerTrip ? 760 : 'none', margin: '0 auto' }}>
           {pricesLoading && !prices
             ? Array.from({ length: plans.length }).map((_, i) => (
                 <div key={i} style={{ padding: 24, borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--line)' }}>
@@ -179,7 +179,12 @@ export default function Pro() {
                 return (
                   <div
                     key={p.type}
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={p.title}
+                    tabIndex={0}
                     onClick={() => setPicked(p.type)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPicked(p.type); } }}
                     style={{
                       padding: 24, borderRadius: 16, cursor: 'pointer',
                       background: selected ? 'var(--brand-soft)' : 'var(--surface)',
@@ -202,10 +207,10 @@ export default function Pro() {
                         <Icon name="check" size={13} />
                       </div>
                     )}
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em', marginBottom: 6, marginTop: selected ? 22 : 0 }}>{p.title}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h2)', fontWeight: 600, letterSpacing: '-0.015em', marginBottom: 6, marginTop: selected ? 22 : 0 }}>{p.title}</div>
                     <div style={{ fontSize: 'var(--fs-base)', opacity: 0.7, marginBottom: 18 }}>{p.caption}</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
-                      <span className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 600, letterSpacing: '-0.03em' }}>{price}</span>
+                      <span className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-hero)', fontWeight: 600, letterSpacing: '-0.03em' }}>{price}</span>
                       <span style={{ fontSize: 'var(--fs-base)', opacity: 0.7 }}>{period}</span>
                     </div>
                     <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)', margin: '18px 0' }} />

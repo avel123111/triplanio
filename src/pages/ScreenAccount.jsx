@@ -66,8 +66,8 @@ function LegalRow({ icon, title, desc, href, last }) {
         <Icon name={icon} size={14} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 500, fontSize: 13.5 }}>{title}</div>
-        <div className="muted" style={{ fontSize: 12 }}>{desc}</div>
+        <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)' }}>{title}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{desc}</div>
       </div>
       <Icon name="external" size={13} style={{ color: 'var(--muted-2)' }} />
     </a>
@@ -81,8 +81,8 @@ function SettingRow({ label, desc, on, onChange, last }) {
       borderBottom: last ? 'none' : '1px solid var(--line-2)',
     }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 500, fontSize: 13.5 }}>{label}</div>
-        {desc && <div className="muted" style={{ fontSize: 12 }}>{desc}</div>}
+        <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)' }}>{label}</div>
+        {desc && <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{desc}</div>}
       </div>
       <Toggle on={on} onChange={onChange} />
     </div>
@@ -137,7 +137,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
           </div>
           <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('account.free_plan')}</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>{t('account.free_desc')}</div>
+            <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('account.free_desc')}</div>
           </div>
           <Btn
             variant="primary"
@@ -162,7 +162,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontWeight: 600 }}>Pro Monthly</div>
-              <div className="muted num" style={{ fontSize: 12.5 }}>
+              <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>
                 {(actualMoney || monthlyPrice) ? `${actualMoney || monthlyPrice}${t('account.per_month_short')}` : 'Pro'}
                 {plan?.subscriptionEnd && (
                   <> · {t('account.next_charge')} <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b></>
@@ -178,7 +178,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
               {portalLoading ? t('account.opening') : t('account.billing_portal')}
             </Btn>
           </div>
-          <div className="muted" style={{ fontSize: 12.5 }}>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
             {t('account.after_cancel_access')}
           </div>
         </div>
@@ -198,7 +198,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
               <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                 Pro Yearly <Badge variant="success">{t('account.active')}</Badge>
               </div>
-              <div className="muted num" style={{ fontSize: 12.5 }}>
+              <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>
                 {(actualMoney || yearlyPrice) ? `${actualMoney || yearlyPrice}${t('account.per_year_short')}` : 'Pro'}
                 {plan?.subscriptionEnd && (
                   <> · {t('account.renews')} <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{fmtDate(plan.subscriptionEnd, locale)}</b></>
@@ -212,10 +212,10 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
           </div>
           <div style={{ padding: 12, background: 'var(--wash)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
             <Icon name="info" size={14} style={{ color: 'var(--muted)' }} />
-            <span className="muted" style={{ fontSize: 12.5 }}>{t('account.yearly_note')}</span>
+            <span className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('account.yearly_note')}</span>
           </div>
-          <div className="muted" style={{ fontSize: 12.5 }}>
-            <button onClick={onManage} style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 12.5 }}>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
+            <button onClick={onManage} style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontSize: 'var(--fs-meta)' }}>
               {t('account.cancel_until_year_end')}
             </button>
           </div>
@@ -236,7 +236,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
               <div style={{ fontWeight: 600 }}>
                 {t('account.pro_cancelled')}{plan?.subscriptionEnd ? t('account.active_until_suffix', { date: fmtDate(plan.subscriptionEnd, locale) }) : ''}
               </div>
-              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+              <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2 }}>
                 {t('account.cancelled_desc')}
               </div>
             </div>
@@ -244,7 +244,7 @@ function SubscriptionCard({ planState, plan, planLoading, awaitingWebhook, porta
               {portalLoading ? t('account.opening') : t('account.resume')}
             </Btn>
           </div>
-          <div style={{ padding: 12, background: 'var(--wash)', borderRadius: 10, fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
+          <div style={{ padding: 12, background: 'var(--wash)', borderRadius: 10, fontSize: 'var(--fs-meta)', color: 'var(--muted)', lineHeight: 1.5 }}>
             {t('account.cancelled_note')}
           </div>
         </div>
@@ -292,7 +292,7 @@ function ConnectedAccountsSection() {
   if (items === null) {
     return (
       <Card title={t('telegram.account_section_title')} subtitle={t('telegram.account_section_subtitle')} style={{ marginBottom: 16 }}>
-        <div className="muted" style={{ fontSize: 13, padding: 8 }}>{t('common.loading')}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-base)', padding: 8 }}>{t('common.loading')}</div>
       </Card>
     );
   }
@@ -315,8 +315,8 @@ function ConnectedAccountsSection() {
               <Icon name="sparkles" size={21} />
             </div>
           </div>
-          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{t('telegram.account_empty_title')}</div>
-          <div className="muted" style={{ fontSize: 13, lineHeight: 1.6, maxWidth: 420, margin: '0 auto 18px' }}>
+          <div style={{ fontWeight: 700, fontSize: 'var(--fs-lg)', marginBottom: 8 }}>{t('telegram.account_empty_title')}</div>
+          <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, maxWidth: 420, margin: '0 auto 18px' }}>
             {t('telegram.account_empty_desc')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 360, margin: '0 auto 20px', textAlign: 'left' }}>
@@ -325,7 +325,7 @@ function ConnectedAccountsSection() {
               { icon: 'sparkles', text: t('telegram.account_empty_benefit_ai') },
               { icon: 'chat', text: t('telegram.account_empty_benefit_chat') },
             ].map((r, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12.5, color: 'var(--ink-2)' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 'var(--fs-meta)', color: 'var(--ink-2)' }}>
                 <span style={{ width: 22, height: 22, borderRadius: 7, background: 'var(--ai-soft)', color: 'var(--ai)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                   <Icon name={r.icon} size={12} />
                 </span>
@@ -336,8 +336,8 @@ function ConnectedAccountsSection() {
           <Btn variant="primary" icon="arrow" onClick={() => nav('/trips')}>{t('telegram.go_to_trips')}</Btn>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--line-2)', flexWrap: 'wrap' }}>
             <Icon name="telegram" size={14} style={{ color: TG_BLUE }} />
-            <span style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Telegram</span>
-            <span className="muted" style={{ fontSize: 11.5 }}>{t('telegram.coming_soon')}</span>
+            <span style={{ fontSize: 'var(--fs-micro)', color: 'var(--ink-2)' }}>Telegram</span>
+            <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('telegram.coming_soon')}</span>
           </div>
         </div>
       </Card>
@@ -358,10 +358,10 @@ function ConnectedAccountsSection() {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Telegram</span>
+            <span style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>Telegram</span>
             <Badge variant="success" icon="check">{t('telegram.connected')}</Badge>
           </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+          <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2 }}>
             {plural(tripCount, 'telegram.tg_trips', { count: tripCount })}
           </div>
         </div>
@@ -379,17 +379,17 @@ function ConnectedAccountsSection() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 600, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.trip_title}</span>
+                    <span style={{ fontWeight: 600, fontSize: 'var(--fs-base)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.trip_title}</span>
                     <Badge variant="quiet">{t(`trips.role_${a.role}`)}</Badge>
                   </div>
-                  <div className="muted mono" style={{ fontSize: 11.5, marginTop: 1 }}>{nick(a)}</div>
+                  <div className="muted mono" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{nick(a)}</div>
                 </div>
                 <Btn variant="ghost" size="sm" icon="arrow" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>{t('telegram.go_to_trip')}</Btn>
                 <Btn variant="quiet" size="sm" icon="unlink" onClick={() => unlink(a)} />
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 11.5, color: 'var(--muted)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 'var(--fs-micro)', color: 'var(--muted)' }}>
             <Icon name="info" size={13} />
             <span>{t('telegram.account_hint')}</span>
           </div>
@@ -687,7 +687,7 @@ export default function ScreenAccount() {
         </div>
         <div className="app-header__crumb">
           <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink-2)' }}>{t('account.title')}</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ink-2)' }}>{t('account.title')}</span>
         </div>
         <HeaderActions
           user={user}
@@ -704,9 +704,9 @@ export default function ScreenAccount() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22, flexWrap: 'wrap' }}>
           <h1 style={{ flex: 1, marginBottom: 0 }}>
             {t('account.title')}
-            {planState === 'with-sub'  && <Badge variant="warm" icon="pro" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>{t('account.badge_pro_sub')}</Badge>}
-            {planState === 'annual'    && <Badge variant="warm" icon="pro" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>{t('account.badge_pro_yearly')}</Badge>}
-            {planState === 'cancelled' && <Badge variant="quiet" icon="warning" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 11 }}>{t('account.badge_pro_cancelled')}</Badge>}
+            {planState === 'with-sub'  && <Badge variant="warm" icon="pro" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 'var(--fs-micro)' }}>{t('account.badge_pro_sub')}</Badge>}
+            {planState === 'annual'    && <Badge variant="warm" icon="pro" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 'var(--fs-micro)' }}>{t('account.badge_pro_yearly')}</Badge>}
+            {planState === 'cancelled' && <Badge variant="quiet" icon="warning" style={{ marginLeft: 10, verticalAlign: 4, fontSize: 'var(--fs-micro)' }}>{t('account.badge_pro_cancelled')}</Badge>}
           </h1>
           {savedFlash && <Badge variant="success" icon="check">{t('settings.saved')}</Badge>}
           <Btn variant="ghost" onClick={() => nav('/trips')} disabled={saving}>{t('common.cancel')}</Btn>
@@ -736,7 +736,7 @@ export default function ScreenAccount() {
                 justifyContent: 'center',
                 color: 'white',
                 fontWeight: 700,
-                fontSize: 22,
+                fontSize: 'var(--fs-h2)',
                 userSelect: 'none',
                 ...avatarBgStyle,
               }}
@@ -750,7 +750,7 @@ export default function ScreenAccount() {
                   background: 'rgba(15,23,42,.65)',
                   display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
-                  gap: 4, color: 'white', fontSize: 11, fontWeight: 600,
+                  gap: 4, color: 'white', fontSize: 'var(--fs-micro)', fontWeight: 600,
                 }}>
                   {uploadingAvatar
                     ? <div style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -769,13 +769,13 @@ export default function ScreenAccount() {
             />
 
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 15 }}>{fullName || user.email}</div>
-              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{t('account.avatar_hint')}</div>
+              <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fullName || user.email}</div>
+              <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2 }}>{t('account.avatar_hint')}</div>
               {avatarUrl && (
                 <div style={{ marginTop: 8 }}>
                   <button
                     onClick={handleRemoveAvatar}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'transparent', border: 'none', color: 'var(--danger)', fontSize: 12, fontWeight: 500, cursor: 'pointer', borderRadius: 6, lineHeight: 1 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'transparent', border: 'none', color: 'var(--danger)', fontSize: 'var(--fs-meta)', fontWeight: 500, cursor: 'pointer', borderRadius: 6, lineHeight: 1 }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--danger-soft)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
@@ -789,11 +789,11 @@ export default function ScreenAccount() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>{t('account.display_name')}</label>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 4, display: 'block' }}>{t('account.display_name')}</label>
               <input className="input" value={fullName} onChange={e => setFullName(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 4, display: 'block' }}>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 4, display: 'block' }}>
                 E-mail <Badge variant="quiet" style={{ marginLeft: 4 }}>{t('account.readonly')}</Badge>
               </label>
               <input className="input" value={user.email} readOnly style={{ background: 'var(--wash)', color: 'var(--muted)' }} />
@@ -807,7 +807,7 @@ export default function ScreenAccount() {
 
             {/* Language */}
             <div>
-              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 6, display: 'block' }}>{t('settings.language')}</label>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 6, display: 'block' }}>{t('settings.language')}</label>
               <div style={{ position: 'relative', maxWidth: 260 }}>
                 <button
                   onClick={() => setLangOpen(v => !v)}
@@ -832,7 +832,7 @@ export default function ScreenAccount() {
                           width: '100%', padding: '8px 10px', textAlign: 'left',
                           border: 'none', background: l.code === lang ? 'var(--brand-soft)' : 'transparent',
                           color: l.code === lang ? 'var(--brand)' : 'var(--ink)',
-                          borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5,
+                          borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-base)',
                         }}
                       >
                         {l.code === lang && <Icon name="checkSm" size={13} />}
@@ -846,7 +846,7 @@ export default function ScreenAccount() {
 
             {/* Theme */}
             <div>
-              <label style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 6, display: 'block' }}>{t('settings.theme')}</label>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 6, display: 'block' }}>{t('settings.theme')}</label>
               <div className="tweaks__seg">
                 <button className={theme === 'light'  ? 'active' : ''} onClick={() => setTheme('light')}>{t('settings.theme_light')}</button>
                 <button className={theme === 'dark'   ? 'active' : ''} onClick={() => setTheme('dark')}>{t('settings.theme_dark')}</button>
@@ -912,8 +912,8 @@ export default function ScreenAccount() {
               <Icon name="chat" size={16} />
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('account.contact_us')}</div>
-              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+              <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('account.contact_us')}</div>
+              <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2 }}>
                 <a href="mailto:support@triplanio.com" style={{ color: 'var(--brand)' }}>support@triplanio.com</a>
                 {' '}{t('account.support_reply')}
               </div>
@@ -947,8 +947,8 @@ export default function ScreenAccount() {
         <Card title={t('account.session')} style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t('account.logout_title')}</div>
-              <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+              <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('account.logout_title')}</div>
+              <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2 }}>
                 {t('account.logout_desc')}
               </div>
             </div>
@@ -963,7 +963,7 @@ export default function ScreenAccount() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontWeight: 600 }}>{t('settings.delete_account')}</div>
-              <div className="muted" style={{ fontSize: 12.5 }}>
+              <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
                 {t('account.delete_desc')}
               </div>
             </div>

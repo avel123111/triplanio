@@ -361,7 +361,7 @@ export default function Login() {
 
                 <div className="divider"><span>{t('auth.or_email')}</span></div>
 
-                {error && <div className="auth-error">{error}</div>}
+                {error && <div className="auth-error" role="alert">{error}</div>}
 
                 <form className="auth__inputs" onSubmit={handleLogin}>
                   <div className="field">
@@ -430,7 +430,7 @@ export default function Login() {
 
                 <div className="divider"><span>{t('auth.or_email')}</span></div>
 
-                {error && <div className="auth-error">{error}</div>}
+                {error && <div className="auth-error" role="alert">{error}</div>}
 
                 <form className="auth__inputs" onSubmit={handleSignup}>
                   <div className="field">
@@ -495,7 +495,7 @@ export default function Login() {
                 <h1 className="auth__h1">{t('auth.reset_title')}</h1>
                 <p className="lede">{t('auth.reset_lede')}</p>
 
-                {error && <div className="auth-error">{error}</div>}
+                {error && <div className="auth-error" role="alert">{error}</div>}
 
                 <form className="auth__inputs" onSubmit={handleReset} style={{ marginTop: 28 }}>
                   <div className="field">
@@ -523,7 +523,7 @@ export default function Login() {
             {view === 'reset-sent' && (
               <div className="confirm">
                 <div className="confirm__icon"><IconMail /></div>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '-0.025em', color: 'var(--ink)' }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-3xl)', letterSpacing: '-0.025em', color: 'var(--ink)' }}>
                   {t('auth.sent_title')}
                 </h2>
                 <p className="lede" style={{ margin: '14px auto 0', maxWidth: '36ch' }}>
@@ -554,7 +554,7 @@ export default function Login() {
                 <h1 className="auth__h1">{t('auth.newpw_title')}</h1>
                 <p className="lede">{t('auth.newpw_lede')}</p>
 
-                {error && <div className="auth-error">{error}</div>}
+                {error && <div className="auth-error" role="alert">{error}</div>}
 
                 <form className="auth__inputs" onSubmit={handleNewPassword} style={{ marginTop: 26 }}>
                   <div className="field">
@@ -620,7 +620,7 @@ export default function Login() {
                     <path d="M20 6 9 17l-5-5" />
                   </svg>
                 </div>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '-0.025em', color: 'var(--ink)' }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-3xl)', letterSpacing: '-0.025em', color: 'var(--ink)' }}>
                   {t('auth.done_title')}
                 </h2>
                 <p className="lede" style={{ margin: '14px auto 0', maxWidth: '34ch' }}>

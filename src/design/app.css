@@ -89,6 +89,15 @@
   --fs-base:   13px;   /* default UI text */
   --fs-meta:   12px;   /* dates, secondary meta */
   --fs-micro:  11px;   /* country tags, column headers, micro-labels */
+  /* Display scale — headings & big stat numbers (>=16). Home for the large sizes
+     so future code reaches for a token, not a raw number. */
+  --fs-lg:   16px;
+  --fs-xl:   18px;
+  --fs-h2:   22px;
+  --fs-2xl:  24px;
+  --fs-3xl:  28px;
+  --fs-h1:   32px;
+  --fs-hero: 44px;
 }
 
 /* Dark theme */

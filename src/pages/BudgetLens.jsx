@@ -508,7 +508,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         {/* Всего потрачено */}
         <Card>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('budget.total_spent')}</div>
-          <div className="num" style={{ fontSize: 30, fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(totalSpent, mainCurrency)}</div>
+          <div className="num" style={{ fontSize: 'var(--fs-3xl)', fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(totalSpent, mainCurrency)}</div>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 4 }}>
             {noExpenses ? t('trip.budget_empty') : `${budgetExpenses.length} ${budgetExpenses.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}`}
           </div>
@@ -517,7 +517,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         {/* На одного */}
         <Card>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('budget.per_person_label')}</div>
-          <div className="num" style={{ fontSize: 30, fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
+          <div className="num" style={{ fontSize: 'var(--fs-3xl)', fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 4 }}>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')} · {t('budget.split_evenly')}</div>
         </Card>
 

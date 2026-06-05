@@ -866,7 +866,7 @@ function Hero() {
             <div className="float float--budget" aria-hidden="true">
               <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase'}}>{t('float.trip_budget')}</div>
               <div style={{display:'flex',alignItems:'baseline',gap:8,marginTop:4}}>
-                <strong style={{fontFamily:'var(--font-display)',fontSize:22,letterSpacing:'-0.02em',fontVariantNumeric:'tabular-nums'}}>€4,820</strong>
+                <strong style={{fontFamily:'var(--font-display)',fontSize: 'var(--fs-h2)',letterSpacing:'-0.02em',fontVariantNumeric:'tabular-nums'}}>€4,820</strong>
                 <span style={{fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>· $5,210 · ₽491k</span>
               </div>
             </div>
@@ -950,7 +950,7 @@ function BudgetMini() {
   return (
     <div className="budget" style={{padding:0}}>
       <div className="budget__total" style={{marginBottom:12}}>
-        <span className="big" style={{fontSize:26}}>€4,820</span>
+        <span className="big" style={{fontSize: 'var(--fs-3xl)'}}>€4,820</span>
         <span className="delta">{t('mini.under')}</span>
       </div>
       <div className="budget__bar" style={{marginBottom:12}}>

@@ -45,7 +45,7 @@ export default function ShareDialog({ trip }) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
       onClick={() => window.__closeModal?.()}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 420, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
-        <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>{t('share.dialog_title')}</h2>
+        <h2 style={{ margin: '0 0 6px', fontSize: 'var(--fs-xl)' }}>{t('share.dialog_title')}</h2>
         <div className="muted" style={{ fontSize: 'var(--fs-base)', marginBottom: 18 }}>{t('trip.share_desc')}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1, fontSize: 'var(--fs-meta)' }} onClick={(e) => e.target.select()} />

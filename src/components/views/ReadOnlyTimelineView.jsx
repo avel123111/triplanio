@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DateTime } from 'luxon';
-import { MapPin, Camera, ExternalLink, Sparkles, Plane, Flag, LogIn, LogOut, ArrowRight, CalendarX, Send, Info, Car, Plus, Check } from 'lucide-react';
+import { MapPin, Camera, ExternalLink, Sparkles, Plane, Flag, LogIn, LogOut, ArrowRight, CalendarX, Send, Info, Car, Plus } from 'lucide-react';
 import { countryFlag } from '@/lib/geo';
-import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { sortVisits } from '@/lib/validation';
 import { transportInfo } from '@/lib/transport';

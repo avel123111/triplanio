@@ -7,7 +7,7 @@ import { BRAND_LOGO_URL, BRAND_NAME } from '@/lib/brand';
 import ReadOnlyTimelineView from '@/components/views/ReadOnlyTimelineView';
 import MapView from '@/components/views/MapView';
 import EventModal from '@/components/common/EventModal';
-import { computeTripRange, latestEventDate } from '@/lib/trip-dates';
+import { computeTripRange } from '@/lib/trip-dates';
 import { uniqueCityCount } from '@/lib/trip-cities';
 import { getGradientById } from '@/lib/trip-gradients';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';

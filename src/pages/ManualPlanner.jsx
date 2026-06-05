@@ -190,7 +190,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
                 display: 'flex', gap: 10, alignItems: 'center',
               }}
             >
-              <span style={{ fontSize: 18, flexShrink: 0 }}>{countryFlag(c.country_code)}</span>
+              <span style={{ fontSize: 'var(--fs-xl)', flexShrink: 0 }}>{countryFlag(c.country_code)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{c.city_name}</div>
                 <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name}</div>
@@ -783,7 +783,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
             </svg>
           )}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(0,0,0,.35) 100%)' }} />
-          <div style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', fontWeight: 700, fontSize: 26, letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
+          <div style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', fontWeight: 700, fontSize: 'var(--fs-3xl)', letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
             {displayTitle}
           </div>
         </div>
@@ -1262,7 +1262,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--warning-soft, #fff3cd)', color: 'var(--warning, #e6a817)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
               <Icon name="lock" size={28} />
             </div>
-            <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700 }}>{t('planner.limit_title')}</h2>
+            <h2 style={{ margin: '0 0 8px', fontSize: 'var(--fs-h2)', fontWeight: 700 }}>{t('planner.limit_title')}</h2>
             <p style={{ fontSize: 'var(--fs-strong)', color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24 }}>
               {t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}
             </p>

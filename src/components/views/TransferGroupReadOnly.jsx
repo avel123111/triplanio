@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { DateTime } from 'luxon';
 import { ChevronDown, ChevronRight, ArrowRight, ExternalLink } from 'lucide-react';
 import { transportInfo } from '@/lib/transport';
 import { formatInTz } from '@/lib/time';

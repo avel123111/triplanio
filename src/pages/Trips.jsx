@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
@@ -13,8 +13,6 @@ import { getGradientById } from '@/lib/trip-gradients';
 import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
-import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
-import PaymentFailDialog from '@/components/common/PaymentFailDialog';
 import HeaderActions from '@/components/HeaderActions';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -104,7 +102,7 @@ const TripCard = ({ trip, onClick }) => {
     <CollectionTripCover trip={trip} />
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 17, letterSpacing: '-0.015em', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trip.title}</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 'var(--fs-xl)', letterSpacing: '-0.015em', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trip.title}</div>
         <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{trip.days}</div>
       </div>
       {trip.role === 'viewer' && <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>}
@@ -155,7 +153,7 @@ function NewTripDialog({ onClose, onManual, onAi }) {
       onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
         style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 440, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
-        <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700 }}>{t('trips.new')}</h2>
+        <h2 style={{ margin: '0 0 6px', fontSize: 'var(--fs-xl)', fontWeight: 700 }}>{t('trips.new')}</h2>
         <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-strong)', marginBottom: 22 }}>{t('trips.choice_subtitle')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <button onClick={onManual} style={{ padding: 20, background: 'var(--surface)', border: '1.5px solid var(--line)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
@@ -192,7 +190,7 @@ function CollectionEmpty({ onManual, onAi }) {
         <Icon name="globe" size={42} style={{ color: 'var(--brand)' }} />
       </div>
       <h1 style={{ marginBottom: 10 }}>{t('trips.empty_heading')}</h1>
-      <div className="muted" style={{ fontSize: 16, marginBottom: 28, maxWidth: 480, margin: '0 auto 28px' }}>
+      <div className="muted" style={{ fontSize: 'var(--fs-lg)', marginBottom: 28, maxWidth: 480, margin: '0 auto 28px' }}>
         {t('trips.empty_desc')}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, maxWidth: 600, margin: '0 auto' }}>

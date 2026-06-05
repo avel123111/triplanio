@@ -55,6 +55,22 @@ export default [
         { ignore: ["cmdk-input-wrapper", "toast-close"] },
       ],
       "react-hooks/rules-of-hooks": "error",
+      // Type-scale gate: ALL inline font sizes must use a --fs-* token, never a
+      // raw number. Body range (<16) and display range (>=16, headings/stats) are
+      // both fully tokenized — this keeps the whole type scale from drifting back.
+      // Numeric comparisons only match number literals, so string values like
+      // 'var(--fs-base)' or '90%' are unaffected.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Property[key.name='fontSize'] > Literal[value<16]",
+          message: "Inline fontSize must use a --fs-* token (e.g. fontSize: 'var(--fs-base)'), not a raw number.",
+        },
+        {
+          selector: "Property[key.name='fontSize'] > Literal[value>=16]",
+          message: "Inline fontSize must use a --fs-display token (--fs-lg/xl/h2/2xl/3xl/h1/hero), not a raw number.",
+        },
+      ],
     },
   },
 ];

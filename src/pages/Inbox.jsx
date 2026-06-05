@@ -204,7 +204,7 @@ function InboxEmpty({ onCollection, onAi }) {
           <Icon name="check" size={13} />
         </span>
       </div>
-      <h2 style={{ marginBottom: 8, fontSize: 22, letterSpacing: '-0.02em' }}>{t('notif.inbox_empty')}</h2>
+      <h2 style={{ marginBottom: 8, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em' }}>{t('notif.inbox_empty')}</h2>
       <div className="muted" style={{ fontSize: 'var(--fs-strong)', lineHeight: 1.6, maxWidth: 420, margin: '0 auto 22px' }}>
         {t('notif.inbox_empty_desc')}
       </div>

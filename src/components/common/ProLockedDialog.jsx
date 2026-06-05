@@ -33,7 +33,7 @@ export default function ProLockedDialog({ open, onOpenChange, feature, onUpgrade
             <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--warm-tint)', color: 'var(--warm)', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
               <Icon name="lock" size={24} />
             </div>
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: 'var(--fs-lg)', marginBottom: 8 }}>
               {feature ? t('sub.locked_feature_named', { feature }) : t('sub.locked_generic')}
             </div>
             <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>
