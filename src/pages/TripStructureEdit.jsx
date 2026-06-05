@@ -151,6 +151,7 @@ export default function TripStructureEdit() {
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
   const [undoStack, setUndoStack] = useState([]); // history of draft snapshots (JSON) for step-undo
   const endDrag = () => { setDragIdx(null); setOverGap(null); };
+  const justDraggedRef = useRef(false); // suppress the click that fires right after a drag
   // FLIP refs: animate non-dragged rows smoothly to their new slot during drag.
   const rowElRefs = useRef(new Map());     // node id -> row element
   const prevRectsRef = useRef(new Map());  // node id -> top, captured just before a reorder
@@ -600,7 +601,7 @@ export default function TripStructureEdit() {
   const arrivalFor = (id) => liveTransfers.find((t) => t.to_city_visit_id === id);
   const departureFor = (id) => liveTransfers.find((t) => t.from_city_visit_id === id);
   // panel navigation
-  const openCity = (id) => setLeftPanel({ type: 'city', id });
+  const openCity = (id) => { if (justDraggedRef.current) { justDraggedRef.current = false; return; } setLeftPanel({ type: 'city', id }); };
   const openEvent = (kind, id) => setLeftPanel({ type: 'event', kind, id, warning: (issues.find((i) => i[`${kind}Id`] === id)?.message) || null });
   // hotel/transfer have partner offers → show the PickPanel ("Развилка") first;
   // activities have none → straight to the form.
@@ -636,17 +637,19 @@ export default function TripStructureEdit() {
     captureRects();
     applyNodes(arr);
   };
-  // Begin a pointer drag from a row's grip. The lifted row then follows the
-  // pointer (transform managed in the move handler); other rows reflow via FLIP.
-  const beginDrag = (e, dIdx, nodeId) => {
+  // Arm a pointer drag from ANYWHERE on the row. It becomes a real drag only once
+  // the pointer crosses a small threshold, so a plain tap still opens the city.
+  // Presses on inner controls (steppers, booking cells, links) are ignored.
+  const armDrag = (e, dIdx, nodeId) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // Touch: only the grip starts a drag, so swiping a card still scrolls the list.
+    // Mouse: the whole card is draggable.
+    if (e.pointerType !== 'mouse' && !e.target?.closest?.('.te-grip')) return;
+    if (e.target?.closest?.('.te-stepper, .te-step, .te-cellbtn, .te-actchip, .te-hotelicon, .te-addmini, a, input, select, textarea')) return;
     const rowEl = rowElRefs.current.get(nodeId);
     if (!rowEl) return;
-    e.preventDefault();
     const rect = rowEl.getBoundingClientRect();
-    dragInfoRef.current = { id: nodeId, grabOffset: e.clientY - rect.top, ty: 0, moved: false, lastTarget: null };
-    setDragIdx(dIdx); setOverGap(null);
-    document.body.style.userSelect = 'none';
+    dragInfoRef.current = { id: nodeId, dIdx, startX: e.clientX, startY: e.clientY, grabOffset: e.clientY - rect.top, ty: 0, activated: false, lastTarget: null };
     window.addEventListener('pointermove', stableMove);
     window.addEventListener('pointerup', stableEnd, { once: true });
     window.addEventListener('pointercancel', stableEnd, { once: true });
@@ -655,7 +658,12 @@ export default function TripStructureEdit() {
   // dispatchers above so the window listeners pair up across re-renders.
   dragHandlersRef.current.move = (e) => {
     const info = dragInfoRef.current; if (!info) return;
-    info.moved = true;
+    if (!info.activated) { // promote arm → real drag once past the threshold
+      if (Math.hypot(e.clientX - info.startX, e.clientY - info.startY) < 5) return;
+      info.activated = true;
+      setDragIdx(info.dIdx); setOverGap(null);
+      document.body.style.userSelect = 'none';
+    }
     const rowEl = rowElRefs.current.get(info.id);
     if (rowEl) {
       const naturalTop = rowEl.getBoundingClientRect().top - info.ty;
@@ -679,15 +687,18 @@ export default function TripStructureEdit() {
     window.removeEventListener('pointermove', stableMove);
     document.body.style.userSelect = '';
     const info = dragInfoRef.current;
-    const rowEl = info && rowElRefs.current.get(info.id);
+    if (!info || !info.activated) { // a tap, not a drag → let the row click open the city
+      dragInfoRef.current = null;
+      return;
+    }
+    // A real drag happened → suppress the click that fires after pointerup, then commit.
+    justDraggedRef.current = true;
+    setTimeout(() => { justDraggedRef.current = false; }, 60);
+    const rowEl = rowElRefs.current.get(info.id);
     const order = (liveRef.current.displayNodes || []).map((n) => n.id);
     if (rowEl) { // spring the lifted row from its pointer position into its slot
       rowEl.style.transition = 'transform .44s cubic-bezier(0.34, 1.3, 0.5, 1)';
       rowEl.style.transform = 'translateY(0) scale(1)';
-    }
-    if (!info || !info.moved) { // a click on the grip, not a drag
-      if (rowEl) { rowEl.style.transition = ''; rowEl.style.transform = ''; }
-      dragInfoRef.current = null; endDrag(); return;
     }
     // Commit AFTER the settle so the final DOM order lands without a visible jump.
     setTimeout(() => {
@@ -850,7 +861,7 @@ export default function TripStructureEdit() {
               const dragging = dragIdx === dIdx;
               const dragProps = {
                 dragging,
-                onGripDown: (e) => beginDrag(e, dIdx, n.id),
+                onArm: (e) => armDrag(e, dIdx, n.id),
                 onMove: (dir) => moveNodeById(n.id, dir),
               };
               let body;
@@ -875,9 +886,10 @@ export default function TripStructureEdit() {
               return (
                 <div className="te-seamwrap" key={n.id} ref={setRowRef(n.id)}>
                   {body}
-                  {/* Transfer chip straddles the seam to the next city. Hidden while
-                      dragging (adjacency is in flux) so the rail reads cleanly. */}
-                  {next && dragIdx === null && (
+                  {/* Transfer chip straddles the seam to the next city. Stays
+                      mounted during drag but melts away via CSS (.is-dragging),
+                      then eases back on drop — adjacency is in flux mid-drag. */}
+                  {next && (
                     <SeamTransfer a={n} b={next} t={tr} mismatch={transferMismatch(tr)} onOpen={() => openTransferRow(n, next, tr)} />
                   )}
                 </div>
@@ -1059,7 +1071,6 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
   const gripEl = (
     <span className="te-grip" role="button" tabIndex={0} aria-label={t('tse.move_up')}
       onClick={stop}
-      onPointerDown={(e) => { stop(e); drag.onGripDown(e); }}
       onKeyDown={(e) => {
         if (e.key === 'ArrowUp') { e.preventDefault(); drag.onMove(-1); }
         else if (e.key === 'ArrowDown') { e.preventDefault(); drag.onMove(1); }
@@ -1069,7 +1080,7 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
   );
   if (seg.kind === 'waypoint') {
     return (
-      <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onClick={onOpenCity}>
+      <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onPointerDown={drag.onArm} onClick={onOpenCity}>
         {gripEl}
         <span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>
         <div style={{ minWidth: 0 }}>
@@ -1091,7 +1102,7 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
     );
   }
   return (
-    <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onClick={onOpenCity}>
+    <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onPointerDown={drag.onArm} onClick={onOpenCity}>
       {gripEl}
       <span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>
       <div style={{ minWidth: 0 }}>

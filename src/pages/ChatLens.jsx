@@ -12,6 +12,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { getActiveLocale } from '@/lib/i18n/format';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
@@ -31,12 +32,12 @@ const MSGS_KEY    = (chatId)  => ['chat-messages-lens', chatId];
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
 function fmtMsgTime(isoStr) {
-  try { return new Date(isoStr).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }); }
+  try { return new Date(isoStr).toLocaleTimeString(getActiveLocale(), { hour: '2-digit', minute: '2-digit' }); }
   catch { return ''; }
 }
 
 function fmtMsgDate(isoStr) {
-  try { return new Date(isoStr).toLocaleDateString('ru', { day: 'numeric', month: 'long' }); }
+  try { return new Date(isoStr).toLocaleDateString(getActiveLocale(), { day: 'numeric', month: 'long' }); }
   catch { return ''; }
 }
 

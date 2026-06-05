@@ -3,6 +3,7 @@ import { Icon } from './icons';
 import { useIsMobile } from '../hooks/use-mobile';
 import { useT } from '@/lib/i18n/I18nContext';
 import { hashStr } from '@/lib/hash';
+import { fmtMoneyActive } from '@/lib/i18n/format';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
@@ -171,10 +172,8 @@ export const Toggle = ({ on, onChange, locked, label }) => (
 );
 
 // ----- Currency formatting -----
-export const fmt = (n, cur = "EUR") => {
-  const symbol = { EUR: "€", USD: "$", RUB: "₽", GBP: "£" }[cur] || "";
-  return symbol + Number(n).toLocaleString("ru-RU");
-};
+// Canonical money formatter (locale-aware, decimals only when present).
+export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 
 // ----- Mock data: the trip -----
 export const TRIP = {
@@ -208,6 +207,7 @@ export const TRIPS = [
 
 // ----- DismissibleSeverity -----
 export const DismissibleSeverity = ({ level = "info", title, children, onDismiss, action }) => {
+  const t = useT();
   const [open, setOpen] = React.useState(true);
   if (!open) return null;
   return (
@@ -225,7 +225,7 @@ export const DismissibleSeverity = ({ level = "info", title, children, onDismiss
         width: 22, height: 22, borderRadius: 6, border: "none",
         color: "var(--muted)", cursor: "pointer",
         display: "grid", placeItems: "center",
-      }} title="Скрыть">
+      }} title={t('common.close')} aria-label={t('common.close')}>
         <Icon name="close" size={12} />
       </button>
     </div>
@@ -234,12 +234,14 @@ export const DismissibleSeverity = ({ level = "info", title, children, onDismiss
 
 // ----- RoleBadge with icon -----
 export const RoleBadge = ({ role, size = "md", status }) => {
+  const t = useT();
   const ROLE_META = {
-    owner:  { icon: "crown",  label: "Владелец", color: "var(--warm)", soft: "var(--warm-tint)" },
-    admin:  { icon: "shield", label: "Админ",    color: "var(--brand)", soft: "var(--brand-soft)" },
-    viewer: { icon: "eye",    label: "Зритель",  color: "var(--muted)", soft: "var(--wash)" },
+    owner:  { icon: "crown",  color: "var(--warm)", soft: "var(--warm-tint)" },
+    admin:  { icon: "shield", color: "var(--brand)", soft: "var(--brand-soft)" },
+    viewer: { icon: "eye",    color: "var(--muted)", soft: "var(--wash)" },
   };
-  const m = ROLE_META[role] || ROLE_META.viewer;
+  const key = ROLE_META[role] ? role : "viewer";
+  const m = ROLE_META[key];
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 5,
@@ -248,7 +250,7 @@ export const RoleBadge = ({ role, size = "md", status }) => {
       fontSize: size === "sm" ? 11 : 11.5, fontWeight: 500,
     }}>
       <Icon name={m.icon} size={size === "sm" ? 10 : 11} />
-      {m.label}{status === "pending" && " · ожидает"}
+      {t(`members.badge_${key}`)}{status === "pending" && ` · ${t('members.pending')}`}
     </span>
   );
 };

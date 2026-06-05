@@ -19,6 +19,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
+import { getActiveLocale } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton, Severity } from '../design/index';
 import CurrencySelect from '@/components/budget/CurrencySelect';
@@ -52,7 +53,7 @@ function catIcon(cat) {
 }
 
 // money formatting helper (2 decimals, locale ru)
-const money = (value, cur) => fmtMoney(value, cur, 'ru-RU');
+const money = (value, cur) => fmtMoney(value, cur, getActiveLocale());
 
 // ─── AddExpenseDialog (create + edit manual expense) ────────────────────────────
 

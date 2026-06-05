@@ -46,6 +46,7 @@ export function fmtMoney(value, currency, locale) {
     return new Intl.NumberFormat(locale || undefined, {
       style: 'currency',
       currency: currency || 'EUR',
+      minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(n);
   } catch {

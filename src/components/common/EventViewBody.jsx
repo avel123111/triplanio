@@ -18,6 +18,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { supabase } from '@/api/supabaseClient';
 import { safeStorageName } from '@/lib/storage';
 import { parseNaive } from '@/lib/naive-time';
+import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate } from '@/lib/trip-data';
@@ -62,11 +63,11 @@ export function eventTheme(kind, entity) {
 
 export function fmtDT(iso) {
   const d = parseNaive(iso);
-  return d ? d.setLocale('ru').toFormat('d MMM, HH:mm') : '';
+  return d ? d.toFormat('d MMM, HH:mm') : '';
 }
 export function fmtDate(iso) {
   const d = parseNaive(iso);
-  return d ? d.setLocale('ru').toFormat('d MMM') : '';
+  return d ? d.toFormat('d MMM') : '';
 }
 export function fmtTime(iso) {
   const d = parseNaive(iso);
@@ -74,12 +75,7 @@ export function fmtTime(iso) {
 }
 export function fmtPrice(price, cur) {
   if (price == null || price === '') return '';
-  const c = cur || 'EUR';
-  try {
-    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: c, maximumFractionDigits: 0 }).format(Number(price));
-  } catch {
-    return `${price} ${c}`;
-  }
+  return fmtMoneyActive(Number(price), cur || 'EUR');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

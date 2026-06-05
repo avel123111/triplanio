@@ -1164,7 +1164,9 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-endlabel { font-size: var(--fs-micro); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
     .te-wptag { font-size: var(--fs-micro); font-weight: 700; color: var(--ev-transfer); text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border-radius: 999px; background: var(--ev-transfer-soft); white-space: nowrap; }
     /* transfer chip sitting ON the separator line (its surface bg covers the line) */
-    .te-seam { position: absolute; left: 36px; bottom: 0; transform: translateY(50%); z-index: 4; animation: teSeamIn .2s var(--ease-out) both; }
+    .te-seam { position: absolute; left: 36px; bottom: 0; transform: translateY(50%); z-index: 4; animation: teSeamIn .2s var(--ease-out) both; transition: opacity .18s var(--ease-out), transform .18s var(--ease-out); }
+    /* Drag start: transfer badges melt away (fade + shrink); they ease back on drop. */
+    .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.85); pointer-events: none; }
     @keyframes teSeamIn { from { opacity: 0; transform: translateY(50%) scale(0.94); } to { opacity: 1; transform: translateY(50%) scale(1); } }
     /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
        from the empty dashed "+ переезд" add chip below. */

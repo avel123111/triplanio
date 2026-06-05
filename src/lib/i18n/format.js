@@ -4,12 +4,25 @@
 import { DateTime, Settings } from 'luxon';
 import { localeTag } from './translations';
 
+// ---- Active language (module-level) ---------------------------------------
+// Mirror of the current UI language so module-level helpers (formatters defined
+// outside React, e.g. design/index.jsx `fmt`) can be locale-aware without a hook.
+// Kept in sync by I18nProvider via applyLuxonLocale() on every language change.
+let _activeLang = 'ru';
+export function getActiveLang() { return _activeLang; }
+export function getActiveLocale() { return localeTag(_activeLang); }
+
 // ---- Luxon ----------------------------------------------------------------
 // Set the default Luxon locale globally; callers that pass setLocale() on a
 // DateTime keep precedence. We re-call this from I18nProvider on language change.
 export function applyLuxonLocale(lang) {
+  _activeLang = lang;
   Settings.defaultLocale = localeTag(lang);
 }
+
+// Canonical money/date formatters for module-level (non-hook) call sites.
+// Components should prefer useI18nFormat(); these read the active language.
+export function fmtMoneyActive(amount, currency) { return formatMoney(amount, currency, _activeLang); }
 
 // Format a DateTime (or ISO string + timezone) using Luxon's localized tokens.
 // Example: formatDateTime(iso, tz, 'd LLL yyyy', 'ru') → "5 авг 2026"
