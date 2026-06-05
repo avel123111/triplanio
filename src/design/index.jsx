@@ -418,6 +418,7 @@ export const PartnerPill = ({ url, fallback }) => {
 // BOOKING SUGGESTION CARD - used by AI in chats
 // =====================================================================
 export function BookingSuggestionCard({ type, name, partner, url, price, cur, rating, sub, extras }) {
+  const t = useT();
   const p = detectPartner(url || partner);
   return (
     <div style={{
@@ -446,7 +447,7 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
           <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fmt(price, cur)}</div>
           <div style={{ flex: 1 }} />
-          <Btn variant="ghost" size="sm" icon="external">{p?.label || "Открыть"}</Btn>
+          <Btn variant="ghost" size="sm" icon="external">{p?.label || t('common.open')}</Btn>
         </div>
       </div>
     </div>

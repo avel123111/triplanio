@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Loader2, Crown, Check, X, Info } from 'lucide-react';
+import { Icon } from '@/design/icons';
+import { Btn } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
@@ -69,7 +69,9 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
-          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
+            <div className="animate-spin" style={{ width: 24, height: 24, border: '3px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
+          </div>
         </DialogContent>
       </Dialog>
     );
@@ -109,7 +111,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
 
           {/* Info strip */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, marginBottom: 16, fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>
-            <Info className="w-3.5 h-3.5 shrink-0" />
+            <Icon name="info" size={14} style={{ flexShrink: 0 }} />
             {t('sub.limit_info')}
           </div>
 
@@ -120,8 +122,8 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {freeRows.map((r, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-base)', color: r.ok ? 'var(--ink-2)' : 'var(--muted-2)' }}>
-                    {r.ok ? <Check className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--success)' }} />
-                          : <X className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--muted-2)' }} />}
+                    {r.ok ? <Icon name="check" size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
+                          : <Icon name="close" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />}
                     <span>{r.text}</span>
                   </div>
                 ))}
@@ -132,7 +134,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {proRows.map((node, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>
-                    <Check className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--success)' }} />
+                    <Icon name="check" size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
                     <span>{node}</span>
                   </div>
                 ))}
@@ -146,8 +148,8 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
 
           {/* Footer */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>{t('sub.not_now')}</Button>
-            <Button onClick={openUpgrade}><Crown className="w-4 h-4 mr-2" />{t('sub.see_plans')}</Button>
+            <Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('sub.not_now')}</Btn>
+            <Btn variant="primary" icon="crown" onClick={openUpgrade}>{t('sub.see_plans')}</Btn>
           </div>
         </div>
       </DialogContent>

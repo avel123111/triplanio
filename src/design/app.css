@@ -1163,10 +1163,11 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
     .te-row__node { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
     .te-endlabel { font-size: var(--fs-micro); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
     .te-wptag { font-size: var(--fs-micro); font-weight: 700; color: var(--ev-transfer); text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border-radius: 999px; background: var(--ev-transfer-soft); white-space: nowrap; }
-    /* transfer chip sitting ON the separator line (its surface bg covers the line) */
-    .te-seam { position: absolute; left: 36px; bottom: 0; transform: translateY(50%); z-index: 4; animation: teSeamIn .2s var(--ease-out) both; transition: opacity .18s var(--ease-out), transform .18s var(--ease-out); }
-    /* Drag start: transfer badges melt away (fade + shrink); they ease back on drop. */
-    .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.85); pointer-events: none; }
+    /* Transfer badge: ONE symmetric transition drives both directions — it melts
+       away (fade+shrink) when a drag starts and eases back in on drop. No keyframe
+       animation: a filled animation pins opacity and breaks the fade-out. */
+    .te-seam { position: absolute; left: 36px; bottom: 0; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); }
+    .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
     @keyframes teSeamIn { from { opacity: 0; transform: translateY(50%) scale(0.94); } to { opacity: 1; transform: translateY(50%) scale(1); } }
     /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
        from the empty dashed "+ переезд" add chip below. */
