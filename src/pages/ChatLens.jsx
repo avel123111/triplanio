@@ -441,7 +441,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>{t('chat.loading_messages')}</div>
           ) : msgs.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>
-              <div style={{ fontSize: 28, marginBottom: 10 }}>💬</div>
+              <div style={{ marginBottom: 10, color: 'var(--muted-2)' }}><Icon name="chat" size={28} /></div>
               <div style={{ fontWeight: 500, marginBottom: 6 }}>{t('chat.empty_title')}</div>
               <div style={{ fontSize: 'var(--fs-meta)' }}>{t('chat.empty_desc')}</div>
             </div>
