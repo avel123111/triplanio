@@ -379,6 +379,7 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
 
 function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
   const t = useT();
+  const { lang } = useI18n();
   const [geoState, setGeoState] = useState('ask'); // ask | loading | allowed | denied
   const [nearbyCity, setNearbyCity] = useState(null); // detected city from GPS
 
@@ -387,7 +388,7 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
     setGeoState('loading');
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const city = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+        const city = await reverseGeocode(pos.coords.latitude, pos.coords.longitude, lang);
         if (city) {
           const tz = await getTimezone(city.latitude, city.longitude);
           const full = { ...city, timezone: tz };

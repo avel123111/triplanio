@@ -70,8 +70,8 @@ function FlightLine({ transfer, dir, warn, onClick, t }) {
 }
 
 export default function CityPanel({
-  node, meta, hotel, acts = [], arrival, departure, prevCity, nextCity,
-  hotelWarn, isActWarn, arrivalWarn = false, departureWarn = false, onBack, onRemove,
+  node, meta, hotels = [], acts = [], arrival, departure, prevCity, nextCity,
+  isHotelWarn, isActWarn, arrivalWarn = false, departureWarn = false, onBack, onRemove,
   onNightsMinus, onNightsPlus,
   onOpenHotel, onAddHotel, onOpenActivity, onAddActivity, onOpenTransfer, onAddArrival, onAddDeparture,
 }) {
@@ -125,22 +125,33 @@ export default function CityPanel({
           : nextCity && <GhostAdd icon="plane" accent="var(--muted-2)" label={t('tse.add_departure')} sub={nextCity} onClick={onAddDeparture} />}
       </div>
 
-      {/* hotel — cities only (a 0-night waypoint has no overnight stay) */}
+      {/* hotels — cities only (a 0-night waypoint has no overnight stay).
+          Multiple stays per city are allowed (same list+add pattern as
+          activities): the empty state shows a GhostAdd with the city date-range
+          hint; once there's at least one, the section header carries a "+" to
+          add more. */}
       {!isWaypoint && <>
-      <SectionLabel>{t('budget.cat_accommodation')}</SectionLabel>
-      {hotel ? (
-        <button className={'te-bookrow' + (hotelWarn ? ' is-warn' : '')} onClick={() => onOpenHotel(hotel.id)}>
-          <span style={{ width: 38, height: 38, borderRadius: 10, background: hotelWarn ? 'var(--warning-soft)' : 'var(--ev-hotel-soft)', color: hotelWarn ? 'var(--warning)' : 'var(--ev-hotel)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="bed" size={18} /></span>
-          <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-            <span style={{ display: 'block', fontSize: 'var(--fs-strong)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hotel.name}</span>
-            <span className="num muted" style={{ display: 'block', fontSize: 'var(--fs-meta)', marginTop: 3 }}>{rangeText(hotel.check_in_datetime, hotel.check_out_datetime)}{hotel.price != null ? ' · ' + money(hotel.price, hotel.currency) : ''}</span>
-          </span>
-          {hotelWarn && <Icon name="warning" size={14} style={{ color: 'var(--warning)', flexShrink: 0 }} />}
-          <Icon name="chev" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
-        </button>
-      ) : (
-        <GhostAdd icon="bed" accent="var(--muted-2)" label={t('hotel.add')} sub={rangeText(node.start_date, node.end_date)} onClick={onAddHotel} />
-      )}
+      <SectionLabel action={hotels.length > 0 ? <button className="te-addmini" onClick={onAddHotel} aria-label={t('hotel.add')}><Icon name="plus" size={13} /></button> : null}>
+        {t('budget.cat_accommodation')}{hotels.length > 0 ? ` · ${hotels.length}` : ''}
+      </SectionLabel>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {hotels.length === 0 ? (
+          <GhostAdd icon="bed" accent="var(--muted-2)" label={t('hotel.add')} sub={rangeText(node.start_date, node.end_date)} onClick={onAddHotel} />
+        ) : hotels.map((hotel) => {
+          const warn = isHotelWarn ? isHotelWarn(hotel) : false;
+          return (
+            <button key={hotel.id} className={'te-bookrow' + (warn ? ' is-warn' : '')} onClick={() => onOpenHotel(hotel.id)}>
+              <span style={{ width: 38, height: 38, borderRadius: 10, background: warn ? 'var(--warning-soft)' : 'var(--ev-hotel-soft)', color: warn ? 'var(--warning)' : 'var(--ev-hotel)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="bed" size={18} /></span>
+              <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                <span style={{ display: 'block', fontSize: 'var(--fs-strong)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hotel.name}</span>
+                <span className="num muted" style={{ display: 'block', fontSize: 'var(--fs-meta)', marginTop: 3 }}>{rangeText(hotel.check_in_datetime, hotel.check_out_datetime)}{hotel.price != null ? ' · ' + money(hotel.price, hotel.currency) : ''}</span>
+              </span>
+              {warn && <Icon name="warning" size={14} style={{ color: 'var(--warning)', flexShrink: 0 }} />}
+              <Icon name="chev" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
+            </button>
+          );
+        })}
+      </div>
       </>}
 
       {/* activities */}

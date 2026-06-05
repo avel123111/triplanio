@@ -21,7 +21,7 @@ import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
-import { Avatar, Btn, EmptyState, Skeleton, fmtDate, weekday, StreamEventRow, fmt, CityPhoto } from '../design/index';
+import { Avatar, Btn, EmptyState, Skeleton, fmtDate, weekday, StreamEventRow } from '../design/index';
 import { SystemStub } from '@/lib/PageNotFound';
 import { sortVisits, cityIdentity, validateTrip, primaryIssues } from '@/lib/validation';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
@@ -402,14 +402,6 @@ function buildDayList(startIso, endIso) {
   return days;
 }
 
-// Count nights between two date strings 'yyyy-MM-dd'
-function nightsBetween(startDay, endDay) {
-  const s = parseNaive(startDay);
-  const e = parseNaive(endDay);
-  if (!s || !e) return 0;
-  return Math.max(0, Math.round(e.diff(s, 'days').days));
-}
-
 // ─── StreamAnchor ─────────────────────────────────────────────────────────────
 
 function StreamAnchor({ label, sub, color, icon }) {
@@ -422,32 +414,6 @@ function StreamAnchor({ label, sub, color, icon }) {
         <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{label}</div>
         {sub && <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{sub}</div>}
       </div>
-    </div>
-  );
-}
-
-// ─── MissingHotelWarning ──────────────────────────────────────────────────────
-
-function MissingHotelWarning({ city, onAdd }) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(true);
-  if (!open) return null;
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: 10, background: 'var(--warning-soft)', borderRadius: 10, border: '1.5px dashed var(--warning)',
-    }}>
-      <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(201,138,26,.2)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-        <Icon name="warning" size={18} />
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{t('trip.no_booking_in', { city })}</div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('trip.add_hotel_prompt')}</div>
-      </div>
-      <Btn variant="primary" size="sm" icon="plus" onClick={onAdd}>{t('common.add')}</Btn>
-      <button onClick={() => setOpen(false)} style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
-        <Icon name="close" size={12} />
-      </button>
     </div>
   );
 }
@@ -504,68 +470,6 @@ function useWeatherByDay(visits) {
   return weatherByDay;
 }
 
-function CityHero({ city, country, dateRange, nights, hotels = [], visit, onAddHotel, isEditMode, onEditNotes, onDeleteCity, onOpenEvent, showBookingWarnings = true }) {
-  const { t, lang } = useI18n();
-  return (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--line)',
-      borderRadius: 14, overflow: 'hidden', marginBottom: 12,
-    }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 0 }}>
-        <CityPhoto city={city} h={120} w="100%" radius={0} />
-        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-            <span className="eyebrow" style={{ color: 'var(--brand)' }}>
-              <Icon name="pin" size={11} style={{ verticalAlign: -1, marginRight: 3 }} /> {country || city}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-            <h2 style={{ marginBottom: 0, fontSize: 'var(--fs-2xl)' }}>{city}</h2>
-            {dateRange && <span className="muted num" style={{ fontSize: 'var(--fs-base)' }}>{dateRange}</span>}
-            {nights > 0 && (
-              <span className="muted" style={{ fontSize: 'var(--fs-base)' }}>
-                · {nights} {nights === 1 ? t('trip.nights_one') : nights < 5 ? t('trip.nights_few') : t('trip.nights_many')}
-              </span>
-            )}
-            {/* City add/edit/delete moved entirely to the Structure editor
-                (/trip/:id/edit). No city-level mutations on the timeline. */}
-          </div>
-        </div>
-      </div>
-      <div style={{ padding: '12px 16px', borderTop: '1px solid var(--line-2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {hotels.length > 0 ? hotels.map((h, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onOpenEvent?.({ type: 'hotel-checkin', hotelId: h.hotelId })}
-            disabled={!onOpenEvent || !h.hotelId}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: 10, background: 'var(--wash)', borderRadius: 10, border: '1px solid var(--line-2)',
-              cursor: onOpenEvent && h.hotelId ? 'pointer' : 'default',
-              width: '100%', textAlign: 'left',
-            }}
-          >
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-              <Icon name="bed" size={18} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{h.hotel}</div>
-              <div className="muted num" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>
-                {h.checkIn && t('trip.hotel_checkin_date', { date: fmtDate(h.checkIn, lang) })}
-                {h.checkOut && ' · ' + t('trip.hotel_checkout_date', { date: fmtDate(h.checkOut, lang) })}
-                {h.nights && ` · ${h.nights} ${h.nights === 1 ? t('trip.nights_one') : t('trip.nights_few')}`}
-              </div>
-            </div>
-            {h.price && <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fmt(h.price, h.cur || 'EUR')}</div>}
-          </button>
-        )) : (
-          showBookingWarnings ? <MissingHotelWarning city={city} onAdd={() => onAddHotel?.(visit)} /> : null
-        )}
-      </div>
-    </div>
-  );
-}
 
 function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
   const { t, lang } = useI18n();
@@ -614,42 +518,6 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   for (const e of stream) {
     if (!eventsByDate[e.date]) eventsByDate[e.date] = [];
     eventsByDate[e.date].push(e);
-  }
-
-  // Build hotel lookup per visit
-  const hotelsByVisit = {};
-  for (const e of stream) {
-    if (e.type === 'hotel-checkin') {
-      // Bind the hotel to its city strictly by the explicit FK (city_visit_id).
-      // No name/date-range fallback: a date-range guess is ambiguous when two
-      // cities share a calendar day (a one-day pass-through overlapping the next
-      // stay) and would park the hotel under the wrong city's CityHero. If a
-      // hotel has no matching city_visit, it is simply not attached to any hero
-      // and that city renders the standard "no booking" warning instead.
-      const visit = e.cityVisitId ? visits.find(v => v.id === e.cityVisitId) : null;
-      if (visit) {
-        if (!hotelsByVisit[visit.id]) hotelsByVisit[visit.id] = [];
-        if (!hotelsByVisit[visit.id].find(h => h.hotelId === e.hotelId)) {
-          hotelsByVisit[visit.id].push({
-            hotel: e.hotel,
-            hotelId: e.hotelId,
-            checkIn: e.date,
-            checkOut: null,
-            price: e.price,
-            cur: e.cur,
-            nights: e.nights,
-          });
-        }
-      }
-    }
-  }
-  for (const e of stream) {
-    if (e.type === 'hotel-checkout') {
-      for (const visitId of Object.keys(hotelsByVisit)) {
-        const entry = hotelsByVisit[visitId].find(h => h.hotelId === e.hotelId);
-        if (entry) entry.checkOut = e.date;
-      }
-    }
   }
 
   const days = buildDayList(tripStart, tripEnd);
@@ -719,27 +587,11 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         );
       }
     }
-    const vStart = naiveDayKey(city.start_date);
-    const vEnd = naiveDayKey(city.end_date);
-    const nights = nightsBetween(vStart, vEnd);
-    const dateRange = vStart && vEnd ? `${fmtDate(vStart, lang)} - ${fmtDate(vEnd, lang)}` : null;
-    out.push(
-      <CityHero
-        key={`city-${city.id}`}
-        city={city.city_name}
-        country={city.country || city.country_name}
-        dateRange={dateRange}
-        nights={nights}
-        hotels={hotelsByVisit[city.id] || []}
-        visit={city}
-        onAddHotel={onAddHotel}
-        isEditMode={isEditMode}
-        onEditNotes={onEditVisitNotes}
-        onDeleteCity={onDeleteCity}
-        onOpenEvent={onOpenEvent}
-        showBookingWarnings={showBookingWarnings}
-      />
-    );
+    // The city "hero" card was removed from the timeline feed. City context is
+    // carried by the per-day city chip in the date separator, and hotels render
+    // as their own check-in/check-out/deadline rows in the day stream. The
+    // arrival block now contributes only the inbound transfer card (or the
+    // missing-transfer warning) above the day's events.
     return out;
   };
 
@@ -806,7 +658,6 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     // Multiple cities can arrive the same day (e.g. a one-day pass-through that
     // shares its single day with the previous and next city).
     const arrivingToday = transitCities.filter(c => naiveDayKey(c.start_date) === day);
-    const isArrival = arrivingToday.length > 0;
 
     // Header chip = the latest transit city whose range covers this day.
     const dayCity = [...transitCities].reverse().find(c => {
@@ -883,8 +734,10 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
               {beforeEvents.length > 0 && eventList(beforeEvents, true)}
               {blockNodes}
               {afterEvents.length > 0 && eventList(afterEvents, false)}
-              {/* Empty-day placeholder - never on an arrival day (the hero fills it). */}
-              {!hasAny && !isArrival && (
+              {/* Empty-day placeholder. (The city hero used to fill arrival days;
+                  with it removed, any day with no transfer block and no events
+                  shows the placeholder.) */}
+              {!hasAny && (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 14px',

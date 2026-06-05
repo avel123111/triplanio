@@ -70,9 +70,14 @@ export async function getTimezone(lat, lon) {
 }
 
 // Reverse geocode lat/lon → city object (Nominatim reverse, no key needed)
-export async function reverseGeocode(lat, lon) {
+// `lang` = app locale so the detected city/country come back localized
+// (matches searchCities). Falls back to the browser language, then 'en'.
+export async function reverseGeocode(lat, lon, lang) {
   try {
-    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1&accept-language=ru`;
+    const acceptLang = lang
+      || (typeof navigator !== 'undefined' && navigator.language)
+      || 'en';
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1&accept-language=${encodeURIComponent(acceptLang)}`;
     const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
     if (!res.ok) return null;
     const d = await res.json();

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triplanio — Atlas (редизайн)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* =========================================================================
+   ATLAS — warm editorial travel system
+   ========================================================================= */
+:root{
+  /* paper canvas (light) */
+  --paper:#EEF1F5; --paper-2:#F6F8FB; --surface:#FFFFFF; --surface-2:#F3F6FA;
+  --ink:#121821; --ink-2:#33404F; --muted:#646D7A; --muted-2:#97A0AD;
+  --line:rgba(18,24,33,.10); --line-2:rgba(18,24,33,.06); --line-strong:rgba(18,24,33,.16);
+  /* editorial accents */
+  --terra:#2C66D8; --terra-soft:rgba(44,102,216,.10); --terra-ink:#1a4aa8;
+  --brand:#2C66D8; --brand-soft:rgba(44,102,216,.10);
+  --gold:#3f5f9e;
+  --success:#2E8B5B; --warning-ink:#9A6516;
+  /* event palette — warmed to sit on paper */
+  --ev-hotel:#2C66D8; --ev-hotel-soft:rgba(44,102,216,.12);
+  --ev-transfer:#1A7C84; --ev-transfer-soft:rgba(26,124,132,.12);
+  --ev-activity:#C2603A; --ev-activity-soft:rgba(194,96,58,.12);
+  --ev-car:#4E8B57; --ev-car-soft:rgba(78,139,87,.12);
+  --ev-deadline:#C0413F; --ev-deadline-soft:rgba(192,65,63,.12);
+  --shadow-s:0 1px 2px rgba(40,30,18,.05), 0 8px 24px -12px rgba(40,30,18,.16);
+  --shadow-m:0 2px 4px rgba(40,30,18,.05), 0 22px 48px -22px rgba(40,30,18,.30);
+  --shadow-pop:0 4px 10px rgba(40,30,18,.10), 0 40px 80px -32px rgba(40,30,18,.40);
+  --disp:"Fraunces",Georgia,serif; --body:"Hanken Grotesk",ui-sans-serif,system-ui,sans-serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --r:18px; --r-sm:12px;
+}
+:root[data-theme="dark"]{
+  --paper:#13100C; --paper-2:#181410; --surface:#1E1812; --surface-2:#231C15;
+  --ink:#F2EBDF; --ink-2:#D6CDBD; --muted:#9A8F7E; --muted-2:#6E6557;
+  --line:rgba(242,235,223,.12); --line-2:rgba(242,235,223,.07); --line-strong:rgba(242,235,223,.18);
+  --terra:#E0825A; --terra-soft:rgba(224,130,90,.14); --terra-ink:#E89A74;
+  --brand:#6A9BF0; --brand-soft:rgba(106,155,240,.16); --gold:#D2A964;
+  --success:#5BB985; --warning-ink:#E0A85A;
+  --ev-hotel:#6A9BF0; --ev-hotel-soft:rgba(106,155,240,.16);
+  --ev-transfer:#4FB6BE; --ev-transfer-soft:rgba(79,182,190,.16);
+  --ev-activity:#E0825A; --ev-activity-soft:rgba(224,130,90,.16);
+  --ev-car:#6FBF7C; --ev-car-soft:rgba(111,191,124,.16);
+  --ev-deadline:#E26B69; --ev-deadline-soft:rgba(226,107,105,.16);
+  --shadow-s:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --shadow-m:0 2px 4px rgba(0,0,0,.4), 0 22px 48px -22px rgba(0,0,0,.7);
+  --shadow-pop:0 4px 10px rgba(0,0,0,.5), 0 40px 80px -32px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:var(--body); background:var(--paper); color:var(--ink);
+  -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.55; letter-spacing:.002em;
+  position:relative; min-height:100vh;
+}
+/* paper grain — atmosphere, not noise */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.5;mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+.disp{font-family:var(--disp)} .num{font-variant-numeric:tabular-nums lining-nums}
+.eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.muted{color:var(--muted)}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+a{color:inherit;text-decoration:none}
+
+/* ---- chrome: a thin editorial masthead ---- */
+.mast{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:18px;
+  padding:14px 40px;background:color-mix(in oklab,var(--paper) 86%, transparent);
+  backdrop-filter:saturate(1.1) blur(10px);border-bottom:1px solid var(--line-2)}
+.mast__brand{display:flex;align-items:center;gap:11px}
+.mast__mark{width:30px;height:30px;border-radius:9px;background:
+  radial-gradient(120% 120% at 30% 20%, var(--terra), #163e9e 90%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25), var(--shadow-s);position:relative}
+.mast__mark::after{content:"";position:absolute;inset:0;border-radius:inherit;
+  background:linear-gradient(135deg,transparent 40%, rgba(255,255,255,.18))}
+.mast__name{font-family:var(--disp);font-weight:600;font-size:19px;letter-spacing:-.01em}
+.mast__crumb{font-family:var(--disp);font-style:italic;font-weight:400;color:var(--muted);font-size:16px}
+.mast__sp{flex:1}
+.mast__act{display:flex;align-items:center;gap:6px}
+.ibtn{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:var(--muted);transition:.2s var(--ease)}
+.ibtn:hover{background:var(--surface-2);color:var(--ink);box-shadow:var(--shadow-s)}
+.ava{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--disp);font-weight:600;font-size:14px;color:#fff;
+  background:radial-gradient(120% 120% at 30% 20%, var(--gold), #264a90);box-shadow:var(--shadow-s)}
+
+/* ---- editorial canvas ---- */
+.wrap{max-width:1180px;margin:0 auto;padding:34px 40px 120px;position:relative;z-index:2}
+
+/* ---- HERO: cinematic, photography-led, guaranteed contrast ---- */
+.hero{position:relative;border-radius:calc(var(--r) + 6px);overflow:hidden;box-shadow:var(--shadow-m);
+  isolation:isolate;height:440px;display:flex;flex-direction:column;justify-content:flex-end}
+.hero__img{position:absolute;inset:0;background-size:cover;background-position:center;
+  transform:scale(1.02);filter:saturate(.92) contrast(1.03);z-index:-3}
+/* duotone tone toward the brand-warm palette so ANY photo joins the system */
+.hero__tone{position:absolute;inset:0;z-index:-2;mix-blend-mode:color;opacity:.18;
+  background:linear-gradient(120deg,#0a1426,#11203a)}
+/* contrast guarantee: strong bottom scrim + soft top vignette — works on light OR dark photos */
+.hero__scrim{position:absolute;inset:0;z-index:-1;background:
+  linear-gradient(180deg, rgba(12,9,6,.46) 0%, rgba(12,9,6,0) 22%, rgba(12,9,6,0) 40%, rgba(12,9,6,.40) 68%, rgba(12,9,6,.84) 100%)}
+.hero__top{position:absolute;top:22px;left:26px;right:26px;display:flex;justify-content:space-between;align-items:flex-start;z-index:2}
+.tagchip{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;font-size:11px;font-weight:600;
+  letter-spacing:.06em;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.26);backdrop-filter:blur(6px)}
+.hero__body{position:relative;z-index:2;padding:26px 28px 24px;color:#fff}
+.hero__eyebrow{color:rgba(255,255,255,.82);letter-spacing:.24em}
+.hero__title{font-family:var(--disp);font-weight:500;font-size:clamp(40px,6vw,68px);line-height:.96;letter-spacing:-.02em;margin:10px 0 0;
+  text-shadow:0 2px 30px rgba(0,0,0,.35)}
+.hero__title em{font-style:italic;font-weight:400;color:#cfe1ff}
+.hero__sub{margin-top:12px;font-size:15px;color:rgba(255,255,255,.9);max-width:60ch}
+.hero__foot{margin-top:22px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+/* printed stat ribbon */
+.ribbon{display:flex;align-items:center;gap:0}
+.ribbon .it{padding:0 20px;border-left:1px solid rgba(255,255,255,.28)}
+.ribbon .it:first-child{padding-left:0;border-left:none}
+.ribbon .k{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.ribbon .v{font-family:var(--disp);font-weight:500;font-size:22px;color:#fff;margin-top:3px;font-variant-numeric:tabular-nums}
+.hero__cta{display:flex;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:9px;padding:12px 20px;border-radius:13px;font-weight:600;font-size:14px;
+  transition:.2s var(--ease);white-space:nowrap}
+.btn:active{transform:translateY(1px) scale(.99)}
+.btn--primary{background:var(--terra);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.2) inset, 0 10px 24px -10px var(--terra)}
+.btn--primary:hover{background:#1f55c4;transform:translateY(-1px)}
+.btn--glass{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.3);backdrop-filter:blur(8px)}
+.btn--glass:hover{background:rgba(255,255,255,.26)}
+.btn--ic{padding:12px;width:46px;justify-content:center}
+
+/* ---- content: editorial two-column ---- */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:44px;margin-top:42px;align-items:start}
+@media(max-width:960px){.cols{grid-template-columns:1fr}.rail{display:none}}
+
+.sec-h{display:flex;align-items:baseline;gap:14px;margin:0 0 22px}
+.sec-h h2{font-family:var(--disp);font-weight:500;font-size:26px;letter-spacing:-.01em;margin:0}
+.sec-h .rule{flex:1;height:1px;background:var(--line)}
+.sec-h .cnt{font-family:var(--disp);font-style:italic;color:var(--muted);font-size:16px}
+
+/* ---- the route spine ---- */
+.spine{position:relative;padding-left:30px}
+.spine::before{content:"";position:absolute;left:6px;top:8px;bottom:14px;width:2px;border-radius:2px;
+  background:linear-gradient(var(--line-strong),var(--line-strong));}
+.daystamp{position:relative;margin:30px 0 14px;display:flex;align-items:center;gap:12px}
+.daystamp:first-child{margin-top:0}
+.daystamp__dot{position:absolute;left:-30px;width:14px;height:14px;border-radius:50%;background:var(--surface);
+  border:2px solid var(--ink);box-shadow:0 0 0 4px var(--paper)}
+.daystamp__d{font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:-.01em}
+.daystamp__w{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.daystamp__city{margin-left:auto;font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.daystamp__city::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--terra)}
+
+/* event entry — crafted, not a flat row */
+.entry{position:relative;display:grid;grid-template-columns:54px 1fr;gap:16px;padding:4px 0 4px;margin:0 0 4px}
+.entry__node{position:absolute;left:-30px;top:14px;width:16px;height:16px;border-radius:50%;
+  border:3px solid var(--paper);box-shadow:0 0 0 1.5px var(--ev,var(--ink))}
+.entry__node b{position:absolute;inset:2px;border-radius:50%;background:var(--ev,var(--ink))}
+.entry__time{font-family:var(--disp);font-weight:600;font-size:17px;line-height:1.1;padding-top:12px;font-variant-numeric:tabular-nums}
+.entry__time small{display:block;font-family:var(--body);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:3px}
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow-s);transition:.22s var(--ease);overflow:hidden}
+.entry .card{cursor:pointer}
+.entry .card:hover{transform:translateY(-2px);box-shadow:var(--shadow-m);border-color:var(--line-strong)}
+.entry .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ev,var(--ink))}
+.ec{display:flex;align-items:center;gap:14px;padding:15px 18px 15px 20px}
+.ec__ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:0 0 40px;
+  background:var(--ev-soft);color:var(--ev);font-size:18px}
+.ec__t{font-weight:600;font-size:15px;display:flex;align-items:center;gap:9px}
+.ec__kind{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ev);font-weight:700}
+.ec__sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+.ec__price{margin-left:auto;font-family:var(--disp);font-weight:600;font-size:16px;font-variant-numeric:tabular-nums;text-align:right}
+.ec__chev{margin-left:8px;color:var(--muted-2);transition:.2s}
+.entry .card:hover .ec__chev{color:var(--ink);transform:translateX(2px)}
+
+/* transfer seam — a real route segment ON the spine */
+.seam{position:relative;display:flex;align-items:center;gap:12px;margin:8px 0;min-height:46px}
+.seam__node{position:absolute;left:-30px;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:50%;
+  background:var(--surface);border:1.5px solid var(--ev-transfer);color:var(--ev-transfer);display:grid;place-items:center;
+  box-shadow:0 0 0 4px var(--paper)}
+.seam__node::after{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.seam__chip{display:inline-flex;align-items:center;gap:10px;padding:9px 15px 9px 13px;border-radius:999px;
+  background:var(--ev-transfer-soft);color:var(--ev-transfer-ink,var(--ev-transfer));font-weight:600;font-size:13px;border:1px solid color-mix(in oklab,var(--ev-transfer) 26%, transparent)}
+.seam__chip .sep{width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.5}
+.seam__chip .dur{font-variant-numeric:tabular-nums;opacity:.85;font-weight:500}
+.seam--warn .seam__node{border-color:var(--warning-ink);color:var(--warning-ink)}
+.seam--warn .seam__chip{background:rgba(154,101,22,.10);color:var(--warning-ink);border-color:rgba(154,101,22,.3)}
+
+/* ---- right rail: editorial trip dossier ---- */
+.rail{position:sticky;top:96px;display:flex;flex-direction:column;gap:18px}
+.dossier{border-radius:var(--r);overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow-m);background:var(--surface)}
+.dossier__img{height:120px;background-size:cover;background-position:center;position:relative;filter:saturate(.92)}
+.dossier__img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,9,6,.1),rgba(12,9,6,.62))}
+.dossier__tone{position:absolute;inset:0;mix-blend-mode:color;opacity:.3;background:linear-gradient(120deg,#0a1426,#11203a)}
+.dossier__cap{position:absolute;left:16px;bottom:12px;z-index:2;color:#fff}
+.dossier__name{font-family:var(--disp);font-weight:600;font-size:20px;letter-spacing:-.01em;text-shadow:0 1px 12px rgba(0,0,0,.4)}
+.dossier__dates{font-size:11.5px;color:rgba(255,255,255,.85);letter-spacing:.04em}
+.dossier__b{padding:16px 18px}
+.kvline{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line-2);font-size:13px}
+.kvline:last-child{border-bottom:none}
+.kvline .v{font-family:var(--disp);font-weight:600;font-variant-numeric:tabular-nums}
+.budget{padding:16px 18px;border-top:1px solid var(--line-2)}
+.budget__row{display:flex;justify-content:space-between;align-items:baseline}
+.budget__big{font-family:var(--disp);font-weight:600;font-size:26px;font-variant-numeric:tabular-nums}
+.meter{height:8px;border-radius:999px;background:var(--line-2);display:flex;overflow:hidden;margin:12px 0 8px;gap:1.5px}
+.meter i{height:100%}
+.budget__legend{display:flex;flex-wrap:wrap;gap:10px 16px;font-size:11.5px;color:var(--muted)}
+.budget__legend span{display:inline-flex;align-items:center;gap:6px}
+.budget__legend .sw{width:8px;height:8px;border-radius:3px}
+.crew{padding:16px 18px;border-top:1px solid var(--line-2)}
+.crew__row{display:flex;align-items:center;gap:-8px}
+.crew__av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--disp);font-weight:600;font-size:13px;color:#fff;border:2px solid var(--surface);margin-left:-9px;box-shadow:var(--shadow-s)}
+.crew__av:first-child{margin-left:0}
+
+/* floating theme toggle */
+.tt{position:fixed;right:22px;bottom:22px;z-index:30;display:inline-flex;padding:4px;border-radius:999px;
+  background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-pop)}
+.tt button{width:34px;height:34px;border-radius:50%;color:var(--muted);display:grid;place-items:center}
+.tt button.on{background:var(--ink);color:var(--paper)}
+
+/* ---- detail panel — a rich object, not a notepad ---- */
+.scrim{position:fixed;inset:0;background:rgba(16,11,6,.42);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:.25s var(--ease);z-index:40}
+.scrim.on{opacity:1;pointer-events:auto}
+.panel{position:fixed;top:0;right:0;height:100vh;width:480px;max-width:94vw;z-index:50;background:var(--paper-2);
+  border-left:1px solid var(--line);box-shadow:var(--shadow-pop);transform:translateX(102%);transition:transform .32s var(--ease);
+  display:flex;flex-direction:column}
+.panel.on{transform:none}
+.panel__hero{position:relative;height:172px;background-size:cover;background-position:center;flex:0 0 172px}
+.panel__hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,9,6,.2),rgba(12,9,6,.7))}
+.panel__hero .tone{position:absolute;inset:0;mix-blend-mode:color;opacity:.3;background:linear-gradient(120deg,#0a1426,#11203a)}
+.panel__x{position:absolute;top:14px;right:14px;z-index:3;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.16);
+  border:1px solid rgba(255,255,255,.3);color:#fff;display:grid;place-items:center;backdrop-filter:blur(6px)}
+.panel__cap{position:absolute;left:22px;bottom:16px;z-index:2;color:#fff}
+.panel__kind{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.85);font-weight:700;display:inline-flex;align-items:center;gap:7px}
+.panel__kind .d{width:7px;height:7px;border-radius:50%}
+.panel__title{font-family:var(--disp);font-weight:600;font-size:28px;line-height:1.04;letter-spacing:-.015em;margin-top:6px;text-shadow:0 2px 18px rgba(0,0,0,.4)}
+.panel__b{flex:1;overflow:auto;padding:22px}
+.statrow{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.statrow .c{flex:1;padding:13px 16px;border-left:1px solid var(--line-2)}
+.statrow .c:first-child{border-left:none}
+.statrow .k{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.statrow .v{font-family:var(--disp);font-weight:600;font-size:17px;margin-top:4px;font-variant-numeric:tabular-nums}
+.statrow .v.ok{color:var(--success)}
+.psec{display:flex;align-items:center;gap:10px;margin:22px 0 12px}
+.psec h4{font-family:var(--disp);font-weight:600;font-size:15px;margin:0}
+.psec .rule{flex:1;height:1px;background:var(--line-2)}
+.minicard{display:flex;align-items:center;gap:13px;padding:13px 15px;background:var(--surface);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow-s)}
+.minicard__ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex:0 0 40px;font-size:18px}
+.minicard__t{font-weight:600;font-size:13.5px}
+.minicard__s{font-size:12px;color:var(--muted);margin-top:2px}
+.minicard .go{margin-left:auto;color:var(--muted-2)}
+.minimap{height:140px;border-radius:13px;overflow:hidden;position:relative;border:1px solid var(--line);background-size:cover;background-position:center}
+.minimap .pin{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;
+  background:var(--brand);border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.tline{display:flex;align-items:stretch;gap:12px;margin:6px 0}
+.tline__rail{display:flex;flex-direction:column;align-items:center;padding-top:4px}
+.tline__rail .d{width:10px;height:10px;border-radius:50%;background:var(--ev);border:2px solid var(--surface);box-shadow:0 0 0 1.5px var(--ev)}
+.tline__rail .l{flex:1;width:2px;background:var(--line);margin:2px 0}
+.tline__rail .d.alt{background:var(--surface);box-shadow:0 0 0 1.5px var(--ev)}
+.tline__c .lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tline__c .val{font-family:var(--disp);font-weight:600;font-size:16px;font-variant-numeric:tabular-nums}
+.pillrow{display:flex;gap:8px;flex-wrap:wrap}
+.pill{font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+.pill.ok{background:rgba(46,139,91,.12);color:var(--success);border-color:rgba(46,139,91,.3)}
+.panel__foot{flex:0 0 auto;padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:10px;background:var(--paper)}
+.panel__foot .btn--primary{background:var(--terra)}
+.btn--soft{background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+.btn--soft:hover{background:var(--surface);box-shadow:var(--shadow-s)}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="mast__brand"><span class="mast__mark"></span><span class="mast__name">Triplanio</span></div>
+  <span class="mast__crumb">Иберия, лето 2026</span>
+  <span class="mast__sp"></span>
+  <nav class="mast__act">
+    <button class="ibtn" title="Поиск">⌕</button>
+    <button class="ibtn" title="Уведомления">◔</button>
+    <span class="ava">П</span>
+  </nav>
+</header>
+
+<main class="wrap">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero__img" style="background-image:url('https://images.unsplash.com/photo-1555881400-74d7acaacd8b?q=80&w=1600&auto=format&fit=crop')"></div>
+    <div class="hero__tone"></div>
+    <div class="hero__scrim"></div>
+    <div class="hero__top">
+      <span class="tagchip">◆ Совместное · 4 человека</span>
+      <span class="tagchip">↑ Pro</span>
+    </div>
+    <div class="hero__body">
+      <div class="eyebrow hero__eyebrow">Маршрут · 28 мая — 7 июня</div>
+      <h1 class="hero__title">Лиссабон, Порту<br>и <em>Барселона</em></h1>
+      <p class="hero__sub">Одиннадцать дней вдоль Атлантики — три города, два перелёта и один долгий поезд через Португалию.</p>
+      <div class="hero__foot">
+        <div class="ribbon">
+          <div class="it"><div class="k">Города</div><div class="v num">3</div></div>
+          <div class="it"><div class="k">Ночей</div><div class="v num">11</div></div>
+          <div class="it"><div class="k">Бюджет</div><div class="v num">€4 480</div></div>
+          <div class="it"><div class="k">Погода</div><div class="v">≈28°</div></div>
+        </div>
+        <div class="hero__cta">
+          <button class="btn btn--primary">Редактировать маршрут</button>
+          <button class="btn btn--glass btn--ic" title="Поделиться">↗</button>
+          <button class="btn btn--glass btn--ic" title="Ещё">⋯</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="cols">
+    <!-- TIMELINE -->
+    <div>
+      <div class="sec-h"><h2 class="disp">Хронология</h2><span class="rule"></span><span class="cnt">11 дней</span></div>
+
+      <div class="spine">
+        <div class="daystamp"><span class="daystamp__dot"></span><span class="daystamp__d">28 мая</span><span class="daystamp__w">Суббота</span><span class="daystamp__city">Лиссабон</span></div>
+
+        <div class="seam"><div class="seam__node"></div><div class="seam__chip"><span>Перелёт</span><span class="sep"></span><span>Москва → Лиссабон</span><span class="sep"></span><span class="dur">4ч 25м</span></div></div>
+
+        <article class="entry" style="--ev:var(--ev-hotel);--ev-soft:var(--ev-hotel-soft)" data-k="hotel">
+          <div class="entry__node"><b></b></div>
+          <div class="entry__time">15:00<small>Заезд</small></div>
+          <div class="card"><div class="ec"><div class="ec__ic">⌂</div><div><div class="ec__t">Memmo Alfama <span class="ec__kind">Проживание</span></div><div class="ec__sub">2 ночи · Rua dos Remédios 12 · Альфама</div></div><div class="ec__price">€240</div><span class="ec__chev">→</span></div></div>
+        </article>
+
+        <article class="entry" style="--ev:var(--ev-activity);--ev-soft:var(--ev-activity-soft)" data-k="activity">
+          <div class="entry__node"><b></b></div>
+          <div class="entry__time">19:30<small>2 часа</small></div>
+          <div class="card"><div class="ec"><div class="ec__ic">✦</div><div><div class="ec__t">Ужин в Time Out Market <span class="ec__kind">Активность</span></div><div class="ec__sub">Бронь на 4 · Mercado da Ribeira</div></div><span class="ec__chev">→</span></div></div>
+        </article>
+
+        <div class="daystamp"><span class="daystamp__dot"></span><span class="daystamp__d">29 мая</span><span class="daystamp__w">Воскресенье</span><span class="daystamp__city">Лиссабон</span></div>
+
+        <article class="entry" style="--ev:var(--ev-deadline);--ev-soft:var(--ev-deadline-soft)" data-k="deadline">
+          <div class="entry__node"><b></b></div>
+          <div class="entry__time">23:59<small>Дедлайн</small></div>
+          <div class="card"><div class="ec"><div class="ec__ic">⚐</div><div><div class="ec__t">Бесплатная отмена Memmo <span class="ec__kind">Дедлайн</span></div><div class="ec__sub">После — штраф за первую ночь</div></div><span class="ec__chev">→</span></div></div>
+        </article>
+
+        <div class="daystamp"><span class="daystamp__dot"></span><span class="daystamp__d">30 мая</span><span class="daystamp__w">Понедельник</span><span class="daystamp__city">Порту</span></div>
+
+        <div class="seam"><div class="seam__node"></div><div class="seam__chip"><span>Поезд</span><span class="sep"></span><span>Лиссабон → Порту</span><span class="sep"></span><span class="dur">3ч 15м</span></div></div>
+
+        <article class="entry" style="--ev:var(--ev-hotel);--ev-soft:var(--ev-hotel-soft)" data-k="hotel">
+          <div class="entry__node"><b></b></div>
+          <div class="entry__time">14:00<small>Заезд</small></div>
+          <div class="card"><div class="ec"><div class="ec__ic">⌂</div><div><div class="ec__t">Torel Avantgarde <span class="ec__kind">Проживание</span></div><div class="ec__sub">3 ночи · Rua da Restauração</div></div><div class="ec__price">€312</div><span class="ec__chev">→</span></div></div>
+        </article>
+
+        <div class="seam seam--warn"><div class="seam__node"></div><div class="seam__chip"><span>Нет переезда</span><span class="sep"></span><span>Порту → Барселона</span></div></div>
+      </div>
+    </div>
+
+    <!-- RAIL: dossier -->
+    <aside class="rail">
+      <div class="dossier">
+        <div class="dossier__img" style="background-image:url('https://images.unsplash.com/photo-1583422409516-2895a77efded?q=80&w=900&auto=format&fit=crop')">
+          <div class="dossier__tone"></div>
+          <div class="dossier__cap"><div class="dossier__name">Иберия</div><div class="dossier__dates num">28 мая — 7 июня · 11 дней</div></div>
+        </div>
+        <div class="dossier__b">
+          <div class="kvline"><span class="muted">Города</span><span class="v num">3</span></div>
+          <div class="kvline"><span class="muted">Переезды</span><span class="v num">2</span></div>
+          <div class="kvline"><span class="muted">Брони</span><span class="v num">5</span></div>
+        </div>
+        <div class="budget">
+          <div class="budget__row"><span class="eyebrow">Бюджет</span><span class="muted" style="font-size:11.5px">из €6 200</span></div>
+          <div class="budget__row" style="margin-top:6px"><span class="budget__big num">€4 480</span><span class="muted num" style="font-size:12px">€1 120 / чел</span></div>
+          <div class="meter"><i style="width:47%;background:var(--ev-hotel)"></i><i style="width:28%;background:var(--ev-transfer)"></i><i style="width:18%;background:var(--ev-activity)"></i><i style="width:7%;background:var(--ev-car)"></i></div>
+          <div class="budget__legend"><span><span class="sw" style="background:var(--ev-hotel)"></span>Отели</span><span><span class="sw" style="background:var(--ev-transfer)"></span>Переезды</span><span><span class="sw" style="background:var(--ev-activity)"></span>Активности</span></div>
+        </div>
+        <div class="crew">
+          <div class="budget__row" style="margin-bottom:11px"><span class="eyebrow">Компания</span><span class="muted" style="font-size:11.5px">4 человека</span></div>
+          <div class="crew__row">
+            <span class="crew__av" style="background:radial-gradient(120% 120% at 30% 20%,var(--gold),#264a90)">П</span>
+            <span class="crew__av" style="background:radial-gradient(120% 120% at 30% 20%,#5b7fd4,#27407c)">М</span>
+            <span class="crew__av" style="background:radial-gradient(120% 120% at 30% 20%,var(--terra),#163e9e)">А</span>
+            <span class="crew__av" style="background:var(--surface-2);color:var(--muted);font-family:var(--body);font-weight:600">+1</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div class="tt" id="tt"><button data-t="light" class="on" title="Светлая">☀</button><button data-t="dark" title="Тёмная">☾</button></div>
+
+<!-- RICH detail panel -->
+<div class="scrim" id="scrim"></div>
+<aside class="panel" id="panel">
+  <div class="panel__hero" id="pHero">
+    <div class="tone"></div>
+    <button class="panel__x" id="pX">✕</button>
+    <div class="panel__cap"><div class="panel__kind" id="pKind"><span class="d"></span> <span id="pKindT">Проживание</span></div><div class="panel__title" id="pTitle">Memmo Alfama</div></div>
+  </div>
+  <div class="panel__b" id="pBody"></div>
+  <div class="panel__foot"><button class="btn btn--soft" style="flex:1;justify-content:center" id="pX2">Закрыть</button><button class="btn btn--primary" style="flex:1;justify-content:center">Редактировать</button></div>
+</aside>
+
+<script>
+  const root=document.documentElement;
+  document.getElementById('tt').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;root.setAttribute('data-theme',b.dataset.t);[...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));});
+
+  const IMG={
+    hotel:'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=900&auto=format&fit=crop',
+    activity:'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=900&auto=format&fit=crop',
+    deadline:'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?q=80&w=900&auto=format&fit=crop'
+  };
+  const DATA={
+    hotel:{kind:'Проживание',c:'var(--ev-hotel)',img:IMG.hotel,title:'Memmo Alfama',body:`
+      <div class="statrow"><div class="c"><div class="k">Заезд</div><div class="v">28 мая · 15:00</div></div><div class="c"><div class="k">Выезд</div><div class="v">30 мая · 12:00</div></div><div class="c"><div class="k">Ночей</div><div class="v num">2</div></div></div>
+      <div class="psec"><h4>Маршрут заезда</h4><span class="rule"></span></div>
+      <div class="minimap" style="background-image:url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=900&auto=format&fit=crop')"><div class="pin"></div></div>
+      <div style="font-size:13px;color:var(--muted);margin-top:8px">Rua dos Remédios 12, 1100-441 · Альфама, Лиссабон</div>
+      <div class="psec"><h4>Оплата</h4><span class="rule"></span></div>
+      <div class="statrow"><div class="c"><div class="k">Сумма</div><div class="v num">€240</div></div><div class="c"><div class="k">Статус</div><div class="v ok">Оплачено</div></div><div class="c"><div class="k">Отмена до</div><div class="v">29 мая</div></div></div>
+      <div class="pillrow" style="margin-top:14px"><span class="pill ok">✓ Оплачено</span><span class="pill">№ 1539364700</span><span class="pill">Завтрак включён</span></div>
+      <div class="psec"><h4>Документы</h4><span class="rule"></span></div>
+      <div class="minicard"><div class="minicard__ic" style="background:var(--ev-hotel-soft);color:var(--ev-hotel)">▤</div><div><div class="minicard__t">Voucher · Check-in.pdf</div><div class="minicard__s">214 КБ · загружено ИИ</div></div><span class="go">↧</span></div>`},
+    activity:{kind:'Активность',c:'var(--ev-activity)',img:IMG.activity,title:'Time Out Market',body:`
+      <div class="statrow"><div class="c"><div class="k">Начало</div><div class="v">28 мая · 19:30</div></div><div class="c"><div class="k">Длительность</div><div class="v">2 часа</div></div><div class="c"><div class="k">Гости</div><div class="v num">4</div></div></div>
+      <div class="psec"><h4>Место</h4><span class="rule"></span></div>
+      <div class="minimap" style="background-image:url('https://images.unsplash.com/photo-1504512485720-7d83a16ee930?q=80&w=900&auto=format&fit=crop')"><div class="pin" style="background:var(--ev-activity)"></div></div>
+      <div style="font-size:13px;color:var(--muted);margin-top:8px">Mercado da Ribeira, Av. 24 de Julho</div>
+      <div class="pillrow" style="margin-top:16px"><span class="pill">Бронь подтверждена</span><span class="pill">Столик у входа</span></div>`},
+    deadline:{kind:'Дедлайн отмены',c:'var(--ev-deadline)',img:IMG.deadline,title:'Отмена Memmo Alfama',body:`
+      <div class="statrow"><div class="c"><div class="k">Бесплатно до</div><div class="v">29 мая · 23:59</div></div><div class="c"><div class="k">После</div><div class="v num">€120</div></div></div>
+      <div class="psec"><h4>Что это значит</h4><span class="rule"></span></div>
+      <div style="font-size:14px;line-height:1.6;color:var(--ink-2)">До 29 мая бронь можно отменить без потерь. После — удержат стоимость первой ночи (€120). Дедлайн добавлен автоматически из условий брони.</div>
+      <div class="pillrow" style="margin-top:16px"><span class="pill">Связано: Memmo Alfama</span></div>`}
+  };
+  const panel=document.getElementById('panel'),scrim=document.getElementById('scrim');
+  function open(k){const d=DATA[k]||DATA.hotel;root.style.setProperty('--ev',d.c);
+    document.getElementById('pHero').style.backgroundImage=`url('${d.img}')`;
+    document.querySelector('#pKind .d').style.background=d.c;
+    document.getElementById('pKindT').textContent=d.kind;
+    document.getElementById('pTitle').textContent=d.title;
+    document.getElementById('pBody').innerHTML=d.body;
+    panel.classList.add('on');scrim.classList.add('on');}
+  function close(){panel.classList.remove('on');scrim.classList.remove('on');}
+  document.querySelectorAll('.entry').forEach(en=>en.addEventListener('click',()=>open(en.dataset.k)));
+  document.getElementById('pX').onclick=close;document.getElementById('pX2').onclick=close;scrim.onclick=close;
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+</script>
+</body>
+</html>

@@ -33,8 +33,8 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, 
 const TKIND = { plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { icon: 'train', labelKey: 'transfer.train' }, bus: { icon: 'bus', labelKey: 'transfer.bus' }, car: { icon: 'car', labelKey: 'event.tk_car' }, ferry: { icon: 'ferry', labelKey: 'transfer.ferry' } };
 const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9'];
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
-const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d LLL') : '-'; };
-const fmtDW = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d LLL, ccc') : '-'; };
+const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM') : '-'; };
+const fmtDW = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM, ccc') : '-'; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
 // Calendar-day helpers. nights/gap are counted by DATE (not by the raw timestamp),
 // so a checkout stored at 23:59 isn't rounded up to an extra night. This is what
@@ -595,6 +595,9 @@ export default function TripStructureEdit() {
   const transferMismatch = (t) => !!t && issues.some((i) => i.transferId === t.id);
   // booking lookups for the inline list cells + city panel
   const hotelFor = (id) => liveHotels.find((h) => h.city_visit_id === id);
+  // Multiple hotels per city are allowed (parity with activities); the city
+  // panel lists them all, while the compact grid cell still shows the first.
+  const hotelsFor = (id) => liveHotels.filter((h) => h.city_visit_id === id);
   const actsFor = (id) => liveActivities.filter((a) => a.city_visit_id === id);
   const hotelWarnId = (hid) => !!hid && issues.some((i) => i.hotelId === hid);
   const actWarnId = (aid) => !!aid && issues.some((i) => i.activityId === aid);
@@ -765,15 +768,14 @@ export default function TripStructureEdit() {
       const idx = ordered.indexOf(node);
       const prev = ordered.slice(0, idx).reverse().find((n) => !isAnchor(n) || n.kind === 'start');
       const next = ordered.slice(idx + 1).find((n) => !isAnchor(n) || n.kind === 'end');
-      const hotel = hotelFor(node.id);
       leftPanelEl = (
         <CityPanel
           node={node} meta={metaOf(node)}
-          hotel={hotel} acts={actsFor(node.id)}
+          hotels={hotelsFor(node.id)} acts={actsFor(node.id)}
           arrival={arrivalFor(node.id)} departure={departureFor(node.id)}
           arrivalWarn={transferMismatch(arrivalFor(node.id))} departureWarn={transferMismatch(departureFor(node.id))}
           prevCity={prev?.city_name} nextCity={next?.city_name}
-          hotelWarn={hotelWarnId(hotel?.id)} isActWarn={(a) => actWarnId(a.id)}
+          isHotelWarn={(h) => hotelWarnId(h?.id)} isActWarn={(a) => actWarnId(a.id)}
           onBack={closeLeftPanel}
           onRemove={() => { closeLeftPanel(); removeCity(node.id); }}
           onNightsMinus={() => nudgeNights(node.id, -1)} onNightsPlus={() => nudgeNights(node.id, 1)}

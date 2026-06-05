@@ -80,9 +80,9 @@ function HotelRow({ hotel, onClick }) {
           )}
         </div>
         <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
-          {ci && <span>{t('view.checkin')} {ci.toFormat('d LLL HH:mm')}</span>}
+          {ci && <span>{t('view.checkin')} {ci.toFormat('d MMM HH:mm')}</span>}
           {ci && co && <span>·</span>}
-          {co && <span>{t('view.checkout')} {co.toFormat('d LLL HH:mm')}</span>}
+          {co && <span>{t('view.checkout')} {co.toFormat('d MMM HH:mm')}</span>}
           {nights > 0 && <span>· {nights} {t('view.nights_few')}</span>}
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
 import MapView from '@/components/views/MapView';
@@ -246,7 +247,6 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
   const showHotel = !isStart && !isEnd;
 
   const nights = nightsBetween(visit?.start_date, visit?.end_date);
-  const primaryHotel = cityHotels[0] || null;
 
   return (
     <div style={{
@@ -294,23 +294,32 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
         </div>
       </div>
 
-      {/* Transfer row - real "From → To" or "Нет переезда" warning */}
+      {/* Transfer row - real "From → To" or "Нет переезда" warning (warning
+          only shown to users who can edit; viewers don't get the nag). */}
       {showTransfer && (
         <TransferRow
           transfer={transferIn}
           prevVisit={prevVisit}
           toCity={visit}
+          canEdit={canEdit}
           onOpen={transferIn && openEvent ? () => openEvent('transfer', transferIn.id) : undefined}
         />
       )}
 
-      {/* Hotel row - real hotel or "Нет отеля" warning */}
+      {/* Hotel rows - every booked hotel for this city; if none, a single
+          "Нет отеля" warning (shown to editors only). */}
       {showHotel && (
-        <HotelRow
-          hotel={primaryHotel}
-          visit={visit}
-          onOpen={primaryHotel && openEvent ? () => openEvent('hotel', primaryHotel.id) : undefined}
-        />
+        cityHotels.length > 0
+          ? cityHotels.map(h => (
+              <HotelRow
+                key={h.id}
+                hotel={h}
+                visit={visit}
+                canEdit={canEdit}
+                onOpen={openEvent ? () => openEvent('hotel', h.id) : undefined}
+              />
+            ))
+          : <HotelRow hotel={null} visit={visit} canEdit={canEdit} />
       )}
 
       {/* Activities */}
@@ -383,16 +392,22 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
   );
 }
 
-function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
+function TransferRow({ transfer, prevVisit, toCity, onOpen, canEdit = false }) {
   const { t } = useI18n();
+  const nav = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
   const fromName = prevVisit?.city_name || t('view.map_prev_city');
   const toName = toCity?.city_name || '';
 
   if (!transfer) {
+    // Viewers (no edit rights) never see the "no transfer" warning - they can't
+    // add bookings, so it's just noise that exposes planning gaps.
+    if (!canEdit) return null;
     const canFork = !!(prevVisit && toCity);
-    // No inbound transfer - show warning row that opens ForkPartnerModal.
+    const tripId = prevVisit?.trip_id || toCity?.trip_id;
+    // No inbound transfer - warning row → ForkPartnerModal; the manual branch
+    // opens the Edit screen with the transfer-create panel pre-selected (same
+    // flow as the timeline), instead of an inline create dialog.
     return (
       <>
         <button
@@ -425,26 +440,18 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
           <Btn variant="ghost" size="sm" icon="plus">{t('view.map_find')}</Btn>
         </button>
         {canFork && (
-          <>
-            <ForkPartnerModal
-              open={modalOpen}
-              onOpenChange={setModalOpen}
-              type="transfer"
-              fromVisit={prevVisit}
-              toVisit={toCity}
-              tripId={prevVisit?.trip_id || toCity?.trip_id}
-              onManual={() => setCreateOpen(true)}
-            />
-            <EventEditDialog
-              open={createOpen}
-              onOpenChange={setCreateOpen}
-              kind="transfer"
-              fromVisit={prevVisit}
-              toVisit={toCity}
-              tripId={prevVisit?.trip_id || toCity?.trip_id}
-              entity={null}
-            />
-          </>
+          <ForkPartnerModal
+            open={modalOpen}
+            onOpenChange={setModalOpen}
+            type="transfer"
+            fromVisit={prevVisit}
+            toVisit={toCity}
+            tripId={tripId}
+            onManual={() => {
+              setModalOpen(false);
+              if (tripId) nav(`/trip/${tripId}/edit`, { state: { create: { kind: 'transfer', fromId: prevVisit?.id, toId: toCity?.id } } });
+            }}
+          />
         )}
       </>
     );
@@ -492,12 +499,15 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen }) {
   );
 }
 
-function HotelRow({ hotel, visit, onOpen }) {
+function HotelRow({ hotel, visit, onOpen, canEdit = false }) {
   const { t } = useI18n();
+  const nav = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
   if (!hotel) {
+    // Viewers don't see the "no hotel" warning (can't act on it).
+    if (!canEdit) return null;
     const canFork = !!visit;
+    const tripId = visit?.trip_id;
     return (
       <>
         <button
@@ -528,24 +538,17 @@ function HotelRow({ hotel, visit, onOpen }) {
           <Btn variant="ghost" size="sm" icon="plus">{t('view.map_find')}</Btn>
         </button>
         {canFork && (
-          <>
-            <ForkPartnerModal
-              open={modalOpen}
-              onOpenChange={setModalOpen}
-              type="hotel"
-              visit={visit}
-              tripId={visit?.trip_id}
-              onManual={() => setCreateOpen(true)}
-            />
-            <EventEditDialog
-              open={createOpen}
-              onOpenChange={setCreateOpen}
-              kind="hotel"
-              visit={visit}
-              tripId={visit?.trip_id}
-              entity={null}
-            />
-          </>
+          <ForkPartnerModal
+            open={modalOpen}
+            onOpenChange={setModalOpen}
+            type="hotel"
+            visit={visit}
+            tripId={tripId}
+            onManual={() => {
+              setModalOpen(false);
+              if (tripId) nav(`/trip/${tripId}/edit`, { state: { create: { kind: 'hotel', cityVisitId: visit?.id } } });
+            }}
+          />
         )}
       </>
     );

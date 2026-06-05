@@ -16,8 +16,8 @@ function useTripSubtitle() {
   const { fmtDate, plural } = useI18nFormat();
   return (range, visits) => {
     if (!range?.start || !range?.end) return null;
-    const start = fmtDate(range.start, 'utc', 'd LLL');
-    const end = fmtDate(range.end, 'utc', 'd LLL');
+    const start = fmtDate(range.start, 'utc', 'd MMM');
+    const end = fmtDate(range.end, 'utc', 'd MMM');
     const msPerDay = 1000 * 60 * 60 * 24;
     const days = Math.max(1, Math.round((new Date(range.end) - new Date(range.start)) / msPerDay) + 1);
     const cityCount = uniqueCityCount(visits);

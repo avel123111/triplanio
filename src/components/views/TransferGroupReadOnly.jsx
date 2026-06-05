@@ -58,9 +58,9 @@ export default function TransferGroupReadOnly({
             </span>
           </div>
           <div className="text-[11px] text-muted-foreground flex items-center flex-wrap gap-x-1">
-            <span>{first?.start_datetime ? formatInTz(first.start_datetime, startTz, 'd LLL HH:mm') : '-'}</span>
+            <span>{first?.start_datetime ? formatInTz(first.start_datetime, startTz, 'd MMM HH:mm') : '-'}</span>
             <span>→</span>
-            <span>{last?.end_datetime ? formatInTz(last.end_datetime, endTz, 'd LLL HH:mm') : '-'}</span>
+            <span>{last?.end_datetime ? formatInTz(last.end_datetime, endTz, 'd MMM HH:mm') : '-'}</span>
             <span className="mx-1">·</span>
             {sorted.map((t, i) => {
               const info = transportInfo(t.transport_type);
@@ -117,9 +117,9 @@ function SegmentRow({ index, transfer, fromVisit, toVisit, onClick }) {
           )}
         </div>
         <div className="text-[11px] text-muted-foreground">
-          {transfer.start_datetime ? formatInTz(transfer.start_datetime, startTz, 'd LLL HH:mm') : '-'}
+          {transfer.start_datetime ? formatInTz(transfer.start_datetime, startTz, 'd MMM HH:mm') : '-'}
           {' → '}
-          {transfer.end_datetime ? formatInTz(transfer.end_datetime, endTz, 'd LLL HH:mm') : '-'}
+          {transfer.end_datetime ? formatInTz(transfer.end_datetime, endTz, 'd MMM HH:mm') : '-'}
           {dur ? ` · ${dur}` : ''}
         </div>
         {normalizeExternalUrl(transfer.booking_url) && (

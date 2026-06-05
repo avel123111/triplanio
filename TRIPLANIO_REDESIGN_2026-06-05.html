@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triplanio — Redesign Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TRIPLANIO — "ATLAS" DESIGN SYSTEM
+   Blue primary, bold contrasting category accents.
+   ============================================================ */
+:root{
+  /* Brand blue ramp */
+  --blue-50:#eef3ff; --blue-100:#dce6ff; --blue-200:#bdd0ff; --blue-300:#93b0ff;
+  --blue-400:#5d83fb; --blue-500:#3a64f4; --blue-600:#2756e6; --blue-700:#1d44c4;
+  --blue-800:#1b3a9e; --blue-900:#1a3380;
+  --brand:var(--blue-600); --brand-press:var(--blue-700); --brand-soft:var(--blue-50);
+
+  /* Category / semantic accents */
+  --teal:#0bb39b; --teal-soft:#e2f7f3; --teal-ink:#067a6a;     /* hotels / stays */
+  --coral:#ff6a3d; --coral-soft:#fff0eb; --coral-ink:#c9471f;  /* activities */
+  --amber:#f6a609; --amber-soft:#fff5e0; --amber-ink:#a96f00;  /* warnings / deadlines / budget */
+  --green:#15a37a; --green-soft:#e4f6ef; --green-ink:#0c7a59;  /* success / paid */
+  --rose:#e5484d; --rose-soft:#fdeaea; --rose-ink:#b42a2f;     /* danger */
+  --violet:#7458ff; --violet-soft:#efeaff; --violet-ink:#5538d6;/* AI / Triplanio */
+
+  /* Ink & neutrals (cool slate) */
+  --ink:#0d1220; --slate-800:#1b2436; --slate-700:#33415a; --slate-600:#48566f;
+  --slate-500:#677289; --slate-400:#8b94a7; --slate-300:#b8c0d0;
+  --line:#e7eaf1; --line-strong:#d7dce7; --wash:#f4f6fb; --wash-2:#eef1f8;
+  --surface:#ffffff; --bg:#f6f7fc;
+
+  /* Type */
+  --display:"Bricolage Grotesque", system-ui, sans-serif;
+  --sans:"Instrument Sans", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, monospace;
+
+  /* Shadows (cool slate) */
+  --sh-xs:0 1px 2px rgba(20,32,64,.06);
+  --sh-sm:0 2px 8px rgba(20,32,64,.07);
+  --sh-md:0 8px 24px rgba(20,32,64,.10);
+  --sh-lg:0 18px 50px rgba(20,32,64,.16);
+  --sh-pop:0 24px 70px rgba(13,18,32,.28);
+
+  /* Radius */
+  --r-xs:8px; --r-sm:11px; --r-md:14px; --r-lg:20px; --r-xl:28px; --r-pill:999px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--sans); background:var(--bg); color:var(--ink);
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+h1,h2,h3,h4{font-family:var(--display); font-weight:600; margin:0; letter-spacing:-.01em; line-height:1.12}
+button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
+a{color:inherit; text-decoration:none}
+.mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
+.tnum{font-variant-numeric:tabular-nums}
+::selection{background:var(--blue-200)}
+
+/* Scrollbars */
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:99px;border:3px solid transparent;background-clip:content-box}
+*::-webkit-scrollbar-thumb:hover{background:var(--slate-300);background-clip:content-box}
+
+/* ============ PROTOTYPE CHROME (the device frame + navigator) ============ */
+#proto{
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  background:
+    radial-gradient(1200px 600px at 12% -10%, #eaf0ff 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #fff1ec 0%, transparent 45%),
+    #e9edf6;
+}
+#proto-bar{
+  height:52px; flex:0 0 52px; display:flex; align-items:center; gap:14px;
+  padding:0 16px; background:rgba(255,255,255,.78); backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line); z-index:50;
+}
+#proto-bar .pb-brand{display:flex;align-items:center;gap:9px;font-family:var(--display);font-weight:700;font-size:15px}
+#proto-bar .pb-brand .dot{width:22px;height:22px;border-radius:7px;background:var(--brand);display:grid;place-items:center;color:#fff;box-shadow:var(--sh-sm)}
+.pb-tag{font-size:11px;font-weight:600;color:var(--slate-500);background:var(--wash);padding:3px 9px;border-radius:99px;border:1px solid var(--line)}
+.pb-spacer{flex:1}
+.pb-seg{display:flex;background:var(--wash);border:1px solid var(--line);border-radius:99px;padding:3px}
+.pb-seg button{font-size:12px;font-weight:600;color:var(--slate-500);padding:5px 13px;border-radius:99px;display:flex;align-items:center;gap:6px}
+.pb-seg button.on{background:#fff;color:var(--brand);box-shadow:var(--sh-xs)}
+.pb-jump{position:relative}
+.pb-jump-btn{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--slate-700);background:#fff;border:1px solid var(--line-strong);border-radius:99px;padding:7px 13px;box-shadow:var(--sh-xs)}
+.pb-menu{position:absolute;top:46px;right:0;width:280px;max-height:70vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-lg);padding:8px;display:none;z-index:60}
+.pb-menu.open{display:block}
+.pb-menu .grp{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-400);padding:10px 10px 5px}
+.pb-menu button.item{width:100%;text-align:left;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;color:var(--slate-700);padding:8px 10px;border-radius:9px}
+.pb-menu button.item:hover{background:var(--wash)}
+.pb-menu button.item.cur{background:var(--brand-soft);color:var(--brand)}
+.pb-menu button.item i{width:16px;text-align:center;color:var(--slate-400);font-style:normal}
+
+/* Stage that holds the app; switches between desktop & phone */
+#stage{flex:1;overflow:auto;display:flex;justify-content:center;padding:0}
+#stage.phone{padding:26px 0;align-items:flex-start}
+#device{width:100%;height:100%;background:var(--bg);position:relative;overflow:hidden}
+#stage.phone #device{
+  width:402px;height:850px;max-height:calc(100vh - 104px);flex:0 0 auto;
+  border-radius:42px;box-shadow:var(--sh-pop), 0 0 0 11px #11151f, 0 0 0 13px #2a3142;
+  overflow:hidden;
+}
+#stage.phone #device::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:128px;height:30px;background:#11151f;border-radius:0 0 18px 18px;z-index:200}
+#app{width:100%;height:100%;overflow:hidden;position:relative}
+
+/* ===================== APP SHELL ===================== */
+.shell{display:grid;grid-template-columns:240px 1fr;height:100%;background:var(--bg)}
+.shell.with-rail{grid-template-columns:240px 1fr}
+.collapsed .shell{grid-template-columns:72px 1fr}
+
+/* Topbar */
+.topbar{
+  position:sticky;top:0;z-index:30;height:64px;display:flex;align-items:center;gap:14px;
+  padding:0 22px;background:rgba(255,255,255,.82);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--line);grid-column:1 / -1;
+}
+.tb-brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:-.02em}
+.tb-brand .mk{width:30px;height:30px;border-radius:9px;background:linear-gradient(140deg,var(--blue-500),var(--blue-700));display:grid;place-items:center;color:#fff;box-shadow:var(--sh-sm)}
+.crumb{display:flex;align-items:center;gap:10px;color:var(--slate-400);font-size:14px;min-width:0}
+.crumb .sep{color:var(--line-strong)}
+.crumb .tname{color:var(--ink);font-weight:600;font-family:var(--display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+.crumb .tdates{font-size:12.5px;color:var(--slate-500);font-variant-numeric:tabular-nums}
+.tb-spacer{flex:1}
+.tb-search{display:flex;align-items:center;gap:9px;background:var(--wash);border:1px solid var(--line);border-radius:99px;padding:8px 14px;color:var(--slate-400);font-size:13px;min-width:200px;cursor:text}
+.tb-search kbd{margin-left:auto;font-family:var(--mono);font-size:10px;background:#fff;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--slate-400)}
+.tb-ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:var(--slate-600);position:relative;transition:.15s}
+.tb-ico:hover{background:var(--wash);color:var(--ink)}
+.tb-ico .badge{position:absolute;top:5px;right:5px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--coral);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid #fff}
+.tb-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--coral),#ff9a3d);display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px;cursor:pointer;box-shadow:var(--sh-xs)}
+
+/* Nav rail */
+.rail{border-right:1px solid var(--line);background:rgba(255,255,255,.55);padding:16px 14px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.rail .rgrp{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--slate-400);padding:14px 12px 6px}
+.collapsed .rail .rgrp{text-align:center;padding:12px 0 6px;font-size:9px}
+.navitem{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:11px;color:var(--slate-600);font-weight:500;font-size:14px;position:relative;transition:.13s}
+.navitem i{width:20px;text-align:center;font-style:normal;font-size:18px;flex:0 0 20px;color:var(--slate-400);transition:.13s}
+.navitem:hover{background:var(--wash);color:var(--ink)}
+.navitem:hover i{color:var(--slate-600)}
+.navitem.on{background:var(--brand-soft);color:var(--brand)}
+.navitem.on i{color:var(--brand)}
+.navitem .nb{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--wash-2);color:var(--slate-500);font-size:11px;font-weight:700;display:grid;place-items:center}
+.navitem.on .nb{background:#fff;color:var(--brand)}
+.navitem .warn-dot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--amber)}
+.collapsed .navitem{justify-content:center;padding:11px 0}
+.collapsed .navitem span.lbl,.collapsed .navitem .nb,.collapsed .navitem .warn-dot{display:none}
+.rail-foot{margin-top:auto;padding-top:12px}
+.rail-pro{background:linear-gradient(135deg,var(--violet),#9b7bff);border-radius:var(--r-md);padding:14px;color:#fff;box-shadow:var(--sh-sm)}
+.rail-pro .t{font-family:var(--display);font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px}
+.rail-pro p{font-size:11.5px;opacity:.9;margin:6px 0 10px;line-height:1.4}
+.rail-pro button{width:100%;background:#fff;color:var(--violet-ink);font-weight:700;font-size:12.5px;padding:8px;border-radius:9px}
+.collapsed .rail-pro p,.collapsed .rail-pro button span{display:none}
+
+/* Main content area */
+.main{overflow:auto;position:relative}
+.canvas{display:grid;grid-template-columns:1fr 332px;gap:26px;max-width:1240px;margin:0 auto;padding:26px 30px 80px}
+.canvas.solo{grid-template-columns:1fr;max-width:1080px}
+.canvas.wide{max-width:1320px}
+@media(max-width:1180px){.canvas{grid-template-columns:1fr}.dossier{display:none}}
+
+/* ============ REUSABLE COMPONENTS ============ */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-xs)}
+.card.pad{padding:18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:13.5px;padding:10px 16px;border-radius:11px;transition:.15s;white-space:nowrap}
+.btn i{font-style:normal;font-size:17px}
+.btn-primary{background:var(--brand);color:#fff;box-shadow:0 4px 14px rgba(39,86,230,.28)}
+.btn-primary:hover{background:var(--brand-press);transform:translateY(-1px);box-shadow:0 7px 20px rgba(39,86,230,.34)}
+.btn-ghost{background:#fff;color:var(--slate-700);border:1px solid var(--line-strong)}
+.btn-ghost:hover{background:var(--wash);border-color:var(--slate-300)}
+.btn-soft{background:var(--brand-soft);color:var(--brand)}
+.btn-soft:hover{background:var(--blue-100)}
+.btn-coral{background:var(--coral);color:#fff;box-shadow:0 4px 14px rgba(255,106,61,.3)}
+.btn-coral:hover{filter:brightness(.96);transform:translateY(-1px)}
+.btn-danger{background:var(--rose);color:#fff}
+.btn-sm{padding:7px 12px;font-size:12.5px;border-radius:9px}
+.btn-lg{padding:13px 22px;font-size:15px;border-radius:13px}
+.btn-block{width:100%}
+.btn-ico{width:38px;height:38px;padding:0;border-radius:10px}
+
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--wash);color:var(--slate-600);border:1px solid var(--line)}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.02em;padding:3px 9px;border-radius:99px}
+.tag i{font-style:normal;font-size:13px}
+.tag.flight{background:var(--brand-soft);color:var(--blue-700)}
+.tag.hotel{background:var(--teal-soft);color:var(--teal-ink)}
+.tag.act{background:var(--coral-soft);color:var(--coral-ink)}
+.tag.deadline{background:var(--amber-soft);color:var(--amber-ink)}
+.tag.service{background:var(--wash-2);color:var(--slate-600)}
+.tag.ai{background:var(--violet-soft);color:var(--violet-ink)}
+.tag.success{background:var(--green-soft);color:var(--green-ink)}
+.tag.danger{background:var(--rose-soft);color:var(--rose-ink)}
+.tag.pro{background:linear-gradient(120deg,var(--violet),#9b7bff);color:#fff}
+
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--brand)}
+.muted{color:var(--slate-500)}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px}
+.sec-head h2{font-size:19px}
+.sec-head .link{font-size:12.5px;font-weight:600;color:var(--brand);display:flex;align-items:center;gap:5px}
+
+.icotile{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-style:normal;font-size:20px;flex:0 0 42px}
+.icotile.blue{background:var(--brand-soft);color:var(--brand)}
+.icotile.teal{background:var(--teal-soft);color:var(--teal-ink)}
+.icotile.coral{background:var(--coral-soft);color:var(--coral-ink)}
+.icotile.amber{background:var(--amber-soft);color:var(--amber-ink)}
+.icotile.violet{background:var(--violet-soft);color:var(--violet-ink)}
+.icotile.green{background:var(--green-soft);color:var(--green-ink)}
+.icotile.slate{background:var(--wash-2);color:var(--slate-600)}
+
+/* Dossier (context rail) */
+.dossier{display:flex;flex-direction:column;gap:16px;position:sticky;top:90px;align-self:start}
+
+/* Empty state */
+.empty{text-align:center;padding:48px 24px;border:1.5px dashed var(--line-strong);border-radius:var(--r-md);background:var(--surface)}
+.empty .ei{width:58px;height:58px;border-radius:16px;background:var(--wash);display:grid;place-items:center;margin:0 auto 14px;font-size:26px;color:var(--slate-400);font-style:normal}
+.empty h3{font-size:17px;margin-bottom:6px}
+.empty p{font-size:13.5px;color:var(--slate-500);max-width:340px;margin:0 auto 16px}
+
+/* Toggle switch */
+.sw{width:42px;height:24px;border-radius:99px;background:var(--line-strong);position:relative;transition:.18s;flex:0 0 42px}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:var(--sh-xs);transition:.18s}
+.sw.on{background:var(--brand)}
+.sw.on::after{left:20px}
+
+/* Progress / meters */
+.meter{height:8px;border-radius:99px;background:var(--wash-2);overflow:hidden}
+.meter>i{display:block;height:100%;border-radius:99px;background:var(--brand)}
+.seg-meter{height:10px;border-radius:99px;overflow:hidden;display:flex;background:var(--wash-2)}
+.seg-meter>i{height:100%}
+
+/* Avatars */
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12.5px;border:2px solid #fff;box-shadow:var(--sh-xs)}
+.av-stack{display:flex}
+.av-stack .av{margin-left:-9px}
+.av-stack .av:first-child{margin-left:0}
+
+/* Inputs */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--slate-700);margin-bottom:6px}
+.inp{width:100%;font-family:inherit;font-size:14px;padding:11px 13px;border:1px solid var(--line-strong);border-radius:11px;background:#fff;color:var(--ink);transition:.15s}
+.inp:focus{outline:none;border-color:var(--blue-400);box-shadow:0 0 0 3px var(--blue-100)}
+.inp::placeholder{color:var(--slate-400)}
+textarea.inp{resize:vertical;min-height:74px}
+
+/* ===================== OVERLAYS: modal + bottom sheet ===================== */
+.scrim{position:absolute;inset:0;background:rgba(13,18,32,.46);backdrop-filter:blur(3px);z-index:80;display:none;opacity:0;transition:opacity .2s}
+.scrim.show{display:block;opacity:1}
+.modal{position:absolute;z-index:81;left:50%;top:50%;transform:translate(-50%,-48%);width:min(560px,calc(100% - 40px));max-height:88%;background:#fff;border-radius:var(--r-lg);box-shadow:var(--sh-pop);display:none;flex-direction:column;overflow:hidden;opacity:0;transition:.22s}
+.modal.show{display:flex;opacity:1;transform:translate(-50%,-50%)}
+.modal-h{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.modal-h h3{font-size:17px;flex:1}
+.modal-b{padding:20px;overflow:auto}
+.modal-f{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:var(--wash)}
+.x-btn{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:var(--slate-500)}
+.x-btn:hover{background:var(--wash)}
+
+/* Right slide-in panel (entity) */
+.panel{position:absolute;z-index:81;top:0;right:0;height:100%;width:min(460px,100%);background:#fff;box-shadow:var(--sh-pop);display:none;flex-direction:column;transform:translateX(100%);transition:transform .26s cubic-bezier(.4,0,.2,1)}
+.panel.show{display:flex;transform:translateX(0)}
+.panel-h{display:flex;align-items:flex-start;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.panel-b{padding:18px 20px;overflow:auto;flex:1}
+.panel-f{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;background:var(--wash)}
+
+/* Bottom sheet (mobile-first overlay) */
+.sheet{position:absolute;z-index:82;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;box-shadow:var(--sh-pop);display:none;flex-direction:column;max-height:90%;transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+.sheet.show{display:flex;transform:translateY(0)}
+.sheet .grab{width:42px;height:5px;border-radius:99px;background:var(--line-strong);margin:10px auto 4px}
+.sheet-b{padding:8px 20px 24px;overflow:auto}
+
+/* Mobile bottom tab bar */
+.tabbar{display:none;position:absolute;bottom:0;left:0;right:0;height:64px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-top:1px solid var(--line);z-index:40;align-items:center;justify-content:space-around;padding-bottom:env(safe-area-inset-bottom)}
+.tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--slate-400);flex:1}
+.tabbar button i{font-style:normal;font-size:21px}
+.tabbar button.on{color:var(--brand)}
+.tabbar .fab{flex:0 0 auto;width:50px;height:50px;border-radius:16px;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:24px;box-shadow:0 6px 18px rgba(39,86,230,.4);margin-top:-18px}
+
+/* Screen visibility */
+.screen{display:none}
+.screen.active{display:block}
+
+/* Stat number */
+.statnum{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+
+/* utility */
+.row{display:flex;align-items:center;gap:10px}
+.col{display:flex;flex-direction:column}
+.between{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.wrap{flex-wrap:wrap}
+.g6{gap:6px}.g8{gap:8px}.g10{gap:10px}.g12{gap:12px}.g16{gap:16px}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt20{margin-top:20px}.mt24{margin-top:24px}
+.f12{font-size:12px}.f13{font-size:13px}.f14{font-size:14px}
+.fw6{font-weight:600}.fw7{font-weight:700}
+.txt-mut{color:var(--slate-500)}
+
+/* ===== Responsive: phone layout when device is narrow ===== */
+@media(max-width:560px){
+  .canvas{padding:16px 16px 90px}
+}
+
+/* ===== PHONE MODE (driven by body.vp-phone, device-frame is 402px) ===== */
+body.vp-phone .shell{grid-template-columns:1fr !important}
+body.vp-phone .rail{display:none}
+body.vp-phone .dossier{display:none}
+body.vp-phone .tabbar{display:flex}
+body.vp-phone .main{padding-bottom:0}
+body.vp-phone .canvas{grid-template-columns:1fr !important;max-width:100% !important;padding:16px 14px 86px !important}
+body.vp-phone .topbar{padding:0 14px;gap:8px;height:58px}
+body.vp-phone .tb-search,body.vp-phone .crumb .tdates,body.vp-phone .crumb .sep{display:none}
+body.vp-phone .topbar .tb-brand span:last-child{display:none}
+body.vp-phone .modal{width:calc(100% - 24px)}
+body.vp-phone [style*="grid-template-columns:repeat(3,1fr)"]{grid-template-columns:1fr !important}
+body.vp-phone [style*="grid-template-columns:repeat(2,1fr)"]{grid-template-columns:1fr !important}
+body.vp-phone [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important}
+body.vp-phone #statband{grid-template-columns:repeat(3,1fr) !important}
+/* two-pane lenses stack vertically on phone */
+body.vp-phone .twopane{display:block !important;height:auto !important;grid-template-columns:1fr !important}
+body.vp-phone .twopane>*{height:auto !important;border-right:none !important;border-left:none !important;overflow-x:hidden}
+body.vp-phone .mappane{height:300px !important;border-top:1px solid var(--line)}
+body.vp-phone .twopane .dossier{display:flex !important}
+</style>
+</head>
+<body>
+
+<!-- ============ PROTOTYPE CHROME ============ -->
+<div id="proto">
+  <div id="proto-bar">
+    <div class="pb-brand"><span class="dot">▲</span> Triplanio <span class="pb-tag">Redesign prototype · Atlas</span></div>
+    <div class="pb-spacer"></div>
+    <div class="pb-seg" id="viewseg">
+      <button class="on" data-vp="desktop"><span>▭</span> Desktop</button>
+      <button data-vp="phone"><span>▢</span> Mobile</button>
+    </div>
+    <div class="pb-jump">
+      <button class="pb-jump-btn" id="jumpBtn">Jump to screen ▾</button>
+      <div class="pb-menu" id="jumpMenu"></div>
+    </div>
+  </div>
+  <div id="stage">
+    <div id="device"><div id="app"><!-- app injected here --></div></div>
+  </div>
+</div>
+
+<script>
+/* ================== PROTOTYPE NAVIGATION ================== */
+const SCREENS = [
+  {grp:'Trip', items:[
+    ['overview','Overview','◎'],['timeline','Timeline','≣'],['map','Map','◈'],
+    ['calendar','Calendar','▦'],['budget','Budget','€'],['docs','Documents','▤'],
+    ['chat','Chat','◗'],['members','Members','◍'],['structure','Structure editor','⟐'],
+    ['settings','Trip settings','⚙'],
+  ]},
+  {grp:'Account', items:[
+    ['trips','My trips','▢'],['inbox','Inbox','◔'],['pro','Pro plans','✦'],['account','Account','◑'],
+  ]},
+  {grp:'Create & entry', items:[
+    ['create','Create flow (manual + AI)','＋'],['landing','Landing','★'],['login','Sign in','⊘'],['public','Public trip','◇'],
+  ]},
+  {grp:'Panels, modals & sheets', items:[
+    ['m:entity','Entity panel (view/edit + AI)','▭'],['m:expense','Add expense','€'],
+    ['m:doc','Add document','▤'],['m:invite','Invite member','◍'],['m:share','Share','↗'],
+    ['m:warnings','What needs attention','!'],['m:prolock','Pro lock','✦'],
+    ['m:create','New trip choice','＋'],['m:telegram','Connect Telegram','✈'],
+  ]},
+];
+
+/* ================== SAMPLE TRIP DATA ================== */
+const TRIP = {
+  title:"Iberia — Summer ’26", dates:"14–25 Aug 2026", days:12, nights:9,
+  origin:"London", currency:"EUR", status:"upcoming", pro:true,
+  cities:[
+    {name:"Lisbon", cc:"🇵🇹", country:"Portugal", nights:3, range:"14–17 Aug", hotel:"Memmo Alfama", hotelOk:true, transferOk:true, acts:4, temp:29, color:"var(--teal)"},
+    {name:"Porto", cc:"🇵🇹", country:"Portugal", nights:2, range:"17–19 Aug", hotel:null, hotelOk:false, transferOk:true, acts:2, temp:27, color:"var(--coral)"},
+    {name:"Barcelona", cc:"🇪🇸", country:"Spain", nights:4, range:"19–23 Aug", hotel:"Hotel Brummell", hotelOk:true, transferOk:false, acts:5, temp:31, color:"var(--blue-500)"},
+    {name:"Madrid", cc:"🇪🇸", country:"Spain", nights:0, range:"23–25 Aug", hotel:"Only YOU Atocha", hotelOk:true, transferOk:true, acts:3, temp:33, color:"var(--violet)"},
+  ],
+  members:[
+    {n:"You", role:"owner", c:"linear-gradient(135deg,var(--coral),#ff9a3d)", st:"active"},
+    {n:"Marta R.", role:"admin", c:"linear-gradient(135deg,var(--teal),#34d6c0)", st:"active"},
+    {n:"Iván P.", role:"viewer", c:"linear-gradient(135deg,var(--blue-500),var(--blue-700))", st:"active"},
+    {n:"Sofía L.", role:"viewer", c:"linear-gradient(135deg,var(--violet),#9b7bff)", st:"pending"},
+  ],
+  budget:{spent:4180, planned:4800, cur:"EUR"},
+  stats:{hotels:3, transfers:5, activities:14, docs:6},
+  warnings:[
+    {t:"No transfer into Barcelona", d:"Porto → Barcelona has no flight or train added.", sev:"amber", kind:"flight", to:"timeline"},
+    {t:"Missing hotel in Porto", d:"No accommodation booked for 2 nights (17–19 Aug).", sev:"amber", kind:"hotel", to:"timeline"},
+    {t:"Cancellation deadline soon", d:"Memmo Alfama — free cancellation ends 10 Aug.", sev:"rose", kind:"deadline", to:"timeline"},
+    {t:"Activity outside city window", d:"Sagrada Família is scheduled before arrival in Barcelona.", sev:"amber", kind:"act", to:"calendar"},
+  ],
+};
+const M = n => "€"+n.toLocaleString('en-US');
+
+/* ================== APP STATE & HELPERS ================== */
+const App = { screen:"overview", lens:"overview", collapsed:false, vp:"desktop" };
+const $ = s => document.querySelector(s);
+const APP = $("#app");
+const isTripLens = s => ['overview','timeline','map','calendar','budget','docs','chat','members','structure','settings'].includes(s);
+
+/* avatar helper */
+function av(m, size){ size=size||34; const init=m.n==="You"?"Y":m.n.split(' ').map(x=>x[0]).join('').slice(0,2);
+  return `<div class="av" style="background:${m.c};width:${size}px;height:${size}px;font-size:${size*0.37}px">${init}</div>`; }
+
+/* ================== SHELL ================== */
+function railTrip(){
+  const L=(id,ic,lbl,extra='')=>`<button class="navitem ${App.lens===id?'on':''}" onclick="go('${id}')"><i>${ic}</i><span class="lbl">${lbl}</span>${extra}</button>`;
+  return `
+  <div class="rail">
+    <button class="navitem" onclick="go('trips')" style="color:var(--slate-500)"><i>‹</i><span class="lbl">All trips</span></button>
+    <div class="rgrp">Lenses</div>
+    ${L('overview','◎','Overview')}
+    ${L('timeline','≣','Timeline')}
+    ${L('map','◈','Map')}
+    ${L('calendar','▦','Calendar')}
+    ${L('budget','€','Budget')}
+    ${L('docs','▤','Documents','<span class="nb">6</span>')}
+    ${L('chat','◗','Chat','<span class="nb">3</span>')}
+    <div class="rgrp">Manage</div>
+    ${L('structure','⟐','Structure','<span class="warn-dot"></span>')}
+    ${L('members','◍','Members','<span class="nb">4</span>')}
+    ${L('settings','⚙','Settings')}
+    <div class="rail-foot">
+      <div class="rail-pro"><div class="t">✦ <span class="lbl">Triplanio Pro</span></div><p>This trip is Pro — AI parsing, budget & chat unlocked.</p><button onclick="go('pro')"><span>Manage plan</span></button></div>
+    </div>
+  </div>`;
+}
+function railAccount(){
+  const L=(id,ic,lbl,extra='')=>`<button class="navitem ${App.screen===id?'on':''}" onclick="go('${id}')"><i>${ic}</i><span class="lbl">${lbl}</span>${extra}</button>`;
+  return `<div class="rail">
+    <div class="rgrp">Workspace</div>
+    ${L('trips','▢','My trips')}
+    ${L('inbox','◔','Inbox','<span class="nb">3</span>')}
+    ${L('pro','✦','Pro plans')}
+    ${L('account','◑','Account')}
+    <div class="rail-foot"><div class="rail-pro" style="background:linear-gradient(135deg,var(--blue-500),var(--blue-700))"><div class="t">✦ <span class="lbl">Go Pro</span></div><p>AI planning, budgets & unlimited trips.</p><button style="color:var(--blue-700)" onclick="go('pro')"><span>See plans</span></button></div></div>
+  </div>`;
+}
+function topbar(){
+  const inTrip = isTripLens(App.screen);
+  const crumb = inTrip
+    ? `<div class="crumb"><span class="tname">${TRIP.title}</span><span class="sep">·</span><span class="tdates mono">${TRIP.dates}</span> ${TRIP.pro?'<span class="tag pro">PRO</span>':''}</div>`
+    : `<div class="crumb muted">Workspace</div>`;
+  return `<header class="topbar">
+    <div class="tb-brand"><span class="mk">▲</span> Triplanio</div>
+    <span class="sep" style="color:var(--line-strong)">/</span>
+    ${crumb}
+    <div class="tb-spacer"></div>
+    <div class="tb-search">⌕ <span>Search trips, places…</span><kbd>⌘K</kbd></div>
+    <button class="tb-ico" onclick="go('inbox')">◔<span class="badge">3</span></button>
+    <button class="tb-ico" title="Theme">☾</button>
+    ${inTrip?`<button class="btn btn-ghost btn-sm" onclick="openSheet('share')">↗ Share</button>`:''}
+    <div class="tb-avatar" onclick="go('account')">Y</div>
+  </header>`;
+}
+/* ================== ROUTER ================== */
+function render(){
+  const inTrip = isTripLens(App.screen);
+  const railHTML = inTrip ? railTrip() : railAccount();
+  const fullBleed = ['landing','login','create','public'].includes(App.screen);
+  if(fullBleed){
+    APP.innerHTML = SC[App.screen]() + overlays();
+    wireOverlays(); return;
+  }
+  const body = SC[App.screen] ? SC[App.screen]() : `<div class="canvas solo"><div class="empty"><div class="ei">∅</div><h3>${App.screen}</h3></div></div>`;
+  APP.innerHTML = `<div class="shell ${App.collapsed?'collapsed':''}">
+    ${topbar()}
+    ${railHTML}
+    <main class="main" id="main">${body}</main>
+  </div>${tabbar()}${overlays()}`;
+  wireOverlays();
+  const m=$("#main"); if(m) m.scrollTop=0;
+}
+function go(id){
+  if(id.startsWith('m:')){ openModalById(id.slice(2)); return; }
+  App.screen=id; if(isTripLens(id)) App.lens=id;
+  render(); closeJump();
+}
+function tabbar(){
+  if(!isTripLens(App.screen)) return `<nav class="tabbar"><button class="${App.screen==='trips'?'on':''}" onclick="go('trips')"><i>▢</i>Trips</button><button class="${App.screen==='inbox'?'on':''}" onclick="go('inbox')"><i>◔</i>Inbox</button><button class="fab" onclick="openModalById('create')">＋</button><button class="${App.screen==='pro'?'on':''}" onclick="go('pro')"><i>✦</i>Pro</button><button class="${App.screen==='account'?'on':''}" onclick="go('account')"><i>◑</i>You</button></nav>`;
+  return `<nav class="tabbar">
+    <button class="${App.lens==='overview'?'on':''}" onclick="go('overview')"><i>◎</i>Overview</button>
+    <button class="${App.lens==='timeline'?'on':''}" onclick="go('timeline')"><i>≣</i>Timeline</button>
+    <button class="fab" onclick="openSheet('lensmenu')">＋</button>
+    <button class="${App.lens==='budget'?'on':''}" onclick="go('budget')"><i>€</i>Budget</button>
+    <button onclick="openSheet('lensmenu')"><i>⋯</i>More</button>
+  </nav>`;
+}
+
+/* ================== OVERLAYS (modals, panels, sheets) ================== */
+let OVL = { entity:'', expense:'', doc:'', invite:'', share:'', warnings:'', prolock:'', create:'', telegram:'', lensmenu:'', role:'', category:'', fx:'', moremenu:'' };
+function overlays(){
+  return `
+  <div class="scrim" id="scrim" onclick="closeAll()"></div>
+  <div class="panel" id="panel-entity">${OVL.entity||''}</div>
+  <div class="modal" id="modal-expense">${OVL.expense||''}</div>
+  <div class="modal" id="modal-doc">${OVL.doc||''}</div>
+  <div class="modal" id="modal-invite">${OVL.invite||''}</div>
+  <div class="modal" id="modal-role">${OVL.role||''}</div>
+  <div class="modal" id="modal-category">${OVL.category||''}</div>
+  <div class="modal" id="modal-fx">${OVL.fx||''}</div>
+  <div class="modal" id="modal-warnings">${OVL.warnings||''}</div>
+  <div class="modal" id="modal-prolock">${OVL.prolock||''}</div>
+  <div class="modal" id="modal-create">${OVL.create||''}</div>
+  <div class="modal" id="modal-telegram">${OVL.telegram||''}</div>
+  <div class="sheet" id="sheet-share">${OVL.share||''}</div>
+  <div class="sheet" id="sheet-lensmenu">${OVL.lensmenu||''}</div>
+  `;
+}
+function wireOverlays(){ /* placeholder for post-render wiring */ }
+function showScrim(){ $("#scrim").classList.add('show'); }
+function closeAll(){
+  $("#scrim")?.classList.remove('show');
+  document.querySelectorAll('.modal,.panel,.sheet').forEach(e=>e.classList.remove('show'));
+}
+function openModalById(id){ buildOverlay(id); render2(()=>{ showScrim(); $("#modal-"+id)?.classList.add('show'); }); }
+function openPanel(id){ buildOverlay('entity', id); render2(()=>{ showScrim(); $("#panel-entity").classList.add('show'); }); }
+function openSheet(id){ buildOverlay(id); render2(()=>{ showScrim(); $("#sheet-"+id)?.classList.add('show'); }); }
+/* re-render overlays only then run cb */
+function render2(cb){ const host=document.createElement('div'); host.innerHTML=overlays();
+  const cont=$("#app"); // replace overlay nodes
+  ['#scrim','#panel-entity','#modal-expense','#modal-doc','#modal-invite','#modal-role','#modal-category','#modal-fx','#modal-warnings','#modal-prolock','#modal-create','#modal-telegram','#sheet-share','#sheet-lensmenu'].forEach(sel=>{ const old=$(sel); if(old) old.remove(); });
+  while(host.firstChild) cont.appendChild(host.firstChild);
+  cb&&cb();
+}
+
+/* ================== PROTOTYPE CHROME WIRING ================== */
+function buildJumpMenu(){
+  const menu=$("#jumpMenu");
+  menu.innerHTML = SCREENS.map(g=>`<div class="grp">${g.grp}</div>`+g.items.map(it=>`<button class="item ${App.screen===it[0]?'cur':''}" onclick="jump('${it[0]}')"><i>${it[2]}</i>${it[1]}</button>`).join('')).join('');
+}
+function jump(id){ go(id); }
+function closeJump(){ $("#jumpMenu").classList.remove('open'); }
+$("#jumpBtn").onclick = (e)=>{ e.stopPropagation(); buildJumpMenu(); $("#jumpMenu").classList.toggle('open'); };
+document.addEventListener('click',()=>closeJump());
+$("#jumpMenu").onclick = e=>e.stopPropagation();
+$("#viewseg").onclick = e=>{ const b=e.target.closest('button'); if(!b)return;
+  document.querySelectorAll('#viewseg button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  const vp=b.dataset.vp; App.vp=vp; $("#stage").classList.toggle('phone', vp==='phone');
+  document.body.classList.toggle('vp-phone', vp==='phone');
+  document.querySelector('#proto').classList.toggle('mobile', vp==='phone'); render();
+};
+
+/* ================== SCREEN REGISTRY ================== */
+const SC = {};
+
+/* ====== DOSSIER (persistent trip context rail) ====== */
+function dossier(){
+  const pct = Math.round(TRIP.budget.spent/TRIP.budget.planned*100);
+  return `<aside class="dossier">
+    <div class="card" style="overflow:hidden">
+      <div style="height:104px;background:linear-gradient(120deg,var(--blue-600),var(--teal));position:relative">
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(13,18,32,.5))"></div>
+        <div style="position:absolute;left:14px;bottom:11px;color:#fff">
+          <div style="font-family:var(--display);font-weight:700;font-size:16px">${TRIP.title}</div>
+          <div class="mono" style="font-size:11.5px;opacity:.9">${TRIP.dates}</div>
+        </div>
+        <span class="chip" style="position:absolute;top:11px;right:11px;background:rgba(255,255,255,.9);border:none">● Upcoming</span>
+      </div>
+      <div class="pad" style="padding:14px">
+        <div class="row" style="justify-content:space-between">
+          <div class="row g8"><div class="av-stack">${TRIP.members.slice(0,3).map(m=>av(m,28)).join('')}</div><span class="f12 txt-mut">+1 invited</span></div>
+          <button class="btn btn-soft btn-sm" onclick="openPanel('member')">Manage</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card pad">
+      <div class="between" style="margin-bottom:10px"><div class="f13 fw7">Route</div><span class="f12 txt-mut">${TRIP.cities.length} cities · ${TRIP.nights}n</span></div>
+      ${TRIP.cities.map((c,i)=>`<div class="row g10" style="padding:5px 0">
+        <div style="width:22px;height:22px;border-radius:7px;background:${c.color};color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700">${i+1}</div>
+        <div style="flex:1"><div class="f13 fw6">${c.name} <span class="f12 txt-mut">${c.cc}</span></div></div>
+        <span class="f12 mono txt-mut">${c.nights||'—'}n</span>
+        ${!c.transferOk?'<span class="tag deadline" title="No transfer">⚠</span>':''}
+      </div>`).join('')}
+    </div>
+
+    <div class="card pad">
+      <div class="between" style="margin-bottom:8px"><div class="f13 fw7">Budget</div><a class="link f12" onclick="go('budget')">Open ›</a></div>
+      <div class="statnum" style="font-size:26px">${M(TRIP.budget.spent)}</div>
+      <div class="f12 txt-mut" style="margin:2px 0 9px">spent of ${M(TRIP.budget.planned)} planned</div>
+      <div class="meter"><i style="width:${pct}%"></i></div>
+      <div class="row g6 mt8"><span class="tag success">€620 under plan</span><span class="f12 txt-mut mono">EUR · live FX</span></div>
+    </div>
+
+    <div class="card pad" style="cursor:pointer" onclick="openModalById('warnings')">
+      <div class="row g10"><div class="icotile amber" style="width:38px;height:38px">!</div>
+      <div style="flex:1"><div class="f13 fw7">${TRIP.warnings.length} things need attention</div><div class="f12 txt-mut">Transfers, hotels, deadlines</div></div><span class="txt-mut">›</span></div>
+    </div>
+
+    <div class="card pad">
+      <div class="f13 fw7" style="margin-bottom:10px">Services</div>
+      <div class="row wrap g8">
+        <span class="chip">🚗 1 car</span><span class="chip">📶 2 eSIM</span><span class="chip">🛡 1 insurance</span>
+      </div>
+    </div>
+  </aside>`;
+}
+
+/* ============================================================
+   OVERVIEW — new primary trip screen (info + stats)
+   ============================================================ */
+SC.overview = () => `<div class="canvas">
+  <div class="col g16">
+    <!-- HERO -->
+    <div class="card" style="overflow:hidden;border:none">
+      <div style="height:188px;background:linear-gradient(125deg,var(--blue-700),var(--blue-500) 45%,var(--teal));position:relative">
+        <div style="position:absolute;inset:0;background:radial-gradient(900px 300px at 80% -20%,rgba(255,255,255,.25),transparent),linear-gradient(180deg,transparent 40%,rgba(13,18,32,.6))"></div>
+        <div style="position:absolute;top:16px;left:18px;display:flex;gap:8px">
+          <span class="chip" style="background:rgba(255,255,255,.92);border:none;font-weight:700">● Upcoming · in 9 days</span>
+          <span class="tag pro" style="font-size:11px">✦ PRO</span>
+        </div>
+        <div style="position:absolute;top:14px;right:16px;display:flex;gap:8px">
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.92)" onclick="go('structure')">✎ Edit trip</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.92)" onclick="openSheet('share')">↗ Share</button>
+        </div>
+        <div style="position:absolute;left:20px;bottom:16px;color:#fff;right:20px">
+          <h1 style="font-size:32px;color:#fff;margin-bottom:6px">${TRIP.title}</h1>
+          <div class="row g12 f13" style="opacity:.95">
+            <span class="mono">${TRIP.dates}</span><span style="opacity:.5">·</span>
+            <span>${TRIP.origin} → ${TRIP.cities.map(c=>c.name).join(' → ')}</span>
+          </div>
+        </div>
+      </div>
+      <div class="pad row between wrap" style="gap:14px">
+        <div class="row g8"><div class="av-stack">${TRIP.members.map(m=>av(m,32)).join('')}</div>
+          <div class="col"><span class="f13 fw6">3 going · 1 invited</span><span class="f12 txt-mut">You, Marta, Iván</span></div></div>
+        <div class="row g8">
+          <button class="btn btn-ghost btn-sm" onclick="go('chat')">◗ Chat</button>
+          <button class="btn btn-ghost btn-sm" onclick="openPanel('aiparse')">✦ Ask Triplanio</button>
+          <button class="btn btn-primary btn-sm" onclick="openSheet('lensmenu')">＋ Add to trip</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAT BAND -->
+    <div class="card pad">
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;text-align:center" id="statband">
+        ${[['12','days','blue'],['9','nights','teal'],['4','cities','coral'],['3','hotels','teal'],['5','transfers','blue'],['14','activities','coral']].map(s=>`
+          <div style="padding:6px 4px"><div class="statnum" style="font-size:28px;color:var(--${s[2]==='blue'?'brand':s[2]})">${s[0]}</div><div class="f12 txt-mut" style="margin-top:3px">${s[1]}</div></div>`).join('')}
+      </div>
+      <div style="height:1px;background:var(--line);margin:14px 0"></div>
+      <div class="row between wrap g12">
+        <div class="row g16">
+          <div><div class="f12 txt-mut">Booked</div><div class="row g8" style="margin-top:4px"><div class="meter" style="width:120px"><i style="width:74%;background:var(--green)"></i></div><span class="f13 fw7">74%</span></div></div>
+          <div><div class="f12 txt-mut">Distance</div><div class="f14 fw7 mono" style="margin-top:4px">2,140 km</div></div>
+          <div><div class="f12 txt-mut">Currencies</div><div class="f14 fw7 mono" style="margin-top:4px">EUR · GBP</div></div>
+        </div>
+        <span class="tag success">On track</span>
+      </div>
+    </div>
+
+    <!-- NEEDS ATTENTION -->
+    <div class="card pad">
+      <div class="sec-head" style="margin-bottom:12px"><h2>Needs attention</h2><a class="link" onclick="openModalById('warnings')">View all ${TRIP.warnings.length} ›</a></div>
+      <div class="col g8">
+        ${TRIP.warnings.slice(0,3).map(w=>`<div class="row g12" style="padding:11px 12px;border:1px solid var(--line);border-radius:12px;cursor:pointer" onclick="go('${w.to}')">
+          <div class="icotile ${w.sev}" style="width:36px;height:36px">${w.kind==='deadline'?'⏰':w.kind==='hotel'?'🛏':w.kind==='act'?'◐':'✈'}</div>
+          <div style="flex:1"><div class="f13 fw6">${w.t}</div><div class="f12 txt-mut">${w.d}</div></div>
+          <button class="btn btn-soft btn-sm">Fix</button>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- UP NEXT -->
+    <div class="card pad">
+      <div class="sec-head" style="margin-bottom:12px"><h2>Up next</h2><a class="link" onclick="go('timeline')">Full timeline ›</a></div>
+      <div class="col g8">
+        ${[['flight','✈','Flight LHR → LIS','14 Aug · 09:40 · British Airways 502','in 9 days'],
+           ['deadline','⏰','Free cancellation ends','Memmo Alfama · 10 Aug','in 5 days'],
+           ['hotel','🛏','Check-in · Memmo Alfama','14 Aug · 15:00 · Lisbon','in 9 days']].map(e=>`
+          <div class="row g12" style="padding:10px 12px;border:1px solid var(--line);border-radius:12px;cursor:pointer" onclick="openPanel('${e[0]}')">
+            <span class="tag ${e[0]}">${e[1]}</span>
+            <div style="flex:1"><div class="f13 fw6">${e[2]}</div><div class="f12 txt-mut mono">${e[3]}</div></div>
+            <span class="f12 fw6" style="color:var(--${e[0]==='deadline'?'rose':'brand'})">${e[4]}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- CITIES AT A GLANCE -->
+    <div>
+      <div class="sec-head"><h2>Cities at a glance</h2><a class="link" onclick="go('map')">Open map ›</a></div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px" id="citygrid">
+        ${TRIP.cities.map((c,i)=>`<div class="card" style="overflow:hidden;cursor:pointer" onclick="go('map')">
+          <div style="height:84px;background:linear-gradient(120deg,${c.color},rgba(255,255,255,.2));position:relative">
+            <span style="position:absolute;top:9px;left:11px;width:24px;height:24px;border-radius:8px;background:rgba(255,255,255,.92);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--ink)">${i+1}</span>
+            <span class="chip mono" style="position:absolute;top:9px;right:11px;background:rgba(255,255,255,.92);border:none;font-size:11px">${c.temp}°</span>
+          </div>
+          <div class="pad" style="padding:13px">
+            <div class="between"><div class="fw7">${c.name} <span class="f12 txt-mut">${c.cc}</span></div><span class="f12 mono txt-mut">${c.range}</span></div>
+            <div class="row wrap g6 mt8">
+              <span class="tag ${c.hotelOk?'success':'deadline'}">${c.hotelOk?'🛏 Booked':'🛏 No hotel'}</span>
+              <span class="tag ${c.transferOk?'flight':'deadline'}">${c.transferOk?'✈ Transfer':'✈ Missing'}</span>
+              <span class="tag act">◐ ${c.acts} activities</span>
+            </div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+  ${dossier()}
+</div>`;
+
+/* ============================================================
+   TIMELINE — secondary chronology (events by day)
+   ============================================================ */
+function evRow(tag,ic,title,sub,price,city){ return `<div class="row g12" style="padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;transition:.13s" onmouseover="this.style.boxShadow='var(--sh-sm)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'" onclick="openPanel('${tag}')">
+  <span class="tag ${tag}">${ic}</span>
+  <div style="flex:1;min-width:0"><div class="f14 fw6" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${title}</div><div class="f12 txt-mut mono">${sub}</div></div>
+  ${city?`<span class="chip f12">${city}</span>`:''}
+  ${price?`<span class="f13 fw7 mono">${price}</span>`:''}
+</div>`; }
+function dayBlock(date,wd,city,temp,rows,arrival){ return `<div style="margin-bottom:8px">
+  <div class="row g12" style="padding:8px 0;position:sticky;top:0;background:var(--bg);z-index:2">
+    <div style="text-align:center;min-width:46px"><div class="statnum" style="font-size:22px">${date}</div><div class="f12 txt-mut" style="text-transform:uppercase;letter-spacing:.05em">${wd}</div></div>
+    <div style="flex:1;height:1px;background:var(--line)"></div>
+    ${city?`<span class="chip">◈ ${city}</span>`:''}
+    ${temp?`<span class="chip mono">${temp}°</span>`:''}
+  </div>
+  ${arrival?`<div class="row g12" style="padding:11px 13px;border:1px dashed var(--teal);border-radius:12px;background:var(--teal-soft);margin-bottom:8px"><span class="tag hotel">◈ Arrive</span><div style="flex:1"><div class="f14 fw6">${arrival}</div></div></div>`:''}
+  <div class="col g8" style="padding-left:58px">${rows}</div>
+</div>`; }
+SC.timeline = () => `<div class="canvas">
+  <div class="col g16">
+    <div class="between wrap g10">
+      <div><h1 style="font-size:24px">Timeline</h1><p class="txt-mut f13" style="margin-top:3px">Everything in chronological order, day by day.</p></div>
+      <div class="row g8">
+        <div class="pb-seg" style="background:var(--wash)"><button class="on" style="font-size:12px;font-weight:600;padding:6px 12px;border-radius:99px;background:#fff;color:var(--brand);box-shadow:var(--sh-xs)">All</button><button style="font-size:12px;padding:6px 12px;color:var(--slate-500)">Bookings</button><button style="font-size:12px;padding:6px 12px;color:var(--slate-500)">Activities</button></div>
+        <button class="btn btn-primary btn-sm" onclick="openSheet('lensmenu')">＋ Add</button>
+      </div>
+    </div>
+
+    <div style="padding:11px 13px;border:1px solid var(--amber);background:var(--amber-soft);border-radius:12px" class="row g10">
+      <span style="font-size:18px">⏰</span><div style="flex:1" class="f13"><b>Pre-trip:</b> Memmo Alfama free-cancellation deadline — 10 Aug 23:59</div><button class="btn btn-sm" style="background:#fff" onclick="openPanel('deadline')">View</button>
+    </div>
+
+    ${dayBlock('14','Thu','Lisbon','29',
+      evRow('flight','✈','LHR → LIS · British Airways 502','09:40 → 12:55 · 2h 15m','€186','')+
+      evRow('hotel','🛏','Check-in · Memmo Alfama','15:00 · 3 nights · €423','','Lisbon')+
+      evRow('act','◐','Pastéis de Belém + Belém Tower','17:30 → 19:30 · €0','','Lisbon'),
+      '29', 'Lisbon, Portugal 🇵🇹')}
+
+    ${dayBlock('15','Fri','Lisbon','30',
+      evRow('act','◐','Alfama walking tour','10:00 → 13:00 · €45','')+
+      evRow('act','◐','Time Out Market dinner','20:00 · €60',''))}
+
+    ${dayBlock('17','Sun','Porto','27',
+      evRow('flight','🚆','Lisbon → Porto · Alfa Pendular','11:00 → 14:10 · 3h 10m','€58')+
+      `<div class="row g12" style="padding:11px 13px;border:1px dashed var(--amber);border-radius:12px;background:var(--amber-soft)"><span class="tag deadline">🛏 Missing</span><div style="flex:1"><div class="f13 fw6">No hotel booked in Porto</div><div class="f12 txt-mut">2 nights · 17–19 Aug</div></div><button class="btn btn-coral btn-sm" onclick="openPanel('hotel')">＋ Add hotel</button></div>`,
+      '27','Porto, Portugal 🇵🇹')}
+
+    ${dayBlock('19','Tue','Barcelona','31',
+      `<div class="row g12" style="padding:11px 13px;border:1px dashed var(--amber);border-radius:12px;background:var(--amber-soft)"><span class="tag deadline">✈ Missing</span><div style="flex:1"><div class="f13 fw6">No transfer Porto → Barcelona</div><div class="f12 txt-mut">Add a flight or train</div></div><button class="btn btn-coral btn-sm" onclick="openPanel('flight')">＋ Add transfer</button></div>`+
+      evRow('hotel','🛏','Check-in · Hotel Brummell','14:00 · 4 nights · €712','','Barcelona'),
+      '31','Barcelona, Spain 🇪🇸')}
+  </div>
+  ${dossier()}
+</div>`;
+
+/* ====== OVERLAY DISPATCHER ====== */
+function buildOverlay(id, arg){
+  const fn = window['ovl_'+id];
+  OVL[id] = fn ? fn(arg) : '';
+}
+function ovl_share(){ return `<div class="grab"></div><div class="sheet-b">
+  <div class="between" style="margin-bottom:14px"><h3 style="font-size:18px">Share this trip</h3><button class="x-btn" onclick="closeAll()">✕</button></div>
+  <div class="row g10" style="padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:14px">
+    <div class="icotile blue">↗</div><div style="flex:1"><div class="f13 fw6">Public read-only link</div><div class="f12 txt-mut">Anyone with the link can view — no editing.</div></div><div class="sw on"></div></div>
+  <div class="field"><label>Share link</label><div class="row g8"><input class="inp mono" style="font-size:12px" value="triplanio.com/public/trip/ib26?t=9f3a2" readonly><button class="btn btn-primary" onclick="this.textContent='Copied ✓'">Copy</button></div></div>
+  <div class="row g8 mt8"><button class="btn btn-ghost btn-block">✉ Email</button><button class="btn btn-ghost btn-block">✈ Telegram</button><button class="btn btn-ghost btn-block">⌗ QR</button></div>
+  <div class="row g10 mt16" style="padding:12px;background:var(--wash);border-radius:12px"><span>👁</span><div class="f12 txt-mut">Viewers see your timeline & map. Budgets, documents and member emails stay private.</div></div>
+</div>`; }
+function ovl_lensmenu(){ const items=[['timeline','≣','Timeline'],['map','◈','Map'],['calendar','▦','Calendar'],['budget','€','Budget'],['docs','▤','Documents'],['chat','◗','Chat'],['structure','⟐','Structure'],['members','◍','Members'],['settings','⚙','Settings']];
+  return `<div class="grab"></div><div class="sheet-b">
+  <div class="between" style="margin-bottom:6px"><h3 style="font-size:18px">Add to trip</h3><button class="x-btn" onclick="closeAll()">✕</button></div>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0 18px">
+    ${[['hotel','🛏','Hotel','teal'],['flight','✈','Transfer','blue'],['act','◐','Activity','coral'],['service','🚗','Service','slate'],['expense','€','Expense','amber'],['doc','▤','Document','violet']].map(a=>`<button class="card pad row g10" style="text-align:left" onclick="closeAll();${a[0]==='expense'?"openModalById('expense')":a[0]==='doc'?"openModalById('doc')":"openPanel('"+a[0]+"')"}"><div class="icotile ${a[3]}" style="width:36px;height:36px">${a[1]}</div><span class="fw6 f14">${a[2]}</span></button>`).join('')}
+  </div>
+  <h3 style="font-size:14px;margin-bottom:10px">Switch lens</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+    ${items.map(it=>`<button class="card pad col g6" style="align-items:center;padding:13px 6px" onclick="closeAll();go('${it[0]}')"><span style="font-size:20px">${it[1]}</span><span class="f12 fw6">${it[2]}</span></button>`).join('')}
+  </div>
+</div>`; }
+function ovl_warnings(){ return `<div class="modal-h"><div class="icotile amber" style="width:38px;height:38px">!</div><h3>What needs attention</h3><button class="x-btn" onclick="closeAll()">✕</button></div>
+  <div class="modal-b"><p class="txt-mut f13" style="margin-bottom:14px">${TRIP.warnings.length} issues found. None block saving — fix them to make the plan airtight.</p>
+  <div class="col g10">${TRIP.warnings.map(w=>`<div class="row g12" style="padding:12px;border:1px solid var(--line);border-left:3px solid var(--${w.sev});border-radius:0 12px 12px 0">
+    <div style="flex:1"><div class="f14 fw6">${w.t}</div><div class="f12 txt-mut">${w.d}</div></div>
+    <button class="btn btn-soft btn-sm" onclick="closeAll();go('${w.to}')">Open ›</button></div>`).join('')}</div></div>
+  <div class="modal-f"><button class="btn btn-ghost" onclick="closeAll()">Close</button></div>`; }
+function ovl_prolock(){ return `<div class="modal-b" style="text-align:center;padding:30px 26px">
+  <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--violet),#9b7bff);display:grid;place-items:center;margin:0 auto 16px;font-size:30px;color:#fff">✦</div>
+  <h3 style="font-size:21px;margin-bottom:8px">A Pro feature</h3>
+  <p class="txt-mut f14" style="max-width:330px;margin:0 auto 20px">Budget tracking, AI booking parsing, group chat and the Telegram concierge are part of Triplanio Pro.</p>
+  <div class="col g10" style="max-width:300px;margin:0 auto 18px;text-align:left">
+    ${['Multi-currency budget & split','AI voucher parsing','Group chat + Telegram concierge','Unlimited active trips'].map(f=>`<div class="row g8 f13"><span style="color:var(--green)">✓</span> ${f}</div>`).join('')}
+  </div>
+  <button class="btn btn-primary btn-lg btn-block" style="max-width:300px;margin:0 auto" onclick="closeAll();go('pro')">See Pro plans</button>
+  <button class="btn btn-block" style="max-width:300px;margin:8px auto 0;color:var(--slate-500)" onclick="closeAll()">Maybe later</button></div>`; }
+function ovl_create(){ return `<div class="modal-h"><h3>Start a new trip</h3><button class="x-btn" onclick="closeAll()">✕</button></div>
+  <div class="modal-b"><div class="col g12">
+    <button class="card pad row g14" style="text-align:left;align-items:center;border:1.5px solid var(--line)" onclick="closeAll();go('create')"><div class="icotile blue" style="width:48px;height:48px;font-size:24px">✎</div><div style="flex:1"><div class="fw7 f15">Start manually</div><div class="f13 txt-mut">Add destinations, dates and travellers step by step.</div></div><span class="txt-mut">›</span></button>
+    <button class="card pad row g14" style="text-align:left;align-items:center;border:1.5px solid var(--violet)" onclick="closeAll();go('create')"><div class="icotile violet" style="width:48px;height:48px;font-size:24px">✦</div><div style="flex:1"><div class="row g8"><span class="fw7 f15">Plan with AI</span><span class="tag pro">PRO</span></div><div class="f13 txt-mut">Describe your trip in words — Triplanio drafts the route.</div></div><span class="txt-mut">›</span></button>
+  </div></div>`; }
+function ovl_telegram(){ return `<div class="modal-h"><div class="icotile blue" style="width:38px;height:38px;background:#e7f3ff;color:#229ed9">✈</div><h3>Connect Telegram</h3><button class="x-btn" onclick="closeAll()">✕</button></div>
+  <div class="modal-b">
+    <div class="col g14" style="text-align:center;padding:8px 0 4px">
+      <p class="txt-mut f13" style="max-width:320px;margin:0 auto">Link your Telegram so Triplanio can send timezone-aware reminders and answer trip questions on the go.</p>
+      <div class="card pad" style="background:var(--wash)"><div class="f12 txt-mut" style="margin-bottom:8px">Step 1 — open the bot</div><button class="btn btn-primary btn-block">Open @TriplanioBot</button></div>
+      <div class="card pad" style="background:var(--wash)"><div class="f12 txt-mut" style="margin-bottom:8px">Step 2 — confirm</div><div class="row g8" style="justify-content:center"><div class="statnum mono" style="font-size:22px;color:var(--brand)">09:42</div><span class="f12 txt-mut">waiting for “Start”…</span></div></div>
+    </div></div>
+  <div class="modal-f"><button class="btn btn-ghost" onclick="closeAll()">Cancel</button><button class="btn btn-primary" onclick="closeAll()">I pressed Start</button></div>`; }
+/* ====== UNIFIED ENTITY PANEL (view + edit + AI parse) ====== */
+const ENT = {
+  hotel:{tag:'hotel',ic:'🛏',cat:'teal',type:'Accommodation',title:'Memmo Alfama',sub:'Lisbon · 14–17 Aug · 3 nights'},
+  flight:{tag:'flight',ic:'✈',cat:'blue',type:'Transfer · Flight',title:'LHR → LIS',sub:'British Airways 502 · 14 Aug'},
+  act:{tag:'act',ic:'◐',cat:'coral',type:'Activity',title:'Alfama walking tour',sub:'Lisbon · 15 Aug · 10:00'},
+  service:{tag:'service',ic:'🚗',cat:'slate',type:'Service · Car rental',title:'Europcar — Barcelona',sub:'19 Aug → 23 Aug'},
+  deadline:{tag:'deadline',ic:'⏰',cat:'amber',type:'Cancellation deadline',title:'Memmo Alfama',sub:'Free cancellation until 10 Aug 23:59'},
+};
+function panelField(l,v,mono){ return `<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div class="f12 txt-mut">${l}</div><div class="f14 fw6 ${mono?'mono':''}" style="margin-top:2px">${v}</div></div>`; }
+function ovl_entity(kind){
+  if(kind==='member') return panelMember();
+  if(kind==='aiparse') return panelAi();
+  const e = ENT[kind] || ENT.hotel;
+  const fields = {
+    hotel:[['Check-in','14 Aug 2026 · 15:00',1],['Check-out','17 Aug 2026 · 11:00',1],['Nights','3',1],['Payment','Paid in full',0],['Free cancellation','Until 10 Aug 23:59',1],['Booking ref','MMA-49823',1],['Price','€423 · €141/night',1],['Phone','+351 21 049 5660',1]],
+    flight:[['Departs','14 Aug · 09:40 · London LHR',1],['Arrives','14 Aug · 12:55 · Lisbon LIS',1],['Duration','2h 15m',1],['Carrier','British Airways',0],['Flight no.','BA 502',1],['Booking ref','TZ9F3A',1],['Price','€186',1],['Seats','12A · 12B · 12C',1]],
+    act:[['Starts','15 Aug · 10:00',1],['Ends','15 Aug · 13:00',1],['Category','Culture & sights',0],['Location','Largo do Chafariz, Alfama',0],['Price','€45',1]],
+    service:[['Pick-up','19 Aug · 10:00 · Barcelona Airport',1],['Drop-off','23 Aug · 18:00 · Same location',1],['Vehicle','Compact · VW Golf',0],['Booking ref','EU-77213',1],['Price','€164',1]],
+    deadline:[['Hotel','Memmo Alfama',0],['City','Lisbon',0],['Cancel before','10 Aug 2026 · 23:59',1],['Refund','€423 fully refundable',1]],
+  }[kind] || [];
+  return `<div class="panel-h">
+    <span class="tag ${e.tag}" style="font-size:13px;padding:6px 11px">${e.ic}</span>
+    <div style="flex:1"><div class="f12 txt-mut">${e.type}</div><h3 style="font-size:18px;margin-top:1px">${e.title}</h3><div class="f12 txt-mut mono">${e.sub}</div></div>
+    <button class="x-btn" onclick="closeAll()">✕</button>
+  </div>
+  <div class="panel-b">
+    <div id="entView">
+      <div class="card pad" style="background:var(--wash);margin-bottom:14px"><div class="row between"><div><div class="f12 txt-mut">Total</div><div class="statnum" style="font-size:24px">${fields.find(f=>f[0]==='Price')?.[1]||'—'}</div></div><span class="tag success">Confirmed</span></div></div>
+      ${fields.map(f=>panelField(f[0],f[1],f[2])).join('')}
+      <div style="padding:12px 0"><div class="f12 txt-mut" style="margin-bottom:8px">Documents</div>
+        <div class="row g8" style="padding:9px 11px;border:1px solid var(--line);border-radius:10px"><span>📄</span><span class="f13 fw6" style="flex:1">voucher_${kind}.pdf</span><span class="f12 txt-mut">240 KB</span><span class="txt-mut">↓</span></div></div>
+      <div class="row g8" style="padding:11px;background:var(--wash);border-radius:10px"><span>📝</span><div class="f12 txt-mut">Window seats requested. Breakfast included.</div></div>
+    </div>
+  </div>
+  <div class="panel-f">
+    <button class="btn btn-ghost" onclick="closeAll()">Close</button>
+    <button class="btn btn-ghost" style="color:var(--rose)">Delete</button>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="openPanel('aiparse')">✎ Edit</button>
+  </div>`;
+}
+function panelAi(){ return `<div class="panel-h">
+    <span class="tag ai" style="font-size:13px;padding:6px 11px">✦</span>
+    <div style="flex:1"><div class="f12 txt-mut">Add with AI</div><h3 style="font-size:18px">Paste a booking</h3></div>
+    <button class="x-btn" onclick="closeAll()">✕</button></div>
+  <div class="panel-b">
+    <p class="f13 txt-mut" style="margin-bottom:12px">Paste a confirmation email, drop a PDF voucher, or upload a screenshot. Triplanio fills the fields for you.</p>
+    <div class="empty" style="padding:26px"><div class="ei">⤓</div><div class="f13 fw6">Drop voucher or screenshot</div><div class="f12 txt-mut">PDF, JPG, PNG · max 10 MB</div></div>
+    <div class="field mt16"><label>…or paste text</label><textarea class="inp" placeholder="Your booking is confirmed! Flight BA502, London Heathrow to Lisbon, 14 Aug 09:40…"></textarea></div>
+    <button class="btn btn-primary btn-block">✦ Parse with Triplanio</button>
+    <div class="card pad mt16" style="background:var(--violet-soft);border-color:var(--violet)">
+      <div class="row g8" style="margin-bottom:10px"><span class="tag ai">✦ Parsed</span><span class="f12 txt-mut">Review the highlighted fields</span></div>
+      <div class="field"><label>Carrier</label><input class="inp" style="background:var(--amber-soft)" value="British Airways"></div>
+      <div class="field"><label>Flight number</label><input class="inp" style="background:var(--amber-soft)" value="BA 502"></div>
+      <div class="row g8"><div class="field" style="flex:1"><label>Departs</label><input class="inp" value="14 Aug 09:40"></div><div class="field" style="flex:1"><label>Arrives</label><input class="inp" value="14 Aug 12:55"></div></div>
+    </div>
+  </div>
+  <div class="panel-f"><button class="btn btn-ghost" onclick="closeAll()">Cancel</button><button class="btn btn-primary" style="margin-left:auto" onclick="closeAll()">Save event</button></div>`; }
+function panelMember(){ return `<div class="panel-h"><span class="tag service" style="font-size:13px;padding:6px 11px">◍</span><div style="flex:1"><div class="f12 txt-mut">Members</div><h3 style="font-size:18px">Who's going</h3></div><button class="x-btn" onclick="closeAll()">✕</button></div>
+  <div class="panel-b"><button class="btn btn-primary btn-block" onclick="openModalById('invite')">＋ Invite member</button>
+  <div class="col g8 mt16">${TRIP.members.map(m=>`<div class="row g10" style="padding:10px;border:1px solid var(--line);border-radius:12px">${av(m,38)}<div style="flex:1"><div class="f14 fw6">${m.n} ${m.n==='You'?'<span class="f12 txt-mut">· you</span>':''}</div><div class="f12 txt-mut">${m.role}${m.st==='pending'?' · invite pending':''}</div></div><span class="tag ${m.role==='owner'?'flight':m.role==='admin'?'success':'service'}">${m.role}</span></div>`).join('')}</div></div>
+  <div class="panel-f"><button class="btn btn-ghost btn-block" onclick="closeAll();go('members')">Open members lens ›</button></div>`; }
+
+/* ====== BUDGET / DOC / MEMBER MODALS ====== */
+function ovl_expense(){ return `<div class="modal-h"><div class="icotile amber" style="width:36px;height:36px">€</div><h3>Add expense</h3><button class="x-btn" onclick="closeAll()">✕</button></div>
+  <div class="modal-b"><div class="field"><label>Description</label><input class="inp" placeholder="Dinner at Time Out Market"></div>
+  <div class="row g10"><div class="field" style="flex:2"><label>Amount</label><input class="inp mono" placeholder="0.00"></div><div class="field" style="flex:1"><label>Currency</label><select class="inp"><option>EUR</option><option>GBP</option><option>USD</option></select></div></div>
+  <div class="row g10"><div class="field" style="flex:1"><label>Category</label><select class="inp"><option>Food & dining</option><option>Accommodation</option><option>Transport</option><option>Activities</option></select></div><div class="field" style="flex:1"><label>City</label><select class="inp"><option>Lisbon</option><option>Porto</option><option>Barcelona</option></select></div></div>
+  <div class="field"><label>Date</label><input class="inp" type="date" value="2026-08-15"></div>
+  <div class="field"><label>Paid by · split</label><div class="row g8 wrap">${TRIP.members.slice(0,3).map(m=>`<span class="chip">${av(m,20)} ${m.n}</span>`).join('')}<span class="chip" style="background:var(--brand-soft);color:var(--brand)">Split evenly</span></div></div>
+  <div class="field"><label>Notes</label><textarea class="inp" placeholder="Optional"></textarea></div></div>
+  <div class="modal-f"><button class="btn btn-ghost" onclick="closeAll()">Cancel</button><button class="btn btn-primary" onclick="closeAll()">Save expense</button></div>`; }
+function ovl_doc(){ return `<div class="modal-h"><div class="icotile violet" style="width:36px;height:36px">▤</div><h3>Add document</h3><button class="x-btn" onclick="closeAll()">✕</button></div>
+  <div class="modal-b"><div class="field"><label>Visibility</label><div class="row g8"><button class="chip" style="background:var(--brand-soft);color:var(--brand);border-color:var(--brand)">👥 Shared</button><button class="chip">🔒 Personal</button></div></div>
+  <div class="field"><label>Title</label><input class="inp" placeholder="Spain visa approval"></div>
+  <div class="field"><label>Files</label><div class="empty" style="padding:22px"><div class="ei" style="font-size:22px">⤓</div><div class="f13 fw6">Drag files or click to upload</div><div class="f12 txt-mut">PDF, JPG, PNG, DOCX, XLSX · max 10 MB</div></div></div>
+  <div class="field"><label>Link (optional)</label><input class="inp" placeholder="https://…"></div>
+  <div class="field"><label>Notes</label><textarea class="inp" placeholder="Optional"></textarea></div></div>
+  <div class="modal-f"><button class="btn btn-ghost" onclick="closeAll()">Cancel</button><button class="btn btn-primary" onclick="closeAll()">Save</button></div>`; }
+function ovl_invite(){ return `<div class="modal-h"><div class="icotile blue" style="width:36px;height:36px">◍</div><h3>Invite to trip</h3><button class="x-btn" onclick="closeAll()">✕</button></div>
+  <div class="modal-b"><div class="pb-seg" style="background:var(--wash);width:100%;margin-bottom:16px"><button class="on" style="flex:1;padding:8px;border-radius:99px;background:#fff;color:var(--brand);font-weight:600;font-size:13px">Email</button><button style="flex:1;padding:8px;color:var(--slate-500);font-size:13px">Invite link</button><button style="flex:1;padding:8px;color:var(--slate-500);font-size:13px">Offline</button></div>
+  <div class="field"><label>Email address</label><input class="inp" placeholder="friend@email.com"></div>
+  <div class="field"><label>Role</label><div class="row g8"><button class="chip" style="background:var(--green-soft);color:var(--green-ink);border-color:var(--green)">Admin · can edit</button><button class="chip">Viewer · read-only</button></div></div>
+  <div class="field"><label>Personal message <span class="txt-mut">(optional)</span></label><textarea class="inp" placeholder="Join our Iberia trip!"></textarea></div></div>
+  <div class="modal-f"><button class="btn btn-ghost" onclick="closeAll()">Cancel</button><button class="btn btn-primary" onclick="closeAll()">Send invite</button></div>`; }
+function ovl_role(){ return `<div class="modal-h"><h3>Change role · Iván P.</h3><button class="x-btn" onclick="closeAll()">✕</button></div><div class="modal-b"><div class="col g8">${[['Admin','Edit structure, bookings, members & settings','admin'],['Viewer','Read-only. Can comment and add expenses.','viewer']].map(r=>`<button class="card pad row g10" style="text-align:left;border:1.5px solid ${r[2]==='viewer'?'var(--brand)':'var(--line)'}"><div class="icotile ${r[2]==='admin'?'green':'slate'}" style="width:36px;height:36px">${r[2]==='admin'?'★':'👁'}</div><div style="flex:1"><div class="fw6 f14">${r[0]}</div><div class="f12 txt-mut">${r[1]}</div></div>${r[2]==='viewer'?'<span style="color:var(--brand)">✓</span>':''}</button>`).join('')}</div></div><div class="modal-f"><button class="btn btn-ghost" onclick="closeAll()">Cancel</button><button class="btn btn-primary" onclick="closeAll()">Save</button></div>`; }
+function ovl_category(){ return `<div class="modal-h"><h3>New category</h3><button class="x-btn" onclick="closeAll()">✕</button></div><div class="modal-b"><div class="field"><label>Name</label><input class="inp" placeholder="Souvenirs"></div><div class="field"><label>Colour</label><div class="row g8 wrap">${['var(--brand)','var(--teal)','var(--coral)','var(--amber)','var(--green)','var(--violet)','var(--rose)','var(--slate-500)'].map((c,i)=>`<div style="width:30px;height:30px;border-radius:9px;background:${c};${i===2?'box-shadow:0 0 0 3px var(--coral-soft)':''}"></div>`).join('')}</div></div><div class="field"><label>Icon</label><div class="row g8 wrap">${['🛍','🎁','🍴','🚕','🎟','☕','⛱','📷'].map(x=>`<div class="icotile slate" style="width:36px;height:36px">${x}</div>`).join('')}</div></div></div><div class="modal-f"><button class="btn btn-ghost" onclick="closeAll()">Cancel</button><button class="btn btn-primary" onclick="closeAll()">Create</button></div>`; }
+function ovl_fx(){ return `<div class="modal-h"><h3>Exchange rates</h3><button class="x-btn" onclick="closeAll()">✕</button></div><div class="modal-b"><p class="f13 txt-mut" style="margin-bottom:14px">Main currency is <b>EUR</b>. Override live rates if your card billed differently.</p>${[['GBP','1.17','live'],['USD','0.92','manual']].map(r=>`<div class="row g10" style="padding:10px 0;border-bottom:1px solid var(--line)"><span class="fw7 mono" style="width:46px">${r[0]}</span><span class="f13 txt-mut">1 ${r[0]} =</span><input class="inp mono" style="width:100px" value="${r[1]}"><span class="f12 txt-mut">EUR</span><span class="tag ${r[2]==='live'?'success':'service'}" style="margin-left:auto">${r[2]}</span></div>`).join('')}</div><div class="modal-f"><button class="btn btn-ghost" onclick="closeAll()">Cancel</button><button class="btn btn-primary" onclick="closeAll()">Apply</button></div>`; }
+/* ============================================================ MAP ============================================================ */
+SC.map = () => `<div class="twopane" style="display:grid;grid-template-columns:380px 1fr;height:calc(100% - 64px)">
+  <div style="border-right:1px solid var(--line);background:#fff;overflow:auto;padding:20px">
+    <h1 style="font-size:22px">Route map</h1>
+    <p class="txt-mut f13" style="margin:3px 0 16px">${TRIP.cities.length} cities · ${TRIP.origin} round-trip</p>
+    <div class="col g8">
+      ${TRIP.cities.map((c,i)=>`
+        <div class="card pad" style="cursor:pointer;border-color:${i===0?'var(--brand)':'var(--line)'}">
+          <div class="row g10"><div style="width:26px;height:26px;border-radius:8px;background:${c.color};color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px">${i+1}</div>
+            <div style="flex:1"><div class="fw7">${c.name} <span class="f12 txt-mut">${c.cc}</span></div><div class="f12 txt-mut mono">${c.range} · ${c.nights||0}n · ${c.acts} activities</div></div>
+            <span class="chip mono f12">${c.temp}°</span></div>
+          <div class="col g6 mt12">
+            <div class="row g8 f13" style="padding:7px 9px;border-radius:9px;background:${c.transferOk?'var(--brand-soft)':'var(--amber-soft)'}"><span class="tag ${c.transferOk?'flight':'deadline'}">${c.transferOk?'✈':'⚠'}</span><span style="flex:1">${c.transferOk?'Flight in · '+(i===0?'BA 502':'arr 14:10'):'No transfer — tap to add'}</span></div>
+            <div class="row g8 f13" style="padding:7px 9px;border-radius:9px;background:${c.hotelOk?'var(--teal-soft)':'var(--amber-soft)'}"><span class="tag ${c.hotelOk?'hotel':'deadline'}">${c.hotelOk?'🛏':'⚠'}</span><span style="flex:1">${c.hotelOk?c.hotel:'No hotel — tap to add'}</span></div>
+          </div>
+          ${i>0?'<button class="btn btn-soft btn-sm mt12" style="width:100%" onclick="openSheet(\'lensmenu\')">＋ Activity</button>':''}
+        </div>`).join('')}
+    </div>
+  </div>
+  <div class="mappane" style="position:relative;background:linear-gradient(160deg,#dde7f5,#e9eef6)">
+    <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(120,140,180,.18) 1px,transparent 1px);background-size:26px 26px"></div>
+    <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 600 700" preserveAspectRatio="xMidYMid slice">
+      <path d="M150,150 L210,250 L420,360 L470,520" fill="none" stroke="var(--brand)" stroke-width="3" stroke-dasharray="2 0"/>
+      <path d="M470,520 L300,600" fill="none" stroke="var(--amber)" stroke-width="3" stroke-dasharray="7 6"/>
+      ${[['150','150','1','var(--teal)'],['210','250','2','var(--coral)'],['420','360','3','var(--blue-500)'],['470','520','4','var(--violet)']].map(p=>`<g><circle cx="${p[0]}" cy="${p[1]}" r="18" fill="#fff" stroke="${p[3]}" stroke-width="3"/><text x="${p[0]}" y="${+p[1]+5}" text-anchor="middle" font-size="15" font-weight="700" fill="${p[3]}" font-family="JetBrains Mono">${p[2]}</text></g>`).join('')}
+    </svg>
+    <div style="position:absolute;top:16px;right:16px;display:flex;flex-direction:column;gap:8px">
+      <div class="pb-seg" style="background:#fff;box-shadow:var(--sh-sm)"><button class="on" style="padding:6px 11px;font-size:12px;border-radius:99px;background:var(--brand-soft);color:var(--brand);font-weight:600">Light</button><button style="padding:6px 11px;font-size:12px;color:var(--slate-500)">Dark</button></div>
+      <button class="btn btn-ghost btn-sm" style="box-shadow:var(--sh-sm)">◍ Start/finish</button>
+      <button class="btn btn-ghost btn-sm" style="box-shadow:var(--sh-sm)">⌖ Globe</button>
+    </div>
+    <div class="card pad" style="position:absolute;left:16px;bottom:16px;display:flex;gap:14px;box-shadow:var(--sh-md)">
+      <span class="row g6 f12"><i style="width:18px;height:3px;background:var(--brand);display:inline-block"></i> Transfer set</span>
+      <span class="row g6 f12"><i style="width:18px;height:3px;background:var(--amber);display:inline-block;border-top:2px dashed var(--amber)"></i> Missing</span>
+    </div>
+  </div>
+</div>`;
+
+/* ============================================================ CALENDAR ============================================================ */
+SC.calendar = () => {
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const ev={14:[['flight','BA 502']], 15:[['act','Alfama']], 16:[['act','Sintra']], 17:[['flight','Porto']], 19:[['hotel','Brummell']], 21:[['act','Sagrada']], 22:[['act','Gaudí']]};
+  let cells='';
+  for(let i=0;i<35;i++){ const d=i-4; const inTrip=d>=14&&d<=25; const day=d>0&&d<=31?d:'';
+    const evs=ev[d]||[];
+    cells+=`<div style="min-height:96px;border:1px solid var(--line);border-radius:10px;padding:7px;background:${inTrip?'#fff':'var(--wash)'};${d===17?'box-shadow:inset 0 0 0 2px var(--brand)':''}">
+      <div class="f12 ${inTrip?'fw7':'txt-mut'}">${day}</div>
+      ${d>=14&&d<=17?'<div style="height:5px;border-radius:99px;background:var(--teal);margin:3px 0"></div>':''}
+      ${d>=19&&d<=23?'<div style="height:5px;border-radius:99px;background:var(--blue-500);margin:3px 0"></div>':''}
+      ${evs.map(e=>`<div class="f12" style="margin-top:3px;cursor:pointer" onclick="openPanel('${e[0]}')"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--${e[0]==='flight'?'brand':e[0]==='hotel'?'teal':'coral'});margin-right:4px"></span>${e[1]}</div>`).join('')}
+    </div>`; }
+  return `<div class="canvas solo"><div class="col g16">
+    <div class="between wrap g10"><div><h1 style="font-size:24px">Calendar</h1><p class="txt-mut f13" style="margin-top:3px">August 2026</p></div>
+      <div class="row g8"><div class="pb-seg" style="background:var(--wash)"><button class="on" style="padding:6px 12px;font-size:12px;border-radius:99px;background:#fff;color:var(--brand);font-weight:600">Month</button><button style="padding:6px 12px;font-size:12px;color:var(--slate-500)">Week</button></div>
+      <button class="btn btn-ghost btn-sm">‹</button><button class="btn btn-ghost btn-sm">Today</button><button class="btn btn-ghost btn-sm">To trip</button><button class="btn btn-ghost btn-sm">›</button></div></div>
+    <div class="card pad">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px">${days.map(d=>`<div class="f12 fw6 txt-mut" style="text-align:center">${d}</div>`).join('')}</div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">${cells}</div>
+      <div class="row wrap g14 mt16 f12">
+        <span class="row g6"><i style="width:14px;height:6px;border-radius:9px;background:var(--teal);display:inline-block"></i>Lisbon stay</span>
+        <span class="row g6"><i style="width:14px;height:6px;border-radius:9px;background:var(--blue-500);display:inline-block"></i>Barcelona stay</span>
+        <span class="row g6"><i style="width:8px;height:8px;border-radius:50%;background:var(--brand);display:inline-block"></i>Transfer</span>
+        <span class="row g6"><i style="width:8px;height:8px;border-radius:50%;background:var(--coral);display:inline-block"></i>Activity</span>
+      </div>
+    </div>
+  </div></div>`;
+};
+
+/* ============================================================ BUDGET ============================================================ */
+SC.budget = () => {
+  const cats=[['Accommodation','🛏','teal',1135,1200,8],['Transport','✈','blue',688,750,5],['Activities','◐','coral',420,500,9],['Food & dining','🍴','amber',612,700,14],['Services','🚗','violet',164,200,2],['Shopping','🛍','slate',161,250,4]];
+  const total=cats.reduce((s,c)=>s+c[3],0);
+  return `<div class="canvas solo"><div class="col g16">
+    <div class="between wrap g10"><div><h1 style="font-size:24px">Budget</h1><p class="txt-mut f13" style="margin-top:3px">Multi-currency · split across 3 travellers</p></div>
+      <div class="row g8"><button class="btn btn-ghost btn-sm" onclick="openModalById('fx')">⇄ Rates</button><button class="btn btn-ghost btn-sm" onclick="openModalById('category')">＋ Category</button><button class="btn btn-primary btn-sm" onclick="openModalById('expense')">＋ Expense</button></div></div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+      <div class="card pad"><div class="f12 txt-mut">Total spent</div><div class="statnum" style="font-size:30px;margin:4px 0">${M(total)}</div><div class="row g6"><span class="tag success">€620 under plan</span></div><div class="f12 txt-mut mt8">42 expenses</div></div>
+      <div class="card pad"><div class="f12 txt-mut">Per person</div><div class="statnum" style="font-size:30px;margin:4px 0">${M(Math.round(total/3))}</div><div class="f12 txt-mut">3 travellers · split evenly</div><div class="row g6 mt8 wrap">${TRIP.members.slice(0,3).map(m=>`<span class="chip f12">${av(m,18)} ${m.n.split(' ')[0]}</span>`).join('')}</div></div>
+      <div class="card pad"><div class="between"><div class="f12 txt-mut">Exchange rates</div><a class="link f12" onclick="openModalById('fx')">Edit</a></div><div class="col g8 mt8"><div class="row between f13"><span class="mono">1 GBP</span><span class="fw6 mono">1.1700 €</span></div><div class="row between f13"><span class="mono">1 USD</span><span class="fw6 mono">0.9200 €</span><span class="tag service f12">manual</span></div></div></div>
+    </div>
+
+    <div class="card pad">
+      <div class="row g8" style="margin-bottom:14px"><div class="pb-seg" style="background:var(--wash)"><button class="on" style="padding:6px 13px;font-size:12px;border-radius:99px;background:#fff;color:var(--brand);font-weight:600">By category</button><button style="padding:6px 13px;font-size:12px;color:var(--slate-500)">By city</button></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="col g10">
+          ${cats.map((c,i)=>`<div class="row g12" style="cursor:pointer;padding:10px;border-radius:11px;${i===0?'background:var(--brand-soft)':''}">
+            <div class="icotile ${c[2]}" style="width:38px;height:38px">${c[1]}</div>
+            <div style="flex:1"><div class="between"><span class="f14 fw6">${c[0]}</span><span class="f14 fw7 mono">${M(c[3])}</span></div>
+            <div class="meter mt8" style="height:6px"><i style="width:${Math.round(c[3]/c[4]*100)}%;background:var(--${c[2]==='blue'?'brand':c[2]})"></i></div>
+            <div class="f12 txt-mut" style="margin-top:4px">${c[5]} items · ${M(c[4])} planned</div></div>
+          </div>`).join('')}
+        </div>
+        <div>
+          <div class="row between" style="margin-bottom:12px"><div class="row g10"><div class="icotile teal" style="width:38px;height:38px">🛏</div><div><div class="fw7">Accommodation</div><div class="f12 txt-mut">8 items · €1,135</div></div></div></div>
+          <div class="col g8">
+            ${[['Memmo Alfama · Lisbon','€423','auto'],['Hotel Brummell · Barcelona','€712','auto'],['Only YOU Atocha · Madrid','€—','no rate']].map(x=>`<div class="row g10" style="padding:10px;border:1px solid var(--line);border-radius:11px"><div class="icotile teal" style="width:30px;height:30px;font-size:14px">🛏</div><div style="flex:1"><div class="f13 fw6">${x[0]}</div>${x[2]!=='no rate'?'<span class="tag success f12">from booking</span>':'<span class="tag danger f12">no FX rate</span>'}</div><span class="f14 fw7 mono">${x[1]}</span></div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>`;
+};
+
+/* ============================================================ DOCUMENTS ============================================================ */
+SC.docs = () => {
+  const doc=(t,n,link,vis)=>`<div class="card pad" style="cursor:pointer" onclick="openModalById('doc')"><div class="row g10"><div class="icotile ${vis==='shared'?'blue':'amber'}" style="width:38px;height:38px">▤</div><div style="flex:1"><div class="fw6 f14">${t}</div><div class="f12 txt-mut">${n} file${n>1?'s':''}${link?' · '+link:''}</div></div></div></div>`;
+  return `<div class="canvas solo"><div class="col g20">
+    <div class="between wrap g10"><div><h1 style="font-size:24px">Documents</h1><p class="txt-mut f13" style="margin-top:3px">Passports, tickets, vouchers — shared or private.</p></div><button class="btn btn-primary btn-sm" onclick="openModalById('doc')">＋ Add document</button></div>
+    <div>
+      <div class="sec-head"><div class="row g8"><h2 style="font-size:17px">Shared</h2><span class="chip f12">4</span></div><span class="f12 txt-mut">All members can see</span></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        ${doc('Flight confirmations',3,'britishairways.com','shared')}
+        ${doc('Hotel vouchers',2,'','shared')}
+        ${doc('Train tickets',1,'cp.pt','shared')}
+        <button class="empty" style="padding:24px;cursor:pointer" onclick="openModalById('doc')"><div class="ei" style="font-size:22px">＋</div><div class="f13 fw6">Add shared doc</div></button>
+      </div>
+    </div>
+    <div>
+      <div class="sec-head"><div class="row g8"><h2 style="font-size:17px">Personal</h2><span class="chip f12">2</span></div><span class="f12 txt-mut">🔒 Only you</span></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        ${doc('Passport scan',1,'','private')}
+        ${doc('Travel insurance',2,'allianz.com','private')}
+        <button class="empty" style="padding:24px;cursor:pointer" onclick="openModalById('doc')"><div class="ei" style="font-size:22px">＋</div><div class="f13 fw6">Add personal doc</div></button>
+      </div>
+    </div>
+  </div></div>`;
+};
+/* ============================================================ CHAT ============================================================ */
+SC.chat = () => {
+  const msg=(who,txt,me,ai,t)=>`<div style="display:flex;flex-direction:column;align-items:${me?'flex-end':'flex-start'};margin-bottom:12px">
+    ${!me?`<div class="row g6" style="margin:0 0 4px 6px"><span class="f12 fw6" style="color:${ai?'var(--violet-ink)':'var(--slate-600)'}">${who}</span>${ai?'<span class="tag ai f12">AI</span>':''}</div>`:''}
+    <div style="max-width:74%;padding:10px 13px;border-radius:${me?'14px 14px 4px 14px':'14px 14px 14px 4px'};background:${me?'var(--brand)':ai?'var(--violet-soft)':'#fff'};color:${me?'#fff':'var(--ink)'};border:${me||ai?'none':'1px solid var(--line)'};font-size:14px;line-height:1.45">${txt}</div>
+    <span class="f12 txt-mut mono" style="margin:3px 6px 0">${t}</span></div>`;
+  return `<div class="twopane" style="display:grid;grid-template-columns:1fr 300px;height:calc(100% - 64px)">
+    <div class="mappane" style="display:flex;flex-direction:column;background:var(--bg);min-height:420px">
+      <div style="flex:1;overflow:auto;padding:22px">
+        <div style="text-align:center;margin-bottom:16px"><span class="chip f12">Today</span></div>
+        ${msg('Marta R.','Should we book the Porto hotel before the weekend? Prices are climbing.',false,false,'09:14')}
+        ${msg('You','Good call — looking now. @Triplanio what nights do we need in Porto?',true,false,'09:15')}
+        ${msg('Triplanio','You\'re in Porto for <b>2 nights, 17–19 Aug</b>. There\'s no hotel booked yet — want me to suggest options near Ribeira under €150/night?',false,true,'09:15')}
+        ${msg('Iván P.','Ribeira sounds perfect 🙌',false,false,'09:18')}
+        <div class="row g8" style="margin:0 0 12px 6px"><span class="tag ai">✦</span><span class="f12 txt-mut">Triplanio is thinking<span class="mono">…</span></span></div>
+      </div>
+      <div style="padding:14px 18px;border-top:1px solid var(--line);background:#fff">
+        <div class="row g10" style="background:var(--wash);border:1px solid var(--line);border-radius:14px;padding:8px 10px 8px 14px">
+          <span class="f14" style="flex:1;color:var(--slate-400)">Message the group… type <span style="color:var(--violet-ink);font-weight:600">@Triplanio</span> for AI</span>
+          <button class="btn-ico btn-primary" style="width:34px;height:34px">↑</button>
+        </div>
+      </div>
+    </div>
+    <div style="border-left:1px solid var(--line);background:#fff;padding:18px;overflow:auto">
+      <div class="f13 fw7" style="margin-bottom:12px">Members</div>
+      <div class="col g8">${TRIP.members.filter(m=>m.st==='active').map(m=>`<div class="row g10">${av(m,32)}<div style="flex:1"><div class="f13 fw6">${m.n}</div><div class="f12 txt-mut">${m.role}</div></div></div>`).join('')}</div>
+      <div style="height:1px;background:var(--line);margin:14px 0"></div>
+      <div class="row g10"><div class="icotile violet" style="width:32px;height:32px">✦</div><div style="flex:1"><div class="f13 fw6">Triplanio</div><div class="f12 txt-mut">AI assistant</div></div></div>
+      <div class="card pad mt16" style="background:var(--violet-soft);border-color:var(--violet)">
+        <div class="f13 fw7" style="margin-bottom:8px">What Triplanio can do</div>
+        ${['Answer questions about your trip','Suggest activities & transfers','Help with booking details'].map(x=>`<div class="row g8 f12" style="margin-bottom:6px"><span style="color:var(--violet-ink)">✦</span>${x}</div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+};
+
+/* ============================================================ MEMBERS ============================================================ */
+SC.members = () => `<div class="canvas solo"><div class="col g16">
+  <div class="between wrap g10"><div><h1 style="font-size:24px">Members</h1><p class="txt-mut f13" style="margin-top:3px">3 going · 1 invitation pending</p></div><button class="btn btn-primary btn-sm" onclick="openModalById('invite')">＋ Invite</button></div>
+  <div class="card">
+    ${TRIP.members.map((m,i)=>`<div class="row g12" style="padding:14px 18px;${i?'border-top:1px solid var(--line)':''}">
+      ${av(m,42)}
+      <div style="flex:1"><div class="row g8"><span class="f15 fw6">${m.n}</span>${m.n==='You'?'<span class="chip f12">you</span>':''}</div><div class="f12 txt-mut">${m.n==='You'?'avel123111@gmail.com':m.n.toLowerCase().replace(/[ .]/g,'')+'@email.com'}</div></div>
+      ${m.st==='pending'?'<span class="tag deadline">invite pending</span>':m.st==='declined'?'<span class="tag danger">declined</span>':''}
+      <span class="tag ${m.role==='owner'?'flight':m.role==='admin'?'success':'service'}">${m.role}</span>
+      ${m.role!=='owner'?`<button class="btn-ico btn-ghost" onclick="${m.st==='pending'?'':'openModalById(\'role\')'}">⋯</button>`:''}
+    </div>`).join('')}
+  </div>
+  <div class="card pad row g12"><div class="icotile blue" style="width:40px;height:40px">↗</div><div style="flex:1"><div class="fw6">Invite by link</div><div class="f12 txt-mut">Anyone with the link joins as viewer. Valid 7 days.</div></div><button class="btn btn-ghost btn-sm" onclick="openModalById('invite')">Get link</button></div>
+</div></div>`;
+
+/* ============================================================ STRUCTURE EDITOR ============================================================ */
+SC.structure = () => `<div class="twopane" style="display:grid;grid-template-columns:1fr 1fr;height:calc(100% - 64px)">
+  <div style="overflow:auto;padding:22px;border-right:1px solid var(--line)">
+    <div class="between" style="margin-bottom:4px"><h1 style="font-size:22px">Structure</h1><span class="tag ai">🔒 You're editing</span></div>
+    <p class="txt-mut f13" style="margin-bottom:16px">A sandbox — nothing saves until you press save. Reorder cities, set nights, manage transfers.</p>
+    <div class="card pad row between" style="margin-bottom:14px;background:var(--wash)"><div class="row g10"><span class="f13 fw6">Trip starts</span><span class="mono f13">14 Aug 2026</span></div><div class="row g6"><button class="btn-ico btn-ghost btn-sm">−</button><button class="btn-ico btn-ghost btn-sm">＋</button></div></div>
+    <div class="card pad row g10" style="margin-bottom:10px;opacity:.85"><span style="color:var(--slate-300)">⋮⋮</span><div class="icotile slate" style="width:32px;height:32px">🏠</div><div style="flex:1"><div class="fw6 f14">London <span class="f12 txt-mut">🇬🇧 origin</span></div></div></div>
+    ${TRIP.cities.map((c,i)=>`<div class="card pad" style="margin-bottom:10px;border-color:${!c.transferOk?'var(--amber)':'var(--line)'}">
+      <div class="row g10"><span style="color:var(--slate-300);cursor:grab">⋮⋮</span>
+        <div style="width:28px;height:28px;border-radius:8px;background:${c.color};color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px">${i+1}</div>
+        <div style="flex:1"><div class="fw6 f14">${c.name} <span class="f12 txt-mut">${c.cc}</span></div><div class="f12 txt-mut mono">${c.range}</div></div>
+        <div class="row g6"><button class="btn-ico btn-ghost btn-sm">−</button><span class="mono f13 fw6" style="width:36px;text-align:center">${c.nights||0}n</span><button class="btn-ico btn-ghost btn-sm">＋</button></div>
+        <button class="btn-ico btn-ghost btn-sm" style="color:var(--rose)">🗑</button>
+      </div>
+      ${!c.transferOk?`<div class="row g8 mt12 f13" style="padding:7px 9px;border-radius:9px;background:var(--amber-soft)"><span class="tag deadline">⚠</span><span style="flex:1">No transfer into ${c.name}</span><button class="btn btn-coral btn-sm" onclick="openPanel('flight')">Add</button></div>`:''}
+      ${i===2?`<label class="row g8 mt12 f13" style="cursor:pointer"><span class="sw"></span> Overnight transfer (arrives next day)</label>`:''}
+    </div>`).join('')}
+    <button class="btn btn-ghost btn-block" style="border-style:dashed" onclick="openSheet('lensmenu')">＋ Add city</button>
+    <div class="card pad mt16" style="background:var(--wash)"><div class="f12 txt-mut" style="margin-bottom:8px">Removed (1) — restored on tap</div><div class="row g8"><span class="chip">Sevilla 🇪🇸 ↺</span></div></div>
+  </div>
+  <div class="mappane" style="position:relative;background:linear-gradient(160deg,#dde7f5,#e9eef6);min-height:300px">
+    <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(120,140,180,.18) 1px,transparent 1px);background-size:26px 26px"></div>
+    <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 600 700" preserveAspectRatio="xMidYMid slice">
+      <path d="M150,150 L210,250 L420,360" fill="none" stroke="var(--brand)" stroke-width="3"/>
+      <path d="M420,360 L470,520" fill="none" stroke="var(--amber)" stroke-width="3" stroke-dasharray="7 6"/>
+      ${[['150','150','1','var(--teal)'],['210','250','2','var(--coral)'],['420','360','3','var(--blue-500)'],['470','520','4','var(--violet)']].map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="17" fill="#fff" stroke="${p[3]}" stroke-width="3"/><text x="${p[0]}" y="${+p[1]+5}" text-anchor="middle" font-size="14" font-weight="700" fill="${p[3]}" font-family="JetBrains Mono">${p[2]}</text>`).join('')}
+    </svg>
+    <button class="btn" style="position:absolute;left:16px;bottom:16px;background:var(--amber);color:#fff;box-shadow:var(--sh-md)" onclick="openModalById('warnings')">⚠ ${TRIP.warnings.length} to review</button>
+  </div>
+  <div style="position:absolute;top:74px;right:30px;display:flex;gap:8px;z-index:20"><button class="btn btn-ghost btn-sm" style="box-shadow:var(--sh-sm)">↺ Reset</button><button class="btn btn-primary btn-sm" style="box-shadow:var(--sh-md)">Save changes</button></div>
+</div>`;
+
+/* ============================================================ TRIP SETTINGS ============================================================ */
+SC.settings = () => {
+  const feat=(ic,t,d,on,pro)=>`<div class="row g12" style="padding:13px 0;border-top:1px solid var(--line)"><div class="icotile ${on?'blue':'slate'}" style="width:38px;height:38px">${ic}</div><div style="flex:1"><div class="row g8"><span class="f14 fw6">${t}</span>${pro?'<span class="tag pro f12">PRO</span>':''}</div><div class="f12 txt-mut">${d}</div></div><div class="sw ${on?'on':''}"></div></div>`;
+  return `<div class="canvas solo" style="max-width:760px"><div class="col g16">
+    <h1 style="font-size:24px">Trip settings</h1>
+    <div class="card pad"><h2 style="font-size:16px;margin-bottom:14px">General</h2>
+      <div class="field"><label>Trip name</label><input class="inp" value="${TRIP.title}"></div>
+      <div class="row g10"><div class="field" style="flex:1"><label>Display currency</label><select class="inp"><option>EUR — Euro</option><option>GBP — Pound</option><option>USD — Dollar</option></select></div></div>
+      <div class="row g12" style="padding-top:6px"><div style="flex:1"><div class="f14 fw6">Booking warnings on timeline</div><div class="f12 txt-mut">Alert when bookings fall outside expected dates</div></div><div class="sw on"></div></div>
+    </div>
+    <div class="card pad"><h2 style="font-size:16px;margin-bottom:6px">Features</h2>
+      ${feat('▦','Calendar view','Month & week views of your itinerary',true,false)}
+      ${feat('€','Budget','Track expenses in multiple currencies',true,true)}
+      ${feat('◗','Group chat','Members + Triplanio AI assistant',true,true)}
+      ${feat('✈','Telegram concierge','Reminders & AI on Telegram',true,true)}
+      ${feat('🛏','Hotel selection','Vote on hotels together · coming soon',false,false)}
+    </div>
+    <div class="card pad"><div class="between" style="margin-bottom:10px"><h2 style="font-size:16px">Telegram</h2><button class="btn btn-soft btn-sm" onclick="openModalById('telegram')">＋ Connect</button></div>
+      <div class="row g10" style="padding:10px;border:1px solid var(--line);border-radius:11px"><div class="icotile blue" style="width:34px;height:34px;background:#e7f3ff;color:#229ed9">✈</div><div style="flex:1"><div class="f13 fw6">@pavel_m</div><div class="f12 txt-mut">Receiving reminders</div></div><div class="sw on"></div><button class="btn-ico btn-ghost btn-sm" style="color:var(--rose)">✕</button></div>
+    </div>
+    <div class="card pad" style="border-color:var(--rose)"><h2 style="font-size:16px;color:var(--rose-ink);margin-bottom:12px">Danger zone</h2>
+      <div class="between"><div><div class="f14 fw6">Delete this trip</div><div class="f12 txt-mut">Permanently removes the trip for everyone.</div></div><button class="btn btn-danger btn-sm">Delete trip</button></div>
+    </div>
+  </div></div>`;
+};
+/* ============================================================ MY TRIPS ============================================================ */
+SC.trips = () => {
+  const card=(t,d,cities,grad,role,pro,draft)=>`<div class="card" style="overflow:hidden;cursor:pointer" onclick="go('overview')">
+    <div style="height:128px;background:${grad};position:relative"><div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(13,18,32,.5))"></div>
+      <div style="position:absolute;top:11px;left:11px;display:flex;gap:6px">${pro?'<span class="tag pro f12">✦ PRO</span>':''}${role?'<span class="chip f12" style="background:rgba(255,255,255,.9);border:none">'+role+'</span>':''}${draft?'<span class="chip f12" style="background:rgba(255,255,255,.9);border:none">Draft</span>':''}</div>
+      <div style="position:absolute;left:14px;bottom:12px;color:#fff"><div style="font-family:var(--display);font-weight:700;font-size:18px">${t}</div><div class="mono f12" style="opacity:.92">${d}</div></div>
+    </div>
+    <div class="pad" style="padding:13px"><div class="between"><span class="f12 txt-mut">${cities}</span><div class="av-stack">${TRIP.members.slice(0,3).map(m=>av(m,24)).join('')}</div></div></div>
+  </div>`;
+  return `<div class="canvas solo wide"><div class="col g16">
+    <div class="between wrap g10"><div><h1 style="font-size:26px">Your trips</h1><p class="txt-mut f13" style="margin-top:3px">Plan, share and travel — all in one place.</p></div>
+      <div class="row g8"><div class="tb-search" style="min-width:180px">⌕ <span>Search</span></div><button class="btn btn-primary" onclick="openModalById('create')">＋ New trip</button></div></div>
+    <div class="between wrap g10"><div class="pb-seg" style="background:var(--wash)"><button class="on" style="padding:7px 14px;font-size:13px;border-radius:99px;background:#fff;color:var(--brand);font-weight:600">Active · 3</button><button style="padding:7px 14px;font-size:13px;color:var(--slate-500)">Past · 7</button></div>
+      <div class="pb-seg" style="background:var(--wash)"><button class="on" style="padding:7px 11px;border-radius:99px;background:#fff;color:var(--brand)">▦</button><button style="padding:7px 11px;color:var(--slate-500)">≣</button></div></div>
+
+    <div class="card pad row g12" style="background:linear-gradient(120deg,var(--violet-soft),#fff);border-color:var(--violet)">
+      <div class="icotile violet" style="width:42px;height:42px">✦</div><div style="flex:1"><div class="fw7">You're on the free plan</div><div class="f12 txt-mut">Go Pro for AI planning, budgets and unlimited active trips.</div></div><button class="btn" style="background:var(--violet);color:#fff" onclick="go('pro')">Go Pro</button></div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+      ${card('Iberia — Summer ’26','14–25 Aug 2026','Lisbon · Porto · Barcelona +1','linear-gradient(125deg,var(--blue-600),var(--teal))','','PRO',false)}
+      ${card('Tokyo cherry blossom','28 Mar–08 Apr 2026','Tokyo · Kyoto · Osaka','linear-gradient(125deg,var(--coral),#ff9a3d)','Admin','',false)}
+      ${card('Weekend in Rome','draft','Rome','linear-gradient(125deg,var(--violet),#9b7bff)','','',true)}
+      <button class="empty" style="cursor:pointer;display:flex;flex-direction:column;justify-content:center;min-height:200px" onclick="openModalById('create')"><div class="ei">＋</div><div class="f14 fw6">Start a new trip</div><div class="f12 txt-mut">Manually or with AI</div></button>
+    </div>
+  </div></div>`;
+};
+
+/* ============================================================ INBOX ============================================================ */
+SC.inbox = () => {
+  const note=(ic,cl,t,d,actions,read)=>`<div class="card pad row g12" style="${read?'opacity:.7':''}"><div class="icotile ${cl}" style="width:40px;height:40px">${ic}</div><div style="flex:1"><div class="f14" style="font-weight:${read?500:600}">${t}</div><div class="f12 txt-mut">${d}</div>${actions||''}</div>${!read?'<span style="width:8px;height:8px;border-radius:50%;background:var(--brand)"></span>':''}</div>`;
+  return `<div class="canvas solo"><div class="col g16">
+    <div class="between wrap g10"><div><h1 style="font-size:26px">Inbox</h1><p class="txt-mut f13" style="margin-top:3px">Invitations, votes and trip updates.</p></div><button class="btn btn-ghost btn-sm">Mark all read</button></div>
+    <div class="pb-seg" style="background:var(--wash);align-self:flex-start"><button class="on" style="padding:7px 14px;font-size:13px;border-radius:99px;background:#fff;color:var(--brand);font-weight:600">All · 8</button><button style="padding:7px 14px;font-size:13px;color:var(--slate-500)">Unread · 3</button><button style="padding:7px 14px;font-size:13px;color:var(--slate-500)">Invitations · 1</button></div>
+    <div><div class="rgrp" style="color:var(--slate-400);padding:4px 2px 8px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Today</div><div class="col g10">
+      ${note('◍','blue','<b style="color:var(--brand)">Marta R.</b> invited you to <b>Tokyo cherry blossom</b>','Join as admin · 2h ago','<div class="row g8 mt12"><button class="btn btn-primary btn-sm">Accept</button><button class="btn btn-ghost btn-sm">Decline</button></div>',false)}
+      ${note('✎','coral','Iván edited <b>Iberia — Summer ’26</b>','Added 3 activities in Barcelona · 4h ago','',false)}
+      ${note('🗳','violet','New hotel vote in <b>Iberia — Summer ’26</b>','2 options for Porto · vote closes in 1 day','<div class="row g8 mt12"><button class="btn btn-soft btn-sm">View vote</button></div>',false)}
+    </div></div>
+    <div><div class="rgrp" style="color:var(--slate-400);padding:4px 2px 8px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">This week</div><div class="col g10">
+      ${note('✓','green','Sofía joined <b>Iberia — Summer ’26</b>','as viewer · 2 days ago','',true)}
+      ${note('✦','amber','Your Pro subscription is active','Renews 14 Sep 2026 · 3 days ago','',true)}
+    </div></div>
+  </div></div>`;
+};
+
+/* ============================================================ PRO ============================================================ */
+SC.pro = () => {
+  const plan=(t,price,per,feats,badge,sel)=>`<div class="card pad" style="position:relative;border:1.5px solid ${sel?'var(--brand)':'var(--line)'};${sel?'background:var(--brand-soft)':''}">
+    ${badge?`<span class="tag ${badge[1]}" style="position:absolute;top:-11px;left:50%;transform:translateX(-50%)">${badge[0]}</span>`:''}
+    <div class="f14 fw7">${t}</div><div class="row g6" style="margin:8px 0 4px;align-items:baseline"><span class="statnum" style="font-size:30px">${price}</span><span class="f13 txt-mut">${per}</span></div>
+    <div class="col g8 mt16">${feats.map(f=>`<div class="row g8 f13"><span style="color:var(--green)">✓</span> ${f}</div>`).join('')}</div>
+    <button class="btn ${sel?'btn-primary':'btn-ghost'} btn-block mt20">${sel?'Go to payment':'Choose'}</button>
+  </div>`;
+  return `<div class="canvas solo wide"><div class="col g20">
+    <div style="text-align:center;max-width:560px;margin:8px auto 0"><span class="eyebrow">Triplanio Pro</span><h1 style="font-size:30px;margin:8px 0">Plan more, worry less</h1><p class="txt-mut f14">Unlock AI planning, multi-currency budgets, group chat and the Telegram concierge.</p></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:14px">
+      ${plan('Pro for this trip','€9','once',['Everything Pro for one trip','AI voucher parsing','Budget & group chat'],null,false)}
+      ${plan('Pro Monthly','€6','/ month',['Unlimited active trips','AI trip planner','Multi-currency budgets','Telegram concierge'],['Most popular','flight'],true)}
+      ${plan('Pro Yearly','€48','/ year',['Everything in Monthly','€4 / month billed yearly'],['Save 33%','success'],false)}
+    </div>
+    <div class="row g8" style="justify-content:center;color:var(--slate-500)"><span>🔒</span><span class="f13">Secure checkout via Stripe · cancel anytime</span></div>
+    <div class="card pad" style="max-width:680px;margin:0 auto;width:100%"><h2 style="font-size:16px;margin-bottom:12px">Compare</h2>
+      ${[['Active trips','1','Unlimited'],['AI planner & parsing','—','✓'],['Budget & FX','—','✓'],['Group chat + Telegram','—','✓']].map(r=>`<div class="row between" style="padding:10px 0;border-top:1px solid var(--line)"><span class="f13">${r[0]}</span><div class="row g16"><span class="f13 txt-mut" style="width:80px;text-align:center">${r[1]}</span><span class="f13 fw6" style="width:80px;text-align:center;color:var(--brand)">${r[2]}</span></div></div>`).join('')}
+    </div>
+  </div></div>`;
+};
+
+/* ============================================================ ACCOUNT ============================================================ */
+SC.account = () => `<div class="canvas solo" style="max-width:740px"><div class="col g16">
+  <div class="between"><h1 style="font-size:24px">Account</h1><button class="btn btn-primary btn-sm">Save</button></div>
+  <div class="card pad row g16"><div class="av" style="width:72px;height:72px;font-size:26px;background:linear-gradient(135deg,var(--coral),#ff9a3d)">Y</div>
+    <div style="flex:1"><div class="field" style="margin-bottom:8px"><label>Full name</label><input class="inp" value="Pavel"></div><div class="f12 txt-mut">avel123111@gmail.com · <span style="color:var(--slate-400)">read-only</span></div></div></div>
+  <div class="card pad"><h2 style="font-size:16px;margin-bottom:14px">Preferences</h2>
+    <div class="field"><label>Language</label><div class="row g8"><button class="chip" style="background:var(--brand-soft);color:var(--brand);border-color:var(--brand)">English</button><button class="chip">Русский</button><button class="chip">Español</button></div></div>
+    <div class="field"><label>Theme</label><div class="row g8"><button class="chip" style="background:var(--brand-soft);color:var(--brand);border-color:var(--brand)">☀ Light</button><button class="chip">☾ Dark</button><button class="chip">⚙ System</button></div></div>
+  </div>
+  <div class="card pad" style="background:linear-gradient(120deg,var(--violet-soft),#fff);border-color:var(--violet)"><div class="row g12"><div class="icotile violet" style="width:42px;height:42px">✦</div><div style="flex:1"><div class="row g8"><span class="fw7">Pro Monthly</span><span class="tag success f12">Active</span></div><div class="f12 txt-mut">€6 / month · next charge 14 Sep 2026</div></div><button class="btn btn-ghost btn-sm">Manage</button></div></div>
+  <div class="card pad"><h2 style="font-size:16px;margin-bottom:12px">Email notifications</h2>
+    <div class="row between" style="padding:8px 0"><div><div class="f14 fw6">Invitations</div><div class="f12 txt-mut">Emails when you're invited to a trip</div></div><div class="sw on"></div></div>
+    <div class="row between" style="padding:8px 0;border-top:1px solid var(--line)"><div><div class="f14 fw6">Trip updates</div><div class="f12 txt-mut">Emails when your trips are edited</div></div><div class="sw"></div></div>
+  </div>
+  <div class="card pad"><div class="between"><div class="row g12"><div class="icotile blue" style="width:40px;height:40px;background:#e7f3ff;color:#229ed9">✈</div><div><div class="fw6">Telegram</div><div class="f12 txt-mut">2 trips connected</div></div></div><span class="tag success">Connected</span></div></div>
+  <div class="row g12"><button class="btn btn-ghost" style="flex:1">Sign out</button><button class="btn btn-ghost" style="flex:1;color:var(--rose)">Delete account</button></div>
+</div></div>`;
+/* ============================================================ CREATE FLOW (manual + AI) ============================================================ */
+SC.create = () => `<div style="height:100%;display:flex;flex-direction:column;background:var(--bg)">
+  <header style="height:60px;display:flex;align-items:center;gap:14px;padding:0 22px;border-bottom:1px solid var(--line);background:#fff">
+    <div class="tb-brand"><span class="mk">▲</span> Triplanio</div><div class="tb-spacer" style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="go('trips')">✕ Close</button>
+  </header>
+  <div style="flex:1;overflow:auto"><div style="max-width:880px;margin:0 auto;padding:26px 24px">
+    <div class="row g8" style="margin-bottom:22px">${['Home','Cities','Return','Review'].map((s,i)=>`<div class="row g8" style="flex:1"><div style="width:26px;height:26px;border-radius:50%;background:${i<=1?'var(--brand)':'var(--wash-2)'};color:${i<=1?'#fff':'var(--slate-500)'};display:grid;place-items:center;font-weight:700;font-size:12px">${i+1}</div><span class="f12 fw6 ${i<=1?'':'txt-mut'}">${s}</span>${i<3?'<div style="flex:1;height:2px;background:'+(i<1?'var(--brand)':'var(--line)')+'"></div>':''}</div>`).join('')}</div>
+
+    <div class="card pad" style="margin-bottom:18px;background:linear-gradient(120deg,var(--violet-soft),#fff);border-color:var(--violet)">
+      <div class="row g10"><div class="icotile violet" style="width:38px;height:38px">✦</div><div style="flex:1"><div class="fw6">Plan with AI</div><div class="f12 txt-mut">Describe your trip — Triplanio drafts the route.</div></div></div>
+      <div class="row g8 mt12"><input class="inp" value="11 days, 3 of us, Iberia, slow pace, beaches & food, no museums"><button class="btn" style="background:var(--violet);color:#fff">Generate</button></div>
+      <div class="row g8 mt12" style="padding:10px;background:#fff;border-radius:10px"><span class="tag ai">✦</span><span class="f12 txt-mut">Triplanio: “Drafting a route from Lisbon north to Porto, then east to Barcelona…”</span></div>
+    </div>
+
+    <h1 style="font-size:24px;margin-bottom:4px">Where are you going?</h1>
+    <p class="txt-mut f13" style="margin-bottom:18px">Drag to reorder. Set nights per city. Mark a final stop if you're not returning home.</p>
+
+    <div class="card pad row between" style="margin-bottom:12px;background:var(--wash)"><div class="row g10"><span class="f13 fw6">Trip starts</span><span class="mono f13">14 Aug 2026</span></div><div class="row g6"><button class="btn-ico btn-ghost btn-sm">−</button><button class="btn-ico btn-ghost btn-sm">＋</button></div></div>
+    <div class="card pad row g10" style="margin-bottom:10px;opacity:.85"><span style="color:var(--slate-300)">⋮⋮</span><div class="icotile slate" style="width:32px;height:32px">🏠</div><div style="flex:1"><div class="fw6 f14">London <span class="f12 txt-mut">🇬🇧 home · origin</span></div></div></div>
+    ${TRIP.cities.slice(0,3).map((c,i)=>`<div class="card pad row g10" style="margin-bottom:10px"><span style="color:var(--slate-300);cursor:grab">⋮⋮</span><div style="width:26px;height:26px;border-radius:8px;background:${c.color};color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px">${i+1}</div>
+      <div style="flex:1"><input class="inp" style="border:none;background:transparent;padding:4px 0;font-weight:600" value="${c.name}, ${c.country}"><div class="f12 txt-mut mono">${c.range}</div></div>
+      <div class="row g6"><button class="btn-ico btn-ghost btn-sm">−</button><span class="mono f13 fw6" style="width:36px;text-align:center">${c.nights}n</span><button class="btn-ico btn-ghost btn-sm">＋</button></div>
+      <button class="btn-ico btn-ghost btn-sm" style="color:var(--rose)">🗑</button></div>`).join('')}
+    <button class="btn btn-ghost btn-block" style="border-style:dashed">＋ Add another city</button>
+    <div class="row g10 mt24"><button class="btn btn-ghost" onclick="go('trips')">Back</button><div style="flex:1"></div><button class="btn btn-ghost">Reset</button><button class="btn btn-primary" onclick="go('overview')">Continue ›</button></div>
+  </div></div>
+</div>`;
+
+/* ============================================================ PUBLIC (read-only) ============================================================ */
+SC.public = () => `<div style="height:100%;overflow:auto;background:var(--bg)">
+  <header style="height:54px;display:flex;align-items:center;gap:12px;padding:0 22px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.85);backdrop-filter:blur(12px);position:sticky;top:0;z-index:5">
+    <div class="tb-brand" style="font-size:15px"><span class="mk" style="width:26px;height:26px">▲</span> Triplanio</div><span class="chip f12" style="margin-left:auto">👁 Read-only</span></header>
+  <div style="max-width:760px;margin:0 auto;padding:22px 20px 60px">
+    <div class="card" style="overflow:hidden;border:none;margin-bottom:18px"><div style="height:160px;background:linear-gradient(125deg,var(--blue-700),var(--teal));position:relative"><div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(13,18,32,.55))"></div><div style="position:absolute;left:18px;bottom:14px;color:#fff"><h1 style="color:#fff;font-size:26px">${TRIP.title}</h1><div class="f13 mono" style="opacity:.92">${TRIP.dates} · 12 days · 4 cities</div></div></div></div>
+    <div class="pb-seg" style="background:var(--wash);margin-bottom:18px"><button class="on" style="padding:7px 16px;font-size:13px;border-radius:99px;background:#fff;color:var(--brand);font-weight:600">Timeline</button><button style="padding:7px 16px;font-size:13px;color:var(--slate-500)">Map</button></div>
+    ${TRIP.cities.slice(0,2).map((c,i)=>`<div style="margin-bottom:18px"><div class="row g8" style="margin-bottom:10px"><div style="width:24px;height:24px;border-radius:7px;background:${c.color};color:#fff;display:grid;place-items:center;font-weight:700;font-size:11px">${i+1}</div><h2 style="font-size:17px">${c.name} ${c.cc}</h2><span class="f12 txt-mut mono">${c.range}</span></div>
+      <div class="col g8" style="padding-left:32px">
+        ${i===0?'<div class="row g12" style="padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fff"><span class="tag flight">✈</span><div style="flex:1"><div class="f13 fw6">LHR → LIS · British Airways 502</div><div class="f12 txt-mut mono">14 Aug · 09:40 → 12:55</div></div></div>':''}
+        <div class="row g12" style="padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fff"><span class="tag hotel">🛏</span><div style="flex:1"><div class="f13 fw6">${c.hotel||'Hotel'}</div><div class="f12 txt-mut mono">${c.range} · ${c.nights}n</div></div></div>
+      </div></div>`).join('')}
+  </div>
+</div>`;
+
+/* ============================================================ LANDING ============================================================ */
+SC.landing = () => `<div style="height:100%;overflow:auto;background:#fff">
+  <header style="height:64px;display:flex;align-items:center;gap:14px;padding:0 28px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(255,255,255,.86);backdrop-filter:blur(14px);z-index:5">
+    <div class="tb-brand"><span class="mk">▲</span> Triplanio</div><div class="row g16 f13 txt-mut" style="margin-left:24px"><span>Features</span><span>How it works</span><span>FAQ</span></div><div style="flex:1"></div>
+    <span class="chip f12">EN</span><button class="btn btn-primary btn-sm" onclick="go('login')">Start planning</button></header>
+  <section style="text-align:center;padding:70px 24px 40px;background:radial-gradient(900px 400px at 50% -10%,var(--blue-50),transparent)">
+    <span class="eyebrow">Plan · share · travel</span>
+    <h1 style="font-size:48px;max-width:760px;margin:14px auto 16px;line-height:1.05">Your whole trip.<br>One beautiful plan.</h1>
+    <p class="txt-mut" style="font-size:17px;max-width:520px;margin:0 auto 26px">Build multi-city itineraries, plan together, track budgets in any currency, and let Triplanio handle the boring parts.</p>
+    <div class="row g10" style="justify-content:center"><button class="btn btn-primary btn-lg" onclick="go('login')">Start planning — free</button><button class="btn btn-ghost btn-lg" onclick="go('overview')">See a live trip</button></div>
+    <div class="row g16 f12 txt-mut" style="justify-content:center;margin-top:18px"><span>✓ Free to start</span><span>✓ No credit card</span><span>✓ EN · RU · ES</span></div>
+  </section>
+  <section style="max-width:1080px;margin:0 auto;padding:30px 24px"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+    ${[['≣','All-in-one timeline','Flights, hotels, activities & transfers in one chronological flow.','blue'],['◍','Plan together','Invite friends, assign roles, vote on hotels, split costs.','teal'],['✦','AI trip planner','Describe your trip in words — get a ready-to-edit route.','violet'],['✈','Telegram concierge','Timezone-aware reminders & an AI that answers on the go.','coral'],['€','Multi-currency budget','Track spend in every currency with live FX and splits.','amber'],['◈','Timeline · Calendar · Map','One trip, three views — switch however you think.','green']].map(f=>`<div class="card pad"><div class="icotile ${f[3]}" style="width:44px;height:44px;font-size:22px;margin-bottom:12px">${f[0]}</div><div class="fw7 f15">${f[1]}</div><p class="f13 txt-mut" style="margin-top:6px">${f[2]}</p></div>`).join('')}
+  </div></section>
+  <section style="max-width:720px;margin:0 auto;padding:20px 24px 60px">
+    <h2 style="font-size:24px;text-align:center;margin-bottom:20px">Questions</h2>
+    ${[['Is Triplanio free?','Yes — free to start. Some features are Pro.'],['Can I invite people without accounts?','Yes, as offline participants.'],['Is it multilingual?','English, Russian and Spanish today.'],['Do I need an app?','No — it works in any browser, on any device.']].map(q=>`<div class="card pad row between" style="margin-bottom:10px"><div><div class="f14 fw6">${q[0]}</div><div class="f13 txt-mut" style="margin-top:3px">${q[1]}</div></div></div>`).join('')}
+    <div class="card pad" style="text-align:center;margin-top:24px;background:linear-gradient(125deg,var(--blue-600),var(--teal));border:none;color:#fff"><h2 style="color:#fff;font-size:24px">Your next trip deserves better than 12 tabs</h2><button class="btn btn-lg" style="background:#fff;color:var(--brand);margin-top:14px" onclick="go('login')">Start planning</button></div>
+  </section>
+</div>`;
+
+/* ============================================================ LOGIN ============================================================ */
+SC.login = () => `<div style="height:100%;display:grid;grid-template-columns:1fr 1fr;background:#fff" id="loginwrap">
+  <div style="display:flex;align-items:center;justify-content:center;padding:40px">
+    <div style="width:100%;max-width:360px">
+      <div class="tb-brand" style="margin-bottom:28px"><span class="mk">▲</span> Triplanio</div>
+      <span class="eyebrow">Sign in</span><h1 style="font-size:28px;margin:8px 0 4px">Welcome back</h1><p class="txt-mut f14" style="margin-bottom:22px">Sign in to your account.</p>
+      <div class="row g8" style="margin-bottom:16px"><button class="btn btn-ghost btn-block">Continue with Google</button></div>
+      <div class="row g10" style="align-items:center;margin-bottom:16px"><div style="flex:1;height:1px;background:var(--line)"></div><span class="f12 txt-mut">or email</span><div style="flex:1;height:1px;background:var(--line)"></div></div>
+      <div class="field"><label>Email</label><input class="inp" placeholder="you@email.com"></div>
+      <div class="field"><label>Password</label><input class="inp" type="password" placeholder="••••••••"></div>
+      <div class="between" style="margin-bottom:16px"><label class="row g6 f13"><span class="sw on" style="width:36px;height:20px"></span> Remember me</label><a class="link f13">Forgot?</a></div>
+      <button class="btn btn-primary btn-lg btn-block" onclick="go('trips')">Sign in</button>
+      <p class="f13 txt-mut" style="text-align:center;margin-top:16px">No account? <a class="link" onclick="go('trips')">Sign up</a></p>
+    </div>
+  </div>
+  <div style="background:linear-gradient(150deg,var(--blue-700),var(--blue-500) 50%,var(--teal));position:relative;display:flex;align-items:center;justify-content:center;padding:40px" id="loginart">
+    <div style="position:absolute;inset:0;background:radial-gradient(600px 300px at 80% 10%,rgba(255,255,255,.18),transparent)"></div>
+    <div style="position:relative;color:#fff;max-width:380px">
+      <h2 style="color:#fff;font-size:26px;line-height:1.2;margin-bottom:10px">Plan your whole trip. Beautifully.</h2>
+      <p style="opacity:.92;font-size:14px;margin-bottom:22px">Build itineraries, plan with friends, and never lose a booking again.</p>
+      <div class="card pad" style="background:rgba(255,255,255,.96)"><div class="between" style="margin-bottom:10px"><span class="fw7 f13">Iberia — Summer ’26</span><span class="tag pro f12">PRO</span></div>
+        <div class="col g6">${['✈ LHR → LIS · BA 502','🛏 Memmo Alfama · 3 nights','◐ Pastéis de Belém'].map(x=>`<div class="row g8 f12"><span style="color:var(--slate-500)">${x}</span></div>`).join('')}</div>
+        <div class="row between mt12" style="padding-top:10px;border-top:1px solid var(--line)"><span class="f12 txt-mut">Trip total</span><span class="fw7 mono">€4,180</span></div></div>
+    </div>
+  </div>
+</div>`;
+/* @@SCREENS@@ */
+
+/* ================== BOOT ================== */
+function boot(){ buildJumpMenu(); render(); }
+boot();
+</script>
+</body>
+</html>

@@ -38,6 +38,12 @@ const FEATURES = [
   { id: 'hotels', addon: 'hotels_selection',    icon: 'vote',      color: 'var(--warm)',    labelKey: 'settings.feat_hotels_title', descKey: 'settings.feat_hotels_desc',           locked: true },
 ];
 
+// Hotel-voting / collaborative hotel-selection is hidden from the UI for now
+// (feature parked). Flip to `true` to bring back the "Совместный выбор отелей"
+// addon row and the "Аппруверы голосования за отели" card. The logic, i18n keys
+// and the `hotels_selection` addon are intentionally left intact behind this gate.
+const SHOW_HOTEL_VOTING = false;
+
 // Default OFF unless explicitly enabled (addons[key] === true). New trips start
 // with every optional/pro feature off - they never auto-enable for anyone.
 function featuresFromTrip(trip) {
@@ -478,14 +484,23 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       return;
     }
     const newVal = !features[id];
-    setFeatures(s => ({ ...s, [id]: newVal }));  // optimistic
-    const nextAddons = { ...(trip?.details?.addons || {}), [feat.addon]: newVal };
+    const prevAddons = trip?.details?.addons || {};
+    const nextAddons = { ...prevAddons, [feat.addon]: newVal };
+    setFeatures(s => ({ ...s, [id]: newVal }));  // optimistic (settings screen)
+    // Patch the shell cache optimistically too, so the side-menu lenses and the
+    // chat widget (which read trip.details.addons from the shell query, not from
+    // this component's local state) flip instantly instead of after the
+    // getTripDetails round-trip lands (was a multi-second lag).
+    const patchAddons = (addons) => queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
+      old?.trip ? { ...old, trip: { ...old.trip, details: { ...(old.trip.details || {}), addons } } } : old);
+    patchAddons(nextAddons);
     // trips RLS is owner-only → write via edge function (owner+admin, pro-gated).
     const { data, error } = await supabase.functions.invoke('updateTripSettings', {
       body: { tripId, addons: nextAddons },
     });
     if (error || !data?.ok) {
       setFeatures(s => ({ ...s, [id]: !newVal }));  // revert
+      patchAddons(prevAddons);                       // revert cache
       if (data?.code === 'PRO_REQUIRED') {
         if (isOwner) setProLocked({ open: true, feature: feat ? t(feat.labelKey) : '' });
         else setTripProInfo({ open: true, feature: feat ? t(feat.labelKey) : '' });
@@ -579,10 +594,13 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       {/* Feature toggles */}
       <Card title={t('settings.optional_features')} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {FEATURES.map((f, i) => (
-            <FeatureRow key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
-              onChange={() => toggleFeature(f.id, f.pro)} last={i === FEATURES.length - 1} />
-          ))}
+          {(() => {
+            const visible = FEATURES.filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection');
+            return visible.map((f, i) => (
+              <FeatureRow key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
+                onChange={() => toggleFeature(f.id, f.pro)} last={i === visible.length - 1} />
+            ));
+          })()}
         </div>
       </Card>
 
@@ -626,7 +644,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </Card>
       )}
 
-      {/* Approvers */}
+      {/* Approvers — hidden while hotel-voting is parked (see SHOW_HOTEL_VOTING). */}
+      {SHOW_HOTEL_VOTING && (
       <Card title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {approvers.map(m => <ApproverRow key={m.id} member={m} locked />)}
@@ -636,6 +655,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           )}
         </div>
       </Card>
+      )}
 
       {/* Danger zone */}
       <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>

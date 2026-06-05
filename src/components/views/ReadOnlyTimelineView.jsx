@@ -571,7 +571,7 @@ function DaySeparator({ iso, locale, weather }) {
   const { t } = useI18nFormat();
   const dt = parseNaive(iso);
   if (!dt) return null;
-  const dayMonth = dt.setLocale(locale).toFormat('d LLL').replace('.', '');
+  const dayMonth = dt.setLocale(locale).toFormat('d MMM').replace('.', '');
   const weekday = dt.setLocale(locale).toFormat('ccc').replace('.', '');
   
   // Check if this is today
@@ -657,7 +657,7 @@ function CityHeaderCard({ visit, hotels, onClickHotel, canEdit, onAddHotel, onEd
             <span className="truncate">{visit.city_name}</span>
             {start && end && (
               <span className="text-sm font-normal text-muted-foreground whitespace-nowrap">
-                {start.setLocale(locale).toFormat('d LLL')} → {end.setLocale(locale).toFormat('d LLL')}
+                {start.setLocale(locale).toFormat('d MMM')} → {end.setLocale(locale).toFormat('d MMM')}
                 {nights > 0 ? ` · ${nights} ${plural(nights, 'view.nights')}` : ''}
               </span>
             )}
@@ -781,9 +781,9 @@ function DayEventRow({ event, visitsById = {}, onClickTransfer, onClickActivity,
               {tr.carrier && <span className="text-xs text-muted-foreground font-normal">· {tr.carrier}</span>}
             </div>
             <div className="text-[11px] text-muted-foreground">
-              {tr.start_datetime ? formatNaive(tr.start_datetime, 'd LLL HH:mm') : '-'}
+              {tr.start_datetime ? formatNaive(tr.start_datetime, 'd MMM HH:mm') : '-'}
               {' → '}
-              {tr.end_datetime ? formatNaive(tr.end_datetime, 'd LLL HH:mm') : '-'}
+              {tr.end_datetime ? formatNaive(tr.end_datetime, 'd MMM HH:mm') : '-'}
               {dur ? ` · ${dur}` : ''}
             </div>
             {bookingUrl && (

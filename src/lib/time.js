@@ -42,12 +42,12 @@ export function formatInTz(utcIso, _ianaTz, fmt = 'HH:mm') {
 
 export function formatDateInTz(utcIso, _ianaTz) {
   const dt = parseNaive(utcIso);
-  return dt ? dt.toFormat('dd LLL yyyy') : '';
+  return dt ? dt.toFormat('dd MMM yyyy') : '';
 }
 
 export function formatFullInTz(utcIso, _ianaTz) {
   const dt = parseNaive(utcIso);
-  return dt ? dt.toFormat('dd LLL, HH:mm') : '';
+  return dt ? dt.toFormat('dd MMM, HH:mm') : '';
 }
 
 export function dayKey(utcIso, _ianaTz) {
@@ -57,7 +57,7 @@ export function dayKey(utcIso, _ianaTz) {
 
 export function dayLabel(utcIso, _ianaTz) {
   const dt = parseNaive(utcIso);
-  return dt ? dt.toFormat('cccc, dd LLLL yyyy') : '';
+  return dt ? dt.toFormat('cccc, dd MMML yyyy') : '';
 }
 
 // Check overlap between two stored ranges (handles reversed start/end).

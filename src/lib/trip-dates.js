@@ -21,9 +21,9 @@ export function formatTripRange(visits = [], noDatesLabel = 'No dates yet') {
   if (!start) return noDatesLabel;
   const s = DateTime.fromISO(start);
   const e = end ? DateTime.fromISO(end) : s;
-  if (s.hasSame(e, 'day')) return s.toFormat('d LLL yyyy');
-  if (s.hasSame(e, 'year')) return `${s.toFormat('d LLL')} - ${e.toFormat('d LLL yyyy')}`;
-  return `${s.toFormat('d LLL yyyy')} - ${e.toFormat('d LLL yyyy')}`;
+  if (s.hasSame(e, 'day')) return s.toFormat('d MMM yyyy');
+  if (s.hasSame(e, 'year')) return `${s.toFormat('d MMM')} – ${e.toFormat('d MMM yyyy')}`;
+  return `${s.toFormat('d MMM yyyy')} – ${e.toFormat('d MMM yyyy')}`;
 }
 
 export function latestEventDate(visits = []) {
