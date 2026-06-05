@@ -835,14 +835,14 @@ export default function TripStructureEdit() {
             </div>
           </div>
 
-          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 18px' }}>
+          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 18px', background: 'var(--wash)' }}>
           <div className="te-thead" style={{ padding: '0 4px 6px' }}>
             <span className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 5 }}>{t('tse.col_stay')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 6 }}>{t('budget.source_activity')}</span>
           </div>
-          <div className="te-table">
+          <div className={'te-table' + (dragIdx !== null ? ' is-dragging' : '')}>
             {displayNodes.map((n) => {
               const dIdx = ordered.indexOf(n);     // stable index in the real order
               const next = displayNodes[displayNodes.indexOf(n) + 1];
