@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triplanio — Видение визуала (концепт)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS (lifted from src/design/app.css — kept 1:1) ============ */
+:root{
+  --brand:#2167e2;--brand-600:#1b58c4;--brand-soft:rgba(33,103,226,.08);--brand-soft-12:rgba(33,103,226,.12);
+  --ink:#0F172A;--ink-2:#1f2a44;--muted:#5a657a;--muted-2:#8693a8;
+  --line:#E5E7EB;--line-2:#eef0f4;--line-hover:#dbe1ec;--wash:#F7F8FA;--wash-2:#fbfbfd;--surface:#fff;
+  --warm:#c9603a;--warm-tint:rgba(201,96,58,.10);--success:#1f8a5b;--success-soft:rgba(31,138,91,.10);
+  --danger:#c4364c;--warning:#c98a1a;--warning-soft:rgba(201,138,26,.12);--warning-ink:#8a5d12;
+  --ai:#6a3ee2;--ai-soft:rgba(106,62,226,.08);
+  --ev-hotel:#2167e2;--ev-hotel-soft:rgba(33,103,226,.10);
+  --ev-transfer:#0e7c8a;--ev-transfer-soft:rgba(14,124,138,.10);
+  --ev-activity:#c9603a;--ev-activity-soft:rgba(201,96,58,.10);
+  --ev-car:#4ea268;--ev-car-soft:rgba(78,162,104,.10);
+  --ev-deadline:#c4364c;--ev-deadline-soft:rgba(196,54,76,.10);
+  --radius-card:16px;--radius-btn:10px;--radius-pill:999px;
+  --shadow-soft:0 1px 2px rgba(15,23,42,.04),0 6px 24px -8px rgba(15,23,42,.08);
+  --shadow-card:0 1px 2px rgba(15,23,42,.03),0 10px 30px -12px rgba(15,23,42,.14);
+  --shadow-pop:0 2px 6px rgba(15,23,42,.06),0 20px 60px -20px rgba(15,23,42,.22);
+  --font-display:"Inter Tight","Inter",sans-serif;--font-body:"Inter",sans-serif;
+  --ease-out:cubic-bezier(0.23,1,0.32,1);
+  --fs-strong:14px;--fs-base:13px;--fs-meta:12px;--fs-micro:11px;
+}
+:root[data-theme="dark"]{
+  --brand:#5a8ff0;--brand-600:#7aa5f4;--brand-soft:rgba(90,143,240,.14);--brand-soft-12:rgba(90,143,240,.20);
+  --ink:#e8edf5;--ink-2:#c9d1de;--muted:#8693a8;--muted-2:#6a778c;
+  --line:#232a3a;--line-2:#1a202d;--line-hover:#2f3a4e;--wash:#0e131c;--wash-2:#0a0e16;--surface:#131923;
+  --warm:#e08158;--warm-tint:rgba(224,129,88,.14);--success:#4ab98a;--success-soft:rgba(74,185,138,.16);
+  --danger:#e5687a;--warning:#e0a64b;--warning-soft:rgba(224,166,75,.16);--warning-ink:#e8b766;--ai:#9c7af0;--ai-soft:rgba(156,122,240,.14);
+  --ev-hotel:#5a8df0;--ev-hotel-soft:rgba(90,141,240,.16);
+  --ev-transfer:#4cb0bc;--ev-transfer-soft:rgba(76,176,188,.16);
+  --ev-activity:#e08158;--ev-activity-soft:rgba(224,129,88,.16);
+  --ev-car:#6dc188;--ev-car-soft:rgba(109,193,136,.16);
+  --ev-deadline:#e5687a;--ev-deadline-soft:rgba(229,104,122,.16);
+  --shadow-soft:0 1px 2px rgba(0,0,0,.5),0 6px 24px -8px rgba(0,0,0,.55);
+  --shadow-card:0 1px 2px rgba(0,0,0,.5),0 10px 30px -12px rgba(0,0,0,.6);
+  --shadow-pop:0 2px 6px rgba(0,0,0,.55),0 20px 60px -20px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font-body);background:var(--wash);color:var(--ink);-webkit-font-smoothing:antialiased;font-feature-settings:"ss01","cv11";line-height:1.5}
+.serif{font-family:var(--font-display)}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .muted-2{color:var(--muted-2)}
+
+/* ---- toolbar ---- */
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 22px;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar .brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:600;font-size:15px;letter-spacing:-.02em}
+.bar .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--brand),#6a3ee2)}
+.bar .note{font-size:var(--fs-meta);color:var(--muted)}
+.seg{display:inline-flex;padding:3px;border:1px solid var(--line);background:var(--wash);border-radius:9px;gap:2px}
+.seg button{border:none;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:500;padding:5px 11px;border-radius:6px;cursor:pointer;transition:transform .12s var(--ease-out)}
+.seg button:active{transform:scale(.96)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(15,23,42,.12)}
+.spacer{flex:1}
+
+/* ---- app shell ---- */
+.shell{max-width:1080px;margin:0 auto;padding:24px 22px 80px}
+.cap{font-size:var(--fs-micro);letter-spacing:.13em;text-transform:uppercase;color:var(--muted-2);font-weight:600;margin:0 0 10px}
+.callout{display:flex;gap:10px;align-items:flex-start;font-size:var(--fs-meta);color:var(--muted);background:var(--wash-2);border:1px dashed var(--line);border-radius:12px;padding:10px 13px;margin-bottom:18px}
+.callout b{color:var(--ink-2)}
+
+/* ---- HERO (vision lever #2) ---- */
+.hero{position:relative;border-radius:var(--radius-card);overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow-card);margin-bottom:22px}
+.hero__bg{height:260px;background:
+   radial-gradient(120% 120% at 80% 0%, rgba(106,62,226,.55), transparent 60%),
+   linear-gradient(120deg,#2167e2 0%, #3a6fd8 40%, #6a3ee2 100%);
+   position:relative}
+.hero__bg::after{content:"";position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.06'/%3E%3C/svg%3E");mix-blend-mode:overlay}
+.hero__wave{position:absolute;left:0;right:0;bottom:-1px;height:60px;color:var(--surface)}
+.hero__body{background:var(--surface);padding:0 26px 22px;position:relative}
+.hero__title{font-family:var(--font-display);font-weight:600;font-size:54px;line-height:.98;letter-spacing:-.02em;color:#fff;position:absolute;left:26px;bottom:74px;text-shadow:0 2px 30px rgba(0,0,0,.25);margin:0;max-width:70%}
+.hero__meta-top{position:absolute;left:26px;top:20px;display:flex;gap:8px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:var(--fs-micro);font-weight:600;backdrop-filter:blur(6px);background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.hero__row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:18px}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;background:var(--wash);border:1px solid var(--line);font-size:var(--fs-meta);font-weight:500;color:var(--ink-2)}
+.chip .dot{width:7px;height:7px;border-radius:50%}
+.hero__actions{margin-left:auto;display:flex;gap:8px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:var(--radius-btn);border:1px solid transparent;background:transparent;font:inherit;font-size:var(--fs-strong);font-weight:600;color:var(--ink);cursor:pointer;transition:transform .12s var(--ease-out),background .15s var(--ease-out),border-color .15s}
+.btn:active{transform:scale(.97)}
+.btn--primary{background:var(--brand);color:#fff;border-color:var(--brand);box-shadow:0 6px 16px -6px color-mix(in oklab,var(--brand) 55%,transparent)}
+.btn--primary:hover{background:var(--brand-600);transform:translateY(-1px)}
+.btn--ghost{border-color:var(--line);background:var(--surface);color:var(--ink-2)}
+.btn--ghost:hover{background:var(--wash);border-color:var(--line-hover)}
+.btn--icon{width:38px;height:38px;justify-content:center;padding:0;color:var(--muted)}
+
+/* ---- main grid ---- */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+
+/* day divider (vision lever #4: rhythm) */
+.day{display:flex;align-items:center;gap:12px;margin:26px 0 14px}
+.day__date{font-family:var(--font-display);font-weight:600;font-size:15px;letter-spacing:-.01em}
+.day__sub{font-size:var(--fs-micro);color:var(--muted-2);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+.day__line{flex:1;height:1px;background:var(--line-2)}
+
+/* event row — ONE consolidated component, ev-colour spine (vision lever #3) */
+.ev{display:grid;grid-template-columns:54px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--spine,var(--line));border-radius:13px;padding:13px 15px;margin-bottom:9px;transition:transform .14s var(--ease-out),box-shadow .14s var(--ease-out),border-color .14s}
+.ev:hover{transform:translateY(-1px);box-shadow:var(--shadow-soft);border-color:var(--line-hover);border-left-color:var(--spine)}
+.ev__time{font-family:var(--font-display);font-weight:700;font-size:17px;letter-spacing:-.02em;line-height:1;color:var(--ink)}
+.ev__time small{display:block;font-size:var(--fs-micro);font-weight:600;color:var(--muted-2);letter-spacing:.04em;margin-top:3px}
+.ev__name{font-size:var(--fs-strong);font-weight:600}
+.ev__sub{font-size:var(--fs-meta);color:var(--muted);margin-top:2px}
+.tag{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:var(--fs-micro);font-weight:600}
+.tag .d{width:6px;height:6px;border-radius:50%}
+.ev--hotel{--spine:var(--ev-hotel)} .ev--transfer{--spine:var(--ev-transfer)}
+.ev--activity{--spine:var(--ev-activity)} .ev--car{--spine:var(--ev-car)} .ev--deadline{--spine:var(--ev-deadline)}
+.tag--hotel{background:var(--ev-hotel-soft);color:var(--ev-hotel)} .tag--transfer{background:var(--ev-transfer-soft);color:var(--ev-transfer)}
+.tag--activity{background:var(--ev-activity-soft);color:var(--ev-activity)} .tag--car{background:var(--ev-car-soft);color:var(--ev-car)} .tag--deadline{background:var(--ev-deadline-soft);color:var(--ev-deadline)}
+
+/* AI surface (vision lever #5) */
+.ai{position:relative;border-radius:13px;padding:14px 16px;margin-bottom:9px;background:linear-gradient(135deg,rgba(106,62,226,.08),rgba(198,108,226,.08) 60%,rgba(240,164,90,.06));}
+.ai::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;background:linear-gradient(135deg,#6a3ee2,#c66ce2,#f0a45a);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+.ai__head{display:flex;align-items:center;gap:8px;font-size:var(--fs-meta);font-weight:600}
+.ai__grad{background:linear-gradient(135deg,#6a3ee2,#c66ce2 60%,#f0a45a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.ai-dots span{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--ai);margin:0 1px;animation:blink 1.2s infinite ease-in-out}
+.ai-dots span:nth-child(2){animation-delay:.15s}.ai-dots span:nth-child(3){animation-delay:.3s}
+@keyframes blink{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+/* right rail: budget lens consolidated */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);padding:18px;box-shadow:var(--shadow-soft);margin-bottom:16px}
+.card h3{margin:0 0 4px;font-family:var(--font-display);font-size:16px;font-weight:600}
+.stat{font-family:var(--font-display);font-weight:600;letter-spacing:-.03em;font-size:38px;line-height:1;margin:10px 0 2px}
+.bar2{height:6px;border-radius:999px;background:var(--line-2);overflow:hidden;margin-top:12px}
+.bar2 i{display:block;height:100%;width:72%;background:var(--success);border-radius:999px}
+.legend{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+.legend .li{display:flex;align-items:center;gap:9px;font-size:var(--fs-meta)}
+.legend .sw{width:9px;height:9px;border-radius:3px}
+.legend .amt{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
+.warn{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:11px;background:var(--warning-soft);border:1px solid var(--warning-soft);font-size:var(--fs-meta);color:var(--warning-ink);line-height:1.45}
+
+.foot{max-width:1080px;margin:0 auto;padding:0 22px 60px;font-size:var(--fs-meta);color:var(--muted)}
+.foot b{color:var(--ink-2)}
+</style>
+</head>
+<body>
+<div class="bar">
+  <div class="brand"><span class="mark"></span> Triplanio</div>
+  <span class="note">Концепт визуала · одна система (Atlantic) · на боевых токенах</span>
+  <span class="spacer"></span>
+  <div class="seg" id="theme">
+    <button data-t="light" class="on">Светлая</button>
+    <button data-t="dark">Тёмная</button>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="callout">
+    <span>✦</span>
+    <span><b>Что показывает концепт:</b> одна система (Atlantic, Inter / Inter Tight), те же 64 токена — но задействованы рычаги почерка: геро-обложка с зерном, цветные «корешки» событий по палитре <code>--ev-*</code>, единый AI-сюрфейс, 8-pt ритм, выраженный day-divider и один primary-CTA в герое. Переключи тему — всё живёт на реальных переменных.</span>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero__bg">
+      <div class="hero__meta-top">
+        <span class="pill">◇ Владелец</span>
+        <span class="pill">Pro</span>
+      </div>
+      <h1 class="hero__title">Иберия<br>летом</h1>
+      <svg class="hero__wave" viewBox="0 0 1200 60" preserveAspectRatio="none"><path d="M0,40 C300,5 600,55 1200,20 L1200,60 L0,60 Z" fill="currentColor"/></svg>
+    </div>
+    <div class="hero__body">
+      <div class="hero__row">
+        <span class="chip"><span class="dot" style="background:var(--brand)"></span> 3 города</span>
+        <span class="chip">◐ 12–23 июля · 11 дней</span>
+        <span class="chip">4 участника</span>
+        <span class="chip">≈28°C, ясно</span>
+        <div class="hero__actions">
+          <button class="btn btn--primary">✎ Редактировать маршрут</button>
+          <button class="btn btn--icon" title="Поделиться">↗</button>
+          <button class="btn btn--icon" title="Ещё">⋯</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- TIMELINE -->
+    <div>
+      <p class="cap">Хронология</p>
+
+      <div class="day"><span class="day__date">Сб, 12 июля</span><span class="day__sub">День 1 · Лиссабон</span><span class="day__line"></span></div>
+
+      <div class="ev ev--transfer">
+        <div class="ev__time">09:30<small>4ч 25м</small></div>
+        <div><div class="ev__name">Перелёт Москва → Лиссабон</div><div class="ev__sub">TAP TP 1245 · терминал 1</div></div>
+        <span class="tag tag--transfer"><span class="d" style="background:var(--ev-transfer)"></span>Переезд</span>
+      </div>
+
+      <div class="ev ev--hotel">
+        <div class="ev__time">15:00<small>заезд</small></div>
+        <div><div class="ev__name">Memmo Alfama Hotel</div><div class="ev__sub">2 ночи · Rua dos Remédios 12</div></div>
+        <span class="tag tag--hotel"><span class="d" style="background:var(--ev-hotel)"></span>Отель</span>
+      </div>
+
+      <div class="ev ev--activity">
+        <div class="ev__time">19:30<small>2ч</small></div>
+        <div><div class="ev__name">Ужин в Time Out Market</div><div class="ev__sub">Бронь на 4 · столик у входа</div></div>
+        <span class="tag tag--activity"><span class="d" style="background:var(--ev-activity)"></span>Активность</span>
+      </div>
+
+      <div class="day"><span class="day__date">Вс, 13 июля</span><span class="day__sub">День 2 · Лиссабон</span><span class="day__line"></span></div>
+
+      <!-- AI surface -->
+      <div class="ai">
+        <div class="ai__head"><span class="ai-dots"><span></span><span></span><span></span></span> <span class="ai__grad">Ассистент распознал бронь из PDF</span></div>
+        <div style="font-size:var(--fs-meta);color:var(--muted);margin-top:6px">Прогулка на трамвае 28 + смотровая Miradouro · 14:00. Добавить в этот день?</div>
+        <div style="margin-top:10px;display:flex;gap:8px"><button class="btn btn--primary" style="padding:7px 13px">Добавить</button><button class="btn btn--ghost" style="padding:7px 13px">Изменить</button></div>
+      </div>
+
+      <div class="ev ev--deadline">
+        <div class="ev__time">23:59<small>дедлайн</small></div>
+        <div><div class="ev__name">Бесплатная отмена Memmo Alfama</div><div class="ev__sub">После — штраф за первую ночь</div></div>
+        <span class="tag tag--deadline"><span class="d" style="background:var(--ev-deadline)"></span>Дедлайн</span>
+      </div>
+
+      <div class="ev ev--car">
+        <div class="ev__time">10:00<small>получение</small></div>
+        <div><div class="ev__name">Аренда авто · Europcar</div><div class="ev__sub">Compact · до 16 июля</div></div>
+        <span class="tag tag--car"><span class="d" style="background:var(--ev-car)"></span>Авто</span>
+      </div>
+    </div>
+
+    <!-- RIGHT RAIL -->
+    <aside>
+      <div class="card">
+        <h3>Бюджет</h3>
+        <div class="muted" style="font-size:var(--fs-meta)">Всего потрачено</div>
+        <div class="stat num">€4 480</div>
+        <div class="muted-2" style="font-size:var(--fs-micro)">из планируемых €6 200 · €1 120 на человека</div>
+        <div class="bar2"><i></i></div>
+        <div class="legend">
+          <div class="li"><span class="sw" style="background:var(--ev-hotel)"></span> Проживание <span class="amt num">€2 100</span></div>
+          <div class="li"><span class="sw" style="background:var(--ev-transfer)"></span> Переезды <span class="amt num">€1 240</span></div>
+          <div class="li"><span class="sw" style="background:var(--ev-activity)"></span> Активности <span class="amt num">€820</span></div>
+          <div class="li"><span class="sw" style="background:var(--ev-car)"></span> Аренда авто <span class="amt num">€320</span></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:15px 16px">
+        <div class="warn">⚠ <span><b style="color:var(--warning-ink)">Нет переезда</b> между Порту и Барселоной (19 июля). Добавь рейс или поезд, чтобы маршрут сошёлся.</span></div>
+      </div>
+
+      <div class="card" style="padding:15px 16px">
+        <p class="cap" style="margin-bottom:8px">Один primary на экран</p>
+        <div style="font-size:var(--fs-meta);color:var(--muted);line-height:1.5">Главное действие («Редактировать маршрут») — единственная синяя кнопка в герое. «Поделиться»/«Ещё» — тихие иконки. Глаз сразу знает, куда нажать.</div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="foot">
+  <b>Примечание.</b> Это концепт-направление, не готовый код. Геометрия, цвета и шрифты взяты из <code>src/design/app.css</code>; вся «эмоция» (serif, зерно, корешки, AI-сюрфейс) добавлена в рамках существующих токенов. Перенос в прод — фаза P4 дорожной карты в <code>DESIGN_UX_AUDIT_2026-06-05.md</code>.
+</div>
+
+<script>
+  const root=document.documentElement;
+  document.getElementById('theme').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    root.setAttribute('data-theme',b.dataset.t);[...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));});
+</script>
+</body>
+</html>

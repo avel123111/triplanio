@@ -41,7 +41,7 @@ export default {
   'transfer.ai_button_text': 'Rellenar con IA',
   'transfer.ai_button_hint': '- sube un billete o pega un enlace',
   'transfer.ai_lock_title': 'Reconocimiento de billetes con IA',
-  'transfer.ai_lock_desc_owner': 'Sube un billete o enlace - la IA rellenará todos los campos automáticamente',
+  'transfer.ai_lock_desc_owner': 'Sube un billete o enlace, la IA rellenará todos los campos automáticamente',
   'transfer.ai_lock_desc_member': 'Pide al propietario del viaje que desbloquee las funciones Pro.',
   'transfer.ai_unlock': 'Desbloquear',
   'transfer.ai_extra_one': 'La IA detectó {count} segmento adicional (escala)',

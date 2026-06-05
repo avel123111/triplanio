@@ -43,7 +43,7 @@ export default {
   'service.car_dropoff_ph': 'Аэропорт / адрес офиса возврата',
   'service.car_return_different_location': 'Возврат в другом месте',
   'service.car_tz_detected': '🕐 {tz}',
-  'service.car_tz_not_detected': 'Таймзона не определена - выберите адрес из подсказок',
+  'service.car_tz_not_detected': 'Таймзона не определена, выбери адрес из подсказок',
   'service.car_notes_ph': 'Дополнительная информация',
   'service.car_default_name': 'Аренда авто',
   // Car rental view
@@ -56,12 +56,12 @@ export default {
   'service.car_view_on_map': 'На карте',
   // Choice dialog
   'service.car_choice_title': 'Добавить аренду авто',
-  'service.car_choice_desc': 'Выберите способ - внесите бронь сами или найдите вариант на платформе.',
+  'service.car_choice_desc': 'Выбери способ: внеси бронь сам или найди вариант на платформе.',
   'service.car_choice_manual': 'Добавить бронь вручную',
   'service.car_choice_manual_hint': 'Если авто уже забронировано',
   // eSIM choice dialog
   'service.esim_choice_title': 'Добавить eSIM',
-  'service.esim_choice_desc': 'Укажите eSIM вручную или купите у партнёра.',
+  'service.esim_choice_desc': 'Укажи eSIM вручную или купи у партнёра.',
   'service.esim_choice_manual': 'Указать вручную',
   'service.esim_choice_manual_hint': 'Если eSIM уже куплен',
   'service.esim_choice_airalo_hint': 'eSIM для твоей страны',

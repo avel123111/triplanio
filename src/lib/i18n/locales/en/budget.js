@@ -8,7 +8,7 @@ export default {
   'budget.addon_off_title': 'Enable Trip Budget',
   'budget.addon_off_desc': 'Trip Budget is turned off for this trip. Enable it to plan and track expenses across categories, add custom costs in any currency, and get a full breakdown of your travel spending.',
   'budget.addon_off_go_settings': 'Go to settings',
-  'budget.page_placeholder': 'Budget page is being rebuilt - coming soon.',
+  'budget.page_placeholder': 'Budget page is being rebuilt, coming soon.',
 
   // System categories
   'budget.cat_accommodation': 'Accommodation',
@@ -38,7 +38,7 @@ export default {
   'budget.source_transfer': 'Transport',
   'budget.source_activity': 'Activity',
   'budget.source_service': 'Service',
-  'budget.system_expense_hint': 'System expense - edited via its source',
+  'budget.system_expense_hint': 'System expense: edited via its source',
 
   // Expense dialog
   'budget.expense_new': 'New expense',
@@ -108,7 +108,7 @@ export default {
   'budget.fx_intro': 'Default rates are fetched automatically. If a rate is off, set your own.',
   'budget.fx_empty': 'They appear once you add the first expense in another currency.',
   'budget.not_in_total': 'are not converted and not included in the total.',
-  'budget.no_expenses_desc': 'Hotel bookings, transfers and activities show up here automatically. Add your own expenses - food, taxis, souvenirs - by hand.',
+  'budget.no_expenses_desc': 'Hotel bookings, transfers and activities show up here automatically. Add your own expenses (food, taxis, souvenirs) by hand.',
   'budget.split_evenly': 'split evenly',
   'budget.cat_empty': 'Nothing in "{name}" yet.',
 };

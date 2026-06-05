@@ -43,7 +43,7 @@ export default {
   'transfer.ai_button_text': 'Заполнить с помощью ИИ',
   'transfer.ai_button_hint': '- загрузите билет или вставьте ссылку',
   'transfer.ai_lock_title': 'ИИ-распознавание билетов',
-  'transfer.ai_lock_desc_owner': 'Загрузите билет или ссылку - ИИ заполнит все поля автоматически',
+  'transfer.ai_lock_desc_owner': 'Загрузи билет или ссылку, и ИИ заполнит все поля автоматически',
   'transfer.ai_lock_desc_member': 'Обратитесь к владельцу путешествия за разблокировкой Pro-функций.',
   'transfer.ai_unlock': 'Разблокировать',
   // AI extra segments banner

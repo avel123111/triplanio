@@ -43,5 +43,5 @@ export default {
   'telegram.account_empty_benefit_ai': 'Consejos y respuestas del asistente IA sobre tu ruta',
   'telegram.account_empty_benefit_chat': 'Menciones y conversaciones del chat del viaje',
   'telegram.go_to_trips': 'Ir a los viajes',
-  'telegram.coming_soon': '· WhatsApp y Viber - próximamente',
+  'telegram.coming_soon': '· WhatsApp y Viber próximamente',
 };

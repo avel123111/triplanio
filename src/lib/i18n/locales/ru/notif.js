@@ -11,7 +11,7 @@ export default {
   'notif.role_admin': 'администратора',
   'notif.role_viewer': 'участника',
   'notif.tpl_invite_title': 'Вас пригласили в путешествие «{trip}»',
-  'notif.tpl_invite_msg': '{inviter} приглашает вас как {role}.',
+  'notif.tpl_invite_msg': '{inviter} приглашает тебя как {role}.',
   'notif.tpl_joined_title': '{name} присоединился к путешествию',
   'notif.tpl_joined_msg': 'Принял приглашение в «{trip}».',
   // Sent by the Stripe webhook after a successful subscription payment.
@@ -30,8 +30,8 @@ export default {
   'notif.updates_desc': 'правки в общих путешествиях',
   'notif.inbox_empty': 'Инбокс пуст',
   'notif.to_collection': 'К коллекции',
-  'notif.inbox_empty_desc': 'Никаких приглашений, голосований и обновлений. Когда кто-то добавит тебя в путешествие, проголосует за отель или внесёт правку - увидишь здесь.',
+  'notif.inbox_empty_desc': 'Никаких приглашений, голосований и обновлений. Когда кто-то добавит тебя в путешествие, проголосует за отель или внесёт правку, увидишь здесь.',
   'notif.all_read': 'Всё прочитано',
-  'notif.all_read_desc': 'Никаких новых приглашений, голосований и правок. Если кто-то добавит тебя в путешествие - увидишь здесь.',
+  'notif.all_read_desc': 'Никаких новых приглашений, голосований и правок. Если кто-то добавит тебя в путешествие, увидишь здесь.',
   'notif.open_full_inbox': 'Открыть инбокс целиком →',
 };

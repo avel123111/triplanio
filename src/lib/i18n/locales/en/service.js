@@ -39,7 +39,7 @@ export default {
   'service.car_dropoff_ph': 'Airport / return office address',
   'service.car_return_different_location': 'Return to a different location',
   'service.car_tz_detected': '🕐 {tz}',
-  'service.car_tz_not_detected': 'Timezone not detected - pick an address from suggestions to set it',
+  'service.car_tz_not_detected': 'Timezone not detected, pick an address from suggestions to set it',
   'service.car_notes_ph': 'Additional information',
   'service.car_default_name': 'Car rental',
   'service.car_kind_label': 'Car rental',

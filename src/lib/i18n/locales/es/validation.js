@@ -2,7 +2,7 @@
 export default {
   // Conflicts panel (timeline + Edit Mode)
   'validation.panel_title': 'Avisos y conflictos',
-  'validation.panel_subtitle': '{n} en este viaje - toca para abrir el evento',
+  'validation.panel_subtitle': '{n} en este viaje, toca para abrir el evento',
   'validation.panel_all_clear': 'Sin conflictos',
   // Trip
   'validation.TRIP_TITLE_REQUIRED': 'Indica el nombre del viaje',
@@ -36,7 +36,7 @@ export default {
   'validation.TR_NOT_ADJACENT': 'La ruta no conecta: {from} → {to} no son contiguas',
   'validation.TR_NO_CITY': 'El traslado no está vinculado a una ciudad',
   // Transfer (segments)
-  'validation.SEG_MIN': 'Traslado con escala seleccionado - se necesitan al menos 2 tramos. O cambia a un traslado directo',
+  'validation.SEG_MIN': 'Traslado con escala seleccionado: se necesitan al menos 2 tramos. O cambia a un traslado directo',
   'validation.SEG_DEP_REQUIRED': 'Indica la fecha y hora de salida',
   'validation.SEG_ARR_REQUIRED': 'Indica la fecha y hora de llegada',
   'validation.SEG_ORDER': 'La llegada debe ser posterior a la salida',
@@ -57,16 +57,16 @@ export default {
   // Trip-level
   'validation.DUP_TRANSFER': 'Traslado duplicado {a} → {b} ({n})',
   // Parsing IA: avisos temporales (no se guardan, no bloquean) - los extremos se toman del viaje
-  'validation.AI_CITY_MISMATCH_FROM': 'La reserva sale de «{booking}» - el viaje indica «{trip}». Comprueba que sea la reserva correcta',
-  'validation.AI_CITY_MISMATCH_TO': 'La reserva llega a «{booking}» - el viaje indica «{trip}». Comprueba que sea la reserva correcta',
-  'validation.AI_LAYOVER_CITY_MISMATCH': 'La ciudad de escala no coincide: llegada «{a}» - salida «{b}»',
+  'validation.AI_CITY_MISMATCH_FROM': 'La reserva sale de «{booking}», el viaje indica «{trip}». Comprueba que sea la reserva correcta',
+  'validation.AI_CITY_MISMATCH_TO': 'La reserva llega a «{booking}», el viaje indica «{trip}». Comprueba que sea la reserva correcta',
+  'validation.AI_LAYOVER_CITY_MISMATCH': 'La ciudad de escala no coincide: llegada «{a}», salida «{b}»',
   // Budget / docs / members / chat / share / pro
   'validation.EXP_TITLE_REQUIRED': 'Indica una descripción',
   'validation.EXP_AMOUNT_REQUIRED': 'Indica un importe mayor que 0',
   'validation.EXP_CATEGORY_REQUIRED': 'Elige una categoría',
   'validation.CAT_NAME_REQUIRED': 'Indica un nombre',
   'validation.FX_RATE_INVALID': 'El tipo de cambio debe ser un número mayor que 0',
-  'validation.FX_RATE_MISSING': 'Tipo de cambio no encontrado - indícalo manualmente',
+  'validation.FX_RATE_MISSING': 'Tipo de cambio no encontrado, indícalo manualmente',
   'validation.DOC_TITLE_REQUIRED': 'Indica el nombre del documento',
   'validation.DOC_FILE_TOO_LARGE': 'El archivo es demasiado grande (máx. 10 MB)',
   'validation.INV_EMAIL_INVALID': 'Indica un e-mail válido',
@@ -75,6 +75,6 @@ export default {
   'validation.SHARE_TOKEN_FAILED': 'No se pudo crear el enlace',
   'validation.PRO_IFRAME': 'Abre la app en una pestaña nueva para pagar',
   'validation.PRO_ALREADY_ACTIVE': 'Ya tienes una suscripción activa. Abre Ajustes para cambiar el plan',
-  'validation.PRO_RECENT_PENDING': 'Un pago reciente aún se está procesando. Espera unos segundos - el plan se actualizará automáticamente',
+  'validation.PRO_RECENT_PENDING': 'Un pago reciente aún se está procesando. Espera unos segundos, el plan se actualizará automáticamente',
   'validation.PRO_CHECKOUT_FAILED': 'Error: {message}',
 };

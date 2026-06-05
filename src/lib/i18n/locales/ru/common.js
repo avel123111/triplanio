@@ -10,7 +10,7 @@ export default {
   'common.ok': 'OK',
   'common.remove': 'Убрать',
   'common.notice': 'Уведомление',
-  'common.delete_confirm_title': 'Ты уверены?',
+  'common.delete_confirm_title': 'Точно удалить?',
   'common.loading': 'Загрузка…',
   'common.search': 'Поиск',
   'common.notes': 'Заметки',

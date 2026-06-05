@@ -39,7 +39,7 @@ export default {
   'hotel.choice_manual': 'Добавить бронь вручную',
   'hotel.choice_manual_hint': 'Если жильё уже забронировано',
   // Dialog headers
-  'hotel.dialog_visit_header': '{city}, {country} • {start} - {end}',
+  'hotel.dialog_visit_header': '{city}, {country} • {start} – {end}',
   'hotel.section_main_info': 'Основная информация',
   'hotel.section_booking_payment': 'Бронирование и оплата',
   'hotel.section_dates_time': 'Даты и время',
@@ -49,7 +49,7 @@ export default {
   'hotel.section_stay_dates': 'Даты пребывания',
   'hotel.address_placeholder_typing': 'Начните вводить адрес…',
   'hotel.booking_ref_placeholder': 'Напр. X7Y8Z9',
-  'hotel.payment_select_placeholder': 'Выберите…',
+  'hotel.payment_select_placeholder': 'Выбери…',
   'hotel.timezone_label': 'Часовой пояс: {tz}',
   'hotel.range_checkin_before': 'Дата заезда не может быть раньше даты прибытия в город.',
   'hotel.range_checkout_after': 'Дата выезда не может быть позже даты отъезда из города.',
@@ -62,7 +62,7 @@ export default {
   'hotel.ai_button_text': 'Заполнить с помощью ИИ',
   'hotel.ai_button_hint': '- загрузите файл или вставьте ссылку',
   'hotel.ai_lock_title': 'ИИ-распознавание ваучеров',
-  'hotel.ai_lock_desc_owner': 'Загрузите ваучер или ссылку - ИИ заполнит все поля автоматически',
+  'hotel.ai_lock_desc_owner': 'Загрузи ваучер или ссылку, и ИИ заполнит все поля автоматически',
   'hotel.ai_lock_desc_member': 'Обратитесь к владельцу путешествия за разблокировкой Pro-функций.',
   'hotel.ai_unlock': 'Разблокировать',
   // View dialog

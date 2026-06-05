@@ -2,7 +2,7 @@
 export default {
   // Conflicts panel (timeline + Edit Mode)
   'validation.panel_title': 'Warnings and conflicts',
-  'validation.panel_subtitle': '{n} in this trip - tap to open the event',
+  'validation.panel_subtitle': '{n} in this trip, tap to open the event',
   'validation.panel_all_clear': 'No conflicts',
   // Trip
   'validation.TRIP_TITLE_REQUIRED': 'Enter a trip name',
@@ -36,7 +36,7 @@ export default {
   'validation.TR_NOT_ADJACENT': 'Route does not connect: {from} → {to} are not adjacent',
   'validation.TR_NO_CITY': 'Transfer is not linked to a city',
   // Transfer (segments)
-  'validation.SEG_MIN': 'Layover transfer selected - at least 2 segments needed. Or switch to a direct transfer',
+  'validation.SEG_MIN': 'Layover transfer selected: at least 2 segments needed. Or switch to a direct transfer',
   'validation.SEG_DEP_REQUIRED': 'Set the departure date and time',
   'validation.SEG_ARR_REQUIRED': 'Set the arrival date and time',
   'validation.SEG_ORDER': 'Arrival must be after departure',
@@ -57,16 +57,16 @@ export default {
   // Trip-level
   'validation.DUP_TRANSFER': 'Duplicate transfer {a} → {b} ({n})',
   // AI parsing: temporary advisories (not saved, not blocking) - endpoints come from the trip
-  'validation.AI_CITY_MISMATCH_FROM': 'Booking departs from "{booking}" - the trip says "{trip}". Check this is the right booking',
-  'validation.AI_CITY_MISMATCH_TO': 'Booking arrives in "{booking}" - the trip says "{trip}". Check this is the right booking',
-  'validation.AI_LAYOVER_CITY_MISMATCH': 'Layover city does not match: arrival "{a}" - departure "{b}"',
+  'validation.AI_CITY_MISMATCH_FROM': 'Booking departs from "{booking}", the trip says "{trip}". Check this is the right booking',
+  'validation.AI_CITY_MISMATCH_TO': 'Booking arrives in "{booking}", the trip says "{trip}". Check this is the right booking',
+  'validation.AI_LAYOVER_CITY_MISMATCH': 'Layover city does not match: arrival "{a}", departure "{b}"',
   // Budget / docs / members / chat / share / pro
   'validation.EXP_TITLE_REQUIRED': 'Enter a description',
   'validation.EXP_AMOUNT_REQUIRED': 'Enter an amount greater than 0',
   'validation.EXP_CATEGORY_REQUIRED': 'Pick a category',
   'validation.CAT_NAME_REQUIRED': 'Enter a name',
   'validation.FX_RATE_INVALID': 'Rate must be a number greater than 0',
-  'validation.FX_RATE_MISSING': 'Rate not found - enter it manually',
+  'validation.FX_RATE_MISSING': 'Rate not found, enter it manually',
   'validation.DOC_TITLE_REQUIRED': 'Enter the document name',
   'validation.DOC_FILE_TOO_LARGE': 'File is too large (max 10 MB)',
   'validation.INV_EMAIL_INVALID': 'Enter a valid e-mail',
@@ -75,6 +75,6 @@ export default {
   'validation.SHARE_TOKEN_FAILED': 'Could not create the link',
   'validation.PRO_IFRAME': 'Open the app in a new tab to pay',
   'validation.PRO_ALREADY_ACTIVE': 'You already have an active subscription. Open Settings to change the plan',
-  'validation.PRO_RECENT_PENDING': 'A recent payment is still processing. Wait a few seconds - the plan will update automatically',
+  'validation.PRO_RECENT_PENDING': 'A recent payment is still processing. Wait a few seconds, the plan will update automatically',
   'validation.PRO_CHECKOUT_FAILED': 'Error: {message}',
 };

@@ -7,9 +7,9 @@ export default {
   'sub.limit_title': 'Límite de viajes activos',
   'sub.limit_desc': 'El plan gratuito permite solo 1 viaje activo a la vez. Podrás crear un viaje nuevo cuando termine el actual.',
   'sub.limit_hint': 'Consejo: un viaje se considera activo hasta su último día. Los viajes pasados no cuentan para el límite.',
-  'sub.pro_title': 'Suscripción Pro - viajes activos ilimitados',
+  'sub.pro_title': 'Suscripción Pro: viajes activos ilimitados',
   'sub.pro_subtitle': 'Planifica tantos viajes a la vez como necesites.',
-  'sub.feat_price': '$6/mes o $48/año (ahorra $24)',
+  'sub.feat_price': 'Suscripción mensual o anual.',
   'sub.feat_ai_all': 'Reconocimiento por IA de comprobantes en cada viaje',
   'sub.feat_all_members': 'Todos los miembros del viaje obtienen funciones Pro',
   'sub.feat_cancel': 'Cancela cuando quieras',
@@ -33,7 +33,7 @@ export default {
   'sub.iframe_alert': 'El pago debe abrirse en una pestaña nueva (no dentro de un iframe).',
   'sub.upgrade_error': 'Error: {message}',
   'sub.already_active_msg': 'Ya tienes una suscripción activa. Abre Ajustes para gestionar tu plan.',
-  'sub.recent_pending_msg': 'Un pago reciente aún se está procesando. Espera unos segundos - tu plan se actualizará automáticamente.',
+  'sub.recent_pending_msg': 'Un pago reciente aún se está procesando. Espera unos segundos, tu plan se actualizará automáticamente.',
   'sub.activating_pro': 'Activando tu plan Pro…',
   'sub.processing': 'Procesando…',
   'sub.choose_plan': 'Elegir plan',
@@ -48,10 +48,10 @@ export default {
   // Plans - Pro Single-Trip Pass
   'sub.plan_trip_title': 'Pase Pro por viaje',
   'sub.plan_trip_subtitle': 'Mejora Pro única para este viaje',
-  'sub.plan_trip_desc': 'Desbloquea las funciones de IA para un viaje - sin suscripción.',
+  'sub.plan_trip_desc': 'Desbloquea las funciones de IA para un viaje, sin suscripción.',
   'sub.plan_trip_feat_1': 'Reconocimiento por IA de comprobantes (hoteles y transportes)',
   'sub.plan_trip_feat_2': 'Compartido con todos los miembros del viaje',
-  'sub.plan_trip_feat_3': 'Sin caducidad - incluso al terminar el viaje',
+  'sub.plan_trip_feat_3': 'Sin caducidad, incluso al terminar el viaje',
 
   // Plans - Pro Monthly
   'sub.plan_monthly_title': 'Suscripción Pro Mensual',
@@ -63,7 +63,7 @@ export default {
 
   // Plans - Pro Annual
   'sub.plan_yearly_title': 'Plan Pro Anual',
-  'sub.plan_yearly_desc': 'Paga una vez al año y ahorra $24.',
+  'sub.plan_yearly_desc': 'El plan anual sale más barato que el mensual.',
   'sub.plan_yearly_feat_1': 'Todo lo de Pro Mensual',
   'sub.plan_yearly_feat_2': '4 meses gratis',
   'sub.locked_heading': 'Función Pro',

@@ -21,5 +21,5 @@ export default {
   'calendar.week_word': 'неделя',
   'calendar.week_no_data': 'Нет данных для этой недели',
   'calendar.more_count': 'ещё',
-  'calendar.no_dates': 'Добавьте даты путешествия, чтобы увидеть календарь',
+  'calendar.no_dates': 'Добавь даты путешествия, чтобы увидеть календарь',
 };

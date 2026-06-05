@@ -7,7 +7,7 @@ export default {
   'budget.addon_off_title': 'Activar Presupuesto del viaje',
   'budget.addon_off_desc': 'El Presupuesto del viaje está desactivado. Actívalo para planificar y registrar gastos por categorías, añadir costes personalizados en cualquier moneda y ver el desglose completo del gasto del viaje.',
   'budget.addon_off_go_settings': 'Ir a ajustes',
-  'budget.page_placeholder': 'La página de presupuesto se está rehaciendo - disponible pronto.',
+  'budget.page_placeholder': 'La página de presupuesto se está rehaciendo, disponible pronto.',
 
   // System categories
   'budget.cat_accommodation': 'Alojamiento',
@@ -37,7 +37,7 @@ export default {
   'budget.source_transfer': 'Transporte',
   'budget.source_activity': 'Actividad',
   'budget.source_service': 'Servicio',
-  'budget.system_expense_hint': 'Gasto del sistema - se edita en su origen',
+  'budget.system_expense_hint': 'Gasto del sistema: se edita en su origen',
 
   // Expense dialog
   'budget.expense_new': 'Nuevo gasto',
@@ -107,7 +107,7 @@ export default {
   'budget.fx_intro': 'Los tipos por defecto se obtienen automáticamente. Si alguno falla, pon el tuyo.',
   'budget.fx_empty': 'Aparecerán cuando añadas el primer gasto en otra moneda.',
   'budget.not_in_total': 'no se convirtieron ni se incluyen en el total.',
-  'budget.no_expenses_desc': 'Las reservas de hotel, traslados y actividades aparecen aquí automáticamente. Añade tus propios gastos - comida, taxis, recuerdos - a mano.',
+  'budget.no_expenses_desc': 'Las reservas de hotel, traslados y actividades aparecen aquí automáticamente. Añade tus propios gastos (comida, taxis, recuerdos) a mano.',
   'budget.split_evenly': 'a partes iguales',
   'budget.cat_empty': 'Aún no hay nada en «{name}».',
 };

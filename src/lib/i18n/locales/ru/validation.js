@@ -3,7 +3,7 @@
 export default {
   // Conflicts panel (timeline + Edit Mode)
   'validation.panel_title': 'Предупреждения и конфликты',
-  'validation.panel_subtitle': '{n} в этом трипе - нажми, чтобы открыть событие',
+  'validation.panel_subtitle': '{n} в этом путешествии, нажми, чтобы открыть событие',
   'validation.panel_all_clear': 'Конфликтов нет',
   // Trip
   'validation.TRIP_TITLE_REQUIRED': 'Укажи название путешествия',
@@ -37,7 +37,7 @@ export default {
   'validation.TR_NOT_ADJACENT': 'Маршрут не сходится: {from} → {to} не соседние',
   'validation.TR_NO_CITY': 'Переезд не привязан к городу',
   // Transfer (segments)
-  'validation.SEG_MIN': 'Выбран переезд с пересадкой - нужно минимум 2 сегмента. Или переключи на переезд без пересадок',
+  'validation.SEG_MIN': 'Выбран переезд с пересадкой: нужно минимум 2 сегмента. Или переключи на переезд без пересадок',
   'validation.SEG_DEP_REQUIRED': 'Укажи дату и время отправления',
   'validation.SEG_ARR_REQUIRED': 'Укажи дату и время прибытия',
   'validation.SEG_ORDER': 'Прибытие должно быть позже отправления',
@@ -58,16 +58,16 @@ export default {
   // Trip-level
   'validation.DUP_TRANSFER': 'Дубликат переезда {a} → {b} ({n})',
   // AI-парсинг: временные advisory (не сохраняются, не блокируют) - концы берутся из трипа
-  'validation.AI_CITY_MISMATCH_FROM': 'В брони город отправления «{booking}» - в трипе «{trip}». Сверь, та ли это бронь',
-  'validation.AI_CITY_MISMATCH_TO': 'В брони город прибытия «{booking}» - в трипе «{trip}». Сверь, та ли это бронь',
-  'validation.AI_LAYOVER_CITY_MISMATCH': 'Город пересадки не сходится: прилёт «{a}» - вылет «{b}»',
+  'validation.AI_CITY_MISMATCH_FROM': 'В брони город отправления «{booking}», в путешествии «{trip}». Сверь, та ли это бронь',
+  'validation.AI_CITY_MISMATCH_TO': 'В брони город прибытия «{booking}», в путешествии «{trip}». Сверь, та ли это бронь',
+  'validation.AI_LAYOVER_CITY_MISMATCH': 'Город пересадки не сходится: прилёт «{a}», вылет «{b}»',
   // Budget / docs / members / chat / share / pro
   'validation.EXP_TITLE_REQUIRED': 'Укажи описание',
   'validation.EXP_AMOUNT_REQUIRED': 'Укажи сумму больше 0',
   'validation.EXP_CATEGORY_REQUIRED': 'Выбери категорию',
   'validation.CAT_NAME_REQUIRED': 'Введи название',
   'validation.FX_RATE_INVALID': 'Курс должен быть числом больше 0',
-  'validation.FX_RATE_MISSING': 'Курс не найден - введи вручную',
+  'validation.FX_RATE_MISSING': 'Курс не найден, введи вручную',
   'validation.DOC_TITLE_REQUIRED': 'Введи название документа',
   'validation.DOC_FILE_TOO_LARGE': 'Файл слишком большой (макс. 10 МБ)',
   'validation.INV_EMAIL_INVALID': 'Введи корректный e-mail',
@@ -76,6 +76,6 @@ export default {
   'validation.SHARE_TOKEN_FAILED': 'Не удалось создать ссылку',
   'validation.PRO_IFRAME': 'Для оплаты открой приложение в новой вкладке',
   'validation.PRO_ALREADY_ACTIVE': 'У тебя уже есть активная подписка. Открой Настройки, чтобы изменить план',
-  'validation.PRO_RECENT_PENDING': 'Недавний платёж ещё обрабатывается. Подожди пару секунд - план обновится автоматически',
+  'validation.PRO_RECENT_PENDING': 'Недавний платёж ещё обрабатывается. Подожди пару секунд, план обновится автоматически',
   'validation.PRO_CHECKOUT_FAILED': 'Ошибка: {message}',
 };
