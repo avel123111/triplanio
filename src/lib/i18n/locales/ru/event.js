@@ -145,7 +145,7 @@ export default {
   'event.date_time': 'Дата · время',
   'event.return_section': 'Возврат',
   'event.return_diff_place': 'Вернуть в другом месте',
-  'event.return_same_suffix': '- возврат в том же месте, что и получение',
+  'event.return_same_suffix': 'возврат в том же месте, что и получение',
   'event.return_addr': 'Адрес возврата',
   'event.date_time_return': 'Дата · время возврата',
   'event.return_after_pickup': 'Возврат должен быть позже получения.',

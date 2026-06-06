@@ -13,5 +13,5 @@ export default {
   'admin.notifications.hardcoded_text': 'Hard-coded text',
   'admin.notifications.forbidden_title': 'Admins only',
   'admin.notifications.forbidden_desc': 'This page is available only to app administrators.',
-  'admin.notifications.back_home': '← Back to home',
+  'admin.notifications.back_home': 'Back to home',
 };

@@ -17,7 +17,7 @@ export default {
   'calendar.legend_transport': 'Переезды',
   'calendar.legend_hotel': 'Проживание',
   'calendar.legend_activity': 'Активности',
-  'calendar.legend_deadline': 'Дедлайн отмены',
+  'calendar.legend_deadline': 'Срок отмены',
   'calendar.week_word': 'неделя',
   'calendar.week_no_data': 'Нет данных для этой недели',
   'calendar.more_count': 'ещё',

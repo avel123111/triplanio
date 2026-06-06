@@ -8,7 +8,7 @@ export default {
   'settings.theme_light': 'Claro',
   'settings.theme_dark': 'Oscuro',
   'sidebar.free_trip': 'Viaje gratis',
-  'sidebar.free_trip_desc': 'Calendario, desglose de presupuesto, IA y chat están bloqueados para Pro.',
+  'sidebar.free_trip_desc': 'Calendario, presupuesto, IA y chat requieren Pro.',
   'sidebar.upgrade_trip': 'Actualizar viaje',
   'settings.theme_system': 'Sistema',
   'settings.notifications': 'Notificaciones',

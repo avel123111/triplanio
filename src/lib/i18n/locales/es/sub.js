@@ -54,7 +54,7 @@ export default {
   'sub.plan_trip_feat_3': 'Sin caducidad, incluso al terminar el viaje',
 
   // Plans - Pro Monthly
-  'sub.plan_monthly_title': 'Suscripción Pro Mensual',
+  'sub.plan_monthly_title': 'Suscripción Pro mensual',
   'sub.plan_monthly_desc': 'Pro completo para todos tus viajes.',
   'sub.plan_monthly_feat_1': 'Viajes activos ilimitados',
   'sub.plan_monthly_feat_2': 'Reconocimiento por IA de comprobantes en cada viaje',
@@ -62,7 +62,7 @@ export default {
   'sub.plan_monthly_feat_4': 'Cancela cuando quieras',
 
   // Plans - Pro Annual
-  'sub.plan_yearly_title': 'Plan Pro Anual',
+  'sub.plan_yearly_title': 'Plan Pro anual',
   'sub.plan_yearly_desc': 'El plan anual sale más barato que el mensual.',
   'sub.plan_yearly_feat_1': 'Todo lo de Pro Mensual',
   'sub.plan_yearly_feat_2': '4 meses gratis',
@@ -88,8 +88,8 @@ export default {
   'sub.hero_title': 'Más viajes, menos trabajo.',
   'sub.hero_sub': 'Planificador con IA desde cero, lectura de reservas, viajes ilimitados y planificación en grupo.',
   'sub.per_trip_note': 'La mejora puntual de un solo viaje solo está disponible dentro de ese viaje.',
-  'sub.most_popular': '⭐ EL MÁS POPULAR',
-  'sub.selected': '✓ Seleccionado',
+  'sub.most_popular': 'El más popular',
+  'sub.selected': 'Seleccionado',
   'sub.select': 'Elegir',
   'sub.secure_checkout': 'Pago seguro',
   'sub.secure_checkout_meta': ' · Stripe · cancela cuando quieras · Apple Pay / Google Pay / tarjetas',

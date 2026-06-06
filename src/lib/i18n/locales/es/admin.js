@@ -13,5 +13,5 @@ export default {
   'admin.notifications.hardcoded_text': 'Texto fijo',
   'admin.notifications.forbidden_title': 'Solo administradores',
   'admin.notifications.forbidden_desc': 'Esta página solo está disponible para administradores.',
-  'admin.notifications.back_home': '← Volver al inicio',
+  'admin.notifications.back_home': 'Volver al inicio',
 };

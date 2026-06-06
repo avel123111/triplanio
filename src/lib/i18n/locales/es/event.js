@@ -145,7 +145,7 @@ export default {
   'event.date_time': 'Fecha · hora',
   'event.return_section': 'Devolución',
   'event.return_diff_place': 'Devolver en otro lugar',
-  'event.return_same_suffix': '- devolución en el mismo lugar que la recogida',
+  'event.return_same_suffix': 'devolución en el mismo lugar que la recogida',
   'event.return_addr': 'Dirección de devolución',
   'event.date_time_return': 'Fecha · hora de devolución',
   'event.return_after_pickup': 'La devolución debe ser posterior a la recogida.',

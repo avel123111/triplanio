@@ -39,7 +39,7 @@ export default {
   'transfer.open_link': 'Open',
   'transfer.ai_checking': 'Checking AI access…',
   'transfer.ai_button_text': 'Fill with AI',
-  'transfer.ai_button_hint': '- upload a ticket or paste a link',
+  'transfer.ai_button_hint': 'upload a ticket or paste a link',
   'transfer.ai_lock_title': 'AI ticket recognition',
   'transfer.ai_lock_desc_owner': 'Upload a ticket or link, AI will fill in all the fields automatically',
   'transfer.ai_lock_desc_member': 'Ask the trip owner to unlock Pro features.',

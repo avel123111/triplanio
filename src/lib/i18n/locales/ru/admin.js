@@ -13,5 +13,5 @@ export default {
   'admin.notifications.hardcoded_text': 'Захардкоженный текст',
   'admin.notifications.forbidden_title': 'Только для администраторов',
   'admin.notifications.forbidden_desc': 'Эта страница доступна только администраторам приложения.',
-  'admin.notifications.back_home': '← На главную',
+  'admin.notifications.back_home': 'На главную',
 };

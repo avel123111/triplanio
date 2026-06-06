@@ -1,5 +1,5 @@
 export default {
-  'chat.placeholder': 'Напиши сообщение… (наберите @ чтобы упомянуть Triplanio ИИ)',
+  'chat.placeholder': 'Напиши сообщение… (@ — упомянуть Triplanio ИИ)',
   'chat.send': 'Отправить',
   'chat.empty_title': 'Сообщений пока нет',
   'chat.empty_desc': 'Начни беседу: участники путешествия увидят новые сообщения здесь.',

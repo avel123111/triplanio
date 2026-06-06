@@ -41,10 +41,10 @@ export default {
   // AI gating
   'transfer.ai_checking': 'Проверяем доступ к ИИ…',
   'transfer.ai_button_text': 'Заполнить с помощью ИИ',
-  'transfer.ai_button_hint': '- загрузите билет или вставьте ссылку',
+  'transfer.ai_button_hint': 'загрузи билет или вставь ссылку',
   'transfer.ai_lock_title': 'ИИ-распознавание билетов',
   'transfer.ai_lock_desc_owner': 'Загрузи билет или ссылку, и ИИ заполнит все поля автоматически',
-  'transfer.ai_lock_desc_member': 'Обратитесь к владельцу путешествия за разблокировкой Pro-функций.',
+  'transfer.ai_lock_desc_member': 'Обратись к владельцу путешествия, чтобы разблокировать Pro-функции.',
   'transfer.ai_unlock': 'Разблокировать',
   // AI extra segments banner
   'transfer.ai_extra_one': 'ИИ нашёл {count} дополнительный сегмент (пересадка)',
@@ -73,7 +73,7 @@ export default {
   'transfer.with_layover_many': '· с пересадкой ({count} сегментов)',
   'transfer.add_button_text': 'Добавить',
   'transfer.add_dialog_title': 'Добавить трансфер',
-  'transfer.add_dialog_desc': 'Внесите бронь сами или найдите вариант на платформе.',
+  'transfer.add_dialog_desc': 'Внеси бронь сам или найди вариант на платформе.',
   'transfer.manual_short': 'Добавить бронь вручную',
   'transfer.manual_hint_tickets': 'Если билеты/трансфер уже забронированы',
   'transfer.manual_hint_have_tickets': 'Если билеты уже есть',

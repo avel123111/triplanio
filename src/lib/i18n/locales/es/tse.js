@@ -1,5 +1,5 @@
 export default {
-  'tse.section_eyebrow': 'Edición de la estructura',
+  'tse.section_eyebrow': 'Modo de edición',
   'tse.exit_editor': 'Salir del editor',
   'tse.step_back': 'Atrás un paso',
   'tse.step_back_title': 'Deshacer la última acción',
@@ -12,8 +12,8 @@ export default {
   'tse.err_save': 'No se pudo guardar: ',
   'tse.locked_title': 'El viaje se está editando ahora mismo',
   'tse.lock_err_title': 'No se pudo entrar en modo de edición',
-  'tse.locked_desc': 'Alguien ya está editando la estructura de este viaje. Inténtalo más tarde.',
-  'tse.lock_err_desc': 'No se pudo obtener el bloqueo. Inténtalo de nuevo.',
+  'tse.locked_desc': 'Alguien ya está editando este viaje. Inténtalo más tarde.',
+  'tse.lock_err_desc': 'No se pudo entrar en el modo de edición. Inténtalo de nuevo.',
   'tse.back_to_trip': 'Volver al viaje',
   'tse.members_short': '{n} pers.',
   'tse.start_earlier': 'antes',

@@ -43,7 +43,7 @@ export default {
   'service.car_dropoff_ph': 'Аэропорт / адрес офиса возврата',
   'service.car_return_different_location': 'Возврат в другом месте',
   'service.car_tz_detected': '🕐 {tz}',
-  'service.car_tz_not_detected': 'Таймзона не определена, выбери адрес из подсказок',
+  'service.car_tz_not_detected': 'Часовой пояс не определён, выбери адрес из подсказок',
   'service.car_notes_ph': 'Дополнительная информация',
   'service.car_default_name': 'Аренда авто',
   // Car rental view
@@ -68,9 +68,9 @@ export default {
   'service.esim_choice_yesim_hint': 'eSIM для твоей страны',
   // Insurance choice dialog
   'service.insurance_choice_title': 'Добавить страховку',
-  'service.insurance_choice_desc': 'Внесите полис вручную или оформите у партнёра.',
+  'service.insurance_choice_desc': 'Внеси полис вручную или оформи у партнёра.',
   'service.insurance_choice_manual': 'Добавить полис вручную',
   'service.insurance_choice_manual_hint': 'Если страховка уже оформлена',
-  'service.insurance_safetywing_hint': 'Номадская страховка · от $45/мес',
+  'service.insurance_safetywing_hint': 'Номадская страховка · цены у партнёра',
   'service.insurance_ektatraveling_hint': 'Тур- и медицинская страховка',
 };

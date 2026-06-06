@@ -21,7 +21,7 @@ export default {
   'visit.change': 'Изменить',
   'visit.kind_label': 'Тип точки',
   'visit.kind_start_short': 'Старт',
-  'visit.kind_start_hint': 'Откуда ты выезжаете',
+  'visit.kind_start_hint': 'Откуда ты выезжаешь',
   'visit.kind_transit_short': 'Остановка',
   'visit.kind_transit_hint': 'Город с датами',
   'visit.kind_end_short': 'Финиш',

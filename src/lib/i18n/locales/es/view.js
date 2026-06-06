@@ -27,7 +27,7 @@ export default {
   'fork.eyebrow_many': 'O explora: {count} opciones',
   'fork.variants_few': 'opciones',
   'fork.variants_many': 'opciones',
-  'fork.open_form': 'Abrir formulario →',
+  'fork.open_form': 'Abrir formulario',
   'fork.info': 'El socio se abrirá en una pestaña nueva. Cuando reserves, vuelve. Triplanio recogerá los datos automáticamente.',
   'fork.manual_sub_hotel': 'Ya reservé, tengo los datos. Sube el comprobante y la IA extraerá los detalles.',
   'fork.manual_sub_transfer': 'Ya tengo el billete, cargaremos los datos.',

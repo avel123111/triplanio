@@ -46,7 +46,7 @@ export default {
   'doc.access_label': 'Acceso',
   'doc.visibility_shared_hint': 'Visible para todos los participantes',
   'doc.visibility_private_hint': 'Solo tú lo ves',
-  'doc.title_ph': 'Pasaporte, Seguro, Lista…',
+  'doc.title_ph': 'Pasaporte, seguro, lista…',
   'doc.notes_opt_label': 'Notas (opcional)',
   'doc.notes_ph': 'Cobertura, fechas, número de confirmación…',
   'doc.upload_label': 'Sube archivos (PDF / foto), hasta 10 MB cada uno',

@@ -12,7 +12,7 @@ export default {
   'chat.loading_messages': 'Cargando mensajes…',
   'chat.typing': 'Triplanio está escribiendo',
   'chat.mention': 'Mencionar',
-  'chat.composer_ph': 'Escribe un mensaje. @ Abre las menciones',
+  'chat.composer_ph': 'Escribe un mensaje. @ abre las menciones',
   'chat.members_title': 'Participantes del chat',
   'chat.ai_general': '@Triplanio: general',
   'chat.ai_can_title': 'Qué puede hacer @Triplanio',

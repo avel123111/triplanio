@@ -13,7 +13,7 @@ export default {
   'trip_menu.share': 'Compartir',
   'trip_menu.coming_soon': 'Próximamente',
   'trip_menu.free_trip_title': 'Viaje Free',
-  'trip_menu.free_trip_desc': 'Calendario, desglose de presupuesto, IA y chat están en Pro.',
-  'trip_menu.upgrade_trip': 'Mejorar viaje',
+  'trip_menu.free_trip_desc': 'El calendario, el desglose de presupuesto, la IA y el chat están en Pro.',
+  'trip_menu.upgrade_trip': 'Cambiar a Pro',
   'trip_menu.ai_plan': 'Planificar con IA',
 };

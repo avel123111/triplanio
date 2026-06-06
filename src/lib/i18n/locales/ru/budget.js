@@ -73,7 +73,7 @@ export default {
 
   // FX overrides dialog
   'budget.fx_title': 'Курсы валют',
-  'budget.fx_subtitle': 'Свой курс перевода в {currency}. Оставьте пустым, чтобы использовать актуальный курс.',
+  'budget.fx_subtitle': 'Свой курс перевода в {currency}. Оставь пустым, чтобы использовать актуальный курс.',
   'budget.fx_col_currency': 'Валюта',
   'budget.fx_col_rate': 'Курс (1 ед = X {main})',
   'budget.fx_no_other': 'В поездке используется только основная валюта.',
@@ -87,7 +87,7 @@ export default {
   'budget.apply': 'Применить',
   'budget.fx_manual': '{cur} · вручную',
   'budget.fx_auto': '{cur} · автоматический',
-  'budget.fx_not_found': '{cur} · курс не найден / Нужно вручную',
+  'budget.fx_not_found': '{cur} · курс не найден / укажи вручную',
   'budget.edit_category': 'Изменить категорию',
   'budget.cat_name_ph': 'Сувениры…',
   'budget.rate_missing': 'Курс не получен',
@@ -104,7 +104,7 @@ export default {
   'budget.cities_empty': 'В городах пока пусто',
   'budget.cities_empty_desc': 'Расходы по городам появятся после первой траты с указанным городом',
   'budget.no_city': 'Без города',
-  'budget.fx_intro': 'Дефолтные курсы тянутся автоматически. Если автомат ошибается, поставь свой курс.',
+  'budget.fx_intro': 'Курсы валют загружаются автоматически. Если что-то не так, поставь свой курс.',
   'budget.fx_empty': 'Появятся, когда добавишь первую трату в другой валюте.',
   'budget.not_in_total': 'не пересчитаны и не включены в итог.',
   'budget.no_expenses_desc': 'Брони отелей, переезды и активности появятся здесь автоматически. Свои траты (еду, такси, сувениры) добавляй вручную.',

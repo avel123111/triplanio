@@ -10,7 +10,7 @@ export default {
   'telegram.connected_title': 'Telegram подключён',
   'telegram.unknown_user': 'Пользователь Telegram',
   'telegram.notifications': 'Уведомления',
-  'telegram.notifications_hint': 'Выключите, чтобы временно отключить напоминания для этой поездки.',
+  'telegram.notifications_hint': 'Выключи, чтобы временно отключить напоминания для этого путешествия.',
   'telegram.disconnect_btn': 'Отключить',
 
   'telegram.connect_title': 'Привязать Telegram',

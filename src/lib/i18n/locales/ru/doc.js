@@ -1,7 +1,7 @@
 export default {
   'doc.tab_title': 'Документы',
   'doc.tab_loading': 'Загрузка…',
-  'doc.tab_add': '+ Добавить документ',
+  'doc.tab_add': 'Добавить документ',
   'doc.tab_empty_title': 'Документов пока нет',
   'doc.tab_empty_owner': 'Загрузи билеты, страховки, ваучеры или другие файлы.',
   'doc.tab_empty_viewer': 'Владелец поездки ещё не добавил документы.',

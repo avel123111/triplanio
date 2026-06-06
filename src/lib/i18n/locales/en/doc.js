@@ -46,7 +46,7 @@ export default {
   'doc.access_label': 'Access',
   'doc.visibility_shared_hint': 'Visible to all participants',
   'doc.visibility_private_hint': 'Only you can see it',
-  'doc.title_ph': 'Passport, Insurance, Checklist…',
+  'doc.title_ph': 'Passport, insurance, checklist…',
   'doc.notes_opt_label': 'Notes (optional)',
   'doc.notes_ph': 'Coverage, dates, confirmation number…',
   'doc.upload_label': 'Upload files (PDF / photo), up to 10 MB each',

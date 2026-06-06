@@ -65,6 +65,6 @@ export default {
   'service.insurance_choice_desc': 'Enter a policy manually or get one from a partner.',
   'service.insurance_choice_manual': 'Add policy manually',
   'service.insurance_choice_manual_hint': "If you've already arranged insurance",
-  'service.insurance_safetywing_hint': 'Nomad insurance · from $45/mo',
+  'service.insurance_safetywing_hint': 'Nomad insurance · partner pricing',
   'service.insurance_ektatraveling_hint': 'Travel & medical insurance',
 };

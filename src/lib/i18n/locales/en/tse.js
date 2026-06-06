@@ -1,5 +1,5 @@
 export default {
-  'tse.section_eyebrow': 'Structure editing',
+  'tse.section_eyebrow': 'Edit mode',
   'tse.exit_editor': 'Exit the editor',
   'tse.step_back': 'Step back',
   'tse.step_back_title': 'Undo the last action',
@@ -12,8 +12,8 @@ export default {
   'tse.err_save': 'Could not save: ',
   'tse.locked_title': 'The trip is being edited right now',
   'tse.lock_err_title': 'Could not enter edit mode',
-  'tse.locked_desc': 'Someone is already editing this trip\'s structure. Try later.',
-  'tse.lock_err_desc': 'Could not acquire the lock. Try again.',
+  'tse.locked_desc': 'Someone else is already editing this trip. Try again in a moment.',
+  'tse.lock_err_desc': 'Couldn’t open edit mode. Try again in a moment.',
   'tse.back_to_trip': 'Back to the trip',
   'tse.members_short': '{n} ppl',
   'tse.start_earlier': 'earlier',

@@ -28,9 +28,9 @@ export default {
   'notif.updates': 'Novedades',
   'notif.updates_desc': 'cambios en viajes compartidos',
   'notif.inbox_empty': 'La bandeja está vacía',
-  'notif.to_collection': 'A la colección',
+  'notif.to_collection': 'Ir a los viajes',
   'notif.inbox_empty_desc': 'Sin invitaciones, votaciones ni novedades. Cuando alguien te añada a un viaje, vote por un hotel o haga un cambio, aparecerá aquí.',
   'notif.all_read': 'Todo leído',
   'notif.all_read_desc': 'Sin nuevas invitaciones, votaciones ni cambios. Si alguien te añade a un viaje, lo verás aquí.',
-  'notif.open_full_inbox': 'Abrir la bandeja completa →',
+  'notif.open_full_inbox': 'Ver todas las notificaciones',
 };

@@ -13,7 +13,7 @@ export default {
   'trip_menu.share': 'Share',
   'trip_menu.coming_soon': 'Coming soon',
   'trip_menu.free_trip_title': 'Free trip',
-  'trip_menu.free_trip_desc': 'Calendar, budget breakdown, AI and chat are Pro-only.',
-  'trip_menu.upgrade_trip': 'Upgrade trip',
+  'trip_menu.free_trip_desc': 'Calendar, budget breakdown, AI and chat are available on Pro.',
+  'trip_menu.upgrade_trip': 'Upgrade to Pro',
   'trip_menu.ai_plan': 'Plan with AI',
 };

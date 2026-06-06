@@ -44,7 +44,7 @@ export default {
   'ai.transfer_url_placeholder': 'Вставьте ссылку на бронирование (Aviasales, Trainline…)',
   'ai.analyze': 'Анализ',
   'ai.or': 'или',
-  'ai.drop_files': 'Перетащите файлы или нажмите',
+  'ai.drop_files': 'Перетащи файлы или нажми',
   'ai.formats_hint': 'PDF, PNG, JPG • до 5MB • до {max} файлов',
   'ai.add_more': 'Добавить ещё (осталось {remaining})',
   'ai.analyzing_hotel': 'ИИ анализирует бронирование…',
