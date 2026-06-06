@@ -195,7 +195,7 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 
 // ─── LoadingScreen / ErrorScreen ──────────────────────────────────────────────
 
-function LoadingScreen() {
+function LoadingScreen({ lens = 'overview' }) {
   const { t } = useI18n();
   return (
     <div className="trip-shell">
@@ -251,11 +251,16 @@ function LoadingScreen() {
           <div className="trip-screenbar"><Skeleton w={150} h={20} r={6} /></div>
           <main className="trip-screen-body">
             {/* Same building blocks as the loaded layout, so nothing reshuffles
-                when shell → content resolves. */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
-              <SkeletonTimeline />
-              <RightRailSkeleton />
-            </div>
+                when shell → content resolves. Lens-aware so the Overview (default)
+                doesn't flash a timeline skeleton first. */}
+            {lens === 'overview' ? (
+              <OverviewLens isLoading />
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+                <SkeletonTimeline />
+                <RightRailSkeleton />
+              </div>
+            )}
           </main>
         </div>
       </div>
@@ -1122,7 +1127,7 @@ export default function TripView() {
   const screenBodyRef = useRef(null);
   useEffect(() => { if (screenBodyRef.current) screenBodyRef.current.scrollTop = 0; }, [shownLens]);
 
-  if (loadingShell) return <LoadingScreen />;
+  if (loadingShell) return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} />;
   if (shellError || (!loadingShell && !trip)) return <ErrorScreen onBack={() => nav('/trips')} />;
 
   // ── Global trip header: cover, subtitle and the right-hand hero actions ──
@@ -1315,7 +1320,7 @@ export default function TripView() {
                   style={{ marginBottom: 14 }}
                 />
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+              <div className="ov-anim" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
                 <TimelineLens
                   stream={stream}
                   visits={visits}
