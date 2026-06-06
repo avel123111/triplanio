@@ -840,7 +840,7 @@ export default function TripStructureEdit() {
           onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)}
         />
       </div>
-      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: showMap ? 'minmax(0, 60fr) minmax(0, 40fr)' : '1fr', gap: 0, overflow: 'hidden' }}>
+      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: showMap ? 'minmax(0, 1fr) minmax(0, 1fr)' : '1fr', gap: 0, overflow: 'hidden' }}>
         {/* LEFT - page title + cities (scrolling list) */}
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
           <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={leftPanel ? (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } } : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
@@ -940,7 +940,7 @@ export default function TripStructureEdit() {
         {/* RIGHT - full-height map (hideable); warnings live in a collapsible overlay widget */}
         {showMap && (
         <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--surface)' }}>
-          <div className="ts-map" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+          <div className="ts-map" style={{ position: 'absolute', inset: 14, overflow: 'hidden', borderRadius: 16, border: '1px solid var(--line)' }}>
             <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd mapControls
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
