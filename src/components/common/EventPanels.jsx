@@ -42,31 +42,29 @@ function paymentLabel(t, status) {
 // ── shared primitives (mockup-faithful) ──────────────────────────────────────
 export function PanelShell({ kind = 'hotel', icon, title, sub, onBack, foot, children }) {
   const { t } = useI18n();
-  const accent = ACCENT[kind] || 'var(--brand)';
+  const accent = ACCENT[kind] || 'var(--primary)';
+  const soft = SOFT[kind] || 'var(--brand-soft)';
   return (
-    <div className="te-panel">
-      <div className="te-panel__top">
-        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: accent }} />
-        <button className="te-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={16} /></button>
-        <span className="te-panel__icon" style={{ background: SOFT[kind] || 'var(--brand-soft)', color: accent }}><Icon name={icon || kindIcon(kind)} size={16} /></span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="te-panel__title">{title}</div>
-          {sub && <div className="te-panel__sub">{sub}</div>}
+    <div className="lpanel lpanel--wide">
+      <div className="lp-h">
+        <button className="lp-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={16} /></button>
+        <span className="lp-ic" style={{ background: soft, color: accent }}><Icon name={icon || kindIcon(kind)} size={18} /></span>
+        <div className="ti">
+          <b>{title}</b>
+          {sub && <span>{sub}</span>}
         </div>
       </div>
-      <div className="te-panel__body scrollbar-thin">{children}</div>
-      {foot && <div className="te-panel__foot">{foot}</div>}
+      <div className="lp-b scrollbar-thin">{children}</div>
+      {foot && <div className="lp-f">{foot}</div>}
     </div>
   );
 }
 
 function Section({ accent, title, count, children }) {
   return (
-    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <span style={{ width: 3, height: 12, background: accent || 'var(--brand)', borderRadius: 2 }} />
-        <span className="eyebrow" style={{ flex: 1 }}>{title}</span>
-        {count != null && count > 0 && <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{count}</span>}
+    <div className="lp-sec">
+      <div className="seclabel">
+        <span className="sl2" style={{ color: accent || 'var(--primary)' }}>{title}{count != null && count > 0 ? ` · ${count}` : ''}</span>
       </div>
       {children}
     </div>
@@ -75,13 +73,13 @@ function Section({ accent, title, count, children }) {
 function KV({ label, children, mono }) {
   if (children == null || children === '' || children === '—') return null;
   return (
-    <div>
-      <div className="eyebrow" style={{ marginBottom: 4 }}>{label}</div>
-      <div className={mono ? 'num' : ''} style={{ fontSize: 'var(--fs-base)', color: 'var(--ink)', lineHeight: 1.4 }}>{children}</div>
+    <div className="kv">
+      <div className="k">{label}</div>
+      <div className={'v' + (mono ? ' num' : '')}>{children}</div>
     </div>
   );
 }
-const KVGrid = ({ children }) => <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>{children}</div>;
+const KVGrid = ({ children }) => <div className="kvgrid">{children}</div>;
 
 function AddressBlock({ address, accent }) {
   if (!address) return null;
@@ -136,10 +134,10 @@ function HotelBody({ entity, accent }) {
   const pay = paymentLabel(t, entity.payment_status);
   return (
     <>
-      <div className="te-metastrip">
-        <span><Icon name="calendar" size={12} /> {rangeText(entity.check_in_datetime, entity.check_out_datetime)}</span>
-        {entity.price != null && <span><Icon name="wallet" size={12} /> {money(entity.price, entity.currency)}</span>}
-        {(entity.booking_platform || entity.booking_url) && <PartnerPill platform={entity.booking_platform} url={entity.booking_url} />}
+      <div className="metastrip">
+        <span className="ch"><Icon name="calendar" size={13} /> {rangeText(entity.check_in_datetime, entity.check_out_datetime)}</span>
+        {entity.price != null && <span className="ch"><Icon name="wallet" size={13} /> {money(entity.price, entity.currency)}</span>}
+        {(entity.booking_platform || entity.booking_url) && <span className="ch"><PartnerPill platform={entity.booking_platform} url={entity.booking_url} /></span>}
       </div>
       <AddressBlock address={entity.address} accent={accent} />
       <Section accent={accent} title={t('event.checkin_checkout')}>
@@ -178,21 +176,21 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
   const depDate = fmtDate(entity.start_datetime), arrDate = fmtDate(entity.end_datetime);
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 14, alignItems: 'center', padding: '16px', background: 'var(--wash)', borderRadius: 12 }}>
+      <div className="route">
         <div>
-          {depDate && <div className="num muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 600, marginBottom: 2 }}>{depDate}</div>}
-          <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{dep || '—'}</div>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, marginTop: 3 }}>{fromVisit?.city_name || '—'}</div>
-          {entity.from_address && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, lineHeight: 1.3 }}>{entity.from_address}</div>}
+          {depDate && <div className="rd">{depDate}</div>}
+          <div className="rt num">{dep || '—'}</div>
+          <div className="rc">{fromVisit?.city_name || '—'}</div>
+          {entity.from_address && <div className="ra">{entity.from_address}</div>}
         </div>
-        <div style={{ textAlign: 'center', color: accent }}>
+        <div className="rmid">
           <Icon name={meta.icon} size={20} />
         </div>
-        <div style={{ textAlign: 'right' }}>
-          {arrDate && <div className="num muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 600, marginBottom: 2 }}>{arrDate}</div>}
-          <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{arr || '—'}</div>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, marginTop: 3 }}>{toVisit?.city_name || '—'}</div>
-          {entity.to_address && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, lineHeight: 1.3 }}>{entity.to_address}</div>}
+        <div className="end">
+          {arrDate && <div className="rd">{arrDate}</div>}
+          <div className="rt num">{arr || '—'}</div>
+          <div className="rc">{toVisit?.city_name || '—'}</div>
+          {entity.to_address && <div className="ra">{entity.to_address}</div>}
         </div>
       </div>
       <Section accent={accent} title={t('event.carrier_booking')}>
@@ -215,9 +213,9 @@ function ActivityBody({ entity, accent }) {
   const docs = getEntityDocuments(entity);
   return (
     <>
-      <div className="te-metastrip">
-        <span><Icon name="calendar" size={12} /> {fmtDT(entity.start_datetime)}</span>
-        {entity.price != null && <span><Icon name="wallet" size={12} /> {money(entity.price, entity.currency)}</span>}
+      <div className="metastrip">
+        <span className="ch"><Icon name="calendar" size={13} /> {fmtDT(entity.start_datetime)}</span>
+        {entity.price != null && <span className="ch"><Icon name="wallet" size={13} /> {money(entity.price, entity.currency)}</span>}
       </div>
       <AddressBlock address={entity.location_address} accent={accent} />
       <Section accent={accent} title={t('admin.notifications.when')}>
