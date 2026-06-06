@@ -10,7 +10,7 @@ import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/geo';
 import { Icon } from '../design/icons';
-import { Btn } from '../design/index';
+import { Btn, EmptyState } from '../design/index';
 import HeaderActions from '@/components/HeaderActions';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { getGradientById } from '@/lib/trip-gradients';
@@ -571,11 +571,13 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
       <CityAnchorRow label={t('ai_plan.start')} city_name={home?.city_name} country={home?.country} kind="home" />
 
       {cities.length === 0 ? (
-        <div style={{ marginTop: 12, padding: 28, border: '1.5px dashed var(--line)', borderRadius: 12, textAlign: 'center', color: 'var(--muted)' }}>
-          <Icon name="pin" size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
-          <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 500, marginBottom: 4 }}>{t('planner.where_to')}</div>
-          <div style={{ fontSize: 'var(--fs-meta)', marginBottom: 14 }}>{t('planner.add_first_city')}</div>
-          <Btn variant="primary" onClick={() => addCity()}>{t('planner.add_city')}</Btn>
+        <div style={{ marginTop: 12 }}>
+          <EmptyState
+            icon="pin"
+            title={t('planner.where_to')}
+            body={t('planner.add_first_city')}
+            action={<Btn variant="primary" icon="plus" onClick={() => addCity()}>{t('planner.add_city')}</Btn>}
+          />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}

@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ru, es, enUS } from 'date-fns/locale';
 import { Icon } from '@/design/icons';
-import { Btn } from '@/design/index';
+import { Btn, EmptyState } from '@/design/index';
 
 const DATE_LOCALES = { ru, es, en: enUS };
 
@@ -150,31 +150,7 @@ export default function NotificationsBell({ triggerClassName }) {
               <Icon name="refresh" size={16} />
             </div>
           ) : notifications.length === 0 ? (
-            <div style={{ padding: '36px 22px 26px', textAlign: 'center' }}>
-              <div style={{
-                width: 60, height: 60, margin: '0 auto 14px',
-                borderRadius: 16,
-                background: 'linear-gradient(135deg, var(--brand-soft), var(--wash))',
-                color: 'var(--brand)',
-                display: 'grid', placeItems: 'center',
-                position: 'relative',
-              }}>
-                <Icon name="bell" size={26} />
-                <span style={{
-                  position: 'absolute', bottom: 2, right: 2,
-                  width: 20, height: 20, borderRadius: '50%',
-                  background: 'var(--success)', color: 'white',
-                  display: 'grid', placeItems: 'center',
-                  border: '2.5px solid var(--surface)',
-                }}>
-                  <Icon name="check" size={10} />
-                </span>
-              </div>
-              <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', marginBottom: 4 }}>{t('notif.all_read')}</div>
-              <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.55, maxWidth: 240, margin: '0 auto' }}>
-                {t('notif.all_read_desc')}
-              </div>
-            </div>
+            <EmptyState icon="bell" title={t('notif.all_read')} body={t('notif.all_read_desc')} />
           ) : (
             notifications.map(n => (
               <NotifRow

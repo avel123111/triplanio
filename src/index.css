@@ -17,20 +17,20 @@
     --foreground: 252 17% 17%;             /* ink #272433 */
     --card: 0 0% 100%;                     /* surface #FFFFFF */
     --card-foreground: 252 17% 17%;
-    --popover: 0 0% 100%;
+    --popover-hsl: 0 0% 100%;
     --popover-foreground: 252 17% 17%;
     --primary: 211 72% 46%;               /* primary #2173C8 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 36% 95%;             /* surface-2 #EEEEF7 */
+    --secondary-hsl: 240 36% 95%;         /* surface-2 #EEEEF7 (Tailwind-only; app.css owns --secondary as a color) */
     --secondary-foreground: 253 12% 31%;  /* ink-2 #4A4659 */
-    --muted: 240 36% 95%;
+    --muted-hsl: 240 36% 95%;
     --muted-foreground: 253 7% 50%;       /* muted #7A7689 */
-    --accent: 240 36% 95%;
+    --accent-hsl: 240 36% 95%;
     --accent-foreground: 211 72% 46%;
     --destructive: 357 72% 59%;           /* danger #E24A52 */
     --destructive-foreground: 0 0% 100%;
     --border: 246 28% 93%;                /* line #E9E8F2 */
-    --input: 249 23% 88%;                 /* line-strong #DBD9E7 */
+    --input-hsl: 249 23% 88%;             /* line-strong #DBD9E7 (Tailwind-only) */
     --ring: 211 72% 46%;
     --chart-1: 211 72% 46%;
     --chart-2: 155 66% 36%;
@@ -56,20 +56,20 @@
     --foreground: 248 27% 94%;            /* ink #EDECF4 */
     --card: 245 17% 15%;                  /* surface #201F2C */
     --card-foreground: 248 27% 94%;
-    --popover: 245 17% 15%;
+    --popover-hsl: 245 17% 15%;
     --popover-foreground: 248 27% 94%;
     --primary: 212 100% 72%;             /* primary #6FB2FF */
     --primary-foreground: 212 68% 10%;
-    --secondary: 244 15% 19%;            /* surface-2 #2A2937 */
+    --secondary-hsl: 244 15% 19%;        /* surface-2 #2A2937 (Tailwind-only) */
     --secondary-foreground: 251 16% 79%;
-    --muted: 244 15% 19%;
+    --muted-hsl: 244 15% 19%;
     --muted-foreground: 250 11% 58%;
-    --accent: 244 15% 19%;
+    --accent-hsl: 244 15% 19%;
     --accent-foreground: 212 100% 72%;
     --destructive: 356 84% 68%;          /* danger #F26A72 */
     --destructive-foreground: 351 68% 6%;
     --border: 249 12% 22%;               /* line #33313F */
-    --input: 247 12% 28%;                /* line-strong #403E4F */
+    --input-hsl: 247 12% 28%;            /* line-strong #403E4F (Tailwind-only) */
     --ring: 212 100% 72%;
     --chart-1: 212 100% 72%;
     --chart-2: 154 54% 50%;

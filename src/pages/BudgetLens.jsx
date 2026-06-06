@@ -654,10 +654,11 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {activeCat.items.length === 0 && (
-                  <div style={{ padding: 22, textAlign: 'center', color: 'var(--muted)', border: '1.5px dashed var(--line)', borderRadius: 10 }}>
-                    <Icon name={catIcon(activeCat)} size={20} style={{ color: activeCat.color, marginBottom: 6, display: 'block', marginLeft: 'auto', marginRight: 'auto' }} />
-                    <div>{t('budget.cat_empty', { name: activeCat.name })} <a href="#" onClick={e => { e.preventDefault(); openAddExpense(); }}>{t('budget.add_first')}</a></div>
-                  </div>
+                  <EmptyState
+                    icon={catIcon(activeCat)}
+                    title={t('budget.cat_empty', { name: activeCat.name })}
+                    action={<Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>}
+                  />
                 )}
                 {activeCat.items.map(exp => {
                   const r = conv(exp);
