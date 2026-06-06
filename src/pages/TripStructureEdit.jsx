@@ -150,6 +150,7 @@ export default function TripStructureEdit() {
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [pendingLeave, setPendingLeave] = useState(null); // navigation target awaiting the unsaved-changes prompt
+  const [sideOpen, setSideOpen] = useState(false); // mobile menu drawer
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
   const [undoStack, setUndoStack] = useState([]); // history of draft snapshots (JSON) for step-undo
@@ -644,17 +645,38 @@ export default function TripStructureEdit() {
   // Presses on inner controls (steppers, booking cells, links) are ignored.
   const armDrag = (e, dIdx, nodeId) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    // Touch: only the grip starts a drag, so swiping a card still scrolls the list.
-    // Mouse: the whole card is draggable.
-    if (e.pointerType !== 'mouse' && !e.target?.closest?.('.te-grip')) return;
     if (e.target?.closest?.('.te-stepper, .te-step, .te-cellbtn, .te-actchip, .te-hotelicon, .te-addmini, a, input, select, textarea')) return;
     const rowEl = rowElRefs.current.get(nodeId);
     if (!rowEl) return;
-    const rect = rowEl.getBoundingClientRect();
-    dragInfoRef.current = { id: nodeId, dIdx, startX: e.clientX, startY: e.clientY, grabOffset: e.clientY - rect.top, ty: 0, activated: false, lastTarget: null };
-    window.addEventListener('pointermove', stableMove);
-    window.addEventListener('pointerup', stableEnd, { once: true });
-    window.addEventListener('pointercancel', stableEnd, { once: true });
+    const cx = e.clientX, cy = e.clientY;
+    const begin = () => {
+      const rect = rowEl.getBoundingClientRect();
+      dragInfoRef.current = { id: nodeId, dIdx, startX: cx, startY: cy, grabOffset: cy - rect.top, ty: 0, activated: false, lastTarget: null };
+      window.addEventListener('pointermove', stableMove);
+      window.addEventListener('pointerup', stableEnd, { once: true });
+      window.addEventListener('pointercancel', stableEnd, { once: true });
+    };
+    // Mouse: whole card draggable immediately. Touch/pen: long-press (430ms) on
+    // the row arms the drag — any scroll/lift before then cancels, so the list
+    // still scrolls normally and there's no accidental reordering.
+    if (e.pointerType === 'mouse') { begin(); return; }
+    let timer = null;
+    const clear = () => {
+      if (timer) { clearTimeout(timer); timer = null; }
+      window.removeEventListener('pointermove', preMove);
+      window.removeEventListener('pointerup', preUp);
+      window.removeEventListener('pointercancel', preUp);
+    };
+    const preMove = (ev) => { if (Math.hypot(ev.clientX - cx, ev.clientY - cy) > 9) clear(); };
+    const preUp = () => clear();
+    window.addEventListener('pointermove', preMove, { passive: true });
+    window.addEventListener('pointerup', preUp, { once: true });
+    window.addEventListener('pointercancel', preUp, { once: true });
+    timer = setTimeout(() => {
+      clear();
+      try { navigator.vibrate?.(12); } catch { /* haptic optional */ }
+      begin();
+    }, 430);
   };
   // Per-render move/end closures (read live values), reached via the stable
   // dispatchers above so the window listeners pair up across re-renders.
@@ -837,10 +859,23 @@ export default function TripStructureEdit() {
       coverImageUrl={trip?.cover_image_url || null}
       coverGradientCss={(!trip?.cover_image_url && getGradientById(trip?.cover_gradient)) ? getGradientById(trip?.cover_gradient).css : null}
       useDefaultWaves={!trip?.cover_image_url && !getGradientById(trip?.cover_gradient)}
+      onMenu={() => setSideOpen(true)}
     />
-    <TripScreenBar title={t('trip.edit_structure')} actions={editorActions && <>{startStepperEl}{editorActions}</>} />
+    {/* Mobile menu drawer — burger opens the full sidebar (the static icon-rail
+        is hidden on mobile). */}
+    <div className={'ts-drawer' + (sideOpen ? ' is-open' : '')}>
+      <div className="ts-drawer__scrim" onClick={() => setSideOpen(false)} />
+      <TripSidebar
+        tripId={tripId} trip={trip} isEditScreen
+        onNavigate={(id) => { setSideOpen(false); guardedLeave(`/trip/${tripId}?lens=${id}`); }}
+        isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
+        onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
+        onProInfo={() => nav(`/pro?tripId=${tripId}`)}
+        onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)}
+      />
+    </div>
     <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
-      <div style={{ flex: '0 0 56px', minWidth: 0, position: 'relative', minHeight: 0 }}>
+      <div className="ts-railwrap" style={{ flex: '0 0 56px', minWidth: 0, position: 'relative', minHeight: 0 }}>
         <TripSidebar
           tripId={tripId} trip={trip} isEditScreen collapsed
           onNavigate={(id) => guardedLeave(`/trip/${tripId}?lens=${id}`)}
@@ -850,6 +885,10 @@ export default function TripStructureEdit() {
           onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)}
         />
       </div>
+      {/* content column — screen-title bar sits BESIDE the sidebar (like every
+          other screen) so the menu doesn't shift when navigating into the editor */}
+      <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <TripScreenBar title={t('trip.edit_structure')} actions={editorActions && <>{startStepperEl}{editorActions}</>} />
       <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: showMap ? 'minmax(0, 1fr) minmax(0, 1fr)' : '1fr', gap: 0, overflow: 'hidden' }}>
         {/* LEFT - page title + cities (scrolling list) */}
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--surface)' }}>
@@ -967,7 +1006,8 @@ export default function TripStructureEdit() {
           </div>
         </div>
         )}
-      </div>
+      </div>{/* /ts-grid */}
+      </div>{/* /editor content column */}
     </div>
 
       {/* Delete-city confirm — AlertDialog (focus-trapped, Esc-closable). */}
@@ -1188,7 +1228,7 @@ function GridEndpoint({ node, onRemove }) {
 
 function AddPointButton({ onOpen }) {
   const t = useT();
-  return <button onClick={onOpen} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 12, padding: '12px', borderRadius: 12, cursor: 'pointer', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, var(--line))', color: 'var(--brand)', fontSize: 'var(--fs-base)', fontWeight: 600 }}>
+  return <button className="btn btn--soft btn--block" onClick={onOpen} style={{ marginTop: 12 }}>
     <Icon name="plus" size={15} /> {t('tse.add_point_btn')}
   </button>;
 }

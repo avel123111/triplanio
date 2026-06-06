@@ -1688,3 +1688,29 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .tl3-card:hover { transform: none; } }
 @media (max-width: 880px) { .cityrail { display: none; } }
 
+/* ============================================================
+   EDITOR (TripStructureEdit) — mobile adaptation
+   ============================================================ */
+@media (max-width: 760px) {
+  /* remove the static narrow icon-rail; the burger opens a real drawer instead */
+  .ts-screen .app-side--rail { display: none; }
+  .ts-screen .ts-railwrap { display: none; }
+  /* drop the table header row */
+  .te-thead { display: none !important; }
+  /* drop the drag grip — on touch the whole row drags via long-press */
+  .te-grip { display: none !important; }
+  /* empty hotel/activity placeholders take no space on mobile */
+  .te-cellbtn--ghost { display: none !important; }
+  /* compact row: number + name(+dates) + nights + (hotel/act when present) */
+  .te-row, .te-seamrow { grid-template-columns: 28px minmax(0, 1fr) auto auto auto !important; column-gap: 8px !important; padding: 13px 12px !important; }
+  .te-row { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); margin: 7px 0; }
+  .te-cell--hotel, .te-cell--act { min-width: 0; }
+  /* editor sidebar drawer (reuses app-side drawer pattern) */
+  .ts-screen .ts-drawer { position: fixed; inset: 0; z-index: 200; pointer-events: none; }
+  .ts-screen .ts-drawer.is-open { pointer-events: auto; }
+  .ts-screen .ts-drawer__scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .25s var(--ease-out); }
+  .ts-screen .ts-drawer.is-open .ts-drawer__scrim { opacity: 1; }
+  .ts-screen .ts-drawer .app-side { position: absolute; left: 0; top: 0; bottom: 0; width: 264px; max-width: 84vw; transform: translateX(-100%); transition: transform .28s var(--ease-spring); box-shadow: var(--sh-2); background: var(--surface); }
+  .ts-screen .ts-drawer.is-open .app-side { transform: translateX(0); }
+}
+

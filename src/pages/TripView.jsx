@@ -573,18 +573,14 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   const renderEventsDay = (day) => {
     const evs = (eventsByDate[day] || []).filter(e => !inboundEventIds.has(e.id));
     if (evs.length === 0) return null;
+    const dd = new Date(`${day}T00:00`);
+    const dayNum = Number.isNaN(dd.getTime()) ? day.slice(8, 10) : dd.getDate();
+    const monAbbr = Number.isNaN(dd.getTime()) ? '' : dd.toLocaleDateString(lang, { month: 'short' }).replace('.', '');
     return (
-      <div key={`xday-${day}`} style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, padding: '12px 0 10px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-              {fmtDate(day, lang)}
-            </span>
-            <span className="muted" style={{ fontSize: 'var(--fs-meta)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
-              {weekday(day, lang)}
-            </span>
-          </div>
-          <div style={{ flex: 1, borderBottom: '1px solid var(--line-2)', marginBottom: 6 }} />
+      <div key={`xday-${day}`} id={`tlday-${day}`} data-tlday={day} className="tl3-day">
+        <div className="tl3-dh">
+          <span className="datechip"><span className="d">{dayNum}</span><span className="m">{monAbbr}</span></span>
+          <span className="wd">{weekday(day, lang)}</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {evs.map((e, idx) => (
