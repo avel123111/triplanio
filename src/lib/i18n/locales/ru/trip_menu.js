@@ -13,7 +13,7 @@ export default {
   'trip_menu.share': 'Поделиться',
   'trip_menu.coming_soon': 'Скоро',
   'trip_menu.free_trip_title': 'Free-путешествие',
-  'trip_menu.free_trip_desc': 'Календарь, бюджет-разбивка, ИИ и чат закрыты Pro.',
-  'trip_menu.upgrade_trip': 'Подключить Pro',
+  'trip_menu.free_trip_desc': 'Календарь, бюджет-разбивка, ИИ и чат закрыты Pro',
+  'trip_menu.upgrade_trip': 'Улучшить до Pro',
   'trip_menu.ai_plan': 'Спланировать с ИИ',
 };

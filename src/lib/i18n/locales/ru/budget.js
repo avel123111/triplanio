@@ -7,7 +7,7 @@ export default {
   'budget.addon_off_title': 'Включить «Бюджет поездки»',
   'budget.addon_off_desc': 'Бюджет поездки выключен. Включи его, чтобы планировать и отслеживать расходы по категориям, добавлять траты в любой валюте и видеть полную картину расходов на поездку.',
   'budget.addon_off_go_settings': 'В настройки',
-  'budget.page_placeholder': 'Страница бюджета перерабатывается, скоро будет доступна.',
+  'budget.page_placeholder': 'Страница бюджета перерабатывается, скоро будет доступна',
 
   // System categories
   'budget.cat_accommodation': 'Проживание',
@@ -30,7 +30,7 @@ export default {
   // Category block
   'budget.no_expenses': 'Нет расходов',
   'budget.category_menu_rename': 'Переименовать',
-  'budget.cannot_modify_system': 'Системные категории нельзя изменять.',
+  'budget.cannot_modify_system': 'Системные категории нельзя изменять',
 
   // Expense row
   'budget.source_hotel': 'Отель',
@@ -76,7 +76,7 @@ export default {
   'budget.fx_subtitle': 'Свой курс перевода в {currency}. Оставь пустым, чтобы использовать актуальный курс.',
   'budget.fx_col_currency': 'Валюта',
   'budget.fx_col_rate': 'Курс (1 ед = X {main})',
-  'budget.fx_no_other': 'В поездке используется только основная валюта.',
+  'budget.fx_no_other': 'В поездке используется только основная валюта',
   'budget.fx_live_rate': 'Актуальный: {rate}',
   'budget.fx_save': 'Сохранить',
   'budget.edit_expense': 'Изменить трату',
@@ -98,16 +98,16 @@ export default {
   'budget.rates_missing': 'Курсы для {currencies} не получены',
   'budget.set_rate_manual': 'Поставь курс вручную',
   'budget.first_expense': 'Первая трата',
-  'budget.custom_short': 'польз.',
+  'budget.custom_short': 'польз',
   'budget.empty_word': 'пусто',
   'budget.add_first': 'Добавить первую трату',
   'budget.cities_empty': 'В городах пока пусто',
   'budget.cities_empty_desc': 'Расходы по городам появятся после первой траты с указанным городом',
   'budget.no_city': 'Без города',
   'budget.fx_intro': 'Курсы валют загружаются автоматически. Если что-то не так, поставь свой курс.',
-  'budget.fx_empty': 'Появятся, когда добавишь первую трату в другой валюте.',
-  'budget.not_in_total': 'не пересчитаны и не включены в итог.',
+  'budget.fx_empty': 'Появятся, когда добавишь первую трату в другой валюте',
+  'budget.not_in_total': 'не пересчитаны и не включены в итог',
   'budget.no_expenses_desc': 'Брони отелей, переезды и активности появятся здесь автоматически. Свои траты (еду, такси, сувениры) добавляй вручную.',
   'budget.split_evenly': 'поровну',
-  'budget.cat_empty': 'В категории «{name}» пока пусто.',
+  'budget.cat_empty': 'В категории «{name}» пока пусто',
 };

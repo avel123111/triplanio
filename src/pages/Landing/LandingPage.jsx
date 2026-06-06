@@ -2,12 +2,10 @@ import React, {
   useState,
   useEffect,
   useRef,
-  useCallback,
-  createContext,
-  useContext,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { useT, useI18n } from '@/lib/i18n/I18nContext';
 
 /* =========================================================
    Landing page - ported from triplanio_landing static site.
@@ -17,608 +15,10 @@ import { useAuth } from '@/lib/AuthContext';
 
 const APP_URL = '/login';
 
-/* ── i18n ── */
-const TRANSLATIONS = {
-  EN: {
-    "nav.features": "Features",
-    "nav.how": "How it works",
-    "nav.faq": "FAQ",
-    "header.cta": "Start Planning",
-    "lang.label": "Language",
-    "hero.h1_a": "Your whole trip.",
-    "hero.h1_b_accent": "One",
-    "hero.h1_c": "beautiful plan.",
-    "hero.lede": "Build multi-city itineraries, plan together, track budgets in every currency, and let Triplanio handle the boring parts.",
-    "hero.cta_primary": "Start Planning",
-    "hero.cta_secondary": "See how it works",
-    "hero.trust_free": "Free to start",
-    "hero.trust_no_card": "No credit card",
-    "hero.trust_languages": "Multilingual platform",
-    "mockup.trips": "Trips",
-    "mockup.this_trip": "This trip",
-    "mockup.trip_title": "Iberia - Summer '26",
-    "mockup.subtitle": "Jul 12 → Jul 23 · 3 cities · 4 travelers",
-    "mockup.tab_timeline": "Timeline",
-    "mockup.tab_calendar": "Calendar",
-    "mockup.tab_map": "Map",
-    "mockup.nights_4": "Lisbon · 4 nights",
-    "mockup.nights_2": "Porto · 2 nights",
-    "mockup.nights_5": "Barcelona · 5 nights",
-    "mockup.other_trip_1": "Japan in cherry season",
-    "mockup.other_trip_2": "Patagonia trek",
-    "mockup.tag_flight": "Flight",
-    "mockup.tag_hotel": "Hotel",
-    "mockup.tag_activity": "Activity",
-    "mockup.tag_transfer": "Transfer",
-    "mockup.checkin": "check-in",
-    "mockup.day1": "Sat · Jul 12",
-    "mockup.day2": "Sun · Jul 13",
-    "mockup.day3": "Wed · Jul 16",
-    "float.trip_budget": "Trip budget",
-    "float.leave_at_title": "Leave at 14:10",
-    "float.leave_at_sub": "Train to Porto, 30 min from hotel",
-    "city.lisbon": "Lisbon",
-    "city.porto": "Porto",
-    "city.barcelona": "Barcelona",
-    "problem.eyebrow": "Before Triplanio",
-    "problem.h2_a": "Your trip lives in 12 tabs",
-    "problem.h2_b": "and a Notes app.",
-    "problem.lede": "Hotel confirmations in your inbox. Flights in screenshots. The itinerary in a Google Doc nobody else opened. Budgets on a napkin.",
-    "problem.handoff": "Triplanio brings it together.",
-    "problem.inbox": "Inbox · 3 of 12",
-    "problem.mail1_from": "Booking.com",
-    "problem.mail1_subj": "Memmo Alfama - Your reservation is confirmed (LIS)",
-    "problem.mail2_from": "British Airways",
-    "problem.mail2_subj": "E-ticket BA503 LHR → LIS · Sat 12 Jul · Seat 14A",
-    "problem.mail3_from": "Comboios de Portugal",
-    "problem.mail3_subj": "Alfa Pendular · Lisboa-Sta. Apolónia → Porto-Campanhã",
-    "problem.notes_title": "iberia plan v3 (real)",
-    "problem.notes_body_html": "· lisbon: book tram 28 ??<br/>· ask mike if he wants porto wine cellars<br/>· barcelona airbnb - pin link???<br/>· €€€ check w/ sam",
-    "problem.tab1": "Tripadvisor - Lisbon",
-    "problem.tab2": "Google Doc · Itinerary",
-    "problem.tab3": "Booking · Porto",
-    "problem.tab4": "Maps",
-    "problem.tabs_body": "12 tabs open · 4 windows · which one had the rental?",
-    "features.eyebrow": "Features",
-    "features.h2": "Everything your trip needs, in one place.",
-    "features.lede": "Five things Triplanio does that change how you plan.",
-    "f.timeline.title": "All-in-one timeline",
-    "f.timeline.body": "Cities, transfers, hotels, activities - sorted by date and timezone, automatically.",
-    "f.together.title": "Plan together",
-    "f.together.body": "Invite friends and family - even people without an account - and edit the trip as a team with clear roles.",
-    "f.ai.title": "AI trip planner",
-    "f.ai.body": "Describe the trip you want and get a complete draft itinerary in seconds, ready to refine.",
-    "f.concierge.title": "AI travel concierge in Telegram & WhatsApp",
-    "f.concierge.body": "Smart reminders for check-ins, cancellation deadlines and departures - plus an AI assistant that answers questions about your plan, right in chat.",
-    "f.budget.title": "Multi-currency budget",
-    "f.budget.body": "Spend in any currency. Triplanio auto-aggregates every booking with real FX rates and clean categories.",
-    "mini.hotels": "Hotels",
-    "mini.flights": "Flights",
-    "mini.activities": "Activities",
-    "mini.food": "Food",
-    "mini.transfers": "Transfers",
-    "mini.food_misc": "Food & misc",
-    "mini.under": "€180 under",
-    "mini.under_plan": "€180 under plan",
-    "mini.total": "Trip total",
-    "mini.home_ccy": "Home currency · EUR · live FX",
-    "how.eyebrow": "How it works",
-    "how.h2": "From idea to itinerary in three steps.",
-    "how.s1.title": "Create your trip",
-    "how.s1.body": "Add destinations, dates and who's coming. Triplanio generates a skeleton you can fill in at your own pace.",
-    "how.s2.title": "Add the details - or let AI do it",
-    "how.s2.body": "Hotels, flights, transfers, activities. Use the AI trip planner to draft a full itinerary from a single prompt.",
-    "how.s3.title": "Travel together, stress less",
-    "how.s3.body": "Share with co-travelers, get smart reminders, track budgets, and keep every booking in one place.",
-    "thumb.new_trip": "New trip",
-    "thumb.where": "Where",
-    "thumb.from": "From",
-    "thumb.to": "To",
-    "thumb.organizer": "You · organizer",
-    "thumb.travelers": "+ 3 travelers",
-    "thumb.from_date": "Jul 12",
-    "thumb.to_date": "Jul 23",
-    "thumb.ai_planner": "AI planner",
-    "thumb.ai_prompt": "“11 days, 4 people, slow pace, ocean swims, no museums.”",
-    "thumb.ai_result_1": "Lisbon · 4 nights · Alfama base",
-    "thumb.ai_result_2": "Porto · 2 nights · river views",
-    "thumb.ai_result_3": "Barcelona · 5 nights · beach side",
-    "thumb.day_of_travel": "Day of travel",
-    "thumb.cancel_msg": "Free-cancellation for Memmo Alfama ends in 2 days.",
-    "thumb.confirm": "Confirm it",
-    "thumb.confirmed": "Confirmed · synced to your timeline",
-    "dd.eyebrow": "A closer look",
-    "dd.h2": "The product, in detail.",
-    "dd.threeviews.eyebrow": "Timeline · Calendar · Map",
-    "dd.threeviews.title": "One trip, three views.",
-    "dd.threeviews.body": "See your trip the way you think about it. Switch between a chronological timeline, a calendar view that shows free days at a glance, and a map that draws every leg of your route across the world.",
-    "dd.threeviews.h1": "Click any city to expand its stay",
-    "dd.threeviews.h2": "Drag-and-drop to reorder activities",
-    "dd.threeviews.h3": "Map auto-fits as your trip grows",
-    "dd.planner.eyebrow": "AI trip planner",
-    "dd.planner.title": "An AI that actually plans the trip.",
-    "dd.planner.body": "Tell Triplanio where you want to go, how long you have and what you love doing. It returns a draft itinerary - cities, transfers, suggested stays, must-see spots - in seconds. Tweak anything, keep what works.",
-    "dd.planner.h1": "Multi-city routes",
-    "dd.planner.h2": "Realistic pacing",
-    "dd.planner.h3": "Editable like any handmade plan",
-    "dd.concierge.eyebrow": "Telegram & WhatsApp",
-    "dd.concierge.title": "A travel concierge in your pocket.",
-    "dd.concierge.body": "Connect your trip to Telegram or WhatsApp and get smart, timezone-aware nudges - when to leave for the airport, when free-cancellation expires, what's next on the day's plan. Ask the AI assistant anything about your trip and get a clear answer in chat.",
-    "dd.concierge.h1": "Smart timezone-aware reminders",
-    "dd.concierge.h2": "“What’s my hotel address?” answered instantly",
-    "dd.concierge.h3": "Mute per trip",
-    "dd.budget.eyebrow": "Smart budget",
-    "dd.budget.title": "Real budgets, in any currency.",
-    "dd.budget.body": "Triplanio auto-pulls every hotel, transfer and activity price into a single budget - in your home currency - using live exchange rates. Add custom categories, override rates for cash purchases, and see exactly where the money goes.",
-    "dd.budget.h1": "Auto-aggregated from bookings",
-    "dd.budget.h2": "Live FX or manual rates",
-    "dd.budget.h3": "Custom categories",
-    "planner.user_msg": "11 days · 4 people · Iberia · slow pace · ocean swims · no museums.",
-    "planner.ai_msg": "Drafting a route from Lisbon north along the coast to Barcelona…",
-    "planner.res_lisbon": "Lisbon · 4 nights",
-    "planner.res_lisbon_sub": "Alfama, ocean light, slow mornings",
-    "planner.res_train": "Lisbon → Porto",
-    "planner.res_train_sub": "Alfa Pendular · 2h 50m · 08:39",
-    "planner.res_porto": "Porto · 2 nights",
-    "planner.res_porto_sub": "Douro views, no museum agenda",
-    "planner.res_flight": "Porto → Barcelona",
-    "planner.res_flight_sub": "Vueling 6602 · 2h 20m",
-    "planner.badge_stay": "Stay",
-    "planner.badge_transfer": "Transfer",
-    "planner.badge_flight": "Flight",
-    "phone.via": "via Telegram · online",
-    "phone.today": "Today · 09:14",
-    "phone.b1": "Heads up - the train to Porto leaves in 4h 25m. Leave the hotel by 14:10 to be safe.",
-    "phone.u1": "What's the platform?",
-    "phone.b2": "Sta. Apolónia · Platform 3. Your seats are coach 22, 41A-D.",
-    "phone.u2": "Hotel address in Porto?",
-    "phone.b3": "Torel Avantgarde - R. da Restauração 336, 4050-501 Porto. Check-in from 14:00.",
-    "trust.languages": "Multilingual platform",
-    "trust.devices": "Works on any device - no app to install",
-    "trust.privacy": "Private by default - your trip is yours",
-    "trust.free": "Free to start, forever",
-    "faq.eyebrow": "FAQ",
-    "faq.h2": "Frequently asked.",
-    "faq.lede": "Short answers to the things people always want to know first. Anything else - write to us inside the app.",
-    "faq.q1": "Is Triplanio free?",
-    "faq.a1": "Yes. You can plan a trip end-to-end without paying. Some advanced features - like the AI trip planner and AI voucher parsing - are part of an optional Pro plan.",
-    "faq.q2": "Can I invite people who don't have an account?",
-    "faq.a2": "Yes. Add them as offline participants while you plan; when you're ready, send them an invite and they can join in one click.",
-    "faq.q3": "Is Triplanio multilingual?",
-    "faq.a3": "Yes. Triplanio is multilingual - switch languages any time from the header.",
-    "faq.q4": "How does the AI work?",
-    "faq.a4": "It generates draft itineraries from your description and helps fill in booking details from your vouchers. Everything is editable - AI is a starting point, not a black box.",
-    "faq.q5": "Can I track shared expenses?",
-    "faq.a5": "Yes. The budget engine supports multi-currency expenses, custom categories and split-by-shares between trip members.",
-    "faq.q6": "Will my data stay private?",
-    "faq.a6": "Yes. Your trips are visible only to you and the people you invite. Public share links exist only when you generate one.",
-    "faq.q7": "Do I need to install an app?",
-    "faq.a7": "No. Triplanio runs in any modern browser, on phone, tablet and desktop.",
-    "finalcta.h2": "Your next trip deserves better than 12 browser tabs.",
-    "finalcta.lede": "Start planning in under a minute. Free, no card required.",
-    "finalcta.cta": "Start Planning",
-    "footer.tagline": "Plan, share, travel.",
-    "footer.product": "Product",
-    "footer.features": "Features",
-    "footer.how": "How it works",
-    "footer.faq": "FAQ",
-    "footer.company": "Company",
-    "footer.about": "About",
-    "footer.contact": "Contact",
-    "footer.legal": "Legal",
-    "footer.privacy": "Privacy",
-    "footer.terms": "Terms",
-    "footer.copy": "© 2026 Triplanio",
-  },
-  RU: {
-    "nav.features": "Возможности",
-    "nav.how": "Как это работает",
-    "nav.faq": "Вопросы",
-    "header.cta": "Начать планировать",
-    "lang.label": "Язык",
-    "hero.h1_a": "Вся твоя поездка.",
-    "hero.h1_b_accent": "Один",
-    "hero.h1_c": "красивый план.",
-    "hero.lede": "Стройте маршруты по нескольким городам, планируйте вместе, ведите бюджет в любой валюте - Triplanio возьмёт рутину на себя.",
-    "hero.cta_primary": "Начать планировать",
-    "hero.cta_secondary": "Как это работает",
-    "hero.trust_free": "Бесплатный старт",
-    "hero.trust_no_card": "Без банковской карты",
-    "hero.trust_languages": "Мультиязычная платформа",
-    "mockup.trips": "Поездки",
-    "mockup.this_trip": "Эта поездка",
-    "mockup.trip_title": "Иберия - лето '26",
-    "mockup.subtitle": "12 июля → 23 июля · 3 города · 4 путешественника",
-    "mockup.tab_timeline": "Таймлайн",
-    "mockup.tab_calendar": "Календарь",
-    "mockup.tab_map": "Карта",
-    "mockup.nights_4": "Лиссабон · 4 ночи",
-    "mockup.nights_2": "Порту · 2 ночи",
-    "mockup.nights_5": "Барселона · 5 ночей",
-    "mockup.other_trip_1": "Япония в сезон сакуры",
-    "mockup.other_trip_2": "Трек по Патагонии",
-    "mockup.tag_flight": "Перелёт",
-    "mockup.tag_hotel": "Отель",
-    "mockup.tag_activity": "Активность",
-    "mockup.tag_transfer": "Трансфер",
-    "mockup.checkin": "заезд",
-    "mockup.day1": "Сб · 12 июля",
-    "mockup.day2": "Вс · 13 июля",
-    "mockup.day3": "Ср · 16 июля",
-    "float.trip_budget": "Бюджет поездки",
-    "float.leave_at_title": "Выходите в 14:10",
-    "float.leave_at_sub": "Поезд в Порту, 30 мин от отеля",
-    "city.lisbon": "Лиссабон",
-    "city.porto": "Порту",
-    "city.barcelona": "Барселона",
-    "problem.eyebrow": "До Triplanio",
-    "problem.h2_a": "Поездка живёт в 12 вкладках",
-    "problem.h2_b": "и в заметках на телефоне.",
-    "problem.lede": "Брони отелей - в почте. Билеты - в скриншотах. Маршрут - в Google Doc, который никто кроме тебя не открыл. Бюджет - на салфетке.",
-    "problem.handoff": "Triplanio собирает всё вместе.",
-    "problem.inbox": "Входящие · 3 из 12",
-    "problem.mail1_from": "Booking.com",
-    "problem.mail1_subj": "Memmo Alfama - бронирование подтверждено (LIS)",
-    "problem.mail2_from": "British Airways",
-    "problem.mail2_subj": "Электронный билет BA503 LHR → LIS · Сб 12 июля · Место 14A",
-    "problem.mail3_from": "Comboios de Portugal",
-    "problem.mail3_subj": "Alfa Pendular · Лиссабон → Порту",
-    "problem.notes_title": "план иберия v3 (точно)",
-    "problem.notes_body_html": "· лиссабон: забронить трам 28??<br/>· спросить майка про винные погреба порту<br/>· барселона airbnb - пин ссылка???<br/>· €€€ уточнить у сэма",
-    "problem.tab1": "Tripadvisor - Лиссабон",
-    "problem.tab2": "Google Doc · Маршрут",
-    "problem.tab3": "Booking · Порту",
-    "problem.tab4": "Карты",
-    "problem.tabs_body": "12 вкладок · 4 окна · в какой была аренда?",
-    "features.eyebrow": "Возможности",
-    "features.h2": "Всё для поездки - в одном месте.",
-    "features.lede": "Пять возможностей Triplanio, которые меняют то, как ты планируете.",
-    "f.timeline.title": "Единая таймлайн",
-    "f.timeline.body": "Города, трансферы, отели, активности - автоматически отсортированы по датам и часовым поясам.",
-    "f.together.title": "Планируйте вместе",
-    "f.together.body": "Приглашайте друзей и семью - даже без аккаунта - и редактируйте поездку командой с понятными ролями.",
-    "f.ai.title": "ИИ-планировщик поездки",
-    "f.ai.body": "Опишите, какую поездку хочешь, и получишь готовый черновик маршрута за секунды.",
-    "f.concierge.title": "ИИ-консьерж в Telegram и WhatsApp",
-    "f.concierge.body": "Умные напоминания о заезде, дедлайнах отмены и вылетах - плюс ИИ-ассистент прямо в чате.",
-    "f.budget.title": "Бюджет в любой валюте",
-    "f.budget.body": "Тратьте в любой валюте. Triplanio автоматически собирает все брони по реальному курсу.",
-    "mini.hotels": "Отели",
-    "mini.flights": "Перелёты",
-    "mini.activities": "Активности",
-    "mini.food": "Еда",
-    "mini.transfers": "Трансферы",
-    "mini.food_misc": "Еда и прочее",
-    "mini.under": "−€180 от плана",
-    "mini.under_plan": "−€180 от плана",
-    "mini.total": "Итого по поездке",
-    "mini.home_ccy": "Валюта · EUR · живой курс",
-    "how.eyebrow": "Как это работает",
-    "how.h2": "От идеи до маршрута за три шага.",
-    "how.s1.title": "Создай поездку",
-    "how.s1.body": "Добавь направления, даты и участников. Triplanio создаст каркас.",
-    "how.s2.title": "Добавь детали - или дайте это ИИ",
-    "how.s2.body": "Отели, рейсы, трансферы, активности. ИИ-планировщик составит маршрут за тебя.",
-    "how.s3.title": "Путешествуйте вместе, без стресса",
-    "how.s3.body": "Делитесь с попутчиками, получайте напоминания, ведите бюджет.",
-    "thumb.new_trip": "Новая поездка",
-    "thumb.where": "Куда",
-    "thumb.from": "С",
-    "thumb.to": "По",
-    "thumb.organizer": "Ты · организатор",
-    "thumb.travelers": "+ 3 путешественника",
-    "thumb.from_date": "12 июля",
-    "thumb.to_date": "23 июля",
-    "thumb.ai_planner": "ИИ-планировщик",
-    "thumb.ai_prompt": "«11 дней, 4 человека, неспешно, океан, без музеев.»",
-    "thumb.ai_result_1": "Лиссабон · 4 ночи · база в Алфаме",
-    "thumb.ai_result_2": "Порту · 2 ночи · виды на реку",
-    "thumb.ai_result_3": "Барселона · 5 ночей · у моря",
-    "thumb.day_of_travel": "День поездки",
-    "thumb.cancel_msg": "Бесплатная отмена Memmo Alfama заканчивается через 2 дня.",
-    "thumb.confirm": "Подтвердить",
-    "thumb.confirmed": "Подтверждено · добавлено в таймлайн",
-    "dd.eyebrow": "Ближе к делу",
-    "dd.h2": "Продукт в деталях.",
-    "dd.threeviews.eyebrow": "Таймлайн · Календарь · Карта",
-    "dd.threeviews.title": "Одна поездка - три ракурса.",
-    "dd.threeviews.body": "Переключайтесь между таймлайн, календарём и картой.",
-    "dd.threeviews.h1": "Кликните по городу - раскроется детально",
-    "dd.threeviews.h2": "Перетаскивайте активности, чтобы менять порядок",
-    "dd.threeviews.h3": "Карта подстраивается по мере роста поездки",
-    "dd.planner.eyebrow": "ИИ-планировщик",
-    "dd.planner.title": "ИИ, который правда планирует поездку.",
-    "dd.planner.body": "Скажите куда хочешь, и получишь черновик маршрута за секунды.",
-    "dd.planner.h1": "Маршруты по нескольким городам",
-    "dd.planner.h2": "Реалистичный ритм",
-    "dd.planner.h3": "Редактируется, как обычный план",
-    "dd.concierge.eyebrow": "Telegram и WhatsApp",
-    "dd.concierge.title": "Travel-консьерж в кармане.",
-    "dd.concierge.body": "Умные напоминания с учётом часовых поясов. ИИ отвечает на вопросы прямо в чате.",
-    "dd.concierge.h1": "Умные напоминания с учётом часовых поясов",
-    "dd.concierge.h2": "«Какой адрес отеля?» - мгновенный ответ",
-    "dd.concierge.h3": "Можно выключить для отдельной поездки",
-    "dd.budget.eyebrow": "Умный бюджет",
-    "dd.budget.title": "Настоящий бюджет, в любой валюте.",
-    "dd.budget.body": "Triplanio автоматически собирает стоимость всех бронирований в общий бюджет по актуальному курсу.",
-    "dd.budget.h1": "Автоматически из бронирований",
-    "dd.budget.h2": "Живой курс или ручной",
-    "dd.budget.h3": "Свои категории",
-    "planner.user_msg": "11 дней · 4 человека · Иберия · неспешно · океан · без музеев.",
-    "planner.ai_msg": "Строю маршрут от Лиссабона на север по побережью до Барселоны…",
-    "planner.res_lisbon": "Лиссабон · 4 ночи",
-    "planner.res_lisbon_sub": "Алфама, морской свет, неторопливые утра",
-    "planner.res_train": "Лиссабон → Порту",
-    "planner.res_train_sub": "Alfa Pendular · 2ч 50м · 08:39",
-    "planner.res_porto": "Порту · 2 ночи",
-    "planner.res_porto_sub": "Виды на Дору, без музейной повестки",
-    "planner.res_flight": "Порту → Барселона",
-    "planner.res_flight_sub": "Vueling 6602 · 2ч 20м",
-    "planner.badge_stay": "Отель",
-    "planner.badge_transfer": "Трансфер",
-    "planner.badge_flight": "Перелёт",
-    "phone.via": "через Telegram · в сети",
-    "phone.today": "Сегодня · 09:14",
-    "phone.b1": "Внимание - поезд в Порту через 4ч 25м. Выходите из отеля к 14:10.",
-    "phone.u1": "На какой платформе?",
-    "phone.b2": "Sta. Apolónia · платформа 3. Места - вагон 22, 41A - D.",
-    "phone.u2": "Адрес отеля в Порту?",
-    "phone.b3": "Torel Avantgarde - R. da Restauração 336, Porto. Заезд с 14:00.",
-    "trust.languages": "Мультиязычная платформа",
-    "trust.devices": "Работает на любом устройстве - без установки",
-    "trust.privacy": "Приватно по умолчанию - поездка только твоя",
-    "trust.free": "Бесплатный старт, навсегда",
-    "faq.eyebrow": "Вопросы",
-    "faq.h2": "Часто спрашивают.",
-    "faq.lede": "Короткие ответы на то, что спрашивают первым делом.",
-    "faq.q1": "Triplanio бесплатный?",
-    "faq.a1": "Да. Ты можешь спланировать поездку от начала до конца бесплатно. Некоторые продвинутые возможности входят в опциональный план Pro.",
-    "faq.q2": "Можно ли пригласить тех, у кого нет аккаунта?",
-    "faq.a2": "Да. Добавляйте их как офлайн-участников; когда будете готовы, отправь приглашение.",
-    "faq.q3": "Поддерживает ли Triplanio несколько языков?",
-    "faq.a3": "Да. Переключите язык в шапке когда удобно.",
-    "faq.q4": "Как работает ИИ?",
-    "faq.a4": "Он создаёт черновик маршрута по твоему описанию. Всё можно редактировать.",
-    "faq.q5": "Можно ли вести общие расходы?",
-    "faq.a5": "Да. Бюджет поддерживает мультивалютные траты и разделение расходов.",
-    "faq.q6": "Мои данные останутся приватными?",
-    "faq.a6": "Да. Поездки видны только тебе и тем, кого ты пригласили.",
-    "faq.q7": "Нужно ли устанавливать приложение?",
-    "faq.a7": "Нет. Triplanio работает в любом современном браузере.",
-    "finalcta.h2": "Твоя следующая поездка заслуживает большего, чем 12 вкладок.",
-    "finalcta.lede": "Начни за минуту. Бесплатно, без банковской карты.",
-    "finalcta.cta": "Начать планировать",
-    "footer.tagline": "Планируйте, делитесь, путешествуйте.",
-    "footer.product": "Продукт",
-    "footer.features": "Возможности",
-    "footer.how": "Как это работает",
-    "footer.faq": "Вопросы",
-    "footer.company": "Компания",
-    "footer.about": "О нас",
-    "footer.contact": "Контакты",
-    "footer.legal": "Юридическое",
-    "footer.privacy": "Конфиденциальность",
-    "footer.terms": "Условия",
-    "footer.copy": "© 2026 Triplanio",
-  },
-  ES: {
-    "nav.features": "Funciones",
-    "nav.how": "Cómo funciona",
-    "nav.faq": "Preguntas",
-    "header.cta": "Empezar a planear",
-    "lang.label": "Idioma",
-    "hero.h1_a": "Todo tu viaje.",
-    "hero.h1_b_accent": "Un",
-    "hero.h1_c": "plan precioso.",
-    "hero.lede": "Crea itinerarios entre varias ciudades, planea en equipo y lleva el presupuesto en cualquier divisa.",
-    "hero.cta_primary": "Empezar a planear",
-    "hero.cta_secondary": "Ver cómo funciona",
-    "hero.trust_free": "Gratis para empezar",
-    "hero.trust_no_card": "Sin tarjeta de crédito",
-    "hero.trust_languages": "Plataforma multilingüe",
-    "mockup.trips": "Viajes",
-    "mockup.this_trip": "Este viaje",
-    "mockup.trip_title": "Iberia - Verano '26",
-    "mockup.subtitle": "12 jul → 23 jul · 3 ciudades · 4 viajeros",
-    "mockup.tab_timeline": "Línea de tiempo",
-    "mockup.tab_calendar": "Calendario",
-    "mockup.tab_map": "Mapa",
-    "mockup.nights_4": "Lisboa · 4 noches",
-    "mockup.nights_2": "Oporto · 2 noches",
-    "mockup.nights_5": "Barcelona · 5 noches",
-    "mockup.other_trip_1": "Japón en temporada de cerezos",
-    "mockup.other_trip_2": "Trek por la Patagonia",
-    "mockup.tag_flight": "Vuelo",
-    "mockup.tag_hotel": "Hotel",
-    "mockup.tag_activity": "Actividad",
-    "mockup.tag_transfer": "Traslado",
-    "mockup.checkin": "check-in",
-    "mockup.day1": "Sáb · 12 jul",
-    "mockup.day2": "Dom · 13 jul",
-    "mockup.day3": "Mié · 16 jul",
-    "float.trip_budget": "Presupuesto del viaje",
-    "float.leave_at_title": "Sal a las 14:10",
-    "float.leave_at_sub": "Tren a Oporto, 30 min del hotel",
-    "city.lisbon": "Lisboa",
-    "city.porto": "Oporto",
-    "city.barcelona": "Barcelona",
-    "problem.eyebrow": "Antes de Triplanio",
-    "problem.h2_a": "Tu viaje vive en 12 pestañas",
-    "problem.h2_b": "y una app de notas.",
-    "problem.lede": "Reservas en el correo. Vuelos en capturas. El itinerario en un Google Doc que nadie más abrió.",
-    "problem.handoff": "Triplanio lo reúne todo.",
-    "problem.inbox": "Bandeja · 3 de 12",
-    "problem.mail1_from": "Booking.com",
-    "problem.mail1_subj": "Memmo Alfama - Tu reserva está confirmada (LIS)",
-    "problem.mail2_from": "British Airways",
-    "problem.mail2_subj": "E-ticket BA503 LHR → LIS · Sáb 12 jul · Asiento 14A",
-    "problem.mail3_from": "Comboios de Portugal",
-    "problem.mail3_subj": "Alfa Pendular · Lisboa → Oporto",
-    "problem.notes_title": "plan iberia v3 (de verdad)",
-    "problem.notes_body_html": "· lisboa: reservar tranvía 28 ??<br/>· preguntar a mike por las bodegas<br/>· barcelona airbnb - ¿enlace?",
-    "problem.tab1": "Tripadvisor - Lisboa",
-    "problem.tab2": "Google Doc · Itinerario",
-    "problem.tab3": "Booking · Oporto",
-    "problem.tab4": "Mapas",
-    "problem.tabs_body": "12 pestañas · 4 ventanas · ¿en cuál estaba el alquiler?",
-    "features.eyebrow": "Funciones",
-    "features.h2": "Todo lo que tu viaje necesita, en un solo lugar.",
-    "features.lede": "Cinco cosas que Triplanio hace para cambiar cómo planeas.",
-    "f.timeline.title": "Línea de tiempo todo en uno",
-    "f.timeline.body": "Ciudades, traslados, hoteles y actividades - ordenados automáticamente.",
-    "f.together.title": "Planea en equipo",
-    "f.together.body": "Invita a familia y amigos - incluso sin cuenta - y edita en equipo.",
-    "f.ai.title": "Planificador de viajes con IA",
-    "f.ai.body": "Describe el viaje y recibe un itinerario completo en segundos.",
-    "f.concierge.title": "Conserje de viajes con IA en Telegram y WhatsApp",
-    "f.concierge.body": "Recordatorios inteligentes y un asistente de IA directamente en el chat.",
-    "f.budget.title": "Presupuesto multimoneda",
-    "f.budget.body": "Gasta en cualquier moneda con tipos de cambio reales.",
-    "mini.hotels": "Hoteles",
-    "mini.flights": "Vuelos",
-    "mini.activities": "Actividades",
-    "mini.food": "Comida",
-    "mini.transfers": "Traslados",
-    "mini.food_misc": "Comida y otros",
-    "mini.under": "€180 menos",
-    "mini.under_plan": "€180 por debajo del plan",
-    "mini.total": "Total del viaje",
-    "mini.home_ccy": "Moneda · EUR · cambio en vivo",
-    "how.eyebrow": "Cómo funciona",
-    "how.h2": "De la idea al itinerario en tres pasos.",
-    "how.s1.title": "Crea tu viaje",
-    "how.s1.body": "Añade destinos, fechas y compañeros.",
-    "how.s2.title": "Añade los detalles - o deja que la IA lo haga",
-    "how.s2.body": "Hoteles, vuelos, traslados. La IA crea el itinerario completo.",
-    "how.s3.title": "Viaja en equipo, con menos estrés",
-    "how.s3.body": "Comparte, recibe recordatorios y controla el presupuesto.",
-    "thumb.new_trip": "Nuevo viaje",
-    "thumb.where": "Dónde",
-    "thumb.from": "Desde",
-    "thumb.to": "Hasta",
-    "thumb.organizer": "Tú · organizador",
-    "thumb.travelers": "+ 3 viajeros",
-    "thumb.from_date": "12 jul",
-    "thumb.to_date": "23 jul",
-    "thumb.ai_planner": "Planificador IA",
-    "thumb.ai_prompt": "«11 días, 4 personas, ritmo lento, baños en el mar, sin museos.»",
-    "thumb.ai_result_1": "Lisboa · 4 noches · base en Alfama",
-    "thumb.ai_result_2": "Oporto · 2 noches · vistas al río",
-    "thumb.ai_result_3": "Barcelona · 5 noches · junto al mar",
-    "thumb.day_of_travel": "Día de viaje",
-    "thumb.cancel_msg": "La cancelación gratis de Memmo Alfama termina en 2 días.",
-    "thumb.confirm": "Confirmar",
-    "thumb.confirmed": "Confirmado · sincronizado en tu línea de tiempo",
-    "dd.eyebrow": "De cerca",
-    "dd.h2": "El producto, en detalle.",
-    "dd.threeviews.eyebrow": "Línea de tiempo · Calendario · Mapa",
-    "dd.threeviews.title": "Un viaje, tres vistas.",
-    "dd.threeviews.body": "Cambia entre línea de tiempo, calendario y mapa.",
-    "dd.threeviews.h1": "Haz clic en una ciudad para ver los detalles",
-    "dd.threeviews.h2": "Arrastra para reordenar las actividades",
-    "dd.threeviews.h3": "El mapa se adapta a medida que crece el viaje",
-    "dd.planner.eyebrow": "Planificador con IA",
-    "dd.planner.title": "Una IA que realmente planea el viaje.",
-    "dd.planner.body": "Dile adónde quieres ir y recibe un itinerario en segundos.",
-    "dd.planner.h1": "Rutas multiciudad",
-    "dd.planner.h2": "Ritmo realista",
-    "dd.planner.h3": "Editable como cualquier plan hecho a mano",
-    "dd.concierge.eyebrow": "Telegram y WhatsApp",
-    "dd.concierge.title": "Un conserje de viajes en tu bolsillo.",
-    "dd.concierge.body": "Avisos inteligentes según tu zona horaria. Pregúntale lo que quieras.",
-    "dd.concierge.h1": "Recordatorios con zona horaria",
-    "dd.concierge.h2": "«¿Cuál es la dirección del hotel?» respondido al instante",
-    "dd.concierge.h3": "Silencia por viaje",
-    "dd.budget.eyebrow": "Presupuesto inteligente",
-    "dd.budget.title": "Presupuestos reales, en cualquier moneda.",
-    "dd.budget.body": "Triplanio reúne precios de hoteles y actividades con tipos de cambio en tiempo real.",
-    "dd.budget.h1": "Agrupado desde tus reservas",
-    "dd.budget.h2": "Tipos en vivo o manuales",
-    "dd.budget.h3": "Categorías personalizadas",
-    "planner.user_msg": "11 días · 4 personas · Iberia · ritmo lento · mar · sin museos.",
-    "planner.ai_msg": "Trazando ruta desde Lisboa hasta Barcelona…",
-    "planner.res_lisbon": "Lisboa · 4 noches",
-    "planner.res_lisbon_sub": "Alfama, luz del océano, mañanas tranquilas",
-    "planner.res_train": "Lisboa → Oporto",
-    "planner.res_train_sub": "Alfa Pendular · 2h 50m · 08:39",
-    "planner.res_porto": "Oporto · 2 noches",
-    "planner.res_porto_sub": "Vistas al Duero, sin agenda de museos",
-    "planner.res_flight": "Oporto → Barcelona",
-    "planner.res_flight_sub": "Vueling 6602 · 2h 20m",
-    "planner.badge_stay": "Estancia",
-    "planner.badge_transfer": "Traslado",
-    "planner.badge_flight": "Vuelo",
-    "phone.via": "por Telegram · en línea",
-    "phone.today": "Hoy · 09:14",
-    "phone.b1": "El tren a Oporto sale en 4h 25m. Sal del hotel a las 14:10.",
-    "phone.u1": "¿En qué andén?",
-    "phone.b2": "Sta. Apolónia · andén 3. Plazas - coche 22, 41A-D.",
-    "phone.u2": "¿Dirección del hotel en Oporto?",
-    "phone.b3": "Torel Avantgarde - R. da Restauração 336, Porto. Check-in desde las 14:00.",
-    "trust.languages": "Plataforma multilingüe",
-    "trust.devices": "Funciona en cualquier dispositivo - sin instalar nada",
-    "trust.privacy": "Privado por defecto - tu viaje es tuyo",
-    "trust.free": "Gratis para empezar, para siempre",
-    "faq.eyebrow": "Preguntas",
-    "faq.h2": "Preguntas frecuentes.",
-    "faq.lede": "Respuestas breves a lo que se pregunta primero.",
-    "faq.q1": "¿Triplanio es gratis?",
-    "faq.a1": "Sí. Puedes planear un viaje completo sin pagar. Algunas funciones avanzadas forman parte del plan Pro.",
-    "faq.q2": "¿Puedo invitar a personas sin cuenta?",
-    "faq.a2": "Sí. Añádelos como participantes sin conexión y envíales una invitación cuando estés listo.",
-    "faq.q3": "¿Triplanio es multilingüe?",
-    "faq.a3": "Sí. Cambia de idioma en cualquier momento desde el encabezado.",
-    "faq.q4": "¿Cómo funciona la IA?",
-    "faq.a4": "Genera borradores de itinerario a partir de tu descripción. Todo se puede editar.",
-    "faq.q5": "¿Puedo registrar gastos compartidos?",
-    "faq.a5": "Sí. El módulo de presupuesto admite gastos en varias monedas y división por partes.",
-    "faq.q6": "¿Mis datos seguirán siendo privados?",
-    "faq.a6": "Sí. Tus viajes son visibles solo para ti y las personas que invites.",
-    "faq.q7": "¿Necesito instalar una app?",
-    "faq.a7": "No. Triplanio funciona en cualquier navegador moderno.",
-    "finalcta.h2": "Tu próximo viaje merece algo mejor que 12 pestañas.",
-    "finalcta.lede": "Empieza a planear en menos de un minuto. Gratis, sin tarjeta.",
-    "finalcta.cta": "Empezar a planear",
-    "footer.tagline": "Planea, comparte, viaja.",
-    "footer.product": "Producto",
-    "footer.features": "Funciones",
-    "footer.how": "Cómo funciona",
-    "footer.faq": "Preguntas",
-    "footer.company": "Empresa",
-    "footer.about": "Sobre nosotros",
-    "footer.contact": "Contacto",
-    "footer.legal": "Legal",
-    "footer.privacy": "Privacidad",
-    "footer.terms": "Términos",
-    "footer.copy": "© 2026 Triplanio",
-  },
-};
-
-const LangCtx = createContext('EN');
-
-function useT() {
-  const lang = useContext(LangCtx);
-  return useCallback(
-    (key) => {
-      const dict = TRANSLATIONS[lang] || TRANSLATIONS.EN;
-      if (Object.prototype.hasOwnProperty.call(dict, key)) return dict[key];
-      if (Object.prototype.hasOwnProperty.call(TRANSLATIONS.EN, key)) return TRANSLATIONS.EN[key];
-      return key;
-    },
-    [lang]
-  );
-}
-
-function detectLang() {
-  try {
-    const stored = localStorage.getItem('triplanio.lang');
-    if (stored && ['EN','RU','ES'].includes(stored)) return stored;
-  } catch (_) {}
-  const nav = (navigator.language || 'en').slice(0, 2).toLowerCase();
-  if (nav === 'ru') return 'RU';
-  if (nav === 'es') return 'ES';
-  return 'EN';
-}
+/* ── i18n ── (translations live in src/lib/i18n/locales/{en,ru,es}/landing.js)
+   All keys are prefixed with “landing.” in the central store.
+   useT() and useI18n() are imported from the central I18nContext above.
+*/
 
 /* ── Icons ── */
 const TRIPLANIO_PATH = "M33.9515 -0.266535C40.7142 -0.445139 48.1271 -0.302259 54.9281 -0.303644L94.514 -0.309503L214.845 -0.305597L278.868 -0.306574L298.193 -0.318292C310.201 -0.32163 319.364 -0.684415 329.217 7.74225C343.125 19.635 341.19 34.942 341.176 51.3067L341.157 86.3829L341.184 195.125L341.181 272.228L341.212 295.303C341.226 308.706 342.006 318.931 332.398 329.72C326.281 336.547 317.675 340.628 308.52 341.05C298.456 341.533 284.325 341.086 274.023 341.083L205.381 341.092L162.115 341.117C141.323 341.131 123.861 343.106 107.208 327.72C102.838 323.62 99.3189 318.699 96.8548 313.236C94.3907 307.774 93.0296 301.878 92.849 295.889C92.529 287.072 93.8616 280.992 96.6224 272.786C101.665 257.797 109.31 248.589 119.725 237.345C125.95 245.136 131.667 253.986 137.971 261.606C140.39 264.528 150.129 252.175 148.683 246.961C146.168 237.892 141.381 229.908 138.15 221.158C142.842 216.992 148.474 212.5 153.326 208.398C163.06 200.169 172.732 191.869 182.345 183.5C189.212 190.011 196.381 197.442 203.098 204.167L248.907 249.981C253.187 244.922 256.537 238.164 256.598 231.434C256.623 228.623 256.007 225.923 254.626 223.456C251.646 218.12 237.029 204.664 231.868 199.467C223.676 191.542 215.284 182.914 207.203 174.842L155.649 123.287L134.288 101.945C132.743 100.406 131.158 98.7783 129.626 97.3106C123.616 91.552 120.034 86.1564 110.778 87.3673C103.826 88.2767 99.8349 91.3194 94.4329 95.3995C110.556 111.824 126.807 128.124 143.183 144.297C148.913 150.046 155.228 156.051 160.75 161.915C157.391 166.37 151.717 172.659 147.998 177.059C139.745 186.812 131.56 196.623 123.442 206.489C118.102 204.22 112.747 201.983 107.379 199.78C101.261 197.23 96.1995 193.797 89.9368 198.428C79.7224 205.983 80.7549 205.52 89.9857 212.164C94.9362 215.725 102.289 220.689 106.734 224.759C102.849 229.003 98.6343 233.317 95.2406 237.848C77.4842 261.564 66.952 294.342 80.972 322.417C84.8667 330.214 88.4217 334.775 94.4671 341.075C74.9177 341.309 55.209 340.956 35.6429 341.125C25.3518 341.214 16.7477 338.183 9.43489 330.636C5.11961 326.154 2.09948 320.587 0.695637 314.525C-0.740455 308.276 -0.261685 293.256 -0.261394 286.203C-0.338339 274.2 -0.331163 262.2 -0.240887 250.2C4.18863 255.291 9.4218 259.623 15.2513 263.023C32.4055 272.939 50.165 274.236 69.1761 269.211C69.6238 268.23 70.0656 266.844 70.4095 265.786C72.6759 258.811 75.6942 252.497 79.2786 246.108C67.5692 251.37 57.4925 254.32 44.432 253.45C20.0121 252.083 0.660326 229.606 -0.104168 205.7C-0.510832 192.989 -0.272964 179.798 -0.270183 166.97L-0.275066 95.5186L-0.277019 53.2891C-0.286758 47.0065 -0.647595 34.579 0.182942 28.8214C1.1558 22.1467 4.06527 15.9035 8.55013 10.8653C15.5012 3.17884 23.8502 0.199571 33.9515 -0.266535ZM137.352 52.7081C134.062 49.9494 128.015 49.4695 123.791 49.9737C116.528 51.2496 110.458 54.6421 104.987 59.5674L279.767 234.294L284.439 238.919C289.858 231.455 294.445 222.683 293.148 213.136C292.014 204.797 284.255 198.958 278.489 193.235L260.278 175.103L196.142 110.966L155.937 70.7413C150.064 64.881 143.662 58.0002 137.352 52.7081ZM256.192 105.029C259.319 96.1169 261.478 84.3761 247.586 85.7911C231.37 88.8299 220.289 99.6272 209.231 111.022L227.431 129.133L233.775 135.479C242.589 125.851 251.686 117.855 256.192 105.029Z";
@@ -689,9 +89,9 @@ function Flag({ kind, width = 18, height = 12 }) {
 }
 
 const LANGS = [
-  { code:'EN', label:'English', flag:'en' },
-  { code:'RU', label:'Русский', flag:'ru' },
-  { code:'ES', label:'Español', flag:'es' },
+  { code:'en', label:'English', flag:'en', display:'EN' },
+  { code:'ru', label:'Русский', flag:'ru', display:'RU' },
+  { code:'es', label:'Español', flag:'es', display:'ES' },
 ];
 
 function LangDropdown({ value, onChange, direction = 'down' }) {
@@ -710,18 +110,18 @@ function LangDropdown({ value, onChange, direction = 'down' }) {
   return (
     <div className={`langdd ${open ? 'is-open' : ''} ${direction === 'up' ? 'langdd--up' : ''}`} ref={ref}>
       <button type="button" className="langdd__btn" aria-haspopup="listbox" aria-expanded={open}
-        aria-label={t('lang.label')} onClick={() => setOpen(v => !v)}>
+        aria-label={t('landing.lang.label')} onClick={() => setOpen(v => !v)}>
         <Flag kind={current.flag} width={18} height={12} />
-        <span>{current.code}</span>
+        <span>{current.display}</span>
         <Icon name="chevron" size={12} className="chev" style={{ transform:'rotate(90deg)' }} />
       </button>
-      <div className="langdd__menu" role="listbox" aria-label={t('lang.label')}>
+      <div className="langdd__menu" role="listbox" aria-label={t('landing.lang.label')}>
         {LANGS.map(l => (
           <button key={l.code} type="button" role="option" aria-checked={l.code === value}
             className="langdd__item" onClick={() => { onChange(l.code); setOpen(false); }}>
             <Flag kind={l.flag} width={22} height={16} />
             <span className="label">{l.label}</span>
-            <span className="code">{l.code}</span>
+            <span className="code">{l.display}</span>
           </button>
         ))}
       </div>
@@ -731,9 +131,9 @@ function LangDropdown({ value, onChange, direction = 'down' }) {
 
 /* ── Header ── */
 const NAV = [
-  { tkey:'nav.features', href:'#features' },
-  { tkey:'nav.how', href:'#how' },
-  { tkey:'nav.faq', href:'#faq' },
+  { tkey:'landing.nav.features', href:'#features' },
+  { tkey:'landing.nav.how', href:'#how' },
+  { tkey:'landing.nav.faq', href:'#faq' },
 ];
 
 function LandingHeader({ lang, setLang }) {
@@ -769,8 +169,8 @@ function LandingHeader({ lang, setLang }) {
           </nav>
           <div className="header__right">
             <span className="header__lang"><LangDropdown value={lang} onChange={setLang} /></span>
-            <button className="btn btn--primary" onClick={() => nav(ctaTarget)}>{t('header.cta')}</button>
-            <button className="hamburger" aria-label={t('lang.label')} aria-expanded={drawerOpen}
+            <button className="btn btn--primary" onClick={() => nav(ctaTarget)}>{t('landing.header.cta')}</button>
+            <button className="hamburger" aria-label={t('landing.lang.label')} aria-expanded={drawerOpen}
               onClick={() => setDrawerOpen(v => !v)}>
               <Icon name={drawerOpen ? 'close' : 'menu'} />
             </button>
@@ -793,46 +193,46 @@ function LandingHeader({ lang, setLang }) {
 function HeroMockup() {
   const t = useT();
   return (
-    <div className="app-frame" role="img" aria-label={t('mockup.trip_title')}>
+    <div className="app-frame" role="img" aria-label={t('landing.mockup.trip_title')}>
       <div className="app-frame__bar">
         <span className="dot dot--r"/><span className="dot dot--y"/><span className="dot dot--g"/>
         <span className="url">triplanio.com / iberia-summer-26</span>
       </div>
       <div className="app-frame__body">
         <aside className="app-sidebar" aria-hidden="true">
-          <div className="app-sidebar__group">{t('mockup.trips')}</div>
-          <div className="app-sidebar__item is-active"><span className="swatch swatch--lisbon"/>{t('mockup.trip_title')}</div>
-          <div className="app-sidebar__item"><span className="swatch" style={{background:'#8693a8'}}/>{t('mockup.other_trip_1')}</div>
-          <div className="app-sidebar__item"><span className="swatch" style={{background:'#8693a8'}}/>{t('mockup.other_trip_2')}</div>
-          <div className="app-sidebar__group">{t('mockup.this_trip')}</div>
-          <div className="app-sidebar__item"><span className="swatch swatch--lisbon"/>{t('mockup.nights_4')}</div>
-          <div className="app-sidebar__item"><span className="swatch swatch--porto"/>{t('mockup.nights_2')}</div>
-          <div className="app-sidebar__item"><span className="swatch swatch--bcn"/>{t('mockup.nights_5')}</div>
+          <div className="app-sidebar__group">{t('landing.mockup.trips')}</div>
+          <div className="app-sidebar__item is-active"><span className="swatch swatch--lisbon"/>{t('landing.mockup.trip_title')}</div>
+          <div className="app-sidebar__item"><span className="swatch" style={{background:'#8693a8'}}/>{t('landing.mockup.other_trip_1')}</div>
+          <div className="app-sidebar__item"><span className="swatch" style={{background:'#8693a8'}}/>{t('landing.mockup.other_trip_2')}</div>
+          <div className="app-sidebar__group">{t('landing.mockup.this_trip')}</div>
+          <div className="app-sidebar__item"><span className="swatch swatch--lisbon"/>{t('landing.mockup.nights_4')}</div>
+          <div className="app-sidebar__item"><span className="swatch swatch--porto"/>{t('landing.mockup.nights_2')}</div>
+          <div className="app-sidebar__item"><span className="swatch swatch--bcn"/>{t('landing.mockup.nights_5')}</div>
         </aside>
         <div className="app-main">
           <div className="app-main__head">
             <div>
-              <div className="app-main__title">{t('mockup.trip_title')}</div>
-              <div className="app-main__subtitle">{t('mockup.subtitle')}</div>
+              <div className="app-main__title">{t('landing.mockup.trip_title')}</div>
+              <div className="app-main__subtitle">{t('landing.mockup.subtitle')}</div>
             </div>
             <div className="app-tabs" aria-hidden="true">
-              <span className="app-tab is-active">{t('mockup.tab_timeline')}</span>
-              <span className="app-tab">{t('mockup.tab_calendar')}</span>
-              <span className="app-tab">{t('mockup.tab_map')}</span>
+              <span className="app-tab is-active">{t('landing.mockup.tab_timeline')}</span>
+              <span className="app-tab">{t('landing.mockup.tab_calendar')}</span>
+              <span className="app-tab">{t('landing.mockup.tab_map')}</span>
             </div>
           </div>
           <div className="tl">
-            <div className="tl__day" data-day={t('mockup.day1')}>
-              <div className="tl-card"><span className="icon"><Icon name="plane"/></span><span><strong>LHR → LIS</strong> · British Airways 503</span><span className="tag">{t('mockup.tag_flight')}</span><span className="meta">10:25</span></div>
-              <div className="tl-card"><span className="icon"><Icon name="bed"/></span><span><strong>Memmo Alfama</strong> · {t('mockup.checkin')}</span><span className="tag tag--green">{t('mockup.tag_hotel')}</span><span className="meta">15:00</span></div>
+            <div className="tl__day" data-day={t('landing.mockup.day1')}>
+              <div className="tl-card"><span className="icon"><Icon name="plane"/></span><span><strong>LHR → LIS</strong> · British Airways 503</span><span className="tag">{t('landing.mockup.tag_flight')}</span><span className="meta">10:25</span></div>
+              <div className="tl-card"><span className="icon"><Icon name="bed"/></span><span><strong>Memmo Alfama</strong> · {t('landing.mockup.checkin')}</span><span className="tag tag--green">{t('landing.mockup.tag_hotel')}</span><span className="meta">15:00</span></div>
             </div>
-            <div className="tl__day tl__day--accent" data-day={t('mockup.day2')}>
-              <div className="tl-card"><span className="icon"><Icon name="cam"/></span><span><strong>Tram 28</strong> · Alfama loop</span><span className="tag tag--warm">{t('mockup.tag_activity')}</span><span className="meta">10:00</span></div>
-              <div className="tl-card"><span className="icon"><Icon name="cam"/></span><span><strong>Pastéis de Belém</strong> · pastry crawl</span><span className="tag tag--warm">{t('mockup.tag_activity')}</span><span className="meta">15:30</span></div>
+            <div className="tl__day tl__day--accent" data-day={t('landing.mockup.day2')}>
+              <div className="tl-card"><span className="icon"><Icon name="cam"/></span><span><strong>Tram 28</strong> · Alfama loop</span><span className="tag tag--warm">{t('landing.mockup.tag_activity')}</span><span className="meta">10:00</span></div>
+              <div className="tl-card"><span className="icon"><Icon name="cam"/></span><span><strong>Pastéis de Belém</strong> · pastry crawl</span><span className="tag tag--warm">{t('landing.mockup.tag_activity')}</span><span className="meta">15:30</span></div>
             </div>
-            <div className="tl__day tl__day--green" data-day={t('mockup.day3')}>
-              <div className="tl-card"><span className="icon"><Icon name="train"/></span><span><strong>Lisbon → Porto</strong> · Alfa Pendular</span><span className="tag">{t('mockup.tag_transfer')}</span><span className="meta">08:39</span></div>
-              <div className="tl-card"><span className="icon"><Icon name="bed"/></span><span><strong>Torel Avantgarde</strong> · {t('mockup.checkin')}</span><span className="tag tag--green">{t('mockup.tag_hotel')}</span><span className="meta">14:00</span></div>
+            <div className="tl__day tl__day--green" data-day={t('landing.mockup.day3')}>
+              <div className="tl-card"><span className="icon"><Icon name="train"/></span><span><strong>Lisbon → Porto</strong> · Alfa Pendular</span><span className="tag">{t('landing.mockup.tag_transfer')}</span><span className="meta">08:39</span></div>
+              <div className="tl-card"><span className="icon"><Icon name="bed"/></span><span><strong>Torel Avantgarde</strong> · {t('landing.mockup.checkin')}</span><span className="tag tag--green">{t('landing.mockup.tag_hotel')}</span><span className="meta">14:00</span></div>
             </div>
           </div>
         </div>
@@ -851,20 +251,20 @@ function Hero() {
       <div className="container">
         <div className="hero__grid">
           <div className="hero__copy reveal">
-            <h1>{t('hero.h1_a')}<span className="break"><span className="accent">{t('hero.h1_b_accent')}</span> {t('hero.h1_c')}</span></h1>
-            <p className="hero__lede">{t('hero.lede')}</p>
+            <h1>{t('landing.hero.h1_a')}<span className="break"><span className="accent">{t('landing.hero.h1_b_accent')}</span> {t('landing.hero.h1_c')}</span></h1>
+            <p className="hero__lede">{t('landing.hero.lede')}</p>
             <div className="hero__ctas">
-              <button className="btn btn--primary btn--lg" onClick={() => nav(ctaTarget)}>{t('hero.cta_primary')} <Icon name="arrowRight" size={16} className="chev"/></button>
-              <a className="btn btn--ghost btn--lg" href="#how">{t('hero.cta_secondary')}</a>
+              <button className="btn btn--primary btn--lg" onClick={() => nav(ctaTarget)}>{t('landing.hero.cta_primary')} <Icon name="arrowRight" size={16} className="chev"/></button>
+              <a className="btn btn--ghost btn--lg" href="#how">{t('landing.hero.cta_secondary')}</a>
             </div>
             <div className="hero__trust">
-              <span>{t('hero.trust_free')}</span><span className="dot"/><span>{t('hero.trust_no_card')}</span><span className="dot"/><span>{t('hero.trust_languages')}</span>
+              <span>{t('landing.hero.trust_free')}</span><span className="dot"/><span>{t('landing.hero.trust_no_card')}</span><span className="dot"/><span>{t('landing.hero.trust_languages')}</span>
             </div>
           </div>
           <div className="hero__visual reveal" style={{transitionDelay:'120ms'}}>
             <HeroMockup/>
             <div className="float float--budget" aria-hidden="true">
-              <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase'}}>{t('float.trip_budget')}</div>
+              <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase'}}>{t('landing.float.trip_budget')}</div>
               <div style={{display:'flex',alignItems:'baseline',gap:8,marginTop:4}}>
                 <strong style={{fontFamily:'var(--font-display)',fontSize: 'var(--fs-h2)',letterSpacing:'-0.02em',fontVariantNumeric:'tabular-nums'}}>€4,820</strong>
                 <span style={{fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>· $5,210 · ₽491k</span>
@@ -874,18 +274,18 @@ function Hero() {
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <span style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg, var(--brand), #5b8fff)',color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize: 'var(--fs-micro)',fontWeight:700}}>AI</span>
                 <div style={{fontSize: 'var(--fs-meta)',lineHeight:1.3}}>
-                  <div style={{fontWeight:600}}>{t('float.leave_at_title')}</div>
-                  <div style={{color:'var(--muted)',fontSize: 'var(--fs-micro)'}}>{t('float.leave_at_sub')}</div>
+                  <div style={{fontWeight:600}}>{t('landing.float.leave_at_title')}</div>
+                  <div style={{color:'var(--muted)',fontSize: 'var(--fs-micro)'}}>{t('landing.float.leave_at_sub')}</div>
                 </div>
               </div>
             </div>
             <div className="float float--pins" aria-hidden="true">
               <div style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-micro)',fontWeight:600}}>
-                <span style={{width:6,height:6,borderRadius:'50%',background:'var(--brand)'}}/>{t('city.lisbon')}
+                <span style={{width:6,height:6,borderRadius:'50%',background:'var(--brand)'}}/>{t('landing.city.lisbon')}
                 <span style={{width:14,height:1,background:'var(--line)'}}/>
-                <span style={{width:6,height:6,borderRadius:'50%',background:'var(--warm)'}}/>{t('city.porto')}
+                <span style={{width:6,height:6,borderRadius:'50%',background:'var(--warm)'}}/>{t('landing.city.porto')}
                 <span style={{width:14,height:1,background:'var(--line)'}}/>
-                <span style={{width:6,height:6,borderRadius:'50%',background:'var(--success)'}}/>{t('city.barcelona')}
+                <span style={{width:6,height:6,borderRadius:'50%',background:'var(--success)'}}/>{t('landing.city.barcelona')}
               </div>
             </div>
           </div>
@@ -903,17 +303,17 @@ function Problem() {
       <div className="container">
         <div className="problem reveal">
           <div>
-            <span className="eyebrow">{t('problem.eyebrow')}</span>
-            <h2 style={{marginTop:16}}>{t('problem.h2_a')}<br/>{t('problem.h2_b')}</h2>
-            <p className="lede" style={{marginTop:18}}>{t('problem.lede')}</p>
+            <span className="eyebrow">{t('landing.problem.eyebrow')}</span>
+            <h2 style={{marginTop:16}}>{t('landing.problem.h2_a')}<br/>{t('landing.problem.h2_b')}</h2>
+            <p className="lede" style={{marginTop:18}}>{t('landing.problem.lede')}</p>
           </div>
           <div className="collage" aria-hidden="true">
             <div className="collage__card collage__card--mail">
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
                 <span style={{width:8,height:8,borderRadius:2,background:'#ea4335'}}/>
-                <span style={{fontSize: 'var(--fs-micro)',fontWeight:700,color:'var(--muted)',letterSpacing:'.06em',textTransform:'uppercase'}}>{t('problem.inbox')}</span>
+                <span style={{fontSize: 'var(--fs-micro)',fontWeight:700,color:'var(--muted)',letterSpacing:'.06em',textTransform:'uppercase'}}>{t('landing.problem.inbox')}</span>
               </div>
-              {[['B',t('problem.mail1_from'),t('problem.mail1_subj')],['BA',t('problem.mail2_from'),t('problem.mail2_subj')],['CP',t('problem.mail3_from'),t('problem.mail3_subj')]].map(([av,from,subj]) => (
+              {[['B',t('landing.problem.mail1_from'),t('landing.problem.mail1_subj')],['BA',t('landing.problem.mail2_from'),t('landing.problem.mail2_subj')],['CP',t('landing.problem.mail3_from'),t('landing.problem.mail3_subj')]].map(([av,from,subj]) => (
                 <div className="mailrow" key={from}>
                   <span className="avatar">{av}</span>
                   <div className="lines"><div className="from">{from}</div><div className="subj">{subj}</div></div>
@@ -921,18 +321,18 @@ function Problem() {
               ))}
             </div>
             <div className="collage__card collage__card--notes">
-              <div style={{fontWeight:700,marginBottom:8}}>{t('problem.notes_title')}</div>
-              <div style={{color:'#7c6b3a',lineHeight:1.6}} dangerouslySetInnerHTML={{__html:t('problem.notes_body_html')}}/>
+              <div style={{fontWeight:700,marginBottom:8}}>{t('landing.problem.notes_title')}</div>
+              <div style={{color:'#7c6b3a',lineHeight:1.6}} dangerouslySetInnerHTML={{__html:t('landing.problem.notes_body_html')}}/>
             </div>
             <div className="collage__card collage__card--tabs">
               <div className="tabstrip">
-                {[t('problem.tab1'),t('problem.tab2'),t('problem.tab3'),t('problem.tab4')].map(tab => <span className="t" key={tab}>{tab}</span>)}
+                {[t('landing.problem.tab1'),t('landing.problem.tab2'),t('landing.problem.tab3'),t('landing.problem.tab4')].map(tab => <span className="t" key={tab}>{tab}</span>)}
               </div>
-              <div className="tabsbody">{t('problem.tabs_body')}</div>
+              <div className="tabsbody">{t('landing.problem.tabs_body')}</div>
             </div>
           </div>
         </div>
-        <p className="problem__handoff reveal">{t('problem.handoff')}</p>
+        <p className="problem__handoff reveal">{t('landing.problem.handoff')}</p>
       </div>
     </section>
   );
@@ -942,16 +342,16 @@ function Problem() {
 function BudgetMini() {
   const t = useT();
   const rows = [
-    {k:'mini.hotels',pct:42,amt:'€2,025',ccy:'$2,190',color:'#2167e2'},
-    {k:'mini.flights',pct:28,amt:'€1,350',ccy:'$1,460',color:'#5b8fff'},
-    {k:'mini.activities',pct:18,amt:'€868',ccy:'$938',color:'#c9603a'},
-    {k:'mini.food',pct:12,amt:'€577',ccy:'$624',color:'#1f8a5b'},
+    {k:'landing.mini.hotels',pct:42,amt:'€2,025',ccy:'$2,190',color:'#2167e2'},
+    {k:'landing.mini.flights',pct:28,amt:'€1,350',ccy:'$1,460',color:'#5b8fff'},
+    {k:'landing.mini.activities',pct:18,amt:'€868',ccy:'$938',color:'#c9603a'},
+    {k:'landing.mini.food',pct:12,amt:'€577',ccy:'$624',color:'#1f8a5b'},
   ];
   return (
     <div className="budget" style={{padding:0}}>
       <div className="budget__total" style={{marginBottom:12}}>
         <span className="big" style={{fontSize: 'var(--fs-3xl)'}}>€4,820</span>
-        <span className="delta">{t('mini.under')}</span>
+        <span className="delta">{t('landing.mini.under')}</span>
       </div>
       <div className="budget__bar" style={{marginBottom:12}}>
         {rows.map(r => <i key={r.k} style={{width:`${r.pct}%`,background:r.color}}/>)}
@@ -971,19 +371,19 @@ function BudgetMini() {
 function Features() {
   const t = useT();
   const FEATURES = [
-    {icon:'timeline',titleKey:'f.timeline.title',bodyKey:'f.timeline.body'},
-    {icon:'users',titleKey:'f.together.title',bodyKey:'f.together.body'},
-    {icon:'sparkles',titleKey:'f.ai.title',bodyKey:'f.ai.body',warm:true},
-    {icon:'telegram',titleKey:'f.concierge.title',bodyKey:'f.concierge.body'},
-    {icon:'wallet',titleKey:'f.budget.title',bodyKey:'f.budget.body',wide:true},
+    {icon:'timeline',titleKey:'landing.f.timeline.title',bodyKey:'landing.f.timeline.body'},
+    {icon:'users',titleKey:'landing.f.together.title',bodyKey:'landing.f.together.body'},
+    {icon:'sparkles',titleKey:'landing.f.ai.title',bodyKey:'landing.f.ai.body',warm:true},
+    {icon:'telegram',titleKey:'landing.f.concierge.title',bodyKey:'landing.f.concierge.body'},
+    {icon:'wallet',titleKey:'landing.f.budget.title',bodyKey:'landing.f.budget.body',wide:true},
   ];
   return (
     <section className="section" id="features">
       <div className="container">
         <div className="section__head reveal">
-          <span className="eyebrow">{t('features.eyebrow')}</span>
-          <h2>{t('features.h2')}</h2>
-          <p className="lede" style={{margin:'14px auto 0'}}>{t('features.lede')}</p>
+          <span className="eyebrow">{t('landing.features.eyebrow')}</span>
+          <h2>{t('landing.features.h2')}</h2>
+          <p className="lede" style={{margin:'14px auto 0'}}>{t('landing.features.lede')}</p>
         </div>
         <div className="features">
           {FEATURES.map(f => (
@@ -1007,28 +407,28 @@ function StepThumb({ kind }) {
   const t = useT();
   if (kind === 'create') return (
     <div className="step__thumb" aria-hidden="true">
-      <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('thumb.new_trip')}</div>
+      <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('landing.thumb.new_trip')}</div>
       <div style={{display:'grid',gap:8}}>
         <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize: 'var(--fs-meta)',color:'var(--ink)'}}>
-          <span style={{color:'var(--muted)',marginRight:8}}>{t('thumb.where')}</span>{t('city.lisbon')} · {t('city.porto')} · {t('city.barcelona')}
+          <span style={{color:'var(--muted)',marginRight:8}}>{t('landing.thumb.where')}</span>{t('landing.city.lisbon')} · {t('landing.city.porto')} · {t('landing.city.barcelona')}
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-          <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize: 'var(--fs-meta)'}}><span style={{color:'var(--muted)',marginRight:6}}>{t('thumb.from')}</span>{t('thumb.from_date')}</div>
-          <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize: 'var(--fs-meta)'}}><span style={{color:'var(--muted)',marginRight:6}}>{t('thumb.to')}</span>{t('thumb.to_date')}</div>
+          <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize: 'var(--fs-meta)'}}><span style={{color:'var(--muted)',marginRight:6}}>{t('landing.thumb.from')}</span>{t('landing.thumb.from_date')}</div>
+          <div style={{height:32,borderRadius:8,border:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 10px',fontSize: 'var(--fs-meta)'}}><span style={{color:'var(--muted)',marginRight:6}}>{t('landing.thumb.to')}</span>{t('landing.thumb.to_date')}</div>
         </div>
         <div style={{display:'flex',gap:6,fontSize: 'var(--fs-micro)'}}>
-          <span style={{background:'rgba(33,103,226,.08)',color:'var(--brand)',padding:'3px 10px',borderRadius:999,fontWeight:600}}>{t('thumb.organizer')}</span>
-          <span style={{background:'var(--wash)',color:'var(--muted)',padding:'3px 10px',borderRadius:999,fontWeight:600}}>{t('thumb.travelers')}</span>
+          <span style={{background:'rgba(33,103,226,.08)',color:'var(--brand)',padding:'3px 10px',borderRadius:999,fontWeight:600}}>{t('landing.thumb.organizer')}</span>
+          <span style={{background:'var(--wash)',color:'var(--muted)',padding:'3px 10px',borderRadius:999,fontWeight:600}}>{t('landing.thumb.travelers')}</span>
         </div>
       </div>
     </div>
   );
   if (kind === 'ai') return (
     <div className="step__thumb" aria-hidden="true">
-      <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('thumb.ai_planner')}</div>
-      <div style={{background:'var(--wash)',borderRadius:8,padding:'10px 12px',fontSize: 'var(--fs-meta)',color:'var(--ink-2)',lineHeight:1.5}}>{t('thumb.ai_prompt')}</div>
+      <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('landing.thumb.ai_planner')}</div>
+      <div style={{background:'var(--wash)',borderRadius:8,padding:'10px 12px',fontSize: 'var(--fs-meta)',color:'var(--ink-2)',lineHeight:1.5}}>{t('landing.thumb.ai_prompt')}</div>
       <div style={{display:'grid',gap:6,marginTop:10}}>
-        {['thumb.ai_result_1','thumb.ai_result_2','thumb.ai_result_3'].map(k => (
+        {['landing.thumb.ai_result_1','landing.thumb.ai_result_2','landing.thumb.ai_result_3'].map(k => (
           <div key={k} style={{fontSize: 'var(--fs-meta)',padding:'8px 10px',background:'#fff',border:'1px solid var(--line)',borderRadius:8,display:'flex',alignItems:'center',gap:8}}>
             <span style={{width:6,height:6,borderRadius:'50%',background:'var(--brand)'}}/>{t(k)}
           </div>
@@ -1038,15 +438,15 @@ function StepThumb({ kind }) {
   );
   return (
     <div className="step__thumb" aria-hidden="true">
-      <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('thumb.day_of_travel')}</div>
+      <div style={{fontSize: 'var(--fs-micro)',color:'var(--muted)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:8}}>{t('landing.thumb.day_of_travel')}</div>
       <div style={{display:'grid',gap:8}}>
         <div style={{display:'flex',alignItems:'center',gap:8,fontSize: 'var(--fs-meta)'}}>
           <span style={{width:22,height:22,borderRadius:'50%',background:'linear-gradient(135deg, var(--brand), #5b8fff)',color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize: 'var(--fs-micro)',fontWeight:700}}>AI</span>
-          <div style={{background:'#eef2f9',padding:'8px 10px',borderRadius:10,borderBottomLeftRadius:4}}>{t('thumb.cancel_msg')}</div>
+          <div style={{background:'#eef2f9',padding:'8px 10px',borderRadius:10,borderBottomLeftRadius:4}}>{t('landing.thumb.cancel_msg')}</div>
         </div>
-        <div style={{alignSelf:'flex-end',background:'var(--brand)',color:'#fff',padding:'8px 10px',borderRadius:10,borderBottomRightRadius:4,fontSize: 'var(--fs-meta)',maxWidth:'80%'}}>{t('thumb.confirm')}</div>
+        <div style={{alignSelf:'flex-end',background:'var(--brand)',color:'#fff',padding:'8px 10px',borderRadius:10,borderBottomRightRadius:4,fontSize: 'var(--fs-meta)',maxWidth:'80%'}}>{t('landing.thumb.confirm')}</div>
         <div style={{display:'flex',alignItems:'center',gap:6,fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>
-          <span style={{width:6,height:6,borderRadius:50,background:'var(--success)'}}/>{t('thumb.confirmed')}
+          <span style={{width:6,height:6,borderRadius:50,background:'var(--success)'}}/>{t('landing.thumb.confirmed')}
         </div>
       </div>
     </div>
@@ -1056,16 +456,16 @@ function StepThumb({ kind }) {
 function HowItWorks() {
   const t = useT();
   const steps = [
-    {num:'1',kind:'create',titleKey:'how.s1.title',bodyKey:'how.s1.body'},
-    {num:'2',kind:'ai',titleKey:'how.s2.title',bodyKey:'how.s2.body'},
-    {num:'3',kind:'travel',titleKey:'how.s3.title',bodyKey:'how.s3.body'},
+    {num:'1',kind:'create',titleKey:'landing.how.s1.title',bodyKey:'landing.how.s1.body'},
+    {num:'2',kind:'ai',titleKey:'landing.how.s2.title',bodyKey:'landing.how.s2.body'},
+    {num:'3',kind:'travel',titleKey:'landing.how.s3.title',bodyKey:'landing.how.s3.body'},
   ];
   return (
     <section className="section" id="how">
       <div className="container">
         <div className="section__head reveal" style={{marginBottom:64}}>
-          <span className="eyebrow">{t('how.eyebrow')}</span>
-          <h2>{t('how.h2')}</h2>
+          <span className="eyebrow">{t('landing.how.eyebrow')}</span>
+          <h2>{t('landing.how.h2')}</h2>
         </div>
         <div className="steps">
           {steps.map((s,i) => (
@@ -1086,11 +486,11 @@ function HowItWorks() {
 function ThreeViewsVisual() {
   const t = useT();
   const [view, setView] = useState('Map');
-  const tabs = [{id:'Timeline',labelKey:'mockup.tab_timeline'},{id:'Calendar',labelKey:'mockup.tab_calendar'},{id:'Map',labelKey:'mockup.tab_map'}];
+  const tabs = [{id:'Timeline',labelKey:'landing.mockup.tab_timeline'},{id:'Calendar',labelKey:'landing.mockup.tab_calendar'},{id:'Map',labelKey:'landing.mockup.tab_map'}];
   return (
     <div>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:'1px solid var(--line-2)'}}>
-        <div style={{fontSize: 'var(--fs-meta)',color:'var(--muted)',fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase'}}>{t('mockup.trip_title')}</div>
+        <div style={{fontSize: 'var(--fs-meta)',color:'var(--muted)',fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase'}}>{t('landing.mockup.trip_title')}</div>
         <div className="app-tabs">
           {tabs.map(tab => (
             <button key={tab.id} type="button" className={`app-tab ${view===tab.id?'is-active':''}`}
@@ -1108,9 +508,9 @@ function ThreeViewsVisual() {
               <animate attributeName="stroke-dashoffset" from="0" to="-12" dur="1.2s" repeatCount="indefinite"/>
             </path>
           </svg>
-          <div className="pin" style={{left:'20%',top:'70%'}}><span className="pin__dot"/><span className="pin__lbl">{t('city.lisbon')}</span></div>
-          <div className="pin" style={{left:'48%',top:'55%'}}><span className="pin__dot" style={{background:'var(--warm)'}}/><span className="pin__lbl">{t('city.porto')}</span></div>
-          <div className="pin" style={{left:'78%',top:'44%'}}><span className="pin__dot" style={{background:'var(--success)'}}/><span className="pin__lbl">{t('city.barcelona')}</span></div>
+          <div className="pin" style={{left:'20%',top:'70%'}}><span className="pin__dot"/><span className="pin__lbl">{t('landing.city.lisbon')}</span></div>
+          <div className="pin" style={{left:'48%',top:'55%'}}><span className="pin__dot" style={{background:'var(--warm)'}}/><span className="pin__lbl">{t('landing.city.porto')}</span></div>
+          <div className="pin" style={{left:'78%',top:'44%'}}><span className="pin__dot" style={{background:'var(--success)'}}/><span className="pin__lbl">{t('landing.city.barcelona')}</span></div>
         </div>
       )}
       {view === 'Calendar' && (
@@ -1125,9 +525,9 @@ function ThreeViewsVisual() {
             })}
           </div>
           <div style={{display:'flex',gap:14,marginTop:12,fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>
-            <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(33,103,226,.5)',borderRadius:3,marginRight:6}}/>{t('city.lisbon')}</span>
-            <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(201,96,58,.5)',borderRadius:3,marginRight:6}}/>{t('city.porto')}</span>
-            <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(31,138,91,.5)',borderRadius:3,marginRight:6}}/>{t('city.barcelona')}</span>
+            <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(33,103,226,.5)',borderRadius:3,marginRight:6}}/>{t('landing.city.lisbon')}</span>
+            <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(201,96,58,.5)',borderRadius:3,marginRight:6}}/>{t('landing.city.porto')}</span>
+            <span><i style={{display:'inline-block',width:10,height:10,background:'rgba(31,138,91,.5)',borderRadius:3,marginRight:6}}/>{t('landing.city.barcelona')}</span>
           </div>
         </div>
       )}
@@ -1135,11 +535,11 @@ function ThreeViewsVisual() {
         <div style={{padding:22}}>
           <div style={{display:'grid',gap:8}}>
             {[
-              {d:'Jul 12',title:`${t('mockup.tag_flight')} LHR → LIS`,tagKey:'mockup.tag_flight',color:'var(--brand)'},
-              {d:'Jul 13',title:'Tram 28',tagKey:'mockup.tag_activity',color:'var(--warm)'},
-              {d:'Jul 16',title:`${t('mockup.tag_transfer')} ${t('city.lisbon')} → ${t('city.porto')}`,tagKey:'mockup.tag_transfer',color:'var(--brand)'},
-              {d:'Jul 18',title:`${t('mockup.tag_flight')} ${t('city.porto')} → BCN`,tagKey:'mockup.tag_flight',color:'var(--brand)'},
-              {d:'Jul 21',title:'Sagrada Família',tagKey:'mockup.tag_activity',color:'var(--warm)'},
+              {d:'Jul 12',title:`${t('landing.mockup.tag_flight')} LHR → LIS`,tagKey:'landing.mockup.tag_flight',color:'var(--brand)'},
+              {d:'Jul 13',title:'Tram 28',tagKey:'landing.mockup.tag_activity',color:'var(--warm)'},
+              {d:'Jul 16',title:`${t('landing.mockup.tag_transfer')} ${t('landing.city.lisbon')} → ${t('landing.city.porto')}`,tagKey:'landing.mockup.tag_transfer',color:'var(--brand)'},
+              {d:'Jul 18',title:`${t('landing.mockup.tag_flight')} ${t('landing.city.porto')} → BCN`,tagKey:'landing.mockup.tag_flight',color:'var(--brand)'},
+              {d:'Jul 21',title:'Sagrada Família',tagKey:'landing.mockup.tag_activity',color:'var(--warm)'},
             ].map((r,i) => (
               <div key={i} style={{display:'grid',gridTemplateColumns:'70px 1fr auto',alignItems:'center',gap:10,background:'#fff',border:'1px solid var(--line)',borderRadius:10,padding:'10px 12px',fontSize: 'var(--fs-base)'}}>
                 <span style={{color:'var(--muted)',fontWeight:600,fontSize: 'var(--fs-micro)'}}>{r.d}</span>
@@ -1158,14 +558,14 @@ function PlannerVisual() {
   const t = useT();
   return (
     <div className="chat" aria-hidden="true">
-      <div className="bubble bubble--user">{t('planner.user_msg')}</div>
-      <div className="bubble bubble--ai">{t('planner.ai_msg')}<div style={{marginTop:6}}><span className="typing"><span/><span/><span/></span></div></div>
+      <div className="bubble bubble--user">{t('landing.planner.user_msg')}</div>
+      <div className="bubble bubble--ai">{t('landing.planner.ai_msg')}<div style={{marginTop:6}}><span className="typing"><span/><span/><span/></span></div></div>
       <div style={{display:'grid',gap:8,marginTop:4}}>
         {[
-          {icon:'bed',name:t('planner.res_lisbon'),sub:t('planner.res_lisbon_sub'),badge:t('planner.badge_stay')},
-          {icon:'train',name:t('planner.res_train'),sub:t('planner.res_train_sub'),badge:t('planner.badge_transfer')},
-          {icon:'bed',name:t('planner.res_porto'),sub:t('planner.res_porto_sub'),badge:t('planner.badge_stay')},
-          {icon:'plane',name:t('planner.res_flight'),sub:t('planner.res_flight_sub'),badge:t('planner.badge_flight')},
+          {icon:'bed',name:t('landing.planner.res_lisbon'),sub:t('landing.planner.res_lisbon_sub'),badge:t('landing.planner.badge_stay')},
+          {icon:'train',name:t('landing.planner.res_train'),sub:t('landing.planner.res_train_sub'),badge:t('landing.planner.badge_transfer')},
+          {icon:'bed',name:t('landing.planner.res_porto'),sub:t('landing.planner.res_porto_sub'),badge:t('landing.planner.badge_stay')},
+          {icon:'plane',name:t('landing.planner.res_flight'),sub:t('landing.planner.res_flight_sub'),badge:t('landing.planner.badge_flight')},
         ].map((r,i) => (
           <div className="planresult" key={i}>
             <Icon name={r.icon}/><div><strong>{r.name}</strong><div style={{color:'var(--muted)',fontSize: 'var(--fs-micro)'}}>{r.sub}</div></div>
@@ -1184,16 +584,16 @@ function ConciergeVisual() {
       <div className="phone">
         <div className="phone__head">
           <span className="av">T</span>
-          <div><div className="name">Triplanio</div><div className="sub">{t('phone.via')}</div></div>
+          <div><div className="name">Triplanio</div><div className="sub">{t('landing.phone.via')}</div></div>
           <Icon name="telegram" size={16} stroke="none" fill="#2167e2" style={{marginLeft:'auto'}}/>
         </div>
         <div className="phone__body">
-          <div className="phone__time">{t('phone.today')}</div>
-          <div className="bubble bubble--ai">{t('phone.b1')}</div>
-          <div className="bubble bubble--user" style={{alignSelf:'flex-end'}}>{t('phone.u1')}</div>
-          <div className="bubble bubble--ai">{t('phone.b2')}</div>
-          <div className="bubble bubble--user" style={{alignSelf:'flex-end'}}>{t('phone.u2')}</div>
-          <div className="bubble bubble--ai">{t('phone.b3')}</div>
+          <div className="phone__time">{t('landing.phone.today')}</div>
+          <div className="bubble bubble--ai">{t('landing.phone.b1')}</div>
+          <div className="bubble bubble--user" style={{alignSelf:'flex-end'}}>{t('landing.phone.u1')}</div>
+          <div className="bubble bubble--ai">{t('landing.phone.b2')}</div>
+          <div className="bubble bubble--user" style={{alignSelf:'flex-end'}}>{t('landing.phone.u2')}</div>
+          <div className="bubble bubble--ai">{t('landing.phone.b3')}</div>
         </div>
       </div>
     </div>
@@ -1203,19 +603,19 @@ function ConciergeVisual() {
 function BudgetVisual() {
   const t = useT();
   const rows = [
-    {k:'mini.hotels',pct:42,amt:'€2,025',ccy:'$2,190',color:'#2167e2'},
-    {k:'mini.flights',pct:28,amt:'€1,350',ccy:'$1,460',color:'#5b8fff'},
-    {k:'mini.transfers',pct:9,amt:'€434',ccy:'$469',color:'#9bb6ff'},
-    {k:'mini.activities',pct:13,amt:'€627',ccy:'$678',color:'#c9603a'},
-    {k:'mini.food_misc',pct:8,amt:'€384',ccy:'$415',color:'#1f8a5b'},
+    {k:'landing.mini.hotels',pct:42,amt:'€2,025',ccy:'$2,190',color:'#2167e2'},
+    {k:'landing.mini.flights',pct:28,amt:'€1,350',ccy:'$1,460',color:'#5b8fff'},
+    {k:'landing.mini.transfers',pct:9,amt:'€434',ccy:'$469',color:'#9bb6ff'},
+    {k:'landing.mini.activities',pct:13,amt:'€627',ccy:'$678',color:'#c9603a'},
+    {k:'landing.mini.food_misc',pct:8,amt:'€384',ccy:'$415',color:'#1f8a5b'},
   ];
   return (
     <div className="budget">
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-        <span style={{fontSize: 'var(--fs-meta)',color:'var(--muted)',fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase'}}>{t('mini.total')}</span>
-        <span style={{fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>{t('mini.home_ccy')}</span>
+        <span style={{fontSize: 'var(--fs-meta)',color:'var(--muted)',fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase'}}>{t('landing.mini.total')}</span>
+        <span style={{fontSize: 'var(--fs-micro)',color:'var(--muted)'}}>{t('landing.mini.home_ccy')}</span>
       </div>
-      <div className="budget__total"><span className="big">€4,820</span><span className="delta">{t('mini.under_plan')}</span></div>
+      <div className="budget__total"><span className="big">€4,820</span><span className="delta">{t('landing.mini.under_plan')}</span></div>
       <div className="budget__bar">{rows.map(r => <i key={r.k} style={{width:`${r.pct}%`,background:r.color}}/>)}</div>
       <div className="budget__rows" style={{marginTop:8}}>
         {rows.map(r => <div className="budget__row" key={r.k}><span className="sw" style={{background:r.color}}/><span>{t(r.k)}</span><span className="amt">{r.amt}</span><span className="ccy">{r.ccy}</span></div>)}
@@ -1249,13 +649,13 @@ function DeepDives() {
     <section className="section section--wash">
       <div className="container">
         <div className="section__head section__head--left reveal" style={{marginBottom:16}}>
-          <span className="eyebrow">{t('dd.eyebrow')}</span>
-          <h2 style={{maxWidth:'18ch'}}>{t('dd.h2')}</h2>
+          <span className="eyebrow">{t('landing.dd.eyebrow')}</span>
+          <h2 style={{maxWidth:'18ch'}}>{t('landing.dd.h2')}</h2>
         </div>
-        <DeepDive eyebrowKey="dd.threeviews.eyebrow" titleKey="dd.threeviews.title" bodyKey="dd.threeviews.body" highlightKeys={['dd.threeviews.h1','dd.threeviews.h2','dd.threeviews.h3']}><ThreeViewsVisual/></DeepDive>
-        <DeepDive reverse eyebrowKey="dd.planner.eyebrow" titleKey="dd.planner.title" bodyKey="dd.planner.body" highlightKeys={['dd.planner.h1','dd.planner.h2','dd.planner.h3']}><PlannerVisual/></DeepDive>
-        <DeepDive eyebrowKey="dd.concierge.eyebrow" titleKey="dd.concierge.title" bodyKey="dd.concierge.body" highlightKeys={['dd.concierge.h1','dd.concierge.h2','dd.concierge.h3']}><ConciergeVisual/></DeepDive>
-        <DeepDive reverse eyebrowKey="dd.budget.eyebrow" titleKey="dd.budget.title" bodyKey="dd.budget.body" highlightKeys={['dd.budget.h1','dd.budget.h2','dd.budget.h3']}><BudgetVisual/></DeepDive>
+        <DeepDive eyebrowKey="landing.dd.threeviews.eyebrow" titleKey="landing.dd.threeviews.title" bodyKey="landing.dd.threeviews.body" highlightKeys={['landing.dd.threeviews.h1','landing.dd.threeviews.h2','landing.dd.threeviews.h3']}><ThreeViewsVisual/></DeepDive>
+        <DeepDive reverse eyebrowKey="landing.dd.planner.eyebrow" titleKey="landing.dd.planner.title" bodyKey="landing.dd.planner.body" highlightKeys={['landing.dd.planner.h1','landing.dd.planner.h2','landing.dd.planner.h3']}><PlannerVisual/></DeepDive>
+        <DeepDive eyebrowKey="landing.dd.concierge.eyebrow" titleKey="landing.dd.concierge.title" bodyKey="landing.dd.concierge.body" highlightKeys={['landing.dd.concierge.h1','landing.dd.concierge.h2','landing.dd.concierge.h3']}><ConciergeVisual/></DeepDive>
+        <DeepDive reverse eyebrowKey="landing.dd.budget.eyebrow" titleKey="landing.dd.budget.title" bodyKey="landing.dd.budget.body" highlightKeys={['landing.dd.budget.h1','landing.dd.budget.h2','landing.dd.budget.h3']}><BudgetVisual/></DeepDive>
       </div>
     </section>
   );
@@ -1264,7 +664,7 @@ function DeepDives() {
 /* ── Trust ── */
 function Trust() {
   const t = useT();
-  const items = [{icon:'globe',key:'trust.languages'},{icon:'devices',key:'trust.devices'},{icon:'lock',key:'trust.privacy'},{icon:'gift',key:'trust.free'}];
+  const items = [{icon:'globe',key:'landing.trust.languages'},{icon:'devices',key:'landing.trust.devices'},{icon:'lock',key:'landing.trust.privacy'},{icon:'gift',key:'landing.trust.free'}];
   return (
     <section className="section section--tight">
       <div className="container">
@@ -1281,7 +681,7 @@ function Trust() {
 }
 
 /* ── FAQ ── */
-const FAQ_KEYS = ['faq.q1','faq.q2','faq.q3','faq.q4','faq.q5','faq.q6','faq.q7'].map((q,i) => ({q,a:`faq.a${i+1}`}));
+const FAQ_KEYS = ['landing.faq.q1','landing.faq.q2','landing.faq.q3','landing.faq.q4','landing.faq.q5','landing.faq.q6','landing.faq.q7'].map((q,i) => ({q,a:`landing.faq.a${i+1}`}));
 
 function FAQ() {
   const t = useT();
@@ -1291,9 +691,9 @@ function FAQ() {
       <div className="container">
         <div className="faq">
           <div className="faq__intro reveal">
-            <span className="eyebrow">{t('faq.eyebrow')}</span>
-            <h2>{t('faq.h2')}</h2>
-            <p>{t('faq.lede')}</p>
+            <span className="eyebrow">{t('landing.faq.eyebrow')}</span>
+            <h2>{t('landing.faq.h2')}</h2>
+            <p>{t('landing.faq.lede')}</p>
           </div>
           <div className="faq__list reveal">
             {FAQ_KEYS.map((f,i) => {
@@ -1324,10 +724,10 @@ function FinalCTA() {
   return (
     <section className="banner">
       <div className="reveal" style={{position:'relative',zIndex:1}}>
-        <h2>{t('finalcta.h2')}</h2>
-        <p>{t('finalcta.lede')}</p>
+        <h2>{t('landing.finalcta.h2')}</h2>
+        <p>{t('landing.finalcta.lede')}</p>
         <button className="btn btn--white btn--lg" style={{marginTop:32}} onClick={() => nav(ctaTarget)}>
-          {t('finalcta.cta')} <Icon name="arrowRight" size={16} className="chev"/>
+          {t('landing.finalcta.cta')} <Icon name="arrowRight" size={16} className="chev"/>
         </button>
       </div>
     </section>
@@ -1346,24 +746,24 @@ function LandingFooter({ lang, setLang }) {
               <span className="brand__mark"><TriplanioMark size={26}/></span>
               <span>Triplanio</span>
             </a>
-            <p className="tagline">{t('footer.tagline')}</p>
+            <p className="tagline">{t('landing.footer.tagline')}</p>
           </div>
           <div className="footer__cols">
             <div className="footer__col">
-              <h4>{t('footer.product')}</h4>
-              <a href="#features">{t('footer.features')}</a>
-              <a href="#how">{t('footer.how')}</a>
-              <a href="#faq">{t('footer.faq')}</a>
+              <h4>{t('landing.footer.product')}</h4>
+              <a href="#features">{t('landing.footer.features')}</a>
+              <a href="#how">{t('landing.footer.how')}</a>
+              <a href="#faq">{t('landing.footer.faq')}</a>
             </div>
             <div className="footer__col">
-              <h4>{t('footer.company')}</h4>
-              <a href="#">{t('footer.about')}</a>
-              <a href="#">{t('footer.contact')}</a>
+              <h4>{t('landing.footer.company')}</h4>
+              <a href="#">{t('landing.footer.about')}</a>
+              <a href="#">{t('landing.footer.contact')}</a>
             </div>
             <div className="footer__col">
-              <h4>{t('footer.legal')}</h4>
-              <a href="/privacy">{t('footer.privacy')}</a>
-              <a href="/terms">{t('footer.terms')}</a>
+              <h4>{t('landing.footer.legal')}</h4>
+              <a href="/privacy">{t('landing.footer.privacy')}</a>
+              <a href="/terms">{t('landing.footer.terms')}</a>
             </div>
           </div>
           <div style={{display:'flex',justifyContent:'flex-end'}}>
@@ -1371,7 +771,7 @@ function LandingFooter({ lang, setLang }) {
           </div>
         </div>
         <div className="footer__bottom">
-          <span>{t('footer.copy')}</span>
+          <span>{t('landing.footer.copy')}</span>
           <div className="footer__social" aria-label="Social">
             <a href="#" aria-label="Twitter / X"><Icon name="twitter" size={16}/></a>
             <a href="#" aria-label="Instagram"><Icon name="instagram" size={16}/></a>
@@ -1424,7 +824,7 @@ function useScrollReveal(ready) {
 
 /* ── Main LandingPage ── */
 export default function LandingPage() {
-  const [lang, setLangRaw] = useState(detectLang);
+  const { lang, setLang: setLangCentral } = useI18n();
   const [cssReady, setCssReady] = useState(false);
 
   // Landing has only a light theme. A dark theme stored from the authed app sets
@@ -1436,11 +836,13 @@ export default function LandingPage() {
     r.setAttribute('data-theme', 'light');
   }, []);
 
+  // Update <html lang> attribute whenever central lang changes
+  useEffect(() => {
+    document.documentElement.setAttribute('lang', lang);
+  }, [lang]);
+
   const setLang = (next) => {
-    setLangRaw(next);
-    try { localStorage.setItem('triplanio.lang', next); } catch (_) {}
-    const map = { EN:'en', RU:'ru', ES:'es' };
-    document.documentElement.setAttribute('lang', map[next] || 'en');
+    setLangCentral(next);
   };
 
   /* Dynamically load landing CSS on mount, remove on unmount */
@@ -1482,7 +884,7 @@ export default function LandingPage() {
   if (!cssReady) return null;
 
   return (
-    <LangCtx.Provider value={lang}>
+    <>
       <LandingHeader lang={lang} setLang={setLang} />
       <main>
         <Hero />
@@ -1495,6 +897,6 @@ export default function LandingPage() {
         <FinalCTA />
       </main>
       <LandingFooter lang={lang} setLang={setLang} />
-    </LangCtx.Provider>
+    </>
   );
 }

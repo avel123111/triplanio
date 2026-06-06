@@ -1,10 +1,10 @@
 export default {
   'admin.home.title': 'Panel de administración',
-  'admin.home.subtitle': 'Herramientas del sistema para administradores.',
+  'admin.home.subtitle': 'Herramientas del sistema para administradores',
   'admin.home.notifications_title': 'Registro de notificaciones',
-  'admin.home.notifications_desc': 'Todas las notificaciones que la app puede enviar, agrupadas por canal.',
+  'admin.home.notifications_desc': 'Todas las notificaciones que la app puede enviar, agrupadas por canal',
   'admin.notifications.title': 'Registro de notificaciones',
-  'admin.notifications.subtitle': 'Todas las notificaciones que la app puede enviar, agrupadas por canal.',
+  'admin.notifications.subtitle': 'Todas las notificaciones que la app puede enviar, agrupadas por canal',
   'admin.notifications.filter_all': 'Todas',
   'admin.notifications.when': 'Cuándo',
   'admin.notifications.audience': 'Destinatario',
@@ -12,6 +12,6 @@ export default {
   'admin.notifications.i18n_keys': 'Claves i18n',
   'admin.notifications.hardcoded_text': 'Texto fijo',
   'admin.notifications.forbidden_title': 'Solo administradores',
-  'admin.notifications.forbidden_desc': 'Esta página solo está disponible para administradores.',
+  'admin.notifications.forbidden_desc': 'Esta página solo está disponible para administradores',
   'admin.notifications.back_home': 'Volver al inicio',
 };

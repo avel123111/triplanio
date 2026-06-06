@@ -7,7 +7,7 @@ export default {
   'budget.addon_off_title': 'Activar Presupuesto del viaje',
   'budget.addon_off_desc': 'El Presupuesto del viaje está desactivado. Actívalo para planificar y registrar gastos por categorías, añadir costes personalizados en cualquier moneda y ver el desglose completo del gasto del viaje.',
   'budget.addon_off_go_settings': 'Ir a ajustes',
-  'budget.page_placeholder': 'La página de presupuesto se está rehaciendo, disponible pronto.',
+  'budget.page_placeholder': 'La página de presupuesto se está rehaciendo, disponible pronto',
 
   // System categories
   'budget.cat_accommodation': 'Alojamiento',
@@ -30,7 +30,7 @@ export default {
   // Category block
   'budget.no_expenses': 'Sin gastos',
   'budget.category_menu_rename': 'Renombrar',
-  'budget.cannot_modify_system': 'Las categorías del sistema no se pueden modificar.',
+  'budget.cannot_modify_system': 'Las categorías del sistema no se pueden modificar',
 
   // Expense row
   'budget.source_hotel': 'Hotel',
@@ -76,7 +76,7 @@ export default {
   'budget.fx_subtitle': 'Tipo personalizado a {currency}. Deja vacío para usar el tipo actual.',
   'budget.fx_col_currency': 'Moneda',
   'budget.fx_col_rate': 'Tipo (1 unidad = X {main})',
-  'budget.fx_no_other': 'En este viaje solo se usa la moneda principal.',
+  'budget.fx_no_other': 'En este viaje solo se usa la moneda principal',
   'budget.fx_live_rate': 'Actual: {rate}',
   'budget.fx_save': 'Guardar',
   'budget.edit_expense': 'Editar gasto',
@@ -98,16 +98,16 @@ export default {
   'budget.rates_missing': 'No hay tipos de cambio para {currencies}',
   'budget.set_rate_manual': 'Pon el tipo de cambio a mano',
   'budget.first_expense': 'Primer gasto',
-  'budget.custom_short': 'pers.',
+  'budget.custom_short': 'pers',
   'budget.empty_word': 'vacío',
   'budget.add_first': 'Añadir el primer gasto',
   'budget.cities_empty': 'Aún no hay gastos por ciudad',
   'budget.cities_empty_desc': 'Los gastos por ciudad aparecen tras el primer gasto con ciudad indicada',
   'budget.no_city': 'Sin ciudad',
   'budget.fx_intro': 'Los tipos por defecto se obtienen automáticamente. Si alguno falla, pon el tuyo.',
-  'budget.fx_empty': 'Aparecerán cuando añadas el primer gasto en otra moneda.',
-  'budget.not_in_total': 'no se convirtieron ni se incluyen en el total.',
+  'budget.fx_empty': 'Aparecerán cuando añadas el primer gasto en otra moneda',
+  'budget.not_in_total': 'no se convirtieron ni se incluyen en el total',
   'budget.no_expenses_desc': 'Las reservas de hotel, traslados y actividades aparecen aquí automáticamente. Añade tus propios gastos (comida, taxis, recuerdos) a mano.',
   'budget.split_evenly': 'a partes iguales',
-  'budget.cat_empty': 'Aún no hay nada en «{name}».',
+  'budget.cat_empty': 'Aún no hay nada en «{name}»',
 };

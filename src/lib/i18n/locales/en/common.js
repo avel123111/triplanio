@@ -53,7 +53,7 @@ export default {
   'ai.recognize_files_one': 'Recognize {count} file',
   'ai.recognize_files_few': 'Recognize {count} files',
   'ai.recognize_files_many': 'Recognize {count} files',
-  'ai.too_many_files': 'You can upload at most {max} files to AI.',
+  'ai.too_many_files': 'You can upload at most {max} files to AI',
   'ai.error_files': 'Could not recognize the files',
   'ai.error_link': 'Could not recognize the link',
   'ai.aria_delete': 'Delete',

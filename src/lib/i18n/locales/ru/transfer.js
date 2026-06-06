@@ -14,7 +14,7 @@ export default {
   'transfer.own_transport': 'Свой транспорт',
   'transfer.other': 'Другое',
   'transfer.add_prompt_title': 'Добавить трансфер?',
-  'transfer.add_prompt_text': 'Соединить {from} → {to} трансфером.',
+  'transfer.add_prompt_text': 'Соединить {from} → {to} трансфером',
   // Dialog
   'transfer.dialog_title_new': 'Добавить трансфер: {from} → {to}',
   'transfer.dialog_title_edit': 'Редактировать трансфер: {from} → {to}',
@@ -44,13 +44,13 @@ export default {
   'transfer.ai_button_hint': 'загрузи билет или вставь ссылку',
   'transfer.ai_lock_title': 'ИИ-распознавание билетов',
   'transfer.ai_lock_desc_owner': 'Загрузи билет или ссылку, и ИИ заполнит все поля автоматически',
-  'transfer.ai_lock_desc_member': 'Обратись к владельцу путешествия, чтобы разблокировать Pro-функции.',
+  'transfer.ai_lock_desc_member': 'Обратись к владельцу путешествия, чтобы разблокировать Pro-функции',
   'transfer.ai_unlock': 'Разблокировать',
   // AI extra segments banner
   'transfer.ai_extra_one': 'ИИ нашёл {count} дополнительный сегмент (пересадка)',
   'transfer.ai_extra_few': 'ИИ нашёл {count} дополнительных сегмента (пересадка)',
   'transfer.ai_extra_many': 'ИИ нашёл {count} дополнительных сегментов (пересадка)',
-  'transfer.ai_extra_desc': 'После сохранения они будут созданы как отдельные трансферы между {from} → {to}.',
+  'transfer.ai_extra_desc': 'После сохранения они будут созданы как отдельные трансферы между {from} → {to}',
   // View dialog
   'transfer.view_open_booking': 'Открыть бронирование',
   'transfer.view_schedule': 'Расписание',
@@ -73,7 +73,7 @@ export default {
   'transfer.with_layover_many': '· с пересадкой ({count} сегментов)',
   'transfer.add_button_text': 'Добавить',
   'transfer.add_dialog_title': 'Добавить трансфер',
-  'transfer.add_dialog_desc': 'Внеси бронь сам или найди вариант на платформе.',
+  'transfer.add_dialog_desc': 'Внеси бронь сам или найди вариант на платформе',
   'transfer.manual_short': 'Добавить бронь вручную',
   'transfer.manual_hint_tickets': 'Если билеты/трансфер уже забронированы',
   'transfer.manual_hint_have_tickets': 'Если билеты уже есть',

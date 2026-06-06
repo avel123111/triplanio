@@ -8,7 +8,7 @@ export default {
   'budget.addon_off_title': 'Enable Trip Budget',
   'budget.addon_off_desc': 'Trip Budget is turned off for this trip. Enable it to plan and track expenses across categories, add custom costs in any currency, and get a full breakdown of your travel spending.',
   'budget.addon_off_go_settings': 'Go to settings',
-  'budget.page_placeholder': 'Budget page is being rebuilt, coming soon.',
+  'budget.page_placeholder': 'Budget page is being rebuilt, coming soon',
 
   // System categories
   'budget.cat_accommodation': 'Accommodation',
@@ -31,7 +31,7 @@ export default {
   // Category block
   'budget.no_expenses': 'No expenses',
   'budget.category_menu_rename': 'Rename',
-  'budget.cannot_modify_system': 'System categories cannot be modified.',
+  'budget.cannot_modify_system': 'System categories cannot be modified',
 
   // Expense row
   'budget.source_hotel': 'Hotel',
@@ -77,7 +77,7 @@ export default {
   'budget.fx_subtitle': 'Custom rate to {currency}. Leave empty to use the live rate.',
   'budget.fx_col_currency': 'Currency',
   'budget.fx_col_rate': 'Rate (1 unit = X {main})',
-  'budget.fx_no_other': 'Only the main currency is used in this trip.',
+  'budget.fx_no_other': 'Only the main currency is used in this trip',
   'budget.fx_live_rate': 'Live: {rate}',
   'budget.fx_save': 'Save',
   'budget.edit_expense': 'Edit expense',
@@ -106,9 +106,9 @@ export default {
   'budget.cities_empty_desc': 'City expenses appear after the first expense with a city set',
   'budget.no_city': 'No city',
   'budget.fx_intro': 'Default rates are fetched automatically. If a rate is off, set your own.',
-  'budget.fx_empty': 'They appear once you add the first expense in another currency.',
-  'budget.not_in_total': 'are not converted and not included in the total.',
+  'budget.fx_empty': 'They appear once you add the first expense in another currency',
+  'budget.not_in_total': 'are not converted and not included in the total',
   'budget.no_expenses_desc': 'Hotel bookings, transfers and activities show up here automatically. Add your own expenses (food, taxis, souvenirs) by hand.',
   'budget.split_evenly': 'split evenly',
-  'budget.cat_empty': 'Nothing in "{name}" yet.',
+  'budget.cat_empty': 'Nothing in "{name}" yet',
 };

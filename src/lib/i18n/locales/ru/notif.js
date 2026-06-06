@@ -9,11 +9,11 @@ export default {
   'notif.view_trip': 'Открыть путешествие',
   // Dynamic notification templates (rendered on the client from i18n_key + i18n_params)
   'notif.role_admin': 'администратора',
-  'notif.role_viewer': 'участника',
+  'notif.role_viewer': 'наблюдателя',
   'notif.tpl_invite_title': 'Тебя пригласили в путешествие «{trip}»',
-  'notif.tpl_invite_msg': '{inviter} приглашает тебя как {role}.',
+  'notif.tpl_invite_msg': '{inviter} приглашает тебя как {role}',
   'notif.tpl_joined_title': '{name} присоединился к путешествию',
-  'notif.tpl_joined_msg': 'Принял приглашение в «{trip}».',
+  'notif.tpl_joined_msg': 'Принял приглашение в «{trip}»',
   // Sent by the Stripe webhook after a successful subscription payment.
   'notif.tpl_pro_activated_title': 'Подписка Pro активирована',
   'notif.tpl_pro_activated_msg': 'Оплата прошла успешно. Спасибо!',

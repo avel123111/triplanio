@@ -1,6 +1,22 @@
 import React from 'react';
 import { Sentry } from '@/lib/sentry';
 
+// Self-contained copy for the crash screen. An error boundary can render when
+// the app (incl. the i18n provider) has failed, so it must NOT depend on the
+// React i18n context. Pick the language from the same storage the app uses.
+const CRASH_COPY = {
+  en: { title: 'Something went wrong', generic: 'Unknown error', home: 'Go home' },
+  ru: { title: 'Что-то пошло не так', generic: 'Неизвестная ошибка', home: 'На главную' },
+  es: { title: 'Algo salió mal', generic: 'Error desconocido', home: 'Ir al inicio' },
+};
+function crashLang() {
+  try {
+    const l = (localStorage.getItem('travel-planner-lang')
+      || (navigator.language || 'en').slice(0, 2)).toLowerCase();
+    return CRASH_COPY[l] ? l : 'en';
+  } catch { return 'en'; }
+}
+
 export default class AppErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -21,6 +37,7 @@ export default class AppErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      const c = CRASH_COPY[crashLang()];
       return (
         <div style={{
           minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -31,9 +48,9 @@ export default class AppErrorBoundary extends React.Component {
             width: 56, height: 56, borderRadius: 16, background: '#fee2e2',
             display: 'grid', placeItems: 'center', fontSize: 'var(--fs-2xl)',
           }}>⚠️</div>
-          <h2 style={{ margin: 0, fontSize: 'var(--fs-xl)', fontWeight: 700 }}>Что-то пошло не так</h2>
+          <h2 style={{ margin: 0, fontSize: 'var(--fs-xl)', fontWeight: 700 }}>{c.title}</h2>
           <p style={{ margin: 0, color: '#8693a8', fontSize: 'var(--fs-strong)', textAlign: 'center', maxWidth: 400 }}>
-            {this.state.error?.message || 'Неизвестная ошибка'}
+            {this.state.error?.message || c.generic}
           </p>
           <button
             onClick={() => window.location.href = '/'}
@@ -43,7 +60,7 @@ export default class AppErrorBoundary extends React.Component {
               fontSize: 'var(--fs-strong)', cursor: 'pointer',
             }}
           >
-            На главную
+            {c.home}
           </button>
           {import.meta.env.DEV && (
             <pre style={{

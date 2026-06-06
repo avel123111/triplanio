@@ -31,11 +31,12 @@ import sys from './sys';
 import tl from './tl';
 import validation from './validation';
 import confirm from './confirm';
+import landing from './landing';
 
 export default {
   ...common, ...event, ...nav, ...trips, ...trip, ...visit, ...hotel, ...activity,
   ...transfer, ...member, ...notif, ...view, ...settings, ...auth, ...calendar,
   ...doc, ...service, ...sub, ...pub, ...booking, ...telegram, ...budget, ...chat,
   ...admin, ...trip_menu, ...ai_plan, ...planner, ...account, ...tse, ...sys, ...tl,
-  ...validation, ...confirm,
+  ...validation, ...confirm, ...landing,
 };

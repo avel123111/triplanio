@@ -51,7 +51,7 @@ export default {
   'ai.recognize_files_one': 'Reconocer {count} archivo',
   'ai.recognize_files_few': 'Reconocer {count} archivos',
   'ai.recognize_files_many': 'Reconocer {count} archivos',
-  'ai.too_many_files': 'Solo puedes subir un máximo de {max} archivos a la IA.',
+  'ai.too_many_files': 'Solo puedes subir un máximo de {max} archivos a la IA',
   'ai.error_files': 'No se pudieron reconocer los archivos',
   'ai.error_link': 'No se pudo reconocer el enlace',
   'ai.aria_delete': 'Eliminar',

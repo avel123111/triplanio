@@ -1,6 +1,6 @@
 export default {
   'sys.no_access_title': 'Sin acceso a este viaje',
-  'sys.no_access_body': 'Puede que no estés en la lista de participantes, que se haya revocado la invitación o que el viaje se haya eliminado.',
+  'sys.no_access_body': 'Puede que no estés en la lista de participantes, que se haya revocado la invitación o que el viaje se haya eliminado',
   'sys.to_my_trips': 'A mis viajes',
   'sys.login_other': 'Iniciar sesión con otra cuenta',
   'sys.not_found_title': 'Esta página no existe',

@@ -56,19 +56,19 @@ export default {
   'service.car_view_on_map': 'На карте',
   // Choice dialog
   'service.car_choice_title': 'Добавить аренду авто',
-  'service.car_choice_desc': 'Выбери способ: внеси бронь сам или найди вариант на платформе.',
+  'service.car_choice_desc': 'Выбери способ: внеси бронь сам или найди вариант на платформе',
   'service.car_choice_manual': 'Добавить бронь вручную',
   'service.car_choice_manual_hint': 'Если авто уже забронировано',
   // eSIM choice dialog
   'service.esim_choice_title': 'Добавить eSIM',
-  'service.esim_choice_desc': 'Укажи eSIM вручную или купи у партнёра.',
+  'service.esim_choice_desc': 'Укажи eSIM вручную или купи у партнёра',
   'service.esim_choice_manual': 'Указать вручную',
   'service.esim_choice_manual_hint': 'Если eSIM уже куплен',
   'service.esim_choice_airalo_hint': 'eSIM для твоей страны',
   'service.esim_choice_yesim_hint': 'eSIM для твоей страны',
   // Insurance choice dialog
   'service.insurance_choice_title': 'Добавить страховку',
-  'service.insurance_choice_desc': 'Внеси полис вручную или оформи у партнёра.',
+  'service.insurance_choice_desc': 'Внеси полис вручную или оформи у партнёра',
   'service.insurance_choice_manual': 'Добавить полис вручную',
   'service.insurance_choice_manual_hint': 'Если страховка уже оформлена',
   'service.insurance_safetywing_hint': 'Номадская страховка · цены у партнёра',

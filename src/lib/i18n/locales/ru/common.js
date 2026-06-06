@@ -52,7 +52,7 @@ export default {
   'ai.recognize_files_one': 'Распознать {count} файл',
   'ai.recognize_files_few': 'Распознать {count} файла',
   'ai.recognize_files_many': 'Распознать {count} файлов',
-  'ai.too_many_files': 'Можно загрузить не больше {max} файлов в ИИ.',
+  'ai.too_many_files': 'Можно загрузить не больше {max} файлов в ИИ',
   'ai.error_files': 'Не удалось распознать файлы',
   'ai.error_link': 'Не удалось распознать ссылку',
   'ai.aria_delete': 'Удалить',

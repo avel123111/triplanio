@@ -2,7 +2,7 @@ export default {
   'chat.placeholder': 'Напиши сообщение… (@ — упомянуть Triplanio ИИ)',
   'chat.send': 'Отправить',
   'chat.empty_title': 'Сообщений пока нет',
-  'chat.empty_desc': 'Начни беседу: участники путешествия увидят новые сообщения здесь.',
+  'chat.empty_desc': 'Начни беседу: участники путешествия увидят новые сообщения здесь',
   'chat.mention_triplanio_name': 'Triplanio',
   'chat.mention_triplanio_hint': 'ИИ-помощник',
   'chat.ai_thinking': 'Triplanio думает…',

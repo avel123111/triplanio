@@ -1,10 +1,10 @@
 export default {
   'admin.home.title': 'Admin panel',
-  'admin.home.subtitle': 'System tools for administrators.',
+  'admin.home.subtitle': 'System tools for administrators',
   'admin.home.notifications_title': 'Notifications registry',
-  'admin.home.notifications_desc': 'All notifications the app can send, grouped by channel.',
+  'admin.home.notifications_desc': 'All notifications the app can send, grouped by channel',
   'admin.notifications.title': 'Notifications registry',
-  'admin.notifications.subtitle': 'All notifications the app can send, grouped by channel.',
+  'admin.notifications.subtitle': 'All notifications the app can send, grouped by channel',
   'admin.notifications.filter_all': 'All',
   'admin.notifications.when': 'When',
   'admin.notifications.audience': 'Audience',
@@ -12,6 +12,6 @@ export default {
   'admin.notifications.i18n_keys': 'i18n keys',
   'admin.notifications.hardcoded_text': 'Hard-coded text',
   'admin.notifications.forbidden_title': 'Admins only',
-  'admin.notifications.forbidden_desc': 'This page is available only to app administrators.',
+  'admin.notifications.forbidden_desc': 'This page is available only to app administrators',
   'admin.notifications.back_home': 'Back to home',
 };
