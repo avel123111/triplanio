@@ -18,6 +18,7 @@ import { Icon } from '../design/icons';
 import { Badge, Btn, Dialog, Field, Skeleton, EmptyState } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── query key ────────────────────────────────────────────────────────────────
@@ -388,6 +389,14 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
   const sharedDocs   = docs.filter(d => d.visibility === 'shared');
   const personalDocs = docs.filter(d => d.visibility === 'private' && d.created_by === user?.id);
 
+  // Primary action lives in the global screen-title bar (the per-screen header).
+  useTripScreenActions(
+    <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} />)}>
+      {t('doc.add_doc')}
+    </Btn>,
+    [tripId, t],
+  );
+
   if (isLoading || parentLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -409,14 +418,6 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-        <h2 style={{ flex: 1 }}>{t('doc.page_title')}</h2>
-        <Btn variant="primary" icon="plus"
-          onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} />)}>
-          {t('doc.add_doc')}
-        </Btn>
-      </div>
-
       {/* Shared section */}
       <section style={{ marginBottom: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getWeather, weatherInfo } from '@/lib/weather';
@@ -11,8 +11,10 @@ import { formatTripRange, isTripInPast } from '@/lib/trip-dates';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 import { isAddonEnabled } from '@/lib/tripAddons';
-import { isLensVisible } from '@/lib/tripMenu';
+import { isLensVisible, LENS_ITEMS, MGMT_ITEMS } from '@/lib/tripMenu';
 import TripSidebar from '@/components/trips/TripSidebar';
+import TripHeaderBar from '@/components/trips/TripHeaderBar';
+import TripScreenBar, { TripScreenBarCtx } from '@/components/trips/TripScreenBar';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
@@ -44,6 +46,12 @@ import TripFormDialog from '@/components/trips/TripFormDialog';
 import { getGradientById } from '@/lib/trip-gradients';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import '../design/app.css';
+
+// Screen-name lookup for the global screen-title bar. Derived from the shared
+// trip-menu data so the bar title and the sidebar label never drift.
+const SCREEN_TITLE_KEY = Object.fromEntries(
+  [...LENS_ITEMS, ...MGMT_ITEMS].map((i) => [i.id, i.labelKey]),
+);
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -193,24 +201,33 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 function LoadingScreen() {
   const { t } = useI18n();
   return (
-    <div className="app" style={{ minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
-      {/* Skeleton header */}
+    <div className="trip-shell">
+      {/* Skeleton top bar */}
       <header className="app-header">
         <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--line)', flexShrink: 0 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Skeleton w={28} h={28} r={7} />
           <Skeleton w={90} h={14} r={5} />
         </div>
-        <div style={{ flex: 1 }}>
-          <Skeleton w={160} h={14} r={5} />
-        </div>
+        <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: 8 }}>
           <Skeleton w={28} h={28} r={7} />
           <Skeleton w={28} h={28} r={7} />
           <Skeleton w={32} h={32} r={999} />
         </div>
       </header>
-      <div className="app-body">
+      {/* Skeleton gradient hero */}
+      <div className="trip-hero">
+        <div className="trip-hero__bg" style={{ background: 'var(--brand-grad)' }} />
+        <div className="trip-hero__ov" />
+        <div className="trip-hero__in">
+          <div style={{ flex: 1 }}>
+            <Skeleton w={200} h={20} r={6} style={{ marginBottom: 8 }} />
+            <Skeleton w={150} h={12} r={5} />
+          </div>
+        </div>
+      </div>
+      <div className="trip-body">
         {/* Skeleton sidebar */}
         <aside className="app-side">
           <div className="app-side__group">
@@ -232,27 +249,18 @@ function LoadingScreen() {
             ))}
           </div>
         </aside>
-        {/* Skeleton main content */}
-        <main style={{ minWidth: 0, padding: '28px 28px 60px' }}>
-          {/* Cover strip skeleton */}
-          <div style={{ marginBottom: 22, borderBottom: '1px solid var(--line-2)', paddingBottom: 22 }}>
-            <Skeleton w="100%" h={160} r={16} style={{ marginBottom: 14 }} />
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <Skeleton w={90} h={28} r={999} />
-              <Skeleton w={110} h={28} r={999} />
-              <div style={{ flex: 1 }} />
-              <Skeleton w={120} h={30} r={8} />
-              <Skeleton w={90} h={30} r={8} />
-              <Skeleton w={80} h={30} r={8} />
+        <div className="trip-content">
+          {/* Skeleton screen-title bar */}
+          <div className="trip-screenbar"><Skeleton w={150} h={20} r={6} /></div>
+          <main className="trip-screen-body">
+            {/* Same building blocks as the loaded layout, so nothing reshuffles
+                when shell → content resolves. */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+              <SkeletonTimeline />
+              <RightRailSkeleton />
             </div>
-          </div>
-          {/* Timeline + sidebar skeleton - same building blocks as the loaded
-              layout, so nothing reshuffles when shell → content resolves. */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
-            <SkeletonTimeline />
-            <RightRailSkeleton />
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   );
@@ -282,10 +290,10 @@ function ErrorScreen({ onBack }) {
 
 // ─── TripHeader ───────────────────────────────────────────────────────────────
 
-function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
+function TripHeader({ isPro, isDark, onToggleTheme, user, nav }) {
   const { t } = useI18n();
-  const dateRange = formatTripRange(visits, '-');
-
+  // Title + dates now live in the gradient hero (TripHeaderBar), so the top bar
+  // only carries the brand and the account/notifications cluster.
   return (
     <header className="app-header">
       <button className="app-header__crumb-back" onClick={() => nav('/trips')} title={t('trip.back')}>
@@ -297,20 +305,7 @@ function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
         <span className="app-header__brand-name">Triplanio</span>
       </div>
 
-      <div className="app-header__crumb">
-        <span className="app-header__crumb-sep">/</span>
-        <div className="app-header__crumb-trip">
-          <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
-            {trip?.title || '…'}
-          </span>
-          {dateRange && dateRange !== '-' && (
-            <span className="app-header__crumb-dates">{dateRange}</span>
-          )}
-          {trip?.is_pro_trip && !isPro && (
-            <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '2px 7px', borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.04em', flexShrink: 0 }}>PRO</span>
-          )}
-        </div>
-      </div>
+      <div style={{ flex: 1 }} />
 
       <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={onToggleTheme} />
     </header>
@@ -877,143 +872,13 @@ function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
           <button onClick={handleCopy} disabled={copying} className="dz-rowhover" style={{ ...itemStyle, opacity: copying ? 0.6 : 1, cursor: copying ? 'default' : 'pointer' }}>
             <Icon name="copy" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.copy')}
           </button>
+          <button onClick={() => { window.__closeModal?.(); window.print(); }} className="dz-rowhover" style={itemStyle}>
+            <Icon name="download" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.export')}
+          </button>
           <div style={{ height: 1, background: 'var(--line-2)', margin: '6px 0' }} />
           <button onClick={() => window.__closeModal?.()} style={{ ...itemStyle, color: 'var(--muted)' }}>
             <Icon name="close" size={16} /> {t('common.close')}
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── TripCoverStrip ──────────────────────────────────────────────────────────
-
-function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, isEditMode, onToggleEdit }) {
-  const { t } = useI18n();
-  const nav = useNavigate();
-  const [routeOpen, setRouteOpen] = useState(false);
-  const [editingMetadata, setEditingMetadata] = useState(false);
-  const activeMemberCount = members.filter(m => m.status === 'active').length || 1;
-  const cities = visits.map(v => v.city_name).filter(Boolean);
-  const cityCount = uniqueCityCount(visits); // dedup repeated cities (e.g. Москва … Москва) for the count
-  const dateRange = formatTripRange(visits, '-');
-
-  // Cover priority: uploaded photo → preset gradient → default HSL gradient + SVG waves.
-  const gradient = getGradientById(trip?.cover_gradient);
-  const hasPhoto = !!trip?.cover_image_url;
-  const hasGradient = !hasPhoto && !!gradient;
-  const useDefault = !hasPhoto && !hasGradient;
-  const coverBg = hasGradient
-    ? gradient.css
-    : useDefault
-      ? 'linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)'
-      : 'var(--wash)';
-
-  return (
-    <div style={{ marginBottom: 22, borderBottom: '1px solid var(--line-2)', paddingBottom: 22 }}>
-      {/* Cover */}
-      <div style={{
-        position: 'relative', marginBottom: 18, height: 160, borderRadius: 16,
-        overflow: 'hidden',
-        background: coverBg,
-      }}>
-        {hasPhoto && (
-          <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-        )}
-        {useDefault && (
-          <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.55 }}>
-            <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.55)" />
-            <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.32)" />
-            <circle cx="680" cy="50" r="28" fill="rgba(255,255,255,.65)" />
-          </svg>
-        )}
-        <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad-soft)' }} />
-        <div style={{ position: 'absolute', left: 22, right: 22, bottom: 18 }}>
-          <div style={{
-            color: 'white', fontFamily: 'var(--font-display)', fontWeight: 700,
-            fontSize: 'clamp(24px, 4vw, 36px)', letterSpacing: '-0.03em', lineHeight: 1,
-            textShadow: '0 2px 12px rgba(0,0,0,.3)',
-          }}>{trip?.title || '…'}</div>
-          {dateRange && dateRange !== '-' && (
-            <div className="num" style={{ color: 'rgba(255,255,255,.85)', fontSize: 'var(--fs-base)', marginTop: 8, fontWeight: 500 }}>
-              {dateRange}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <TripFormDialog
-        open={editingMetadata}
-        onOpenChange={setEditingMetadata}
-        trip={trip}
-        visits={visits}
-      />
-
-      {/* Meta row + actions */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          {/* Cities chip */}
-          {cities.length > 0 && (
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setRouteOpen(!routeOpen)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '5px 10px 5px 8px', borderRadius: 999,
-                  background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12)',
-                  fontSize: 'var(--fs-meta)', color: 'var(--brand)', fontWeight: 600, cursor: 'pointer',
-                }}>
-                <Icon name="pin" size={13} />
-                {cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
-                <Icon name={routeOpen ? 'chevD' : 'chev'} size={11} />
-              </button>
-              {routeOpen && (
-                <div
-                  onClick={() => setRouteOpen(false)}
-                  style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 20,
-                    background: 'var(--surface)', border: '1px solid var(--line)',
-                    borderRadius: 12, padding: '10px 12px', boxShadow: 'var(--shadow-pop)', minWidth: 180,
-                  }}>
-                  {cities.map((c, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 'var(--fs-base)' }}>
-                      <Icon name="pin" size={12} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-                      {c}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {/* Travelers chip */}
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '5px 10px 5px 8px', borderRadius: 999,
-            background: 'var(--success-soft)', border: '1px solid color-mix(in srgb, var(--success) 28%, transparent)',
-            fontSize: 'var(--fs-meta)', color: 'var(--success)', fontWeight: 600,
-          }}>
-            <Icon name="users" size={13} />
-            {activeMemberCount} {activeMemberCount === 1 ? t('trip.members_count_one') : activeMemberCount < 5 ? t('trip.members_count_few') : t('trip.members_count_many')}
-          </span>
-        </div>
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          {myRole !== 'viewer' && (
-            frozen
-              ? <Btn variant="ghost" size="sm" icon="lock" disabled>{t('trip.editing')}</Btn>
-              : <Btn variant="ghost" size="sm" icon="edit" disabled={!canEditMode} onClick={() => nav(`/trip/${trip.id}/edit`)}>{t('trip.edit_trip')}</Btn>
-          )}
-          {/* Only owner/admin can mint a share token (ensureShareToken is admin-only);
-              showing this to a viewer just produced a 403 "не удалось создать ссылку". */}
-          {myRole !== 'viewer' && (
-            <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>{t('trip.share')}</Btn>
-          )}
-          <Btn variant="ghost" size="sm" icon="download" onClick={() => window.print()}>{t('trip.export')}</Btn>
-          {/* The "…" menu holds owner/admin actions (edit, settings, members) plus
-              Copy trip. Copy is available to every participant (incl. viewers),
-              so the button always renders; manage-only items are gated by canManage. */}
-          <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canManage={myRole !== 'viewer'} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
         </div>
       </div>
     </div>
@@ -1358,7 +1223,7 @@ export default function TripView() {
     const sp = new URLSearchParams(searchParams);
     if (id === 'timeline') sp.delete('lens'); else sp.set('lens', id);
     setSearchParams(sp, { replace: false });
-    window.scrollTo(0, 0);
+    setSideOpen(false); // close the mobile sidebar after navigating
   };
 
   // Fetch shell (trip + cityVisits)
@@ -1444,6 +1309,11 @@ export default function TripView() {
   const frozenNote = () => toast({ description: t('trip.frozen_note') });
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
+  // Global trip-header state: trip-metadata editor, mobile sidebar, and the
+  // right-hand actions the active lens projects into the screen-title bar.
+  const [editingMetadata, setEditingMetadata] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false);
+  const [screenActions, setScreenActions] = useState(null);
 
   // If the URL points at a lens the trip has disabled, fall back to the timeline.
   // Viewers can't open Settings/Members even by deep link → fall back too.
@@ -1455,29 +1325,87 @@ export default function TripView() {
   // tabs — see the map-lens render below for why.
   const [mapEverShown, setMapEverShown] = useState(false);
   useEffect(() => { if (shownLens === 'map') setMapEverShown(true); }, [shownLens]);
+  // The screen body is a persistent scroll container (the shell doesn't scroll),
+  // so reset it to the top whenever the active lens changes.
+  const screenBodyRef = useRef(null);
+  useEffect(() => { if (screenBodyRef.current) screenBodyRef.current.scrollTop = 0; }, [shownLens]);
 
   if (loadingShell) return <LoadingScreen />;
   if (shellError || (!loadingShell && !trip)) return <ErrorScreen onBack={() => nav('/trips')} />;
 
+  // ── Global trip header: cover, subtitle and the right-hand hero actions ──
+  // (Share / Edit / "…"). Cover priority mirrors the old cover strip: uploaded
+  // photo → preset gradient → default waves. All dialogs open via the global
+  // modal mount, so they work from any lens.
+  const gradient = getGradientById(trip?.cover_gradient);
+  const hasPhoto = !!trip?.cover_image_url;
+  const coverGradientCss = (!hasPhoto && gradient) ? gradient.css : null;
+  const useDefaultWaves = !hasPhoto && !gradient;
+  const dateRange = formatTripRange(visits, '-');
+  const cityCount = uniqueCityCount(visits);
+  const activeMemberCount = members.filter(m => m.status === 'active').length || 1;
+  const heroSub = (
+    <>
+      {dateRange && dateRange !== '-' && <span>{dateRange}</span>}
+      {cityCount > 0 && (
+        <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}</span></>
+      )}
+      <span>·</span>
+      <span>{activeMemberCount} {activeMemberCount === 1 ? t('trip.members_count_one') : activeMemberCount < 5 ? t('trip.members_count_few') : t('trip.members_count_many')}</span>
+    </>
+  );
+  const heroActions = (
+    <>
+      {myRole !== 'viewer' && (
+        <button className="trip-hero__btn" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>
+          <Icon name="share" size={15} /><span className="trip-hero__btn-text">{t('trip.share')}</span>
+        </button>
+      )}
+      {myRole !== 'viewer' && (
+        frozen
+          ? <button className="trip-hero__btn" disabled><Icon name="lock" size={15} /><span className="trip-hero__btn-text">{t('trip.editing')}</span></button>
+          : <button className="trip-hero__btn" disabled={!canEditMode} onClick={() => nav(`/trip/${trip.id}/edit`)}><Icon name="edit" size={15} /><span className="trip-hero__btn-text">{t('trip.edit_trip')}</span></button>
+      )}
+      <button
+        className="trip-hero__btn trip-hero__btn--icon"
+        onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canManage={myRole !== 'viewer'} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)}
+      >
+        <Icon name="more" size={15} />
+      </button>
+    </>
+  );
+  // Map = edge-to-edge, no scroll. Chat = padded but fills height with its own
+  // internal scroll. Everything else = the default scrolling body.
+  const screenBodyClass = 'trip-screen-body'
+    + (shownLens === 'map' ? ' trip-screen-body--flush' : '')
+    + (shownLens === 'chat' ? ' trip-screen-body--chat' : '');
+
   return (
-    <div className="app" style={{ minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
+    <div className="trip-shell">
       <TripHeader
-        trip={trip}
-        visits={visits}
         isPro={accountPro}
         isDark={isDark}
         onToggleTheme={toggleTheme}
         user={user}
         nav={nav}
       />
-      <div className="app-body">
-        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)} />
-        <main style={{
-          minWidth: 0,
-          padding: shownLens === 'map' ? 0 : shownLens === 'chat' ? '28px 28px 28px' : '28px 28px 60px',
-          height: (shownLens === 'map' || shownLens === 'chat') ? 'calc(100vh - 56px)' : undefined,
-          overflow: (shownLens === 'map' || shownLens === 'chat') ? 'hidden' : undefined,
-        }}>
+      <TripHeaderBar
+        title={trip?.title}
+        subtitle={heroSub}
+        coverImageUrl={trip?.cover_image_url || null}
+        coverGradientCss={coverGradientCss}
+        useDefaultWaves={useDefaultWaves}
+        onMenu={() => setSideOpen(true)}
+        actions={heroActions}
+      />
+      <TripFormDialog open={editingMetadata} onOpenChange={setEditingMetadata} trip={trip} visits={visits} />
+      <TripScreenBarCtx.Provider value={{ setActions: setScreenActions }}>
+        <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
+          <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)} />
+          <div className="trip-side-scrim" onClick={() => setSideOpen(false)} />
+          <div className="trip-content">
+            <TripScreenBar title={t(SCREEN_TITLE_KEY[shownLens] || 'trip_menu.timeline')} actions={screenActions} />
+            <main ref={screenBodyRef} className={screenBodyClass}>
           {/* Hotel choice - sits between the warning button and the edit form */}
           <ForkPartnerModal
             open={hotelChoice.open}
@@ -1562,16 +1490,6 @@ export default function TripView() {
 
           {shownLens === 'timeline' && (
             <>
-              <TripCoverStrip
-                trip={trip}
-                visits={visits}
-                members={members}
-                myRole={myRole}
-                canEditMode={canEditMode}
-                frozen={frozen}
-                isEditMode={isEditMode}
-                onToggleEdit={() => setIsEditMode(m => !m)}
-              />
               {frozen && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--wash)', border: '1px solid var(--line)', fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>
                   <Icon name="lock" size={14} /> {t('trip.frozen_note')}
@@ -1707,9 +1625,10 @@ export default function TripView() {
               />
             </div>
           )}
-        </main>
-      </div>
-
+            </main>
+          </div>
+        </div>
+      </TripScreenBarCtx.Provider>
 
       <TripProInfoDialog
         open={tripProInfoOpen}

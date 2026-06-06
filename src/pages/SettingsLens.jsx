@@ -550,8 +550,6 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   return (
     <div style={{ maxWidth: 720 }}>
-      <h2 style={{ marginBottom: 18 }}>{t('trip.settings')}</h2>
-
       {/* Basic settings */}
       <Card title={t('settings.section_basic')} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

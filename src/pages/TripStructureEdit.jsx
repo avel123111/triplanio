@@ -22,6 +22,9 @@ import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import TripSidebar from '@/components/trips/TripSidebar';
+import TripHeaderBar from '@/components/trips/TripHeaderBar';
+import TripScreenBar from '@/components/trips/TripScreenBar';
+import { getGradientById } from '@/lib/trip-gradients';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 
@@ -532,28 +535,24 @@ export default function TripStructureEdit() {
         <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
         <span className="app-header__brand-name">Triplanio</span>
       </div>
-      <div className="app-header__crumb">
-        <span className="app-header__crumb-sep">/</span>
-        <div className="app-header__crumb-trip">
-          <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
-            {trip?.title || '…'}
-          </span>
-        </div>
-      </div>
-      {draft && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, marginLeft: 'auto', paddingLeft: 14, borderLeft: '1px solid var(--line)' }}>
-          {changeCount > 0 && <Badge variant="brand" icon="edit">{t('tse.unsaved_count', { n: changeCount })}</Badge>}
-          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <Btn variant="quiet" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
-            <Btn variant="quiet" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
-            <Btn variant="quiet" size="sm" icon="map" onClick={() => setShowMap((v) => !v)} className={showMap ? 'is-on' : ''} title={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaLabel={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaPressed={showMap} />
-          </div>
-          <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={() => onSave()}>{saving ? t('tse.saving') : t('common.save')}</Btn>
-        </div>
-      )}
+      <div style={{ flex: 1 }} />
       <HeaderActions user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} />
     </header>
   );
+
+  // Editor action cluster — projected into the global screen-title bar, the same
+  // way lenses surface their primary actions. (Title + dates now live in the
+  // gradient hero; only meaningful once the draft has loaded.)
+  //   Undo  = step back one action.   Reset = discard all edits, stay in editor.
+  const editorActions = draft ? (
+    <>
+      {changeCount > 0 && <Badge variant="brand" icon="edit">{t('tse.unsaved_count', { n: changeCount })}</Badge>}
+      <Btn variant="quiet" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
+      <Btn variant="quiet" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
+      <Btn variant="quiet" size="sm" icon="map" onClick={() => setShowMap((v) => !v)} className={showMap ? 'is-on' : ''} title={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaLabel={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaPressed={showMap} />
+      <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={() => onSave()}>{saving ? t('tse.saving') : t('common.save')}</Btn>
+    </>
+  ) : null;
 
   if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">{t('tse.err_load')}{String(shellError.message || shellError)}</div></div></>;
   if (lock === 'blocked' || lock === 'error') {
@@ -816,6 +815,20 @@ export default function TripStructureEdit() {
   return (
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
     {headerEl}
+    <TripHeaderBar
+      title={trip?.title}
+      subtitle={
+        <>
+          <span>{fmtD(startDate, lang)} – {fmtD(endDate, lang)}</span>
+          {totalNights != null && <><span>·</span><span>{totalNights} {dayWord(totalNights, t)}</span></>}
+          {cities.length > 0 && <><span>·</span><span>{cities.length} {cities.length === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}</span></>}
+        </>
+      }
+      coverImageUrl={trip?.cover_image_url || null}
+      coverGradientCss={(!trip?.cover_image_url && getGradientById(trip?.cover_gradient)) ? getGradientById(trip?.cover_gradient).css : null}
+      useDefaultWaves={!trip?.cover_image_url && !getGradientById(trip?.cover_gradient)}
+    />
+    <TripScreenBar title={t('trip.edit_structure')} actions={editorActions} />
     <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
       <div style={{ flex: '0 0 56px', minWidth: 0, position: 'relative', minHeight: 0 }}>
         <TripSidebar
@@ -832,12 +845,11 @@ export default function TripStructureEdit() {
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
           <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={leftPanel ? (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } } : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
           {leftPanelEl || (<>
-          {/* page title */}
+          {/* page section label + trip-start control (title + dates now live in
+              the gradient hero above) */}
           <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: '1px solid var(--line-2)' }}>
-            <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>{t('tse.section_eyebrow')}</div>
-            <h1 style={{ fontSize: 'var(--fs-h3)', lineHeight: 1.2, marginBottom: 6, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
-            <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{fmtD(startDate, lang)} - {fmtD(endDate, lang)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights, t)}` : ''} · {cities.length} {cities.length === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}{membersCount > 0 ? ` · ${t('tse.members_short', { n: membersCount })}` : ''}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 10 }}>{t('tse.section_eyebrow')}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span className="eyebrow" style={{ fontSize: 'var(--fs-micro)' }}>{t('planner.trip_start')}</span>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: 2 }}>
                 <button className="ts-step" onClick={() => shiftStart(-1)} title={t('tse.start_earlier')}><Icon name="back" size={13} /></button>

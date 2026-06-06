@@ -18,6 +18,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
+import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { getActiveLocale } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
@@ -490,6 +491,15 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     }));
   }, [cats, fx, overrides, mainCurrency]);
 
+  // Primary actions live in the global screen-title bar (the per-screen header).
+  useTripScreenActions(
+    <>
+      <Btn variant="ghost" size="sm" icon="card" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
+      <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
+    </>,
+    [tripId, t, mainCurrency, budgetExpenses, budgetCategories],
+  );
+
   // Skeleton
   if (isLoading) {
     return (
@@ -589,7 +599,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         {grouping === 'category' && (
           <Btn variant="ghost" size="sm" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
         )}
-        <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
       </div>
 
       {grouping === 'category' ? (

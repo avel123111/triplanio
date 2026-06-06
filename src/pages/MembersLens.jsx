@@ -16,6 +16,7 @@ import { Avatar, Badge, Btn, Dialog, Field, Skeleton } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { edgeErrorMessage } from '@/lib/edgeError';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
@@ -293,6 +294,14 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     refresh();
   }
 
+  // Primary action lives in the global screen-title bar (the per-screen header).
+  useTripScreenActions(
+    canManage
+      ? <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>{t('members.invite')}</Btn>
+      : null,
+    [tripId, canManage, t],
+  );
+
   if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -321,13 +330,6 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
-        <h2 style={{ flex: 1, marginBottom: 0 }}>{t('trip.sidebar_members')} · {allMembers.length}</h2>
-        {canManage && (
-          <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>{t('members.invite')}</Btn>
-        )}
-      </div>
-
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'visible' }}>
         {allMembers.length === 0 && (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>{t('member.empty')}</div>
