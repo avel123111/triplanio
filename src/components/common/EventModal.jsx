@@ -98,7 +98,7 @@ export default function EventModal(props) {
             <theme.Icon className="w-5 h-5" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{themeLabel}</div>
+            <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold text-muted-foreground">{themeLabel}</div>
             <h2 className="font-display text-xl leading-tight" style={{ letterSpacing: '-0.02em' }}>{title || themeLabel}</h2>
           </div>
         </div>
@@ -123,7 +123,7 @@ export default function EventModal(props) {
               </span>
             )}
             {platformInfo && (
-              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium ${platformInfo.color}`}>
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[length:var(--fs-micro)] font-medium ${platformInfo.color}`}>
                 {platformLogo && <img src={platformLogo} alt="" className="w-3.5 h-3.5 rounded-sm" />}
                 {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
               </span>

@@ -373,7 +373,7 @@ export default function EventAiBlock({
               <div className="flex-1 min-w-0">
                 <div className="text-sm truncate">{f.name}</div>
                 {f.file?.size && (
-                  <div className="text-[11px] text-muted-foreground">{formatSize(f.file.size)}</div>
+                  <div className="text-[length:var(--fs-micro)] text-muted-foreground">{formatSize(f.file.size)}</div>
                 )}
               </div>
               <button
@@ -419,7 +419,7 @@ export default function EventAiBlock({
             <Button variant="ghost" size="sm" onClick={() => inputRef.current?.click()}>
               <Upload className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_pdf_screenshot')}
             </Button>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[length:var(--fs-micro)] text-muted-foreground">
               {dragOver ? t('event.ai_drop_active') : t('event.ai_drop_idle')}
             </span>
             <div className="flex-1" />
@@ -506,7 +506,7 @@ function Title() {
   return (
     <div className="text-sm font-semibold flex items-center gap-1.5 flex-wrap">
       {t('event.ai_fill_title')}
-      <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Pro</span>
+      <span className="text-[length:var(--fs-nano)] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Pro</span>
     </div>
   );
 }

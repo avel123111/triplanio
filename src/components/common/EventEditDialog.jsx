@@ -1006,7 +1006,7 @@ export default function EventEditDialog({
               <meta.Icon className="w-5 h-5" />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
+              <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold text-muted-foreground">
                 {t(meta.labelKey)}
               </div>
               <h2 className="font-display text-xl leading-tight" style={{ letterSpacing: '-0.02em' }}>
@@ -1676,7 +1676,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       <SectionHeader color={color}>{t('event.from_to')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
-          <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>{t('event.from')}</div>
+          <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold" style={{ color }}>{t('event.from')}</div>
           <div>
             <Label>{t('event.addr_station')}</Label>
             <AiField active={aiFields.has('from_address')}>
@@ -1707,7 +1707,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           </div>
         </div>
         <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
-          <div className="text-[11px] uppercase tracking-wider font-semibold" style={{ color }}>{t('event.to')}</div>
+          <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold" style={{ color }}>{t('event.to')}</div>
           <div>
             <Label>{t('event.addr_station')}</Label>
             <AiField active={aiFields.has('to_address')}>
@@ -2137,7 +2137,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
       <SectionHeader color={color}>{t('event.when')}</SectionHeader>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className={`rounded-lg border bg-secondary/30 p-3 ${inv('start')}`} data-vfield="start">
-          <div className="text-[11px] uppercase tracking-wider font-semibold mb-1" style={{ color }}>{t('event.start')}</div>
+          <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold mb-1" style={{ color }}>{t('event.start')}</div>
           <DateTimeInput
             value={form.startLocal}
             onChange={(v) => setField('startLocal', v)}
@@ -2148,7 +2148,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
           <FieldError issues={issues} field="start" />
         </div>
         <div className={`rounded-lg border bg-secondary/30 p-3 ${inv('end')}`} data-vfield="end">
-          <div className="text-[11px] uppercase tracking-wider font-semibold mb-1" style={{ color }}>{t('event.end')}</div>
+          <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold mb-1" style={{ color }}>{t('event.end')}</div>
           <DateTimeInput
             value={form.endLocal}
             onChange={(v) => setField('endLocal', v)}

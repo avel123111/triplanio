@@ -57,7 +57,7 @@ export default function TransferGroupReadOnly({
               {plural(sorted.length, 'transfer.with_layover', { count: sorted.length })}
             </span>
           </div>
-          <div className="text-[11px] text-muted-foreground flex items-center flex-wrap gap-x-1">
+          <div className="text-[length:var(--fs-micro)] text-muted-foreground flex items-center flex-wrap gap-x-1">
             <span>{first?.start_datetime ? formatInTz(first.start_datetime, startTz, 'd MMM HH:mm') : '-'}</span>
             <span>→</span>
             <span>{last?.end_datetime ? formatInTz(last.end_datetime, endTz, 'd MMM HH:mm') : '-'}</span>
@@ -103,7 +103,7 @@ function SegmentRow({ index, transfer, fromVisit, toVisit, onClick }) {
       onClick={onClick}
       className="w-full flex items-start gap-2 text-left rounded-xl bg-card hover:bg-secondary/50 transition p-2.5 border"
     >
-      <div className="shrink-0 w-6 h-6 mt-0.5 rounded-full bg-secondary text-[10px] font-semibold flex items-center justify-center text-muted-foreground">
+      <div className="shrink-0 w-6 h-6 mt-0.5 rounded-full bg-secondary text-[length:var(--fs-nano)] font-semibold flex items-center justify-center text-muted-foreground">
         {index}
       </div>
       <div className="w-8 h-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
@@ -116,7 +116,7 @@ function SegmentRow({ index, transfer, fromVisit, toVisit, onClick }) {
             <span className="text-xs text-muted-foreground font-normal">· {transfer.carrier}</span>
           )}
         </div>
-        <div className="text-[11px] text-muted-foreground">
+        <div className="text-[length:var(--fs-micro)] text-muted-foreground">
           {transfer.start_datetime ? formatInTz(transfer.start_datetime, startTz, 'd MMM HH:mm') : '-'}
           {' → '}
           {transfer.end_datetime ? formatInTz(transfer.end_datetime, endTz, 'd MMM HH:mm') : '-'}
@@ -128,7 +128,7 @@ function SegmentRow({ index, transfer, fromVisit, toVisit, onClick }) {
               href={normalizeExternalUrl(transfer.booking_url)}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-secondary hover:bg-secondary/70 border border-border transition"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[length:var(--fs-micro)] font-medium bg-secondary hover:bg-secondary/70 border border-border transition"
             >
               {platformLogo ? <img src={platformLogo} alt="" className="w-3 h-3 rounded-sm" /> : <ExternalLink className="w-3 h-3" />}
               {platformInfo && transfer.booking_platform !== 'other' ? platformInfo.label : t('transfer.view_link_short')}

@@ -73,13 +73,13 @@ function HotelRow({ hotel, onClick }) {
         <div className="text-sm font-semibold truncate flex items-center gap-2 flex-wrap">
           <span>{hotel.name}</span>
           {logo && info && hotel.booking_platform !== 'other' && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-border bg-card">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[length:var(--fs-nano)] font-semibold border border-border bg-card">
               <img src={logo} alt="" className="w-3 h-3 rounded-sm" />
               {info.label}
             </span>
           )}
         </div>
-        <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
+        <div className="text-[length:var(--fs-micro)] text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
           {ci && <span>{t('view.checkin')} {ci.toFormat('d MMM HH:mm')}</span>}
           {ci && co && <span>·</span>}
           {co && <span>{t('view.checkout')} {co.toFormat('d MMM HH:mm')}</span>}
@@ -92,7 +92,7 @@ function HotelRow({ hotel, onClick }) {
         target="_blank"
         rel="noreferrer"
         onClick={(e) => e.stopPropagation()}
-        className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-background hover:bg-secondary border border-border transition">
+        className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[length:var(--fs-micro)] font-semibold bg-background hover:bg-secondary border border-border transition">
           <ExternalLink className="w-3 h-3" />
           {t('view.view_booking')}
         </a>

@@ -87,7 +87,7 @@ export function Section({ title, accent, count, children, first }) {
     <div className={first ? 'mt-3' : 'mt-4 pt-4 border-t'}>
       <div className="flex items-center gap-2 mb-2.5">
         <div style={{ width: 3, height: 12, background: accent, borderRadius: 2 }} />
-        <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground flex-1">{title}</span>
+        <span className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold text-muted-foreground flex-1">{title}</span>
         {count != null && count > 0 && (
           <span className="text-xs text-muted-foreground">{count}</span>
         )}
@@ -101,7 +101,7 @@ export function KV({ label, children, mono }) {
   if (children == null || children === '') return null;
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-0.5">{label}</div>
+      <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold text-muted-foreground mb-0.5">{label}</div>
       <div className={`text-sm leading-tight ${mono ? 'font-mono text-xs' : ''}`}>{children}</div>
     </div>
   );
@@ -169,7 +169,7 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
           <div className="font-display font-bold text-2xl leading-tight">{fmtTime(entity.start_datetime)}</div>
           {fromCity && <div className="text-sm font-semibold mt-1">{fromCity}</div>}
           {entity.from_address && (
-            <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{entity.from_address}</div>
+            <div className="text-[length:var(--fs-micro)] text-muted-foreground mt-0.5 leading-snug">{entity.from_address}</div>
           )}
         </div>
         <div className="text-center">
@@ -179,7 +179,7 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
           <div className="font-display font-bold text-2xl leading-tight">{fmtTime(entity.end_datetime)}</div>
           {toCity && <div className="text-sm font-semibold mt-1">{toCity}</div>}
           {entity.to_address && (
-            <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{entity.to_address}</div>
+            <div className="text-[length:var(--fs-micro)] text-muted-foreground mt-0.5 leading-snug">{entity.to_address}</div>
           )}
         </div>
       </div>
