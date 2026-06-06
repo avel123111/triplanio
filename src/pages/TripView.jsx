@@ -19,10 +19,9 @@ import ShareDialog from '@/components/trips/ShareDialog';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
-import { Btn, EmptyState, Skeleton, fmtDate, weekday, StreamEventRow } from '../design/index';
+import { Btn, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow } from '../design/index';
 import { SystemStub } from '@/lib/PageNotFound';
-import { sortVisits, cityIdentity, validateTrip, primaryIssues } from '@/lib/validation';
-import { ConflictsPanel } from '@/components/common/ValidationUI';
+import { sortVisits, cityIdentity } from '@/lib/validation';
 import { useToast } from '@/components/ui/use-toast';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -70,8 +69,35 @@ function cityForVisit(visitId, visits) {
   return v ? v.city_name : null;
 }
 
-export function buildEventStream(t, hotels = [], activities = [], transfers = [], visits = []) {
+export function buildEventStream(t, hotels = [], activities = [], transfers = [], visits = [], services = []) {
   const events = [];
+
+  // Car-rental services (kind='car_rental') become two point events on the
+  // timeline: pickup + return (their local datetimes drive placement).
+  for (const s of (services || [])) {
+    if (s.kind !== 'car_rental') continue;
+    const name = s.name || t('service.kind.car_rental');
+    const pickup = s.pickup_at_local || s.details?.pickup_at_local;
+    const dropoff = s.dropoff_at_local || s.details?.dropoff_at_local;
+    if (pickup) {
+      events.push({
+        type: 'car-pickup', id: s.id,
+        date: naiveDayKey(pickup), time: formatNaive(pickup, 'HH:mm'),
+        title: name, address: s.pickup_address || s.details?.pickup_address || '',
+        price: s.price ?? null, cur: s.currency,
+        _ms: parseNaive(pickup)?.toMillis() ?? 0,
+      });
+    }
+    if (dropoff) {
+      events.push({
+        type: 'car-return', id: s.id,
+        date: naiveDayKey(dropoff), time: formatNaive(dropoff, 'HH:mm'),
+        title: name, address: s.dropoff_address || s.details?.dropoff_address || '',
+        price: null, cur: s.currency,
+        _ms: parseNaive(dropoff)?.toMillis() ?? 0,
+      });
+    }
+  }
 
   for (const h of hotels) {
     const city = h.city_name || cityForVisit(h.city_visit_id, visits) || '';
@@ -580,7 +606,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
       <div key={`xday-${day}`} id={`tlday-${day}`} data-tlday={day} className="tl3-day">
         <div className="tl3-dh">
           <span className="datechip"><span className="d">{dayNum}</span><span className="m">{monAbbr}</span></span>
-          <span className="wd">{weekday(day, lang)}</span>
+          <span className="wd">{weekdayLong(day, lang)}</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {evs.map((e, idx) => (
@@ -634,7 +660,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
         {/* Date header — Lumo .tl3-dh (datechip + weekday + city pill) */}
         <div className="tl3-dh">
           <span className="datechip"><span className="d">{_dayNum}</span><span className="m">{_monAbbr}</span></span>
-          <span className="wd">{weekday(day, lang)}</span>
+          <span className="wd">{weekdayLong(day, lang)}</span>
           {weatherByDay[day] && (
             <span className="wthr"><span>{weatherByDay[day].icon}</span><span>{weatherByDay[day].temp}°</span></span>
           )}
@@ -922,6 +948,12 @@ export default function TripView() {
 
   // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
   const openEventView = (e) => {
+    // Car-rental pickup/return → open the car service in the editor dialog.
+    if (e.type === 'car-pickup' || e.type === 'car-return') {
+      const svc = (services || []).find(s => s.id === e.id);
+      if (svc) setServiceEditCar({ open: true, service: svc });
+      return;
+    }
     let kind = null;
     if (e.type === 'hotel-checkin' || e.type === 'hotel-checkout' || e.type === 'hotel-deadline') kind = 'hotel';
     else if (e.type === 'activity') kind = 'activity';
@@ -997,29 +1029,12 @@ export default function TripView() {
   const myRole   = myMember?.role || (trip?.created_by === user?.id ? 'owner' : 'viewer');
 
   const stream = useMemo(
-    () => buildEventStream(t, hotels, activities, transfers, visits),
-    [t, hotels, activities, transfers, visits],
+    () => buildEventStream(t, hotels, activities, transfers, visits, services),
+    [t, hotels, activities, transfers, visits, services],
   );
 
   // Unified engine: same validateTrip that powers Edit Mode, collapsed to <=1
   // issue per entity so the timeline panel never piles up duplicates.
-  const conflicts = useMemo(
-    () => primaryIssues(validateTrip({ visits, hotels, activities, transfers })),
-    [visits, hotels, activities, transfers],
-  );
-  // Clicking a conflict opens the relevant event (hotel/activity/transfer).
-  // Paired/city issues (CITY_GAP / CITY_OVERLAP / DUP_TRANSFER) are structural -
-  // they have no single event to open, so the row stays informational.
-  const openConflict = (issue) => {
-    if (!issue?.entityId) return;
-    const kind = issue.entityKind;
-    if (kind !== 'hotel' && kind !== 'activity' && kind !== 'transfer') return;
-    // Carry the conflict text so EventModal shows it in its warning plate -
-    // same contract Edit Mode uses (openConflict -> warning: c.message).
-    const warning = t(`validation.${issue.code}`, issue.values);
-    setEventView({ open: true, kind, id: issue.entityId, warning });
-  };
-
   // Account-level Pro (header chip). For IN-TRIP gating use tripIsPro below.
   const accountPro = isProActive(user);
   const isOwner = myRole === 'owner';
@@ -1179,7 +1194,7 @@ export default function TripView() {
               onOpenChange={(o) => setServiceEditCar({ open: o })}
               kind="service"
               tripId={tripId}
-              entity={null}
+              entity={serviceEditCar.service || null}
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
@@ -1190,7 +1205,7 @@ export default function TripView() {
               onOpenChange={(o) => setServiceEditSimple(s => ({ ...s, open: o }))}
               tripId={tripId}
               kind={serviceEditSimple.kind}
-              service={null}
+              service={serviceEditSimple.service || null}
             />
           )}
           {/* Activity - add new activity in edit mode */}
@@ -1236,6 +1251,10 @@ export default function TripView() {
               onOpenBudget={() => setLens('budget')}
               onOpenMembers={() => setLens('members')}
               onAddService={frozen ? frozenNote : (type) => setServiceChoice({ open: true, type })}
+              onOpenService={(s) => {
+                if (s.kind === 'car_rental') setServiceEditCar({ open: true, service: s });
+                else setServiceEditSimple({ open: true, kind: s.kind, service: s });
+              }}
               onBudgetLocked={() => setBudgetAddonOff(true)}
             />
           )}
@@ -1246,15 +1265,7 @@ export default function TripView() {
                   <Icon name="lock" size={14} /> {t('trip.frozen_note')}
                 </div>
               )}
-              {conflicts.length > 0 && (
-                <ConflictsPanel
-                  issues={conflicts}
-                  ctx={{ hotels, activities, transfers, visits }}
-                  onOpen={openConflict}
-                  style={{ marginBottom: 14 }}
-                />
-              )}
-              <div className="ov-anim" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+              <div className="ov-anim tl-twocol" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
                 <TimelineLens
                   stream={stream}
                   visits={visits}

@@ -501,6 +501,17 @@ export function weekday(iso, loc) {
   return _WEEKDAYS[d.getDay()];
 }
 
+const _WEEKDAYS_LONG = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+// Full weekday name (Lumo timeline header writes them out in full).
+export function weekdayLong(iso, loc) {
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return '';
+  if (loc && loc !== 'ru') {
+    try { return new Intl.DateTimeFormat(_LOCMAP[loc] || loc, { weekday: 'long' }).format(d); } catch { /* fallthrough */ }
+  }
+  return _WEEKDAYS_LONG[d.getDay()];
+}
+
 // ----- Mock event stream -----
 export const STREAM = [
   { type: "hotel-deadline", id: "d1", date: "2026-07-09", time: "23:59", city: "Лиссабон", title: "Дедлайн бесплатной отмены · Memmo Alfama",

@@ -1571,13 +1571,15 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .ov-invite:active { transform: scale(.985); }
 
 /* ---- route-map card ---- */
-/* overflow:visible so the card's box-shadow isn't swallowed by the GPU-composited
-   Mapbox canvas; the inner .ov-maparea clips its own bottom corners instead. */
-.ov-mapcard { padding: 0; overflow: visible; }
+/* The card stays overflow:visible so its box-shadow isn't swallowed by the
+   GPU-composited Mapbox canvas; the canvas is isolated inside .ov-maparea, which
+   clips its OWN bottom corners to keep the rounded card. */
+.ov-mapcard { padding: 0; overflow: visible; box-shadow: var(--sh-1); }
+.ov-mapcard:hover { box-shadow: var(--sh-2); }
 .ov-mapcard .wdg-h { padding: 15px 18px 11px; }
 .ov-openbtn { margin-left: auto; transition: transform .12s var(--ease-out); }
 .ov-openbtn:active { transform: scale(.97); }
-.ov-maparea { position: relative; height: 280px; background: var(--surface-2); }
+.ov-maparea { position: relative; height: 280px; background: var(--surface-2); overflow: hidden; border-radius: 0 0 20px 20px; }
 .ov-map-empty {
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 8px; font-size: var(--fs-meta);
@@ -1686,12 +1688,21 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .cr-item.on .cr-nm { color: var(--brand); }
 
 @media (prefers-reduced-motion: reduce) { .tl3-card:hover { transform: none; } }
-@media (max-width: 880px) { .cityrail { display: none; } }
+/* Timeline on mobile: drop the city rail, plates span full width */
+@media (max-width: 880px) {
+  .cityrail { display: none; }
+  .tl-twocol { grid-template-columns: 1fr !important; }
+}
 
 /* ============================================================
    EDITOR (TripStructureEdit) — mobile adaptation
    ============================================================ */
+/* Mobile menu drawer is hidden entirely on desktop (the static icon-rail is used
+   there). Without this base rule it would render the full sidebar inline. */
+.ts-drawer { display: none; }
+
 @media (max-width: 760px) {
+  .ts-screen .ts-drawer { display: block; }
   /* remove the static narrow icon-rail; the burger opens a real drawer instead */
   .ts-screen .app-side--rail { display: none; }
   .ts-screen .ts-railwrap { display: none; }

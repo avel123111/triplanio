@@ -30,6 +30,7 @@ export default function OverviewLens({
   onOpenBudget,
   onOpenMembers,
   onAddService,
+  onOpenService,
   onBudgetLocked,
 }) {
   const orderedVisits = useMemo(() => sortVisits(visits), [visits]);
@@ -128,7 +129,7 @@ export default function OverviewLens({
           />
         </div>
         <div className="ov-anim">
-          <ServicesCard services={services} onAddService={onAddService} />
+          <ServicesCard services={services} onAddService={onAddService} onOpenService={onOpenService} />
         </div>
       </div>
     </div>

@@ -22,7 +22,7 @@ function AddRow({ icon, label, hint, onClick }) {
   );
 }
 
-export default function ServicesCard({ services = [], onAddService }) {
+export default function ServicesCard({ services = [], onAddService, onOpenService }) {
   const { t } = useI18n();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -47,7 +47,7 @@ export default function ServicesCard({ services = [], onAddService }) {
           {services.map((s) => {
             const meta = SERVICE_KIND_META[s.kind];
             return (
-              <div key={s.id} className="bookrow" style={{ cursor: 'default' }}>
+              <button key={s.id} className="bookrow" onClick={() => onOpenService?.(s)}>
                 <span className="bi" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
                   <Icon name={meta?.icon || 'spark'} size={18} />
                 </span>
@@ -55,7 +55,8 @@ export default function ServicesCard({ services = [], onAddService }) {
                   <b>{meta ? t(meta.labelKey) : s.name}</b>
                   {s.name && <span>{s.name}</span>}
                 </div>
-              </div>
+                <Icon name="chev" size={16} className="chev" style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
+              </button>
             );
           })}
 
@@ -76,8 +77,8 @@ export default function ServicesCard({ services = [], onAddService }) {
               />
             ))
           ) : (
-            <button className="btn btn--ghost btn--sm" style={{ alignSelf: 'flex-start' }} onClick={() => setMoreOpen(true)}>
-              <Icon name="more" size={14} />{t('service.more')}
+            <button className="btn btn--soft btn--block" onClick={() => setMoreOpen(true)}>
+              <Icon name="plus" size={15} />{t('service.more')}
             </button>
           )}
         </div>

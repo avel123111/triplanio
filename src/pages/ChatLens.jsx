@@ -552,7 +552,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         <Card title={t('chat.members_title')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {activeMembers.length === 0 ? (
-              <EmptyState icon="users" title={t('member.empty')} />
+              <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('member.empty')}</div>
             ) : (
               activeMembers.map((m) => (
                 <ChatMember
