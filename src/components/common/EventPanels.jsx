@@ -2,8 +2,8 @@
  * EventPanels - in-place LEFT-PANEL view layouts, ported 1:1 from the design
  * mockup (trip-editor-panels.jsx), wired to the REAL entity fields + i18n.
  *
- * Faithful to the design: PanelShell with a back button + accent stripe + icon
- * + title/sub, te-metastrip, accent Sections, te-bookrow/te-actrow/te-flightline.
+ * Faithful to the Lumo design system (C5 "Редактор · левые панели"): lpanel /
+ * lp-h / lp-b / lp-f, seclabel+sl2, bookrow (bi/bt), metastrip+ch, route, kvgrid.
  * (The legacy EventModal look is NOT reused here — modals are being retired.)
  *
  * Used by EventSourcePanel (view shell) and, later, CityPanel.

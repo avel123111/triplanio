@@ -1,6 +1,10 @@
 @import url("https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap&subset=cyrillic,cyrillic-ext,latin");
 
-:root {
+/* Auth-only token overrides. MUST stay scoped to .auth — this stylesheet is
+   injected globally by Vite when Login mounts and is never removed, so a global
+   :root here would override the app's theme-aware tokens (e.g. --ink) on every
+   route after sign-in, breaking dark theme (dark-navy text on dark surfaces). */
+.auth {
   --brand:         #2167e2;
   --brand-600:     #1b58c4;
   --brand-700:     #174aa6;

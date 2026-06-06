@@ -99,7 +99,7 @@ export default function CityPanel({
           <CityPhoto city={node.city_name} h={122} w="100%" radius={0} />
         </div>
         <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad)' }} />
-        <button className="lp-back" onClick={onBack} title={t('common.back')} style={{ position: 'absolute', top: 10, left: 10, zIndex: 2, background: 'rgba(0,0,0,.30)', color: '#fff' }}><Icon name="back" size={16} /></button>
+        <button className="lp-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={16} /></button>
         <div className="ht">
           <b>{node.city_name}</b>
           <span>{rangeText(node.start_date, node.end_date)}{nights ? ` · ${nights} ${nightWord(nights, t)}` : ''}</span>
