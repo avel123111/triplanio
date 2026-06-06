@@ -224,9 +224,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
         {t('budget.fx_intro')}
       </div>
       {others.length === 0 ? (
-        <div className="muted" style={{ fontSize: 'var(--fs-base)', textAlign: 'center', padding: 14 }}>
-          {t('budget.fx_empty')}
-        </div>
+        <EmptyState icon="wallet" title={t('budget.fx_no_other')} body={t('budget.fx_empty')} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {others.map(code => {
@@ -539,9 +537,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
             <span className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('budget.fx_button')}</span>
           </div>
           {foreignCurrencies.length === 0 ? (
-            <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 8, lineHeight: 1.5 }}>
-              {t('budget.fx_empty')}
-            </div>
+            <EmptyState icon="wallet" title={t('budget.fx_no_other')} body={t('budget.fx_empty')} />
           ) : (
             <div className="num" style={{ fontSize: 'var(--fs-base)', color: 'var(--ink)', marginTop: 8, lineHeight: 1.7 }}>
               {foreignCurrencies.map(cur => {

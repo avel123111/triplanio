@@ -855,7 +855,7 @@ export default function TripStructureEdit() {
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--surface)' }}>
           <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={leftPanel ? (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } } : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
           {leftPanelEl || (<>
-          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--wash)' }}>
+          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--bg)' }}>
           <div className="te-thead" style={{ padding: '0 4px 6px' }}>
             <span className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</span>
@@ -934,7 +934,7 @@ export default function TripStructureEdit() {
 
         {/* RIGHT - full-height map (hideable); warnings live in a collapsible overlay widget */}
         {showMap && (
-        <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--wash)' }}>
+        <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--bg)' }}>
           <div className="ts-map" style={{ position: 'absolute', inset: 14, overflow: 'hidden', borderRadius: 16, border: '1px solid var(--line)' }}>
             <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd mapControls
               focus={mapFocus}
