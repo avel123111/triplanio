@@ -5,11 +5,21 @@
    the dark theme.
    ================================================================= */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&display=swap");
 
 :root {
+  /* ===================================================================
+     SINGLE SOURCE OF TRUTH for color = the shadcn primitive tokens in
+     src/index.css (:root / .dark), authored as HSL triplets so Tailwind
+     alpha modifiers (bg-primary/30 …) keep working. The Atlantic tokens
+     below are the app's *semantic* layer: where an Atlantic token is the
+     same colour as a primitive, it ALIASES it via hsl(var(--…)) instead
+     of repeating the literal. Atlantic-only tokens (ev-*, ink-2, wash*,
+     scales, shadows, easing) are authored here. Do not reintroduce raw
+     hex/palette values in components — bind to a token below.
+     =================================================================== */
   /* Atlantic palette */
-  --brand:        #2167e2;
+  --brand:        hsl(var(--primary));   /* ← src/index.css --primary */
   --brand-600:    #1b58c4;
   --brand-700:    #174aa6;
   --brand-soft:   rgba(33,103,226,.08);
@@ -18,11 +28,11 @@
   --brand-glow:   rgba(33,103,226,.10);
 
   /* Cool slate neutrals — light */
-  --ink:    #0F172A;
+  --ink:    hsl(var(--foreground));      /* ← src/index.css --foreground */
   --ink-2:  #1f2a44;
   --muted:  #5a657a;
   --muted-2:#8693a8;
-  --line:   #E5E7EB;
+  --line:   hsl(var(--border));          /* ← src/index.css --border */
   --line-2: #eef0f4;
   --line-hover: #dbe1ec; /* slightly darker hairline for card/row hover (theme-aware) */
   --wash:   #F7F8FA;
@@ -36,7 +46,7 @@
   --warm-tint: rgba(201,96,58,.10);
   --success:   #1f8a5b;
   --success-soft: rgba(31,138,91,.10);
-  --danger:    #c4364c;
+  --danger:    hsl(var(--destructive));  /* single canonical red ← index.css --destructive */
   --danger-soft: rgba(196,54,76,.10);
   --warning:   #c98a1a;
   --warning-soft: rgba(201,138,26,.12);
@@ -44,6 +54,25 @@
   --ai:        #6a3ee2;
   --ai-soft:   rgba(106,62,226,.08);
   --ai-soft-12:rgba(106,62,226,.14);
+
+  /* Pro / premium — premium gold (provisional, tune to taste) */
+  --pro:       #a8791e;
+  --pro-soft:  rgba(168,121,30,.12);
+  --pro-soft-12: rgba(168,121,30,.18);
+
+  /* Overlays / scrims — for modal backdrops & image gradients */
+  --scrim:        rgba(15,23,42,.45);
+  --overlay-grad: linear-gradient(180deg, transparent 40%, rgba(8,15,30,.72));
+
+  /* Avatar ramp — sanctioned 8-colour set (promoted from AVATAR_COLORS) */
+  --avatar-1: #2167e2;
+  --avatar-2: #c9603a;
+  --avatar-3: #1f8a5b;
+  --avatar-4: #9c4ad9;
+  --avatar-5: #c98a1a;
+  --avatar-6: #4a6cd9;
+  --avatar-7: #3d8aa8;
+  --avatar-8: #a83e6a;
 
   /* Event-type unified palette — single source of truth */
   --ev-hotel:        #2167e2;            /* проживание · brand blue */
@@ -58,7 +87,7 @@
   --ev-car:          #4ea268;            /* car rental · fresh green */
   --ev-car-soft:     rgba(78,162,104,.10);
   --ev-car-soft-12:  rgba(78,162,104,.18);
-  --ev-deadline:     #c4364c;            /* hotel cancellation deadline · red */
+  --ev-deadline:     hsl(var(--destructive)); /* hotel cancellation deadline · = canonical red */
   --ev-deadline-soft: rgba(196,54,76,.10);
   --ev-deadline-soft-12: rgba(196,54,76,.18);
 
@@ -89,6 +118,7 @@
   --fs-base:   13px;   /* default UI text */
   --fs-meta:   12px;   /* dates, secondary meta */
   --fs-micro:  11px;   /* country tags, column headers, micro-labels */
+  --fs-nano:   10px;   /* smallest sanctioned size — badges, dense chips (replaces text-[10px]/[9px]) */
   /* Display scale — headings & big stat numbers (>=16). Home for the large sizes
      so future code reaches for a token, not a raw number. */
   --fs-lg:   16px;
@@ -102,7 +132,7 @@
 
 /* Dark theme */
 :root[data-theme="dark"] {
-  --brand:        #5a8ff0;
+  --brand:        hsl(var(--primary));   /* ← src/index.css .dark --primary */
   --brand-600:    #7aa5f4;
   --brand-700:    #4b7adf;
   --brand-soft:   rgba(90,143,240,.14);
@@ -110,11 +140,11 @@
   --brand-ink:    #0a1226;
   --brand-glow:   rgba(90,143,240,.18);
 
-  --ink:    #e8edf5;
+  --ink:    hsl(var(--foreground));      /* ← src/index.css .dark --foreground */
   --ink-2:  #c9d1de;
   --muted:  #8693a8;
   --muted-2:#6a778c;
-  --line:   #232a3a;
+  --line:   hsl(var(--border));          /* ← src/index.css .dark --border */
   --line-2: #1a202d;
   --line-hover: #2f3a4e; /* dark-theme hover hairline (lighter than --line) */
   --wash:   #0e131c;
@@ -127,7 +157,7 @@
   --warm-tint: rgba(224,129,88,.14);
   --success:   #4ab98a;
   --success-soft: rgba(74,185,138,.16);
-  --danger:    #e5687a;
+  --danger:    hsl(var(--destructive));  /* single canonical red ← index.css .dark --destructive */
   --danger-soft: rgba(229,104,122,.16);
   --warning:   #e0a64b;
   --warning-soft: rgba(224,166,75,.16);
@@ -135,6 +165,25 @@
   --ai:        #9c7af0;
   --ai-soft:   rgba(156,122,240,.14);
   --ai-soft-12:rgba(156,122,240,.20);
+
+  /* Pro / premium — dark */
+  --pro:       #e0b860;
+  --pro-soft:  rgba(224,184,96,.16);
+  --pro-soft-12: rgba(224,184,96,.22);
+
+  /* Overlays / scrims — dark */
+  --scrim:        rgba(0,0,0,.6);
+  --overlay-grad: linear-gradient(180deg, transparent 40%, rgba(0,0,0,.78));
+
+  /* Avatar ramp — dark (slightly lifted for contrast on dark surfaces) */
+  --avatar-1: #5a8ff0;
+  --avatar-2: #e08158;
+  --avatar-3: #4ab98a;
+  --avatar-4: #c66ce2;
+  --avatar-5: #e0a64b;
+  --avatar-6: #7a92e8;
+  --avatar-7: #5fadc9;
+  --avatar-8: #c96792;
 
   /* Event-type palette — dark variants */
   --ev-hotel:        #5a8df0;
@@ -149,37 +198,13 @@
   --ev-car:          #6dc188;
   --ev-car-soft:     rgba(109,193,136,.16);
   --ev-car-soft-12:  rgba(109,193,136,.22);
-  --ev-deadline:     #e5687a;
+  --ev-deadline:     hsl(var(--destructive)); /* = canonical red (dark) */
   --ev-deadline-soft: rgba(229,104,122,.16);
   --ev-deadline-soft-12: rgba(229,104,122,.22);
 
   --shadow-soft: 0 1px 2px rgba(0,0,0,.5), 0 6px 24px -8px rgba(0,0,0,.55);
   --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 10px 30px -12px rgba(0,0,0,.6);
   --shadow-pop:  0 2px 6px rgba(0,0,0,.55), 0 20px 60px -20px rgba(0,0,0,.7);
-}
-
-/* Visual variants */
-:root[data-vibe="editorial"] {
-  --font-display: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
-  --display-tracking: -0.012em;
-  --wash: #f5f1ea;
-  --wash-2: #faf6ef;
-  --warm: #b8552c;
-}
-:root[data-vibe="editorial"][data-theme="dark"] {
-  --wash: #14110d;
-  --wash-2: #0e0b08;
-  --surface: #1a1612;
-  --surface-elev: #221d18;
-  --line: #2b2620;
-  --line-2: #1f1b16;
-}
-:root[data-vibe="tech"] {
-  --font-display: "Space Grotesk","Inter Tight",sans-serif;
-  --display-tracking: -0.028em;
-  --radius-card: 10px;
-  --radius-btn: 8px;
-  --radius-sm: 6px;
 }
 
 /* ---------- Reset / base ---------- */

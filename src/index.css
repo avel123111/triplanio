@@ -6,6 +6,12 @@
 
 @layer base {
   :root {
+    /* ===================================================================
+       SINGLE SOURCE OF TRUTH for colour. These shadcn primitive tokens
+       (HSL triplets, for Tailwind alpha modifiers) are the authored base.
+       The Atlantic semantic layer in src/design/app.css aliases these via
+       hsl(var(--…)). Change a brand/ink/border colour HERE, once.
+       =================================================================== */
     /* Triplanio — Atlantic (light) */
     --background: 220 20% 97%;             /* #f6f7f9 — cool slate wash */
     --foreground: 222 47% 11%;             /* #0F172A ink */
@@ -21,7 +27,7 @@
     --muted-foreground: 220 11% 42%;       /* #5a657a muted */
     --accent: 220 80% 95%;                 /* soft brand tint */
     --accent-foreground: 218 77% 51%;
-    --destructive: 0 75% 50%;
+    --destructive: 351 57% 49%;           /* = Atlantic --danger #c4364c (single canonical red) */
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 91%;                 /* #E5E7EB line */
     --input: 220 13% 91%;
@@ -60,7 +66,7 @@
     --muted-foreground: 220 12% 64%;
     --accent: 218 60% 22%;
     --accent-foreground: 218 90% 80%;
-    --destructive: 0 75% 60%;
+    --destructive: 351 71% 65%;           /* = Atlantic --danger dark #e5687a (single canonical red) */
     --destructive-foreground: 0 0% 100%;
     --border: 222 20% 22%;
     --input: 222 20% 22%;
