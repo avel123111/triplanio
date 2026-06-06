@@ -13,7 +13,7 @@
        hsl(var(--…)). Change a brand/ink/border colour HERE, once.
        =================================================================== */
     /* Triplanio — Lumo (light) — values generated from Lumo hex */
-    --background: 240 47% 97%;             /* bg #F4F4FB */
+    --background: 240 100% 99%;            /* bg #FAFAFF — unified with app.css --bg */
     --foreground: 252 17% 17%;             /* ink #272433 */
     --card: 0 0% 100%;                     /* surface #FFFFFF */
     --card-foreground: 252 17% 17%;

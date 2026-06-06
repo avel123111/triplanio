@@ -277,7 +277,7 @@ function ErrorScreen({ onBack }) {
     nav('/login');
   };
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--wash)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <SystemStub
         icon="lock"
         tone="warm"

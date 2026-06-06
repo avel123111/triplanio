@@ -2,30 +2,26 @@ import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
-// trip_services rows carry a `kind` (esim | car_rental | insurance). Mirrors
-// base44 TripServicesCard: added services render as booked rows; eSIM/car_rental
-// show a dashed placeholder until added; once added, their "add more" moves
-// under "Ещё" (where insurance always lives).
+// trip_services rows carry a `kind` (esim | car_rental | insurance). Booked
+// services render as Lumo .bookrow; not-yet-added ones as the dashed .gadd
+// (ghost-add) row — both are design-system components, no bespoke styling.
 const SERVICE_KIND_META = {
   esim:       { icon: 'esim',   labelKey: 'service.kind.esim',       hintKey: 'service.hint.esim' },
   car_rental: { icon: 'car',    labelKey: 'service.kind.car_rental', hintKey: 'service.hint.car_rental' },
   insurance:  { icon: 'shield', labelKey: 'service.kind.insurance',  hintKey: 'service.hint.insurance' },
 };
 
-function ServiceRowEmpty({ icon, name, desc, onClick }) {
+// Dashed "add service" row — Lumo .gadd. `--a` sets the hover accent.
+function AddRow({ icon, label, hint, onClick }) {
   return (
-    <button onClick={onClick} className="srv-add">
-      <span className="srv-ic srv-ic--ph"><Icon name={icon} size={14} /></span>
-      <span className="srv-tx">
-        <span className="srv-nm">{name}</span>
-        <span className="srv-ds">{desc}</span>
-      </span>
-      <Icon name="plus" size={14} style={{ color: 'var(--brand)', flexShrink: 0 }} />
+    <button className="gadd" style={{ '--a': 'var(--brand)' }} onClick={onClick}>
+      <span className="gi"><Icon name={icon} size={17} /></span>
+      <span className="gt"><b>{label}</b><span>{hint}</span></span>
+      <Icon name="plus" size={15} style={{ color: 'var(--brand)', flexShrink: 0 }} />
     </button>
   );
 }
 
-// Services widget (Lumo .wdg) — lives on the Overview screen.
 export default function ServicesCard({ services = [], onAddService }) {
   const { t } = useI18n();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -46,38 +42,42 @@ export default function ServicesCard({ services = [], onAddService }) {
         <h4>{t('trip.sidebar_services')}</h4>
       </div>
       <div className="wdg-b">
-        <div className="srv-list">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Booked services — Lumo .bookrow */}
           {services.map((s) => {
             const meta = SERVICE_KIND_META[s.kind];
             return (
-              <div key={s.id} className="srv-row">
-                <span className="srv-ic"><Icon name={meta?.icon || 'spark'} size={14} /></span>
-                <span className="srv-tx">
-                  <span className="srv-nm">{meta ? t(meta.labelKey) : s.name}</span>
-                  {s.name && <span className="srv-ds">{s.name}</span>}
+              <div key={s.id} className="bookrow" style={{ cursor: 'default' }}>
+                <span className="bi" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
+                  <Icon name={meta?.icon || 'spark'} size={18} />
                 </span>
+                <div className="bt">
+                  <b>{meta ? t(meta.labelKey) : s.name}</b>
+                  {s.name && <span>{s.name}</span>}
+                </div>
               </div>
             );
           })}
 
+          {/* Not-yet-added eSIM / car rental — dashed .gadd */}
           {topAddKinds.map((k) => (
-            <ServiceRowEmpty key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} name={t(SERVICE_KIND_META[k].labelKey)} desc={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
+            <AddRow key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} label={t(SERVICE_KIND_META[k].labelKey)} hint={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
           ))}
 
+          {/* "Ещё" — insurance + add-more for kinds already present */}
           {moreOpen ? (
             moreAddKinds.map((k) => (
-              <ServiceRowEmpty
+              <AddRow
                 key={`more-${k}`}
                 icon={SERVICE_KIND_META[k].icon}
-                name={byKind[k].length > 0 ? t('service.add_more', { label: t(SERVICE_KIND_META[k].labelKey) }) : t(SERVICE_KIND_META[k].labelKey)}
-                desc={t(SERVICE_KIND_META[k].hintKey)}
+                label={byKind[k].length > 0 ? t('service.add_more', { label: t(SERVICE_KIND_META[k].labelKey) }) : t(SERVICE_KIND_META[k].labelKey)}
+                hint={t(SERVICE_KIND_META[k].hintKey)}
                 onClick={() => onAddService?.(k)}
               />
             ))
           ) : (
-            <button className="srv-more" onClick={() => setMoreOpen(true)}>
-              <Icon name="more" size={12} />
-              <span>{t('service.more')}</span>
+            <button className="btn btn--ghost btn--sm" style={{ alignSelf: 'flex-start' }} onClick={() => setMoreOpen(true)}>
+              <Icon name="more" size={14} />{t('service.more')}
             </button>
           )}
         </div>
