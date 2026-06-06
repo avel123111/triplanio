@@ -630,30 +630,21 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     const allDayEvents = eventsByDate[day] || [];
     const dayEvents = allDayEvents.filter(e => !inboundEventIds.has(e.id));
 
+    const _dd = new Date(`${day}T00:00`);
+    const _dayNum = Number.isNaN(_dd.getTime()) ? day.slice(8, 10) : _dd.getDate();
+    const _monAbbr = Number.isNaN(_dd.getTime()) ? '' : _dd.toLocaleDateString(lang, { month: 'short' }).replace('.', '');
     rows.push(
-      <div key={`day-${day}`} style={{ marginBottom: 24 }}>
-        {/* Date separator - matches design: large bold date */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, padding: '12px 0 10px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-              {fmtDate(day, lang)}
-            </span>
-            <span className="muted" style={{ fontSize: 'var(--fs-meta)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
-              {weekday(day, lang)}
-            </span>
-          </div>
-          {dayCity && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px 2px 6px', borderRadius: 999, background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 'var(--fs-micro)', fontWeight: 500, marginBottom: 2 }}>
-              <Icon name="pin" size={11} />
-              {dayCity.city_name}
-            </span>
-          )}
+      <div key={`day-${day}`} id={`tlday-${day}`} data-tlday={day} data-city={dayCity?.id || ''} className="tl3-day">
+        {/* Date header — Lumo .tl3-dh (datechip + weekday + city pill) */}
+        <div className="tl3-dh">
+          <span className="datechip"><span className="d">{_dayNum}</span><span className="m">{_monAbbr}</span></span>
+          <span className="wd">{weekday(day, lang)}</span>
           {weatherByDay[day] && (
-            <span className="num" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 999, background: 'var(--wash)', color: 'var(--ink)', fontSize: 'var(--fs-micro)', fontWeight: 500, marginBottom: 2 }}>
-              <span>{weatherByDay[day].icon}</span><span>{weatherByDay[day].temp}°</span>
-            </span>
+            <span className="wthr"><span>{weatherByDay[day].icon}</span><span>{weatherByDay[day].temp}°</span></span>
           )}
-          <div style={{ flex: 1, borderBottom: '1px solid var(--line-2)', marginBottom: 6 }} />
+          {dayCity && (
+            <span className="daycity"><Icon name="pin" size={14} />{dayCity.city_name}</span>
+          )}
         </div>
 
         {/* Intra-day order = chronological. Each arriving city's block
@@ -760,9 +751,66 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // Post-trip event days (e.g. a deadline that lands after the last trip day).
   for (const d of postTripDays) rows.push(renderEventsDay(d));
 
+  return <div className="tl3">{rows}</div>;
+}
+
+// ─── CityRail ─────────────────────────────────────────────────────────────────
+// Right column of the timeline: the route's cities as scroll-rail "stations".
+// Highlights the city whose day is currently scrolled into view (Intersection
+// Observer on the .tl3-day anchors), and clicking a city scrolls the timeline to
+// that city's first day.
+function CityRail({ visits = [], scrollRef }) {
+  const { t, lang } = useI18n();
+  const cities = useMemo(
+    () => sortVisits(visits).filter(v => v.kind !== 'start' && v.kind !== 'end'),
+    [visits],
+  );
+  const [activeId, setActiveId] = useState(null);
+
+  useEffect(() => {
+    const root = scrollRef?.current;
+    if (!root || cities.length === 0) return undefined;
+    const dayEls = Array.from(root.querySelectorAll('[data-tlday]'));
+    if (dayEls.length === 0) return undefined;
+    const obs = new IntersectionObserver((entries) => {
+      const vis = entries.filter(e => e.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      const cid = vis[0]?.target.getAttribute('data-city');
+      if (cid) setActiveId(cid);
+    }, { root, rootMargin: '-8% 0px -72% 0px', threshold: 0 });
+    dayEls.forEach(el => obs.observe(el));
+    return () => obs.disconnect();
+  }, [cities, scrollRef]);
+
+  if (cities.length === 0) return null;
+
+  const go = (city) => {
+    const day = naiveDayKey(city.start_date);
+    const el = scrollRef?.current?.querySelector(`#tlday-${CSS.escape(String(day))}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const nights = (city) => {
+    const s = parseNaive(city.start_date), e = parseNaive(city.end_date);
+    if (!s || !e) return 0;
+    return Math.max(0, Math.round(e.diff(s, 'days').days));
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      {rows}
+    <div className="cityrail" style={{ position: 'sticky', top: 80 }}>
+      <div className="cr-h">{t('overview.stat_cities')}</div>
+      {cities.map((c) => {
+        const n = nights(c);
+        const range = c.start_date ? formatTripRange([c], '–') : '';
+        return (
+          <button key={c.id} className={'cr-item' + (activeId === c.id ? ' on' : '')} onClick={() => go(c)}>
+            <span className="cr-rail"><span className="cr-dot" /><span className="cr-line" /></span>
+            <span className="cr-bd">
+              <span className="cr-nm" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.city_name}</span>
+              <span className="cr-dt">{range}{n > 0 ? ` · ${n} ${t('overview.unit_nights')}` : ''}</span>
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -848,116 +896,6 @@ function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
 
 // Timeline right rail. Budget + "who's going" moved to the Overview screen
 // (BudgetSummaryCard / MembersSummaryCard); the rail now carries only Services.
-function ContextSide({ services = [], isLoading, onAddService }) {
-  if (isLoading) {
-    return <div style={{ position: 'sticky', top: 80 }}><RightRailSkeleton /></div>;
-  }
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 80 }}>
-      <ServicesWidget services={services} onAddService={onAddService} />
-    </div>
-  );
-}
-
-// ─── ServicesWidget ───────────────────────────────────────────────────────────
-
-// trip_services rows carry a `kind` (esim | car_rental | insurance) — there is
-// no `status` column. Mirrors base44 TripServicesCard:
-//   • added services render as solid "booked" cards;
-//   • eSIM / car_rental show a dashed placeholder at the top until added;
-//   • once added, their "add more" option moves under "Ещё" (where insurance
-//     always lives). Keep KIND_META icons in sync with the service kinds.
-const SERVICE_KIND_META = {
-  esim:       { icon: 'esim',   labelKey: 'service.kind.esim',       hintKey: 'service.hint.esim' },
-  car_rental: { icon: 'car',    labelKey: 'service.kind.car_rental', hintKey: 'service.hint.car_rental' },
-  insurance:  { icon: 'shield', labelKey: 'service.kind.insurance',  hintKey: 'service.hint.insurance' },
-};
-
-function ServicesWidget({ services = [], onAddService }) {
-  const { t } = useI18n();
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  const byKind = { esim: [], car_rental: [], insurance: [] };
-  for (const s of services) { if (byKind[s.kind]) byKind[s.kind].push(s); }
-
-  // Top placeholders: only eSIM / car_rental that have NO items yet.
-  const topAddKinds = ['esim', 'car_rental'].filter(k => byKind[k].length === 0);
-  // "Ещё": add-more for esim/car_rental that already have items, plus insurance (always).
-  const moreAddKinds = [];
-  if (byKind.esim.length > 0) moreAddKinds.push('esim');
-  if (byKind.car_rental.length > 0) moreAddKinds.push('car_rental');
-  moreAddKinds.push('insurance');
-
-  return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
-      <h3 style={{ marginBottom: 10, fontSize: 'var(--fs-strong)' }}>{t('trip.sidebar_services')}</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {/* Added services as booked cards */}
-        {services.map((s) => {
-          const meta = SERVICE_KIND_META[s.kind];
-          return (
-            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 0' }}>
-              <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                <Icon name={meta?.icon || 'spark'} size={14} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta ? t(meta.labelKey) : s.name}</div>
-                {s.name && <div className="muted" style={{ fontSize: 'var(--fs-micro)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>}
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Top dashed placeholders for not-yet-added eSIM / car rental */}
-        {topAddKinds.map((k) => (
-          <ServiceRowEmpty key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} name={t(SERVICE_KIND_META[k].labelKey)} desc={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
-        ))}
-
-        {/* "Ещё" — insurance + add-more for kinds that already have items */}
-        {moreOpen ? (
-          moreAddKinds.map((k) => (
-            <ServiceRowEmpty
-              key={`more-${k}`}
-              icon={SERVICE_KIND_META[k].icon}
-              name={byKind[k].length > 0 ? t('service.add_more', { label: t(SERVICE_KIND_META[k].labelKey) }) : t(SERVICE_KIND_META[k].labelKey)}
-              desc={t(SERVICE_KIND_META[k].hintKey)}
-              onClick={() => onAddService?.(k)}
-            />
-          ))
-        ) : (
-          <button onClick={() => setMoreOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: 'var(--fs-meta)', cursor: 'pointer' }}>
-            <Icon name="more" size={12} />
-            <span>{t('service.more')}</span>
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ServiceRowEmpty({ icon, name, desc, onClick }) {
-  return (
-    <button onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: 9, padding: '8px 8px',
-      background: 'transparent', border: '1.5px dashed var(--line)', borderRadius: 8,
-      cursor: 'pointer', textAlign: 'left', color: 'var(--ink)', width: '100%',
-    }}
-    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.background = 'var(--brand-soft)'; }}
-    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.background = 'transparent'; }}>
-      <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--wash)', color: 'var(--muted)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-        <Icon name={icon} size={14} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</div>
-      </div>
-      {/* Trailing "+" — a dedicated flex child, so it sits to the RIGHT of the
-          text instead of stacking above it (the old inline-icon layout bug). */}
-      <Icon name="plus" size={14} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-    </button>
-  );
-}
-
 // ─── TripView (main export) ───────────────────────────────────────────────────
 
 export default function TripView() {
@@ -1292,6 +1230,7 @@ export default function TripView() {
               budgetExpenses={budgetExpenses}
               budgetCategories={budgetCategories}
               members={members}
+              services={services}
               user={user}
               contentLoading={loadingContent}
               active={shownLens === 'overview'}
@@ -1300,6 +1239,7 @@ export default function TripView() {
               onOpenMap={() => setLens('map')}
               onOpenBudget={() => setLens('budget')}
               onOpenMembers={() => setLens('members')}
+              onAddService={frozen ? frozenNote : (type) => setServiceChoice({ open: true, type })}
               onBudgetLocked={() => setBudgetAddonOff(true)}
             />
           )}
@@ -1347,11 +1287,7 @@ export default function TripView() {
                     }
                   }}
                 />
-                <ContextSide
-                  services={services}
-                  isLoading={loadingContent}
-                  onAddService={frozen ? frozenNote : (type) => setServiceChoice({ open: true, type })}
-                />
+                <CityRail visits={visits ?? []} scrollRef={screenBodyRef} />
               </div>
             </>
           )}

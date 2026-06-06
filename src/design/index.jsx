@@ -705,19 +705,25 @@ function _evMeta(e) {
 }
 
 // ── Mobile transfer row - stacked with a vertical departure→arrival scale ──────
-// Event-type → Lumo .ev-* modifier (sets --ev for the .tl-ev plate).
-function _evClass(e) {
-  if (e.type === "flight" || e.type === "transfer") return "ev-transfer";
-  if (e.type === "hotel-checkin" || e.type === "hotel-checkout") return "ev-hotel";
-  if (e.type === "hotel-deadline") return "ev-deadline";
-  if (e.type === "car-pickup" || e.type === "car-return") return "ev-car";
-  if (e.type === "activity") return "ev-activity";
-  return "ev-activity";
+// Event-type → Lumo tile colour tokens (--evs soft bg / --evi ink).
+const _EV_TOK = {
+  hotel:    { s: "var(--ev-hotel-soft)",    i: "var(--ev-hotel-ink)" },
+  transfer: { s: "var(--ev-transfer-soft)", i: "var(--ev-transfer-ink)" },
+  activity: { s: "var(--ev-activity-soft)", i: "var(--ev-activity-ink)" },
+  car:      { s: "var(--ev-car-soft)",      i: "var(--ev-car-ink)" },
+  deadline: { s: "var(--ev-deadline-soft)", i: "var(--ev-deadline-ink)" },
+};
+function _evTok(e) {
+  if (e.type === "flight" || e.type === "transfer") return _EV_TOK.transfer;
+  if (e.type === "hotel-checkin" || e.type === "hotel-checkout") return _EV_TOK.hotel;
+  if (e.type === "hotel-deadline") return _EV_TOK.deadline;
+  if (e.type === "car-pickup" || e.type === "car-return") return _EV_TOK.car;
+  return _EV_TOK.activity;
 }
 
-// Timeline event plate — Lumo .tl-ev (icon + title/sub + time). Transfers use the
-// two-line .time2 (depart / arrive). Missing-transfer renders as .tl-warn.
-// Single renderer for desktop + mobile; .tl-ev is a flex row that wraps fine.
+// Timeline event plate — Lumo "Таймлайн поездки" (.tl3-ev): time on the left
+// (mono), .tl3-card with a coloured .tile + title/sub. Transfers render as the
+// column .tl3-card--tr (from → mode → to). Missing-transfer → .tl3-warn.
 export function StreamEventRow({ e, onClick }) {
   const t = useT();
 
@@ -725,8 +731,8 @@ export function StreamEventRow({ e, onClick }) {
     const [hidden, setHidden] = React.useState(false);
     if (hidden) return null;
     return (
-      <div className="tl-warn">
-        <span className="wic"><Icon name="warning" size={19} /></span>
+      <div className="tl3-warn">
+        <span className="tile"><Icon name="warning" size={19} /></span>
         <div className="x">
           <b>{t('view.map_no_transfer')}</b>
           <span>{e.from} → {e.to}</span>
@@ -741,40 +747,55 @@ export function StreamEventRow({ e, onClick }) {
   }
 
   const meta = _evMeta(e);
-  const cls = _evClass(e);
   const price = e.price != null ? fmt(e.price, e.cur) : null;
 
   if (e.type === "flight" || e.type === "transfer") {
     const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "—";
-    const sub = [t(meta.labelKey), e.carrier, (e.num && e.num !== "-") ? e.num : null, price]
-      .filter(Boolean).join(" · ");
+    const small = [e.carrier, e.duration].filter(Boolean).join(" · ");
     return (
-      <button onClick={onClick} className={`tl-ev ${cls}`} style={{ width: "100%", textAlign: "left", font: "inherit" }}>
-        <span className="ic"><Icon name={meta.icon} size={19} /></span>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div className="t" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.from || "—"} → {e.to || "—"}</div>
-          {sub && <div className="s" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>}
-        </div>
-        {e.platformUrl && <PartnerPill url={e.platformUrl} />}
-        <div className="time2">
-          <span className="a">{e.time || "—"}</span>
-          <span className="b">{arrive}</span>
-        </div>
-      </button>
+      <div className="tl3-ev tl3-ev--tr">
+        <div className="time time--tr"><span>{e.time || "—"}</span><span>{arrive}</span></div>
+        <button className="tl3-card tl3-card--tr" onClick={onClick}>
+          <div className="rv-end">
+            <b>{e.from || "—"}</b>
+            {e.from_address && e.from_address !== e.from && <span>{e.from_address}</span>}
+          </div>
+          <div className="rv-conn">
+            <span className="dline" />
+            <span className="rv-mode">
+              <span className="ic"><Icon name={meta.icon} size={16} /></span>
+              {t(meta.labelKey)}{small && <small> · {small}</small>}
+            </span>
+            <span className="dline" />
+          </div>
+          <div className="rv-end">
+            {e.to_address && e.to_address !== e.to && <span>{e.to_address}</span>}
+            <b>{e.to || "—"}</b>
+          </div>
+        </button>
+      </div>
     );
   }
 
-  const sub = [t(meta.labelKey), e.duration, e.address, price].filter(Boolean).join(" · ");
+  const tok = _evTok(e);
+  const sub = [t(meta.labelKey), e.duration, e.address].filter(Boolean).join(" · ");
   return (
-    <button onClick={onClick} className={`tl-ev ${cls}`} style={{ width: "100%", textAlign: "left", font: "inherit" }}>
-      <span className="ic"><Icon name={meta.icon} size={19} /></span>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div className="t" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</div>
-        {sub && <div className="s" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>}
-      </div>
-      {e.platformUrl && <PartnerPill url={e.platformUrl} />}
+    <div className="tl3-ev">
       <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
-    </button>
+      <button className="tl3-card" style={{ "--evs": tok.s, "--evi": tok.i }} onClick={onClick}>
+        <span className="tile"><Icon name={meta.icon} size={20} /></span>
+        <div className="body">
+          <b>{e.title}</b>
+          {sub && <div className="sb">{sub}</div>}
+        </div>
+        {(price || e.platformUrl) && (
+          <span className="meta" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            {price && <span>{price}</span>}
+            {e.platformUrl && <PartnerPill url={e.platformUrl} />}
+          </span>
+        )}
+      </button>
+    </div>
   );
 }
 

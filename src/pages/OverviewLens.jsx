@@ -4,6 +4,7 @@ import RouteMapCard from '@/components/trips/RouteMapCard';
 import TripStatRow from '@/components/trips/TripStatRow';
 import BudgetSummaryCard from '@/components/trips/BudgetSummaryCard';
 import MembersSummaryCard from '@/components/trips/MembersSummaryCard';
+import ServicesCard from '@/components/trips/ServicesCard';
 
 // Trip Overview — the trip's main screen. Lives inside the TripView shell
 // (header + hero + sidebar). Two columns that collapse to one on mobile:
@@ -18,6 +19,7 @@ export default function OverviewLens({
   budgetExpenses = [],
   budgetCategories = [],
   members = [],
+  services = [],
   user,
   isLoading = false,
   contentLoading = false,
@@ -27,6 +29,7 @@ export default function OverviewLens({
   onOpenMap,
   onOpenBudget,
   onOpenMembers,
+  onAddService,
   onBudgetLocked,
 }) {
   const orderedVisits = useMemo(() => sortVisits(visits), [visits]);
@@ -123,6 +126,9 @@ export default function OverviewLens({
             isLoading={contentLoading}
             onOpenMembers={onOpenMembers}
           />
+        </div>
+        <div className="ov-anim">
+          <ServicesCard services={services} onAddService={onAddService} />
         </div>
       </div>
     </div>
