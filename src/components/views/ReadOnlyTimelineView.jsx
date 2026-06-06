@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import { MapPin, Camera, ExternalLink, Sparkles, Plane, Flag, LogIn, LogOut, ArrowRight, CalendarX, Send, Info, Car, Plus } from 'lucide-react';
 import { countryFlag } from '@/lib/geo';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/design/index';
 import { sortVisits } from '@/lib/validation';
 import { transportInfo } from '@/lib/transport';
 import { BOOKING_PLATFORMS, platformLogoUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
@@ -912,61 +913,24 @@ function AnchorReadCard({ visit }) {
 function EmptyTripCTA({ canEdit = true, onAddCity }) {
   const { t } = useI18nFormat();
   if (!canEdit) {
-    return (
-      <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl bg-card">
-        <MapPin className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-        <h3 className="font-semibold mb-1">{t('view.empty_title')}</h3>
-        <p className="text-sm text-muted-foreground">{t('view.empty_member')}</p>
-      </div>
-    );
+    return <EmptyState icon="pin" title={t('view.empty_title')} body={t('view.empty_member')} />;
   }
   return (
-    <div className="rounded-2xl overflow-hidden border border-primary/20">
-      {/* Light theme */}
-      <div className="dark:hidden rounded-2xl bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50">
-        <div className="py-12 px-6 text-center">
-          <div className="mx-auto mb-6 w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
-            <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="2" y1="12" x2="22" y2="12" />
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-            </svg>
-          </div>
-          <h3 className="font-display font-bold text-xl mb-2 text-foreground">{t('view.empty_title')}</h3>
-          <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-7 leading-relaxed">{t('view.empty_owner')}</p>
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            <Button size="lg" className="shadow-md shadow-primary/25 gap-2 bg-primary hover:bg-primary/90" onClick={onAddCity}>
-              <Plus className="w-4 h-4" />{t('view.add_first_city')}
-            </Button>
-            <Button size="lg" variant="outline" className="gap-2" style={{ borderColor: 'var(--ai-soft-2)', background: 'var(--ai-soft)', color: 'var(--ai-ink)' }}>
-              <Sparkles className="w-4 h-4" style={{ color: 'var(--ai)' }} />{t('view.start_with_ai')}
-            </Button>
-          </div>
+    <EmptyState
+      icon="pin"
+      title={t('view.empty_title')}
+      body={t('view.empty_owner')}
+      action={
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <Button size="lg" className="gap-2" onClick={onAddCity}>
+            <Plus className="w-4 h-4" />{t('view.add_first_city')}
+          </Button>
+          <Button size="lg" variant="outline" className="gap-2" style={{ borderColor: 'var(--ai-soft-2)', background: 'var(--ai-soft)', color: 'var(--ai-ink)' }}>
+            <Sparkles className="w-4 h-4" style={{ color: 'var(--ai)' }} />{t('view.start_with_ai')}
+          </Button>
         </div>
-      </div>
-      {/* Dark theme */}
-      <div className="hidden dark:block rounded-2xl bg-gradient-to-br from-slate-800 via-slate-750 to-slate-800">
-        <div className="py-12 px-6 text-center">
-          <div className="mx-auto mb-6 w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
-            <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="2" y1="12" x2="22" y2="12" />
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-            </svg>
-          </div>
-          <h3 className="font-display font-bold text-xl mb-2 text-white">{t('view.empty_title')}</h3>
-          <p className="text-sm text-slate-300 max-w-xs mx-auto mb-7 leading-relaxed">{t('view.empty_owner')}</p>
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            <Button size="lg" className="shadow-md shadow-primary/25 gap-2 bg-primary hover:bg-primary/90" onClick={onAddCity}>
-              <Plus className="w-4 h-4" />{t('view.add_first_city')}
-            </Button>
-            <Button size="lg" variant="outline" className="gap-2" style={{ borderColor: 'var(--ai-soft-2)', background: 'var(--ai-soft)', color: 'var(--ai-ink)' }}>
-              <Sparkles className="w-4 h-4" style={{ color: 'var(--ai)' }} />{t('view.start_with_ai')}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+      }
+    />
   );
 }
 

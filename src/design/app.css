@@ -134,7 +134,8 @@
 
   /* Motion — strong custom curves (built-in easings are too weak).
      ease-out for enter/hover/press, ease-in-out for on-screen movement. */
-  --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);   /* Lumo */
+  --ease-spring: cubic-bezier(0.34, 1.25, 0.5, 1); /* Lumo — playful overshoot */
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
   /* Type scale — Lumo standard (names + values). The single sanctioned ladder;
@@ -1187,8 +1188,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
     .te-step::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; }
     /* Always-on variant of the nights stepper (used in CityPanel, where there's no
        row hover to reveal it). Same control as the grid — one look, two contexts. */
-    .te-stepper--solid { background: var(--surface); border-color: var(--line); box-shadow: var(--shadow-soft); }
-    .te-stepper--solid .te-step { opacity: 1; }
+    .te-stepper--solid { background: var(--surface-2); border-color: transparent; box-shadow: none; border-radius: var(--r-pill); padding: 3px; gap: 3px; }
+    .te-stepper--solid .te-step { opacity: 1; width: 30px; height: 30px; border-radius: 50%; color: var(--primary); }
     /* Custom nights stepper. Quiet by default (no fill — just the number with
        hairline +/− that recede), so a column of these doesn't stripe the table.
        On row hover it lifts into a real segmented control. */
@@ -1263,32 +1264,33 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
     .te-panel__body { flex: 1; min-height: 0; overflow: auto; padding: 16px 18px 24px; }
     .te-panel__foot { flex-shrink: 0; padding: 12px 18px; border-top: 1px solid var(--line-2); background: var(--wash-2); display: flex; gap: 8px; justify-content: flex-end; }
 
-    .te-ghostadd { display: flex; align-items: center; gap: 11px; width: 100%; padding: 12px 13px; border-radius: 12px; border: 1.5px dashed var(--line); background: var(--surface); cursor: pointer; font-family: var(--font-ui); text-align: left; transition: border-color .12s var(--ease-out), background .12s var(--ease-out), transform .12s var(--ease-out); }
+    .te-ghostadd { display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px 13px; border-radius: 13px; border: 1.5px dashed var(--line-strong); background: transparent; cursor: pointer; font-family: var(--font-ui); text-align: left; transition: border-color .16s var(--ease-out), background .16s var(--ease-out), transform .14s var(--ease-spring); }
     .te-ghostadd:active { transform: scale(0.99); }
-    .te-ghostadd:hover { border-color: var(--a); background: color-mix(in srgb, var(--a) 6%, var(--surface)); }
-    .te-ghostadd__ic { width: 34px; height: 34px; border-radius: 9px; background: color-mix(in srgb, var(--a) 12%, transparent); color: var(--a); display: grid; place-items: center; flex-shrink: 0; }
+    .te-ghostadd:hover { border-color: var(--a); background: color-mix(in srgb, var(--a) 6%, transparent); }
+    .te-ghostadd:hover .te-ghostadd__ic { border-color: var(--a); color: var(--a); }
+    .te-ghostadd__ic { width: 38px; height: 38px; border-radius: 11px; border: 1.5px dashed var(--line-strong); background: transparent; color: var(--muted-2); display: grid; place-items: center; flex-shrink: 0; transition: .16s; }
     .te-fix { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px; cursor: pointer; background: var(--surface); border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent); color: var(--warning); font-size: var(--fs-micro); font-weight: 700; font-family: var(--font-ui); white-space: nowrap; flex-shrink: 0; }
     .te-fix:hover { background: var(--warning-soft); }
-    .te-flightline { display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px 11px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-family: var(--font-ui); text-align: left; }
-    .te-flightline__ic { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; flex-shrink: 0; }
-    .te-bookrow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border-radius: 13px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-family: var(--font-ui); text-align: left; }
+    .te-flightline { display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px 13px; border-radius: 13px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--sh-1); cursor: pointer; font-family: var(--font-ui); text-align: left; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
+    .te-flightline__ic { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0; }
+    .te-bookrow { display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px 13px; border-radius: 13px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--sh-1); cursor: pointer; font-family: var(--font-ui); text-align: left; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
     .te-bookrow.is-warn { border-color: color-mix(in srgb, var(--warning) 45%, var(--line)); }
-    .te-metastrip { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: var(--fs-meta); color: var(--muted); }
-    .te-metastrip > span { display: inline-flex; align-items: center; gap: 5px; }
+    .te-metastrip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: var(--fs-meta); color: var(--ink-2); }
+    .te-metastrip > span { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; background: var(--surface-2); padding: 6px 11px; border-radius: var(--r-pill); }
     .te-metastrip .num { color: var(--ink-2); }
     .te-checkrow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--wash); border: 1px solid var(--line-2); cursor: pointer; }
     .te-checkrow input { width: 16px; height: 16px; accent-color: var(--brand); flex-shrink: 0; }
     .te-hotelcard { padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
-    .te-actrow { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border-radius: 11px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-family: var(--font-ui); text-align: left; }
+    .te-actrow { display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px 13px; border-radius: 13px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--sh-1); cursor: pointer; font-family: var(--font-ui); text-align: left; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
     /* Consistent warning outline across booking rows in CityPanel (hotel/transfer/activity). */
     .te-flightline.is-warn, .te-actrow.is-warn { border-color: color-mix(in srgb, var(--warning) 45%, var(--line)); }
     /* All three booking rows (transfer/hotel/activity) share ONE hover MECHANIC —
        soft shadow + a coloured border in the row's own event colour. */
-    .te-flightline:hover, .te-bookrow:hover, .te-actrow:hover { box-shadow: var(--shadow-soft); }
+    .te-flightline:hover, .te-bookrow:hover, .te-actrow:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
     .te-flightline:hover { border-color: var(--ev-transfer); }
     .te-bookrow:hover { border-color: var(--ev-hotel); }
     .te-actrow:hover { border-color: var(--ev-activity); }
-    .te-actrow__ic { width: 30px; height: 30px; border-radius: 8px; background: var(--ev-activity-soft); color: var(--ev-activity); display: grid; place-items: center; flex-shrink: 0; }
+    .te-actrow__ic { width: 38px; height: 38px; border-radius: 11px; background: var(--ev-activity-soft); color: var(--ev-activity); display: grid; place-items: center; flex-shrink: 0; }
     .te-addmini { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--brand); cursor: pointer; display: grid; place-items: center; }
     .te-addmini:hover { background: var(--brand-soft); }
     .te-manual { display: flex; align-items: center; gap: 13px; width: 100%; padding: 16px; border-radius: 13px; border: 1.5px solid var(--brand); background: var(--surface); box-shadow: 0 0 0 3px var(--brand-soft); cursor: pointer; font-family: var(--font-ui); text-align: left; margin-bottom: 18px; }

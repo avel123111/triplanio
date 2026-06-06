@@ -15,7 +15,7 @@ import { supabase } from '@/api/supabaseClient';
 import { safeStorageName } from '@/lib/storage';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, Skeleton } from '../design/index';
+import { Badge, Btn, Dialog, Field, Skeleton, EmptyState } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
@@ -321,28 +321,18 @@ function DocCard({ doc, tripId, scope }) {
 function DocEmpty({ scope, tripId }) {
   const { t } = useI18n();
   return (
-    <div style={{ padding: '32px 24px', textAlign: 'center', border: '1.5px dashed var(--line)', borderRadius: 14, background: 'var(--wash)' }}>
-      <div style={{
-        width: 56, height: 56, margin: '0 auto 12px', borderRadius: 14,
-        background: scope === 'personal' ? 'var(--warm-tint)' : 'var(--brand-soft)',
-        color:      scope === 'personal' ? 'var(--warm)'     : 'var(--brand)',
-        display: 'grid', placeItems: 'center',
-      }}>
-        <Icon name="file" size={26} />
-      </div>
-      <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', marginBottom: 4 }}>
-        {scope === 'personal' ? t('doc.empty_private') : t('doc.empty_shared')}
-      </div>
-      <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.5, maxWidth: 360, margin: '0 auto 14px' }}>
-        {scope === 'personal'
-          ? t('doc.empty_private_desc')
-          : t('doc.empty_shared_desc')}
-      </div>
-      <Btn variant="ghost" icon="plus"
-        onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} defaultVisibility={scope === 'personal' ? 'private' : 'shared'} />)}>
-        {t('doc.add_doc')}
-      </Btn>
-    </div>
+    <EmptyState
+      icon="file"
+      kind={scope === 'personal' ? 'locked' : 'empty'}
+      title={scope === 'personal' ? t('doc.empty_private') : t('doc.empty_shared')}
+      body={scope === 'personal' ? t('doc.empty_private_desc') : t('doc.empty_shared_desc')}
+      action={
+        <Btn variant="ghost" icon="plus"
+          onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} defaultVisibility={scope === 'personal' ? 'private' : 'shared'} />)}>
+          {t('doc.add_doc')}
+        </Btn>
+      }
+    />
   );
 }
 
