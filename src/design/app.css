@@ -513,7 +513,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .btn--danger-solid { background: var(--danger); color: white; border-color: var(--danger); }
 .btn--ai { background: var(--ai-soft); color: var(--ai); border-color: var(--ai-soft-12); }
 .btn--ai:hover { background: var(--ai-soft-12); }
-.btn--sm { padding: 6px 10px; font-size: var(--fs-meta); }
+.btn--sm { padding: 9px 15px; font-size: 13px; }
 .btn--lg { padding: 12px 18px; font-size: var(--fs-base); border-radius: 12px; }
 .btn--block { width: 100%; justify-content: center; }
 .btn.is-on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand-soft-12); }
@@ -1156,15 +1156,15 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    Used by the in-place left panels (EventPanels / CityPanel).
    ==================================================================== */
     /* ---- table header ---- */
-    .te-thead { display: grid; grid-template-columns: 16px 24px minmax(0,1fr) 96px 120px 60px; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
-    .te-th { font-size: var(--fs-micro); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
+    .te-thead { display: grid; grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; column-gap: 12px; align-items: center; padding: 10px 12px 2px; }
+    .te-th { font-size: var(--fs-micro); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .te-th--c { text-align: center; }
 
     /* ---- list rows ---- */
-    .te-row { position: relative; display: grid; grid-template-columns: 16px 24px minmax(0,1fr) 96px 120px 60px; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
+    .te-row { position: relative; display: grid; grid-template-columns: 16px 28px minmax(0,1fr) 96px 96px 96px; column-gap: 12px; align-items: center; padding: 15px 6px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; transition: background .14s var(--ease-out), border-color .14s var(--ease-out), opacity .18s var(--ease-out); }
     .te-row:hover { background: var(--surface); border-color: var(--line-hover); box-shadow: var(--sh-2); }
     .te-row:hover .te-cityname { color: var(--brand); }
-    .te-cityname { font-family: var(--font-display); font-size: var(--fs-strong); font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; transition: color .12s; }
+    .te-cityname { font-family: var(--font-display); font-size: var(--fs-h4); font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; transition: color .12s; }
     .te-grip { color: var(--muted-2); opacity: .4; cursor: grab; display: grid; place-items: center; transition: opacity .12s; touch-action: none; -webkit-user-select: none; user-select: none; }
     .te-row:hover .te-grip { opacity: 1; }
     .te-grip:active { cursor: grabbing; }
@@ -1172,7 +1172,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
        pointer; on release it springs into its slot — managed inline in JS). */
     .te-row.is-dragging { z-index: 30; background: var(--surface); border-color: var(--line); box-shadow: var(--shadow-pop); cursor: grabbing; }
     .te-row.is-dragging .te-cityname { color: var(--ink); }
-    .te-row__num { width: 22px; height: 22px; border-radius: 50%; background: var(--brand-soft-12); color: var(--brand); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-meta); }
+    .te-row__num { width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-meta); }
     .te-row__num.is-warn { background: var(--warning-soft); color: var(--warning); }
     .te-warnbadge { display: inline-flex; align-items: center; gap: 2px; color: var(--warning-ink); font-size: var(--fs-micro); font-weight: 700; }
     /* A11y: keyboard-visible focus rings on editor controls. */
@@ -1205,7 +1205,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
     .te-cellbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 11px; border-radius: 12px; cursor: pointer; font-family: var(--font-ui); transition: background .12s var(--ease-out), border-color .14s var(--ease-out), color .12s var(--ease-out), opacity .14s var(--ease-out), transform .12s var(--ease-spring); }
     /* Empty add-cells recede so unfilled rows don't read as a column of dashed
        boxes; they surface on row hover or keyboard focus. */
-    .te-cellbtn--ghost { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted-2); opacity: 0; }
+    .te-cellbtn--ghost { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted-2); opacity: 1; }
     .te-row:hover .te-cellbtn--ghost { opacity: 1; }
     .te-cellbtn--ghost:focus-visible { opacity: 1; outline: 2px solid var(--primary); outline-offset: 1px; }
     /* add-cell hover takes the cell's own event colour (design .edl: hotel=blue, activity=pink) */
@@ -1226,24 +1226,24 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
        card with a gap below it, the transfer badge sits in that gap, and a faint
        spine threads the node column — it strengthens while dragging. */
     .te-table { background: transparent; position: relative; }
-    .te-table::before { content: ""; position: absolute; left: 45px; top: 24px; bottom: 24px; width: 2px; border-radius: 2px; background: var(--line); opacity: .65; pointer-events: none; transition: opacity .2s var(--ease-out), background .2s var(--ease-out); }
+    .te-table::before { content: ""; position: absolute; left: 48px; top: 24px; bottom: 24px; width: 2px; border-radius: 2px; background: var(--line); opacity: 1; pointer-events: none; transition: opacity .2s var(--ease-out), background .2s var(--ease-out); }
     .te-table.is-dragging::before { opacity: 1; background: var(--line-hover); }
     .te-seamwrap { position: relative; margin-bottom: 16px; }
     .te-seamwrap:last-child { margin-bottom: 0; }
-    .te-table .te-row { border-radius: 16px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--sh-1); }
+    .te-table .te-row { border-radius: 15px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--sh-1); }
     .te-end { display: flex; align-items: center; gap: 11px; padding: 15px 12px; border-radius: 12px; border: 1px solid var(--line); background: color-mix(in srgb, var(--wash) 55%, var(--surface)); }
-    .te-row__node { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
+    .te-row__node { width: 28px; height: 28px; border-radius: var(--r-sm); display: grid; place-items: center; flex-shrink: 0; }
     .te-endlabel { font-size: var(--fs-micro); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
-    .te-wptag { font-size: var(--fs-micro); font-weight: 700; color: var(--ev-transfer); text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border-radius: 999px; background: var(--ev-transfer-soft); white-space: nowrap; }
+    .te-wptag { font-size: var(--fs-micro); font-weight: 800; color: var(--ev-transfer-ink); text-transform: uppercase; letter-spacing: .04em; padding: 4px 10px; border-radius: 999px; background: var(--ev-transfer-soft); white-space: nowrap; }
     /* Transfer badge: ONE symmetric transition drives both directions — it melts
        away (fade+shrink) when a drag starts and eases back in on drop. No keyframe
        animation: a filled animation pins opacity and breaks the fade-out. */
-    .te-seam { position: absolute; left: 36px; bottom: 0; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); }
+    .te-seam { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; transform: translateY(50%); z-index: 4; transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); }
     .te-table.is-dragging .te-seam { opacity: 0; transform: translateY(50%) scale(0.8); pointer-events: none; }
     @keyframes teSeamIn { from { opacity: 0; transform: translateY(50%) scale(0.94); } to { opacity: 1; transform: translateY(50%) scale(1); } }
     /* Existing transfer: TINTED fill + solid coloured border — clearly distinct
        from the empty dashed "+ переезд" add chip below. */
-    .te-seam__pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; background: var(--ev-transfer-soft); border: 1px solid color-mix(in srgb, var(--ev-transfer) 42%, var(--line)); box-shadow: var(--shadow-soft); cursor: pointer; font-family: var(--font-ui); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .14s var(--ease-out), transform .12s var(--ease-out); }
+    .te-seam__pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; background: var(--ev-transfer-soft); border: 1.5px solid color-mix(in srgb, var(--ev-transfer) 42%, var(--line)); box-shadow: var(--shadow-card, var(--sh-2)); cursor: pointer; font-family: var(--font-ui); white-space: nowrap; transition: border-color .14s var(--ease-out), box-shadow .14s var(--ease-out), transform .12s var(--ease-out); }
     .te-seam__pill:hover { border-color: var(--ev-transfer); box-shadow: var(--shadow-card, var(--shadow-soft)); }
     .te-seam__pill:active { transform: scale(0.96); }
     .te-seam__pill.is-warn { border-color: var(--warning); background: var(--warning-soft); }
@@ -1348,7 +1348,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .route .ra { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 1px; }
 .route .end { text-align: right; }
 .rmid { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ev-transfer-ink); }
-.rmid .dur { color: var(--muted); font-weight: 700; margin-left: 2px; }
+.rmid .dur { color: var(--muted); font-weight: 800; font-size: 10.5px; white-space: nowrap; }
 
 .lp-warn { display: flex; gap: 10px; padding: 12px; border-radius: 13px; background: var(--warning-soft); color: var(--warning-ink); }
 .lp-warn b { display: block; font-size: 13.5px; font-weight: 800; }
@@ -1361,6 +1361,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .docrow .di { width: 30px; height: 30px; border-radius: 8px; background: var(--danger-soft); color: var(--danger-ink); display: grid; place-items: center; flex: none; }
 .docrow b { flex: 1; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .docrow span { font-size: 11px; color: var(--muted); font-weight: 600; }
+/* Notes block — Lumo .notes: surface-3 card with hairline border. */
+.notes { font-size: 13px; color: var(--ink-2); font-weight: 600; line-height: 1.5; padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); white-space: pre-wrap; word-break: break-word; }
 
 /* =================================================================
    GLOBAL TRIP SHELL — fixed flex column used by every trip screen

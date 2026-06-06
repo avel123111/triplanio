@@ -194,8 +194,8 @@ export default function EventAiBlock({
         className="mb-4 rounded-xl border"
         style={{
           position: 'relative', padding: '14px 16px',
-          background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)',
-          borderColor: 'var(--ai-soft-12)',
+          background: 'var(--ai-gradient-soft)',
+          borderColor: 'var(--ai-soft-2)',
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
         }}
       >
@@ -206,7 +206,7 @@ export default function EventAiBlock({
             {t('event.ai_locked_hint')}
           </div>
         </div>
-        <Button size="sm" onClick={onUpgrade} className="bg-gradient-to-r from-primary via-chart-1 to-chart-3">
+        <Button size="sm" onClick={onUpgrade} className="text-white" style={{ background: 'var(--ai-gradient)' }}>
           <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('trips.go_pro')}
         </Button>
       </div>
@@ -221,8 +221,8 @@ export default function EventAiBlock({
         className="mb-4 w-full text-left rounded-xl border transition"
         style={{
           padding: '12px 16px',
-          background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.06) 100%)',
-          borderColor: 'var(--ai-soft-12)',
+          background: 'var(--ai-gradient-soft)',
+          borderColor: 'var(--ai-soft-2)',
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
         }}
       >
@@ -250,7 +250,7 @@ export default function EventAiBlock({
       >
         <div
           style={{
-            width: 40, height: 40, borderRadius: 10,
+            width: 30, height: 30, borderRadius: 10,
             background: 'var(--ai-grad)', color: 'white',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}
@@ -282,14 +282,14 @@ export default function EventAiBlock({
         className="mb-4 rounded-xl border"
         style={{
           padding: '12px 16px',
-          background: 'rgba(31,138,91,.10)',
+          background: 'var(--success-soft)',
           borderColor: 'var(--success)',
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
         }}
       >
         <div
           style={{
-            width: 32, height: 32, borderRadius: 8,
+            width: 30, height: 30, borderRadius: 10,
             background: 'var(--success)', color: 'white',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}
@@ -327,8 +327,8 @@ export default function EventAiBlock({
       className="mb-4 rounded-xl border"
       style={{
         padding: 18,
-        background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.06) 100%)',
-        borderColor: 'var(--ai-soft-12)',
+        background: 'var(--ai-gradient-soft)',
+        borderColor: 'var(--ai-soft-2)',
       }}
     >
       <div className="flex items-center gap-3 mb-3 flex-wrap">
@@ -506,7 +506,7 @@ function Title() {
   return (
     <div className="text-sm font-semibold flex items-center gap-1.5 flex-wrap">
       {t('event.ai_fill_title')}
-      <span className="text-[length:var(--fs-nano)] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Pro</span>
+      <span className="text-[length:var(--fs-nano)] uppercase font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--ai-soft)', color: 'var(--ai-ink)' }}>Pro</span>
     </div>
   );
 }

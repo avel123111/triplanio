@@ -14,6 +14,7 @@ import { Icon } from '@/design/icons';
 import { getEntityDocuments } from '@/lib/documents';
 import { BOOKING_PLATFORMS, platformLogoUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { fmtDT, fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
+import { formatDuration } from '@/lib/time';
 
 export const ACCENT = { hotel: 'var(--ev-hotel)', transfer: 'var(--ev-transfer)', activity: 'var(--ev-activity)', service: 'var(--ev-car)' };
 export const SOFT = { hotel: 'var(--ev-hotel-soft)', transfer: 'var(--ev-transfer-soft)', activity: 'var(--ev-activity-soft)', service: 'var(--ev-car-soft)' };
@@ -122,7 +123,7 @@ function Notes({ accent, notes, t }) {
   if (!notes) return null;
   return (
     <Section accent={accent} title={t('activity.view_notes')}>
-      <div style={{ fontSize: 'var(--fs-base)', color: 'var(--ink-2)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{notes}</div>
+      <div className="notes">{notes}</div>
     </Section>
   );
 }
@@ -184,7 +185,10 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
           {entity.from_address && <div className="ra">{entity.from_address}</div>}
         </div>
         <div className="rmid">
-          <Icon name={meta.icon} size={20} />
+          <Icon name={meta.icon} size={22} />
+          {formatDuration(entity.start_datetime, entity.end_datetime) && (
+            <div className="dur">{formatDuration(entity.start_datetime, entity.end_datetime)}</div>
+          )}
         </div>
         <div className="end">
           {arrDate && <div className="rd">{arrDate}</div>}

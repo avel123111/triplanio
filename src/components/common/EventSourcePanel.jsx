@@ -130,9 +130,9 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
       )}
     >
       {warning && (
-        <div className="te-fix-note" style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '9px 11px', borderRadius: 10, background: 'var(--warning-soft)', border: '1px solid color-mix(in srgb, var(--warning) 32%, transparent)', marginBottom: 4 }}>
-          <Icon name="warning" size={15} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
-          <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', color: 'var(--ink-2)', lineHeight: 1.45 }}>{warning}</div>
+        <div className="lp-warn" style={{ marginBottom: 4 }}>
+          <Icon name="warning" size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+          <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{warning}</div>
         </div>
       )}
       {confirmDel ? (

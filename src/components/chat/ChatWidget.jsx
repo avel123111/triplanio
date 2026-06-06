@@ -15,7 +15,7 @@ import { useChatId, useUnreadChatCount, chatParticipants, pluralPeople } from '@
 import { useI18n } from '@/lib/i18n/I18nContext';
 import TriplanioAvatar from './TriplanioAvatar';
 import ChatMarkdown from './ChatMarkdown';
-import { Avatar } from '@/design/index';
+import { Avatar, EmptyState } from '@/design/index';
 import { displayName } from '@/lib/displayName';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 
@@ -334,7 +334,9 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       {/* Messages */}
       <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {msgs.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: 'var(--fs-base)' }}>{t('chat.write_first')}</div>
+          <div style={{ margin: 'auto' }}>
+            <EmptyState icon="chat" title={t('chat.write_first')} />
+          </div>
         ) : messageEls}
         {isThinking && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>

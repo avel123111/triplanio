@@ -12,7 +12,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, Field, Skeleton } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Skeleton } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { edgeErrorMessage } from '@/lib/edgeError';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -332,7 +332,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     <>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'visible' }}>
         {allMembers.length === 0 && (
-          <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>{t('member.empty')}</div>
+          <EmptyState icon="users" title={t('member.empty')} />
         )}
         {allMembers.map((m, i) => {
           const isOwner = m.role === 'owner';

@@ -141,10 +141,7 @@ export default function Inbox() {
         ) : notifications.length === 0 ? (
           <InboxEmpty onCollection={() => nav('/trips')} onAi={() => nav('/plan-trip-ai')} />
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '36px 24px', color: 'var(--muted)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14 }}>
-            <Icon name="bell" size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
-            <div style={{ fontSize: 'var(--fs-base)' }}>{t('notif.filter_empty')}</div>
-          </div>
+          <EmptyState icon="bell" title={t('notif.filter_empty')} />
         ) : (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
             {groups.map((g, gi) => (

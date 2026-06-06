@@ -313,39 +313,6 @@ function TripHeader({ isPro, isDark, onToggleTheme, user, nav }) {
 }
 
 
-// ─── AddDayButton - shown in edit mode after each day ────────────────────────
-function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1.5px dashed var(--line)', background: 'transparent', color: 'var(--muted)', fontSize: 'var(--fs-base)', cursor: 'pointer', transition: 'color .15s, border-color .15s' }}
-        onMouseEnter={e => { e.currentTarget.style.color = 'var(--ink)'; e.currentTarget.style.borderColor = 'var(--brand)'; }}
-        onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.borderColor = 'var(--line)'; }}
-      >
-        <Icon name="plus" size={13} /> {t('common.add')}
-      </button>
-      {open && (
-        <>
-          {/* "Add city" lives in the Structure editor now - timeline only adds activities. */}
-          <button
-            type="button"
-            onClick={() => { setOpen(false); onAddActivity?.(dayKey); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 'var(--fs-base)', fontWeight: 500, cursor: 'pointer' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
-          >
-            <Icon name="sparkles" size={13} style={{ color: 'var(--muted)' }} /> {t('activity.add')}
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
 // ─── TimelineLens ─────────────────────────────────────────────────────────────
 
 function SkeletonTimeline() {
@@ -466,7 +433,7 @@ function useWeatherByDay(visits) {
 }
 
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
+function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
   const { t, lang } = useI18n();
   const weatherByDay = useWeatherByDay(visits);  // hook must run before any early return
   if (isLoading) return <SkeletonTimeline />;
@@ -746,14 +713,6 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
             </>
           );
         })()}
-        {/* Edit mode: add buttons */}
-        {isEditMode && (
-          <AddDayButton
-            dayKey={day}
-            onAddCity={onAddCityForDay}
-            onAddActivity={onAddActivityForDay}
-          />
-        )}
       </div>
     );
   }
@@ -1176,7 +1135,6 @@ export default function TripView() {
   const lens = searchParams.get('lens') || 'timeline';
 
   const { isDark, toggle: toggleTheme } = useTheme();
-  const [isEditMode, setIsEditMode] = useState(false);
   // Choice dialogs (ForkPartnerModal) - sit between the warning button and the
   // edit form so the user can pick a partner before falling back to manual entry.
   const [hotelChoice, setHotelChoice] = useState({ open: false, visit: null });
@@ -1517,7 +1475,6 @@ export default function TripView() {
                   onAddHotel={frozen ? frozenNote : (visit) =>
                     setHotelChoice({ open: true, visit })
                   }
-                  isEditMode={isEditMode}
                   onOpenEvent={openEventView}
                   onAddActivityForDay={frozen ? frozenNote : (dayKey) => {
                     const dayVisit = visits.find(v =>
