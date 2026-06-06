@@ -190,15 +190,7 @@ export default function EventAiBlock({
 
   if (state === 'locked') {
     return (
-      <div
-        className="mb-4 rounded-xl border"
-        style={{
-          position: 'relative', padding: '14px 16px',
-          background: 'var(--ai-gradient-soft)',
-          borderColor: 'var(--ai-soft-2)',
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-        }}
-      >
+      <div className="aiblk mb-4" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <AiIcon locked />
         <div style={{ flex: 1, minWidth: 200 }}>
           <Title />
@@ -215,17 +207,7 @@ export default function EventAiBlock({
 
   if (state === 'available') {
     return (
-      <button
-        type="button"
-        onClick={() => setState('idle')}
-        className="mb-4 w-full text-left rounded-xl border transition"
-        style={{
-          padding: '12px 16px',
-          background: 'var(--ai-gradient-soft)',
-          borderColor: 'var(--ai-soft-2)',
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-        }}
-      >
+      <button type="button" onClick={() => setState('idle')} className="aiblk mb-4 w-full text-left" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <AiIcon />
         <div style={{ flex: 1, minWidth: 180 }}>
           <Title />
@@ -323,14 +305,7 @@ export default function EventAiBlock({
 
   // idle / uploaded
   return (
-    <div
-      className="mb-4 rounded-xl border"
-      style={{
-        padding: 18,
-        background: 'var(--ai-gradient-soft)',
-        borderColor: 'var(--ai-soft-2)',
-      }}
-    >
+    <div className="aiblk mb-4">
       <div className="flex items-center gap-3 mb-3 flex-wrap">
         <AiIcon />
         <div style={{ flex: 1, minWidth: 200 }}>
@@ -416,40 +391,29 @@ export default function EventAiBlock({
             style={{ minHeight: 84 }}
           />
           <div className="flex items-center gap-2 flex-wrap mt-1">
-            <Button variant="ghost" size="sm" onClick={() => inputRef.current?.click()}>
+            <button type="button" className="btn btn--ghost btn--sm" onClick={() => inputRef.current?.click()}>
               <Upload className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_pdf_screenshot')}
-            </Button>
+            </button>
             <span className="text-[length:var(--fs-micro)] text-muted-foreground">
               {dragOver ? t('event.ai_drop_active') : t('event.ai_drop_idle')}
             </span>
             <div className="flex-1" />
-            <Button
-              size="sm"
-              onClick={runParse}
-              disabled={!text.trim() && files.length === 0}
-              style={{ background: 'var(--ai)', borderColor: 'var(--ai)' }}
-              className="text-white hover:opacity-90"
-            >
+            <button type="button" className="btn btn--ai btn--sm" onClick={runParse} disabled={!text.trim() && files.length === 0}>
               <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_recognize')}
-            </Button>
+            </button>
           </div>
         </div>
       )}
 
       {state === 'uploaded' && (
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="ghost" size="sm" onClick={() => setState('idle')}>
+          <button type="button" className="btn btn--ghost btn--sm" onClick={() => setState('idle')}>
             <Edit3 className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_paste_text')}
-          </Button>
+          </button>
           <div className="flex-1" />
-          <Button
-            size="sm"
-            onClick={runParse}
-            style={{ background: 'var(--ai)', borderColor: 'var(--ai)' }}
-            className="text-white hover:opacity-90"
-          >
+          <button type="button" className="btn btn--ai btn--sm" onClick={runParse}>
             <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_recognize_booking')}
-          </Button>
+          </button>
         </div>
       )}
 
