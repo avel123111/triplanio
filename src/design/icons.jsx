@@ -24,7 +24,7 @@ const ICONS = {
   close: <><path d="M6 6l12 12M18 6L6 18"/></>,
   plus: <><path d="M12 5v14M5 12h14"/></>,
   more: <><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></>,
-  plane: <><path d="M3 14l8-3 7-7 1 1-4 8-3 8-1.5-1.5-1.5-4-4-1.5z"/></>,
+  plane: <><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></>,
   train: <><rect x="6" y="4" width="12" height="13" rx="2"/><circle cx="9" cy="18.5" r="1"/><circle cx="15" cy="18.5" r="1"/><path d="M6 10h12"/></>,
   bus: <><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M4 11h16"/><circle cx="8" cy="19" r="1"/><circle cx="16" cy="19" r="1"/></>,
   car: <><path d="M5 16v2M19 16v2"/><rect x="3" y="10" width="18" height="6" rx="2"/><path d="M5 10l2-4h10l2 4"/></>,

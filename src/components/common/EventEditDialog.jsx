@@ -991,7 +991,7 @@ export default function EventEditDialog({
               <button
                 onClick={() => onOpenChange?.(false)}
                 title={t('common.back')}
-                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}
+                style={{ width: 28, height: 28, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--secondary)', color: 'var(--secondary-ink)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>

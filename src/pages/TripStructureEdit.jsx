@@ -1073,7 +1073,6 @@ function ActCell({ count, warn, onClick }) {
 function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn, onOpenCity, onHotel, onAct, onNightsMinus, onNightsPlus, drag }) {
   const t = useT();
   const { lang } = useI18n();
-  const m = metaOf(seg);
   const stop = (e) => e.stopPropagation();
   // Drag handle: pointer-drag (lifts the row) + keyboard reorder (a11y). Click is
   // stopped so grabbing the grip never opens the city panel.
@@ -1116,7 +1115,6 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
       <div className="te-citycell">
         <div className="te-cityline">
           <span className="te-cityname">{seg.city_name}</span>
-          {m.country && <span className="te-country">{m.country}</span>}
           <Conf n={cityConf} />
         </div>
         <div className="te-dts">{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
