@@ -16,14 +16,10 @@ import TripSidebar from '@/components/trips/TripSidebar';
 import TripHeaderBar from '@/components/trips/TripHeaderBar';
 import TripScreenBar, { TripScreenBarCtx } from '@/components/trips/TripScreenBar';
 import ShareDialog from '@/components/trips/ShareDialog';
-import { useUserProfiles } from '@/lib/useUserProfiles';
-import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
-import { useFxRates } from '@/lib/fx';
-import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
-import { Avatar, Btn, EmptyState, Skeleton, fmtDate, weekday, StreamEventRow } from '../design/index';
+import { Btn, EmptyState, Skeleton, fmtDate, weekday, StreamEventRow } from '../design/index';
 import { SystemStub } from '@/lib/PageNotFound';
 import { sortVisits, cityIdentity, validateTrip, primaryIssues } from '@/lib/validation';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
@@ -33,6 +29,7 @@ import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import ServiceDialog from '@/components/services/ServiceDialog';
+import OverviewLens from './OverviewLens';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
 import CalendarLens from './CalendarLens';
@@ -846,178 +843,14 @@ function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
 
 // ─── ContextSide ──────────────────────────────────────────────────────────────
 
-function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, services = [], user, trip, isLoading, onAddService, canManage = false, budgetEnabled = false, onBudgetLocked }) {
-  const { t } = useI18n();
-  const mainCurrencyCtx = trip?.details?.main_currency || budget?.currency || 'EUR';
-  const { data: fxCtx } = useFxRates(mainCurrencyCtx);
-  const overridesCtx = budget?.fx_overrides || {};
-  const moneyCtx = (v) => fmtMoney(v, mainCurrencyCtx, 'ru-RU');
-  const convCtx = (e) => toMainCur(e.original_amount, e.original_currency || mainCurrencyCtx, mainCurrencyCtx, fxCtx, overridesCtx);
-  // Resolve display names from profiles so the widget shows real names, not
-  // emails. Include the trip owner (often missing from trip_members) and the
-  // current user so the synthetic owner row and the current user resolve.
-  const profileIds = [
-    ...((members || []).map(m => m.user_id)),
-    trip?.created_by,
-    user?.id,
-  ].filter(Boolean);
-  const profiles = useUserProfiles(profileIds, trip?.id);
+// Timeline right rail. Budget + "who's going" moved to the Overview screen
+// (BudgetSummaryCard / MembersSummaryCard); the rail now carries only Services.
+function ContextSide({ services = [], isLoading, onAddService }) {
   if (isLoading) {
     return <div style={{ position: 'sticky', top: 80 }}><RightRailSkeleton /></div>;
   }
-  const mainCurrency = mainCurrencyCtx;
-
-  // Per-category breakdown (converted to main currency). Drives the segmented
-  // bar + legend. Only convertible expenses are summed.
-  const catBreakdown = (budgetCategories || [])
-    .map(cat => {
-      const items = (budgetExpenses || []).filter(e => e.category_id === cat.id);
-      const spent = items.reduce((s, e) => { const r = convCtx(e); return s + (r.ok ? r.value : 0); }, 0);
-      return { id: cat.id, name: cat.name, color: cat.color || 'var(--muted)', spent };
-    })
-    .filter(c => c.spent > 0)
-    .sort((a, b) => b.spent - a.spent);
-  const totalSpent = catBreakdown.reduce((s, c) => s + c.spent, 0);
-
-  // Any expense whose currency can't be converted → warning indicator.
-  const hasMissingRate = (budgetExpenses || []).some(
-    e => e.original_currency && e.original_currency !== mainCurrency && !convCtx(e).ok
-  );
-
-  // Always show the owner first, then admins, viewers, offline, pending.
-  // The owner often isn't a trip_members row (tracked via trip.created_by), so
-  // synthesize it when missing. Use the authenticated user's own name when the
-  // owner row is the current user - otherwise leave user_full_name empty and
-  // let the profile resolver fill it in.
-  const orderedMembers = (() => {
-    const ownerId = trip?.created_by || user?.id || '';
-    const all = members.filter(m => m.status !== 'declined');
-    if (ownerId && !all.some(m => m.role === 'owner' || m.user_id === ownerId)) {
-      const isMeOwner = user?.id && ownerId === user.id;
-      all.unshift({
-        id: '__owner__',
-        user_id: ownerId,
-        user_full_name: isMeOwner ? (user?.full_name || '') : '',
-        role: 'owner',
-        status: 'active',
-      });
-    }
-    const rank = (m) => {
-      if (m.role === 'owner') return 0;
-      if (m.status === 'pending' || m.status === 'invited') return 4;
-      if (m.status === 'offline') return 3;
-      if (m.role === 'admin') return 1;
-      return 2; // viewer / editor
-    };
-    return all
-      .map((m, i) => ({ m, i }))
-      .sort((a, b) => rank(a.m) - rank(b.m) || a.i - b.i)
-      .map(x => x.m);
-  })();
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 80 }}>
-      {/* Budget widget */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 'var(--fs-strong)' }}>{t('trip.sidebar_budget')}</h3>
-          {canManage && (
-            <button
-              onClick={() => (budgetEnabled ? window.__navigate?.('budget') : onBudgetLocked?.())}
-              style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }}
-              title={budgetEnabled ? t('trip.open_budget') : t('trip.enable_budget_addon')}>
-              <Icon name="chev" size={13} />
-            </button>
-          )}
-        </div>
-        {budget ? (
-          <>
-            <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h2)', fontWeight: 600 }}>
-              {moneyCtx(totalSpent)}
-            </div>
-            {hasMissingRate && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: 'var(--fs-micro)', color: 'var(--warning)' }}>
-                <Icon name="warning" size={12} />
-                <span>{t('trip.budget_no_rate')}</span>
-              </div>
-            )}
-            {/* Segmented bar - one segment per category */}
-            <div style={{ height: 8, borderRadius: 4, background: 'var(--wash)', overflow: 'hidden', marginTop: 10, marginBottom: 10, display: 'flex' }}>
-              {catBreakdown.map(c => (
-                <div key={c.id} title={c.name} style={{
-                  height: '100%',
-                  width: (totalSpent > 0 ? (c.spent / totalSpent) * 100 : 0) + '%',
-                  // keep a tiny segment visible even for very small expenses
-                  minWidth: c.spent > 0 ? 4 : 0,
-                  background: c.color,
-                }} />
-              ))}
-            </div>
-            {/* Legend */}
-            {catBreakdown.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {catBreakdown.map(c => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--fs-meta)' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                    <span className="num" style={{ fontWeight: 600 }}>{moneyCtx(c.spent)}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('trip.budget_empty')}</div>
-            )}
-          </>
-        ) : (
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('trip.budget_none')}</div>
-        )}
-      </div>
-
-      {/* Who's going widget */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 'var(--fs-strong)' }}>{t('trip.who_goes')}</h3>
-          {canManage && (
-            <button
-              onClick={() => window.__navigate?.('members')}
-              style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }}
-              title={t('trip.open_members')}>
-              <Icon name="chev" size={13} />
-            </button>
-          )}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {orderedMembers.map((m, i) => {
-            const profile = profiles[m.user_id];
-            const resolved = profile?.full_name || m.user_full_name
-              || (m.user_id && user?.id && m.user_id === user.id ? user.full_name : '')
-              || '';
-            const name = displayName(m.invite_email, resolved);
-            const isOffline = m.status === 'offline';
-            const isPending = m.status === 'pending' || m.status === 'invited';
-            const roleIcon = m.role === 'owner' ? 'crown' : m.role === 'admin' ? 'shield' : 'eye';
-            const roleColor = m.role === 'owner' ? 'var(--warm)' : m.role === 'admin' ? 'var(--brand)' : 'var(--muted)';
-            const roleLabel = isPending ? t('trip.member_pending')
-              : isOffline ? t('trip.member_offline')
-              : m.role === 'owner' ? t('members.role_owner')
-              : m.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
-            return (
-              <div key={m.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (isPending || isOffline) ? 0.65 : 1 }}>
-                <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1.3 }}>
-                    <Icon name={roleIcon} size={11} style={{ color: roleColor, flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                  </div>
-                  <div style={{ fontSize: 'var(--fs-micro)', marginTop: 1, color: isPending ? 'var(--warning)' : 'var(--muted)' }}>{roleLabel}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Services widget */}
       <ServicesWidget services={services} onAddService={onAddService} />
     </div>
   );
@@ -1132,7 +965,7 @@ export default function TripView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
-  const lens = searchParams.get('lens') || 'timeline';
+  const lens = searchParams.get('lens') || 'overview';
 
   const { isDark, toggle: toggleTheme } = useTheme();
   // Choice dialogs (ForkPartnerModal) - sit between the warning button and the
@@ -1167,10 +1000,11 @@ export default function TripView() {
     window.__navigate = (target) => {
       if (target === 'collection') { nav('/trips'); return; }
       if (target === 'ai-planner') { nav('/plan-trip-ai'); return; }
-      const lensIds = ['timeline', 'map', 'calendar', 'budget', 'docs', 'members', 'settings', 'chat'];
+      const lensIds = ['overview', 'timeline', 'map', 'calendar', 'budget', 'docs', 'members', 'settings', 'chat'];
       if (lensIds.includes(target)) {
         const sp = new URLSearchParams(searchParams);
-        if (target === 'timeline') sp.delete('lens'); else sp.set('lens', target);
+        // overview is the default lens → drop the param; everything else sets it.
+        if (target === 'overview') sp.delete('lens'); else sp.set('lens', target);
         setSearchParams(sp, { replace: false });
       }
     };
@@ -1179,7 +1013,7 @@ export default function TripView() {
 
   const setLens = (id) => {
     const sp = new URLSearchParams(searchParams);
-    if (id === 'timeline') sp.delete('lens'); else sp.set('lens', id);
+    if (id === 'overview') sp.delete('lens'); else sp.set('lens', id);
     setSearchParams(sp, { replace: false });
     setSideOpen(false); // close the mobile sidebar after navigating
   };
@@ -1276,8 +1110,8 @@ export default function TripView() {
   // If the URL points at a lens the trip has disabled, fall back to the timeline.
   // Viewers can't open Settings/Members even by deep link → fall back too.
   const VIEWER_BLOCKED_LENSES = new Set(['settings', 'members']);
-  let shownLens = isLensVisible(trip, lens) ? lens : 'timeline';
-  if (myRole === 'viewer' && VIEWER_BLOCKED_LENSES.has(shownLens)) shownLens = 'timeline';
+  let shownLens = isLensVisible(trip, lens) ? lens : 'overview';
+  if (myRole === 'viewer' && VIEWER_BLOCKED_LENSES.has(shownLens)) shownLens = 'overview';
 
   // Latch once the map lens has been opened so it stays mounted (hidden) on other
   // tabs — see the map-lens render below for why.
@@ -1446,6 +1280,26 @@ export default function TripView() {
             onEditInEditor={canEditMode ? (({ kind, id }) => nav(`/trip/${trip.id}/edit`, { state: { edit: { kind, id } } })) : null}
           />
 
+          {shownLens === 'overview' && (
+            <OverviewLens
+              trip={trip}
+              visits={visits ?? []}
+              transfers={transfers ?? []}
+              budget={budget}
+              budgetExpenses={budgetExpenses}
+              budgetCategories={budgetCategories}
+              members={members}
+              user={user}
+              isLoading={loadingContent}
+              active={shownLens === 'overview'}
+              canManage={myRole !== 'viewer'}
+              budgetEnabled={isAddonEnabled(trip, 'budget')}
+              onOpenMap={() => setLens('map')}
+              onOpenBudget={() => setLens('budget')}
+              onOpenMembers={() => setLens('members')}
+              onBudgetLocked={() => setBudgetAddonOff(true)}
+            />
+          )}
           {shownLens === 'timeline' && (
             <>
               {frozen && (
@@ -1491,18 +1345,9 @@ export default function TripView() {
                   }}
                 />
                 <ContextSide
-                  budget={budget}
-                  budgetExpenses={budgetExpenses}
-                  budgetCategories={budgetCategories}
-                  members={members}
                   services={services}
-                  user={user}
-                  trip={trip}
                   isLoading={loadingContent}
                   onAddService={frozen ? frozenNote : (type) => setServiceChoice({ open: true, type })}
-                  canManage={myRole !== 'viewer'}
-                  budgetEnabled={isAddonEnabled(trip, 'budget')}
-                  onBudgetLocked={() => setBudgetAddonOff(true)}
                 />
               </div>
             </>

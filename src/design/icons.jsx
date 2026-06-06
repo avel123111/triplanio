@@ -36,6 +36,7 @@ const ICONS = {
   globe: <><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="9" ry="4"/><path d="M12 3v18"/></>,
   pin: <><path d="M12 22s-7-7.6-7-13a7 7 0 1 1 14 0c0 5.4-7 13-7 13z"/><circle cx="12" cy="9" r="2.5"/></>,
   map: <><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></>,
+  ruler: <><path d="M3.5 14.5l7-7a1 1 0 0 1 1.4 0l4.6 4.6a1 1 0 0 1 0 1.4l-7 7a1 1 0 0 1-1.4 0L3.5 15.9a1 1 0 0 1 0-1.4z"/><path d="M8 10l1.5 1.5M10.5 7.5L12 9M5.5 12.5L7 14"/></>,
   calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M8 3v4M16 3v4"/></>,
   weather: <><circle cx="9" cy="9" r="3.5"/><path d="M5 18h13a3 3 0 0 0 0-6 5 5 0 0 0-9.5-1.5"/></>,
   users: <><circle cx="9" cy="8" r="3.5"/><path d="M3 20c.5-3.5 3-5.5 6-5.5s5.5 2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M15 14c2-.5 4 .5 5 3"/></>,

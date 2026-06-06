@@ -2,6 +2,7 @@ export default {
   'trip_menu.open': 'Открыть меню',
   'trip_menu.section_lenses': 'Путешествие',
   'trip_menu.section_manage': 'Управление',
+  'trip_menu.overview': 'Обзор',
   'trip_menu.timeline': 'Хронология',
   'trip_menu.map': 'Карта',
   'trip_menu.calendar': 'Календарь',

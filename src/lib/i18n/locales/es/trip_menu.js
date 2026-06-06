@@ -2,6 +2,7 @@ export default {
   'trip_menu.open': 'Abrir menú',
   'trip_menu.section_lenses': 'Viaje',
   'trip_menu.section_manage': 'Gestión',
+  'trip_menu.overview': 'Resumen',
   'trip_menu.timeline': 'Cronología',
   'trip_menu.map': 'Mapa',
   'trip_menu.calendar': 'Calendario',

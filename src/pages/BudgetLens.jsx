@@ -20,6 +20,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
 import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
+import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colors';
 import { getActiveLocale } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton, Severity } from '../design/index';
@@ -259,14 +260,15 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
 
 // ─── AddCategoryDialog ────────────────────────────────────────────────────────
 
-const CAT_COLORS = ['#e2503a','#2167e2','#6a3ee2','#1f8a5b','#e08158','#c98a1a','#c9603a','#888'];
+// Category palette = the Lumo --cat-1..8 tokens (single source: category-colors).
+const CAT_COLORS = CATEGORY_HEXES;
 const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'spark', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
 function AddCategoryDialog({ tripId, existing, onSaved }) {
   const { t } = useI18n();
   const { user } = useAuth();
   const [name, setName] = useState(existing?.name || '');
-  const [color, setColor] = useState(existing?.color || CAT_COLORS[0]);
+  const [color, setColor] = useState(existing?.color || DEFAULT_CATEGORY_HEX);
   const [icon, setIcon] = useState(existing?.icon || CAT_ICONS_BUDGET[0]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');

@@ -2,6 +2,7 @@ export default {
   'trip_menu.open': 'Open menu',
   'trip_menu.section_lenses': 'Trip',
   'trip_menu.section_manage': 'Management',
+  'trip_menu.overview': 'Overview',
   'trip_menu.timeline': 'Timeline',
   'trip_menu.map': 'Map',
   'trip_menu.calendar': 'Calendar',

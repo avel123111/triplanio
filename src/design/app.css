@@ -31,6 +31,8 @@
   --brand-700:    var(--primary-press);
   --brand-soft:   rgba(33,115,200,.10);
   --brand-soft-12:rgba(33,115,200,.16);
+  --primary-soft:   rgba(33,115,200,.10);   /* Lumo soft-primary tint (was referenced but undefined) */
+  --primary-soft-2: rgba(33,115,200,.16);
   --brand-ink:    #16294A;
   --brand-glow:   color-mix(in srgb, var(--brand) 32%, transparent);
   --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
@@ -160,6 +162,8 @@
   --primary-ring:  rgba(111,178,255,.36);
   --brand-soft:   rgba(111,178,255,.14);
   --brand-soft-12:rgba(111,178,255,.22);
+  --primary-soft:   rgba(111,178,255,.16);
+  --primary-soft-2: rgba(111,178,255,.24);
   --brand-ink:    #BFD3F5;
   --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
 
@@ -1485,5 +1489,116 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   }
   .trip-body.is-menu-open .trip-side-scrim { opacity: 1; pointer-events: auto; }
   .trip-screen-body { padding: 16px 16px 48px; }
+}
+
+/* ============================================================
+   TRIP OVERVIEW (main screen) — Lumo
+   Two columns (map + stats / budget + members) that collapse to
+   one on mobile. Widgets share the .wdg shell.
+   ============================================================ */
+.ovwrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  max-width: 1180px;
+}
+.ov-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+/* ---- widget shell ---- */
+.wdg {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--sh-1);
+  overflow: hidden;
+}
+.wdg-h { display: flex; align-items: center; gap: 10px; padding: 16px 18px 12px; }
+.wdg-h .wi { width: 32px; height: 32px; border-radius: 11px; display: grid; place-items: center; flex: none; }
+.wdg-h .wi svg { width: 17px; height: 17px; }
+.wi--primary { background: var(--primary-soft); color: var(--brand); }
+.wi--activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+.wdg-h h4 { font-size: 16px; font-weight: 600; flex: 1; margin: 0; }
+.wdg-b { padding: 4px 18px 18px; }
+.wdg-act {
+  width: 28px; height: 28px; border-radius: 9px;
+  border: 1px solid var(--line-strong); background: transparent;
+  color: var(--muted-2); cursor: pointer; display: grid; place-items: center;
+  transition: border-color .16s var(--ease-out), color .16s var(--ease-out),
+              background .16s var(--ease-out), transform .12s var(--ease-out);
+}
+.wdg-act:hover { border-color: var(--brand); color: var(--brand); background: var(--primary-soft); }
+.wdg-act:active { transform: scale(.92); }
+.wdg-act svg { width: 14px; height: 14px; }
+
+/* ---- budget widget ---- */
+.bud-total { font-family: var(--font-display); font-weight: 600; font-size: 26px; color: var(--ink); line-height: 1.1; }
+.bud-bar { height: 11px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; display: flex; margin: 12px 0 14px; }
+.bud-bar i { height: 100%; transition: flex-grow .3s var(--ease-out); }
+.bud-legs { display: flex; flex-direction: column; gap: 1px; }
+.bud-leg { display: flex; align-items: center; gap: 9px; font-size: 13px; padding: 6px; border-radius: 9px; transition: background .15s; }
+.bud-leg:hover { background: var(--surface-2); }
+.bud-leg .d { width: 10px; height: 10px; border-radius: 4px; flex: none; }
+.bud-leg .nm { flex: 1; min-width: 0; color: var(--ink-2); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bud-leg .v { font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ov-warn { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: var(--fs-micro); color: var(--warning); }
+.ov-empty-line { font-size: var(--fs-meta); }
+
+/* ---- members widget ---- */
+.mlist { display: flex; flex-direction: column; }
+.mrow { display: flex; align-items: center; gap: 11px; padding: 9px 0; }
+.mrow + .mrow { border-top: 1px solid var(--line); }
+.mrow .fl1 { flex: 1; min-width: 0; }
+.mrow .mn { font-weight: 700; font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow .me { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow .badge .dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; flex: none; }
+.ov-invite { margin-top: 14px; transition: transform .12s var(--ease-out); }
+.ov-invite:active { transform: scale(.985); }
+
+/* ---- route-map card ---- */
+.ov-mapcard { padding: 0; }
+.ov-mapcard .wdg-h { padding: 15px 18px 11px; }
+.ov-openbtn { margin-left: auto; transition: transform .12s var(--ease-out); }
+.ov-openbtn:active { transform: scale(.97); }
+.ov-maparea { position: relative; height: 280px; background: var(--surface-2); }
+.ov-map-empty {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px; font-size: var(--fs-meta);
+}
+
+/* ---- stat row ---- */
+.statrow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.statcard {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 16px; padding: 13px 15px; box-shadow: var(--sh-1);
+}
+.statcard .v { font-family: var(--font-display); font-weight: 600; font-size: 22px; color: var(--ink); line-height: 1.05; }
+.statcard .v .statcard-unit { font-size: 13px; color: var(--muted); font-weight: 600; }
+.statcard .k {
+  font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--muted); margin-top: 6px; display: flex; align-items: center; gap: 5px;
+}
+.statcard .k svg { width: 12px; height: 12px; color: var(--muted-2); }
+
+/* ---- entrance: staggered reveal (decorative) ---- */
+@keyframes ovIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.ov-anim { animation: ovIn .42s var(--ease-out) both; }
+.ovwrap .ov-col:first-child .ov-anim:nth-child(2) { animation-delay: 60ms; }
+.ovwrap .ov-col:last-child .ov-anim:nth-child(1) { animation-delay: 50ms; }
+.ovwrap .ov-col:last-child .ov-anim:nth-child(2) { animation-delay: 110ms; }
+.statrow .statcard { animation: ovIn .4s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms + 80ms); }
+
+/* ---- loading skeleton ---- */
+.ov-skel { background: var(--surface-2); border: 1px solid var(--line); border-radius: 20px; animation: ovSkel 1.3s ease-in-out infinite; }
+@keyframes ovSkel { 0%, 100% { opacity: .55; } 50% { opacity: .9; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-anim, .statrow .statcard, .ov-skel { animation: none; }
+}
+
+@media (max-width: 880px) {
+  .ovwrap { grid-template-columns: 1fr; }
+  .statrow { grid-template-columns: repeat(2, 1fr); }
+  .ov-maparea { height: 220px; }
 }
 
