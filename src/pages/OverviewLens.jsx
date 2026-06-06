@@ -20,6 +20,7 @@ export default function OverviewLens({
   members = [],
   user,
   isLoading = false,
+  contentLoading = false,
   active = true,
   canManage = false,
   budgetEnabled = false,
@@ -108,6 +109,7 @@ export default function OverviewLens({
             budgetCategories={budgetCategories}
             canManage={canManage}
             budgetEnabled={budgetEnabled}
+            isLoading={contentLoading}
             onOpen={onOpenBudget}
             onLocked={onBudgetLocked}
           />
@@ -118,6 +120,7 @@ export default function OverviewLens({
             members={members}
             user={user}
             canManage={canManage}
+            isLoading={contentLoading}
             onOpenMembers={onOpenMembers}
           />
         </div>

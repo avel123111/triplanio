@@ -17,6 +17,7 @@ export default function MembersSummaryCard({
   members = [],
   user,
   canManage = false,
+  isLoading = false,
   onOpenMembers,
   onInvite,
 }) {
@@ -72,6 +73,19 @@ export default function MembersSummaryCard({
       </div>
 
       <div className="wdg-b">
+        {isLoading ? (
+          <div className="mlist">
+            {[0, 1, 2].map((i) => (
+              <div className="mrow" key={i}>
+                <span className="ov-bar" style={{ width: 34, height: 34, borderRadius: '50%', flex: 'none' }} />
+                <div className="fl1">
+                  <div className="ov-bar" style={{ width: '55%', height: 13, borderRadius: 5 }} />
+                  <div className="ov-bar" style={{ width: '40%', height: 11, borderRadius: 5, marginTop: 6 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="mlist">
           {orderedMembers.map((m, i) => {
             const profile = profiles[m.user_id];
@@ -125,8 +139,9 @@ export default function MembersSummaryCard({
             );
           })}
         </div>
+        )}
 
-        {canManage && (
+        {!isLoading && canManage && (
           <button className="btn btn--soft btn--block ov-invite" onClick={onInvite || onOpenMembers}>
             <Icon name="plus" size={15} />
             {t('members.invite')}

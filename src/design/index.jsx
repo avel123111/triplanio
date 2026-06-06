@@ -1,7 +1,6 @@
 import React from 'react';
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { Icon } from './icons';
-import { useIsMobile } from '../hooks/use-mobile';
 import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
@@ -706,190 +705,75 @@ function _evMeta(e) {
 }
 
 // ── Mobile transfer row - stacked with a vertical departure→arrival scale ──────
-function EventRowMobileTransfer({ e, onClick }) {
-  const t = useT();
-  const meta = _evMeta(e);
-  const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "-";
-  return (
-    <button onClick={onClick} style={{ width: "100%", display: "flex", alignItems: "stretch", gap: 11, padding: "13px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left" }}>
-      <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', color: "var(--ink)", minWidth: 42, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
-        <span style={{ whiteSpace: "nowrap" }}>{e.time || "-"}</span>
-        {e.duration && <span className="muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 500 }}>{e.duration}</span>}
-        <span style={{ whiteSpace: "nowrap" }}>{arrive}</span>
-      </div>
-      <div style={{ width: 22, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", paddingTop: 3, paddingBottom: 3, flexShrink: 0 }}>
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.c }} />
-        <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
-        <span style={{ width: 24, height: 24, borderRadius: "50%", background: meta.soft, color: meta.c, display: "grid", placeItems: "center", border: `2px solid ${meta.c}` }}>
-          <Icon name={meta.icon} size={12} />
-        </span>
-        <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.c, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px " + meta.c }} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 5 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "-"}</div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em" }}>{t(meta.labelKey)}</span>
-          {e.carrier ? <> · {e.carrier}</> : null}
-        </div>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "-"}</div>
-        {(e.price || e.platformUrl) && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
-            {e.price ? <span className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{fmt(e.price, e.cur)}</span> : null}
-            {e.platformUrl && <PartnerPill url={e.platformUrl} />}
-          </div>
-        )}
-      </div>
-    </button>
-  );
+// Event-type → Lumo .ev-* modifier (sets --ev for the .tl-ev plate).
+function _evClass(e) {
+  if (e.type === "flight" || e.type === "transfer") return "ev-transfer";
+  if (e.type === "hotel-checkin" || e.type === "hotel-checkout") return "ev-hotel";
+  if (e.type === "hotel-deadline") return "ev-deadline";
+  if (e.type === "car-pickup" || e.type === "car-return") return "ev-car";
+  if (e.type === "activity") return "ev-activity";
+  return "ev-activity";
 }
 
-// ── Mobile row - stacked layout for hotel / activity / car / deadline events ───
-function EventRowMobile({ e, onClick }) {
+// Timeline event plate — Lumo .tl-ev (icon + title/sub + time). Transfers use the
+// two-line .time2 (depart / arrive). Missing-transfer renders as .tl-warn.
+// Single renderer for desktop + mobile; .tl-ev is a flex row that wraps fine.
+export function StreamEventRow({ e, onClick }) {
   const t = useT();
-  if (e.type === "flight" || e.type === "transfer") return <EventRowMobileTransfer e={e} onClick={onClick} />;
-  const meta = _evMeta(e);
-  return (
-    <button onClick={onClick} style={{ width: "100%", padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", minWidth: 42, flexShrink: 0 }}>{e.time || "-"}</span>
-        <div style={{ width: 30, height: 30, borderRadius: 8, background: meta.soft, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
-          <Icon name={meta.icon} size={15} />
-        </div>
-        <span style={{ flex: 1, fontSize: 'var(--fs-micro)', textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t(meta.labelKey)}</span>
-        {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)', flexShrink: 0 }}>{fmt(e.price, e.cur)}</span>}
-      </div>
-      <div>
-        <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', lineHeight: 1.3, textWrap: "pretty" }}>{e.title}</div>
-        {(e.address || e.duration) && (
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 3 }}>
-            {e.duration ? <span className="num">{e.duration}</span> : null}{e.duration && e.address ? " · " : ""}{e.address || ""}
-          </div>
-        )}
-      </div>
-      {e.platformUrl && <div><PartnerPill url={e.platformUrl} /></div>}
-    </button>
-  );
-}
 
-export function StreamEventRow({ e, onClick, last, editMode }) {
-  const t = useT();
-  const isMobile = useIsMobile();
   if (e.type === "transfer-missing") {
     const [hidden, setHidden] = React.useState(false);
     if (hidden) return null;
     return (
-      <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--warning-soft)", border: "1.5px dashed var(--warning)", borderRadius: 12, textAlign: "left" }}>
-        <Icon name="warning" size={16} style={{ color: "var(--warning)" }} />
-        <div style={{ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 600 }}>{t('view.map_no_transfer')} · {e.from} → {e.to}</div>
-        <Btn variant="primary" size="sm" icon="plus" onClick={onClick}>{t('tse.add_transfer')}</Btn>
-        <button onClick={() => setHidden(true)} title={t('tl.hide_warning')} style={{ width: 24, height: 24, borderRadius: 6, border: "none", background: "transparent", color: "var(--warning)", cursor: "pointer", display: "grid", placeItems: "center" }}>
-          <Icon name="close" size={12} />
+      <div className="tl-warn">
+        <span className="wic"><Icon name="warning" size={19} /></span>
+        <div className="x">
+          <b>{t('view.map_no_transfer')}</b>
+          <span>{e.from} → {e.to}</span>
+        </div>
+        <button onClick={onClick}>{t('tse.add_transfer')}</button>
+        <button onClick={() => setHidden(true)} title={t('tl.hide_warning')}
+          style={{ background: "transparent", color: "var(--warning-ink)", border: 0, padding: 6, cursor: "pointer", display: "grid", placeItems: "center", borderRadius: 8 }}>
+          <Icon name="close" size={14} />
         </button>
       </div>
     );
   }
-  // Mobile: stacked, phone-friendly rows for every event type.
-  if (isMobile) return <EventRowMobile e={e} onClick={onClick} />;
-  // Desktop: v11 "day-card row" design, each event in its own surface card.
-  if (e.type === "flight" || e.type === "transfer") return <TransferRowV11 e={e} onClick={onClick} />;
-  return <EventRowV11 e={e} onClick={onClick} />;
-}
 
-// ── Desktop v11 event card - flush colour bar + time + icon + title/label/sub ──
-function EventRowV11({ e, onClick }) {
-  const t = useT();
   const meta = _evMeta(e);
-  const sub = [e.duration, e.address].filter(Boolean).join(" · ");
-  return (
-    <button onClick={onClick} className="dz-lift" style={{
-      width: "100%", display: "flex", alignItems: "stretch", padding: 0,
-      background: "var(--surface)", borderRadius: 14,
-      overflow: "hidden", cursor: "pointer", textAlign: "left",
-    }}>
-      <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
-      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, padding: "13px 16px" }}>
-        <div className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', minWidth: 52, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", flexShrink: 0 }}>{e.time || "-"}</div>
-        <div style={{ width: 38, height: 38, borderRadius: 10, background: meta.soft, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
-          <Icon name={meta.icon} size={17} />
+  const cls = _evClass(e);
+  const price = e.price != null ? fmt(e.price, e.cur) : null;
+
+  if (e.type === "flight" || e.type === "transfer") {
+    const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "—";
+    const sub = [t(meta.labelKey), e.carrier, (e.num && e.num !== "-") ? e.num : null, price]
+      .filter(Boolean).join(" · ");
+    return (
+      <button onClick={onClick} className={`tl-ev ${cls}`} style={{ width: "100%", textAlign: "left", font: "inherit" }}>
+        <span className="ic"><Icon name={meta.icon} size={19} /></span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="t" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.from || "—"} → {e.to || "—"}</div>
+          {sub && <div className="s" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <span style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</span>
-            {meta.labelKey && <span style={{ fontSize: 'var(--fs-micro)', textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>{t(meta.labelKey)}</span>}
-          </div>
-          {sub && <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
-        </div>
-        {e.price != null && <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)', flexShrink: 0 }}>{fmt(e.price, e.cur)}</div>}
         {e.platformUrl && <PartnerPill url={e.platformUrl} />}
-      </div>
-    </button>
-  );
-}
+        <div className="time2">
+          <span className="a">{e.time || "—"}</span>
+          <span className="b">{arrive}</span>
+        </div>
+      </button>
+    );
+  }
 
-// ── Desktop v11 transfer card - vertical departure→arrival mini-rail ───────────
-function TransferRowV11({ e, onClick }) {
-  const t = useT();
-  const meta = _evMeta(e);
-  const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "-";
+  const sub = [t(meta.labelKey), e.duration, e.address, price].filter(Boolean).join(" · ");
   return (
-    <button onClick={onClick} className="dz-lift" style={{
-      width: "100%", display: "flex", alignItems: "stretch", padding: 0, minHeight: 120,
-      background: "var(--surface)", borderRadius: 14,
-      overflow: "hidden", cursor: "pointer", textAlign: "left",
-    }}>
-      <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
-      {/* Card height is fixed on the BUTTON (minHeight:120) - taller than mobile, never
-          collapses. The inner block stretches to it (align-items:stretch), and the
-          time / rail / from-to columns (all justify-content:space-between) spread their
-          content top→bottom: from anchors to the top, to to the bottom, the rail line
-          grows, and duration + icon stay centered. Vertical margin matches mobile (13px). */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "stretch", gap: 12, padding: "13px 16px" }}>
-        {/* time / duration / arrive */}
-        <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', color: "var(--ink)", minWidth: 52, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
-          <span style={{ whiteSpace: "nowrap" }}>{e.time || "-"}</span>
-          {e.duration && <span className="muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 500 }}>{e.duration}</span>}
-          <span style={{ whiteSpace: "nowrap" }}>{arrive}</span>
-        </div>
-        {/* mini rail */}
-        <div style={{ width: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", paddingTop: 3, paddingBottom: 3, flexShrink: 0 }}>
-          <span style={{ width: 9, height: 9, borderRadius: "50%", background: meta.c }} />
-          <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
-          <span style={{ width: 26, height: 26, borderRadius: "50%", background: meta.soft, color: meta.c, display: "grid", placeItems: "center", border: `2px solid ${meta.c}` }}>
-            <Icon name={meta.icon} size={13} />
-          </span>
-          <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
-          <span style={{ width: 9, height: 9, borderRadius: "50%", background: meta.c, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px " + meta.c }} />
-        </div>
-        {/* from → to - cities (uppercase) anchor the edges, addresses sit inward
-            next to the label: CITY / addr / label / addr / CITY (desktop). */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 4 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "-"}</div>
-            {e.from_address && e.from_address !== e.from && (
-              <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from_address}</div>
-            )}
-          </div>
-          <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>{t(meta.labelKey)}</span>
-            {e.carrier ? <> · {e.carrier}</> : null}
-            {e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}
-          </div>
-          <div style={{ minWidth: 0 }}>
-            {e.to_address && e.to_address !== e.to && (
-              <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to_address}</div>
-            )}
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "-"}</div>
-          </div>
-        </div>
-        {/* price + chip */}
-        {(e.price != null || e.platformUrl) && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 8, flexShrink: 0 }}>
-            {e.price != null && <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{fmt(e.price, e.cur)}</div>}
-            {e.platformUrl && <PartnerPill url={e.platformUrl} />}
-          </div>
-        )}
+    <button onClick={onClick} className={`tl-ev ${cls}`} style={{ width: "100%", textAlign: "left", font: "inherit" }}>
+      <span className="ic"><Icon name={meta.icon} size={19} /></span>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div className="t" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</div>
+        {sub && <div className="s" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>}
       </div>
+      {e.platformUrl && <PartnerPill url={e.platformUrl} />}
+      <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
     </button>
   );
 }

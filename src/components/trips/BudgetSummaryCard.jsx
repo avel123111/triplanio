@@ -15,6 +15,7 @@ export default function BudgetSummaryCard({
   budgetCategories = [],
   canManage = false,
   budgetEnabled = false,
+  isLoading = false,
   onOpen,
   onLocked,
 }) {
@@ -70,7 +71,15 @@ export default function BudgetSummaryCard({
       </div>
 
       <div className="wdg-b">
-        {budget ? (
+        {isLoading ? (
+          <>
+            <div className="ov-bar" style={{ width: '55%', height: 26, borderRadius: 8 }} />
+            <div className="ov-bar" style={{ width: '100%', height: 11, borderRadius: 999, marginTop: 14 }} />
+            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 8, marginTop: 12 }} />
+            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 8, marginTop: 8 }} />
+            <div className="ov-bar" style={{ width: '100%', height: 14, borderRadius: 8, marginTop: 8 }} />
+          </>
+        ) : budget ? (
           <>
             <div className="bud-total num">{money(totalSpent)}</div>
 

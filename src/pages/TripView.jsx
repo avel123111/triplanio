@@ -341,14 +341,12 @@ function SkeletonTimeline() {
   );
 }
 
-// Right-rail (budget / who's going / services) placeholder - shared by the
-// full-page LoadingScreen and ContextSide so the right column never reshuffles.
+// Right-rail (Services) placeholder — budget/who's-going moved to the Overview
+// screen, so the timeline rail now skeletons only the Services widget.
 function RightRailSkeleton() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <Skeleton w="100%" h={100} r={14} />
       <Skeleton w="100%" h={150} r={14} />
-      <Skeleton w="100%" h={120} r={14} />
     </div>
   );
 }
@@ -1295,7 +1293,7 @@ export default function TripView() {
               budgetCategories={budgetCategories}
               members={members}
               user={user}
-              isLoading={loadingContent}
+              contentLoading={loadingContent}
               active={shownLens === 'overview'}
               canManage={myRole !== 'viewer'}
               budgetEnabled={isAddonEnabled(trip, 'budget')}
