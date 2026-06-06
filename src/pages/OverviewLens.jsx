@@ -31,15 +31,53 @@ export default function OverviewLens({
   const orderedVisits = useMemo(() => sortVisits(visits), [visits]);
 
   if (isLoading) {
+    const bar = (w, h, r = 8, mt = 0) => (
+      <div className="ov-bar" style={{ width: w, height: h, borderRadius: r, marginTop: mt }} />
+    );
+    const dot = <span className="ov-bar" style={{ width: 32, height: 32, borderRadius: 11, flex: 'none' }} />;
     return (
       <div className="ovwrap" aria-busy="true">
         <div className="ov-col">
-          <div className="wdg ov-mapcard ov-skel" style={{ height: 332 }} />
-          <div className="ov-skel" style={{ height: 96, borderRadius: 16 }} />
+          {/* map card */}
+          <div className="wdg ov-mapcard">
+            <div className="wdg-h">{dot}{bar('38%', 16, 6)}</div>
+            <div className="ov-bar" style={{ height: 280, borderRadius: 0 }} />
+          </div>
+          {/* stat row */}
+          <div className="statrow">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div className="statcard" key={i}>
+                {bar('55%', 22, 6)}
+                {bar('80%', 10, 5, 10)}
+              </div>
+            ))}
+          </div>
         </div>
         <div className="ov-col">
-          <div className="wdg ov-skel" style={{ height: 220 }} />
-          <div className="wdg ov-skel" style={{ height: 240 }} />
+          {/* budget card */}
+          <div className="wdg">
+            <div className="wdg-h">{dot}{bar('45%', 16, 6)}</div>
+            <div className="wdg-b">
+              {bar('55%', 26, 8)}
+              {bar('100%', 11, 999, 14)}
+              {bar('100%', 14, 8, 12)}
+              {bar('100%', 14, 8, 8)}
+              {bar('100%', 14, 8, 8)}
+            </div>
+          </div>
+          {/* members card */}
+          <div className="wdg">
+            <div className="wdg-h">{dot}{bar('45%', 16, 6)}</div>
+            <div className="wdg-b">
+              {[0, 1, 2].map((i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 0' }}>
+                  <span className="ov-bar" style={{ width: 34, height: 34, borderRadius: '50%', flex: 'none' }} />
+                  <div style={{ flex: 1 }}>{bar('60%', 13, 5)}{bar('40%', 11, 5, 6)}</div>
+                </div>
+              ))}
+              {bar('100%', 42, 12, 14)}
+            </div>
+          </div>
         </div>
       </div>
     );

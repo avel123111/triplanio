@@ -32,9 +32,7 @@ export default function TripStatRow({ visits = [], transfers = [], trip, ordered
       value: (
         <>
           {s.days}
-          <span className="statcard-unit"> {t('overview.unit_days')} · </span>
-          {s.nights}
-          <span className="statcard-unit"> {t('overview.unit_nights')}</span>
+          <span className="statcard-unit"> {t('overview.unit_days')}</span>
         </>
       ),
       label: t('overview.stat_duration'),
