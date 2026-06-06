@@ -149,18 +149,17 @@ export default function CityPanel({
 
       {/* activities */}
       <div className="lp-sec">
-        <SectionLabel color="var(--ev-activity-ink)" action={<button className="addmini" onClick={onAddActivity}><Icon name="plus" size={14} /></button>}>
-          {t('budget.source_activity')} · {acts.length}
+        <SectionLabel color="var(--ev-activity-ink)" action={acts.length > 0 ? <button className="addmini" onClick={onAddActivity} aria-label={t('activity.add')}><Icon name="plus" size={14} /></button> : null}>
+          {t('budget.source_activity')}{acts.length > 0 ? ` · ${acts.length}` : ''}
         </SectionLabel>
-        {acts.length === 0
-          ? <GhostAdd icon="spark" accent="var(--ev-activity)" label={t('tse.no_activities')} onClick={onAddActivity} />
-          : acts.map((a) => (
-            <BookRow key={a.id} tone="activity" icon={ACT_ICON[a.category] || 'spark'}
-              title={a.title}
-              sub={`${fmtDate(a.start_datetime)}${fmtTime(a.start_datetime) ? ' · ' + fmtTime(a.start_datetime) : ''}`}
-              warn={isActWarn ? isActWarn(a) : false}
-              onClick={() => onOpenActivity(a.id)} />
-          ))}
+        {acts.map((a) => (
+          <BookRow key={a.id} tone="activity" icon={ACT_ICON[a.category] || 'spark'}
+            title={a.title}
+            sub={`${fmtDate(a.start_datetime)}${fmtTime(a.start_datetime) ? ' · ' + fmtTime(a.start_datetime) : ''}`}
+            warn={isActWarn ? isActWarn(a) : false}
+            onClick={() => onOpenActivity(a.id)} />
+        ))}
+        <GhostAdd icon="spark" accent="var(--ev-activity)" label={t('activity.add')} onClick={onAddActivity} />
       </div>
       </div>
       <div className="lp-f">

@@ -199,7 +199,7 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
       </div>
       <Section accent={accent} title={t('event.carrier_booking')}>
         <KVGrid>
-          <KV label={t('transfer.carrier')}>{entity.carrier || t(meta.labelKey)}</KV>
+          <KV label={t('transfer.carrier')}>{entity.carrier || '—'}</KV>
           {entity.flight_number && <KV label={t('event.flight_number')} mono>{entity.flight_number}</KV>}
           <KV label={t('admin.notifications.when')} mono>{fmtDT(entity.start_datetime)}</KV>
           <KV label={t('budget.field_amount')} mono>{money(entity.price, entity.currency)}</KV>

@@ -1092,13 +1092,12 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
       <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onPointerDown={drag.onArm} onClick={onOpenCity}>
         {gripEl}
         <span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+        <div className="te-citycell">
+          <div className="te-cityline">
             <span className="te-cityname">{seg.city_name}</span>
-            <span className="te-wptag">{t('tse.layover')}</span>
             <Conf n={cityConf} />
           </div>
-          <div className="num muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>{t('tse.transit_word')} · {fmtD(seg.start_date, lang)}</div>
+          <div className="te-dts"><span className="te-wptag">{t('tse.layover')}</span>{fmtD(seg.start_date, lang)}</div>
         </div>
         <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
           <button className="te-step" onClick={onNightsMinus} disabled aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
@@ -1114,13 +1113,13 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
     <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onPointerDown={drag.onArm} onClick={onOpenCity}>
       {gripEl}
       <span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+      <div className="te-citycell">
+        <div className="te-cityline">
           <span className="te-cityname">{seg.city_name}</span>
-          {m.country && <span className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: 'nowrap' }}>{m.country}</span>}
+          {m.country && <span className="te-country">{m.country}</span>}
           <Conf n={cityConf} />
         </div>
-        <div className="num muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
+        <div className="te-dts">{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
       </div>
       <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
         <button className="te-step" onClick={onNightsMinus} disabled={(seg.nights || 0) <= 0} aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
@@ -1170,18 +1169,17 @@ function GridEndpoint({ node, onRemove }) {
   const t = useT();
   const { lang } = useI18n();
   const isStart = node.kind === 'start';
-  const accent = isStart ? 'var(--brand)' : 'var(--ink-2)';
-  const soft = isStart ? 'var(--brand-soft)' : 'var(--wash)';
-  const m = metaOf(node);
+  const accent = isStart ? 'var(--brand)' : 'var(--success-ink)';
+  const soft = isStart ? 'var(--brand-soft)' : 'var(--success-soft)';
   return (
     <div className="te-end">
-      <span className="te-row__node" style={{ background: soft, color: accent, border: '1px solid ' + (isStart ? 'var(--brand-soft-12, var(--line))' : 'var(--line)') }}><Icon name={isStart ? 'flag' : 'check'} size={12} /></span>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
-          <span style={{ fontSize: 'var(--fs-h4)', fontWeight: 600, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{m.flag} {node.city_name}</span>
+      <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
+      <div className="te-citycell" style={{ flex: 1 }}>
+        <div className="te-cityline">
+          <span className="te-endlabel" style={{ color: accent, flex: 'none' }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
+          <span className="te-cityname">{node.city_name}</span>
         </div>
-        <div className="num muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div className="te-dts">
           {isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(node.start_date || node.end_date, lang)}
         </div>
       </div>
