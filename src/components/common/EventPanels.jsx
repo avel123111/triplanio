@@ -75,18 +75,18 @@ function KV({ label, children, mono }) {
   return (
     <div className="kv">
       <div className="k">{label}</div>
-      <div className={'v' + (mono ? ' num' : '')}>{children}</div>
+      <div className={'v' + (mono ? ' mono' : '')}>{children}</div>
     </div>
   );
 }
 const KVGrid = ({ children }) => <div className="kvgrid">{children}</div>;
 
-function AddressBlock({ address, accent }) {
+function AddressBlock({ address }) {
   if (!address) return null;
   return (
-    <div style={{ display: 'flex', gap: 10, padding: 12, background: 'var(--wash)', borderRadius: 10, marginTop: 14 }}>
-      <Icon name="pin" size={15} style={{ color: accent, marginTop: 2, flexShrink: 0 }} />
-      <div style={{ fontSize: 'var(--fs-base)', color: 'var(--ink-2)', lineHeight: 1.5 }}>{address}</div>
+    <div className="addr">
+      <Icon name="pin" size={16} />
+      <div>{address}</div>
     </div>
   );
 }
@@ -107,12 +107,12 @@ function DocsList({ docs }) {
   const { t } = useI18n();
   if (!docs || docs.length === 0) return <div className="muted" style={{ fontSize: 'var(--fs-meta)', padding: '2px 0' }}>{t('doc.tab_empty_title')}</div>;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {docs.map((d, i) => (
-        <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--line-2)', borderRadius: 9, textDecoration: 'none', color: 'var(--ink)' }}>
-          <Icon name="file" size={14} style={{ color: 'var(--muted)' }} />
-          <span style={{ flex: 1, fontSize: 'var(--fs-meta)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.file_name || t('event.file_word')}</span>
-          <Icon name="external" size={12} style={{ color: 'var(--muted-2)' }} />
+        <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="docrow">
+          <span className="di"><Icon name="file" size={15} /></span>
+          <b>{d.file_name || t('event.file_word')}</b>
+          <Icon name="external" size={13} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
         </a>
       ))}
     </div>
@@ -137,7 +137,7 @@ function HotelBody({ entity, accent }) {
       <div className="metastrip">
         <span className="ch"><Icon name="calendar" size={13} /> {rangeText(entity.check_in_datetime, entity.check_out_datetime)}</span>
         {entity.price != null && <span className="ch"><Icon name="wallet" size={13} /> {money(entity.price, entity.currency)}</span>}
-        {(entity.booking_platform || entity.booking_url) && <span className="ch"><PartnerPill platform={entity.booking_platform} url={entity.booking_url} /></span>}
+        {(entity.booking_platform || entity.booking_url) && <span className="ch ch--p"><PartnerPill platform={entity.booking_platform} url={entity.booking_url} /></span>}
       </div>
       <AddressBlock address={entity.address} accent={accent} />
       <Section accent={accent} title={t('event.checkin_checkout')}>

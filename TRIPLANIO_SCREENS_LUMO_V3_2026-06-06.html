@@ -825,7 +825,7 @@ svg.ic{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-
 /* trip shell */
 .tripwrap{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
 .thead{position:relative;min-height:74px;display:flex;align-items:center;overflow:hidden;flex:none}
-.thead .ph{position:absolute;inset:0;background:linear-gradient(120deg,#6FB2FF,#8A6BF0 55%,#E0568F)}
+.thead .ph{position:absolute;inset:0;background:radial-gradient(120% 140% at 85% -30%,rgba(255,255,255,.28),transparent 55%),linear-gradient(120deg,#6FB2FF,#8A6BF0 55%,#E0568F)}
 .thead .ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,12,26,.12),rgba(10,12,26,.5))}
 .thead .in{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:0 22px}
 .thead .ttl h2{font-family:var(--font-display);font-weight:600;font-size:21px;color:#fff;line-height:1.05}
@@ -902,7 +902,7 @@ svg.ic{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-
 .adddoc svg{width:20px;height:20px}
 
 /* maps */
-.maparea{position:relative;height:100%;min-height:300px;background:radial-gradient(circle at 30% 30%,color-mix(in srgb,var(--primary) 9%,var(--surface-3)),var(--surface-3)),repeating-linear-gradient(0deg,var(--line-2) 0 1px,transparent 1px 46px),repeating-linear-gradient(90deg,var(--line-2) 0 1px,transparent 1px 46px);overflow:hidden}
+:root{--map-land:#E8ECF2;--map-water:#BCD9F1;--map-park:#CFE7CB;--map-road:#FFFFFF;--map-road2:#D9E1EB;--map-build:#DBE1EA}[data-theme="dark"]{--map-land:#1F232F;--map-water:#16263E;--map-park:#1C2B22;--map-road:#2E3440;--map-road2:#272C39;--map-build:#2A303D}.maparea{position:relative;height:100%;min-height:300px;background:var(--map-land);overflow:hidden}.mapbg{position:absolute;inset:0;width:100%;height:100%;display:block}.mappin{z-index:2}.mappin .p{box-shadow:0 0 0 3px var(--surface),0 6px 14px -4px rgba(10,12,26,.45)}.maproute{z-index:1}.maproute polyline,.maproute path{filter:drop-shadow(0 1px 1.5px rgba(10,12,26,.22))}
 .mappin{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:3px}
 .mappin .p{width:30px;height:30px;border-radius:50% 50% 50% 4px;background:var(--primary);transform:rotate(45deg);box-shadow:var(--sh-2);display:grid;place-items:center}
 .mappin .p span{transform:rotate(-45deg);color:#fff;font-weight:800;font-size:12px}
@@ -994,7 +994,7 @@ svg.ic{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-
 </head>
 <body>
 
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g id="map-scene"><rect width="1200" height="800" style="fill:var(--map-land)"/><path d="M770,800 C835,650 990,602 1200,560 L1200,800 Z" style="fill:var(--map-water)"/><ellipse cx="175" cy="140" rx="150" ry="92" style="fill:var(--map-water)"/><path d="M-20,300 C200,258 280,420 480,400 C690,378 760,520 1010,500 C1120,491 1185,520 1240,544" style="fill:none;stroke:var(--map-water);stroke-width:34;stroke-linecap:round"/><ellipse cx="520" cy="205" rx="120" ry="78" style="fill:var(--map-park)"/><ellipse cx="905" cy="250" rx="95" ry="68" style="fill:var(--map-park)"/><ellipse cx="320" cy="600" rx="112" ry="80" style="fill:var(--map-park)"/><g style="fill:none;stroke:var(--map-road2);stroke-width:16;stroke-linecap:round"><circle cx="620" cy="430" r="208"/><path d="M0,520 L1200,470"/><path d="M120,0 L262,800"/><path d="M1200,120 L300,760"/><path d="M620,0 L662,800"/></g><g style="fill:none;stroke:var(--map-road);stroke-width:9;stroke-linecap:round"><circle cx="620" cy="430" r="208"/><path d="M0,520 L1200,470"/><path d="M120,0 L262,800"/><path d="M1200,120 L300,760"/><path d="M620,0 L662,800"/></g><g style="fill:none;stroke:var(--map-road2);stroke-width:3;opacity:.9"><path d="M0,160 L1200,122"/><path d="M0,660 L1200,700"/><path d="M420,0 L460,800"/><path d="M860,0 L902,800"/><path d="M0,380 L1200,362"/></g><g style="fill:var(--map-build)"><rect x="700" y="118" width="46" height="34" rx="5"/><rect x="760" y="150" width="38" height="30" rx="5"/><rect x="688" y="170" width="40" height="40" rx="5"/><rect x="182" y="320" width="44" height="36" rx="5"/><rect x="242" y="350" width="34" height="30" rx="5"/><rect x="150" y="372" width="40" height="34" rx="5"/><rect x="980" y="600" width="44" height="36" rx="5"/><rect x="1042" y="630" width="36" height="30" rx="5"/><rect x="940" y="642" width="40" height="34" rx="5"/><rect x="470" y="560" width="40" height="34" rx="5"/><rect x="522" y="592" width="34" height="28" rx="5"/><rect x="820" y="430" width="42" height="34" rx="5"/><rect x="872" y="462" width="34" height="28" rx="5"/></g></g><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></symbol>
 <symbol id="i-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></symbol>
 <symbol id="i-map" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></symbol>
@@ -1667,7 +1667,16 @@ svg.ic{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-
       items.forEach(function(it){var tt=scroller.querySelector('#'+it.dataset.target);if(tt)io.observe(tt);});
     });
   }
-  wireCityNav();
+  function wireMaps(){
+    document.querySelectorAll(".maparea").forEach(function(m){
+      if(m.dataset.mapped)return; m.dataset.mapped="1";
+      var s=document.createElementNS("http://www.w3.org/2000/svg","svg");
+      s.setAttribute("class","mapbg"); s.setAttribute("viewBox","0 0 1200 800"); s.setAttribute("preserveAspectRatio","xMidYMid slice");
+      s.innerHTML='<use href="#map-scene"/>';
+      m.insertBefore(s,m.firstChild);
+    });
+  }
+  wireCityNav(); wireMaps();
 })();
 </script>
 <style>

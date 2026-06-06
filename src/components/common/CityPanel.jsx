@@ -93,10 +93,10 @@ export default function CityPanel({
 
   return (
     <div className="lpanel lpanel--wide">
-      {/* hero header (Lumo .lp-hero) */}
-      <div className="lp-hero">
+      {/* hero header (Lumo .lp-hero — wide = 122px) */}
+      <div className="lp-hero" style={{ height: 122 }}>
         <div style={{ position: 'absolute', inset: 0 }}>
-          <CityPhoto city={node.city_name} h={88} w="100%" radius={0} />
+          <CityPhoto city={node.city_name} h={122} w="100%" radius={0} />
         </div>
         <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad)' }} />
         <button className="lp-back" onClick={onBack} title={t('common.back')} style={{ position: 'absolute', top: 10, left: 10, zIndex: 2, background: 'rgba(0,0,0,.30)', color: '#fff' }}><Icon name="back" size={16} /></button>
@@ -109,12 +109,12 @@ export default function CityPanel({
       <div className="lp-b scrollbar-thin">
       {/* nights stepper */}
       <div className="lp-stepper" style={{ marginBottom: 6 }}>
-        <span className="muted" style={{ fontSize: 'var(--fs-meta)', fontWeight: 700 }}>{t('tse.nights_label')}</span>
-        <span className="stepper" title={t('tse.nights_label')}>
-          <button onClick={onNightsMinus} disabled={nights <= 0} aria-label={t('tse.nights_remove')}><Icon name="close" size={13} style={{ transform: 'rotate(45deg)' }} /></button>
+        <span className="muted" style={{ fontSize: '13px', fontWeight: 700 }}>{t('tse.nights_label')}</span>
+        <div className="stepper" title={t('tse.nights_label')}>
+          <button onClick={onNightsMinus} disabled={nights <= 0} aria-label={t('tse.nights_remove')}>−</button>
           <span className="n">{nights}</span>
-          <button onClick={onNightsPlus} aria-label={t('tse.nights_add')}><Icon name="plus" size={13} /></button>
-        </span>
+          <button onClick={onNightsPlus} aria-label={t('tse.nights_add')}>+</button>
+        </div>
       </div>
 
       {/* arrival / departure — both cities AND waypoints (a transit stop still
