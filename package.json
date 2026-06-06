@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
+    "check:design": "node scripts/check-design-tokens.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "test": "node --test \"src/**/*.test.js\"",
     "preview": "vite preview"

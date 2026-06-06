@@ -18,83 +18,114 @@
      scales, shadows, easing) are authored here. Do not reintroduce raw
      hex/palette values in components — bind to a token below.
      =================================================================== */
-  /* Atlantic palette */
-  --brand:        hsl(var(--primary));   /* ← src/index.css --primary */
-  --brand-600:    #1b58c4;
-  --brand-700:    #174aa6;
-  --brand-soft:   rgba(33,103,226,.08);
-  --brand-soft-12:rgba(33,103,226,.12);
-  --brand-ink:    #0b1f47;
-  --brand-glow:   rgba(33,103,226,.10);
+  /* === LUMO TOKENS (values from DESIGN_SYSTEM_LUMO). Core hues alias the
+     shadcn HSL source in index.css; the rest is authored here. Legacy names
+     (--radius-*, --shadow-*, --*-soft-12, --wash*) alias the Lumo names so
+     existing components keep working. === */
+  /* Brand / primary */
+  --primary-hover: #1C66B4;
+  --primary-press: #18579A;
+  --primary-ring:  rgba(33,115,200,.28);
+  --brand:        hsl(var(--primary));   /* ← index.css --primary (Lumo #2173C8) */
+  --brand-600:    var(--primary-hover);
+  --brand-700:    var(--primary-press);
+  --brand-soft:   rgba(33,115,200,.10);
+  --brand-soft-12:rgba(33,115,200,.16);
+  --brand-ink:    #16294A;
+  --brand-glow:   color-mix(in srgb, var(--brand) 32%, transparent);
+  --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
 
-  /* Cool slate neutrals — light */
-  --ink:    hsl(var(--foreground));      /* ← src/index.css --foreground */
-  --ink-2:  #1f2a44;
-  --muted:  #5a657a;
-  --muted-2:#8693a8;
-  --line:   hsl(var(--border));          /* ← src/index.css --border */
-  --line-2: #eef0f4;
-  --line-hover: #dbe1ec; /* slightly darker hairline for card/row hover (theme-aware) */
-  --wash:   #F7F8FA;
-  --wash-2: #fbfbfd;
-  --surface: #ffffff;
-  --surface-elev: #ffffff;
+  /* Neutrals / surfaces */
+  --ink:    hsl(var(--foreground));      /* ← index.css --foreground (Lumo #272433) */
+  --ink-2:  #4A4659;
+  --muted:  #7A7689;
+  --muted-2:#ABA7B8;
+  --line:   hsl(var(--border));          /* ← index.css --border (Lumo #E9E8F2) */
+  --line-2: #F1F0F8;
+  --line-strong: #DBD9E7;
+  --line-hover: #D2D0E0;
+  --bg:      #F4F4FB;
+  --surface: #FFFFFF;
+  --surface-2: #EEEEF7;
+  --surface-3: #FAFAFE;
+  --surface-elev: #FFFFFF;
+  --wash:   var(--surface-2);            /* legacy: subtle tinted wash */
+  --wash-2: var(--surface-3);
+  --input:  var(--line-strong);
+  --secondary: var(--surface-2); --secondary-ink: var(--ink-2);
+  --accent: var(--brand-soft); --accent-ink: var(--brand);
+  --popover: var(--surface); --popover-ink: var(--ink);
 
-  /* Accents */
-  --warm:      #c9603a;
-  --warm-soft: #f1d9c9;
-  --warm-tint: rgba(201,96,58,.10);
-  --success:   #1f8a5b;
-  --success-soft: rgba(31,138,91,.10);
-  --danger:    hsl(var(--destructive));  /* single canonical red ← index.css --destructive */
-  --danger-soft: rgba(196,54,76,.10);
-  --warning:   #c98a1a;
-  --warning-soft: rgba(201,138,26,.12);
-  --warning-ink: #8a5d12; /* AA-readable warning text on light surfaces (≥4.5:1) */
-  --ai:        #6a3ee2;
-  --ai-2:      #c66ce2;          /* lighter AI violet — 2nd gradient stop */
-  --ai-soft:   rgba(106,62,226,.08);
-  --ai-soft-12:rgba(106,62,226,.14);
+  /* Semantic */
+  --info:#2D8CD6; --info-soft:rgba(45,140,214,.11); --info-ink:#1C6BAC;
+  --success:   #1F9A66;
+  --success-soft: rgba(31,154,102,.12);
+  --success-ink: #0C7A4F;
+  --danger:    hsl(var(--destructive));  /* ← index.css --destructive (Lumo #E24A52) */
+  --danger-soft: rgba(226,74,82,.12);
+  --danger-ink: #B41F30;
+  --danger-fg: #fff;
+  --warning:   #E2920E;
+  --warning-soft: rgba(226,146,14,.15);
+  --warning-ink: #8A5A12;
+  --warm:      #D9663C;
+  --warm-ink:  #9A3D18;
+  --warm-soft: rgba(217,102,60,.12);
+  --warm-soft-2: rgba(217,102,60,.20);
+  --warm-tint: var(--warm-soft-2);
 
-  /* Pro / premium — premium gold (provisional, tune to taste) */
-  --pro:       #a8791e;
-  --pro-soft:  rgba(168,121,30,.12);
-  --pro-soft-12: rgba(168,121,30,.18);
+  /* AI */
+  --ai:        #8A6BF0;
+  --ai-2:      #D77BD0;
+  --ai-3:      #5AA0EE;
+  --ai-ink:    #5B3FE0;
+  --ai-soft:   rgba(138,107,240,.11);
+  --ai-soft-2: rgba(138,107,240,.17);
+  --ai-soft-12:var(--ai-soft-2);
+  --ai-gradient:      linear-gradient(135deg,#5AA0EE 0%,#8A6BF0 52%,#D77BD0 100%);
+  --ai-gradient-soft: linear-gradient(135deg,rgba(90,160,238,.13),rgba(138,107,240,.13),rgba(215,123,208,.13));
+  --ai-grad:        var(--ai-gradient);
+  --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
 
-  /* Overlays / scrims — for modal backdrops & image gradients */
-  --scrim:            rgba(15,23,42,.45);
-  --overlay-grad:     linear-gradient(180deg, transparent 40%, rgba(8,15,30,.72));   /* strong: photo header w/ overlaid text */
-  --overlay-grad-soft: linear-gradient(180deg, transparent 35%, rgba(0,0,0,.38));    /* soft: subtle photo darken */
+  /* Pro / premium (Lumo gold) */
+  --pro:       #E6A21E;
+  --pro-soft:  rgba(230,162,30,.13);
+  --pro-soft-2:rgba(230,162,30,.22);
+  --pro-soft-12: var(--pro-soft-2);
+  --pro-ink:   #936215;
+  --pro-fg:    #4A2D05;
+  --pro-gradient: linear-gradient(135deg,#FBD06A 0%,#EBA02E 55%,#E08A36 100%);
 
-  /* AI gradients — single source for AI surfaces (avatar ramp lives in src/lib/avatarRamp.js) */
-  --ai-grad:        linear-gradient(135deg, var(--ai), var(--ai-2));   /* AI feature accent (violet) */
-  --assistant-grad: linear-gradient(135deg, var(--brand), #8b3dff);    /* Triplanio assistant identity (brand→violet) */
+  /* Overlays / scrims */
+  --scrim:            rgba(23,20,40,.45);
+  --overlay-grad:     linear-gradient(180deg, transparent 38%, rgba(10,12,26,.80));
+  --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(10,12,26,.42));
 
-  /* Event-type unified palette — single source of truth */
-  --ev-hotel:        #2167e2;            /* проживание · brand blue */
-  --ev-hotel-soft:   rgba(33,103,226,.10);
-  --ev-hotel-soft-12: rgba(33,103,226,.16);
-  --ev-transfer:     #0e7c8a;            /* переезд · teal */
-  --ev-transfer-soft: rgba(14,124,138,.10);
-  --ev-transfer-soft-12: rgba(14,124,138,.18);
-  --ev-activity:     #c9603a;            /* активность · terracotta — keeps brand warmth */
-  --ev-activity-soft: rgba(201,96,58,.10);
-  --ev-activity-soft-12: rgba(201,96,58,.18);
-  --ev-car:          #4ea268;            /* car rental · fresh green */
-  --ev-car-soft:     rgba(78,162,104,.10);
-  --ev-car-soft-12:  rgba(78,162,104,.18);
-  --ev-deadline:     hsl(var(--destructive)); /* hotel cancellation deadline · = canonical red */
-  --ev-deadline-soft: rgba(196,54,76,.10);
-  --ev-deadline-soft-12: rgba(196,54,76,.18);
+  /* Event types (+ink +soft-2; legacy -soft-12 aliases -soft-2) */
+  --ev-hotel:#5470E6; --ev-hotel-ink:#4257C9; --ev-hotel-soft:rgba(84,112,230,.11); --ev-hotel-soft-2:rgba(84,112,230,.17); --ev-hotel-soft-12:var(--ev-hotel-soft-2);
+  --ev-transfer:#15A2B0; --ev-transfer-ink:#096B75; --ev-transfer-soft:rgba(21,162,176,.12); --ev-transfer-soft-2:rgba(21,162,176,.18); --ev-transfer-soft-12:var(--ev-transfer-soft-2);
+  --ev-activity:#E0568F; --ev-activity-ink:#BC2F6A; --ev-activity-soft:rgba(224,86,143,.12); --ev-activity-soft-2:rgba(224,86,143,.18); --ev-activity-soft-12:var(--ev-activity-soft-2);
+  --ev-car:#2FA866; --ev-car-ink:#12703E; --ev-car-soft:rgba(47,168,102,.12); --ev-car-soft-2:rgba(47,168,102,.18); --ev-car-soft-12:var(--ev-car-soft-2);
+  --ev-deadline:#E14B5A; --ev-deadline-ink:#B41F30; --ev-deadline-soft:rgba(225,75,90,.12); --ev-deadline-soft-2:rgba(225,75,90,.18); --ev-deadline-soft-12:var(--ev-deadline-soft-2);
+  --ev-service:#E07A4E; --ev-service-ink:#A8451E; --ev-service-soft:rgba(224,122,78,.12); --ev-service-soft-2:rgba(224,122,78,.18);
 
-  --radius-card: 16px;
-  --radius-btn:  10px;
-  --radius-sm:   8px;
-  --radius-pill: 999px;
+  /* Category / chart palette */
+  --cat-1:#5470E6; --cat-2:#15A2B0; --cat-3:#E0568F; --cat-4:#2FA866; --cat-5:#E6A21E; --cat-6:#8A6BF0; --cat-7:#E07A4E; --cat-8:#9AA1AD;
 
-  --shadow-soft: 0 1px 2px rgba(15,23,42,.04), 0 6px 24px -8px rgba(15,23,42,.08);
-  --shadow-card: 0 1px 2px rgba(15,23,42,.03), 0 10px 30px -12px rgba(15,23,42,.14);
-  --shadow-pop:  0 2px 6px rgba(15,23,42,.06), 0 20px 60px -20px rgba(15,23,42,.22);
+  /* Radii (Lumo names + legacy aliases) */
+  --r-card:24px; --r-md:16px; --r-btn:14px; --r-sm:11px; --r-pill:999px;
+  --radius-card: var(--r-card);
+  --radius-btn:  var(--r-btn);
+  --radius-sm:   var(--r-sm);
+  --radius-pill: var(--r-pill);
+
+  /* Shadows (Lumo names + legacy aliases) */
+  --sh-1:0 2px 6px -2px rgba(39,36,51,.06), 0 8px 24px -10px rgba(39,36,51,.12);
+  --sh-2:0 4px 12px -4px rgba(39,36,51,.10), 0 18px 48px -16px rgba(39,36,51,.20);
+  --sh-3:0 8px 20px -6px rgba(39,36,51,.14), 0 30px 70px -22px rgba(39,36,51,.30);
+  --shadow-soft: var(--sh-1);
+  --shadow-card: var(--sh-2);
+  --shadow-pop:  var(--sh-3);
 
   --font-display: "Rubik",ui-sans-serif,system-ui,sans-serif;          /* Lumo — headings/buttons */
   --font-ui:      "Nunito",ui-sans-serif,system-ui,-apple-system,sans-serif; /* Lumo — body/UI */
@@ -122,75 +153,80 @@
 
 /* Dark theme */
 :root[data-theme="dark"] {
-  --brand:        hsl(var(--primary));   /* ← src/index.css .dark --primary */
-  --brand-600:    #7aa5f4;
-  --brand-700:    #4b7adf;
-  --brand-soft:   rgba(90,143,240,.14);
-  --brand-soft-12:rgba(90,143,240,.20);
-  --brand-ink:    #0a1226;
-  --brand-glow:   rgba(90,143,240,.18);
+  /* Brand / primary — dark */
+  --primary-hover: #8AC1FF;
+  --primary-press: #A8D2FF;
+  --primary-ring:  rgba(111,178,255,.36);
+  --brand-soft:   rgba(111,178,255,.14);
+  --brand-soft-12:rgba(111,178,255,.22);
+  --brand-ink:    #BFD3F5;
+  --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
 
-  --ink:    hsl(var(--foreground));      /* ← src/index.css .dark --foreground */
-  --ink-2:  #c9d1de;
-  --muted:  #8693a8;
-  --muted-2:#6a778c;
-  --line:   hsl(var(--border));          /* ← src/index.css .dark --border */
-  --line-2: #1a202d;
-  --line-hover: #2f3a4e; /* dark-theme hover hairline (lighter than --line) */
-  --wash:   #0e131c;
-  --wash-2: #0a0e16;
-  --surface: #131923;
-  --surface-elev: #1a212e;
+  /* Neutrals / surfaces — dark */
+  --ink-2:  #C4C1D2;
+  --muted:  #8C88A0;
+  --muted-2:#5F5C72;
+  --line-2: #262533;
+  --line-strong: #403E4F;
+  --line-hover: #3E3C4D;
+  --bg:      #161520;
+  --surface: #201F2C;
+  --surface-2: #2A2937;
+  --surface-3: #1B1A26;
+  --surface-elev: #272636;
 
-  --warm:      #e08158;
-  --warm-soft: rgba(224,129,88,.16);
-  --warm-tint: rgba(224,129,88,.14);
-  --success:   #4ab98a;
-  --success-soft: rgba(74,185,138,.16);
-  --danger:    hsl(var(--destructive));  /* single canonical red ← index.css .dark --destructive */
-  --danger-soft: rgba(229,104,122,.16);
-  --warning:   #e0a64b;
-  --warning-soft: rgba(224,166,75,.16);
-  --warning-ink: #e8b766; /* light-on-dark: already high-contrast on dark surfaces */
-  --ai:        #9c7af0;
-  --ai-2:      #c69cf5;
-  --ai-soft:   rgba(156,122,240,.14);
-  --ai-soft-12:rgba(156,122,240,.20);
+  /* Semantic — dark */
+  --info:#5FAEEC; --info-soft:rgba(95,174,236,.16); --info-ink:#93C6F2;
+  --success:   #3CC489;
+  --success-soft: rgba(60,196,137,.16);
+  --success-ink: #6FD6A8;
+  --danger-soft: rgba(242,106,114,.16);
+  --danger-ink: #F89AA0;
+  --danger-fg: #1A0508;
+  --warning:   #F0B24A;
+  --warning-soft: rgba(240,178,74,.16);
+  --warning-ink: #F5C778;
+  --warm:      #F0936B;
+  --warm-ink:  #F0936B;
+  --warm-soft: rgba(240,147,107,.16);
+  --warm-soft-2: rgba(240,147,107,.24);
 
-  /* Pro / premium — dark */
-  --pro:       #e0b860;
-  --pro-soft:  rgba(224,184,96,.16);
-  --pro-soft-12: rgba(224,184,96,.22);
+  /* AI — dark */
+  --ai:        #A98BFF;
+  --ai-2:      #E08FE0;
+  --ai-3:      #6FB0FF;
+  --ai-ink:    #C6B5FF;
+  --ai-soft:   rgba(169,139,255,.16);
+  --ai-soft-2: rgba(169,139,255,.24);
+  --ai-gradient:      linear-gradient(135deg,#6FB0FF 0%,#A98BFF 52%,#E08FE0 100%);
+  --ai-gradient-soft: linear-gradient(135deg,rgba(111,176,255,.18),rgba(169,139,255,.18),rgba(224,143,224,.18));
+  --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
+
+  /* Pro — dark */
+  --pro:       #F0B65A;
+  --pro-soft:  rgba(240,182,90,.16);
+  --pro-soft-2:rgba(240,182,90,.26);
+  --pro-ink:   #F6CD84;
+  --pro-fg:    #2A1903;
+  --pro-gradient: linear-gradient(135deg,#FBD478 0%,#F0A93C 55%,#E08A36 100%);
 
   /* Overlays / scrims — dark */
-  --scrim:            rgba(0,0,0,.6);
-  --overlay-grad:     linear-gradient(180deg, transparent 40%, rgba(0,0,0,.78));
-  --overlay-grad-soft: linear-gradient(180deg, transparent 35%, rgba(0,0,0,.5));
+  --scrim:            rgba(0,0,0,.62);
+  --overlay-grad:     linear-gradient(180deg, transparent 38%, rgba(0,0,0,.86));
+  --overlay-grad-soft: linear-gradient(180deg, transparent 45%, rgba(0,0,0,.55));
 
-  /* AI gradients — dark */
-  --ai-grad:        linear-gradient(135deg, var(--ai), var(--ai-2));
-  --assistant-grad: linear-gradient(135deg, var(--brand), #a878ff);
+  /* Event types — dark */
+  --ev-hotel:#8E9CF5; --ev-hotel-ink:#8E9CF5; --ev-hotel-soft:rgba(142,156,245,.16); --ev-hotel-soft-2:rgba(142,156,245,.24);
+  --ev-transfer:#38C6D4; --ev-transfer-ink:#38C6D4; --ev-transfer-soft:rgba(56,198,212,.16); --ev-transfer-soft-2:rgba(56,198,212,.24);
+  --ev-activity:#F178A8; --ev-activity-ink:#F178A8; --ev-activity-soft:rgba(241,120,168,.16); --ev-activity-soft-2:rgba(241,120,168,.24);
+  --ev-car:#4ECB86; --ev-car-ink:#4ECB86; --ev-car-soft:rgba(78,203,134,.16); --ev-car-soft-2:rgba(78,203,134,.24);
+  --ev-deadline:#F2737F; --ev-deadline-ink:#F2737F; --ev-deadline-soft:rgba(242,115,127,.16); --ev-deadline-soft-2:rgba(242,115,127,.24);
+  --ev-service:#F0936B; --ev-service-ink:#F0936B; --ev-service-soft:rgba(240,147,107,.16); --ev-service-soft-2:rgba(240,147,107,.24);
 
-  /* Event-type palette — dark variants */
-  --ev-hotel:        #5a8df0;
-  --ev-hotel-soft:   rgba(90,141,240,.16);
-  --ev-hotel-soft-12: rgba(90,141,240,.22);
-  --ev-transfer:     #4cb0bc;
-  --ev-transfer-soft: rgba(76,176,188,.16);
-  --ev-transfer-soft-12: rgba(76,176,188,.22);
-  --ev-activity:     #e08158;
-  --ev-activity-soft: rgba(224,129,88,.16);
-  --ev-activity-soft-12: rgba(224,129,88,.22);
-  --ev-car:          #6dc188;
-  --ev-car-soft:     rgba(109,193,136,.16);
-  --ev-car-soft-12:  rgba(109,193,136,.22);
-  --ev-deadline:     hsl(var(--destructive)); /* = canonical red (dark) */
-  --ev-deadline-soft: rgba(229,104,122,.16);
-  --ev-deadline-soft-12: rgba(229,104,122,.22);
-
-  --shadow-soft: 0 1px 2px rgba(0,0,0,.5), 0 6px 24px -8px rgba(0,0,0,.55);
-  --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 10px 30px -12px rgba(0,0,0,.6);
-  --shadow-pop:  0 2px 6px rgba(0,0,0,.55), 0 20px 60px -20px rgba(0,0,0,.7);
+  /* Shadows — dark */
+  --sh-1:0 2px 8px -2px rgba(0,0,0,.5), 0 8px 24px -10px rgba(0,0,0,.6);
+  --sh-2:0 4px 14px -4px rgba(0,0,0,.5), 0 20px 50px -18px rgba(0,0,0,.7);
+  --sh-3:0 8px 22px -6px rgba(0,0,0,.55), 0 32px 74px -24px rgba(0,0,0,.8);
 }
 
 /* ---------- Reset / base ---------- */
@@ -202,7 +238,7 @@ body {
   line-height: 1.6;
   font-weight: 500;
   color: var(--ink);
-  background: var(--wash);
+  background: var(--bg);
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "ss01","cv11";
 }
@@ -607,7 +643,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .avatar--lg { width: 36px; height: 36px; font-size: var(--fs-base); }
 .avatar--xl { width: 56px; height: 56px; font-size: var(--fs-h3); }
 .avatar--sm { width: 22px; height: 22px; font-size: var(--fs-nano); }
-.avatar--ai { background: linear-gradient(135deg, #6a3ee2, #c66ce2) !important; }
+.avatar--ai { background: var(--ai-grad) !important; }
 .avatar--placeholder { background: var(--wash) !important; color: var(--muted) !important; border: 1.5px dashed var(--line); }
 
 .avatar-stack { display: inline-flex; }
@@ -981,11 +1017,14 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 
 /* AI gradient highlight */
 .ai-gradient {
-  background: linear-gradient(135deg, #6a3ee2 0%, #c66ce2 60%, #f0a45a 100%);
+  background: linear-gradient(135deg, var(--ai) 0%, var(--ai-2) 60%, var(--ai-3) 100%);
   color: white;
 }
 .ai-gradient-bg {
-  background: linear-gradient(135deg, rgba(106,62,226,.10) 0%, rgba(198,108,226,.10) 60%, rgba(240,164,90,.08) 100%);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--ai) 10%, transparent) 0%,
+    color-mix(in srgb, var(--ai-2) 10%, transparent) 60%,
+    color-mix(in srgb, var(--ai-3) 8%, transparent) 100%);
 }
 .ai-gradient-border {
   position: relative;
@@ -993,13 +1032,13 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .ai-gradient-border::before {
   content: ""; position: absolute; inset: 0;
   border-radius: inherit; padding: 1.5px;
-  background: linear-gradient(135deg, #6a3ee2, #c66ce2, #f0a45a);
+  background: linear-gradient(135deg, var(--ai), var(--ai-2), var(--ai-3));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
   pointer-events: none;
 }
 .ai-text {
-  background: linear-gradient(135deg, #6a3ee2, #c66ce2 60%, #f0a45a);
+  background: linear-gradient(135deg, var(--ai), var(--ai-2) 60%, var(--ai-3));
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -1016,7 +1055,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   transition: transform .15s ease;
 }
 .dock:hover { transform: translateY(-2px) scale(1.05); }
-.dock--ai { background: linear-gradient(135deg, #6a3ee2, #c66ce2); }
+.dock--ai { background: var(--ai-grad); }
 .dock__count {
   position: absolute; top: -4px; right: -4px;
   background: var(--warm); color: white;

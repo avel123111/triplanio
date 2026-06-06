@@ -613,13 +613,13 @@ function EmptyDayCard() {
 function MissingTransferWarn({ fromVisit, toVisit, canEdit, onAddTransfer }) {
   const { t } = useI18nFormat();
   return (
-    <div className="rounded-2xl border border-dashed border-orange-200 dark:border-orange-900/50 bg-orange-50/60 dark:bg-orange-950/15 px-3 py-2.5 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-950/40 flex items-center justify-center shrink-0">
-        <Send className="w-4 h-4 text-orange-500 dark:text-orange-300" />
+    <div className="rounded-2xl border border-dashed px-3 py-2.5 flex items-center gap-3" style={{ borderColor: 'var(--warning)', background: 'var(--warning-soft)' }}>
+      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--warning-soft)' }}>
+        <Send className="w-4 h-4" style={{ color: 'var(--warning-ink)' }} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-orange-700 dark:text-orange-200">{t('view.missing_transfer_title')}</div>
-        <div className="text-xs text-orange-600/80 dark:text-orange-300/80 break-words">
+        <div className="text-sm font-semibold" style={{ color: 'var(--warning-ink)' }}>{t('view.missing_transfer_title')}</div>
+        <div className="text-xs break-words" style={{ color: 'var(--warning-ink)', opacity: 0.85 }}>
           {fromVisit?.city_name || '-'} → {toVisit?.city_name || '-'}
         </div>
       </div>
@@ -843,23 +843,24 @@ function DayEventRow({ event, visitsById = {}, onClickTransfer, onClickActivity,
  * Icons live INSIDE the card (no vertical rail).
  */
 function EventShell({ time, tone, icon, children }) {
-  const iconBg =
-    tone === 'transfer' ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300' :
-    tone === 'activity' ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300' :
-    tone === 'cancel'   ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300' :
-    tone === 'car'      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' :
-                          'bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300';
-
-  const cardBg =
-    tone === 'transfer' ? 'bg-blue-50/50 dark:bg-blue-950/15 border-blue-100/80 dark:border-blue-900/40' :
-                          'bg-card border-border';
+  // Event-type colour comes from the design-system --ev-* tokens (theme-aware).
+  const ev =
+    tone === 'transfer' ? 'transfer' :
+    tone === 'activity' ? 'activity' :
+    tone === 'cancel'   ? 'deadline' :
+    tone === 'car'      ? 'car' :
+                          'hotel';
+  const iconStyle = { background: `var(--ev-${ev}-soft)`, color: `var(--ev-${ev}-ink)` };
+  const cardStyle = tone === 'transfer'
+    ? { background: 'var(--ev-transfer-soft)', borderColor: 'var(--ev-transfer-soft-2)' }
+    : { background: 'var(--surface)', borderColor: 'var(--line)' };
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${cardBg}`}>
-      <div className="shrink-0 w-12 text-right tabular-nums text-sm font-medium text-muted-foreground">
+    <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border" style={cardStyle}>
+      <div className="shrink-0 w-12 text-right tabular-nums text-sm font-medium" style={{ color: 'var(--muted)' }}>
         {time}
       </div>
-      <div className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${iconBg}`}>
+      <div className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={iconStyle}>
         {icon}
       </div>
       <div className="flex-1 min-w-0">{children}</div>
@@ -886,12 +887,13 @@ function AnchorReadCard({ visit }) {
   const { t } = useI18nFormat();
   const isStart = visit.kind === 'start';
   const Icon = isStart ? Plane : Flag;
-  const tone = isStart
-    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-    : 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300';
+  // start = arrival (success/green), end = trip finish (deadline/red)
+  const toneStyle = isStart
+    ? { background: 'var(--success-soft)', color: 'var(--success-ink)' }
+    : { background: 'var(--ev-deadline-soft)', color: 'var(--ev-deadline-ink)' };
   return (
-    <div className="rounded-2xl border bg-card p-4 flex items-center gap-3">
-      <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${tone}`}>
+    <div className="rounded-2xl border p-4 flex items-center gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--line)' }}>
+      <div className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center" style={toneStyle}>
         <Icon className="w-4 h-4" />
       </div>
       <div className="flex-1 min-w-0">
@@ -936,8 +938,8 @@ function EmptyTripCTA({ canEdit = true, onAddCity }) {
             <Button size="lg" className="shadow-md shadow-primary/25 gap-2 bg-primary hover:bg-primary/90" onClick={onAddCity}>
               <Plus className="w-4 h-4" />{t('view.add_first_city')}
             </Button>
-            <Button size="lg" variant="outline" className="gap-2 border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100">
-              <Sparkles className="w-4 h-4 text-violet-600" />{t('view.start_with_ai')}
+            <Button size="lg" variant="outline" className="gap-2" style={{ borderColor: 'var(--ai-soft-2)', background: 'var(--ai-soft)', color: 'var(--ai-ink)' }}>
+              <Sparkles className="w-4 h-4" style={{ color: 'var(--ai)' }} />{t('view.start_with_ai')}
             </Button>
           </div>
         </div>
@@ -958,8 +960,8 @@ function EmptyTripCTA({ canEdit = true, onAddCity }) {
             <Button size="lg" className="shadow-md shadow-primary/25 gap-2 bg-primary hover:bg-primary/90" onClick={onAddCity}>
               <Plus className="w-4 h-4" />{t('view.add_first_city')}
             </Button>
-            <Button size="lg" variant="outline" className="gap-2 border-violet-700 bg-violet-900/40 text-violet-300 hover:bg-violet-900/60">
-              <Sparkles className="w-4 h-4 text-violet-400" />{t('view.start_with_ai')}
+            <Button size="lg" variant="outline" className="gap-2" style={{ borderColor: 'var(--ai-soft-2)', background: 'var(--ai-soft)', color: 'var(--ai-ink)' }}>
+              <Sparkles className="w-4 h-4" style={{ color: 'var(--ai)' }} />{t('view.start_with_ai')}
             </Button>
           </div>
         </div>

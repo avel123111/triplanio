@@ -12,78 +12,78 @@
        The Atlantic semantic layer in src/design/app.css aliases these via
        hsl(var(--…)). Change a brand/ink/border colour HERE, once.
        =================================================================== */
-    /* Triplanio — Atlantic (light) */
-    --background: 220 20% 97%;             /* #f6f7f9 — cool slate wash */
-    --foreground: 222 47% 11%;             /* #0F172A ink */
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    /* Triplanio — Lumo (light) — values generated from Lumo hex */
+    --background: 240 47% 97%;             /* bg #F4F4FB */
+    --foreground: 252 17% 17%;             /* ink #272433 */
+    --card: 0 0% 100%;                     /* surface #FFFFFF */
+    --card-foreground: 252 17% 17%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 218 77% 51%;                /* #2167e2 brand */
+    --popover-foreground: 252 17% 17%;
+    --primary: 211 72% 46%;               /* primary #2173C8 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 96%;              /* #f1f3f7 wash */
-    --secondary-foreground: 222 30% 18%;   /* #1f2a44 ink-2 */
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 11% 42%;       /* #5a657a muted */
-    --accent: 220 80% 95%;                 /* soft brand tint */
-    --accent-foreground: 218 77% 51%;
-    --destructive: 351 57% 49%;           /* = Atlantic --danger #c4364c (single canonical red) */
+    --secondary: 240 36% 95%;             /* surface-2 #EEEEF7 */
+    --secondary-foreground: 253 12% 31%;  /* ink-2 #4A4659 */
+    --muted: 240 36% 95%;
+    --muted-foreground: 253 7% 50%;       /* muted #7A7689 */
+    --accent: 240 36% 95%;
+    --accent-foreground: 211 72% 46%;
+    --destructive: 357 72% 59%;           /* danger #E24A52 */
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;                 /* #E5E7EB line */
-    --input: 220 13% 91%;
-    --ring: 218 77% 51%;
-    --chart-1: 218 77% 51%;                /* brand */
-    --chart-2: 159 64% 33%;                /* success green */
-    --chart-3: 18 56% 51%;                 /* warm terracotta */
-    --chart-4: 0 75% 50%;
-    --chart-5: 220 30% 22%;
-    --radius: 1.125rem;                    /* 18px card */
+    --border: 246 28% 93%;                /* line #E9E8F2 */
+    --input: 249 23% 88%;                 /* line-strong #DBD9E7 */
+    --ring: 211 72% 46%;
+    --chart-1: 211 72% 46%;
+    --chart-2: 155 66% 36%;
+    --chart-3: 16 67% 54%;
+    --chart-4: 357 72% 59%;
+    --chart-5: 254 82% 68%;
+    --radius: 1rem;                       /* Lumo r-md 16px (ui-kit base) */
     --font-sans: 'Nunito', ui-sans-serif, system-ui, -apple-system, sans-serif;  /* Lumo UI/body */
     --font-display: 'Rubik', ui-sans-serif, system-ui, sans-serif;               /* Lumo headings */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 218 77% 51%;
+    --sidebar-foreground: 252 17% 17%;
+    --sidebar-primary: 211 72% 46%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 96%;
-    --sidebar-accent-foreground: 222 30% 18%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 218 77% 51%;
+    --sidebar-accent: 240 36% 95%;
+    --sidebar-accent-foreground: 253 12% 31%;
+    --sidebar-border: 246 28% 93%;
+    --sidebar-ring: 211 72% 46%;
   }
 
   .dark {
-    /* Triplanio — Atlantic (dark) */
-    --background: 222 47% 7%;              /* deep navy-ink */
-    --foreground: 220 14% 92%;
-    --card: 222 40% 11%;                   /* card slightly lighter */
-    --card-foreground: 220 14% 92%;
-    --popover: 222 40% 11%;
-    --popover-foreground: 220 14% 92%;
-    --primary: 218 90% 66%;                /* lighter brand for contrast */
-    --primary-foreground: 222 47% 11%;
-    --secondary: 222 28% 16%;
-    --secondary-foreground: 220 14% 92%;
-    --muted: 222 28% 16%;
-    --muted-foreground: 220 12% 64%;
-    --accent: 218 60% 22%;
-    --accent-foreground: 218 90% 80%;
-    --destructive: 351 71% 65%;           /* = Atlantic --danger dark #e5687a (single canonical red) */
-    --destructive-foreground: 0 0% 100%;
-    --border: 222 20% 22%;
-    --input: 222 20% 22%;
-    --ring: 218 90% 66%;
-    --chart-1: 218 90% 66%;
-    --chart-2: 159 60% 50%;
-    --chart-3: 18 70% 60%;
-    --chart-4: 0 75% 60%;
-    --chart-5: 220 14% 80%;
-    --sidebar-background: 222 40% 10%;
-    --sidebar-foreground: 220 14% 92%;
-    --sidebar-primary: 218 90% 66%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 222 28% 16%;
-    --sidebar-accent-foreground: 220 14% 92%;
-    --sidebar-border: 222 20% 22%;
-    --sidebar-ring: 218 90% 66%;
+    /* Triplanio — Lumo (dark) — values generated from Lumo hex */
+    --background: 245 21% 10%;             /* bg #161520 */
+    --foreground: 248 27% 94%;            /* ink #EDECF4 */
+    --card: 245 17% 15%;                  /* surface #201F2C */
+    --card-foreground: 248 27% 94%;
+    --popover: 245 17% 15%;
+    --popover-foreground: 248 27% 94%;
+    --primary: 212 100% 72%;             /* primary #6FB2FF */
+    --primary-foreground: 212 68% 10%;
+    --secondary: 244 15% 19%;            /* surface-2 #2A2937 */
+    --secondary-foreground: 251 16% 79%;
+    --muted: 244 15% 19%;
+    --muted-foreground: 250 11% 58%;
+    --accent: 244 15% 19%;
+    --accent-foreground: 212 100% 72%;
+    --destructive: 356 84% 68%;          /* danger #F26A72 */
+    --destructive-foreground: 351 68% 6%;
+    --border: 249 12% 22%;               /* line #33313F */
+    --input: 247 12% 28%;                /* line-strong #403E4F */
+    --ring: 212 100% 72%;
+    --chart-1: 212 100% 72%;
+    --chart-2: 154 54% 50%;
+    --chart-3: 18 82% 68%;
+    --chart-4: 356 84% 68%;
+    --chart-5: 256 100% 77%;
+    --sidebar-background: 245 19% 13%;    /* sidebar-bg #1B1A26 */
+    --sidebar-foreground: 248 27% 94%;
+    --sidebar-primary: 212 100% 72%;
+    --sidebar-primary-foreground: 212 68% 10%;
+    --sidebar-accent: 244 15% 19%;
+    --sidebar-accent-foreground: 251 16% 79%;
+    --sidebar-border: 249 12% 22%;
+    --sidebar-ring: 212 100% 72%;
   }
 }
 
