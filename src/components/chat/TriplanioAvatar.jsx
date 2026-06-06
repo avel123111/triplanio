@@ -58,7 +58,7 @@ export default function TriplanioAvatar({
   return (
     <div
       className={cn('rounded-full flex items-center justify-center shrink-0', sizeCls, ringCls, className)}
-      style={{ background: 'linear-gradient(135deg, #2167e2 0%, #8b3dff 100%)' }}
+      style={{ background: 'var(--assistant-grad)' }}
       aria-label="Triplanio"
     >
       <svg width={svgPx} height={svgPx} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">

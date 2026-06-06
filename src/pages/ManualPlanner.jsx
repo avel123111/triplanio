@@ -783,7 +783,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
               <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.3)" />
             </svg>
           )}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(0,0,0,.35) 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad-soft)' }} />
           <div style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', fontWeight: 700, fontSize: 'var(--fs-3xl)', letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
             {displayTitle}
           </div>
@@ -1321,7 +1321,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             cities={cities}
             returnCity={effectiveReturn}
             finalPoint={finalPoint}
-            accent={isAi ? '#6a3ee2' : '#2167e2'}
+            accent={isAi ? '#6a3ee2' : '#2167e2'} /* Mapbox paint needs concrete hex (not var) */
             badge={isAi
               ? { label: t('planner.badge_ai'), icon: 'sparkles', color: 'var(--ai)' }
               : { label: t('planner.badge_mine'), icon: 'map', color: 'var(--brand)' }}

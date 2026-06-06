@@ -52,6 +52,7 @@
   --warning-soft: rgba(201,138,26,.12);
   --warning-ink: #8a5d12; /* AA-readable warning text on light surfaces (≥4.5:1) */
   --ai:        #6a3ee2;
+  --ai-2:      #c66ce2;          /* lighter AI violet — 2nd gradient stop */
   --ai-soft:   rgba(106,62,226,.08);
   --ai-soft-12:rgba(106,62,226,.14);
 
@@ -61,18 +62,13 @@
   --pro-soft-12: rgba(168,121,30,.18);
 
   /* Overlays / scrims — for modal backdrops & image gradients */
-  --scrim:        rgba(15,23,42,.45);
-  --overlay-grad: linear-gradient(180deg, transparent 40%, rgba(8,15,30,.72));
+  --scrim:            rgba(15,23,42,.45);
+  --overlay-grad:     linear-gradient(180deg, transparent 40%, rgba(8,15,30,.72));   /* strong: photo header w/ overlaid text */
+  --overlay-grad-soft: linear-gradient(180deg, transparent 35%, rgba(0,0,0,.38));    /* soft: subtle photo darken */
 
-  /* Avatar ramp — sanctioned 8-colour set (promoted from AVATAR_COLORS) */
-  --avatar-1: #2167e2;
-  --avatar-2: #c9603a;
-  --avatar-3: #1f8a5b;
-  --avatar-4: #9c4ad9;
-  --avatar-5: #c98a1a;
-  --avatar-6: #4a6cd9;
-  --avatar-7: #3d8aa8;
-  --avatar-8: #a83e6a;
+  /* AI gradients — single source for AI surfaces (avatar ramp lives in src/lib/avatarRamp.js) */
+  --ai-grad:        linear-gradient(135deg, var(--ai), var(--ai-2));   /* AI feature accent (violet) */
+  --assistant-grad: linear-gradient(135deg, var(--brand), #8b3dff);    /* Triplanio assistant identity (brand→violet) */
 
   /* Event-type unified palette — single source of truth */
   --ev-hotel:        #2167e2;            /* проживание · brand blue */
@@ -163,6 +159,7 @@
   --warning-soft: rgba(224,166,75,.16);
   --warning-ink: #e8b766; /* light-on-dark: already high-contrast on dark surfaces */
   --ai:        #9c7af0;
+  --ai-2:      #c69cf5;
   --ai-soft:   rgba(156,122,240,.14);
   --ai-soft-12:rgba(156,122,240,.20);
 
@@ -172,18 +169,13 @@
   --pro-soft-12: rgba(224,184,96,.22);
 
   /* Overlays / scrims — dark */
-  --scrim:        rgba(0,0,0,.6);
-  --overlay-grad: linear-gradient(180deg, transparent 40%, rgba(0,0,0,.78));
+  --scrim:            rgba(0,0,0,.6);
+  --overlay-grad:     linear-gradient(180deg, transparent 40%, rgba(0,0,0,.78));
+  --overlay-grad-soft: linear-gradient(180deg, transparent 35%, rgba(0,0,0,.5));
 
-  /* Avatar ramp — dark (slightly lifted for contrast on dark surfaces) */
-  --avatar-1: #5a8ff0;
-  --avatar-2: #e08158;
-  --avatar-3: #4ab98a;
-  --avatar-4: #c66ce2;
-  --avatar-5: #e0a64b;
-  --avatar-6: #7a92e8;
-  --avatar-7: #5fadc9;
-  --avatar-8: #c96792;
+  /* AI gradients — dark */
+  --ai-grad:        linear-gradient(135deg, var(--ai), var(--ai-2));
+  --assistant-grad: linear-gradient(135deg, var(--brand), #a878ff);
 
   /* Event-type palette — dark variants */
   --ev-hotel:        #5a8df0;

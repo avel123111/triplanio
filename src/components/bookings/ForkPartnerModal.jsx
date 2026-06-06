@@ -58,8 +58,8 @@ const TYPE_META = {
     manualKey: 'service.insurance_choice_manual',
     manualSubKey: 'fork.manual_sub_insurance',
     Icon: ShieldCheck,
-    color: '#6a3ee2',
-    colorSoft: 'rgba(106,62,226,.10)',
+    color: 'var(--ai)',
+    colorSoft: 'var(--ai-soft)',
   },
 };
 

@@ -2,20 +2,14 @@ import React from 'react';
 import { Icon } from './icons';
 import { useIsMobile } from '../hooks/use-mobile';
 import { useT } from '@/lib/i18n/I18nContext';
-import { hashStr } from '@/lib/hash';
+import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
 // =====================================================================
 
-// ----- Avatar -----
-const AVATAR_COLORS = [
-  ["#2167e2", "#5a8ff0"], ["#c9603a", "#e08158"], ["#1f8a5b", "#4ab98a"],
-  ["#9c4ad9", "#c66ce2"], ["#c98a1a", "#e0a64b"], ["#4a6cd9", "#7a92e8"],
-  ["#a83e6a", "#c96792"], ["#3d8aa8", "#5fadc9"]
-];
-
+// ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
 export const Avatar = ({ name = "?", size, role, kind, photo, className = "", style: styleProp }) => {
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
   if (kind === "ai") {
@@ -24,10 +18,9 @@ export const Avatar = ({ name = "?", size, role, kind, photo, className = "", st
   if (kind === "placeholder") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--placeholder ${className}`} style={styleProp}>{initials}</div>;
   }
-  const [a, b] = AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length];
   const style = photo
     ? { backgroundImage: `url(${photo})`, backgroundSize: "cover", backgroundPosition: "center", ...styleProp }
-    : { background: `linear-gradient(135deg, ${a}, ${b})`, ...styleProp };
+    : { background: avatarGradient(name), ...styleProp };
   return (
     <div className={`avatar ${size ? "avatar--" + size : ""} ${className}`} style={style}>
       {!photo && initials}
@@ -938,7 +931,7 @@ export function TripIdentityStrip({ compact }) {
             <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.32)" />
             <circle cx="680" cy="50" r="28" fill="rgba(255,255,255,.65)" />
           </svg>
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 30%, rgba(0,0,0,.35) 100%)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "var(--overlay-grad-soft)" }} />
           <div style={{ position: "absolute", left: 22, right: 22, bottom: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ color: "white", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(26px, 4vw, 38px)", letterSpacing: "-0.03em", lineHeight: 1, textShadow: "0 2px 12px rgba(0,0,0,.3)" }}>{TRIP.title}</div>

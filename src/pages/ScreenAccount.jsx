@@ -11,16 +11,8 @@ import { isProActive } from '@/lib/subscription';
 import { supabase } from '@/api/supabaseClient';
 import HeaderActions from '@/components/HeaderActions';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
+import { avatarGradient } from '@/lib/avatarRamp';
 import '../design/app.css';
-
-// ─── Avatar helpers (inline so we can render directly into the 76×76 circle) ──
-
-const AVATAR_COLORS = [
-  ['#2167e2', '#5a8ff0'], ['#c9603a', '#e08158'], ['#1f8a5b', '#4ab98a'],
-  ['#9c4ad9', '#c66ce2'], ['#c98a1a', '#e0a64b'], ['#4a6cd9', '#7a92e8'],
-  ['#a83e6a', '#c96792'], ['#3d8aa8', '#5fadc9'],
-];
-function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
 
 // ─── Other helpers ─────────────────────────────────────────────────────────────
 
@@ -311,7 +303,7 @@ function ConnectedAccountsSection() {
             <div style={{ width: 52, height: 52, borderRadius: 14, background: TG_BLUE, color: 'white', display: 'grid', placeItems: 'center', zIndex: 2, border: '2.5px solid var(--surface)', boxShadow: '0 8px 20px -8px ' + TG_BLUE }}>
               <Icon name="telegram" size={24} />
             </div>
-            <div style={{ width: 48, height: 48, borderRadius: 13, marginLeft: -12, background: 'linear-gradient(135deg, var(--ai) 0%, #c66ce2 100%)', color: 'white', display: 'grid', placeItems: 'center', zIndex: 1, border: '2.5px solid var(--surface)', boxShadow: '0 8px 20px -8px var(--ai)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 13, marginLeft: -12, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center', zIndex: 1, border: '2.5px solid var(--surface)', boxShadow: '0 8px 20px -8px var(--ai)' }}>
               <Icon name="sparkles" size={21} />
             </div>
           </div>
@@ -456,10 +448,9 @@ export default function ScreenAccount() {
   // ── Avatar background (fills the 76×76 circle exactly) ────────────────────
   const avatarName = fullName || user?.email || '?';
   const avatarInitials = avatarName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
-  const [ac1, ac2] = AVATAR_COLORS[hashStr(avatarName) % AVATAR_COLORS.length];
   const avatarBgStyle = avatarUrl
     ? { backgroundImage: `url(${avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: `linear-gradient(135deg, ${ac1}, ${ac2})` };
+    : { background: avatarGradient(avatarName) };
 
   // ── Seed form from user profile ────────────────────────────────────────────
   useEffect(() => {

@@ -251,7 +251,7 @@ export default function EventAiBlock({
         <div
           style={{
             width: 40, height: 40, borderRadius: 10,
-            background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white',
+            background: 'var(--ai-grad)', color: 'white',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}
         >
@@ -268,7 +268,7 @@ export default function EventAiBlock({
           <div className="h-1 rounded mt-2 overflow-hidden" style={{ background: 'var(--ai-soft-12)' }}>
             <div
               className="h-full transition-all"
-              style={{ width: `${progress}%`, background: 'linear-gradient(90deg, var(--ai), #c66ce2)' }}
+              style={{ width: `${progress}%`, background: 'linear-gradient(90deg, var(--ai), var(--ai-2))' }}
             />
           </div>
         </div>
@@ -478,7 +478,7 @@ function AiIcon({ locked }) {
       className="relative shrink-0"
       style={{
         width: 32, height: 32, borderRadius: 8,
-        background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white',
+        background: 'var(--ai-grad)', color: 'white',
         display: 'grid', placeItems: 'center',
         filter: locked ? 'saturate(.7)' : 'none',
       }}

@@ -20,6 +20,8 @@ import { Avatar, Badge, Btn, Card, Dialog, Field, Toggle } from '../design/index
 import ProLockedDialog from '@/components/common/ProLockedDialog';
 import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
+import { useConfirm } from '@/components/common/ConfirmProvider';
+import { telegram as tgBrand } from '@/lib/externalBrands';
 import CurrencySelect from '@/components/budget/CurrencySelect';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
@@ -34,7 +36,7 @@ const FEATURES = [
   { id: 'cal',    addon: 'calendar',            icon: 'calendar',  color: 'var(--brand)',   labelKey: 'trip.addon_calendar_title', descKey: 'settings.feat_calendar_desc'                              },
   { id: 'budget', addon: 'budget',              icon: 'wallet',    color: 'var(--success)', labelKey: 'settings.feat_budget_title', descKey: 'settings.feat_budget_desc',             pro: true  },
   { id: 'chat',   addon: 'chat',                icon: 'chat',      color: 'var(--ai)',      labelKey: 'chat.group_title',          descKey: 'settings.feat_chat_desc',              pro: true  },
-  { id: 'tg',     addon: 'telegram_assistant',  icon: 'telegram',  color: '#0088cc',        labelKey: 'settings.feat_tg_title',    descKey: 'settings.feat_tg_desc',                pro: true  },
+  { id: 'tg',     addon: 'telegram_assistant',  icon: 'telegram',  color: tgBrand.fg,        labelKey: 'settings.feat_tg_title',    descKey: 'settings.feat_tg_desc',                pro: true  },
   { id: 'hotels', addon: 'hotels_selection',    icon: 'vote',      color: 'var(--warm)',    labelKey: 'settings.feat_hotels_title', descKey: 'settings.feat_hotels_desc',           locked: true },
 ];
 
@@ -161,7 +163,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
 
       {stage === 'generating' && (
         <div style={{ padding: '22px 18px', textAlign: 'center', background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12 }}>
-          <div style={{ width: 44, height: 44, margin: '0 auto 12px', borderRadius: 12, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center' }}>
+          <div style={{ width: 44, height: 44, margin: '0 auto 12px', borderRadius: 12, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center' }}>
             <Icon name="telegram" size={20} />
           </div>
           <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', marginBottom: 6 }}>
@@ -181,7 +183,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
       {stage === 'idle' && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="telegram" size={17} />
             </div>
             <div style={{ flex: 1 }}>
@@ -214,8 +216,8 @@ function TelegramConnectDialog({ tripId, onLinked }) {
 
       {stage === 'connecting' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: '#0088cc11', border: '1px solid #0088cc33', borderRadius: 12, marginBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, background: tgBrand.bgSoft, border: `1px solid ${tgBrand.border}`, borderRadius: 12, marginBottom: 16 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name="telegram" size={17} />
             </div>
             <div style={{ flex: 1 }}>
@@ -317,7 +319,7 @@ function TelegramSection({ tripId }) {
   if (accounts.length === 0) {
     return (
       <div style={{ padding: 20, background: 'var(--wash)', borderRadius: 12, textAlign: 'center' }}>
-        <div style={{ width: 48, height: 48, margin: '0 auto 10px', borderRadius: 12, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center' }}>
+        <div style={{ width: 48, height: 48, margin: '0 auto 10px', borderRadius: 12, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center' }}>
           <Icon name="telegram" size={22} />
         </div>
         <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('telegram.not_connected_title')}</div>
@@ -335,7 +337,7 @@ function TelegramSection({ tripId }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {accounts.map(a => (
         <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 9, background: '#0088cc22', color: '#0088cc', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="telegram" size={17} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -379,6 +381,7 @@ function ApproverRow({ member, locked }) {
 
 export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, queryClient }) {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const { user } = useAuth();
   const nav = useNavigate();
 
@@ -514,7 +517,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   // Leave trip
   async function leaveTrip() {
-    if (!window.confirm(t('settings.leave_confirm'))) return;
+    if (!(await confirm({ title: t('settings.leave_confirm'), variant: 'destructive' }))) return;
     const myMember = members.find(m => m.user_id === user?.id && m.status === 'active');
     if (!myMember) { alert(t('settings.leave_not_found')); return; }
     // Only leave (navigate away) once the backend actually removed the row.
@@ -535,8 +538,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   // Delete trip (owner only)
   async function deleteTrip() {
-    if (!window.confirm(t('settings.delete_confirm1'))) return;
-    if (!window.confirm(t('settings.delete_confirm2'))) return;
+    if (!(await confirm({ title: t('settings.delete_confirm1'), variant: 'destructive' }))) return;
+    if (!(await confirm({ title: t('settings.delete_confirm2'), variant: 'destructive' }))) return;
     const { error } = await supabase.from('trips').delete().eq('id', tripId);
     if (error) { alert(t('settings.save_error2', { message: error.message })); return; }
     nav('/trips');
@@ -622,7 +625,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{
               position: 'relative', width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-              background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, #6a3ee2 100%)',
+              background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, var(--ai) 100%)',
               color: 'white', display: 'grid', placeItems: 'center',
               opacity: chatWidget ? 1 : 0.35, transition: 'opacity .15s ease',
             }}>

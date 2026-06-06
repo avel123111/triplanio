@@ -149,7 +149,7 @@ const TripRow = ({ trip, onClick }) => {
 function NewTripDialog({ onClose, onManual, onAi }) {
   const { t } = useI18n();
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--scrim)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
         style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 440, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
@@ -166,7 +166,7 @@ function NewTripDialog({ onClose, onManual, onAi }) {
             <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.manual_desc_short')}</div>
           </button>
           <button onClick={onAi} className="ai-card" style={{ padding: 20, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
               <Icon name="sparkles" size={19} />
             </div>
             <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--ai)' }}>{t('trips.start_with_ai')}</div>
@@ -203,7 +203,7 @@ function CollectionEmpty({ onManual, onAi }) {
         </button>
         <button onClick={onAi} style={{ padding: 22, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
           className="ai-card">
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 14 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 14 }}>
             <Icon name="sparkles" size={19} />
           </div>
           <div style={{ fontWeight: 600, marginBottom: 4 }} className="ai-text">{t('trips.start_with_ai')} <Badge variant="warm" style={{ marginLeft: 4 }}>Pro</Badge></div>
@@ -474,7 +474,7 @@ export default function Trips() {
             {/* Free-limit banner */}
             {!isPro && filterMode === 'active' && (
               <div className="ai-card" style={{ marginTop: 36, padding: '18px 22px', background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.06) 100%)', border: '1px solid var(--ai-soft-12)', borderRadius: 'var(--radius-card)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white', display: 'grid', placeItems: 'center' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center' }}>
                   <Icon name="sparkles" size={18} />
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
