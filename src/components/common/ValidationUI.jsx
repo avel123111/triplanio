@@ -101,7 +101,7 @@ export function IssuesPanel({ issues = [], className = '', style = {} }) {
               display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left',
               padding: '8px 11px', borderRadius: 10, border: `1px solid color-mix(in srgb, ${stripe} 40%, transparent)`,
               background: bg, color: 'var(--ink)', cursor: it.field ? 'pointer' : 'default',
-              fontFamily: 'var(--font-body)', fontSize: 'var(--fs-meta)', lineHeight: 1.4,
+              fontFamily: 'var(--font-ui)', fontSize: 'var(--fs-meta)', lineHeight: 1.4,
             }}
           >
             <AlertTriangle className="w-3.5 h-3.5" style={{ marginTop: 1, flexShrink: 0, color: stripe }} />
@@ -165,7 +165,7 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}
       >
         <span style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
           <AlertTriangle className="w-4 h-4" />
@@ -187,7 +187,7 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
                 key={`${it.code}-${it.entityId || it.fromId || i}`}
                 type="button"
                 onClick={() => onOpen?.(it)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 16px', background: 'transparent', border: 'none', borderTop: i ? '1px solid var(--line-2)' : 'none', boxShadow: `inset 3px 0 0 ${stripe}`, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 16px', background: 'transparent', border: 'none', borderTop: i ? '1px solid var(--line-2)' : 'none', boxShadow: `inset 3px 0 0 ${stripe}`, cursor: 'pointer', fontFamily: 'var(--font-ui)' }}
               >
                 <span style={{ width: 34, height: 34, borderRadius: 9, background: d.soft, color: d.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                   <d.Icon className="w-4 h-4" />

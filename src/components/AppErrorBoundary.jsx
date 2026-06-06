@@ -46,9 +46,9 @@ export default class AppErrorBoundary extends React.Component {
         }}>
           <div style={{
             width: 56, height: 56, borderRadius: 16, background: '#fee2e2',
-            display: 'grid', placeItems: 'center', fontSize: 'var(--fs-2xl)',
+            display: 'grid', placeItems: 'center', fontSize: 'var(--fs-h2)',
           }}>⚠️</div>
-          <h2 style={{ margin: 0, fontSize: 'var(--fs-xl)', fontWeight: 700 }}>{c.title}</h2>
+          <h2 style={{ margin: 0, fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{c.title}</h2>
           <p style={{ margin: 0, color: '#8693a8', fontSize: 'var(--fs-strong)', textAlign: 'center', maxWidth: 400 }}>
             {this.state.error?.message || c.generic}
           </p>

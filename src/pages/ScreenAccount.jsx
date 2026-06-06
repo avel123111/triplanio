@@ -307,7 +307,7 @@ function ConnectedAccountsSection() {
               <Icon name="sparkles" size={21} />
             </div>
           </div>
-          <div style={{ fontWeight: 700, fontSize: 'var(--fs-lg)', marginBottom: 8 }}>{t('telegram.account_empty_title')}</div>
+          <div style={{ fontWeight: 700, fontSize: 'var(--fs-h4)', marginBottom: 8 }}>{t('telegram.account_empty_title')}</div>
           <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, maxWidth: 420, margin: '0 auto 18px' }}>
             {t('telegram.account_empty_desc')}
           </div>

@@ -835,7 +835,7 @@ export default function TripStructureEdit() {
           {/* page title */}
           <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: '1px solid var(--line-2)' }}>
             <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>{t('tse.section_eyebrow')}</div>
-            <h1 style={{ fontSize: 'var(--fs-title)', lineHeight: 1.2, marginBottom: 6, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
+            <h1 style={{ fontSize: 'var(--fs-h3)', lineHeight: 1.2, marginBottom: 6, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
             <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{fmtD(startDate, lang)} - {fmtD(endDate, lang)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights, t)}` : ''} · {cities.length} {cities.length === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}{membersCount > 0 ? ` · ${t('tse.members_short', { n: membersCount })}` : ''}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
               <span className="eyebrow" style={{ fontSize: 'var(--fs-micro)' }}>{t('planner.trip_start')}</span>

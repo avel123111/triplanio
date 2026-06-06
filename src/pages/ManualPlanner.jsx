@@ -190,7 +190,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
                 display: 'flex', gap: 10, alignItems: 'center',
               }}
             >
-              <span style={{ fontSize: 'var(--fs-xl)', flexShrink: 0 }}>{countryFlag(c.country_code)}</span>
+              <span style={{ fontSize: 'var(--fs-h3)', flexShrink: 0 }}>{countryFlag(c.country_code)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{c.city_name}</div>
                 <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name}</div>
@@ -784,7 +784,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
             </svg>
           )}
           <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad-soft)' }} />
-          <div style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', fontWeight: 700, fontSize: 'var(--fs-3xl)', letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
+          <div style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
             {displayTitle}
           </div>
         </div>

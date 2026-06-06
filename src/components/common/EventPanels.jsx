@@ -181,7 +181,7 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 14, alignItems: 'center', padding: '16px', background: 'var(--wash)', borderRadius: 12 }}>
         <div>
           {depDate && <div className="num muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 600, marginBottom: 2 }}>{depDate}</div>}
-          <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 700 }}>{dep || '—'}</div>
+          <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{dep || '—'}</div>
           <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, marginTop: 3 }}>{fromVisit?.city_name || '—'}</div>
           {entity.from_address && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, lineHeight: 1.3 }}>{entity.from_address}</div>}
         </div>
@@ -190,7 +190,7 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
         </div>
         <div style={{ textAlign: 'right' }}>
           {arrDate && <div className="num muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 600, marginBottom: 2 }}>{arrDate}</div>}
-          <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 700 }}>{arr || '—'}</div>
+          <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{arr || '—'}</div>
           <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, marginTop: 3 }}>{toVisit?.city_name || '—'}</div>
           {entity.to_address && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, lineHeight: 1.3 }}>{entity.to_address}</div>}
         </div>

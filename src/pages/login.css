@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap&subset=cyrillic,cyrillic-ext,latin");
 
 :root {
   --brand:         #2167e2;
@@ -30,8 +30,8 @@
   --radius-btn: 12px;
   --radius-pill: 999px;
 
-  --font-display: "Inter Tight","Inter",ui-sans-serif,system-ui,sans-serif;
-  --font-body:    "Inter",ui-sans-serif,system-ui,sans-serif;
+  --font-display: "Rubik",ui-sans-serif,system-ui,sans-serif;
+  --font-body:    "Nunito",ui-sans-serif,system-ui,-apple-system,sans-serif;
 
   --banner-photo: url("https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=70");
 }

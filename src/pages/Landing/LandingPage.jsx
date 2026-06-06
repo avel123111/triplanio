@@ -350,7 +350,7 @@ function BudgetMini() {
   return (
     <div className="budget" style={{padding:0}}>
       <div className="budget__total" style={{marginBottom:12}}>
-        <span className="big" style={{fontSize: 'var(--fs-3xl)'}}>€4,820</span>
+        <span className="big" style={{fontSize: 'var(--fs-h2)'}}>€4,820</span>
         <span className="delta">{t('landing.mini.under')}</span>
       </div>
       <div className="budget__bar" style={{marginBottom:12}}>

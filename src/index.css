@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap&subset=cyrillic,cyrillic-ext,latin');
 
 @tailwind base;
 @tailwind components;
@@ -38,8 +38,8 @@
     --chart-4: 0 75% 50%;
     --chart-5: 220 30% 22%;
     --radius: 1.125rem;                    /* 18px card */
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-    --font-display: 'Inter Tight', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Nunito', ui-sans-serif, system-ui, -apple-system, sans-serif;  /* Lumo UI/body */
+    --font-display: 'Rubik', ui-sans-serif, system-ui, sans-serif;               /* Lumo headings */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 218 77% 51%;
@@ -105,12 +105,12 @@
   h1, h2, h3, h4 {
     font-family: var(--font-display);
     font-weight: 600;
-    letter-spacing: -0.022em;
+    letter-spacing: -0.01em;
   }
-  h1 { font-size: 32px; line-height: 1.1; letter-spacing: -0.032em; }
-  h2 { font-size: 22px; line-height: 1.2; }
-  h3 { font-size: 17px; line-height: 1.3; }
-  h4 { font-size: 14px; line-height: 1.3; }
+  h1 { font-size: var(--fs-h1); line-height: 1.08; }
+  h2 { font-size: var(--fs-h2); line-height: 1.15; }
+  h3 { font-size: var(--fs-h3); line-height: 1.25; }
+  h4 { font-size: var(--fs-h4); line-height: 1.3; }
 }
 
 /* AI-filled field: violet tint on the inner input/select trigger, matching the
