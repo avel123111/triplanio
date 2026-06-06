@@ -1,4 +1,5 @@
 import React from 'react';
+import * as RadixDialog from '@radix-ui/react-dialog';
 import { Icon } from './icons';
 import { useIsMobile } from '../hooks/use-mobile';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -306,14 +307,31 @@ export function ModalHost() {
     window.__closeModal = () => setStack(s => s.slice(0, -1));
     window.__closeAllModals = () => setStack([]);
   }, []);
-  if (stack.length === 0) return null;
+  // Each imperatively-opened modal is wrapped in a Radix Dialog so the whole
+  // window.__openModal stack gains focus-trap, Esc-to-close, scroll-lock and
+  // ARIA for free — while keeping the Atlantic .dlg look. Only the top modal is
+  // `modal` (traps focus / locks scroll); lower ones stay visible underneath.
   return stack.map((content, i) => (
-    <div key={i} className="dlg-backdrop"
-      onClick={(e) => { if (e.target === e.currentTarget) setStack(s => s.slice(0, -1)); }}
-      style={{ zIndex: 200 + i * 10 }}
+    <RadixDialog.Root
+      key={i}
+      open
+      modal={i === stack.length - 1}
+      onOpenChange={(o) => { if (!o) setStack(s => s.slice(0, -1)); }}
     >
-      {content}
-    </div>
+      <RadixDialog.Portal>
+        <RadixDialog.Overlay className="dlg-backdrop" style={{ zIndex: 200 + i * 10 }} />
+        <RadixDialog.Content
+          className="dlg-modal"
+          style={{ zIndex: 201 + i * 10 }}
+          aria-describedby={undefined}
+        >
+          {/* a11y name fallback — content keeps its own visible <h2> as the title.
+              TODO: surface the real per-dialog title to screen readers. */}
+          <RadixDialog.Title className="sr-only">Triplanio</RadixDialog.Title>
+          {content}
+        </RadixDialog.Content>
+      </RadixDialog.Portal>
+    </RadixDialog.Root>
   ));
 }
 

@@ -96,7 +96,7 @@ export default function CityPanel({
       {/* hero */}
       <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
         <CityPhoto city={node.city_name} h={132} w="100%" radius={0} />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(8,15,30,.72))' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad)' }} />
         <div style={{ position: 'absolute', left: 14, right: 14, bottom: 12, color: 'white' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-2xl)', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1 }}>{node.city_name}</div>
           <div className="num" style={{ fontSize: 'var(--fs-meta)', marginTop: 5, opacity: 0.92 }}>{rangeText(node.start_date, node.end_date)}{nights ? ` · ${nights} ${nightWord(nights, t)}` : ''}</div>

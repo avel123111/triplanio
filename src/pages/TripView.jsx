@@ -854,7 +854,7 @@ function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
 
   const itemStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 'var(--fs-strong)', color: 'var(--ink)' };
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--scrim)', backdropFilter: 'blur(4px)' }}
       onClick={() => window.__closeModal?.()}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 20, width: 320, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -928,7 +928,7 @@ function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, is
             <circle cx="680" cy="50" r="28" fill="rgba(255,255,255,.65)" />
           </svg>
         )}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,.38) 100%)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad-soft)' }} />
         <div style={{ position: 'absolute', left: 22, right: 22, bottom: 18 }}>
           <div style={{
             color: 'white', fontFamily: 'var(--font-display)', fontWeight: 700,

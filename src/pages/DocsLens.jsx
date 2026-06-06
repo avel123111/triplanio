@@ -17,6 +17,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Dialog, Field, Skeleton } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── query key ────────────────────────────────────────────────────────────────
@@ -215,11 +216,12 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
 
 function DocDetailDialog({ doc, tripId }) {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const [deleting, setDeleting] = useState(false);
   const qc = useQueryClient();
 
   async function handleDelete() {
-    if (!window.confirm(t('doc.delete_confirm', { name: doc.title }))) return;
+    if (!(await confirm({ title: t('doc.delete_confirm', { name: doc.title }), variant: 'destructive' }))) return;
     setDeleting(true);
     await supabase.from('trip_documents').delete().eq('id', doc.id);
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });

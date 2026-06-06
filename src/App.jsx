@@ -19,6 +19,7 @@ import ManualPlanner from '@/pages/ManualPlanner';
 import Inbox from '@/pages/Inbox';
 import Pro from '@/pages/Pro';
 import StripeReturnModals from '@/components/common/StripeReturnModals';
+import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { ModalHost } from '@/design/index';
 
 const AuthenticatedApp = () => {
@@ -113,10 +114,12 @@ function App() {
         <ThemeProvider>
           <I18nProvider>
             <QueryClientProvider client={queryClientInstance}>
-              <Router>
-                <AuthenticatedApp />
-              </Router>
-              <Toaster />
+              <ConfirmProvider>
+                <Router>
+                  <AuthenticatedApp />
+                </Router>
+                <Toaster />
+              </ConfirmProvider>
             </QueryClientProvider>
           </I18nProvider>
         </ThemeProvider>

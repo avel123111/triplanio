@@ -15,6 +15,7 @@ import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, Field, Skeleton } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { edgeErrorMessage } from '@/lib/edgeError';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
@@ -235,6 +236,7 @@ function RowMenuItem({ icon, danger, onClick, children }) {
 
 export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient }) {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const [openMenu, setOpenMenu] = useState(null);
   const [removing, setRemoving] = useState(null);
 
@@ -282,7 +284,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   }
 
   async function removeMember(memberId) {
-    if (!window.confirm(t('member.remove_confirm'))) return;
+    if (!(await confirm({ title: t('member.remove_confirm'), variant: 'destructive' }))) return;
     setOpenMenu(null);
     setRemoving(memberId);
     const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });

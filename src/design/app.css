@@ -931,10 +931,24 @@ h4 { font-size: 14px; line-height: 1.3; font-weight: 600; }
    DIALOG / MODAL — used everywhere (event details, confirm, share…)
    ================================================================= */
 .dlg-backdrop {
-  position: fixed; inset: 0; background: rgba(15,23,42,.5);
+  position: fixed; inset: 0; background: var(--scrim);
   z-index: 200; display: grid; place-items: center;
   backdrop-filter: blur(2px);
   padding: 24px;
+  animation: fadeIn .15s ease;
+}
+/* Radix-powered modal layer: ModalHost renders the scrim as a Radix Overlay
+   (.dlg-backdrop) and this as the centred Content wrapper that holds the .dlg
+   card. Width is driven by the .dlg child's own max-width variants. */
+.dlg-modal {
+  position: fixed; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 201;
+  display: flex; justify-content: center;
+  width: calc(100vw - 32px);
+  max-width: 760px;
+  max-height: calc(100vh - 32px);
+  outline: none;
   animation: fadeIn .15s ease;
 }
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
