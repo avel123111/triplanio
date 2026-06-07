@@ -68,7 +68,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
   if (open && state.status !== 'ready') {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="dlg--sm">
           <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
             <div className="animate-spin" style={{ width: 24, height: 24, border: '3px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%' }} />
           </div>
@@ -95,7 +95,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
+      <DialogContent className="dlg--wide">
         <div style={{ padding: 20 }}>
           {/* Hero */}
           <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', padding: '22px 24px', marginBottom: 16,

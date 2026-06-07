@@ -80,7 +80,7 @@ export default function ServiceDialog({ open, onOpenChange, tripId, kind, servic
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="dlg--sm">
         <DialogHeader>
           <DialogTitle>{isEdit ? t('service.dialog_edit', { label: title }) : t('service.dialog_new', { label: title })}</DialogTitle>
         </DialogHeader>

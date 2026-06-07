@@ -321,7 +321,7 @@ export default function ForkPartnerModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="w-7 h-7 rounded-md grid place-items-center shrink-0 text-white" style={{ background: meta.color }}>

@@ -1171,7 +1171,7 @@ export default function EventEditDialog({
         </div>
       ) : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="p-0 max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden gap-0 w-[calc(100%-1rem)] sm:w-full" style={{ background: 'var(--surface)' }}>
+          <DialogContent className="dlg--wide">
             {inner}
           </DialogContent>
         </Dialog>
