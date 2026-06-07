@@ -731,7 +731,7 @@ export default function ScreenAccount() {
                   <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="globe" size={16} /></span>
                   <b>{t('settings.language')}</b>
                 </div>
-                <div className="acct-lang" data-lang>
+                <div className={`acct-lang${langOpen ? ' is-open' : ''}`} data-lang>
                   <button className="acct-lang__trigger" aria-haspopup="listbox" aria-expanded={langOpen}
                     onClick={() => { setLangQuery(''); setLangOpen(v => !v); }}>
                     <span className="acct-lang__flag">{currentLang.flag}</span>
@@ -858,27 +858,31 @@ export default function ScreenAccount() {
               </div>
 
               {deleteState === 'blocked' && (
-                <Severity level="error" title={t('account.cancel_sub_first')}>
-                  {t('account.delete_blocked_desc')}
-                  <div style={{ marginTop: 8 }}>
-                    <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={handleManageSubscription}>
-                      {portalLoading ? t('account.opening') : t('account.open_billing_portal')}
-                    </Btn>
-                  </div>
-                </Severity>
+                <div style={{ marginTop: 14 }}>
+                  <Severity level="error" title={t('account.cancel_sub_first')}>
+                    {t('account.delete_blocked_desc')}
+                    <div style={{ marginTop: 8 }}>
+                      <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={handleManageSubscription}>
+                        {portalLoading ? t('account.opening') : t('account.open_billing_portal')}
+                      </Btn>
+                    </div>
+                  </Severity>
+                </div>
               )}
 
               {deleteState === 'confirm' && (
-                <Severity level="error" title={t('account.confirm_delete')}>
-                  {t('account.confirm_delete_desc_1')} <b>{t('account.delete_word')}</b> {t('account.confirm_delete_desc_2')}
-                  <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <input className="input" placeholder={t('account.delete_word')} value={deleteInput} onChange={e => setDeleteInput(e.target.value)} style={{ flex: 1, minWidth: 150 }} />
-                    <Btn variant="danger-solid" size="sm" disabled={deleteInput !== t('account.delete_word') || deletingAccount} onClick={performDeleteAccount}>
-                      {deletingAccount ? t('account.deleting') : t('account.delete_forever')}
-                    </Btn>
-                    <Btn variant="ghost" size="sm" onClick={() => setDeleteState(null)}>{t('common.cancel')}</Btn>
-                  </div>
-                </Severity>
+                <div style={{ marginTop: 14 }}>
+                  <Severity level="error" title={t('account.confirm_delete')}>
+                    {t('account.confirm_delete_desc_1')} <b>{t('account.delete_word')}</b> {t('account.confirm_delete_desc_2')}
+                    <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <input className="input" placeholder={t('account.delete_word')} value={deleteInput} onChange={e => setDeleteInput(e.target.value)} style={{ flex: 1, minWidth: 150 }} />
+                      <Btn variant="danger-solid" size="sm" disabled={deleteInput !== t('account.delete_word') || deletingAccount} onClick={performDeleteAccount}>
+                        {deletingAccount ? t('account.deleting') : t('account.delete_forever')}
+                      </Btn>
+                      <Btn variant="ghost" size="sm" onClick={() => setDeleteState(null)}>{t('common.cancel')}</Btn>
+                    </div>
+                  </Severity>
+                </div>
               )}
             </div>
 

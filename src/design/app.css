@@ -1818,7 +1818,13 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    (.card/.btn/.badge/.input/.switch/.sev via <Btn>/<Badge>/<Toggle>/<Severity>)
    are reused as-is; only the new layout structure lives here.
    ============================================================ */
-.acct-shell { max-width: 1120px; margin: 0 auto; padding: 26px 24px 80px; display: grid; grid-template-columns: 232px 1fr; gap: 30px; align-items: start; }
+/* minmax(0,1fr): the content track is sized by the viewport, NOT by its widest
+   child — without this the wide subscription "plan face" widens the column once
+   it loads, causing a load-time reflow (content jumps from narrow to wide). */
+.acct-shell { max-width: 1120px; margin: 0 auto; padding: 26px 24px 80px; display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 30px; align-items: start; }
+/* Base text matches the Lumo body exactly so nothing inherits a lighter/smaller
+   default (15px / 500 / display-headings). */
+.acct-content { font-size: var(--fs-strong); font-weight: 500; line-height: 1.6; }
 .acct-nav { position: sticky; top: 78px; }
 .acct-nav__grp { font-size: var(--fs-micro); font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--muted-2); padding: 0 12px; margin: 0 0 8px; }
 .acct-nav__grp + .acct-nav__grp { margin-top: 14px; }
@@ -1900,7 +1906,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .acct-lang__trigger { width: 100%; display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--surface-3); border: 1.5px solid var(--line-strong); border-radius: var(--r-sm); cursor: pointer; font: inherit; font-size: var(--fs-base); font-weight: 600; color: var(--ink); transition: border-color .2s, background .2s; }
 .acct-lang__trigger:hover { border-color: var(--line-hover); }
 .acct-lang__flag { width: 24px; height: 24px; border-radius: 7px; background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; font-size: var(--fs-micro); font-weight: 800; flex: none; }
-.acct-lang__pop { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-2); padding: 8px; z-index: 30; }
+.acct-lang { z-index: 5; }
+.acct-lang.is-open { z-index: 40; }
+.acct-lang__pop { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-2); padding: 8px; z-index: 40; }
 .acct-lang__search { position: relative; margin-bottom: 6px; }
 .acct-lang__search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--muted-2); }
 .acct-lang__search input { width: 100%; padding: 8px 12px 8px 32px; font: inherit; font-size: var(--fs-meta); border-radius: var(--r-sm); border: 1.5px solid var(--line); background: var(--surface-3); color: var(--ink); }
@@ -1947,8 +1955,11 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .acct-hero__actions { justify-content: center; }
   .acct-hero__name { white-space: normal; }
 }
-/* entrance — reuse the Overview rise-in, lightly staggered per section */
-.acct-content > section { animation: ovIn .42s var(--ease-out) both; }
+/* entrance — reuse the Overview rise-in, lightly staggered per section.
+   fill=backwards (NOT both): after the animation the section drops its transform,
+   so it no longer forms a stacking context that would trap the language popover
+   under the following section. */
+.acct-content > section { animation: ovIn .42s var(--ease-out) backwards; }
 .acct-content > section:nth-child(2) { animation-delay: 50ms; }
 .acct-content > section:nth-child(3) { animation-delay: 100ms; }
 .acct-content > section:nth-child(4) { animation-delay: 150ms; }
