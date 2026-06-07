@@ -103,22 +103,17 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (error && error.code === 'PGRST116') {
-        // Profile doesn't exist yet - create it (first login via Google or email)
-        const seed = encodeURIComponent(
-          authUser.user_metadata?.full_name ||
-          authUser.user_metadata?.name ||
-          authUser.email || 'user'
-        );
-        const avatarUrl = authUser.user_metadata?.avatar_url ||
-          `https://api.dicebear.com/7.x/initials/svg?seed=${seed}`;
-
+        // Profile doesn't exist yet - create it (first login via Google or email).
+        // Avatar policy: keep ONLY a real uploaded/OAuth image. When there is
+        // none, leave avatar_url null — <Avatar> renders a gradient fallback.
+        // No generated placeholder image (single fallback, no third variant).
         const { data: newProfile, error: createError } = await supabase
           .from('users')
           .insert({
             id: authUser.id,
             email: authUser.email,
             full_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
-            avatar_url: avatarUrl,
+            avatar_url: authUser.user_metadata?.avatar_url || null,
           })
           .select()
           .single();
@@ -129,12 +124,12 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
 
-      // Backfill avatar if missing
-      if (profile && !profile.avatar_url) {
-        const seed = encodeURIComponent(profile.full_name || profile.email || 'user');
-        const defaultAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}`;
-        await supabase.from('users').update({ avatar_url: defaultAvatar }).eq('id', authUser.id);
-        profile.avatar_url = defaultAvatar;
+      // Clear legacy auto-generated avatars (dicebear initials) so they fall
+      // back to the gradient instead of overwriting it with a flat image.
+      if (profile?.avatar_url && profile.avatar_url.includes('api.dicebear.com')) {
+        profile.avatar_url = null;
+        // best-effort one-time cleanup; UI already uses the nulled value
+        supabase.from('users').update({ avatar_url: null }).eq('id', authUser.id);
       }
 
       setUser({ ...profile, id: authUser.id });

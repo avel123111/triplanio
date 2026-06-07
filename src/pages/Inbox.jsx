@@ -9,7 +9,7 @@ import { isProActive } from '@/lib/subscription';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ru, es, enUS } from 'date-fns/locale';
 import { Icon } from '../design/icons';
-import { Btn, Badge, Skeleton } from '../design/index';
+import { Btn, Badge, Skeleton, EmptyState } from '../design/index';
 import HeaderActions from '@/components/HeaderActions';
 import { notifMeta, emphasize } from '@/components/notifications/NotificationsBell';
 import '../design/app.css';
@@ -141,10 +141,7 @@ export default function Inbox() {
         ) : notifications.length === 0 ? (
           <InboxEmpty onCollection={() => nav('/trips')} onAi={() => nav('/plan-trip-ai')} />
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '36px 24px', color: 'var(--muted)', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14 }}>
-            <Icon name="bell" size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
-            <div style={{ fontSize: 'var(--fs-base)' }}>{t('notif.filter_empty')}</div>
-          </div>
+          <EmptyState icon="bell" title={t('notif.filter_empty')} />
         ) : (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
             {groups.map((g, gi) => (
@@ -174,69 +171,18 @@ export default function Inbox() {
 
 function InboxEmpty({ onCollection, onAi }) {
   const t = useT();
-  const hints = [
-    { icon: 'users', title: t('notif.invitations'), desc: t('notif.invitations_desc') },
-    { icon: 'vote',  title: t('notif.votes'), desc: t('notif.votes_desc') },
-    { icon: 'edit',  title: t('notif.updates'),  desc: t('notif.updates_desc') },
-  ];
   return (
-    <div style={{
-      background: 'var(--surface)',
-      border: '1px solid var(--line)',
-      borderRadius: 14,
-      padding: '56px 28px',
-      textAlign: 'center',
-    }}>
-      <div style={{
-        width: 84, height: 84, margin: '0 auto 22px', borderRadius: 22,
-        background: 'linear-gradient(135deg, var(--brand-soft), var(--wash))',
-        color: 'var(--brand)',
-        display: 'grid', placeItems: 'center', position: 'relative',
-      }}>
-        <Icon name="bell" size={36} />
-        <span style={{
-          position: 'absolute', bottom: 4, right: 4,
-          width: 26, height: 26, borderRadius: '50%',
-          background: 'var(--success)', color: 'white',
-          display: 'grid', placeItems: 'center',
-          border: '3px solid var(--surface)',
-        }}>
-          <Icon name="check" size={13} />
-        </span>
-      </div>
-      <h2 style={{ marginBottom: 8, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em' }}>{t('notif.inbox_empty')}</h2>
-      <div className="muted" style={{ fontSize: 'var(--fs-strong)', lineHeight: 1.6, maxWidth: 420, margin: '0 auto 22px' }}>
-        {t('notif.inbox_empty_desc')}
-      </div>
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10,
-        maxWidth: 460, margin: '0 auto', textAlign: 'left',
-      }}>
-        {hints.map((h) => (
-          <div key={h.title} style={{
-            padding: '12px 14px',
-            background: 'var(--wash)',
-            border: '1px solid var(--line-2)',
-            borderRadius: 10,
-          }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: 'var(--brand-soft)', color: 'var(--brand)',
-              display: 'grid', placeItems: 'center',
-              marginBottom: 6,
-            }}>
-              <Icon name={h.icon} size={14} />
-            </div>
-            <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginBottom: 2 }}>{h.title}</div>
-            <div className="muted" style={{ fontSize: 'var(--fs-micro)', lineHeight: 1.45 }}>{h.desc}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ marginTop: 26, display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <Btn variant="primary" icon="plus" onClick={onCollection}>{t('notif.to_collection')}</Btn>
-        <Btn variant="ghost" icon="sparkles" onClick={onAi}>{t('trips.ai')}</Btn>
-      </div>
-    </div>
+    <EmptyState
+      icon="bell"
+      title={t('notif.inbox_empty')}
+      body={t('notif.inbox_empty_desc')}
+      action={
+        <div style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <Btn variant="primary" icon="plus" onClick={onCollection}>{t('notif.to_collection')}</Btn>
+          <Btn variant="ghost" icon="sparkles" onClick={onAi}>{t('trips.ai')}</Btn>
+        </div>
+      }
+    />
   );
 }
 
@@ -276,7 +222,7 @@ function InboxRow({ n, t, dateLocale, last, pending, onRespond }) {
         <Icon name={meta.icon} size={16} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, fontWeight: 500 }}>{titleNode}</div>
+        <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, fontWeight: 600 }}>{titleNode}</div>
         {messageText && <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, lineHeight: 1.4 }}>{messageNode}</div>}
         <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span>{time}</span>

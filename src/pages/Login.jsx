@@ -523,7 +523,7 @@ export default function Login() {
             {view === 'reset-sent' && (
               <div className="confirm">
                 <div className="confirm__icon"><IconMail /></div>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-3xl)', letterSpacing: '-0.025em', color: 'var(--ink)' }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h2)', letterSpacing: '-0.025em', color: 'var(--ink)' }}>
                   {t('auth.sent_title')}
                 </h2>
                 <p className="lede" style={{ margin: '14px auto 0', maxWidth: '36ch' }}>
@@ -620,7 +620,7 @@ export default function Login() {
                     <path d="M20 6 9 17l-5-5" />
                   </svg>
                 </div>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-3xl)', letterSpacing: '-0.025em', color: 'var(--ink)' }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h2)', letterSpacing: '-0.025em', color: 'var(--ink)' }}>
                   {t('auth.done_title')}
                 </h2>
                 <p className="lede" style={{ margin: '14px auto 0', maxWidth: '34ch' }}>

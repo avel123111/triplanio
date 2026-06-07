@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light" data-variant="sky">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Triplanio — Lumo · Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap&subset=cyrillic,cyrillic-ext,latin" rel="stylesheet" />
+<style>
+/* ============================================================
+   TRIPLANIO · LUMO — дружелюбная дизайн-система
+   Округлая, тёплая, мягкая. Шрифты Rubik (display) + Nunito (text),
+   обе с полной кириллицей. Палитры: Sky / Pink / Turquoise / Grape.
+   ============================================================ */
+
+:root{
+  --ink:#272433; --ink-2:#4A4659; --muted:#7A7689; --muted-2:#ABA7B8;
+  --bg:#F4F4FB; --surface:#FFFFFF; --surface-2:#EEEEF7; --surface-3:#FAFAFE;
+  --line:#E9E8F2; --line-2:#F1F0F8; --line-strong:#DBD9E7;
+
+  --primary:#2173C8; --primary-hover:#1C66B4; --primary-press:#18579A; --primary-fg:#fff;
+  --primary-soft:rgba(33,115,200,.10); --primary-soft-2:rgba(33,115,200,.16); --primary-ring:rgba(33,115,200,.28);
+  --brand-grad:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
+
+  --ev-hotel:#5470E6;   --ev-hotel-ink:#4257C9;  --ev-hotel-soft:rgba(84,112,230,.11);  --ev-hotel-soft-2:rgba(84,112,230,.17);
+  --ev-transfer:#15A2B0;--ev-transfer-ink:#096B75;--ev-transfer-soft:rgba(21,162,176,.12);--ev-transfer-soft-2:rgba(21,162,176,.18);
+  --ev-activity:#E0568F;--ev-activity-ink:#BC2F6A;--ev-activity-soft:rgba(224,86,143,.12);--ev-activity-soft-2:rgba(224,86,143,.18);
+  --ev-car:#2FA866;     --ev-car-ink:#12703E;     --ev-car-soft:rgba(47,168,102,.12);     --ev-car-soft-2:rgba(47,168,102,.18);
+
+  --info:#2D8CD6; --info-soft:rgba(45,140,214,.11); --info-ink:#1C6BAC;
+  --success:#1F9A66;--success-soft:rgba(31,154,102,.12);--success-ink:#0C7A4F;
+  --warning:#E2920E;--warning-soft:rgba(226,146,14,.15);--warning-ink:#8A5A12;
+  --danger:#E24A52; --danger-soft:rgba(226,74,82,.12); --danger-ink:#B41F30; --danger-fg:#fff;
+
+  --ai:#8A6BF0; --ai-soft:rgba(138,107,240,.11); --ai-soft-2:rgba(138,107,240,.17); --ai-ink:#5B3FE0;
+  --ai-gradient:linear-gradient(135deg,#5AA0EE 0%,#8A6BF0 52%,#D77BD0 100%);
+  --ai-gradient-soft:linear-gradient(135deg,rgba(90,160,238,.13),rgba(138,107,240,.13),rgba(215,123,208,.13));
+  --pro:#E6A21E; --pro-soft:rgba(230,162,30,.13); --pro-soft-2:rgba(230,162,30,.22); --pro-ink:#936215;
+  --pro-gradient:linear-gradient(135deg,#FBD06A 0%,#EBA02E 55%,#E08A36 100%); --pro-fg:#4A2D05;
+
+  /* deadline — 5-й тип события (дедлайн отмены отеля) */
+  --ev-deadline:#E14B5A; --ev-deadline-ink:#B41F30; --ev-deadline-soft:rgba(225,75,90,.12); --ev-deadline-soft-2:rgba(225,75,90,.18);
+  /* warm — тёплый акцент (владелец / особое) */
+  --warm:#D9663C; --warm-ink:#9A3D18; --warm-soft:rgba(217,102,60,.12); --warm-soft-2:rgba(217,102,60,.20);
+  /* семантические поверхности (производные → следуют палитре и теме) */
+  --secondary:var(--surface-2); --secondary-ink:var(--ink-2);
+  --accent:var(--primary-soft); --accent-ink:var(--primary);
+  --popover:var(--surface); --popover-ink:var(--ink);
+  --input:var(--line-strong);
+  --wash:var(--surface-3);
+  --surface-elev:var(--surface);
+  --line-hover:#D2D0E0;
+  --scrim:rgba(23,20,40,.45);
+  --brand-glow:color-mix(in srgb, var(--primary) 32%, transparent);
+  --brand-ink:#16294A;
+  /* градиенты */
+  --assistant-grad:linear-gradient(135deg, var(--primary), var(--ai));
+  --overlay-grad:linear-gradient(180deg, transparent 38%, rgba(10,12,26,.80));
+  --overlay-grad-soft:linear-gradient(180deg, transparent 45%, rgba(10,12,26,.42));
+  /* палитра категорий / графиков (назначается категориям бюджета) */
+  --cat-1:#5470E6; --cat-2:#15A2B0; --cat-3:#E0568F; --cat-4:#2FA866; --cat-5:#E6A21E; --cat-6:#8A6BF0; --cat-7:#E07A4E; --cat-8:#9AA1AD;
+  /* сайдбар / оболочка приложения */
+  --sidebar-bg:#FFFFFF; --sidebar-ink:var(--ink); --sidebar-muted:var(--muted); --sidebar-item:var(--ink-2);
+  --sidebar-active-bg:var(--primary-soft); --sidebar-active-ink:var(--primary); --sidebar-border:var(--line);
+  /* типошкала (имена — стандарт Lumo) */
+  --fs-nano:10px; --fs-micro:11px; --fs-meta:12.5px; --fs-base:14px; --fs-strong:15px;
+  --fs-h4:16px; --fs-h3:19px; --fs-h2:26px; --fs-h1:40px; --fs-display:54px;
+  --font-mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+
+  --r-card:24px; --r-md:16px; --r-btn:14px; --r-sm:11px; --r-pill:999px;
+  --sh-1:0 2px 6px -2px rgba(39,36,51,.06), 0 8px 24px -10px rgba(39,36,51,.12);
+  --sh-2:0 4px 12px -4px rgba(39,36,51,.10), 0 18px 48px -16px rgba(39,36,51,.20);
+  --sh-3:0 8px 20px -6px rgba(39,36,51,.14), 0 30px 70px -22px rgba(39,36,51,.30);
+
+  --font-display:'Rubik',ui-sans-serif,system-ui,sans-serif;
+  --font-ui:'Nunito',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --ease-out:cubic-bezier(0.22,1,0.36,1); --ease-spring:cubic-bezier(0.34,1.25,0.5,1);
+  color-scheme:light;
+}
+[data-theme="dark"]{
+  --ink:#EDECF4; --ink-2:#C4C1D2; --muted:#8C88A0; --muted-2:#5F5C72;
+  --bg:#161520; --surface:#201F2C; --surface-2:#2A2937; --surface-3:#1B1A26;
+  --line:#33313F; --line-2:#262533; --line-strong:#403E4F;
+  --primary:#6FB2FF; --primary-hover:#8AC1FF; --primary-press:#A8D2FF; --primary-fg:#08182A;
+  --primary-soft:rgba(111,178,255,.14); --primary-soft-2:rgba(111,178,255,.22); --primary-ring:rgba(111,178,255,.36);
+  --brand-grad:linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
+  --ev-hotel:#8E9CF5;   --ev-hotel-ink:#8E9CF5;  --ev-hotel-soft:rgba(142,156,245,.16);  --ev-hotel-soft-2:rgba(142,156,245,.24);
+  --ev-transfer:#38C6D4;--ev-transfer-ink:#38C6D4;--ev-transfer-soft:rgba(56,198,212,.16); --ev-transfer-soft-2:rgba(56,198,212,.24);
+  --ev-activity:#F178A8;--ev-activity-ink:#F178A8;--ev-activity-soft:rgba(241,120,168,.16);--ev-activity-soft-2:rgba(241,120,168,.24);
+  --ev-car:#4ECB86;     --ev-car-ink:#4ECB86;     --ev-car-soft:rgba(78,203,134,.16);      --ev-car-soft-2:rgba(78,203,134,.24);
+  --info:#5FAEEC; --info-soft:rgba(95,174,236,.16); --info-ink:#93C6F2;
+  --success:#3CC489;--success-soft:rgba(60,196,137,.16);--success-ink:#6FD6A8;
+  --warning:#F0B24A;--warning-soft:rgba(240,178,74,.16);--warning-ink:#F5C778;
+  --danger:#F26A72;--danger-soft:rgba(242,106,114,.16);--danger-ink:#F89AA0;--danger-fg:#1A0508;
+  --ai:#A98BFF; --ai-soft:rgba(169,139,255,.16); --ai-soft-2:rgba(169,139,255,.24); --ai-ink:#C6B5FF;
+  --ai-gradient:linear-gradient(135deg,#6FB0FF 0%,#A98BFF 52%,#E08FE0 100%);
+  --ai-gradient-soft:linear-gradient(135deg,rgba(111,176,255,.18),rgba(169,139,255,.18),rgba(224,143,224,.18));
+  --pro:#F0B65A; --pro-soft:rgba(240,182,90,.16); --pro-soft-2:rgba(240,182,90,.26); --pro-ink:#F6CD84;
+  --pro-gradient:linear-gradient(135deg,#FBD478 0%,#F0A93C 55%,#E08A36 100%); --pro-fg:#2A1903;
+  --ev-deadline:#F2737F; --ev-deadline-ink:#F2737F; --ev-deadline-soft:rgba(242,115,127,.16); --ev-deadline-soft-2:rgba(242,115,127,.24);
+  --warm:#F0936B; --warm-ink:#F0936B; --warm-soft:rgba(240,147,107,.16); --warm-soft-2:rgba(240,147,107,.24);
+  --line-hover:#3E3C4D; --surface-elev:#272636; --scrim:rgba(0,0,0,.62); --brand-ink:#BFD3F5; --sidebar-bg:#1B1A26;
+  --sh-1:0 2px 8px -2px rgba(0,0,0,.5), 0 8px 24px -10px rgba(0,0,0,.6);
+  --sh-2:0 4px 14px -4px rgba(0,0,0,.5), 0 20px 50px -18px rgba(0,0,0,.7);
+  --sh-3:0 8px 22px -6px rgba(0,0,0,.55), 0 32px 74px -24px rgba(0,0,0,.8);
+  color-scheme:dark;
+}
+
+/* ---- VARIANTS ---- */
+[data-theme="light"][data-variant="pink"]{
+  --primary:#CE2F7B; --primary-hover:#BB2A6E; --primary-press:#A2235E; --primary-fg:#fff;
+  --primary-soft:rgba(206,47,123,.11); --primary-soft-2:rgba(206,47,123,.17); --primary-ring:rgba(206,47,123,.28);
+  --brand-grad:linear-gradient(135deg,#F062A8 0%,#CE2F7B 100%);
+  /* activity (pink) clashes with pink primary → activity becomes violet */
+  --ev-activity:#8B5BD6; --ev-activity-ink:#6F44B8; --ev-activity-soft:rgba(139,91,214,.11); --ev-activity-soft-2:rgba(139,91,214,.18);
+}
+[data-theme="dark"][data-variant="pink"]{
+  --primary:#FF7BB4; --primary-hover:#FF92C2; --primary-press:#FFA9CF; --primary-fg:#2E0A1A;
+  --primary-soft:rgba(255,123,180,.15); --primary-soft-2:rgba(255,123,180,.24); --primary-ring:rgba(255,123,180,.40);
+  --brand-grad:linear-gradient(135deg,#FF93C2 0%,#FF7BB4 100%);
+  --ev-activity:#B597F0; --ev-activity-ink:#B597F0; --ev-activity-soft:rgba(181,151,240,.16); --ev-activity-soft-2:rgba(181,151,240,.24);
+}
+[data-theme="light"][data-variant="turquoise"]{
+  --primary:#0A7C8A; --primary-hover:#0A6E7B; --primary-press:#085C68; --primary-fg:#fff;
+  --primary-soft:rgba(10,124,138,.10); --primary-soft-2:rgba(10,124,138,.16); --primary-ring:rgba(10,124,138,.28);
+  --brand-grad:linear-gradient(135deg,#2BC0CE 0%,#0A7C8A 100%);
+  /* transfer (teal) clashes with turquoise primary → transfer becomes blue */
+  --ev-transfer:#3A6FD8; --ev-transfer-ink:#2B57B5; --ev-transfer-soft:rgba(58,111,216,.11); --ev-transfer-soft-2:rgba(58,111,216,.18);
+}
+[data-theme="dark"][data-variant="turquoise"]{
+  --primary:#2BCEDC; --primary-hover:#54DAE6; --primary-press:#82E6EE; --primary-fg:#04201F;
+  --primary-soft:rgba(43,206,220,.16); --primary-soft-2:rgba(43,206,220,.24); --primary-ring:rgba(43,206,220,.38);
+  --brand-grad:linear-gradient(135deg,#54DAE6 0%,#2BCEDC 100%);
+  --ev-transfer:#7FA8FF; --ev-transfer-ink:#7FA8FF; --ev-transfer-soft:rgba(127,168,255,.16); --ev-transfer-soft-2:rgba(127,168,255,.24);
+}
+[data-theme="light"][data-variant="grape"]{
+  --primary:#724ECB; --primary-hover:#6342B5; --primary-press:#54389A; --primary-fg:#fff;
+  --primary-soft:rgba(114,78,203,.11); --primary-soft-2:rgba(114,78,203,.17); --primary-ring:rgba(114,78,203,.28);
+  --brand-grad:linear-gradient(135deg,#9C7AEE 0%,#724ECB 100%);
+}
+[data-theme="dark"][data-variant="grape"]{
+  --primary:#B69BFF; --primary-hover:#C4ADFF; --primary-press:#D4C2FF; --primary-fg:#190A2E;
+  --primary-soft:rgba(182,155,255,.16); --primary-soft-2:rgba(182,155,255,.24); --primary-ring:rgba(182,155,255,.40);
+  --brand-grad:linear-gradient(135deg,#C4ADFF 0%,#B69BFF 100%);
+}
+
+/* ============================================================ BASE */
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0; font-family:var(--font-ui); background:var(--bg); color:var(--ink-2);
+  -webkit-font-smoothing:antialiased; font-size:15.5px; line-height:1.6; font-weight:500;
+  transition:background .4s var(--ease-out), color .4s var(--ease-out);}
+h1,h2,h3,h4{color:var(--ink); margin:0; font-family:var(--font-display); font-weight:600;}
+a{color:var(--primary); text-decoration:none; font-weight:700;}
+::selection{background:var(--primary-soft-2);}
+.wrap{max-width:1140px; margin:0 auto; padding:0 28px;}
+.muted{color:var(--muted);}
+.tab{font-variant-numeric:tabular-nums;}
+
+/* Topbar */
+.topbar{position:sticky; top:0; z-index:60; backdrop-filter:saturate(180%) blur(14px);
+  background:color-mix(in srgb,var(--bg) 82%,transparent); border-bottom:1px solid var(--line);}
+.topbar .row{display:flex; align-items:center; justify-content:space-between; gap:14px; height:66px; flex-wrap:wrap;}
+.brandmark{display:flex; align-items:center; gap:11px;}
+.brandmark .mk{width:34px; height:34px; border-radius:13px; background:var(--brand-grad); position:relative; box-shadow:var(--sh-1); transition:background .4s var(--ease-out);}
+.brandmark .mk::after{content:""; position:absolute; width:11px; height:11px; border-radius:50%; background:#fff; opacity:.85; left:7px; top:7px;}
+.brandmark .mk::before{content:""; position:absolute; width:6px; height:6px; border-radius:50%; background:#fff; opacity:.55; right:8px; bottom:8px;}
+.brandmark b{font-family:var(--font-display); font-weight:600; font-size:18px; color:var(--ink);}
+.brandmark span{font-size:12px; color:var(--muted); margin-left:1px;}
+.controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+.seg{display:inline-flex; flex-wrap:wrap; background:var(--surface-2); border-radius:var(--r-pill); padding:4px; gap:2px;}
+.seg button{font:inherit; font-size:13px; font-weight:700; color:var(--muted); background:transparent; border:0; cursor:pointer;
+  padding:7px 13px; border-radius:var(--r-pill); display:inline-flex; align-items:center; gap:7px;
+  transition:color .2s, background .2s, box-shadow .2s, transform .16s var(--ease-spring);}
+.seg button .sw{width:11px; height:11px; border-radius:50%;}
+.seg button[aria-pressed="true"]{color:var(--ink); background:var(--surface); box-shadow:var(--sh-1);}
+.seg button:active{transform:scale(.95);}
+.theme-toggle{display:inline-flex; align-items:center; gap:8px; border:0; background:var(--surface-2); color:var(--ink-2); border-radius:var(--r-pill);
+  padding:9px 15px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:transform .16s var(--ease-spring), background .2s;}
+.theme-toggle:hover{background:var(--surface); box-shadow:var(--sh-1);} .theme-toggle:active{transform:scale(.95);}
+
+/* Hero */
+.hero{position:relative; padding:62px 0 30px; overflow:hidden;}
+.hero .blob{position:absolute; border-radius:50%; filter:blur(8px); pointer-events:none;}
+.hero .b1{width:280px; height:280px; background:var(--brand-grad); top:-90px; right:4%; opacity:.22;}
+.hero .b2{width:200px; height:200px; background:var(--ai-gradient); top:30px; right:24%; opacity:.16;}
+.hero .pill-eyebrow{display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:800; color:var(--primary);
+  background:var(--primary-soft); padding:8px 16px; border-radius:var(--r-pill); margin-bottom:20px;}
+.hero h1{font-family:var(--font-display); font-weight:600; font-size:clamp(34px,5vw,54px); line-height:1.06; max-width:18ch; color:var(--ink);}
+.hero h1 em{font-style:normal; background:var(--brand-grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.hero p{font-size:18px; color:var(--muted); max-width:58ch; margin:18px 0 0; font-weight:500;}
+
+/* Sections */
+section{padding:28px 0;}
+.sec-head{display:flex; align-items:baseline; gap:14px; margin:8px 0 20px;}
+.sec-head .n{font-family:var(--font-display); font-size:15px; color:var(--primary); font-weight:600;}
+.sec-head h2{font-weight:600; font-size:26px;}
+.sec-head .desc{color:var(--muted); font-size:14px; margin-left:auto; max-width:42ch; text-align:right; font-weight:500;}
+@media (max-width:820px){.sec-head .desc{display:none;}}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-card); box-shadow:var(--sh-1); padding:26px;}
+.panel+.panel{margin-top:18px;}
+.grid-2{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+.grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:18px;}
+@media (max-width:880px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+.subtitle{font-size:13px; font-weight:800; color:var(--muted); margin:0 0 14px; display:flex; align-items:center; gap:8px;}
+.subtitle::after{content:""; flex:1; height:1px; background:var(--line);}
+.cluster{display:flex; flex-wrap:wrap; gap:12px; align-items:center;}
+.stack{display:flex; flex-direction:column; gap:13px;}
+.statelabel{font-size:11px; font-weight:800; color:var(--muted-2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:7px;}
+
+/* Swatches */
+.swatch-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px;}
+.sw{border-radius:var(--r-md); overflow:hidden; background:var(--surface); border:1px solid var(--line); cursor:pointer;
+  transition:transform .2s var(--ease-spring), box-shadow .22s var(--ease-out);}
+.sw:hover{transform:translateY(-4px) scale(1.02); box-shadow:var(--sh-2);}
+.sw .chip{height:72px; display:grid; place-items:center;}
+.sw .chip .tile{width:38px; height:38px; border-radius:13px; box-shadow:0 4px 10px -3px rgba(0,0,0,.25); display:grid; place-items:center;}
+.sw .meta{padding:11px 13px; border-top:1px solid var(--line);}
+.sw .meta .name{font-size:13.5px; font-weight:800; color:var(--ink);} .sw .meta .hex{font-size:11.5px; color:var(--muted); margin-top:1px; font-weight:600;}
+.sw .meta .role{font-size:11px; color:var(--muted-2); margin-top:1px; font-weight:600;}
+.ptiles{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
+@media (max-width:680px){.ptiles{grid-template-columns:repeat(2,1fr);}}
+.ptile{border-radius:var(--r-md); padding:16px; min-height:84px; display:flex; flex-direction:column; justify-content:space-between; cursor:pointer;
+  transition:transform .2s var(--ease-spring), box-shadow .2s;}
+.ptile:hover{transform:translateY(-3px); box-shadow:var(--sh-2);}
+.ptile b{font-size:14px; font-weight:800;} .ptile small{font-size:11px; opacity:.9; font-weight:700;}
+.gstrip{height:56px; border-radius:var(--r-md); display:flex; align-items:center; padding:0 18px; font-weight:800; font-size:13px;}
+
+/* ---------- BUTTONS ---------- */
+.btn{--bg:var(--surface); --fg:var(--ink); --bd:var(--line-strong);
+  display:inline-flex; align-items:center; justify-content:center; gap:8px; font:inherit; font-family:var(--font-display); font-weight:600; font-size:14.5px; line-height:1;
+  padding:12px 20px; border-radius:var(--r-btn); background:var(--bg); color:var(--fg); border:1px solid var(--bd); cursor:pointer; white-space:nowrap;
+  transition:transform .16s var(--ease-spring), background .2s var(--ease-out), border-color .2s, color .2s, box-shadow .22s, filter .2s, background-position .4s var(--ease-out);}
+.btn svg{width:17px; height:17px;}
+@media (hover:hover){.btn:hover{transform:translateY(-2px);}}
+.btn:active{transform:translateY(0) scale(.96);}
+.btn:focus-visible{outline:none; box-shadow:0 0 0 4px var(--primary-ring);}
+.btn--primary{--bg:var(--primary); --fg:var(--primary-fg); --bd:transparent; box-shadow:0 6px 16px -6px color-mix(in srgb,var(--primary) 70%,transparent);}
+.btn--primary:hover{--bg:var(--primary-hover); box-shadow:0 10px 22px -8px color-mix(in srgb,var(--primary) 75%,transparent);}
+.btn--primary:active{--bg:var(--primary-press);}
+.btn--secondary:hover{--bd:var(--primary); --fg:var(--primary); box-shadow:var(--sh-1);}
+.btn--soft{--bg:var(--primary-soft); --fg:var(--primary); --bd:transparent;} .btn--soft:hover{--bg:var(--primary-soft-2);}
+.btn--ghost{--bg:transparent; --fg:var(--ink-2); --bd:transparent;} .btn--ghost:hover{--bg:var(--surface-2); --fg:var(--ink);}
+.btn--quiet{--bg:var(--surface-2); --fg:var(--ink-2); --bd:transparent;} .btn--quiet:hover{--fg:var(--ink);}
+.btn--danger{--bg:var(--danger-soft); --fg:var(--danger-ink); --bd:transparent;} .btn--danger:hover{--bg:color-mix(in srgb,var(--danger) 22%,transparent);}
+.btn--danger-solid{--bg:var(--danger); --fg:var(--danger-fg); --bd:transparent;} .btn--danger-solid:hover{filter:brightness(.95);}
+.btn--ai{--fg:#fff; --bd:transparent; background:var(--ai-gradient); background-size:170% 170%; box-shadow:0 8px 20px -7px var(--ai);} .btn--ai:hover{background-position:100% 0;}
+[data-theme="dark"] .btn--ai{--fg:#0c0a1e;}
+.btn--pro{--fg:var(--pro-fg); --bd:transparent; background:var(--pro-gradient); background-size:170% 170%; box-shadow:0 8px 20px -7px var(--pro);} .btn--pro:hover{background-position:100% 0;}
+.btn--sm{padding:9px 15px; font-size:13px;} .btn--lg{padding:15px 26px; font-size:16px;}
+.btn--icon{padding:11px; width:42px; height:42px;} .btn--icon.btn--sm{padding:8px; width:34px; height:34px;}
+.btn--block{width:100%;}
+.btn[disabled]{opacity:.45; pointer-events:none;}
+.btn .spin{width:16px; height:16px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ---------- BADGES ---------- */
+.badge{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:800; line-height:1; padding:6px 12px; border-radius:var(--r-pill); background:var(--surface-2); color:var(--ink-2);}
+.badge .dot{width:7px; height:7px; border-radius:50%; background:currentColor;}
+.badge--solid{background:var(--primary); color:var(--primary-fg);}
+.badge--brand{background:var(--primary-soft); color:var(--primary);}
+.badge--outline{background:transparent; color:var(--muted); border:1.5px solid var(--line-strong);}
+.badge--quiet{background:var(--surface-2); color:var(--muted);}
+.badge--info{background:var(--info-soft); color:var(--info-ink);}
+.badge--success{background:var(--success-soft); color:var(--success-ink);}
+.badge--warning{background:var(--warning-soft); color:var(--warning-ink);}
+.badge--danger{background:var(--danger-soft); color:var(--danger-ink);}
+.badge--hotel{background:var(--ev-hotel-soft); color:var(--ev-hotel-ink);}
+.badge--transfer{background:var(--ev-transfer-soft); color:var(--ev-transfer-ink);}
+.badge--activity{background:var(--ev-activity-soft); color:var(--ev-activity-ink);}
+.badge--car{background:var(--ev-car-soft); color:var(--ev-car-ink);}
+.badge--ai{background:var(--ai-soft); color:var(--ai-ink);}
+.badge--pro{background:var(--pro-gradient); color:var(--pro-fg); box-shadow:0 4px 12px -4px var(--pro);}
+.badge--count{background:var(--primary); color:var(--primary-fg); min-width:20px; height:20px; padding:0 6px; justify-content:center; font-size:11px;}
+
+/* ---------- AVATARS ---------- */
+.avatar{width:34px; height:34px; border-radius:50%; background:var(--brand-grad); color:#fff; display:grid; place-items:center; font-weight:800; font-size:13px; font-family:var(--font-display); flex:none;}
+.avatar--sm{width:26px; height:26px; font-size:10px;} .avatar--lg{width:44px; height:44px; font-size:16px;} .avatar--xl{width:60px; height:60px; font-size:22px;}
+.avatar--ai{background:var(--ai-gradient);} .avatar--ph{background:var(--surface-2); color:var(--muted); border:2px dashed var(--line-strong);}
+.av-stack{display:inline-flex;} .av-stack .avatar{margin-left:-10px; box-shadow:0 0 0 3px var(--surface);} .av-stack .avatar:first-child{margin-left:0;}
+
+/* ---------- SEVERITY / TOASTS ---------- */
+.sev{display:flex; gap:12px; padding:14px 16px; border-radius:var(--r-md); align-items:flex-start;}
+.sev .ic{width:34px; height:34px; border-radius:11px; display:grid; place-items:center; flex:none;} .sev .ic svg{width:18px; height:18px;}
+.sev b{display:block; font-size:14px; color:var(--ink); font-weight:800;} .sev span{font-size:13px; color:var(--muted); font-weight:500;}
+.sev--info{background:var(--info-soft);} .sev--info .ic{background:color-mix(in srgb,var(--info) 20%,transparent); color:var(--info-ink);}
+.sev--success{background:var(--success-soft);} .sev--success .ic{background:color-mix(in srgb,var(--success) 20%,transparent); color:var(--success-ink);}
+.sev--warning{background:var(--warning-soft);} .sev--warning .ic{background:color-mix(in srgb,var(--warning) 22%,transparent); color:var(--warning-ink);}
+.sev--error{background:var(--danger-soft);} .sev--error .ic{background:color-mix(in srgb,var(--danger) 20%,transparent); color:var(--danger-ink);}
+.toast{display:flex; align-items:center; gap:11px; padding:12px 15px; background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:var(--sh-3); max-width:360px;}
+.toast .tic{width:32px; height:32px; border-radius:11px; display:grid; place-items:center; flex:none;} .toast .tic svg{width:17px; height:17px; color:#fff;}
+.toast b{font-size:13.5px; color:var(--ink); display:block; font-weight:800;} .toast span{font-size:12.5px; color:var(--muted); font-weight:600;}
+.toast .x{margin-left:auto; color:var(--muted-2); cursor:pointer;}
+
+/* ---------- FORMS ---------- */
+.field{display:flex; flex-direction:column; gap:7px;}
+.field label{font-size:13px; font-weight:800; color:var(--ink-2);}
+.field .hint{font-size:12px; color:var(--muted); font-weight:600;}
+.field .err{font-size:12px; color:var(--danger-ink); font-weight:700; display:flex; align-items:center; gap:5px;}
+.field .wrn{font-size:12px; color:var(--warning-ink); font-weight:700; display:flex; align-items:center; gap:5px;}
+.input,.select,.textarea{font:inherit; font-size:14.5px; font-weight:500; color:var(--ink); background:var(--surface-3); border:1.5px solid var(--line-strong);
+  border-radius:var(--r-sm); padding:11px 14px; width:100%; transition:border-color .2s var(--ease-out), box-shadow .2s, background .2s;}
+.input::placeholder{color:var(--muted-2);}
+.input:focus,.select:focus,.textarea:focus{outline:none; border-color:var(--primary); background:var(--surface); box-shadow:0 0 0 4px var(--primary-ring);}
+.textarea{resize:vertical; min-height:78px;}
+.select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237A7689' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:38px;}
+.field--ai .input,.field--ai .textarea{background:var(--ai-soft); border-color:var(--ai-soft-2);}
+.field--ai label::after{content:"AI"; margin-left:7px; font-size:9.5px; font-weight:800; color:#fff; background:var(--ai); padding:2px 6px; border-radius:var(--r-pill);}
+.field--error .input{border-color:var(--danger); background:color-mix(in srgb,var(--danger) 7%,var(--surface));}
+.field--error .input:focus{box-shadow:0 0 0 4px color-mix(in srgb,var(--danger) 22%,transparent);}
+.field--warning .input{border-color:var(--warning); background:color-mix(in srgb,var(--warning) 9%,var(--surface));}
+.field--warning .input:focus{box-shadow:0 0 0 4px color-mix(in srgb,var(--warning) 24%,transparent);}
+.input[disabled]{opacity:.55; cursor:not-allowed; background:var(--surface-2);}
+.search{position:relative;} .search svg{position:absolute; left:13px; top:50%; transform:translateY(-50%); width:17px; height:17px; color:var(--muted-2);} .search .input{padding-left:40px;}
+.switch{position:relative; width:48px; height:28px; flex:none; cursor:pointer;}
+.switch input{display:none;}
+.switch .track{position:absolute; inset:0; border-radius:var(--r-pill); background:var(--surface-2); border:1.5px solid var(--line-strong); transition:background .25s var(--ease-out), border-color .25s;}
+.switch .knob{position:absolute; top:3.5px; left:3.5px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 2px 5px rgba(0,0,0,.25); transition:transform .26s var(--ease-spring);}
+.switch input:checked + .track{background:var(--primary); border-color:transparent;}
+.switch input:checked + .track + .knob{transform:translateX(20px);}
+.check{display:inline-flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; font-size:14px; color:var(--ink-2);}
+.check .box{width:22px; height:22px; border-radius:7px; border:2px solid var(--line-strong); display:grid; place-items:center; transition:background .18s, border-color .18s;}
+.check .box svg{width:14px; height:14px; color:#fff; opacity:0; transform:scale(.6); transition:opacity .18s, transform .18s var(--ease-spring);}
+.check input{display:none;} .check input:checked + .box{background:var(--primary); border-color:var(--primary);} .check input:checked + .box svg{opacity:1; transform:scale(1);}
+.radio .box{border-radius:50%;} .radio input:checked + .box{background:var(--primary); border-color:var(--primary);} .radio .box i{width:8px; height:8px; border-radius:50%; background:#fff; opacity:0; transform:scale(.4); transition:.18s var(--ease-spring);} .radio input:checked + .box i{opacity:1; transform:scale(1);}
+.segmented{display:inline-flex; background:var(--surface-2); border-radius:var(--r-pill); padding:4px; gap:2px;}
+.segmented button{font:inherit; font-weight:800; font-size:13px; color:var(--muted); background:transparent; border:0; padding:8px 16px; border-radius:var(--r-pill); cursor:pointer; transition:.2s, transform .16s var(--ease-spring);}
+.segmented button.on{color:var(--ink); background:var(--surface); box-shadow:var(--sh-1);}
+.segmented button:active{transform:scale(.95);}
+.stepper{display:inline-flex; align-items:center; gap:3px; background:var(--surface-2); border-radius:var(--r-pill); padding:3px;}
+.stepper button{width:30px; height:30px; border:0; background:transparent; color:var(--primary); border-radius:50%; cursor:pointer; font-size:17px; display:grid; place-items:center; transition:background .16s, transform .14s var(--ease-spring);}
+.stepper button:hover{background:var(--surface);} .stepper button:active{transform:scale(.88);}
+.stepper .n{min-width:48px; text-align:center; font-weight:800; font-size:13px; color:var(--ink);}
+
+/* ---------- WIDGETS (right-rail) ---------- */
+.wdg{background:var(--surface); border:1px solid var(--line); border-radius:20px; box-shadow:var(--sh-1); overflow:hidden;}
+.wdg-h{display:flex; align-items:center; gap:10px; padding:16px 18px 12px;}
+.wdg-h .wi{width:32px; height:32px; border-radius:11px; display:grid; place-items:center; flex:none;} .wdg-h .wi svg{width:17px; height:17px;}
+.wdg-h h4{font-size:16px; font-weight:600; flex:1;}
+.wdg-b{padding:4px 18px 18px;}
+.brow{display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line-2); font-size:13.5px;}
+.brow:last-child{border-bottom:0;} .brow .l{color:var(--ink-2); font-weight:600; display:flex; align-items:center; gap:8px;} .brow .v{font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums;}
+.bbar{height:9px; border-radius:var(--r-pill); background:var(--surface-2); overflow:hidden; margin:12px 0 6px;}
+.bbar i{display:block; height:100%; border-radius:var(--r-pill); background:var(--brand-grad);}
+.mrow{display:flex; align-items:center; gap:11px; padding:9px 0;}
+.mrow .mn{font-weight:700; font-size:14px; color:var(--ink);} .mrow .me{font-size:12px; color:var(--muted);}
+.locktag{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; color:var(--pro-ink); background:var(--pro-soft); padding:4px 9px; border-radius:var(--r-pill);}
+.svc-ph{display:flex; align-items:center; gap:12px; padding:13px; border-radius:14px; border:2px dashed var(--line-strong); background:var(--surface-3); cursor:pointer;
+  transition:border-color .18s, background .18s, transform .2s var(--ease-spring);}
+.svc-ph:hover{border-color:var(--primary); background:var(--primary-soft); transform:translateX(2px);}
+.svc-ph .pic{width:36px; height:36px; border-radius:12px; background:var(--surface-2); display:grid; place-items:center; flex:none;} .svc-ph .pic svg{width:18px; height:18px; color:var(--muted);} .svc-ph:hover .pic svg{color:var(--primary);}
+.svc-ph b{display:block; font-size:13.5px; color:var(--ink); font-weight:800;} .svc-ph span{font-size:12px; color:var(--muted); font-weight:600;}
+.svc-ph .plus{margin-left:auto; width:28px; height:28px; border-radius:50%; background:var(--surface-2); color:var(--muted-2); display:grid; place-items:center; font-size:17px;} .svc-ph:hover .plus{background:var(--primary); color:#fff;}
+
+/* ---------- MODAL / DIALOG (staged) ---------- */
+.stage{position:relative; border-radius:var(--r-card); overflow:hidden; border:1px solid var(--line); min-height:380px; background:
+  linear-gradient(var(--surface-3),var(--surface-3));}
+.ov{position:absolute; inset:0; background:color-mix(in srgb,var(--ink) 42%,transparent); backdrop-filter:blur(2px); display:grid; place-items:center; padding:20px;}
+.modal{width:100%; max-width:420px; background:var(--surface); border-radius:var(--r-card); box-shadow:var(--sh-3); overflow:hidden;}
+.modal-h{display:flex; align-items:center; gap:11px; padding:18px 20px;}
+.modal-h .mi{width:38px; height:38px; border-radius:12px; display:grid; place-items:center; flex:none;} .modal-h .mi svg{width:19px; height:19px;}
+.modal-h h3{font-size:17px; font-weight:600; flex:1;} .modal-h .close{width:32px; height:32px; border-radius:10px; background:var(--surface-2); border:0; color:var(--muted); cursor:pointer; display:grid; place-items:center;}
+.modal-b{padding:4px 20px 8px; display:flex; flex-direction:column; gap:14px;}
+.modal-f{display:flex; gap:10px; justify-content:flex-end; padding:16px 20px 20px;}
+.modal--confirm{max-width:360px; text-align:center;} .modal--confirm .modal-b{align-items:center; gap:10px; padding-top:8px;}
+.modal--confirm .ci{width:52px; height:52px; border-radius:16px; background:var(--danger-soft); display:grid; place-items:center;} .modal--confirm .ci svg{width:26px; height:26px; color:var(--danger-ink);}
+.modal--confirm p{margin:0; font-size:14px; color:var(--muted); font-weight:500;}
+
+/* ---------- CHAT DOCK ---------- */
+.chatstage{position:relative; height:440px; border-radius:var(--r-card); border:1px solid var(--line); background:var(--surface-3); overflow:hidden;}
+.dock{position:absolute; right:18px; bottom:18px; width:56px; height:56px; border-radius:20px; background:var(--brand-grad); display:grid; place-items:center; box-shadow:var(--sh-2); cursor:pointer; transition:transform .2s var(--ease-spring);}
+.dock:hover{transform:translateY(-3px) scale(1.05);} .dock svg{width:24px; height:24px; color:#fff;}
+.dock .cnt{position:absolute; top:-4px; right:-4px; min-width:20px; height:20px; padding:0 5px; border-radius:var(--r-pill); background:var(--danger); color:#fff; font-size:11px; font-weight:800; display:grid; place-items:center; border:2px solid var(--surface-3);}
+.chatpanel{position:absolute; right:18px; bottom:18px; width:300px; height:404px; background:var(--surface); border:1px solid var(--line); border-radius:20px; box-shadow:var(--sh-3); display:flex; flex-direction:column; overflow:hidden;}
+.chat-h{display:flex; align-items:center; gap:9px; padding:12px 14px; border-bottom:1px solid var(--line-2);}
+.chat-h .avatar{width:30px; height:30px; font-size:11px;} .chat-h b{font-size:14px; font-weight:800; color:var(--ink); flex:1;} .chat-h .st{font-size:11px; color:var(--success-ink); font-weight:700;}
+.chat-msgs{flex:1; padding:14px; display:flex; flex-direction:column; gap:10px; overflow:hidden;}
+.msg{max-width:80%; padding:9px 13px; border-radius:16px; font-size:13px; font-weight:600; line-height:1.4;}
+.msg.them{align-self:flex-start; background:var(--surface-2); color:var(--ink); border-bottom-left-radius:5px;}
+.msg.me{align-self:flex-end; background:var(--primary); color:var(--primary-fg); border-bottom-right-radius:5px;}
+.msg.ai{align-self:flex-start; background:var(--ai-soft); color:var(--ink); border-bottom-left-radius:5px; border:1px solid var(--ai-soft-2);}
+.chat-in{display:flex; gap:8px; padding:10px; border-top:1px solid var(--line-2);}
+.chat-in input{flex:1; border:0; background:var(--surface-2); border-radius:var(--r-pill); padding:10px 14px; font:inherit; font-size:13px; color:var(--ink);}
+.chat-in input:focus{outline:none; box-shadow:0 0 0 3px var(--primary-ring);}
+.chat-in .send{width:38px; height:38px; border-radius:50%; background:var(--primary); border:0; display:grid; place-items:center; cursor:pointer; color:var(--primary-fg);} .chat-in .send svg{width:17px; height:17px;}
+
+/* ---------- AI BLOCK ---------- */
+.aiblock{border:1.5px solid var(--ai-soft-2); border-radius:var(--r-md); background:var(--ai-gradient-soft); padding:16px;}
+.aiblock .ah{display:flex; align-items:center; gap:9px; margin-bottom:10px;} .aiblock .ah .ai-ic{width:30px; height:30px; border-radius:10px; background:var(--ai-gradient); display:grid; place-items:center;} .aiblock .ah .ai-ic svg{width:16px; height:16px; color:#fff;}
+.aiblock .ah b{font-size:14px; font-weight:800; color:var(--ai-ink);}
+.ai-dots{display:inline-flex; gap:4px; align-items:center;} .ai-dots i{width:6px; height:6px; border-radius:50%; background:var(--ai); animation:blink 1.2s infinite;}
+.ai-dots i:nth-child(2){animation-delay:.2s;} .ai-dots i:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,100%{opacity:.3;}50%{opacity:1;}}
+
+/* ---------- TOOLTIP / TABS / SKELETON / EMPTY ---------- */
+.tip{position:relative; display:inline-flex;}
+.tip .bub{position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); font-size:12px; font-weight:700; padding:6px 11px; border-radius:9px; white-space:nowrap; box-shadow:var(--sh-2);}
+.tip .bub::after{content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:5px solid transparent; border-top-color:var(--ink);}
+.tabs{display:flex; gap:4px; border-bottom:1px solid var(--line);}
+.tabs button{font:inherit; font-weight:800; font-size:13.5px; color:var(--muted); background:transparent; border:0; padding:11px 14px; cursor:pointer; border-bottom:2.5px solid transparent; margin-bottom:-1px; transition:.2s;}
+.tabs button.on{color:var(--primary); border-color:var(--primary);}
+.sk{background:linear-gradient(100deg,var(--surface-2) 30%,var(--surface-3) 50%,var(--surface-2) 70%); background-size:200% 100%; animation:shim 1.4s infinite; border-radius:10px;}
+@keyframes shim{to{background-position:-200% 0;}}
+.empty{text-align:center; padding:30px 20px;} .empty .ei{width:64px; height:64px; border-radius:20px; background:var(--primary-soft); display:grid; place-items:center; margin:0 auto 14px;} .empty .ei svg{width:30px; height:30px; color:var(--primary);}
+.empty b{display:block; font-size:16px; color:var(--ink); font-weight:800; font-family:var(--font-display);} .empty span{font-size:13.5px; color:var(--muted); font-weight:500;}
+
+/* ---------- TYPOGRAPHY SPECIMEN ---------- */
+.ff{border:1px solid var(--line); border-radius:var(--r-md); padding:22px; background:var(--surface-3);}
+.ff .big{font-family:var(--font-display); font-size:48px; line-height:1; color:var(--ink); font-weight:600; margin-bottom:8px;}
+.ff .nm{font-size:13px; color:var(--muted); font-weight:600;} .ff .gl{font-size:17px; color:var(--ink-2); margin-top:12px; font-weight:500;}
+.type-row{display:flex; align-items:baseline; gap:18px; padding:13px 0; border-bottom:1px solid var(--line-2); flex-wrap:wrap;}
+.type-row:last-child{border-bottom:0;}
+.type-row .label{width:170px; flex:none; font-size:12px; color:var(--muted); font-weight:600;} .type-row .label b{display:block; color:var(--ink); font-size:12.5px;}
+
+/* ---------- REAL: timeline + editor ---------- */
+.appwrap{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+@media (max-width:960px){.appwrap{grid-template-columns:1fr;}}
+.appcol h3{font-size:14px; font-weight:800; color:var(--muted); margin:0 0 14px;}
+.tl-city{display:flex; align-items:center; gap:12px; padding:6px 0 10px;}
+.tl-city .pin{width:40px; height:40px; border-radius:14px; background:var(--brand-grad); display:grid; place-items:center; flex:none; box-shadow:0 6px 14px -5px color-mix(in srgb,var(--primary) 60%,transparent);}
+.tl-city .pin svg{width:19px; height:19px; color:#fff;} .tl-city .name{font-family:var(--font-display); font-weight:600; font-size:19px; color:var(--ink);} .tl-city .when{margin-left:auto; font-size:12.5px; color:var(--muted); font-weight:700;}
+.tl-ev{display:flex; align-items:center; gap:13px; padding:13px 15px; background:var(--surface); border:1px solid var(--line); border-radius:18px; margin:10px 0; box-shadow:var(--sh-1); transition:transform .2s var(--ease-spring), box-shadow .22s var(--ease-out);}
+@media (hover:hover){.tl-ev:hover{transform:translateY(-3px) scale(1.01); box-shadow:var(--sh-2);}}
+.tl-ev .ic{width:40px; height:40px; border-radius:13px; display:grid; place-items:center; flex:none; background:color-mix(in srgb,var(--ev) 15%,var(--surface));} .tl-ev .ic svg{width:19px; height:19px; color:var(--ev);}
+.tl-ev .t{font-weight:800; font-size:14.5px; color:var(--ink);} .tl-ev .s{font-size:12.5px; color:var(--muted); font-weight:600;}
+.tl-ev .time{margin-left:auto; font-size:12.5px; font-weight:800; color:var(--ink-2); background:var(--surface-2); padding:5px 11px; border-radius:var(--r-pill);}
+.ev-hotel{--ev:var(--ev-hotel);} .ev-transfer{--ev:var(--ev-transfer);} .ev-activity{--ev:var(--ev-activity);} .ev-car{--ev:var(--ev-car);}
+.tl-seam{display:flex; justify-content:center; margin:12px 0;} .tl-seam .pill{display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:var(--r-pill); background:var(--ev-transfer-soft); color:var(--ev-transfer-ink); font-size:12.5px; font-weight:800;} .tl-seam .pill svg{width:15px; height:15px;}
+.tl-empty{margin:10px 0; padding:16px; border-radius:18px; border:2px dashed var(--line-strong); color:var(--muted-2); font-size:13.5px; text-align:center; font-weight:700;}
+.tl-warn{display:flex; align-items:center; gap:12px; margin:10px 0; padding:14px 15px; background:var(--warning-soft); border-radius:18px;}
+.tl-warn .wic{width:38px; height:38px; border-radius:12px; background:color-mix(in srgb,var(--warning) 22%,var(--surface)); display:grid; place-items:center; flex:none;} .tl-warn .wic svg{width:19px; height:19px; color:var(--warning-ink);}
+.tl-warn .x{flex:1;} .tl-warn b{display:block; font-size:13.5px; color:var(--ink); font-weight:800;} .tl-warn span{font-size:12.5px; color:var(--muted); font-weight:600;}
+.tl-warn button{font:inherit; font-family:var(--font-display); font-size:13px; font-weight:600; color:#fff; background:var(--warning-ink); border:0; border-radius:var(--r-pill); padding:8px 15px; cursor:pointer; transition:transform .16s var(--ease-spring), filter .2s;}
+.tl-warn button:active{transform:scale(.95);}
+.edl{display:flex; flex-direction:column; gap:10px;}
+.edl-row{display:flex; align-items:center; gap:13px; padding:14px; background:var(--surface); border:1px solid var(--line); border-radius:18px; box-shadow:var(--sh-1);}
+.edl-node{width:30px; height:30px; border-radius:11px; background:var(--primary-soft-2); color:var(--primary); display:grid; place-items:center; font-family:var(--font-display); font-weight:600; font-size:14px; flex:none;}
+.edl-node.is-warn{background:var(--warning-soft); color:var(--warning-ink);}
+.edl-city{font-family:var(--font-display); font-weight:600; font-size:16px; color:var(--ink);} .edl-sp{flex:1;}
+.edl-step{display:inline-flex; align-items:center; gap:3px; background:var(--surface-2); border-radius:var(--r-pill); padding:3px;}
+.edl-step button{width:26px; height:26px; border:0; background:transparent; color:var(--primary); border-radius:50%; cursor:pointer; font-size:16px; display:grid; place-items:center; transition:background .16s, transform .14s var(--ease-spring);}
+.edl-step button:active{transform:scale(.88);} .edl-step .n{min-width:46px; text-align:center; font-weight:800; font-size:12.5px; color:var(--ink);}
+.edl-hotel{width:36px; height:34px; border-radius:12px; background:var(--ev-hotel-soft); display:grid; place-items:center; cursor:pointer; border:1.5px solid transparent; transition:border-color .16s, transform .14s var(--ease-spring);}
+.edl-hotel{position:relative;}
+.edl-hotel:hover{border-color:var(--ev-hotel);} .edl-hotel svg{width:16px; height:16px; color:var(--ev-hotel-ink);} .edl-hotel.is-warn{background:var(--warning-soft);} .edl-hotel.is-warn svg{color:var(--warning-ink);}
+.edl-hotel.is-warn::after{content:"!"; position:absolute; top:-6px; right:-6px; width:16px; height:16px; border-radius:50%; background:var(--warning-ink); color:#fff; font-size:10px; font-weight:800; display:grid; place-items:center; border:2px solid var(--surface); line-height:1;}
+.edl-act{display:inline-flex; align-items:center; justify-content:center; gap:6px; height:34px; min-width:34px; padding:0 11px; border-radius:12px; background:var(--ev-activity-soft); color:var(--ev-activity-ink); cursor:pointer; border:1.5px solid transparent; font-size:13px; font-weight:800; transition:border-color .14s var(--ease-out), transform .12s var(--ease-spring);} .edl-act svg{width:15px; height:15px;}
+.edl-act:hover{border-color:var(--ev-activity);} .edl-act:active{transform:scale(.94);}
+.edl-ghost{display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 14px; border-radius:var(--r-pill); background:transparent; border:1.5px dashed var(--line-strong); color:var(--muted-2); cursor:pointer; font:inherit; font-size:13px; font-weight:800; transition:.16s;}
+.edl-ghost:hover{color:var(--primary); border-color:var(--primary); background:var(--primary-soft);} .edl-ghost svg{width:14px; height:14px;}
+.edl-seam{display:flex; justify-content:center; margin:-3px 0;} .edl-seam .pill{display:inline-flex; align-items:center; gap:7px; padding:6px 14px; border-radius:var(--r-pill); background:var(--surface); border:1.5px solid var(--ev-transfer-soft-2); color:var(--ev-transfer-ink); font-size:12px; font-weight:800; box-shadow:var(--sh-1);} .edl-seam .pill svg{width:13px; height:13px;}
+.edl-seam .pill.is-warn{color:var(--warning-ink); border-color:color-mix(in srgb,var(--warning) 38%,transparent); background:var(--warning-soft);}
+
+/* ---------- BUDGET widget (category bar + legend) ---------- */
+.wdg{transition:transform .2s var(--ease-spring), box-shadow .22s var(--ease-out);}
+@media (hover:hover){.wdg:hover{transform:translateY(-3px); box-shadow:var(--sh-2);}}
+.wdg-act{width:28px; height:28px; border-radius:9px; border:1px solid var(--line-strong); background:transparent; color:var(--muted-2); cursor:pointer; display:grid; place-items:center; transition:.16s var(--ease-out);}
+.wdg-act:hover{border-color:var(--primary); color:var(--primary); background:var(--primary-soft);} .wdg-act svg{width:14px; height:14px;}
+.bud-total{font-family:var(--font-display); font-weight:600; font-size:26px; color:var(--ink);}
+.bud-bar{height:11px; border-radius:var(--r-pill); background:var(--surface-2); overflow:hidden; display:flex; margin:12px 0 14px;}
+.bud-bar i{height:100%; transition:flex-basis .3s var(--ease-out);}
+.bud-leg{display:flex; align-items:center; gap:9px; font-size:13px; padding:6px 6px; border-radius:9px; transition:background .15s;}
+.bud-leg:hover{background:var(--surface-2);} .bud-leg .d{width:10px; height:10px; border-radius:4px; flex:none;} .bud-leg .nm{flex:1; color:var(--ink-2); font-weight:700;} .bud-leg .v{font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums;}
+
+/* ---------- SERVICES ---------- */
+.svc-row{display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:13px; background:var(--surface); border:1px solid var(--line); cursor:pointer; transition:transform .16s var(--ease-spring), box-shadow .2s, border-color .2s;}
+.svc-row:hover{transform:translateX(2px); box-shadow:var(--sh-1); border-color:var(--line-strong);}
+.svc-row .si{width:32px; height:32px; border-radius:10px; background:var(--primary-soft); color:var(--primary); display:grid; place-items:center; flex:none;} .svc-row .si svg{width:16px; height:16px;}
+.svc-row b{display:block; font-size:13.5px; color:var(--ink); font-weight:800;} .svc-row span{font-size:12px; color:var(--muted); font-weight:600;}
+.svc-row .ok{margin-left:auto; color:var(--success); display:grid; place-items:center;} .svc-row .ok svg{width:17px; height:17px;}
+.svc-more{display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 6px; border:0; background:transparent; color:var(--muted); font:inherit; font-weight:800; font-size:13px; cursor:pointer; border-radius:11px; transition:.16s var(--ease-out);}
+.svc-more:hover{color:var(--primary); background:var(--primary-soft);} .svc-more svg{width:14px; height:14px;}
+
+/* ---------- EDITOR: plate states + city plates ---------- */
+.prow{display:grid; grid-template-columns:120px 1fr; gap:14px; align-items:center; padding:14px 0; border-bottom:1px solid var(--line-2);}
+.prow:last-child{border-bottom:0;} .prow .pl{font-size:13px; font-weight:800; color:var(--ink);} .prow .pl small{display:block; font-weight:600; font-size:11.5px; color:var(--muted); margin-top:2px;}
+.pstates{display:flex; flex-wrap:wrap; gap:18px; align-items:flex-start;}
+.pstate{display:flex; flex-direction:column; gap:7px; align-items:flex-start;}
+.pstate .cap{font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--muted-2);}
+.ph-hotel{width:36px; height:34px; border-radius:12px; border:1.5px dashed var(--line-strong); display:grid; place-items:center; color:var(--muted-2); cursor:pointer; transition:.16s var(--ease-spring);}
+.ph-hotel:hover{border-color:var(--ev-hotel); color:var(--ev-hotel-ink); background:var(--ev-hotel-soft); transform:translateY(-2px);} .ph-hotel svg{width:14px; height:14px;}
+.ph-act{width:36px; height:34px; border-radius:12px; border:1.5px dashed var(--line-strong); display:grid; place-items:center; color:var(--muted-2); cursor:pointer; transition:.16s var(--ease-spring);}
+.ph-act:hover{border-color:var(--ev-activity); color:var(--ev-activity-ink); background:var(--ev-activity-soft); transform:translateY(-2px);} .ph-act svg{width:15px; height:15px;}
+/* transfer "add" pill — dashed, hover = transfer color */
+.edl-seam .pill--add{border-style:dashed; color:var(--muted-2); border-color:var(--line-strong); background:transparent; cursor:pointer; transition:color .14s var(--ease-out), border-color .14s, background .14s, transform .12s var(--ease-spring);}
+.edl-seam .pill--add:hover{color:var(--ev-transfer-ink); border-color:var(--ev-transfer); background:var(--ev-transfer-soft); transform:translateY(-1px);}
+.edl-seam .pill--add:active{transform:scale(.96);}
+.txmodes{display:flex; gap:9px; flex-wrap:wrap;}
+.txmode{width:40px; height:40px; border-radius:13px; background:var(--ev-transfer-soft); color:var(--ev-transfer-ink); display:grid; place-items:center; cursor:pointer; border:1.5px solid transparent; transition:.16s var(--ease-spring);}
+.txmode:hover{border-color:var(--ev-transfer); transform:translateY(-3px); box-shadow:var(--sh-1);} .txmode svg{width:18px; height:18px;}
+.edl-seam .pill .dur{color:var(--muted); font-weight:700; margin-left:2px;}
+/* city plates */
+.edl-node--start{background:var(--primary-soft); color:var(--primary);}
+.edl-node--end{background:var(--surface-2); color:var(--ink-2);}
+.edl-node--wp{background:transparent; color:var(--ev-transfer); border:1.5px dashed var(--ev-transfer);}
+.edl-lbl{font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.07em;}
+.wptag{font-size:11px; font-weight:800; color:var(--ev-transfer-ink); background:var(--ev-transfer-soft); padding:4px 10px; border-radius:var(--r-pill);}
+.edl-date{font-size:12px; color:var(--muted); font-weight:700;}
+.edl-row{transition:transform .16s var(--ease-spring), box-shadow .2s, border-color .2s;}
+@media (hover:hover){.edl-row:hover{box-shadow:var(--sh-2); border-color:var(--line-strong);}}
+.reveal{opacity:0; transition:opacity .18s var(--ease-out);}
+@media (hover:hover){.edl-row:hover .reveal{opacity:1;}}
+@media (hover:none){.reveal{opacity:1;}}
+
+/* ---------- TIMELINE transfer card ---------- */
+.tl-ev .time2{margin-left:auto; text-align:right; font-variant-numeric:tabular-nums; line-height:1.25;}
+.tl-ev .time2 .a{font-size:12.5px; font-weight:800; color:var(--ink-2); display:block;} .tl-ev .time2 .b{font-size:11px; color:var(--muted); font-weight:700;}
+
+/* ---------- PRO ---------- */
+.pro-up{border-radius:18px; padding:15px; background:var(--pro-soft); border:1px solid var(--pro-soft-2); transition:transform .2s var(--ease-spring), box-shadow .22s;}
+@media (hover:hover){.pro-up:hover{transform:translateY(-3px); box-shadow:var(--sh-2);}}
+.pro-up .ph{display:flex; align-items:center; gap:9px; margin-bottom:7px;} .pro-up .pi{width:34px; height:34px; border-radius:11px; background:var(--pro-gradient); display:grid; place-items:center; flex:none; box-shadow:0 4px 12px -4px var(--pro);} .pro-up .pi svg{width:18px; height:18px; color:#fff;}
+.pro-up .pt{font-family:var(--font-display); font-weight:600; font-size:15px; color:var(--pro-ink);}
+.pro-up p{margin:0 0 13px; font-size:12.5px; color:var(--ink-2); font-weight:600; line-height:1.45;}
+.pro-up .lockmsg{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--muted); background:var(--surface); padding:10px 13px; border-radius:12px; border:1px solid var(--line);}
+.pro-up .lockmsg svg{width:15px; height:15px; flex:none;}
+.feat-list{display:flex; flex-direction:column; gap:9px; margin:0 0 16px; padding:0;}
+.feat-list li{display:flex; align-items:center; gap:10px; font-size:13.5px; color:var(--ink-2); font-weight:600; list-style:none;}
+.feat-list .fk{width:24px; height:24px; border-radius:8px; background:var(--pro-soft); color:var(--pro-ink); display:grid; place-items:center; flex:none;} .feat-list .fk svg{width:14px; height:14px;}
+.modal-h .mi--pro{background:var(--pro-gradient);} .modal-h .mi--pro svg{color:#fff;}
+.ci--ok{background:var(--success-soft) !important;} .ci--ok svg{color:var(--success-ink);}
+.ci--fail{background:var(--danger-soft) !important;} .ci--fail svg{color:var(--danger-ink);}
+.sub-card{border:1.5px solid var(--line); border-radius:18px; padding:18px; background:var(--surface); transition:transform .2s var(--ease-spring), box-shadow .22s, border-color .2s;}
+@media (hover:hover){.sub-card:hover{transform:translateY(-3px); box-shadow:var(--sh-2);}}
+.sub-card .sh{display:flex; align-items:center; gap:11px; margin-bottom:14px;}
+.sub-card .sic{width:42px; height:42px; border-radius:13px; display:grid; place-items:center; flex:none;} .sub-card .sic svg{width:20px; height:20px;}
+.sub-card .sname{font-family:var(--font-display); font-weight:600; font-size:16px; color:var(--ink); display:flex; align-items:center; gap:8px;}
+.sub-card .smeta{font-size:12.5px; color:var(--muted); font-weight:700; margin-top:2px;}
+.sub-card--ok{border-color:color-mix(in srgb,var(--success) 42%,transparent);}
+.sub-card--warn{border-color:color-mix(in srgb,var(--warning) 48%,transparent);}
+.sub-card--free{background:var(--ai-gradient-soft); border-color:var(--ai-soft-2);}
+
+/* ---------- token caption ---------- */
+.tok{font-family:var(--font-mono); font-size:11px; color:var(--muted); font-weight:600; letter-spacing:-.01em;}
+.tokrow{display:flex; flex-wrap:wrap; gap:5px 14px; align-items:baseline; margin-top:4px;}
+.tokrow .tok::before{content:""}
+
+/* deadline as event type */
+.badge--deadline{background:var(--ev-deadline-soft); color:var(--ev-deadline-ink);}
+.ev-deadline{--ev:var(--ev-deadline);}
+
+/* semantic surface swatches */
+.semitiles{display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:14px;}
+.semi{border-radius:var(--r-md); overflow:hidden; border:1px solid var(--line); background:var(--surface); transition:transform .18s var(--ease-spring), box-shadow .2s, border-color .2s;}
+.semi:hover{transform:translateY(-3px); box-shadow:var(--sh-2); border-color:var(--line-hover);}
+.semi .pv{height:60px;} .semi .mt{padding:10px 12px; border-top:1px solid var(--line);}
+.semi .mt .nm{font-size:13px; font-weight:800; color:var(--ink);} .semi .mt .tok{margin-top:2px; display:block;}
+
+/* dropdown menu (accent + line-hover) */
+.menu{width:236px; background:var(--popover); border:1px solid var(--line); border-radius:16px; box-shadow:var(--sh-3); padding:6px;}
+.menu .mi{display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:11px; font-size:13.5px; font-weight:700; color:var(--ink-2); cursor:pointer; transition:background .14s, color .14s;}
+.menu .mi svg{width:16px; height:16px; color:var(--muted);}
+.menu .mi:hover,.menu .mi.active{background:var(--accent); color:var(--accent-ink);}
+.menu .mi:hover svg,.menu .mi.active svg{color:var(--accent-ink);}
+.menu .sep{height:1px; background:var(--line); margin:6px 8px;}
+.menu .mi--danger{color:var(--danger-ink);} .menu .mi--danger svg{color:var(--danger-ink);} .menu .mi--danger:hover{background:var(--danger-soft); color:var(--danger-ink);}
+
+/* hover row (line-hover demo) */
+.hrow{display:flex; align-items:center; gap:11px; padding:12px 14px; border-radius:13px; border:1px solid transparent; cursor:pointer; transition:background .15s, border-color .15s;}
+.hrow:hover{background:var(--surface-3); border-color:var(--line-hover);}
+.hrow .hi{width:34px; height:34px; border-radius:11px; background:var(--secondary); display:grid; place-items:center; color:var(--secondary-ink);} .hrow .hi svg{width:17px;height:17px;}
+.hrow b{font-size:14px; font-weight:800; color:var(--ink); display:block;} .hrow span{font-size:12px; color:var(--muted); font-weight:600;}
+
+/* assistant identity */
+.asst{display:flex; align-items:center; gap:13px; padding:16px; border-radius:18px; background:var(--surface); border:1px solid var(--line); box-shadow:var(--sh-1);}
+.asst .av{width:48px; height:48px; border-radius:16px; background:var(--assistant-grad); display:grid; place-items:center; box-shadow:0 10px 22px -6px var(--brand-glow);} .asst .av svg{width:24px; height:24px; color:#fff;}
+.asst b{font-family:var(--font-display); font-weight:600; font-size:16px; color:var(--ink); display:block;} .asst span{font-size:12.5px; color:var(--muted); font-weight:600;}
+
+/* cover header (overlay-grad over a stand-in photo) */
+.cover{position:relative; height:152px; border-radius:20px; overflow:hidden; display:flex; align-items:flex-end; box-shadow:var(--sh-1);}
+.cover .ph{position:absolute; inset:0; background:linear-gradient(135deg,#6FB2FF,#8A6BF0 52%,#E0568F);}
+.cover .ov{position:absolute; inset:0; background:var(--overlay-grad);}
+.cover .ov.soft{background:var(--overlay-grad-soft);}
+.cover .cc{position:relative; padding:16px 18px;}
+.cover .cc h4{font-family:var(--font-display); font-weight:600; font-size:22px; color:#fff;}
+.cover .cc p{margin:2px 0 0; font-size:12.5px; color:rgba(255,255,255,.88); font-weight:700;}
+
+/* depth swatches */
+.depth{height:62px; border-radius:14px; display:grid; place-items:center; font-size:12px; font-weight:800;}
+
+/* app shell */
+.shell{display:grid; grid-template-columns:214px 1fr; height:430px; border-radius:20px; overflow:hidden; border:1px solid var(--line); box-shadow:var(--sh-2); background:var(--bg);}
+.shell-side{background:var(--sidebar-bg); border-right:1px solid var(--sidebar-border); padding:16px 12px; display:flex; flex-direction:column; gap:4px;}
+.shell-brand{display:flex; align-items:center; gap:9px; padding:4px 8px 14px;} .shell-brand .mk{width:30px;height:30px;border-radius:11px;background:var(--brand-grad);} .shell-brand b{font-family:var(--font-display); font-weight:600; font-size:16px; color:var(--sidebar-ink);}
+.snav{display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:12px; font-size:13.5px; font-weight:700; color:var(--sidebar-item); cursor:pointer; transition:background .15s, color .15s;}
+.snav svg{width:17px; height:17px;}
+.snav:hover{background:var(--surface-3); color:var(--sidebar-ink);}
+.snav.active{background:var(--sidebar-active-bg); color:var(--sidebar-active-ink);}
+.snav-label{font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--sidebar-muted); padding:14px 12px 6px;}
+.shell-main{display:flex; flex-direction:column; min-width:0;}
+.shell-head{display:flex; align-items:center; gap:12px; padding:13px 18px; border-bottom:1px solid var(--line); background:var(--surface);}
+.shell-head .st{font-family:var(--font-display); font-weight:600; font-size:17px; color:var(--ink); flex:1;}
+.shell-lens{display:flex; gap:4px; padding:12px 18px 0; background:var(--surface); border-bottom:1px solid var(--line);}
+.lenstab{font:inherit; font-weight:800; font-size:13px; color:var(--muted); background:transparent; border:0; padding:9px 13px; cursor:pointer; border-bottom:2.5px solid transparent; margin-bottom:-1px;}
+.lenstab.on{color:var(--primary); border-color:var(--primary);}
+.shell-body{flex:1; padding:18px; overflow:hidden;}
+.shell-up{margin-top:auto;}
+
+/* ---------- group banners (restructure) ---------- */
+.gband{margin:36px 0 2px; padding:18px 24px; border-radius:20px; background:var(--accent); border:1px solid var(--primary-soft-2); display:flex; align-items:center; gap:14px;}
+.gband .gn{font-family:var(--font-display); font-weight:600; font-size:12px; color:var(--primary); letter-spacing:.12em; text-transform:uppercase; background:var(--surface); padding:6px 12px; border-radius:var(--r-pill);}
+.gband h3{font-family:var(--font-display); font-weight:600; font-size:22px; color:var(--ink); margin:0;}
+.gband .gd{margin-left:auto; font-size:13px; color:var(--ink-2); font-weight:600; max-width:50ch; text-align:right;}
+@media(max-width:760px){.gband .gd{display:none;}}
+
+/* ---------- editor left panels ---------- */
+.lpanels{display:flex; gap:16px; overflow-x:auto; padding:4px 2px 12px;}
+.lpanel{width:300px; flex:0 0 300px; min-height:340px; background:var(--surface); border:1px solid var(--line); border-radius:20px; box-shadow:var(--sh-1); overflow:hidden; display:flex; flex-direction:column; transition:box-shadow .2s, border-color .2s, transform .18s var(--ease-spring);}
+.lpanel:hover{box-shadow:var(--sh-2); border-color:var(--line-hover); transform:translateY(-3px);}
+.lp-h{display:flex; align-items:center; gap:11px; padding:14px 15px; border-bottom:1px solid var(--line-2);}
+.lp-h .back{width:28px; height:28px; border-radius:9px; background:var(--secondary); border:0; color:var(--secondary-ink); display:grid; place-items:center; cursor:pointer; flex:none; transition:background .14s;}
+.lp-h .back:hover{background:var(--accent); color:var(--accent-ink);} .lp-h .back svg{width:15px; height:15px;}
+.lp-h .ic{width:36px; height:36px; border-radius:12px; display:grid; place-items:center; flex:none;} .lp-h .ic svg{width:18px; height:18px;}
+.lp-h .ti{min-width:0; flex:1;} .lp-h .ti b{font-family:var(--font-display); font-weight:600; font-size:16px; color:var(--ink); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;} .lp-h .ti span{font-size:12px; color:var(--muted); font-weight:600;}
+.lp-b{padding:14px 15px; display:flex; flex-direction:column; gap:13px; flex:1;}
+.lp-sec{display:flex; flex-direction:column; gap:8px;}
+.lp-sec .sl{font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase;}
+.lkv{display:flex; align-items:baseline; justify-content:space-between; gap:10px; font-size:13px;}
+.lkv .k{color:var(--muted); font-weight:700; white-space:nowrap;} .lkv .v{color:var(--ink); font-weight:700; text-align:right;} .lkv .v.mono{font-family:var(--font-mono); font-weight:600;}
+.lp-f{margin-top:auto; padding:11px 15px; border-top:1px solid var(--line-2); background:var(--wash); display:flex; gap:8px; justify-content:flex-end;}
+.lghost{display:flex; align-items:center; gap:11px; padding:12px; border-radius:14px; border:1.5px dashed var(--line-strong); cursor:pointer; transition:border-color .16s, background .16s, transform .14s var(--ease-spring); background:transparent;}
+.lghost:hover{border-color:var(--a); background:color-mix(in srgb, var(--a) 9%, transparent); transform:translateY(-1px);}
+.lghost .gi{width:34px; height:34px; border-radius:11px; background:var(--secondary); display:grid; place-items:center; color:var(--muted); transition:.16s;} .lghost:hover .gi{color:var(--a); background:color-mix(in srgb, var(--a) 14%, transparent);} .lghost .gi svg{width:17px; height:17px;}
+.lghost b{font-size:13.5px; color:var(--ink); font-weight:800; display:block;} .lghost span{font-size:12px; color:var(--muted); font-weight:600;}
+.lpartner{display:flex; align-items:center; gap:11px; padding:11px 13px; border-radius:13px; border:1px solid var(--line); background:var(--surface); cursor:pointer; transition:border-color .16s, box-shadow .16s, transform .14s var(--ease-spring);}
+.lpartner:hover{border-color:var(--primary); box-shadow:var(--sh-1); transform:translateY(-1px);}
+.lpartner .pl{width:32px; height:32px; border-radius:9px; display:grid; place-items:center; font-weight:800; font-size:12px; color:#fff; flex:none;}
+.lpartner b{flex:1; font-size:13.5px; color:var(--ink); font-weight:800;} .lpartner .ch{width:16px; height:16px; color:var(--muted-2);}
+.lp-warn{display:flex; gap:10px; padding:12px; border-radius:13px; background:var(--warning-soft);} .lp-warn svg{width:18px; height:18px; color:var(--warning-ink); flex:none; margin-top:1px;} .lp-warn b{font-size:13px; color:var(--ink); font-weight:800; display:block;} .lp-warn span{font-size:12px; color:var(--muted); font-weight:600;}
+.lp-hero{height:88px; position:relative; display:flex; align-items:flex-end;} .lp-hero .hg{position:absolute; inset:0; background:linear-gradient(135deg,#6FB2FF,#8A6BF0);} .lp-hero .ov{position:absolute; inset:0; background:var(--overlay-grad-soft);} .lp-hero .ht{position:relative; padding:12px 15px;} .lp-hero .ht b{font-family:var(--font-display); font-weight:600; font-size:18px; color:#fff; display:block;} .lp-hero .ht span{font-size:11.5px; color:rgba(255,255,255,.88); font-weight:700;}
+.lp-stepper{display:flex; align-items:center; justify-content:space-between;}
+.lstat{font-size:11px; font-weight:800; color:var(--muted-2); text-transform:uppercase; letter-spacing:.05em; margin:0 0 8px;}
+/* wide panels */
+.lpanel--wide{width:100%; flex:1 1 auto;}
+.pwide{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+@media(max-width:900px){.pwide{grid-template-columns:1fr;}}
+.kvgrid{display:grid; grid-template-columns:1fr 1fr; gap:11px 16px;}
+.kvgrid .kv{display:flex; flex-direction:column; gap:2px;} .kvgrid .kv.full{grid-column:1/-1;}
+.kvgrid .kv .k{font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);}
+.kvgrid .kv .v{font-size:13.5px; font-weight:700; color:var(--ink);} .kvgrid .kv .v.mono{font-family:var(--font-mono); font-weight:600;}
+.metastrip{display:flex; flex-wrap:wrap; gap:8px;}
+.metastrip .ch{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:800; color:var(--ink-2); background:var(--secondary); padding:6px 11px; border-radius:var(--r-pill);} .metastrip .ch svg{width:13px; height:13px; color:var(--muted);}
+.metastrip .ch--p{background:var(--primary-soft); color:var(--primary);} .metastrip .ch--p svg{color:var(--primary);}
+.addr{display:flex; gap:9px; align-items:flex-start; padding:11px 13px; border-radius:12px; background:var(--surface-3); border:1px solid var(--line);} .addr svg{width:16px; height:16px; color:var(--muted-2); flex:none; margin-top:1px;} .addr span{font-size:13px; color:var(--ink-2); font-weight:600;}
+.seclabel{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px;}
+.seclabel .sl2{font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase;}
+.addmini{width:24px; height:24px; border-radius:8px; background:var(--secondary); border:0; color:var(--ink-2); cursor:pointer; display:grid; place-items:center; transition:.14s;} .addmini:hover{background:var(--accent); color:var(--accent-ink);} .addmini svg{width:14px; height:14px;}
+/* present item row — solid, distinct from ghost */
+.bookrow{display:flex; align-items:center; gap:11px; padding:11px 13px; border-radius:13px; background:var(--surface); border:1px solid var(--line); box-shadow:var(--sh-1); cursor:pointer; transition:transform .16s var(--ease-spring), box-shadow .2s, border-color .2s;}
+.bookrow:hover{transform:translateY(-2px); box-shadow:var(--sh-2); border-color:var(--line-hover);}
+.bookrow .bi{width:38px; height:38px; border-radius:11px; display:grid; place-items:center; flex:none;} .bookrow .bi svg{width:18px; height:18px;}
+.bookrow .bt{flex:1; min-width:0;} .bookrow .bt b{font-size:14px; font-weight:800; color:var(--ink); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;} .bookrow .bt span{font-family:var(--font-mono); font-size:11.5px; color:var(--muted); font-weight:600;}
+.bookrow .chev{width:16px; height:16px; color:var(--muted-2); flex:none;}
+.bookrow.is-warn{border-color:color-mix(in srgb,var(--warning) 45%,transparent);} .bookrow.is-warn .bi{background:var(--warning-soft) !important; color:var(--warning-ink) !important;}
+/* ghost add — clearly empty: dashed, no shadow, muted, "+" */
+.gadd{display:flex; align-items:center; gap:11px; padding:11px 13px; border-radius:13px; background:transparent; border:1.5px dashed var(--line-strong); cursor:pointer; transition:border-color .16s, background .16s, transform .14s var(--ease-spring);}
+.gadd:hover{border-color:var(--a,var(--primary)); background:color-mix(in srgb,var(--a,var(--primary)) 8%,transparent); transform:translateY(-1px);}
+.gadd .gi{width:38px; height:38px; border-radius:11px; border:1.5px dashed var(--line-strong); display:grid; place-items:center; color:var(--muted-2); flex:none; transition:.16s; background:transparent;} .gadd:hover .gi{border-color:var(--a); color:var(--a);} .gadd .gi svg{width:16px; height:16px;}
+.gadd .gt b{font-size:13.5px; font-weight:800; color:var(--muted); display:block;} .gadd:hover .gt b{color:var(--ink);} .gadd .gt span{font-size:11.5px; color:var(--muted-2); font-weight:600;}
+/* route block (transfer) */
+.route{display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:center; padding:16px; background:var(--surface-3); border:1px solid var(--line); border-radius:14px;}
+.route .rd{font-family:var(--font-mono); font-size:11px; color:var(--muted); font-weight:600;} .route .rt{font-family:var(--font-display); font-size:20px; font-weight:600; color:var(--ink); line-height:1.1;} .route .rc{font-size:13px; font-weight:800; color:var(--ink-2); margin-top:3px;} .route .ra{font-size:11px; color:var(--muted); font-weight:600; margin-top:1px;}
+.route .rmid{display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--ev-transfer-ink);} .route .rmid svg{width:22px; height:22px;} .route .rmid .dur{font-size:10.5px; font-weight:800; color:var(--muted); white-space:nowrap;}
+.route .end{text-align:right;}
+/* AI parse block (in edit/add) */
+.aiblk{border:1.5px solid var(--ai-soft-2); border-radius:14px; background:var(--ai-gradient-soft); padding:13px;}
+.aiblk .ah{display:flex; align-items:center; gap:9px;} .aiblk .ai-ic{width:30px; height:30px; border-radius:10px; background:var(--ai-gradient); display:grid; place-items:center; flex:none;} .aiblk .ai-ic svg{width:16px; height:16px; color:#fff;}
+.aiblk .at{flex:1; min-width:0;} .aiblk .at b{font-size:13.5px; font-weight:800; color:var(--ai-ink); display:block;} .aiblk .at span{font-size:11.5px; color:var(--muted); font-weight:600;}
+.aiblk .ab{margin-top:10px; display:flex; gap:8px;}
+/* doc / notes / segments */
+.docrow{display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:11px; background:var(--surface-3); border:1px solid var(--line);} .docrow .di{width:30px; height:30px; border-radius:8px; background:var(--danger-soft); color:var(--danger-ink); display:grid; place-items:center;} .docrow .di svg{width:15px; height:15px;} .docrow b{flex:1; font-size:13px; font-weight:700; color:var(--ink);} .docrow span{font-size:11px; color:var(--muted); font-family:var(--font-mono);}
+.notes{font-size:13px; color:var(--ink-2); font-weight:600; line-height:1.5; padding:11px 13px; border-radius:12px; background:var(--surface-3); border:1px solid var(--line);}
+.segs{display:flex; flex-direction:column; gap:8px;} .seg{display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:var(--ev-transfer-soft); border:1px solid color-mix(in srgb,var(--ev-transfer) 22%,transparent);} .seg .sn{width:22px; height:22px; border-radius:7px; background:var(--surface); color:var(--ev-transfer-ink); display:grid; place-items:center; font-weight:800; font-size:11px; flex:none;} .seg b{flex:1; font-size:13px; font-weight:800; color:var(--ink);} .seg span{font-family:var(--font-mono); font-size:11px; color:var(--muted); font-weight:600;}
+.upload{display:flex; flex-direction:column; align-items:center; gap:5px; padding:16px; border-radius:13px; border:1.5px dashed var(--line-strong); background:var(--surface-3); cursor:pointer; text-align:center; transition:border-color .16s, background .16s;}
+.upload:hover{border-color:var(--primary); background:var(--primary-soft);} .upload svg{width:20px; height:20px; color:var(--muted-2);} .upload:hover svg{color:var(--primary);} .upload b{font-size:12.5px; font-weight:700; color:var(--ink-2);} .upload span{font-size:11px; color:var(--muted); font-weight:600;}
+
+/* ===== Timeline v2 — chronological, full-width, time-left ===== */
+.tl2{display:flex; flex-direction:column;}
+.tl2-dh{display:flex; align-items:center; gap:14px; padding:18px 0 10px; border-top:1px solid var(--line);}
+.tl2-day:first-child .tl2-dh{border-top:0; padding-top:4px;}
+.tl2-dh .dt{display:flex; align-items:baseline; gap:8px;}
+.tl2-dh .dt .num{font-family:var(--font-display); font-size:30px; font-weight:600; color:var(--ink); line-height:1;}
+.tl2-dh .dt .mon{font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);}
+.tl2-dh .wd{font-size:13px; font-weight:700; color:var(--muted-2);}
+.tl2-dh .cty{margin-left:auto; display:inline-flex; align-items:center; gap:8px; font-family:var(--font-display); font-weight:600; font-size:14.5px; color:var(--ink); background:var(--surface-2); padding:7px 14px; border-radius:var(--r-pill);}
+.tl2-dh .cty svg{width:15px; height:15px; color:var(--primary);} .tl2-dh .cty .arr{color:var(--muted-2);}
+.tl2-rows{position:relative;}
+.tl2-rows::before{content:""; position:absolute; left:65px; top:8px; bottom:8px; width:2px; background:var(--line); border-radius:2px;}
+.tl2-ev{display:grid; grid-template-columns:54px 22px 1fr; align-items:center; padding:5px 0;}
+.tl2-ev .tm{text-align:right; padding-right:12px; font-family:var(--font-mono); font-size:12.5px; font-weight:700; color:var(--ink-2);}
+.tl2-ev .nd{display:flex; justify-content:center;}
+.tl2-ev .nd .dot{width:12px; height:12px; border-radius:50%; background:var(--ev,var(--primary)); box-shadow:0 0 0 4px var(--surface);}
+.tl2-card{display:flex; align-items:center; gap:12px; padding:11px 14px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--ev,var(--primary)); border-radius:13px; box-shadow:var(--sh-1); transition:transform .16s var(--ease-spring), box-shadow .2s;}
+@media(hover:hover){.tl2-card:hover{transform:translateX(2px); box-shadow:var(--sh-2);}}
+.tl2-card .ic{width:36px; height:36px; border-radius:11px; display:grid; place-items:center; flex:none; background:color-mix(in srgb,var(--ev) 14%,var(--surface)); color:var(--ev);} .tl2-card .ic svg{width:18px; height:18px;}
+.tl2-card .bd{flex:1; min-width:0;} .tl2-card .bd b{font-size:14px; font-weight:800; color:var(--ink); display:block;} .tl2-card .bd span{font-size:12px; color:var(--muted); font-weight:600;}
+.tl2-card .rt2{font-family:var(--font-mono); font-size:11.5px; font-weight:700; color:var(--muted); background:var(--surface-2); padding:5px 9px; border-radius:var(--r-pill); white-space:nowrap;}
+/* check-in (solid) vs check-out (outlined, dashed border) — visually distinct */
+.tl2-card--ci{--ev:var(--ev-hotel);} .tl2-card--ci .ic{background:var(--ev-hotel); color:#fff;}
+.tl2-card--co{--ev:var(--ev-hotel); border-left-style:dashed;} .tl2-card--co .ic{background:transparent; border:1.5px solid var(--ev-hotel); color:var(--ev-hotel-ink);}
+/* transfer — distinct soft fill */
+.tl2-card--tr{--ev:var(--ev-transfer); background:var(--ev-transfer-soft);} .tl2-card--tr .ic{background:var(--ev-transfer); color:#fff;}
+.tl2-warn2{grid-column:1/-1; display:flex; align-items:center; gap:11px; margin:6px 0 6px 76px; padding:11px 14px; background:var(--warning-soft); border-radius:13px;}
+.tl2-warn2 svg{width:18px; height:18px; color:var(--warning-ink); flex:none;} .tl2-warn2 b{font-size:13px; color:var(--ink); font-weight:800; display:block;} .tl2-warn2 span{font-size:12px; color:var(--muted); font-weight:600;}
+.tl2-warn2 .x{flex:1;} .tl2-warn2 button{font:inherit; font-family:var(--font-display); font-size:12.5px; font-weight:600; color:#fff; background:var(--warning-ink); border:0; border-radius:var(--r-pill); padding:7px 14px; cursor:pointer;}
+
+/* ===== Timeline v3 — clean, cohesive cards, no spine ===== */
+.tl3{display:flex; flex-direction:column;}
+.tl3-day{padding-bottom:8px;}
+.tl3-dh{display:flex; align-items:center; gap:13px; padding:16px 0 12px;}
+.tl3-dh .datechip{display:flex; flex-direction:column; align-items:center; justify-content:center; width:50px; height:54px; border-radius:15px; background:var(--primary-soft); flex:none;}
+.tl3-dh .datechip .d{font-family:var(--font-display); font-size:21px; font-weight:600; color:var(--primary); line-height:1;}
+.tl3-dh .datechip .m{font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--primary); opacity:.85; margin-top:2px;}
+.tl3-dh .wd{font-family:var(--font-display); font-size:16px; font-weight:600; color:var(--ink); text-transform:capitalize;}
+.tl3-dh .daycity{margin-left:auto; display:inline-flex; align-items:center; gap:7px; font-size:13.5px; font-weight:700; color:var(--ink-2); background:var(--surface-2); padding:7px 14px; border-radius:var(--r-pill);}
+.tl3-dh .daycity svg{width:14px; height:14px; color:var(--primary);} .tl3-dh .daycity .arr{color:var(--muted-2);}
+.tl3-ev{display:flex; gap:14px; align-items:center; padding:4px 0;}
+.tl3-ev .time{width:48px; flex:none; text-align:right; font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--muted);}
+.tl3-card{flex:1; min-width:0; display:flex; align-items:center; gap:13px; padding:13px 16px; background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:var(--sh-1); cursor:pointer; transition:transform .18s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s;}
+@media(hover:hover){.tl3-card:hover{transform:translateY(-2px); box-shadow:var(--sh-2); border-color:var(--line-hover);}}
+.tl3-card .tile{width:44px; height:44px; border-radius:13px; display:grid; place-items:center; flex:none; background:var(--evs,var(--primary-soft)); color:var(--evi,var(--primary));} .tl3-card .tile svg{width:20px; height:20px;}
+.tl3-card .body{flex:1; min-width:0;} .tl3-card .body b{font-size:14.5px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:7px; flex-wrap:wrap; line-height:1.25;} .tl3-card .body .sb{font-size:12.5px; color:var(--muted); font-weight:600; margin-top:2px;}
+.tl3-card .arr{color:var(--muted-2);}
+.tl3-card .carrier{font-size:11px; font-weight:700; color:var(--evi,var(--muted)); background:var(--evs,var(--surface-2)); padding:2px 9px; border-radius:var(--r-pill);}
+.tl3-card .meta{font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--muted); white-space:nowrap; flex:none;}
+.tl3-card .link{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--line); padding:4px 9px; border-radius:var(--r-pill); flex:none;} .tl3-card .link svg{width:12px; height:12px; color:var(--muted-2);}
+/* check-in / check-out use the same soft hotel tile as other events — only the icon differs */
+/* transfer — common WHITE card, VERTICAL route */
+.tl3-card--tr{flex-direction:column; align-items:stretch; gap:0; padding:14px 18px;}
+.tl3-ev--tr{align-items:stretch;}
+.tl3-ev--tr .time--tr{display:flex; flex-direction:column; justify-content:space-between; align-items:flex-end; padding:5px 0;}
+.tl3-ev--tr .time--tr span{font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--muted);}
+.rv-end{display:flex; flex-direction:column;}
+.rv-end b{font-size:15px; font-weight:800; color:var(--ink); line-height:1.2;} .rv-end span{font-size:12px; color:var(--muted); font-weight:600; margin-top:1px;}
+.rv-conn{display:flex; flex-direction:column; gap:5px; padding:7px 0;}
+.rv-conn .dline{width:2px; height:12px; margin-left:13px; border-radius:2px; background:repeating-linear-gradient(var(--ev-transfer) 0 3px, transparent 3px 6px);}
+.rv-mode{display:inline-flex; align-items:center; gap:10px; font-size:13.5px; font-weight:800; color:var(--ev-transfer-ink);}
+.rv-mode .ic{width:28px; height:28px; border-radius:9px; background:var(--ev-transfer-soft); color:var(--ev-transfer-ink); display:grid; place-items:center; flex:none;} .rv-mode .ic svg{width:16px; height:16px;}
+.rv-mode small{font-weight:700; color:var(--muted);}
+.tl3-warn{display:flex; gap:13px; align-items:center; padding:13px 16px; background:var(--warning-soft); border-radius:16px; margin:6px 0 4px 62px;}
+.tl3-warn .tile{width:40px; height:40px; border-radius:12px; background:color-mix(in srgb,var(--warning) 22%,var(--surface)); color:var(--warning-ink); display:grid; place-items:center; flex:none;} .tl3-warn .tile svg{width:19px; height:19px;}
+.tl3-warn .body{flex:1;} .tl3-warn b{font-size:13.5px; color:var(--ink); font-weight:800; display:block;} .tl3-warn span{font-size:12px; color:var(--muted); font-weight:600;}
+.tl3-warn button{font:inherit; font-family:var(--font-display); font-size:13px; font-weight:600; color:#fff; background:var(--warning-ink); border:0; border-radius:var(--r-pill); padding:8px 15px; cursor:pointer; transition:transform .14s var(--ease-spring);}
+.tl3-warn button:active{transform:scale(.95);}
+
+/* ===== Editor v2 — tighter rows, floating transfer over the seam ===== */
+.edl2{position:relative; display:flex; flex-direction:column; gap:9px; max-width:600px;}
+.edl2::before{content:""; position:absolute; left:28px; top:16px; bottom:16px; width:2px; background:var(--line); border-radius:2px; z-index:0;}
+.edl2-row{position:relative; z-index:1; display:flex; align-items:center; gap:13px; padding:12px 14px; background:var(--surface); border:1px solid var(--line); border-radius:15px; box-shadow:var(--sh-1); transition:box-shadow .2s, border-color .2s;}
+@media(hover:hover){.edl2-row:hover{box-shadow:var(--sh-2); border-color:var(--line-hover);}}
+.edl2-row .node{width:28px; height:28px; border-radius:9px; display:grid; place-items:center; font-family:var(--font-display); font-weight:600; font-size:13px; flex:none; background:var(--primary-soft); color:var(--primary);}
+.edl2-row .node svg{width:14px; height:14px;}
+.edl2-row .node.warn{background:var(--warning-soft); color:var(--warning-ink);}
+.edl2-row .node.start{background:var(--primary-soft); color:var(--primary);} .edl2-row .node.end{background:var(--success-soft); color:var(--success-ink);} .edl2-row .node.wp{background:var(--surface); border:1.5px dashed var(--ev-transfer); color:var(--ev-transfer);}
+.edl2-cty{min-width:0;} .edl2-cty b{font-family:var(--font-display); font-weight:600; font-size:16px; color:var(--ink); display:block; line-height:1.15;}
+.edl2-cty .dts{font-family:var(--font-mono); font-size:11px; color:var(--muted); font-weight:600; margin-top:1px; display:flex; align-items:center; gap:6px;}
+.edl2-cty .wptag{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--ev-transfer-ink); background:var(--ev-transfer-soft); padding:2px 7px; border-radius:var(--r-pill);}
+.edl2-sp{flex:1;}
+.edl2-seam{display:flex; justify-content:center; position:relative; z-index:4; margin:-15px 0;}
+.edl2-seam .pill{display:inline-flex; align-items:center; gap:7px; padding:7px 14px; border-radius:var(--r-pill); background:var(--ev-transfer-soft); border:1.5px solid color-mix(in srgb,var(--ev-transfer) 40%,transparent); color:var(--ev-transfer-ink); font-size:12px; font-weight:800; box-shadow:var(--sh-2); cursor:pointer; transition:transform .14s var(--ease-spring), box-shadow .2s;}
+.edl2-seam .pill .dur{color:var(--ev-transfer-ink); opacity:.75;} .edl2-seam .pill .sd{color:var(--ev-transfer-ink) !important; opacity:.7;}
+.edl2-seam .pill:hover{transform:translateY(-1px) scale(1.02); box-shadow:var(--sh-3);}
+.edl2-seam .pill svg{width:13px; height:13px;} .edl2-seam .pill .sd{font-family:var(--font-mono); font-weight:700; color:var(--muted); margin-left:1px;}
+.edl2-seam .pill.is-warn{color:var(--warning-ink); border-color:color-mix(in srgb,var(--warning) 40%,transparent); background:var(--warning-soft);}
+.edl2-seam .pill.pill--add{border-style:dashed; color:var(--muted-2); border-color:var(--line-strong); background:transparent; box-shadow:var(--sh-1);}
+.edl2-seam .pill.pill--add .sd{color:var(--muted) !important;}
+.edl2-seam .pill.is-warn .sd, .edl2-seam .pill.is-warn .dur{color:var(--warning-ink) !important;}
+.edl2-seam .pill.pill--add:hover{color:var(--ev-transfer-ink); border-color:var(--ev-transfer); background:var(--ev-transfer-soft);}
+
+.copyhint{position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0; background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:var(--r-pill); font-size:13px; font-weight:800; pointer-events:none; transition:transform .3s var(--ease-spring), opacity .25s; z-index:99;}
+.copyhint.show{opacity:1; transform:translateX(-50%) translateY(0);}
+footer{padding:40px 0 70px; color:var(--muted); font-size:13px; text-align:center; border-top:1px solid var(--line); margin-top:30px; font-weight:600;}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms !important; animation-duration:.01ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap row">
+    <div class="brandmark"><div class="mk"></div><b>Triplanio</b><span>· Lumo</span></div>
+    <div class="controls">
+      <div class="seg" id="variantSeg" role="group" aria-label="Палитра">
+        <button data-v="sky"       aria-pressed="true"><span class="sw" style="background:#2173C8"></span>Sky</button>
+        <button data-v="pink"      aria-pressed="false"><span class="sw" style="background:#CE2F7B"></span>Pink</button>
+        <button data-v="turquoise" aria-pressed="false"><span class="sw" style="background:#0FA9B8"></span>Turquoise</button>
+        <button data-v="grape"     aria-pressed="false"><span class="sw" style="background:#724ECB"></span>Grape</button>
+      </div>
+      <button class="theme-toggle" id="themeBtn">
+        <svg id="themeIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <span id="themeLabel">Тёмная</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap hero">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <span class="pill-eyebrow" id="eyebrow">✦ Lumo · Sky</span>
+  <h1>Планировать поездку <em>должно быть в радость</em></h1>
+  <p>Дружелюбная система с большим набором реальных элементов интерфейса и их состояний. Палитра — синий, розовый, бирюзовый или виноград. Шрифты Rubik и Nunito с полной кириллицей.</p>
+</div>
+
+<div class="wrap">
+
+<div class="gband"><span class="gn">A · Основы</span><h3>Цвет, типографика, поверхности</h3><div class="gd">Палитры, типы событий, контекст, AI/Pro, семантические поверхности и категории — фундамент.</div></div>
+
+<!-- 01 PRIMARY -->
+<section>
+  <div class="sec-head"><span class="n">A1</span><h2>Primary активной палитры</h2><div class="desc">Четыре приветливых primary на выбор. Система остаётся дружелюбной при любом.</div></div>
+  <div class="panel">
+    <div class="subtitle">Состояния</div>
+    <div class="ptiles">
+      <div class="ptile" style="background:var(--primary); color:var(--primary-fg)" onclick="copy('--primary')"><b>Primary</b><small id="hx_primary"></small></div>
+      <div class="ptile" style="background:var(--primary-hover); color:var(--primary-fg)" onclick="copy('--primary-hover')"><b>Hover</b><small id="hx_primary-hover"></small></div>
+      <div class="ptile" style="background:var(--primary-press); color:var(--primary-fg)" onclick="copy('--primary-press')"><b>Press</b><small id="hx_primary-press"></small></div>
+      <div class="ptile" style="background:var(--primary-soft); color:var(--primary)" onclick="copy('--primary-soft')"><b>Soft</b><small>тинт</small></div>
+    </div>
+    <div class="gstrip" style="margin-top:14px; background:var(--brand-grad); color:#fff">brand gradient · вордмарк и акценты</div>
+  </div>
+</section>
+
+<!-- 02 TYPOGRAPHY (full) -->
+<section>
+  <div class="sec-head"><span class="n">A2</span><h2>Типографика</h2><div class="desc">Вся шкала, что используется в системе. Rubik (заголовки) + Nunito (текст), обе с полной кириллицей.</div></div>
+  <div class="panel">
+    <div class="grid-2">
+      <div class="ff"><div class="big">Аа Бб Яя</div><div class="nm"><b style="color:var(--ink)">Rubik</b> · Display · 500–700</div><div class="gl" style="font-family:var(--font-display)">Путешествие — Привет 123 ₽ €</div></div>
+      <div class="ff"><div class="big" style="font-family:var(--font-ui); font-weight:800">Привет</div><div class="nm"><b style="color:var(--ink)">Nunito</b> · Text · 400–800</div><div class="gl">Мягкий, дружелюбный текст с аккуратной кириллицей.</div></div>
+    </div>
+    <div style="height:1px; background:var(--line); margin:22px 0"></div>
+    <div class="type-row"><div class="label"><b>Display · Rubik</b><span class="tok">--fs-display</span> · 54</div><div style="font-family:var(--font-display); font-size:var(--fs-display); line-height:1; color:var(--ink); font-weight:600">Путешествие</div></div>
+    <div class="type-row"><div class="label"><b>H1 · Rubik</b><span class="tok">--fs-h1</span> · 40</div><div style="font-family:var(--font-display); font-size:var(--fs-h1); line-height:1.05; color:var(--ink); font-weight:600">Спланируйте маршрут</div></div>
+    <div class="type-row"><div class="label"><b>H2 · Rubik</b><span class="tok">--fs-h2</span> · 26</div><div style="font-family:var(--font-display); font-size:var(--fs-h2); font-weight:600; color:var(--ink)">Расписание и переезды</div></div>
+    <div class="type-row"><div class="label"><b>H3 · Rubik</b><span class="tok">--fs-h3</span> · 19</div><div style="font-family:var(--font-display); font-size:var(--fs-h3); font-weight:600; color:var(--ink)">Проживание в центре</div></div>
+    <div class="type-row"><div class="label"><b>H4 · Rubik</b><span class="tok">--fs-h4</span> · 16</div><div style="font-family:var(--font-display); font-size:var(--fs-h4); font-weight:600; color:var(--ink)">Бронирование отеля</div></div>
+    <div class="type-row"><div class="label"><b>Strong · Nunito</b><span class="tok">--fs-strong</span> · 15</div><div style="font-size:var(--fs-strong); color:var(--ink); font-weight:800">Название города · ярлык строки</div></div>
+    <div class="type-row"><div class="label"><b>Base · Nunito</b><span class="tok">--fs-base</span> · 14</div><div style="font-size:var(--fs-base); color:var(--ink-2); font-weight:500">Базовый текст интерфейса — мягкий и читаемый.</div></div>
+    <div class="type-row"><div class="label"><b>Meta · Nunito</b><span class="tok">--fs-meta</span> · 12.5</div><div style="font-size:var(--fs-meta); font-weight:700; color:var(--muted)">12 июня · 3 ночи · 2 путешественника</div></div>
+    <div class="type-row"><div class="label"><b>Micro · caps</b><span class="tok">--fs-micro</span> · 11</div><div style="font-size:var(--fs-micro); font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)">Город · ночи · отель</div></div>
+    <div class="type-row"><div class="label"><b>Nano · caps</b><span class="tok">--fs-nano</span> · 10</div><div style="font-size:var(--fs-nano); font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)">Бейджи · плотные чипы</div></div>
+    <div class="type-row"><div class="label"><b>Mono · цифры</b><span class="tok">--font-mono</span></div><div style="font-family:var(--font-mono); font-size:14px; color:var(--ink); font-weight:600">€ 1 240,00 · 09:40 → 11:50 · BCN-FCO</div></div>
+  </div>
+</section>
+
+<!-- 13 SEMANTIC SURFACES -->
+<section>
+  <div class="sec-head"><span class="n">A3</span><h2>Семантика поверхностей</h2><div class="desc">Производные токены для меню, дропдаунов, вторичных поверхностей и оверлеев — следуют палитре и теме.</div></div>
+  <div class="panel">
+    <div class="subtitle">Поверхности, линии, оверлеи</div>
+    <div class="semitiles">
+      <div class="semi" onclick="copy('--secondary')"><div class="pv" style="background:var(--secondary)"></div><div class="mt"><div class="nm">Secondary</div><span class="tok">--secondary</span></div></div>
+      <div class="semi" onclick="copy('--accent')"><div class="pv" style="background:var(--accent)"></div><div class="mt"><div class="nm">Accent</div><span class="tok">--accent</span></div></div>
+      <div class="semi" onclick="copy('--popover')"><div class="pv" style="background:var(--popover); box-shadow:var(--sh-2)"></div><div class="mt"><div class="nm">Popover</div><span class="tok">--popover</span></div></div>
+      <div class="semi" onclick="copy('--surface-elev')"><div class="pv" style="background:var(--surface-elev); box-shadow:var(--sh-1)"></div><div class="mt"><div class="nm">Surface elev</div><span class="tok">--surface-elev</span></div></div>
+      <div class="semi" onclick="copy('--wash')"><div class="pv" style="background:var(--wash)"></div><div class="mt"><div class="nm">Wash</div><span class="tok">--wash</span></div></div>
+      <div class="semi" onclick="copy('--input')"><div class="pv" style="display:grid; place-items:center; background:var(--surface)"><div style="width:80%; height:30px; border-radius:9px; border:1.5px solid var(--input)"></div></div><div class="mt"><div class="nm">Input border</div><span class="tok">--input</span></div></div>
+      <div class="semi" onclick="copy('--line-hover')"><div class="pv" style="display:grid; place-items:center; background:var(--surface)"><div style="width:80%; height:30px; border-radius:9px; border:1.5px solid var(--line-hover)"></div></div><div class="mt"><div class="nm">Line hover</div><span class="tok">--line-hover</span></div></div>
+      <div class="semi" onclick="copy('--scrim')"><div class="pv" style="background:linear-gradient(135deg,#6FB2FF,#8A6BF0)"><div style="height:100%; background:var(--scrim)"></div></div><div class="mt"><div class="nm">Scrim</div><span class="tok">--scrim</span></div></div>
+      <div class="semi" onclick="copy('--brand-glow')"><div class="pv" style="display:grid; place-items:center; background:var(--surface)"><div style="width:46px; height:32px; border-radius:10px; background:var(--primary); box-shadow:0 8px 22px -2px var(--brand-glow)"></div></div><div class="mt"><div class="nm">Brand glow</div><span class="tok">--brand-glow</span></div></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="panel">
+      <div class="subtitle">Меню / дропдаун · ховер = <span class="tok">--accent</span></div>
+      <div class="menu">
+        <div class="mi active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2 7 7 9-9"/></svg>Дублировать поездку</div>
+        <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8h16v-8M16 6l-4-4-4 4M12 2v14"/></svg>Поделиться</div>
+        <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Переименовать</div>
+        <div class="sep"></div>
+        <div class="mi mi--danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>Удалить</div>
+      </div>
+      <div class="tokrow"><span class="tok">--popover</span><span class="tok">--accent</span><span class="tok">--accent-ink</span><span class="tok">--danger-soft</span></div>
+    </div>
+    <div class="panel">
+      <div class="subtitle">Ховер-строки · граница = <span class="tok">--line-hover</span></div>
+      <div class="stack">
+        <div class="hrow"><div class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div style="flex:1"><b>Hotel Arts</b><span>Барселона · 2 ночи</span></div></div>
+        <div class="hrow"><div class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 7l2 13h14l2-13"/></svg></div><div style="flex:1"><b>Саграда Фамилия</b><span>Экскурсия · 2ч</span></div></div>
+        <div class="hrow"><div class="hi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/></svg></div><div style="flex:1"><b>Аренда авто</b><span>Рим · 3 дня</span></div></div>
+      </div>
+      <div class="tokrow"><span class="tok">--surface-3</span><span class="tok">--line-hover</span><span class="tok">--secondary</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 CATEGORY PALETTE -->
+<section>
+  <div class="sec-head"><span class="n">A4</span><h2>Палитра категорий</h2><div class="desc">8 назначаемых цветов для категорий бюджета и графиков. Те же цвета — в легенде виджета «Бюджет».</div></div>
+  <div class="panel">
+    <div class="semitiles" id="catGrid"></div>
+  </div>
+</section>
+
+<div class="gband"><span class="gn">B · Компоненты</span><h3>Кнопки, поля, бейджи, меню, модалки</h3><div class="gd">Атомарные элементы интерфейса и их состояния — на токенах из «Основ».</div></div>
+
+<!-- 03 BUTTONS -->
+<section>
+  <div class="sec-head"><span class="n">B1</span><h2>Кнопки · все варианты и состояния</h2><div class="desc">Hover поднимает, :active мягко вжимает (scale 0.96), кольцо фокуса. Загрузка, disabled, иконки, block.</div></div>
+  <div class="panel">
+    <div class="subtitle">Варианты</div>
+    <div class="cluster" style="margin-bottom:20px">
+      <button class="btn btn--primary">Основная</button>
+      <button class="btn btn--secondary">Вторичная</button>
+      <button class="btn btn--soft">Мягкая</button>
+      <button class="btn btn--ghost">Призрачная</button>
+      <button class="btn btn--quiet">Тихая</button>
+      <button class="btn btn--danger">Удалить</button>
+      <button class="btn btn--danger-solid">Удалить совсем</button>
+      <button class="btn btn--ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>AI</button>
+      <button class="btn btn--pro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8z"/></svg>Pro</button>
+    </div>
+    <div class="grid-2">
+      <div><div class="statelabel">Размеры и иконки</div><div class="cluster">
+        <button class="btn btn--primary btn--sm">Small</button>
+        <button class="btn btn--primary">Medium</button>
+        <button class="btn btn--primary btn--lg">Large</button>
+        <button class="btn btn--secondary btn--icon" aria-label="Добавить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="btn btn--primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>С иконкой</button>
+      </div></div>
+      <div><div class="statelabel">Состояния</div><div class="cluster">
+        <button class="btn btn--primary"><span class="spin"></span>Загрузка…</button>
+        <button class="btn btn--primary" disabled>Disabled</button>
+        <button class="btn btn--secondary" disabled>Disabled</button>
+      </div>
+      <div style="margin-top:12px"><button class="btn btn--primary btn--block">Кнопка на всю ширину (block)</button></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 BADGES + AVATARS -->
+<section>
+  <div class="sec-head"><span class="n">B2</span><h2>Бейджи, статусы, аватары</h2><div class="desc">Полный набор бейджей, типы событий, статусы участников, аватары и стек.</div></div>
+  <div class="panel">
+    <div class="subtitle">Бейджи</div>
+    <div class="cluster" style="margin-bottom:18px">
+      <span class="badge badge--solid">Solid</span>
+      <span class="badge badge--brand">Brand</span>
+      <span class="badge badge--outline">Outline</span>
+      <span class="badge badge--quiet">Quiet</span>
+      <span class="badge badge--info"><span class="dot"></span>Инфо</span>
+      <span class="badge badge--success"><span class="dot"></span>Готово</span>
+      <span class="badge badge--warning"><span class="dot"></span>Внимание</span>
+      <span class="badge badge--danger"><span class="dot"></span>Ошибка</span>
+      <span class="badge badge--ai"><span class="dot"></span>AI</span>
+      <span class="badge badge--pro"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8z"/></svg>PRO</span>
+      <span class="badge badge--count">3</span>
+    </div>
+    <div class="subtitle">Типы событий</div>
+    <div class="cluster" style="margin-bottom:18px">
+      <span class="badge badge--hotel"><span class="dot"></span>Проживание</span>
+      <span class="badge badge--transfer"><span class="dot"></span>Переезд</span>
+      <span class="badge badge--activity"><span class="dot"></span>Активность</span>
+      <span class="badge badge--car"><span class="dot"></span>Аренда авто</span>
+      <span class="badge badge--deadline"><span class="dot"></span>Дедлайн</span>
+    </div>
+    <div class="grid-2">
+      <div><div class="statelabel">Статусы участников · <span class="tok">--warm</span> у владельца</div><div class="cluster">
+        <span class="badge" style="background:var(--warm-soft); color:var(--warm-ink)"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M5 16l-2-9 5.5 4L12 4l3.5 7L21 7l-2 9z"/></svg>Владелец</span>
+        <span class="badge badge--brand">Админ</span>
+        <span class="badge badge--quiet">Зритель</span>
+        <span class="badge badge--warning"><span class="dot"></span>Приглашён</span>
+        <span class="badge badge--danger"><span class="dot"></span>Отклонил</span>
+      </div></div>
+      <div><div class="statelabel">Аватары · размеры, AI, плейсхолдер, стек</div><div class="cluster">
+        <span class="avatar avatar--sm">ПМ</span>
+        <span class="avatar">АК</span>
+        <span class="avatar avatar--lg">ИВ</span>
+        <span class="avatar avatar--ai"><svg viewBox="0 0 24 24" width="16" height="16" fill="#fff"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></span>
+        <span class="avatar avatar--ph">+</span>
+        <span class="av-stack"><span class="avatar avatar--sm">А</span><span class="avatar avatar--sm">Б</span><span class="avatar avatar--sm">В</span><span class="avatar avatar--sm" style="background:var(--surface-2); color:var(--muted)">+4</span></span>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 FORMS -->
+<section>
+  <div class="sec-head"><span class="n">B3</span><h2>Поля и контролы · состояния</h2><div class="desc">Input (обычный/фокус/ошибка/disabled), textarea, select, поиск, AI-поле, переключатель, чекбокс, радио, сегменты, степпер.</div></div>
+  <div class="panel">
+    <div class="grid-2">
+      <div class="stack">
+        <div class="field"><label>Название поездки</label><input class="input" placeholder="Например, Лето в Италии"><span class="hint">Можно изменить позже</span></div>
+        <div class="field field--error"><label>E-mail для приглашения</label><input class="input" value="petya@"><span class="err"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>Неверный адрес</span></div>
+        <div class="field field--warning"><label>Дата выезда</label><input class="input" value="11 июня"><span class="wrn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>Раньше даты заезда — проверьте</span></div>
+        <div class="field"><label>Тип поездки</label><select class="select"><option>Отпуск</option><option>Командировка</option><option>Роуд-трип</option></select></div>
+        <div class="field"><label>Город</label><div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input class="input" placeholder="Поиск города…"></div></div>
+        <div class="field"><label>Заблокировано</label><input class="input" value="Недоступно" disabled></div>
+      </div>
+      <div class="stack">
+        <div class="field field--ai"><label>Заметки</label><textarea class="textarea">Заполнено ассистентом на основе вашего описания.</textarea></div>
+        <div style="display:flex; align-items:center; gap:12px"><label class="switch"><input type="checkbox" checked><span class="track"></span><span class="knob"></span></label><span style="font-size:14px; font-weight:700; color:var(--ink-2)">Уведомления в Telegram <span class="badge badge--pro" style="margin-left:4px">PRO</span></span></div>
+        <label class="check"><input type="checkbox" checked><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Учитывать ночные переезды</label>
+        <label class="check radio"><input type="radio" name="r" checked><span class="box"><i></i></span>Эконом-класс</label>
+        <label class="check radio"><input type="radio" name="r"><span class="box"><i></i></span>Бизнес-класс</label>
+        <div><div class="statelabel">Сегменты и степпер</div><div class="cluster">
+          <div class="segmented"><button class="on">Маршрут</button><button>Лента</button><button>Карта</button></div>
+          <div class="stepper"><button>−</button><span class="n">3 ноч.</span><button>+</button></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 NOTES + TOASTS -->
+<section>
+  <div class="sec-head"><span class="n">B4</span><h2>Уведомления · sev и тосты</h2><div class="desc">Контекстные заметки (инфо/успех/внимание/ошибка) и всплывающие тосты.</div></div>
+  <div class="panel">
+    <div class="grid-2">
+      <div class="stack">
+        <div class="sev sev--info"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div><div><b>Подсказка</b><span>Добавьте даты, чтобы построить таймлайн.</span></div></div>
+        <div class="sev sev--success"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></div><div><b>Поездка сохранена</b><span>Все изменения применены.</span></div></div>
+        <div class="sev sev--warning"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg></div><div><b>Нет переезда между городами</b><span>Добавьте перелёт или поезд.</span></div></div>
+        <div class="sev sev--error"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg></div><div><b>Не удалось сохранить</b><span>Проверьте подключение.</span></div></div>
+      </div>
+      <div class="stack">
+        <div class="statelabel">Тосты</div>
+        <div class="toast"><div class="tic" style="background:var(--success)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div><div><b>Сохранено</b><span>Бронирование добавлено.</span></div><span class="x">✕</span></div>
+        <div class="toast"><div class="tic" style="background:var(--danger)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M18 6L6 18M6 6l12 12"/></svg></div><div><b>Ошибка</b><span>Попробуйте ещё раз.</span></div><span class="x">✕</span></div>
+        <div class="toast"><div class="tic" style="background:var(--ai-gradient)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div><b>ИИ собрал маршрут</b><span>7 активностей на 3 дня.</span></div><span class="x">✕</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="gband"><span class="gn">C · Паттерны и экраны</span><h3>Виджеты, таймлайн, редактор, панели, Pro, оболочка</h3><div class="gd">Собранные из компонентов реальные блоки и экраны приложения.</div></div>
+
+<!-- 07 WIDGETS -->
+<section>
+  <div class="sec-head"><span class="n">C1</span><h2>Виджеты правого рейла</h2><div class="desc">Бюджет — траты по категориям с легендой. «Кто едет» с ролями и статусами. Сервисы — созданные, плейсхолдеры и «Ещё».</div></div>
+  <div class="grid-3">
+    <!-- Budget: category bar + legend -->
+    <div class="wdg">
+      <div class="wdg-h"><div class="wi" style="background:var(--success-soft); color:var(--success-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><h4>Бюджет</h4><button class="wdg-act" title="Открыть бюджет"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></button></div>
+      <div class="wdg-b">
+        <div class="bud-total">€ 1 240</div>
+        <div class="bud-bar">
+          <i style="width:50%; background:var(--cat-1)"></i>
+          <i style="width:25%; background:var(--cat-2)"></i>
+          <i style="width:14.5%; background:var(--cat-3)"></i>
+          <i style="width:7.7%; background:var(--cat-4)"></i>
+          <i style="width:2.8%; background:var(--cat-8)"></i>
+        </div>
+        <div class="bud-leg"><span class="d" style="background:var(--cat-1)"></span><span class="nm">Проживание</span><span class="v">€ 620</span></div>
+        <div class="bud-leg"><span class="d" style="background:var(--cat-2)"></span><span class="nm">Транспорт</span><span class="v">€ 310</span></div>
+        <div class="bud-leg"><span class="d" style="background:var(--cat-3)"></span><span class="nm">Активности</span><span class="v">€ 180</span></div>
+        <div class="bud-leg"><span class="d" style="background:var(--cat-4)"></span><span class="nm">Еда</span><span class="v">€ 95</span></div>
+        <div class="bud-leg"><span class="d" style="background:var(--cat-8)"></span><span class="nm">Прочее</span><span class="v">€ 35</span></div>
+      </div>
+    </div>
+    <!-- Who's going -->
+    <div class="wdg">
+      <div class="wdg-h"><div class="wi" style="background:var(--primary-soft); color:var(--primary)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8M23 21v-2a4 4 0 00-3-3.9"/></svg></div><h4>Кто едет</h4><button class="wdg-act" title="Все участники"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></button></div>
+      <div class="wdg-b">
+        <div class="mrow"><span class="avatar avatar--sm">ПМ</span><div style="flex:1"><div class="mn">Павел М.</div><div class="me">Владелец</div></div><span class="badge" style="background:var(--warm-soft); color:var(--warm-ink)">Owner</span></div>
+        <div class="mrow"><span class="avatar avatar--sm" style="background:var(--ev-activity)">АК</span><div style="flex:1"><div class="mn">Аня К.</div><div class="me">Админ</div></div><span class="badge badge--brand">Admin</span></div>
+        <div class="mrow" style="opacity:.65"><span class="avatar avatar--sm avatar--ph">?</span><div style="flex:1"><div class="mn">petya@mail.ru</div><div class="me" style="color:var(--warning-ink)">Приглашён</div></div><span class="badge badge--warning"><span class="dot"></span></span></div>
+        <button class="btn btn--soft btn--sm btn--block" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Пригласить</button>
+      </div>
+    </div>
+    <!-- Services: created + Ещё -->
+    <div class="wdg">
+      <div class="wdg-h"><div class="wi" style="background:var(--ev-transfer-soft); color:var(--ev-transfer-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v13H3zM8 7V4h8v3"/></svg></div><h4>Сервисы</h4></div>
+      <div class="wdg-b stack" style="gap:8px">
+        <div class="svc-row"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M9 18h6"/></svg></div><div style="flex:1"><b>eSIM</b><span>Airalo · 5 ГБ</span></div><span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></span></div>
+        <div class="svc-row"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></svg></div><div style="flex:1"><b>Аренда авто</b><span>Economy · 3 дня</span></div><span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></span></div>
+        <div class="svc-row"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div style="flex:1"><b>Страховка</b><span>Allianz · до 18 июня</span></div><span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></span></div>
+        <button class="svc-more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>Ещё</button>
+      </div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:18px">
+    <div class="statelabel">Сервисы — пустое состояние: дашед-плейсхолдеры eSIM / авто + кнопка «Ещё»</div>
+    <div class="grid-3">
+      <div class="svc-ph"><div class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M9 18h6"/></svg></div><div><b>eSIM</b><span>Интернет в поездке</span></div><div class="plus">+</div></div>
+      <div class="svc-ph"><div class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></svg></div><div><b>Аренда авто</b><span>Подобрать машину</span></div><div class="plus">+</div></div>
+      <button class="svc-more" style="justify-content:flex-start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>Ещё (страховка)</button>
+    </div>
+  </div>
+</section>
+
+<!-- 08 MODALS -->
+<section>
+  <div class="sec-head"><span class="n">C2</span><h2>Модальные окна</h2><div class="desc">Редактирование события (с полями) и подтверждение удаления (AlertDialog) — с затемнением и фокусом.</div></div>
+  <div class="grid-2">
+    <div class="stage">
+      <div class="ov">
+        <div class="modal">
+          <div class="modal-h"><div class="mi" style="background:var(--ev-hotel-soft)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--ev-hotel-ink)" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><h3>Редактировать отель</h3><button class="close">✕</button></div>
+          <div class="modal-b">
+            <div class="field"><label>Название</label><input class="input" value="Hotel Arts Barcelona"></div>
+            <div style="display:flex; gap:12px"><div class="field" style="flex:1"><label>Заезд</label><input class="input" value="12 июня"></div><div class="field" style="flex:1"><label>Выезд</label><input class="input" value="15 июня"></div></div>
+            <div class="field field--ai"><label>Детали брони</label><input class="input" value="2 ночи · завтрак включён"></div>
+          </div>
+          <div class="modal-f"><button class="btn btn--ghost">Отмена</button><button class="btn btn--primary">Сохранить</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="ov">
+        <div class="modal modal--confirm">
+          <div class="modal-b">
+            <div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></div>
+            <h3 style="font-size:18px">Удалить событие?</h3>
+            <p>«Саграда Фамилия» будет удалена из поездки. Это действие нельзя отменить.</p>
+          </div>
+          <div class="modal-f" style="justify-content:center"><button class="btn btn--ghost">Отмена</button><button class="btn btn--danger-solid">Удалить</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 09 CHAT + AI BLOCK -->
+<section>
+  <div class="sec-head"><span class="n">C3</span><h2>Чат и AI</h2><div class="desc">Плавающий чат-док с панелью сообщений и AI-блок распознавания брони (idle / загрузка / готово).</div></div>
+  <div class="grid-2">
+    <div class="chatstage">
+      <div class="chatpanel">
+        <div class="chat-h"><span class="avatar">АК</span><div style="flex:1"><b>Чат поездки</b><div class="st">● 3 онлайн</div></div></div>
+        <div class="chat-msgs">
+          <div class="msg them">Привет! Когда вылетаем? ✈️</div>
+          <div class="msg me">12-го утром, рейс в 09:40</div>
+          <div class="msg them">Отель уже забронили?</div>
+          <div class="msg ai"><b style="color:var(--ai-ink)">ИИ:</b> Hotel Arts, заезд 12 июня, 2 ночи.</div>
+        </div>
+        <div class="chat-in"><input placeholder="Сообщение…"><button class="send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button></div>
+      </div>
+      <div class="dock" style="opacity:.0; pointer-events:none"></div>
+    </div>
+    <div class="stack">
+      <div class="aiblock">
+        <div class="ah"><div class="ai-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><b>Распознать бронь</b></div>
+        <div class="field--ai field" style="gap:5px"><textarea class="textarea" style="min-height:60px">Вставьте письмо с подтверждением брони…</textarea></div>
+        <div style="margin-top:12px"><button class="btn btn--ai btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>Распознать</button></div>
+      </div>
+      <div class="aiblock" style="display:flex; align-items:center; gap:10px"><div class="ai-ic" style="width:30px; height:30px; border-radius:10px; background:var(--ai-gradient); display:grid; place-items:center"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><b style="color:var(--ai-ink); font-size:14px; flex:1">ИИ читает бронь</b><span class="ai-dots"><i></i><i></i><i></i></span></div>
+      <div class="sev sev--success" style="background:var(--ai-soft)"><div class="ic" style="background:color-mix(in srgb,var(--ai) 22%,transparent); color:var(--ai-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></div><div><b>Бронь распознана</b><span>Отель · Hotel Arts · 12–14 июня</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 EVENTS + REAL UI -->
+<section>
+  <div class="sec-head"><span class="n">C4</span><h2>Типы событий и реальный интерфейс</h2><div class="desc">Таймлайн (переезд — тоже карточка, время справа) и редактор со всеми состояниями плашек, городов и видов транспорта.</div></div>
+  <div class="panel">
+    <div class="swatch-grid" id="eventGrid" style="margin-bottom:22px"></div>
+    <div class="subtitle">Таймлайн поездки <span class="muted" style="font-weight:600;font-size:12px">· хронология по дням, единый стиль плашек</span></div>
+    <div class="tl3">
+      <div class="tl3-day"><div class="tl3-dh"><div class="datechip"><span class="d">12</span><span class="m">июн</span></div><span class="wd">пятница</span><span class="daycity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.7-7-11a7 7 0 0114 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Барселона</span></div><div class="tl3-ev"><div class="time">14:00</div><div class="tl3-card" style="--evs:var(--ev-hotel-soft);--evi:var(--ev-hotel-ink)"><div class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></div><div class="body"><b>Заезд — Hotel Arts</b><div class="sb">Барселона · 2 ночи</div></div><span class="meta">★★★★★</span></div></div><div class="tl3-ev"><div class="time">17:00</div><div class="tl3-card" style="--evs:var(--ev-activity-soft);--evi:var(--ev-activity-ink)"><div class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/></svg></div><div class="body"><b>Саграда Фамилия</b><div class="sb">Экскурсия · 2 ч</div></div><span class="meta">€ 26</span></div></div></div>
+      <div class="tl3-day"><div class="tl3-dh"><div class="datechip"><span class="d">13</span><span class="m">июн</span></div><span class="wd">суббота</span><span class="daycity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.7-7-11a7 7 0 0114 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Барселона</span></div><div class="tl3-ev"><div class="time">11:00</div><div class="tl3-card" style="--evs:var(--ev-activity-soft);--evi:var(--ev-activity-ink)"><div class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/></svg></div><div class="body"><b>Парк Гуэль</b><div class="sb">Прогулка · 1,5 ч</div></div></div></div><div class="tl3-ev"><div class="time">23:59</div><div class="tl3-card" style="--evs:var(--ev-deadline-soft);--evi:var(--ev-deadline-ink)"><div class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4M9.5 13.5l5 5M14.5 13.5l-5 5"/></svg></div><div class="body"><b>Бесплатная отмена — Hotel Arts</b><div class="sb">последний день без штрафа</div></div></div></div></div>
+      <div class="tl3-day"><div class="tl3-dh"><div class="datechip"><span class="d">15</span><span class="m">июн</span></div><span class="wd">понедельник</span><span class="daycity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.7-7-11a7 7 0 0114 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Барселона <span class="arr">→</span> Рим</span></div><div class="tl3-ev"><div class="time">08:00</div><div class="tl3-card" style="--evs:var(--ev-hotel-soft);--evi:var(--ev-hotel-ink)"><div class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></div><div class="body"><b>Выезд — Hotel Arts</b><div class="sb">Барселона</div></div></div></div><div class="tl3-ev tl3-ev--tr"><div class="time time--tr"><span>09:40</span><span>11:50</span></div><div class="tl3-card tl3-card--tr"><div class="rv-end"><b>Барселона</b><span>Аэропорт BCN · T1</span></div><div class="rv-conn"><span class="dline"></span><span class="rv-mode"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg></span>Самолёт<small> · Vueling · 2ч 10м</small></span><span class="dline"></span></div><div class="rv-end"><span>Аэропорт FCO</span><b>Рим</b></div></div></div><div class="tl3-ev"><div class="time">13:00</div><div class="tl3-card" style="--evs:var(--ev-car-soft);--evi:var(--ev-car-ink)"><div class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></svg></div><div class="body"><b>Аренда авто</b><div class="sb">Эконом · 3 дня</div></div><span class="meta">€ 120</span></div></div><div class="tl3-warn"><div class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg></div><div class="body"><b>Нет переезда</b><span>Между Римом и Флоренцией</span></div><button>Добавить</button></div></div>
+    </div>
+
+    <div style="height:1px; background:var(--line); margin:24px 0"></div>
+    <div class="subtitle">Редактор маршрута <span class="muted" style="font-weight:600;font-size:12px">· трансфер — плашкой над стыком; даты под городом; плашки добавления — на наведении</span></div>
+    <div class="edl2">
+      <div class="edl2-row"><div class="node">1</div><div class="edl2-cty"><b>Барселона</b><div class="dts">12–14 июн · 2 ночи</div></div><div class="edl2-sp"></div><div class="edl-step"><button>−</button><span class="n">2 ноч.</span><button>+</button></div><div class="edl-hotel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div class="edl-act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 7l2 13h14l2-13M9 7V5a3 3 0 016 0v2"/></svg>3</div></div>
+      <div class="edl2-seam"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg>Перелёт<span class="dur">· 2ч 10м</span><span class="sd">15 июн</span></span></div>
+      <div class="edl2-row"><div class="node">2</div><div class="edl2-cty"><b>Рим</b><div class="dts">15–18 июн · 3 ночи</div></div><div class="edl2-sp"></div><div class="edl-step"><button>−</button><span class="n">3 ноч.</span><button>+</button></div><div class="edl-hotel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div class="ph-act reveal" title="Добавить активность"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div></div>
+      <div class="edl2-seam"><span class="pill is-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>Нет переезда · Добавить</span></div>
+      <div class="edl2-row"><div class="node wp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10l-4 4 4 4M3 14h13M17 4l4 4-4 4M21 8H8"/></svg></div><div class="edl2-cty"><b>Пиза</b><div class="dts"><span class="wptag">Пересадка</span>18 июн</div></div><div class="edl2-sp"></div><div class="edl-step"><button>−</button><span class="n">0 ноч.</span><button>+</button></div><div class="ph-act reveal" title="Добавить активность"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div></div>
+      <div class="edl2-seam"><span class="pill pill--add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Переезд<span class="sd">18 июн</span></span></div>
+      <div class="edl2-row"><div class="node warn">3</div><div class="edl2-cty"><b>Флоренция</b><div class="dts">18–19 июн · 1 ночь</div></div><div class="edl2-sp"></div><div class="edl-step"><button>−</button><span class="n">1 ноч.</span><button>+</button></div><div class="edl-hotel is-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div class="ph-act reveal" title="Добавить активность"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div></div>
+    </div>
+
+
+    <!-- CITY PLATES -->
+    <div class="subtitle">Плашки городов</div>
+    <div class="cluster" style="gap:14px; margin-bottom:22px">
+      <div class="edl-row" style="flex:0 0 auto"><div class="edl-node edl-node--start"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></div><div><div class="edl-lbl" style="color:var(--primary)">Начало</div><div class="edl-city" style="font-size:15px">Барселона</div></div></div>
+      <div class="edl-row" style="flex:0 0 auto"><div class="edl-node">2</div><div class="edl-city">Рим</div></div>
+      <div class="edl-row" style="flex:0 0 auto"><div class="edl-node edl-node--wp"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10l-4 4 4 4M3 14h13M17 4l4 4-4 4M21 8H8"/></svg></div><div class="edl-city">Пиза</div><span class="wptag">Пересадка</span></div>
+      <div class="edl-row" style="flex:0 0 auto"><div class="edl-node edl-node--end"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div><div><div class="edl-lbl" style="color:var(--ink-2)">Конец</div><div class="edl-city" style="font-size:15px">Флоренция</div></div></div>
+    </div>
+
+    <!-- PLATE STATES MATRIX -->
+    <div class="subtitle">Состояния плашек</div>
+    <div class="pmatrix">
+      <div class="prow"><div class="pl">Отель<small>hotel</small></div><div class="pstates">
+        <div class="pstate"><span class="cap">Добавить</span><div class="ph-hotel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div></div>
+        <div class="pstate"><span class="cap">Есть</span><div class="edl-hotel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div></div>
+        <div class="pstate"><span class="cap">Варнинг</span><div class="edl-hotel is-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div></div>
+      </div></div>
+      <div class="prow"><div class="pl">Активность<small>activity</small></div><div class="pstates">
+        <div class="pstate"><span class="cap">Добавить</span><div class="ph-act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div></div>
+        <div class="pstate"><span class="cap">Есть</span><div class="edl-act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 7l2 13h14l2-13"/></svg>3</div></div>
+        <div class="pstate"><span class="cap">Варнинг</span><div class="edl-act" style="background:var(--warning-soft); color:var(--warning-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>!</div></div>
+      </div></div>
+      <div class="prow"><div class="pl">Переезд<small>transfer</small></div><div class="pstates">
+        <div class="pstate"><span class="cap">Добавить</span><div class="edl-seam" style="margin:0"><span class="pill pill--add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Переезд</span></div></div>
+        <div class="pstate"><span class="cap">Есть · иконка + длительность</span><div class="edl-seam" style="margin:0"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg>Перелёт<span class="dur">· 2ч 10м</span></span></div></div>
+        <div class="pstate"><span class="cap">Варнинг</span><div class="edl-seam" style="margin:0"><span class="pill is-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>Нет переезда</span></div></div>
+      </div></div>
+      <div class="prow"><div class="pl">Виды транспорта<small>иконки</small></div><div class="txmodes">
+        <div class="txmode" title="Самолёт"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg></div>
+        <div class="txmode" title="Поезд"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="13" rx="3"/><path d="M5 11h14M8 16l-2 5M16 16l2 5"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/></svg></div>
+        <div class="txmode" title="Автобус"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M3 11h18M7 16v3M17 16v3"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></svg></div>
+        <div class="txmode" title="Авто"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></svg></div>
+        <div class="txmode" title="Паром"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14l1.5-5h13L20 14M3 18c1.5 0 1.5 1 3 1s1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1M12 4v5"/></svg></div>
+        <div class="txmode" title="Пешком"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13" cy="4" r="2"/><path d="M13 8l-2 5 3 2 1 6M11 13l-3 2-2 4"/></svg></div>
+        <div class="txmode" title="Своё авто"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-8-8 19-2-9-9-2z"/></svg></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10P EDITOR LEFT PANELS -->
+<section>
+  <div class="sec-head"><span class="n">C5</span><h2>Редактор · левые панели</h2><div class="desc">In-place панели city/event (view · edit · fork) со ВСЕМИ полями: даты, оплата, контакты, документы, пересадки, заметки. ≈50% экрана.</div></div>
+<div class="panel"><div class="subtitle">Город · широкая · просмотр</div><div class="lpanel lpanel--wide"><div class="lp-hero" style="height:122px"><div class="hg"></div><div class="ov"></div><div class="ht"><b>Барселона</b><span>12–15 июня · 3 ночи · Испания</span></div></div><div class="lp-b"><div class="lp-stepper"><span class="muted" style="font-size:13px;font-weight:700">Ночей в городе</span><div class="stepper"><button>−</button><span class="n">3</span><button>+</button></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-transfer-ink)">Переезды</span></div><div style="display:flex;flex-direction:column;gap:8px"><div class="bookrow"><div class="bi" style="background:var(--ev-transfer-soft);color:var(--ev-transfer-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg></div><div class="bt"><b>Прибытие · MAD → BCN</b><span>11 июня · 18:20 · Iberia</span></div><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div><div class="gadd" style="--a:var(--ev-transfer)"><div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg></div><div class="gt"><b>Добавить отъезд</b><span>Барселона → Рим</span></div></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-hotel-ink)">Проживание · 2</span><button class="addmini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button></div><div style="display:flex;flex-direction:column;gap:8px"><div class="bookrow"><div class="bi" style="background:var(--ev-hotel-soft);color:var(--ev-hotel-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div class="bt"><b>Hotel Arts</b><span>12–14 июня · €420</span></div><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div><div class="bookrow"><div class="bi" style="background:var(--ev-hotel-soft);color:var(--ev-hotel-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div class="bt"><b>Generator Hostel</b><span>14–15 июня · €60</span></div><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-activity-ink)">Активности · 2</span><button class="addmini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button></div><div style="display:flex;flex-direction:column;gap:8px"><div class="bookrow"><div class="bi" style="background:var(--ev-activity-soft);color:var(--ev-activity-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 7l2 13h14l2-13M9 7V5a3 3 0 016 0v2"/></svg></div><div class="bt"><b>Саграда Фамилия</b><span>13 июня · 10:30</span></div><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div><div class="bookrow"><div class="bi" style="background:var(--ev-activity-soft);color:var(--ev-activity-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 7l2 13h14l2-13M9 7V5a3 3 0 016 0v2"/></svg></div><div class="bt"><b>Парк Гуэль</b><span>14 июня · 16:00</span></div><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div><div class="gadd" style="--a:var(--ev-activity)"><div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 7l2 13h14l2-13M9 7V5a3 3 0 016 0v2"/></svg></div><div class="gt"><b>Добавить активность</b><span>или предложит ИИ</span></div></div></div></div></div><div class="lp-f"><button class="btn btn--primary btn--sm btn--block">Готово</button></div></div></div>
+<div class="panel"><div class="subtitle">Отель · широкая · <span class="tok">--ev-hotel</span> · просмотр / редактирование (все поля + документы)</div><div class="pwide"><div><div class="lstat">Есть · просмотр</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--ev-hotel-soft);color:var(--ev-hotel-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div class="ti"><b>Hotel Arts</b><span>★★★★★ · Барселона</span></div></div><div class="lp-b"><div class="metastrip"><span class="ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>12–15 июня</span><span class="ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h15a2 2 0 012 2v8a2 2 0 01-2 2H3zM3 7V5a2 2 0 012-2h11M17 13h.01"/></svg>€ 420</span><span class="ch ch--p"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H9M17 7v8"/></svg>Booking.com</span></div><div class="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.7-7-11a7 7 0 0114 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Carrer de la Marina 19–21, 08005 Barcelona</span></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-hotel-ink)">Заезд и выезд</span></div><div class="kvgrid"><div class="kv"><span class="k">Заезд</span><span class="v mono">12 июня · 14:00</span></div><div class="kv"><span class="k">Выезд</span><span class="v mono">15 июня · 12:00</span></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-hotel-ink)">Оплата и отмена</span></div><div class="kvgrid"><div class="kv"><span class="k">Сумма</span><span class="v mono">€ 420,00</span></div><div class="kv"><span class="k">Статус оплаты</span><span class="v">Оплачено</span></div><div class="kv"><span class="k">Бесплатная отмена до</span><span class="v mono">10 июня · 23:59</span></div><div class="kv"><span class="k">Номер брони</span><span class="v mono">ABX-12345</span></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-hotel-ink)">Контакты</span></div><div class="kvgrid"><div class="kv"><span class="k">Телефон</span><span class="v mono">+34 932 21 10 00</span></div><div class="kv"><span class="k">E-mail</span><span class="v">info@hotelarts.com</span></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-hotel-ink)">Документы · 2</span></div><div style="display:flex;flex-direction:column;gap:8px"><div class="docrow"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"/></svg></div><b>Ваучер.pdf</b><span>240 КБ</span></div><div class="docrow"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"/></svg></div><b>Чек.pdf</b><span>88 КБ</span></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-hotel-ink)">Заметки</span></div><div class="notes">Просили номер на высоком этаже с видом на море.</div></div></div><div class="lp-f"><button class="btn btn--danger btn--sm">Удалить</button><button class="btn btn--primary btn--sm">Изменить</button></div></div></div><div><div class="lstat">Редактирование · AI + документы</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--ev-hotel-soft);color:var(--ev-hotel-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div class="ti"><b>Изменить отель</b><span>Барселона</span></div></div><div class="lp-b"><div class="aiblk"><div class="ah"><div class="ai-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div class="at"><b>Распознать бронь с ИИ</b><span>письмо или PDF</span></div></div><div class="ab"><textarea class="textarea" style="min-height:44px">Вставьте подтверждение брони…</textarea></div><div class="ab"><button class="btn btn--ai btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>Распознать</button><button class="btn btn--ghost btn--sm">Файл</button></div></div><div class="field"><label>Название</label><input class="input" value="Hotel Arts Barcelona"></div><div class="field"><label>Адрес</label><input class="input" value="Carrer de la Marina 19–21"></div><div style="display:flex;gap:10px"><div class="field" style="flex:1"><label>Заезд</label><input class="input" value="12 июня 14:00"></div><div class="field" style="flex:1"><label>Выезд</label><input class="input" value="15 июня 12:00"></div></div><div style="display:flex;gap:10px"><div class="field" style="flex:1"><label>Сумма</label><input class="input" value="420"></div><div class="field" style="flex:1"><label>Валюта</label><select class="select"><option>EUR</option><option>USD</option></select></div></div><div class="field"><label>Статус оплаты</label><select class="select"><option>Оплачено</option><option>Ожидает</option><option>При заселении</option></select></div><div style="display:flex;align-items:center;gap:12px"><label class="switch"><input type="checkbox" checked><span class="track"></span><span class="knob"></span></label><span style="font-size:13.5px;font-weight:700;color:var(--ink-2)">Бесплатная отмена</span></div><div class="field"><label>Бесплатная отмена до</label><input class="input" value="10 июня 23:59"></div><div class="field"><label>Номер брони</label><input class="input" value="ABX-12345"></div><div class="field"><label>Заметки</label><input class="input" value="Высокий этаж, вид на море."></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-hotel-ink)">Документы</span></div><div class="upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg><b>Перетащите файлы</b><span>или нажмите · PDF, JPG</span></div></div></div><div class="lp-f"><button class="btn btn--ghost btn--sm">Отмена</button><button class="btn btn--primary btn--sm">Сохранить</button></div></div></div></div><div class="pwide" style="margin-top:18px"><div><div class="lstat">Отсутствует · развилка</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--ev-hotel-soft);color:var(--ev-hotel-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div class="ti"><b>Отель</b><span>Барселона · не добавлен</span></div></div><div class="lp-b"><div class="aiblk"><div class="ah"><div class="ai-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div class="at"><b>Распознать бронь с ИИ</b><span>письмо или PDF</span></div></div><div class="ab"><textarea class="textarea" style="min-height:44px">Вставьте подтверждение брони…</textarea></div><div class="ab"><button class="btn btn--ai btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>Распознать</button><button class="btn btn--ghost btn--sm">Файл</button></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-hotel-ink)">Подобрать у партнёра</span></div><div style="display:flex;flex-direction:column;gap:8px"><div class="lpartner"><span class="pl" style="background:#003580">B</span><b>Booking.com</b><svg class="ch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H9M17 7v8"/></svg></div><div class="lpartner"><span class="pl" style="background:#5C2D91">A</span><b>Agoda</b><svg class="ch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H9M17 7v8"/></svg></div></div></div><div class="gadd" style="--a:var(--ev-hotel)"><div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div><div class="gt"><b>Добавить вручную</b><span>заполнить детали брони</span></div></div></div></div></div><div><div class="lstat">Warning</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--warning-soft);color:var(--warning-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div class="ti"><b>Hotel Arts</b><span>Проверьте даты</span></div></div><div class="lp-b"><div class="lp-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg><div><b>Выезд раньше заезда</b><span>Дата выезда — 11 июня, заезд — 12 июня.</span></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-hotel-ink)">Заезд и выезд</span></div><div class="kvgrid"><div class="kv"><span class="k">Заезд</span><span class="v mono">12 июня · 14:00</span></div><div class="kv"><span class="k">Выезд</span><span class="v mono">11 июня · 12:00</span></div></div></div></div><div class="lp-f"><button class="btn btn--primary btn--sm btn--block">Исправить даты</button></div></div></div></div></div>
+<div class="panel"><div class="subtitle">Переезд · широкая · <span class="tok">--ev-transfer</span> · все поля + пересадки + документы</div><div class="pwide"><div><div class="lstat">Есть · просмотр</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--ev-transfer-soft);color:var(--ev-transfer-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg></div><div class="ti"><b>Перелёт</b><span>Vueling · BCN → FCO</span></div></div><div class="lp-b"><div class="route"><div><div class="rd">15 июня</div><div class="rt">09:40</div><div class="rc">Барселона</div><div class="ra">Аэропорт BCN · T1</div></div><div class="rmid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg><div class="dur">2ч 10м</div></div><div class="end"><div class="rd">15 июня</div><div class="rt">11:50</div><div class="rc">Рим</div><div class="ra">Аэропорт FCO</div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-transfer-ink)">Перевозчик и бронь</span></div><div class="kvgrid"><div class="kv"><span class="k">Перевозчик</span><span class="v">Vueling</span></div><div class="kv"><span class="k">Номер рейса</span><span class="v mono">VY 6312</span></div><div class="kv"><span class="k">Вылет</span><span class="v mono">15 июня · 09:40</span></div><div class="kv"><span class="k">Сумма</span><span class="v mono">€ 120,00</span></div><div class="kv full"><span class="k">Номер брони</span><span class="v mono">XR8-90Q</span></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-transfer-ink)">Пересадки · 2 сегмента</span></div><div class="segs"><div class="seg"><span class="sn">1</span><b>BCN → MUC</b><span>09:40 → 11:30</span></div><div class="seg"><span class="sn">2</span><b>MUC → FCO</b><span>12:40 → 14:05</span></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-transfer-ink)">Документы · 1</span></div><div class="docrow"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"/></svg></div><b>Посадочный.pdf</b><span>120 КБ</span></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-transfer-ink)">Заметки</span></div><div class="notes">Места 14A, 14B. Ручная кладь.</div></div></div><div class="lp-f"><button class="btn btn--danger btn--sm">Удалить</button><button class="btn btn--primary btn--sm">Изменить</button></div></div></div><div><div class="lstat">Редактирование · сегменты + AI + документы</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--ev-transfer-soft);color:var(--ev-transfer-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg></div><div class="ti"><b>Изменить переезд</b><span>Барселона → Рим</span></div></div><div class="lp-b"><div class="aiblk"><div class="ah"><div class="ai-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div class="at"><b>Распознать бронь с ИИ</b><span>письмо или PDF</span></div></div><div class="ab"><textarea class="textarea" style="min-height:44px">Вставьте подтверждение брони…</textarea></div><div class="ab"><button class="btn btn--ai btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>Распознать</button><button class="btn btn--ghost btn--sm">Файл</button></div></div><div class="field"><label>Вид транспорта</label><div class="txmodes"><div class="txmode" style="border-color:var(--ev-transfer)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg></div><div class="txmode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="13" rx="3"/><path d="M5 11h14M8 16l-2 5M16 16l2 5"/></svg></div><div class="txmode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M3 11h18M7 16v3M17 16v3"/></svg></div><div class="txmode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></svg></div></div></div><div style="display:flex;gap:10px"><div class="field" style="flex:1"><label>Откуда</label><input class="input" value="Аэропорт BCN"></div><div class="field" style="flex:1"><label>Куда</label><input class="input" value="Аэропорт FCO"></div></div><div style="display:flex;gap:10px"><div class="field" style="flex:1"><label>Отправление</label><input class="input" value="15 июня 09:40"></div><div class="field" style="flex:1"><label>Прибытие</label><input class="input" value="15 июня 11:50"></div></div><div style="display:flex;gap:10px"><div class="field" style="flex:1"><label>Перевозчик</label><input class="input" value="Vueling"></div><div class="field" style="flex:1"><label>Номер рейса</label><input class="input" value="VY 6312"></div></div><div style="display:flex;gap:10px"><div class="field" style="flex:1"><label>Сумма</label><input class="input" value="120"></div><div class="field" style="flex:1"><label>Валюта</label><select class="select"><option>EUR</option></select></div></div><div class="field"><label>Номер брони</label><input class="input" value="XR8-90Q"></div><div style="display:flex;align-items:center;gap:12px"><label class="switch"><input type="checkbox"><span class="track"></span><span class="knob"></span></label><span style="font-size:13.5px;font-weight:700;color:var(--ink-2)">Ночной переезд (+1 день)</span></div><div style="display:flex;align-items:center;gap:12px"><label class="switch"><input type="checkbox" checked><span class="track"></span><span class="knob"></span></label><span style="font-size:13.5px;font-weight:700;color:var(--ink-2)">С пересадками</span></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-transfer-ink)">Сегменты · 2</span><button class="addmini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button></div><div class="segs"><div class="seg"><span class="sn">1</span><b>BCN → MUC</b><span>09:40 → 11:30</span></div><div class="seg"><span class="sn">2</span><b>MUC → FCO</b><span>12:40 → 14:05</span></div></div></div><div class="field"><label>Заметки</label><input class="input" value="Места 14A, 14B."></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-transfer-ink)">Документы</span></div><div class="upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg><b>Перетащите файлы</b><span>или нажмите · PDF, JPG</span></div></div></div><div class="lp-f"><button class="btn btn--ghost btn--sm">Отмена</button><button class="btn btn--primary btn--sm">Сохранить</button></div></div></div></div><div class="pwide" style="margin-top:18px"><div><div class="lstat">Отсутствует · развилка</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--ev-transfer-soft);color:var(--ev-transfer-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg></div><div class="ti"><b>Переезд</b><span>Барселона → Рим · не добавлен</span></div></div><div class="lp-b"><div class="aiblk"><div class="ah"><div class="ai-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div class="at"><b>Распознать бронь с ИИ</b><span>письмо или PDF</span></div></div><div class="ab"><textarea class="textarea" style="min-height:44px">Вставьте подтверждение брони…</textarea></div><div class="ab"><button class="btn btn--ai btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>Распознать</button><button class="btn btn--ghost btn--sm">Файл</button></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-transfer-ink)">Найти билеты</span></div><div style="display:flex;flex-direction:column;gap:8px"><div class="lpartner"><span class="pl" style="background:#0770E3">S</span><b>Skyscanner</b><svg class="ch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H9M17 7v8"/></svg></div><div class="lpartner"><span class="pl" style="background:#FB5B5B">O</span><b>Omio</b><svg class="ch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H9M17 7v8"/></svg></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-transfer-ink)">Или добавить вручную</span></div><div class="txmodes"><div class="txmode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg></div><div class="txmode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="13" rx="3"/><path d="M5 11h14M8 16l-2 5M16 16l2 5"/></svg></div><div class="txmode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M3 11h18M7 16v3M17 16v3"/></svg></div><div class="txmode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></svg></div></div></div></div></div></div><div><div class="lstat">Warning</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--warning-soft);color:var(--warning-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg></div><div class="ti"><b>Переезд</b><span>Рим → Флоренция</span></div></div><div class="lp-b"><div class="lp-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg><div><b>Время не совпадает с городом</b><span>Вылет 14:00 раньше выезда из Рима (18:00).</span></div></div><div class="route"><div><div class="rd">15 июня</div><div class="rt">09:40</div><div class="rc">Барселона</div><div class="ra">Аэропорт BCN · T1</div></div><div class="rmid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5a2 2 0 10-2.8-2.8L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.6-2.3 2.3-2.6-.4a.7.7 0 00-.6 1.2l2.4 1.9 1.9 2.4a.7.7 0 001.2-.6l-.4-2.6 2.3-2.3 3.6 5.6a1 1 0 001.7-.9z"/></svg><div class="dur">2ч 10м</div></div><div class="end"><div class="rd">15 июня</div><div class="rt">11:50</div><div class="rc">Рим</div><div class="ra">Аэропорт FCO</div></div></div></div><div class="lp-f"><button class="btn btn--ghost btn--sm">Удалить</button><button class="btn btn--primary btn--sm">Поправить</button></div></div></div></div></div>
+<div class="panel"><div class="subtitle">Активность · широкая · <span class="tok">--ev-activity</span> · и Аренда авто <span class="tok">--ev-car</span></div><div class="pwide"><div><div class="lstat">Активность · просмотр (+ документы)</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--ev-activity-soft);color:var(--ev-activity-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 7l2 13h14l2-13M9 7V5a3 3 0 016 0v2"/></svg></div><div class="ti"><b>Саграда Фамилия</b><span>Экскурсия · Барселона</span></div></div><div class="lp-b"><div class="metastrip"><span class="ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>13 июня · 10:30</span><span class="ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h15a2 2 0 012 2v8a2 2 0 01-2 2H3zM3 7V5a2 2 0 012-2h11M17 13h.01"/></svg>€ 26</span></div><div class="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.7-7-11a7 7 0 0114 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Carrer de Mallorca 401, Barcelona</span></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-activity-ink)">Когда</span></div><div class="kvgrid"><div class="kv"><span class="k">Начало</span><span class="v mono">13 июня · 10:30</span></div><div class="kv"><span class="k">Окончание</span><span class="v mono">13 июня · 12:30</span></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-activity-ink)">Стоимость</span></div><div class="kvgrid"><div class="kv"><span class="k">Билет</span><span class="v mono">€ 26,00</span></div><div class="kv"><span class="k">Номер брони</span><span class="v mono">SF-77120</span></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-activity-ink)">Документы · 1</span></div><div class="docrow"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"/></svg></div><b>Билет.pdf</b><span>64 КБ</span></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-activity-ink)">Заметки</span></div><div class="notes">Вход с восточного фасада. Аудиогид включён.</div></div></div><div class="lp-f"><button class="btn btn--danger btn--sm">Удалить</button><button class="btn btn--primary btn--sm">Изменить</button></div></div></div><div><div class="lstat">Активность · редактирование</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--ev-activity-soft);color:var(--ev-activity-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 7l2 13h14l2-13M9 7V5a3 3 0 016 0v2"/></svg></div><div class="ti"><b>Изменить активность</b><span>Барселона</span></div></div><div class="lp-b"><div class="aiblk"><div class="ah"><div class="ai-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div class="at"><b>Распознать бронь с ИИ</b><span>письмо или PDF</span></div></div><div class="ab"><textarea class="textarea" style="min-height:44px">Вставьте подтверждение брони…</textarea></div><div class="ab"><button class="btn btn--ai btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>Распознать</button><button class="btn btn--ghost btn--sm">Файл</button></div></div><div class="field"><label>Название</label><input class="input" value="Саграда Фамилия"></div><div style="display:flex;gap:10px"><div class="field" style="flex:1"><label>Начало</label><input class="input" value="13 июня 10:30"></div><div class="field" style="flex:1"><label>Окончание</label><input class="input" value="13 июня 12:30"></div></div><div class="field"><label>Адрес</label><input class="input" value="Carrer de Mallorca 401"></div><div style="display:flex;gap:10px"><div class="field" style="flex:1"><label>Сумма</label><input class="input" value="26"></div><div class="field" style="flex:1"><label>Валюта</label><select class="select"><option>EUR</option></select></div></div><div class="field"><label>Номер брони</label><input class="input" value="SF-77120"></div><div class="field"><label>Заметки</label><input class="input" value="Аудиогид включён."></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-activity-ink)">Документы</span></div><div class="upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg><b>Перетащите файлы</b><span>или нажмите · PDF, JPG</span></div></div></div><div class="lp-f"><button class="btn btn--ghost btn--sm">Отмена</button><button class="btn btn--primary btn--sm">Сохранить</button></div></div></div></div><div class="pwide" style="margin-top:18px"><div><div class="lstat">Активность · отсутствует</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--ev-activity-soft);color:var(--ev-activity-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 7l2 13h14l2-13M9 7V5a3 3 0 016 0v2"/></svg></div><div class="ti"><b>Активности</b><span>Барселона · пусто</span></div></div><div class="lp-b"><div class="gadd" style="--a:var(--ev-activity)"><div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div><div class="gt"><b>Добавить активность</b><span>музей, тур, ресторан…</span></div></div><div class="gadd" style="--a:var(--ai)"><div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div class="gt"><b>Предложить с ИИ</b><span>7 идей под ваш маршрут</span></div></div><div class="aiblk"><div class="ah"><div class="ai-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div class="at"><b>Распознать бронь с ИИ</b><span>письмо или PDF</span></div></div><div class="ab"><textarea class="textarea" style="min-height:44px">Вставьте подтверждение брони…</textarea></div><div class="ab"><button class="btn btn--ai btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>Распознать</button><button class="btn btn--ghost btn--sm">Файл</button></div></div></div></div></div><div><div class="lstat">Аренда авто · просмотр</div><div class="lpanel lpanel--wide"><div class="lp-h"><button class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button><div class="ic" style="background:var(--ev-car-soft);color:var(--ev-car-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></svg></div><div class="ti"><b>Аренда авто</b><span>Рим · эконом</span></div></div><div class="lp-b"><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-car-ink)">Получение и возврат</span></div><div class="kvgrid"><div class="kv"><span class="k">Получение</span><span class="v mono">15 июня · 11:00</span></div><div class="kv"><span class="k">Возврат</span><span class="v mono">18 июня · 10:00</span></div><div class="kv"><span class="k">Где</span><span class="v">Аэропорт FCO</span></div><div class="kv"><span class="k">Срок</span><span class="v">3 дня</span></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-car-ink)">Стоимость и бронь</span></div><div class="kvgrid"><div class="kv"><span class="k">Итого</span><span class="v mono">€ 120,00</span></div><div class="kv"><span class="k">Номер брони</span><span class="v mono">CR-5521</span></div></div></div><div class="lp-sec"><div class="seclabel"><span class="sl2" style="color:var(--ev-car-ink)">Документы · 1</span></div><div class="docrow"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"/></svg></div><b>Договор.pdf</b><span>210 КБ</span></div></div></div><div class="lp-f"><button class="btn btn--danger btn--sm">Удалить</button><button class="btn btn--primary btn--sm">Изменить</button></div></div></div></div></div>
+</section>
+
+<!-- 11 STATES: empty / loading / tabs / tooltip -->
+<section>
+  <div class="sec-head"><span class="n">C6</span><h2>Состояния экранов</h2><div class="desc">Пустое состояние, загрузка (скелетоны), вкладки, тултип.</div></div>
+  <div class="grid-3">
+    <div class="panel"><div class="empty"><div class="ei"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7"/></svg></div><b>Пока нет поездок</b><span>Создайте первую — это займёт минуту.</span><div style="margin-top:14px"><button class="btn btn--primary btn--sm">Создать поездку</button></div></div></div>
+    <div class="panel"><div class="statelabel">Загрузка (skeleton)</div><div class="stack"><div class="sk" style="height:54px"></div><div class="sk" style="height:54px"></div><div class="sk" style="height:54px; width:70%"></div></div></div>
+    <div class="panel">
+      <div class="tabs"><button class="on">Обзор</button><button>Бюджет</button><button>Чат</button></div>
+      <div style="padding:16px 2px 2px"><div class="cluster"><span class="tip"><button class="btn btn--secondary btn--icon" aria-label="Инфо"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></button><span class="bub">Это тултип</span></span><span class="muted" style="font-size:13px; font-weight:600">Наведение → тултип слева</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 PRO -->
+<section>
+  <div class="sec-head"><span class="n">C7</span><h2>Pro · элементы и состояния</h2><div class="desc">Плашка апгрейда в меню трипа (2 состояния), модалка Pro-функции, экраны оплаты и статусы подписки в аккаунте. Hover везде.</div></div>
+
+  <div class="panel">
+    <div class="subtitle">Плашка апгрейда в сайдбаре трипа</div>
+    <div class="grid-2">
+      <div>
+        <div class="statelabel">Владелец — можно улучшить</div>
+        <div class="pro-up">
+          <div class="ph"><div class="pi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div class="pt">Улучшить поездку</div></div>
+          <p>Бюджет по категориям, чат и Telegram-уведомления — в Pro.</p>
+          <button class="btn btn--pro btn--sm btn--block"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8z"/></svg>Перейти на Pro</button>
+        </div>
+      </div>
+      <div>
+        <div class="statelabel">Участник — улучшает только владелец</div>
+        <div class="pro-up">
+          <div class="ph"><div class="pi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div class="pt">Pro-функции</div></div>
+          <p>Бюджет, чат и Telegram доступны в Pro этой поездки.</p>
+          <div class="lockmsg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Улучшить может только владелец поездки</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="subtitle">Модалки: Pro-функция · успех оплаты · ошибка оплаты</div>
+    <div class="grid-3">
+      <div class="stage" style="min-height:360px">
+        <div class="ov">
+          <div class="modal">
+            <div class="modal-h"><div class="mi mi--pro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8z"/></svg></div><h3>Функция Pro</h3><button class="close">✕</button></div>
+            <div class="modal-b">
+              <p style="margin:0 0 4px; font-size:13.5px; color:var(--muted); font-weight:600">Бюджет по категориям доступен в Triplanio Pro:</p>
+              <ul class="feat-list">
+                <li><span class="fk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></span>Бюджет и траты по категориям</li>
+                <li><span class="fk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></span>Чат поездки</li>
+                <li><span class="fk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></span>Telegram-уведомления</li>
+              </ul>
+            </div>
+            <div class="modal-f"><button class="btn btn--ghost">Позже</button><button class="btn btn--pro">Перейти на Pro</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="stage" style="min-height:360px">
+        <div class="ov">
+          <div class="modal modal--confirm">
+            <div class="modal-b">
+              <div class="ci ci--ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>
+              <h3 style="font-size:18px">Оплата прошла 🎉</h3>
+              <p>Triplanio Pro активирован. Все функции уже доступны в этой поездке.</p>
+            </div>
+            <div class="modal-f" style="justify-content:center"><button class="btn btn--primary">Отлично</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="stage" style="min-height:360px">
+        <div class="ov">
+          <div class="modal modal--confirm">
+            <div class="modal-b">
+              <div class="ci ci--fail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg></div>
+              <h3 style="font-size:18px">Оплата не прошла</h3>
+              <p>Платёж отклонён. Проверьте карту или попробуйте другой способ.</p>
+            </div>
+            <div class="modal-f" style="justify-content:center"><button class="btn btn--ghost">Закрыть</button><button class="btn btn--primary">Повторить</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="subtitle">Статус подписки в аккаунте · 4 состояния</div>
+    <div class="grid-2">
+      <div class="sub-card sub-card--free">
+        <div class="sh"><div class="sic" style="background:var(--ai-gradient)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div><div class="sname">Бесплатный</div><div class="smeta">Базовые функции планирования</div></div></div>
+        <button class="btn btn--pro btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8z"/></svg>Улучшить до Pro</button>
+      </div>
+      <div class="sub-card">
+        <div class="sh"><div class="sic" style="background:var(--pro-gradient)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8z"/></svg></div><div><div class="sname">Pro Monthly</div><div class="smeta">€ 4,99/мес · след. списание 12 июля</div></div></div>
+        <button class="btn btn--secondary btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Перейти на годовой −33%</button>
+      </div>
+      <div class="sub-card sub-card--ok">
+        <div class="sh"><div class="sic" style="background:var(--pro-gradient)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8z"/></svg></div><div><div class="sname">Pro Yearly <span class="badge badge--success" style="font-size:11px">Активна</span></div><div class="smeta">€ 39,99/год · продлится 12 июня 2027 · ≈ € 3,33/мес</div></div></div>
+        <span class="badge" style="background:var(--pro-soft); color:var(--pro-ink)"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8z"/></svg>Ранний доступ</span>
+      </div>
+      <div class="sub-card sub-card--warn">
+        <div class="sh"><div class="sic" style="background:var(--warning-soft); color:var(--warning-ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div><div class="sname">Pro отменён</div><div class="smeta">Активен до 12 июля, потом — бесплатный план</div></div></div>
+        <button class="btn btn--primary btn--sm">Возобновить подписку</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 15 ASSISTANT + COVERS -->
+<section>
+  <div class="sec-head"><span class="n">C8</span><h2>Ассистент · обложки</h2><div class="desc">Айдентика ИИ-ассистента (бренд→фиолет) и затемнение фото для обложек городов/поездок.</div></div>
+  <div class="grid-2">
+    <div class="panel">
+      <div class="subtitle">Ассистент · <span class="tok">--assistant-grad</span></div>
+      <div class="asst">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div>
+        <div><b>Триплан · ассистент</b><span>Спланирует маршрут и подскажет</span></div>
+      </div>
+      <div class="tokrow"><span class="tok">--assistant-grad</span><span class="tok">--brand-glow</span></div>
+    </div>
+    <div class="panel">
+      <div class="subtitle">Обложка города · overlay</div>
+      <div class="grid-2" style="gap:12px">
+        <div class="cover"><div class="ph"></div><div class="ov"></div><div class="cc"><h4>Барселона</h4><p>12–15 июня · 3 ночи</p></div></div>
+        <div class="cover"><div class="ph"></div><div class="ov soft"></div><div class="cc"><h4>Рим</h4><p>15–18 июня</p></div></div>
+      </div>
+      <div class="tokrow"><span class="tok">--overlay-grad</span><span class="tok">--overlay-grad-soft</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 18 APP SHELL / SIDEBAR -->
+<section>
+  <div class="sec-head"><span class="n">C9</span><h2>Оболочка приложения · сайдбар</h2><div class="desc">Каркас: сайдбар с навигацией и плашкой апгрейда, хедер, lens-вкладки. Токены оболочки — отдельная группа.</div></div>
+  <div class="panel">
+    <div class="shell">
+      <div class="shell-side">
+        <div class="shell-brand"><div class="mk"></div><b>Triplanio</b></div>
+        <div class="snav active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 9v11h14V9"/></svg>Мои поездки</div>
+        <div class="snav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 4-9 4-9-4 9-4zM3 12l9 4 9-4"/></svg>Шаблоны</div>
+        <div class="snav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Поиск</div>
+        <div class="snav-label">Поездка</div>
+        <div class="snav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Маршрут</div>
+        <div class="snav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Бюджет</div>
+        <div class="snav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Чат</div>
+        <div class="shell-up">
+          <div class="pro-up" style="padding:13px">
+            <div class="ph"><div class="pi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></div><div class="pt" style="font-size:14px">Pro</div></div>
+            <p style="margin:0 0 10px; font-size:12px">Бюджет, чат и Telegram</p>
+            <button class="btn btn--pro btn--sm btn--block">Улучшить</button>
+          </div>
+        </div>
+      </div>
+      <div class="shell-main">
+        <div class="shell-head"><span class="st">Лето в Италии</span><span class="badge badge--brand">Pro</span><span class="avatar avatar--sm">ПМ</span></div>
+        <div class="shell-lens"><button class="lenstab on">Маршрут</button><button class="lenstab">Лента</button><button class="lenstab">Карта</button></div>
+        <div class="shell-body">
+          <div class="tl-city"><div class="pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.7-7-11a7 7 0 0114 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div><div class="name">Барселона</div><div class="when">12–15 июня</div></div>
+          <div class="tl-ev ev-hotel"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div><div class="t">Hotel Arts</div><div class="s">Заезд · 2 ночи</div></div><div class="time">14:00</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="tokrow" style="margin-top:14px"><span class="tok">--sidebar-bg</span><span class="tok">--sidebar-ink</span><span class="tok">--sidebar-item</span><span class="tok">--sidebar-active-bg</span><span class="tok">--sidebar-active-ink</span><span class="tok">--sidebar-muted</span><span class="tok">--sidebar-border</span></div>
+  </div>
+</section>
+
+</div>
+
+<footer>Triplanio · Lumo — дружелюбная дизайн-система. Переключайте палитру и тему сверху. Клик по свотчу копирует токен. 2026-06-06</footer>
+<div class="copyhint" id="copyhint">Скопировано</div>
+
+<script>
+const root=document.documentElement;
+const tBtn=document.getElementById('themeBtn'), tLabel=document.getElementById('themeLabel'), tIcon=document.getElementById('themeIcon');
+const sun='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+const moon='<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>';
+function setTheme(t){root.setAttribute('data-theme',t); const d=t==='dark'; tLabel.textContent=d?'Светлая':'Тёмная'; tIcon.innerHTML=d?moon:sun; refresh();}
+tBtn.addEventListener('click',()=>setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'));
+const names={sky:'Sky',pink:'Pink',turquoise:'Turquoise',grape:'Grape'};
+document.getElementById('variantSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return;
+  const v=b.dataset.v; root.setAttribute('data-variant',v);
+  [...document.querySelectorAll('#variantSeg button')].forEach(x=>x.setAttribute('aria-pressed',x===b));
+  document.getElementById('eyebrow').textContent='✦ Lumo · '+names[v]; refresh();});
+const hint=document.getElementById('copyhint'); let hT;
+function copy(t){navigator.clipboard?.writeText(t); hint.textContent=t+' скопировано'; hint.classList.add('show'); clearTimeout(hT); hT=setTimeout(()=>hint.classList.remove('show'),1300);}
+const ICONS={hotel:'<path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/>',transfer:'<path d="M2 12h20M16 6l6 6-6 6"/>',activity:'<path d="M3 7h18M3 7l2 13h14l2-13M9 7V5a3 3 0 016 0v2"/>',car:'<path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/>',deadline:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>'};
+const events=[['Hotel','--ev-hotel','Проживание','hotel'],['Transfer','--ev-transfer','Переезд','transfer'],['Activity','--ev-activity','Активность','activity'],['Car rental','--ev-car','Аренда авто','car'],['Deadline','--ev-deadline','Дедлайн отмены','deadline']];
+document.getElementById('eventGrid').innerHTML=events.map(([n,v,r,ic])=>`<div class="sw" onclick="copy('${v}')"><div class="chip"><div class="tile" style="background:var(${v})"><svg style="color:#fff; width:19px; height:19px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${ICONS[ic]}</svg></div></div><div class="meta"><div class="name">${n}</div><div class="tok">${v}</div><div class="role">${r}</div></div></div>`).join('');
+const cats=[['Категория 1','--cat-1'],['Категория 2','--cat-2'],['Категория 3','--cat-3'],['Категория 4','--cat-4'],['Категория 5','--cat-5'],['Категория 6','--cat-6'],['Категория 7','--cat-7'],['Категория 8','--cat-8']];
+const cg=document.getElementById('catGrid'); if(cg) cg.innerHTML=cats.map(([n,v])=>`<div class="semi" onclick="copy('${v}')"><div class="pv" style="background:var(${v})"></div><div class="mt"><div class="nm">${n}</div><span class="tok">${v}</span></div></div>`).join('');
+function rgbToHex(rgb){const m=rgb.match(/[\d.]+/g); if(!m)return rgb; if(m.length>=4&&parseFloat(m[3])<1)return rgb; return '#'+m.slice(0,3).map(x=>(+x).toString(16).padStart(2,'0')).join('').toUpperCase();}
+function hexOf(v){const p=document.createElement('div'); p.style.color=`var(${v})`; p.style.display='none'; document.body.appendChild(p); const c=rgbToHex(getComputedStyle(p).color); p.remove(); return c;}
+function refresh(){document.querySelectorAll('.hex[data-var]').forEach(el=>el.textContent=hexOf(el.getAttribute('data-var')));
+  ['primary','primary-hover','primary-press'].forEach(k=>{const el=document.getElementById('hx_'+k); if(el)el.textContent=hexOf('--'+k);});}
+refresh();
+</script>
+</body>
+</html>

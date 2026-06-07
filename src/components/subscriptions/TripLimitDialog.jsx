@@ -101,7 +101,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
             background: 'linear-gradient(110deg, var(--brand-ink, #1b3a8f) 0%, var(--brand, #2167e2) 55%, #6aa0ff 120%)', color: 'white' }}>
             <span style={{ display: 'inline-block', fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.04em', background: 'rgba(255,255,255,.18)', padding: '2px 9px', borderRadius: 999, marginBottom: 10 }}>Pro</span>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-3xl)', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 6 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 6 }}>
               {t('sub.limit_hero_title')}
             </div>
             <div style={{ fontSize: 'var(--fs-base)', color: 'rgba(255,255,255,.9)' }}>

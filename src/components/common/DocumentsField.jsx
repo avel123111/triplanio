@@ -95,29 +95,33 @@ export default function DocumentsField({
       )}
 
       {docs.length > 0 && (
-        <ul className="space-y-1.5 mb-2">
+        <div className="flex flex-col gap-1.5 mb-2">
           {docs.map((d, i) => (
-            <li key={`${d.file_url}-${i}`} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/60 min-w-0">
-              <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <a
-                href={d.file_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm text-primary hover:underline flex-1 min-w-0 break-all"
-              >
-                {d.file_name || t('event.file_word')}
-              </a>
+            <div key={`${d.file_url}-${i}`} className="docrow">
+              <span className="di"><Paperclip className="w-4 h-4" /></span>
+              <b style={{ flex: 1, minWidth: 0 }}>
+                <a
+                  href={d.file_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block truncate"
+                  style={{ color: 'inherit', textDecoration: 'none' }}
+                >
+                  {d.file_name || t('event.file_word')}
+                </a>
+              </b>
               <button
                 type="button"
                 onClick={() => removeAt(i)}
-                className="p-1 rounded hover:bg-background shrink-0"
+                className="shrink-0 grid place-items-center"
+                style={{ width: 24, height: 24, borderRadius: 6, color: 'var(--muted)' }}
                 aria-label={t('doc.remove_doc_aria')}
               >
-                <X className="w-4 h-4 text-muted-foreground" />
+                <X className="w-4 h-4" />
               </button>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       {canAddMore && (
@@ -125,7 +129,7 @@ export default function DocumentsField({
           onClick={() => !uploading && inputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-          className="cursor-pointer rounded-lg border-2 border-dashed border-border hover:border-primary/60 p-4 text-center transition"
+          className="upload"
         >
           <input
             ref={inputRef}
@@ -136,23 +140,20 @@ export default function DocumentsField({
             onChange={(e) => uploadFiles(e.target.files)}
           />
           {uploading ? (
-            <div className="flex items-center justify-center gap-2 text-sm text-primary">
-              <Loader2 className="w-4 h-4 animate-spin" />{t('common.loading')}
-            </div>
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--primary)' }} />
+              <b>{t('common.loading')}</b>
+            </>
+          ) : docs.length === 0 ? (
+            <>
+              <Upload className="w-5 h-5" />
+              <b>{t('doc.upload_files', { mb: maxFileSizeMb })}</b>
+            </>
           ) : (
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              {docs.length === 0 ? (
-                <>
-                  <Upload className="w-4 h-4" />
-                  <span>{t('doc.upload_files', { mb: maxFileSizeMb })}</span>
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  <span>{t('doc.add_more_files')}{maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}</span>
-                </>
-              )}
-            </div>
+            <>
+              <Plus className="w-5 h-5" />
+              <b>{t('doc.add_more_files')}{maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}</b>
+            </>
           )}
         </div>
       )}

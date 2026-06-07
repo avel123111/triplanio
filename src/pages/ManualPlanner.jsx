@@ -10,7 +10,7 @@ import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/geo';
 import { Icon } from '../design/icons';
-import { Btn } from '../design/index';
+import { Btn, EmptyState } from '../design/index';
 import HeaderActions from '@/components/HeaderActions';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { getGradientById } from '@/lib/trip-gradients';
@@ -190,7 +190,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
                 display: 'flex', gap: 10, alignItems: 'center',
               }}
             >
-              <span style={{ fontSize: 'var(--fs-xl)', flexShrink: 0 }}>{countryFlag(c.country_code)}</span>
+              <span style={{ fontSize: 'var(--fs-h3)', flexShrink: 0 }}>{countryFlag(c.country_code)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{c.city_name}</div>
                 <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name}</div>
@@ -571,11 +571,13 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
       <CityAnchorRow label={t('ai_plan.start')} city_name={home?.city_name} country={home?.country} kind="home" />
 
       {cities.length === 0 ? (
-        <div style={{ marginTop: 12, padding: 28, border: '1.5px dashed var(--line)', borderRadius: 12, textAlign: 'center', color: 'var(--muted)' }}>
-          <Icon name="pin" size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
-          <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 500, marginBottom: 4 }}>{t('planner.where_to')}</div>
-          <div style={{ fontSize: 'var(--fs-meta)', marginBottom: 14 }}>{t('planner.add_first_city')}</div>
-          <Btn variant="primary" onClick={() => addCity()}>{t('planner.add_city')}</Btn>
+        <div style={{ marginTop: 12 }}>
+          <EmptyState
+            icon="pin"
+            title={t('planner.where_to')}
+            body={t('planner.add_first_city')}
+            action={<Btn variant="primary" icon="plus" onClick={() => addCity()}>{t('planner.add_city')}</Btn>}
+          />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}
@@ -783,8 +785,8 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
               <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.3)" />
             </svg>
           )}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(0,0,0,.35) 100%)' }} />
-          <div style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', fontWeight: 700, fontSize: 'var(--fs-3xl)', letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad-soft)' }} />
+          <div style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
             {displayTitle}
           </div>
         </div>
@@ -1321,7 +1323,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             cities={cities}
             returnCity={effectiveReturn}
             finalPoint={finalPoint}
-            accent={isAi ? '#6a3ee2' : '#2167e2'}
+            accent={isAi ? '#6a3ee2' : '#2167e2'} /* Mapbox paint needs concrete hex (not var) */
             badge={isAi
               ? { label: t('planner.badge_ai'), icon: 'sparkles', color: 'var(--ai)' }
               : { label: t('planner.badge_mine'), icon: 'map', color: 'var(--brand)' }}

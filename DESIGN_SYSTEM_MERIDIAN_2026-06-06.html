@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light" data-variant="cobalt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Triplanio — Meridian · Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&family=Geologica:wght@500;600;700&display=swap&subset=cyrillic,cyrillic-ext,latin" rel="stylesheet" />
+<style>
+/* ============================================================
+   TRIPLANIO · MERIDIAN — отдельная дизайн-система
+   Язык: редакторский / картографический. Острые углы,
+   хайрлайны, табличная типографика, графитул-сетка.
+   Шрифты: Geologica (display) + Commissioner (text), кириллица.
+   ============================================================ */
+
+/* ---------- BASE · LIGHT (variant=Cobalt) ---------- */
+:root{
+  --ink:#15181E; --ink-2:#3B4150; --muted:#6B7280; --muted-2:#9AA1AD;
+  --bg:#F4F5F7; --surface:#FFFFFF; --surface-2:#ECEEF2; --surface-3:#F8F9FB;
+  --line:#E2E4EA; --line-2:#EEF0F4; --line-strong:#D2D6DE;
+  --grid:rgba(21,24,30,.045);
+
+  --primary:#3D6CD0; --primary-hover:#3360BE; --primary-press:#2B53A4; --primary-fg:#fff;
+  --primary-soft:rgba(61,108,208,.10); --primary-soft-2:rgba(61,108,208,.16); --primary-ring:rgba(61,108,208,.30);
+  --brand-grad:linear-gradient(135deg,#5A86E8 0%,#3D6CD0 100%);
+
+  --ev-hotel:#4B53C4;   --ev-hotel-ink:#3D45AE;  --ev-hotel-soft:rgba(75,83,196,.10);  --ev-hotel-soft-2:rgba(75,83,196,.16);
+  --ev-transfer:#0E8E9C;--ev-transfer-ink:#0B7682;--ev-transfer-soft:rgba(14,142,156,.11);--ev-transfer-soft-2:rgba(14,142,156,.18);
+  --ev-activity:#C23A7A;--ev-activity-ink:#A22861;--ev-activity-soft:rgba(194,58,122,.11);--ev-activity-soft-2:rgba(194,58,122,.18);
+  --ev-car:#2E8E4E;     --ev-car-ink:#1F7A40;     --ev-car-soft:rgba(46,142,78,.12);     --ev-car-soft-2:rgba(46,142,78,.18);
+
+  --info:#2D7FD0; --info-soft:rgba(45,127,208,.11); --info-ink:#1C63A6;
+  --success:#1F8A5B;--success-soft:rgba(31,138,91,.12);--success-ink:#0C7A4F;
+  --warning:#C9871A;--warning-soft:rgba(201,135,26,.14);--warning-ink:#8A5A12;
+  --danger:#D63A4A; --danger-soft:rgba(214,58,74,.11); --danger-ink:#B41F30; --danger-fg:#fff;
+
+  --ai:#7B61FF; --ai-soft:rgba(123,97,255,.10); --ai-soft-2:rgba(123,97,255,.16); --ai-ink:#5B3FE0;
+  --ai-gradient:linear-gradient(135deg,#4F7BE0 0%,#7B61FF 52%,#C16AE0 100%);
+  --ai-gradient-soft:linear-gradient(135deg,rgba(79,123,224,.12),rgba(123,97,255,.12),rgba(193,106,224,.12));
+  --pro:#D9911F; --pro-soft:rgba(217,145,31,.12); --pro-soft-2:rgba(217,145,31,.20); --pro-ink:#936215;
+  --pro-gradient:linear-gradient(135deg,#F2C25A 0%,#D9911F 100%); --pro-fg:#3F2A07;
+
+  /* square-ish, editorial */
+  --r-lg:10px; --r-md:7px; --r-sm:5px; --r-tag:4px; --r-pill:999px;
+  --sh-1:0 1px 0 rgba(21,24,30,.03), 0 1px 3px rgba(21,24,30,.05);
+  --sh-2:0 1px 0 rgba(21,24,30,.03), 0 8px 24px -12px rgba(21,24,30,.18);
+  --sh-3:0 2px 6px rgba(21,24,30,.07), 0 24px 60px -22px rgba(21,24,30,.28);
+
+  --font-display:'Geologica',ui-sans-serif,system-ui,sans-serif;
+  --font-ui:'Commissioner',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --ease-out:cubic-bezier(0.22,1,0.36,1); --ease-in-out:cubic-bezier(0.77,0,0.175,1);
+  color-scheme:light;
+}
+
+/* ---------- BASE · DARK ---------- */
+[data-theme="dark"]{
+  --ink:#ECEEF2; --ink-2:#C2C7D2; --muted:#8A91A0; --muted-2:#5E6675;
+  --bg:#0C0D10; --surface:#15171C; --surface-2:#1D2026; --surface-3:#14161B;
+  --line:#2A2E36; --line-2:#1F232A; --line-strong:#383D47;
+  --grid:rgba(255,255,255,.05);
+
+  --primary:#6E9BFF; --primary-hover:#88ACFF; --primary-press:#A6C2FF; --primary-fg:#08111F;
+  --primary-soft:rgba(110,155,255,.14); --primary-soft-2:rgba(110,155,255,.22); --primary-ring:rgba(110,155,255,.38);
+  --brand-grad:linear-gradient(135deg,#86ACFF 0%,#6E9BFF 100%);
+
+  --ev-hotel:#8E93F0;   --ev-hotel-ink:#8E93F0;  --ev-hotel-soft:rgba(142,147,240,.16);  --ev-hotel-soft-2:rgba(142,147,240,.24);
+  --ev-transfer:#34BECF;--ev-transfer-ink:#34BECF;--ev-transfer-soft:rgba(52,190,207,.16); --ev-transfer-soft-2:rgba(52,190,207,.24);
+  --ev-activity:#EC6AAA;--ev-activity-ink:#EC6AAA;--ev-activity-soft:rgba(236,106,170,.16);--ev-activity-soft-2:rgba(236,106,170,.24);
+  --ev-car:#46C06A;     --ev-car-ink:#46C06A;     --ev-car-soft:rgba(70,192,106,.16);      --ev-car-soft-2:rgba(70,192,106,.24);
+
+  --info:#5FAEEC; --info-soft:rgba(95,174,236,.16); --info-ink:#93C6F2;
+  --success:#3CC489;--success-soft:rgba(60,196,137,.16);--success-ink:#6FD6A8;
+  --warning:#F0B24A;--warning-soft:rgba(240,178,74,.16);--warning-ink:#F5C778;
+  --danger:#F26070;--danger-soft:rgba(242,96,112,.16);--danger-ink:#F8909C;--danger-fg:#1A0508;
+
+  --ai:#9D86FF; --ai-soft:rgba(157,134,255,.16); --ai-soft-2:rgba(157,134,255,.24); --ai-ink:#BEACFF;
+  --ai-gradient:linear-gradient(135deg,#5FA0F5 0%,#9D86FF 52%,#D58CEC 100%);
+  --ai-gradient-soft:linear-gradient(135deg,rgba(95,160,245,.18),rgba(157,134,255,.18),rgba(213,140,236,.18));
+  --pro:#F0B65A; --pro-soft:rgba(240,182,90,.16); --pro-soft-2:rgba(240,182,90,.26); --pro-ink:#F6CD84;
+  --pro-gradient:linear-gradient(135deg,#FBD478 0%,#E89A2E 100%); --pro-fg:#2A1903;
+
+  --sh-1:0 1px 0 rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.5);
+  --sh-2:0 1px 0 rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  --sh-3:0 2px 8px rgba(0,0,0,.5), 0 26px 64px -24px rgba(0,0,0,.8);
+  color-scheme:dark;
+}
+
+/* ---------- VARIANTS ---------- */
+[data-theme="light"][data-variant="clay"]{
+  --primary:#B5512E; --primary-hover:#A0461F; --primary-press:#8A3C1A; --primary-fg:#fff;
+  --primary-soft:rgba(181,81,46,.10); --primary-soft-2:rgba(181,81,46,.16); --primary-ring:rgba(181,81,46,.30);
+  --brand-grad:linear-gradient(135deg,#D2724A 0%,#B5512E 100%);
+}
+[data-theme="dark"][data-variant="clay"]{
+  --primary:#F08A5E; --primary-hover:#F39E78; --primary-press:#F6B395; --primary-fg:#2A0E04;
+  --primary-soft:rgba(240,138,94,.15); --primary-soft-2:rgba(240,138,94,.24); --primary-ring:rgba(240,138,94,.40);
+  --brand-grad:linear-gradient(135deg,#F4A07C 0%,#F08A5E 100%);
+}
+[data-theme="light"][data-variant="pine"]{
+  --primary:#1F7A6B; --primary-hover:#1B6B5D; --primary-press:#175A4E; --primary-fg:#fff;
+  --primary-soft:rgba(31,122,107,.10); --primary-soft-2:rgba(31,122,107,.16); --primary-ring:rgba(31,122,107,.30);
+  --brand-grad:linear-gradient(135deg,#2CA38F 0%,#1F7A6B 100%);
+  /* pine teal-green clashes with transfer teal → transfer becomes blue */
+  --ev-transfer:#3A6FD8; --ev-transfer-ink:#2B57B5; --ev-transfer-soft:rgba(58,111,216,.11); --ev-transfer-soft-2:rgba(58,111,216,.18);
+}
+[data-theme="dark"][data-variant="pine"]{
+  --primary:#3CC2A8; --primary-hover:#5FD0BB; --primary-press:#86DECD; --primary-fg:#04211B;
+  --primary-soft:rgba(60,194,168,.16); --primary-soft-2:rgba(60,194,168,.24); --primary-ring:rgba(60,194,168,.38);
+  --brand-grad:linear-gradient(135deg,#5FD0BB 0%,#3CC2A8 100%);
+  --ev-transfer:#7FA8FF; --ev-transfer-ink:#7FA8FF; --ev-transfer-soft:rgba(127,168,255,.16); --ev-transfer-soft-2:rgba(127,168,255,.24);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0; font-family:var(--font-ui); background:var(--bg); color:var(--ink-2);
+  -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.55; font-feature-settings:"ss01","cv01";
+  transition:background .4s var(--ease-out), color .4s var(--ease-out);}
+h1,h2,h3,h4{color:var(--ink); margin:0; font-family:var(--font-display); font-weight:600; letter-spacing:-.01em;}
+.tab{font-variant-numeric:tabular-nums;}
+.over{font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--muted);}
+a{color:var(--primary); text-decoration:underline; text-underline-offset:3px; text-decoration-thickness:1px;}
+::selection{background:var(--primary-soft-2);}
+.wrap{max-width:1180px; margin:0 auto; padding:0 30px;}
+
+/* Topbar */
+.topbar{position:sticky; top:0; z-index:50; backdrop-filter:saturate(180%) blur(12px);
+  background:color-mix(in srgb,var(--bg) 84%,transparent); border-bottom:1px solid var(--line);}
+.topbar .row{display:flex; align-items:center; justify-content:space-between; gap:14px; height:62px; flex-wrap:wrap;}
+.brandmark{display:flex; align-items:center; gap:11px;}
+.brandmark .mk{width:30px; height:30px; border-radius:6px; background:var(--brand-grad); position:relative; box-shadow:var(--sh-1); transition:background .4s var(--ease-out);}
+.brandmark .mk::after{content:""; position:absolute; inset:0; border-radius:6px;
+  background:
+    linear-gradient(to right, rgba(255,255,255,.5) 1px, transparent 1px) 0 0/7.5px 100%,
+    linear-gradient(to bottom, rgba(255,255,255,.5) 1px, transparent 1px) 0 0/100% 7.5px;
+  opacity:.5; mix-blend-mode:overlay;}
+.brandmark b{font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--ink); letter-spacing:-.01em;}
+.brandmark span{font-size:12px; color:var(--muted); margin-left:1px;}
+.controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+.seg{display:inline-flex; flex-wrap:wrap; border:1px solid var(--line-strong); border-radius:var(--r-md); overflow:hidden;}
+.seg button{font:inherit; font-size:12px; font-weight:700; letter-spacing:.02em; color:var(--muted); background:var(--surface); border:0; border-right:1px solid var(--line);
+  cursor:pointer; padding:8px 13px; display:inline-flex; align-items:center; gap:7px; transition:color .18s, background .18s;}
+.seg button:last-child{border-right:0;}
+.seg button .sw{width:10px; height:10px; border-radius:2px;}
+.seg button[aria-pressed="true"]{color:var(--primary-fg); background:var(--primary);}
+.seg button[aria-pressed="true"] .sw{box-shadow:0 0 0 2px rgba(255,255,255,.55);}
+.theme-toggle{display:inline-flex; align-items:center; gap:8px; border:1px solid var(--line-strong); background:var(--surface);
+  color:var(--ink-2); border-radius:var(--r-md); padding:8px 13px; font:inherit; font-size:12.5px; font-weight:600; cursor:pointer;
+  transition:transform .14s var(--ease-out), border-color .2s;}
+.theme-toggle:hover{border-color:var(--primary);}
+.theme-toggle:active{transform:scale(.97);}
+
+/* Hero with graticule */
+.hero{position:relative; padding:62px 0 30px; overflow:hidden;}
+.hero::before{content:""; position:absolute; inset:0; pointer-events:none;
+  background:
+    linear-gradient(to right, var(--grid) 1px, transparent 1px) 0 0/46px 46px,
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px) 0 0/46px 46px;
+  mask-image:radial-gradient(120% 90% at 80% 0%, #000 30%, transparent 75%);}
+.hero .km{display:inline-flex; align-items:center; gap:10px; margin-bottom:18px;}
+.hero .km .line{width:34px; height:1px; background:var(--primary);}
+.hero h1{font-family:var(--font-display); font-weight:700; font-size:clamp(32px,4.6vw,50px); line-height:1.04; letter-spacing:-.02em; max-width:19ch; color:var(--ink);}
+.hero h1 em{font-style:normal; color:var(--primary);}
+.hero p{font-size:17px; color:var(--muted); max-width:60ch; margin:18px 0 0;}
+
+/* Sections */
+section{padding:26px 0;}
+.sec-head{display:flex; align-items:flex-end; gap:16px; margin:8px 0 20px; padding-bottom:12px; border-bottom:1px solid var(--line);}
+.sec-head .idx{font-family:var(--font-display); font-weight:600; font-size:13px; color:var(--primary); letter-spacing:.04em;}
+.sec-head h2{font-size:23px; font-weight:600; letter-spacing:-.015em;}
+.sec-head .desc{color:var(--muted); font-size:13.5px; margin-left:auto; max-width:46ch; text-align:right;}
+@media (max-width:820px){.sec-head .desc{display:none;}}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--sh-1); padding:24px;}
+.grid-2{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+@media (max-width:880px){.grid-2{grid-template-columns:1fr;}}
+.muted{color:var(--muted);}
+
+/* Swatches (square) */
+.swatch-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px;}
+.sw{border:1px solid var(--line); border-radius:var(--r-md); overflow:hidden; background:var(--surface); cursor:pointer;
+  transition:transform .16s var(--ease-out), box-shadow .2s, border-color .2s;}
+.sw:hover{transform:translateY(-2px); box-shadow:var(--sh-2); border-color:var(--line-strong);}
+.sw .chip{height:64px; position:relative;}
+.sw .chip .bar{position:absolute; left:0; top:0; bottom:0; width:4px;}
+.sw .meta{padding:9px 11px; border-top:1px solid var(--line);}
+.sw .meta .name{font-size:12.5px; font-weight:700; color:var(--ink);}
+.sw .meta .hex{font-size:11px; color:var(--muted); margin-top:1px; font-variant-numeric:tabular-nums;}
+.sw .meta .role{font-size:10.5px; color:var(--muted-2); margin-top:1px;}
+
+.ptiles{display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+@media (max-width:680px){.ptiles{grid-template-columns:repeat(2,1fr);}}
+.ptile{border-radius:var(--r-md); padding:14px; min-height:80px; display:flex; flex-direction:column; justify-content:space-between; cursor:pointer; border:1px solid transparent; transition:transform .16s var(--ease-out);}
+.ptile:hover{transform:translateY(-2px);}
+.ptile b{font-size:12.5px; font-weight:700;} .ptile small{font-size:10.5px; opacity:.85; font-variant-numeric:tabular-nums;}
+.gstrip{height:50px; border-radius:var(--r-md); display:flex; align-items:center; padding:0 16px; font-weight:600; font-size:12.5px;}
+
+/* Buttons (editorial, square) */
+.cluster{display:flex; flex-wrap:wrap; gap:11px; align-items:center;}
+.stack{display:flex; flex-direction:column; gap:13px;}
+.btn{--bg:var(--surface); --fg:var(--ink); --bd:var(--line-strong);
+  display:inline-flex; align-items:center; justify-content:center; gap:8px; font:inherit; font-weight:600; font-size:13.5px; line-height:1;
+  padding:11px 17px; border-radius:var(--r-md); background:var(--bg); color:var(--fg); border:1px solid var(--bd); cursor:pointer; white-space:nowrap;
+  transition:transform .14s var(--ease-out), background .18s var(--ease-out), border-color .18s, color .18s, box-shadow .2s, filter .2s;}
+.btn svg{width:16px; height:16px;}
+.btn:active{transform:translateY(1px);}
+.btn:focus-visible{outline:none; box-shadow:0 0 0 3px var(--primary-ring);}
+.btn--primary{--bg:var(--primary); --fg:var(--primary-fg); --bd:transparent; box-shadow:var(--sh-1);}
+.btn--primary:hover{--bg:var(--primary-hover);}
+.btn--primary:active{--bg:var(--primary-press);}
+.btn--secondary:hover{--bd:var(--primary); --fg:var(--primary);}
+.btn--soft{--bg:var(--primary-soft); --fg:var(--primary); --bd:transparent;}
+.btn--soft:hover{--bg:var(--primary-soft-2);}
+.btn--ghost{--bg:transparent; --fg:var(--ink-2); --bd:transparent;}
+.btn--ghost:hover{--bg:var(--surface-2); --fg:var(--ink);}
+.btn--danger{--bg:var(--danger); --fg:var(--danger-fg); --bd:transparent;}
+.btn--danger:hover{filter:brightness(.93);}
+.btn--ai{--fg:#fff; --bd:transparent; background:var(--ai-gradient); background-size:160% 160%; box-shadow:var(--sh-1);}
+.btn--ai:hover{background-position:100% 0;}
+[data-theme="dark"] .btn--ai{--fg:#0c0a1e;}
+.btn--pro{--fg:var(--pro-fg); --bd:transparent; background:var(--pro-gradient); background-size:160% 160%;}
+.btn--pro:hover{background-position:100% 0;}
+.btn--sm{padding:8px 12px; font-size:12.5px;}
+.btn--lg{padding:13px 22px; font-size:14.5px;}
+.btn[disabled]{opacity:.45; pointer-events:none;}
+
+/* Tags / badges — editorial: rectangle + left bar */
+.tag{display:inline-flex; align-items:center; gap:7px; font-size:11.5px; font-weight:700; letter-spacing:.02em;
+  padding:5px 10px 5px 9px; border-radius:var(--r-tag); background:var(--surface-2); color:var(--ink-2);
+  border-left:3px solid var(--muted-2);}
+.tag--info{background:var(--info-soft); color:var(--info-ink); border-color:var(--info);}
+.tag--success{background:var(--success-soft); color:var(--success-ink); border-color:var(--success);}
+.tag--warning{background:var(--warning-soft); color:var(--warning-ink); border-color:var(--warning);}
+.tag--danger{background:var(--danger-soft); color:var(--danger-ink); border-color:var(--danger);}
+.tag--hotel{background:var(--ev-hotel-soft); color:var(--ev-hotel-ink); border-color:var(--ev-hotel);}
+.tag--transfer{background:var(--ev-transfer-soft); color:var(--ev-transfer-ink); border-color:var(--ev-transfer);}
+.tag--activity{background:var(--ev-activity-soft); color:var(--ev-activity-ink); border-color:var(--ev-activity);}
+.tag--car{background:var(--ev-car-soft); color:var(--ev-car-ink); border-color:var(--ev-car);}
+.tag--ai{background:var(--ai-soft); color:var(--ai-ink); border-color:var(--ai);}
+.tag--pro{background:var(--pro-soft); color:var(--pro-ink); border-color:var(--pro);}
+.pill{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:var(--r-pill); background:var(--surface-2); color:var(--ink-2);}
+.pill .dot{width:6px; height:6px; border-radius:50%; background:currentColor;}
+.pill--pro{background:var(--pro-gradient); color:var(--pro-fg);}
+.pill--ai{background:var(--ai-soft); color:var(--ai-ink);}
+
+/* Feature panels */
+.feat{border-radius:var(--r-lg); padding:20px; position:relative; overflow:hidden;}
+.feat h4{font-size:16px; margin-bottom:6px;}
+.feat p{font-size:13px; margin:0 0 14px;}
+.feat--ai{background:var(--ai-gradient-soft); border:1px solid var(--ai-soft-2);}
+.feat--ai h4{color:var(--ai-ink);} .feat--ai p{color:var(--ink-2);}
+.feat--pro{background:var(--surface); border:1px solid var(--pro-soft-2); border-left:4px solid var(--pro);}
+.feat--pro h4{color:var(--pro-ink); display:flex; align-items:center; gap:8px;} .feat--pro p{color:var(--muted);}
+
+/* Typography */
+.ff{border:1px solid var(--line); border-radius:var(--r-md); padding:20px; background:var(--surface-3);}
+.ff .big{font-family:var(--font-display); font-size:44px; line-height:1; color:var(--ink); font-weight:700; letter-spacing:-.02em; margin-bottom:8px;}
+.ff .nm{font-size:12.5px; color:var(--muted);} .ff .gl{font-size:16px; color:var(--ink-2); margin-top:12px;}
+.type-row{display:flex; align-items:baseline; gap:18px; padding:12px 0; border-bottom:1px solid var(--line-2); flex-wrap:wrap;}
+.type-row:last-child{border-bottom:0;}
+.type-row .label{width:150px; flex:none; font-size:11.5px; color:var(--muted);}
+.type-row .label b{display:block; color:var(--ink); font-size:12px;}
+
+/* Inputs */
+.field{display:flex; flex-direction:column; gap:6px;}
+.field label{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);}
+.input{font:inherit; font-size:14px; color:var(--ink); background:var(--surface); border:1px solid var(--line-strong);
+  border-radius:var(--r-sm); padding:10px 12px; width:100%; transition:border-color .18s, box-shadow .18s;}
+.input::placeholder{color:var(--muted-2);}
+.input:focus{outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-ring);}
+.field--ai .input{background:var(--ai-soft); border-color:var(--ai-soft-2);}
+
+/* ============================================================
+   REAL APP ELEMENTS — ledger timeline + editor table
+   ============================================================ */
+.appwrap{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+@media (max-width:960px){.appwrap{grid-template-columns:1fr;}}
+.appcol h3{font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0 0 14px; padding-bottom:8px; border-bottom:1px solid var(--line);}
+
+/* Timeline — ledger */
+.tl{position:relative; padding-left:18px;}
+.tl::before{content:""; position:absolute; left:4px; top:6px; bottom:6px; width:1px; background:var(--line-strong);}
+.tl-city{display:flex; align-items:center; gap:11px; padding:10px 0 10px 4px;}
+.tl-city .mk{width:11px; height:11px; border-radius:2px; background:var(--primary); margin-left:-22px; box-shadow:0 0 0 4px var(--bg);}
+.tl-city .name{font-family:var(--font-display); font-weight:600; font-size:17px; color:var(--ink); letter-spacing:-.01em;}
+.tl-city .when{margin-left:auto; font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums;}
+.tl-ev{display:flex; align-items:center; gap:11px; padding:11px 13px; background:var(--surface); border:1px solid var(--line);
+  border-left:3px solid var(--ev); border-radius:var(--r-sm); margin:7px 0; transition:border-color .16s, background .16s, transform .14s var(--ease-out);}
+.tl-ev:hover{transform:translateX(2px); background:var(--surface-3);}
+.tl-ev .ic{width:30px; height:30px; border-radius:var(--r-sm); display:grid; place-items:center; flex:none; background:color-mix(in srgb, var(--ev) 13%, var(--surface));}
+.tl-ev .ic svg{width:16px; height:16px; color:var(--ev);}
+.tl-ev .t{font-weight:600; font-size:13.5px; color:var(--ink);} .tl-ev .s{font-size:11.5px; color:var(--muted);}
+.tl-ev .time{margin-left:auto; font-size:12px; font-weight:700; color:var(--ink-2); font-variant-numeric:tabular-nums;}
+.ev-hotel{--ev:var(--ev-hotel);} .ev-transfer{--ev:var(--ev-transfer);} .ev-activity{--ev:var(--ev-activity);} .ev-car{--ev:var(--ev-car);}
+.tl-seam{display:flex; align-items:center; gap:10px; margin:9px 0 9px -14px; color:var(--ev-transfer-ink);}
+.tl-seam .ln{flex:1; height:1px; background:repeating-linear-gradient(to right, var(--ev-transfer) 0 6px, transparent 6px 11px); opacity:.6;}
+.tl-seam .tx{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; white-space:nowrap;}
+.tl-seam svg{width:13px; height:13px;}
+.tl-empty{margin:7px 0; padding:11px 13px; border:1px dashed var(--line-strong); border-radius:var(--r-sm); color:var(--muted-2); font-size:12.5px; text-align:center;}
+.tl-warn{display:flex; align-items:center; gap:11px; margin:8px 0; padding:11px 13px; background:var(--warning-soft);
+  border:1px solid color-mix(in srgb,var(--warning) 32%,transparent); border-left:3px solid var(--warning); border-radius:var(--r-sm);}
+.tl-warn svg{width:17px; height:17px; color:var(--warning-ink); flex:none;}
+.tl-warn .x{flex:1;} .tl-warn b{display:block; font-size:12.5px; color:var(--ink);} .tl-warn span{font-size:11.5px; color:var(--muted);}
+.tl-warn button{font:inherit; font-size:11.5px; font-weight:700; color:var(--warning-ink); background:transparent;
+  border:1px solid color-mix(in srgb,var(--warning) 40%,transparent); border-radius:var(--r-sm); padding:6px 11px; cursor:pointer; white-space:nowrap; transition:background .18s, transform .14s;}
+.tl-warn button:hover{background:color-mix(in srgb,var(--warning) 15%,transparent);} .tl-warn button:active{transform:translateY(1px);}
+
+/* Editor — table/ledger */
+.edt{border:1px solid var(--line); border-radius:var(--r-md); overflow:hidden;}
+.edt-head{display:grid; grid-template-columns:30px 1fr auto auto auto; gap:10px; align-items:center; padding:9px 12px; background:var(--surface-2);
+  font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line);}
+.edt-row{display:grid; grid-template-columns:30px 1fr auto auto auto; gap:10px; align-items:center; padding:12px; border-bottom:1px solid var(--line-2); background:var(--surface);
+  transition:background .14s;}
+.edt-row:last-child{border-bottom:0;} .edt-row:hover{background:var(--surface-3);}
+.edt-idx{width:24px; height:24px; border-radius:var(--r-sm); background:var(--primary-soft-2); color:var(--primary); display:grid; place-items:center; font-weight:700; font-size:12px; font-variant-numeric:tabular-nums;}
+.edt-idx.is-warn{background:var(--warning-soft); color:var(--warning-ink);}
+.edt-city{font-family:var(--font-display); font-weight:600; font-size:14px; color:var(--ink);}
+.edt-step{display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:var(--r-sm); overflow:hidden;}
+.edt-step button{width:24px; height:26px; border:0; background:var(--surface); color:var(--primary); cursor:pointer; font-size:15px; border-right:1px solid var(--line); transition:background .14s;}
+.edt-step button:last-child{border-right:0; border-left:1px solid var(--line);}
+.edt-step button:hover{background:var(--primary-soft);}
+.edt-step .n{min-width:48px; text-align:center; font-size:11.5px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums;}
+.edt-hotel{width:30px; height:28px; border-radius:var(--r-sm); background:var(--ev-hotel-soft); display:grid; place-items:center; cursor:pointer; border:1px solid transparent; transition:border-color .14s, transform .12s;}
+.edt-hotel:hover{border-color:var(--ev-hotel);} .edt-hotel:active{transform:translateY(1px);}
+.edt-hotel svg{width:14px; height:14px; color:var(--ev-hotel-ink);}
+.edt-hotel.is-warn{background:var(--warning-soft);} .edt-hotel.is-warn svg{color:var(--warning-ink);}
+.edt-ghost{display:inline-flex; align-items:center; gap:5px; height:28px; padding:0 10px; border-radius:var(--r-sm); background:transparent;
+  border:1px dashed var(--line-strong); color:var(--muted-2); cursor:pointer; font:inherit; font-size:11.5px; font-weight:700; transition:color .14s, border-color .14s, background .14s, transform .12s;}
+.edt-ghost:hover{color:var(--primary); border-color:var(--primary); background:var(--primary-soft);} .edt-ghost:active{transform:translateY(1px);}
+.edt-ghost svg{width:12px; height:12px;}
+.edt-seam{display:flex; align-items:center; gap:9px; padding:6px 12px; background:var(--surface-3); border-bottom:1px solid var(--line-2);}
+.edt-seam .ln{flex:1; height:1px; background:repeating-linear-gradient(to right, var(--ev-transfer) 0 5px, transparent 5px 10px); opacity:.55;}
+.edt-seam .tx{font-size:11px; font-weight:700; color:var(--ev-transfer-ink); display:inline-flex; align-items:center; gap:6px;}
+.edt-seam .tx svg{width:12px; height:12px;}
+.edt-seam.is-warn .ln{background:repeating-linear-gradient(to right, var(--warning) 0 5px, transparent 5px 10px);}
+.edt-seam.is-warn .tx{color:var(--warning-ink);}
+
+/* Service placeholders */
+.svc-ph{display:flex; align-items:center; gap:11px; padding:13px; border-radius:var(--r-md); border:1px dashed var(--line-strong);
+  background:var(--surface-3); cursor:pointer; transition:border-color .16s, background .16s, transform .14s var(--ease-out);}
+.svc-ph:hover{border-color:var(--primary); background:var(--primary-soft); transform:translateX(2px);}
+.svc-ph .pic{width:32px; height:32px; border-radius:var(--r-sm); background:var(--surface-2); display:grid; place-items:center; flex:none;}
+.svc-ph .pic svg{width:16px; height:16px; color:var(--muted);} .svc-ph:hover .pic svg{color:var(--primary);}
+.svc-ph b{display:block; font-size:13px; color:var(--ink);} .svc-ph span{font-size:11.5px; color:var(--muted);}
+.svc-ph .plus{margin-left:auto; color:var(--muted-2); font-size:18px;} .svc-ph:hover .plus{color:var(--primary);}
+
+.copyhint{position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(18px); opacity:0; background:var(--ink); color:var(--bg);
+  padding:8px 15px; border-radius:var(--r-md); font-size:12.5px; font-weight:700; pointer-events:none; transition:transform .25s var(--ease-out), opacity .25s; z-index:99;}
+.copyhint.show{opacity:1; transform:translateX(-50%) translateY(0);}
+footer{padding:36px 0 64px; color:var(--muted); font-size:12.5px; text-align:center; border-top:1px solid var(--line); margin-top:28px;}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap row">
+    <div class="brandmark"><div class="mk"></div><b>Triplanio</b><span>· Meridian</span></div>
+    <div class="controls">
+      <div class="seg" id="variantSeg" role="group" aria-label="Палитра">
+        <button data-v="cobalt" aria-pressed="true"><span class="sw" style="background:#3D6CD0"></span>Cobalt</button>
+        <button data-v="clay"   aria-pressed="false"><span class="sw" style="background:#B5512E"></span>Clay</button>
+        <button data-v="pine"   aria-pressed="false"><span class="sw" style="background:#1F7A6B"></span>Pine</button>
+      </div>
+      <button class="theme-toggle" id="themeBtn">
+        <svg id="themeIcon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <span id="themeLabel">Тёмная</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap hero">
+  <div class="km"><span class="line"></span><span class="over" id="kmlabel">Meridian · Cobalt</span></div>
+  <h1>Дизайн-система как <em>точная карта</em> маршрута</h1>
+  <p>Другой визуальный язык: хайрлайны, табличные цифры, прямые углы и редакторская сетка. Шрифты Geologica и Commissioner с кириллицей. Синий — одна из опций; рядом тёплый Clay и спокойный Pine.</p>
+</div>
+
+<div class="wrap">
+
+<!-- 01 PRIMARY -->
+<section>
+  <div class="sec-head"><span class="idx">01 —</span><h2>Primary активной палитры</h2><div class="desc">Меняйте палитру и тему сверху. Синий Cobalt — мягкий и спокойный; Clay — тёплый кирпич; Pine — приглушённый хвойный.</div></div>
+  <div class="panel">
+    <div class="over" style="margin-bottom:12px">Состояния</div>
+    <div class="ptiles">
+      <div class="ptile" style="background:var(--primary); color:var(--primary-fg)" onclick="copy('--primary')"><b>Primary</b><small id="hx_primary"></small></div>
+      <div class="ptile" style="background:var(--primary-hover); color:var(--primary-fg)" onclick="copy('--primary-hover')"><b>Hover</b><small id="hx_primary-hover"></small></div>
+      <div class="ptile" style="background:var(--primary-press); color:var(--primary-fg)" onclick="copy('--primary-press')"><b>Press</b><small id="hx_primary-press"></small></div>
+      <div class="ptile" style="background:var(--primary-soft); color:var(--primary); border:1px solid var(--primary-soft-2)" onclick="copy('--primary-soft')"><b>Soft</b><small>тинт</small></div>
+    </div>
+    <div class="gstrip" style="margin-top:12px; background:var(--brand-grad); color:#fff">brand gradient · вордмарк и акценты</div>
+  </div>
+</section>
+
+<!-- 02 NEUTRALS -->
+<section>
+  <div class="sec-head"><span class="idx">02 —</span><h2>Нейтрали и поверхности</h2><div class="desc">Бумажный прохладный фон, белые поверхности, тонкие хайрлайны — основа редакторского вида.</div></div>
+  <div class="panel"><div class="swatch-grid" id="surfaceGrid"></div></div>
+</section>
+
+<!-- 03 EVENTS -->
+<section>
+  <div class="sec-head"><span class="idx">03 —</span><h2>Типы событий</h2><div class="desc">Теги-прямоугольники с цветной левой кромкой. Activity — малиновый, не оранжевый. При коллизии с primary тип смещается (в Pine переезд → синий).</div></div>
+  <div class="panel">
+    <div class="swatch-grid" id="eventGrid" style="margin-bottom:20px"></div>
+    <div class="cluster">
+      <span class="tag tag--hotel">Проживание</span>
+      <span class="tag tag--transfer">Переезд</span>
+      <span class="tag tag--activity">Активность</span>
+      <span class="tag tag--car">Аренда авто</span>
+    </div>
+  </div>
+</section>
+
+<!-- 04 REAL UI -->
+<section>
+  <div class="sec-head"><span class="idx">04 —</span><h2>Реальные элементы интерфейса</h2><div class="desc">Таймлайн-леджер и редактор-таблица Triplanio: чипы событий, пунктирные seam-переезды, плейсхолдеры и варнинги «нет переезда».</div></div>
+  <div class="panel">
+    <div class="appwrap">
+      <div class="appcol">
+        <h3>Таймлайн поездки</h3>
+        <div class="tl">
+          <div class="tl-city"><span class="mk"></span><span class="name">Барселона</span><span class="when">12–15 июня · 3 ночи</span></div>
+          <div class="tl-ev ev-hotel"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div><div><div class="t">Hotel Arts</div><div class="s">Заезд · 2 ночи</div></div><div class="time">14:00</div></div>
+          <div class="tl-ev ev-activity"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 7l2 13h14l2-13M9 7V5a3 3 0 016 0v2"/></svg></div><div><div class="t">Саграда Фамилия</div><div class="s">Экскурсия · 2ч</div></div><div class="time">10:30</div></div>
+          <div class="tl-empty">Свободный день — ничего не запланировано</div>
+          <div class="tl-seam"><span class="tx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M16 6l6 6-6 6"/></svg>Перелёт BCN → FCO · 09:40</span><span class="ln"></span></div>
+          <div class="tl-city"><span class="mk"></span><span class="name">Рим</span><span class="when">15–18 июня · 3 ночи</span></div>
+          <div class="tl-ev ev-car"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></svg></div><div><div class="t">Аренда авто</div><div class="s">Эконом · 3 дня</div></div><div class="time">11:00</div></div>
+          <div class="tl-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg><div class="x"><b>Нет переезда</b><span>Между Римом и Флоренцией</span></div><button>＋ Добавить</button></div>
+        </div>
+      </div>
+      <div class="appcol">
+        <h3>Редактор маршрута</h3>
+        <div class="edt">
+          <div class="edt-head"><span>#</span><span>Город</span><span>Ночи</span><span>Отель</span><span>Актив.</span></div>
+          <div class="edt-row">
+            <div class="edt-idx">1</div><div class="edt-city">Барселона</div>
+            <div class="edt-step"><button>−</button><span class="n">2 ноч.</span><button>+</button></div>
+            <div class="edt-hotel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div>
+            <span class="tag tag--activity" style="border-radius:var(--r-sm)">×3</span>
+          </div>
+          <div class="edt-seam"><span class="tx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M16 6l6 6-6 6"/></svg>Перелёт · 2ч 10м</span><span class="ln"></span></div>
+          <div class="edt-row">
+            <div class="edt-idx">2</div><div class="edt-city">Рим</div>
+            <div class="edt-step"><button>−</button><span class="n">3 ноч.</span><button>+</button></div>
+            <div class="edt-hotel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div>
+            <button class="edt-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Актив.</button>
+          </div>
+          <div class="edt-seam is-warn"><span class="tx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>Нет переезда · ＋ Добавить</span><span class="ln"></span></div>
+          <div class="edt-row">
+            <div class="edt-idx is-warn">3</div><div class="edt-city">Флоренция</div>
+            <div class="edt-step"><button>−</button><span class="n">1 ноч.</span><button>+</button></div>
+            <div class="edt-hotel is-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div>
+            <button class="edt-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Актив.</button>
+          </div>
+        </div>
+        <h3 style="margin-top:20px">Плейсхолдеры сервисов</h3>
+        <div class="stack">
+          <div class="svc-ph"><div class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg></div><div><b>Добавить eSIM</b><span>Интернет в поездке</span></div><div class="plus">＋</div></div>
+          <div class="svc-ph"><div class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></svg></div><div><b>Аренда авто</b><span>Подобрать машину</span></div><div class="plus">＋</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 CONTEXT -->
+<section>
+  <div class="sec-head"><span class="idx">05 —</span><h2>Контекстные цвета</h2><div class="desc">Info, Success, Warning, Danger — стабильны во всех палитрах, AA-читаемый текст.</div></div>
+  <div class="panel">
+    <div class="swatch-grid" id="ctxGrid" style="margin-bottom:20px"></div>
+    <div class="cluster">
+      <span class="tag tag--info">Инфо</span>
+      <span class="tag tag--success">Активно</span>
+      <span class="tag tag--warning">Внимание</span>
+      <span class="tag tag--danger">Ошибка</span>
+    </div>
+  </div>
+</section>
+
+<!-- 06 AI + PRO -->
+<section>
+  <div class="sec-head"><span class="idx">06 —</span><h2>AI и Pro</h2><div class="desc">AI — холодный фиолетовый градиент; Pro — золото с левой кромкой. Отдельная айдентика, неизменна между палитрами.</div></div>
+  <div class="grid-2">
+    <div class="feat feat--ai">
+      <h4>AI · умный план</h4>
+      <p>Узнаётся на любой палитре по холодному градиенту azure → violet → magenta.</p>
+      <div class="cluster">
+        <button class="btn btn--ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>Спросить ИИ</button>
+        <span class="pill pill--ai"><span class="dot"></span>AI</span>
+      </div>
+    </div>
+    <div class="feat feat--pro">
+      <h4><svg viewBox="0 0 24 24" width="17" height="17" fill="var(--pro)"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8z"/></svg>Pro · премиум</h4>
+      <p>Тёплое золото отделяет платные функции от холодного интерфейса.</p>
+      <div class="cluster">
+        <button class="btn btn--pro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8z"/></svg>Перейти на Pro</button>
+        <span class="pill pill--pro">PRO</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 TYPOGRAPHY -->
+<section>
+  <div class="sec-head"><span class="idx">07 —</span><h2>Типографика</h2><div class="desc">Geologica — редакторский гротеск для заголовков. Commissioner — гуманистический текстовый шрифт. Обе с кириллицей, цифры табличные.</div></div>
+  <div class="panel">
+    <div class="grid-2">
+      <div class="ff"><div class="big">Аа Бб Яя</div><div class="nm"><b style="color:var(--ink)">Geologica</b> · Display · 500–700</div><div class="gl" style="font-family:var(--font-display)">Путешествие · 1234567890</div></div>
+      <div class="ff"><div class="big" style="font-family:var(--font-ui); font-weight:600; letter-spacing:-.01em">Привет</div><div class="nm"><b style="color:var(--ink)">Commissioner</b> · Text · 400–700</div><div class="gl">Базовый текст с аккуратной кириллицей. 12 июня, 3 ночи.</div></div>
+    </div>
+    <div style="height:1px; background:var(--line); margin:22px 0"></div>
+    <div class="type-row"><div class="label"><b>H1 · Geologica</b>700 · 44</div><div style="font-family:var(--font-display); font-size:44px; line-height:1.04; letter-spacing:-.02em; color:var(--ink)">Спланируйте маршрут</div></div>
+    <div class="type-row"><div class="label"><b>H2 · Geologica</b>600 · 23</div><div style="font-family:var(--font-display); font-size:23px; font-weight:600; color:var(--ink)">Расписание и переезды</div></div>
+    <div class="type-row"><div class="label"><b>Body · Commissioner</b>400 · 15</div><div style="font-size:15px; color:var(--ink-2)">Базовый текст интерфейса — ровный, читаемый, с удобным ритмом строки.</div></div>
+    <div class="type-row"><div class="label"><b>Label · caps</b>700 · 11 · +track</div><div class="over">Город · ночи · отель · активность</div></div>
+  </div>
+</section>
+
+<!-- 08 COMPONENTS -->
+<section>
+  <div class="sec-head"><span class="idx">08 —</span><h2>Кнопки и теги</h2><div class="desc">Острые углы, нажатие сдвигает на 1px, кольцо фокуса. Теги — прямоугольные с цветной кромкой.</div></div>
+  <div class="panel">
+    <div class="over" style="margin-bottom:12px">Кнопки</div>
+    <div class="cluster" style="margin-bottom:20px">
+      <button class="btn btn--primary">Основная</button>
+      <button class="btn btn--secondary">Вторичная</button>
+      <button class="btn btn--soft">Мягкая</button>
+      <button class="btn btn--ghost">Призрачная</button>
+      <button class="btn btn--danger">Удалить</button>
+      <button class="btn btn--ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>AI</button>
+      <button class="btn btn--pro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8z"/></svg>Pro</button>
+    </div>
+    <div class="over" style="margin-bottom:12px">Теги и статусы</div>
+    <div class="cluster">
+      <span class="tag tag--hotel">Проживание</span>
+      <span class="tag tag--transfer">Переезд</span>
+      <span class="tag tag--activity">Активность</span>
+      <span class="tag tag--car">Аренда</span>
+      <span class="pill pill--ai"><span class="dot"></span>AI</span>
+      <span class="pill pill--pro">PRO</span>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<footer>Triplanio · Meridian — отдельная дизайн-система. Переключайте палитру и тему сверху. Клик по свотчу копирует токен. 2026-06-06</footer>
+<div class="copyhint" id="copyhint">Скопировано</div>
+
+<script>
+const root=document.documentElement;
+const tBtn=document.getElementById('themeBtn'), tLabel=document.getElementById('themeLabel'), tIcon=document.getElementById('themeIcon');
+const sun='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+const moon='<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>';
+function setTheme(t){root.setAttribute('data-theme',t); const d=t==='dark'; tLabel.textContent=d?'Светлая':'Тёмная'; tIcon.innerHTML=d?moon:sun; refresh();}
+tBtn.addEventListener('click',()=>setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'));
+const names={cobalt:'Cobalt',clay:'Clay',pine:'Pine'};
+document.getElementById('variantSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return;
+  const v=b.dataset.v; root.setAttribute('data-variant',v);
+  [...document.querySelectorAll('#variantSeg button')].forEach(x=>x.setAttribute('aria-pressed',x===b));
+  document.getElementById('kmlabel').textContent='Meridian · '+names[v]; refresh();});
+const hint=document.getElementById('copyhint'); let hT;
+function copy(t){navigator.clipboard?.writeText(t); hint.textContent=t+' скопировано'; hint.classList.add('show'); clearTimeout(hT); hT=setTimeout(()=>hint.classList.remove('show'),1300);}
+const ICONS={hotel:'<path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/>',transfer:'<path d="M2 12h20M16 6l6 6-6 6"/>',activity:'<path d="M3 7h18M3 7l2 13h14l2-13M9 7V5a3 3 0 016 0v2"/>',car:'<path d="M5 11l1.5-4.5h11L19 11M5 11h14v5H5z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/>'};
+const events=[['Hotel','--ev-hotel','Проживание'],['Transfer','--ev-transfer','Переезд'],['Activity','--ev-activity','Активность'],['Car rental','--ev-car','Аренда авто']];
+document.getElementById('eventGrid').innerHTML=events.map(([n,v,r])=>`<div class="sw" onclick="copy('${v}')"><div class="chip" style="background:color-mix(in srgb,var(${v}) 12%,var(--surface))"><span class="bar" style="background:var(${v})"></span></div><div class="meta"><div class="name">${n}</div><div class="hex" data-var="${v}"></div><div class="role">${r}</div></div></div>`).join('');
+const surf=[['Background','--bg','Фон'],['Surface','--surface','Поверхность'],['Surface-2','--surface-2','Шапки/веллы'],['Ink','--ink','Текст'],['Muted','--muted','Вторичный'],['Line','--line','Хайрлайн']];
+document.getElementById('surfaceGrid').innerHTML=surf.map(([n,v,r])=>`<div class="sw" onclick="copy('${v}')"><div class="chip" style="background:var(${v}); border-bottom:1px solid var(--line)"></div><div class="meta"><div class="name">${n}</div><div class="hex" data-var="${v}"></div><div class="role">${r}</div></div></div>`).join('');
+const ctx=[['Info','--info','Информация'],['Success','--success','Успех'],['Warning','--warning','Предупреждение'],['Danger','--danger','Ошибка']];
+document.getElementById('ctxGrid').innerHTML=ctx.map(([n,v,r])=>`<div class="sw" onclick="copy('${v}')"><div class="chip" style="background:color-mix(in srgb,var(${v}) 12%,var(--surface))"><span class="bar" style="background:var(${v})"></span></div><div class="meta"><div class="name">${n}</div><div class="hex" data-var="${v}"></div><div class="role">${r}</div></div></div>`).join('');
+function rgbToHex(rgb){const m=rgb.match(/[\d.]+/g); if(!m)return rgb; if(m.length>=4&&parseFloat(m[3])<1)return rgb; return '#'+m.slice(0,3).map(x=>(+x).toString(16).padStart(2,'0')).join('').toUpperCase();}
+function hexOf(v){const p=document.createElement('div'); p.style.color=`var(${v})`; p.style.display='none'; document.body.appendChild(p); const c=rgbToHex(getComputedStyle(p).color); p.remove(); return c;}
+function refresh(){document.querySelectorAll('.hex[data-var]').forEach(el=>el.textContent=hexOf(el.getAttribute('data-var')));
+  ['primary','primary-hover','primary-press'].forEach(k=>{const el=document.getElementById('hx_'+k); if(el)el.textContent=hexOf('--'+k);});}
+refresh();
+</script>
+</body>
+</html>

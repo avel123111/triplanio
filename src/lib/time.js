@@ -79,3 +79,15 @@ export function diffHours(utcA, utcB) {
   if (a === null || b === null) return 0;
   return (b - a) / 3_600_000;
 }
+
+// Compact transfer duration label, e.g. "2h 50m" / "45m".
+// NOTE: duplicated as local transferDuration() in TransferGroupReadOnly.jsx and
+// ReadOnlyTimelineView.jsx — those should be migrated to this shared helper.
+export function formatDuration(startIso, endIso) {
+  if (!startIso || !endIso) return '';
+  const mins = Math.round((new Date(endIso) - new Date(startIso)) / 60000);
+  if (mins <= 0) return '';
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}

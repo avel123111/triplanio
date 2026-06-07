@@ -15,7 +15,7 @@ import { useChatId, useUnreadChatCount, chatParticipants, pluralPeople } from '@
 import { useI18n } from '@/lib/i18n/I18nContext';
 import TriplanioAvatar from './TriplanioAvatar';
 import ChatMarkdown from './ChatMarkdown';
-import { Avatar } from '@/design/index';
+import { Avatar, EmptyState } from '@/design/index';
 import { displayName } from '@/lib/displayName';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 
@@ -250,7 +250,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
         className="dock"
         onClick={() => setOpen(true)}
         aria-label={t('chat.open_aria')}
-        style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, #6a3ee2 100%)' }}
+        style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, var(--ai) 100%)' }}
       >
         <MessageCircle size={22} />
         {unread > 0 && (
@@ -260,7 +260,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
         <span style={{
           position: 'absolute', bottom: -3, right: -3,
           width: 22, height: 22, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white',
+          background: 'var(--ai-grad)', color: 'white',
           border: '2px solid var(--surface)',
           display: 'grid', placeItems: 'center',
           pointerEvents: 'none',
@@ -334,7 +334,9 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       {/* Messages */}
       <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {msgs.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: 'var(--fs-base)' }}>{t('chat.write_first')}</div>
+          <div style={{ margin: 'auto' }}>
+            <EmptyState icon="chat" title={t('chat.write_first')} />
+          </div>
         ) : messageEls}
         {isThinking && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
@@ -410,7 +412,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             aria-label={t('chat.send')}
             style={{
               width: 38, height: 38, borderRadius: '50%', border: 'none',
-              background: 'linear-gradient(135deg, #2167e2 0%, #8b3dff 100%)',
+              background: 'var(--assistant-grad)',
               cursor: sending || !text.trim() || !chatId ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               opacity: (!text.trim() || !chatId) ? 0.4 : 1, flexShrink: 0,

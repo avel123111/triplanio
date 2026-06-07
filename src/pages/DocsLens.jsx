@@ -15,8 +15,10 @@ import { supabase } from '@/api/supabaseClient';
 import { safeStorageName } from '@/lib/storage';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, Skeleton } from '../design/index';
+import { Badge, Btn, Dialog, Field, Skeleton, EmptyState } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { useConfirm } from '@/components/common/ConfirmProvider';
+import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── query key ────────────────────────────────────────────────────────────────
@@ -215,11 +217,12 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
 
 function DocDetailDialog({ doc, tripId }) {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const [deleting, setDeleting] = useState(false);
   const qc = useQueryClient();
 
   async function handleDelete() {
-    if (!window.confirm(t('doc.delete_confirm', { name: doc.title }))) return;
+    if (!(await confirm({ title: t('doc.delete_confirm', { name: doc.title }), variant: 'destructive' }))) return;
     setDeleting(true);
     await supabase.from('trip_documents').delete().eq('id', doc.id);
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
@@ -319,28 +322,18 @@ function DocCard({ doc, tripId, scope }) {
 function DocEmpty({ scope, tripId }) {
   const { t } = useI18n();
   return (
-    <div style={{ padding: '32px 24px', textAlign: 'center', border: '1.5px dashed var(--line)', borderRadius: 14, background: 'var(--wash)' }}>
-      <div style={{
-        width: 56, height: 56, margin: '0 auto 12px', borderRadius: 14,
-        background: scope === 'personal' ? 'var(--warm-tint)' : 'var(--brand-soft)',
-        color:      scope === 'personal' ? 'var(--warm)'     : 'var(--brand)',
-        display: 'grid', placeItems: 'center',
-      }}>
-        <Icon name="file" size={26} />
-      </div>
-      <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', marginBottom: 4 }}>
-        {scope === 'personal' ? t('doc.empty_private') : t('doc.empty_shared')}
-      </div>
-      <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.5, maxWidth: 360, margin: '0 auto 14px' }}>
-        {scope === 'personal'
-          ? t('doc.empty_private_desc')
-          : t('doc.empty_shared_desc')}
-      </div>
-      <Btn variant="ghost" icon="plus"
-        onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} defaultVisibility={scope === 'personal' ? 'private' : 'shared'} />)}>
-        {t('doc.add_doc')}
-      </Btn>
-    </div>
+    <EmptyState
+      icon="file"
+      kind={scope === 'personal' ? 'locked' : 'empty'}
+      title={scope === 'personal' ? t('doc.empty_private') : t('doc.empty_shared')}
+      body={scope === 'personal' ? t('doc.empty_private_desc') : t('doc.empty_shared_desc')}
+      action={
+        <Btn variant="ghost" icon="plus"
+          onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} defaultVisibility={scope === 'personal' ? 'private' : 'shared'} />)}>
+          {t('doc.add_doc')}
+        </Btn>
+      }
+    />
   );
 }
 
@@ -396,6 +389,14 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
   const sharedDocs   = docs.filter(d => d.visibility === 'shared');
   const personalDocs = docs.filter(d => d.visibility === 'private' && d.created_by === user?.id);
 
+  // Primary action lives in the global screen-title bar (the per-screen header).
+  useTripScreenActions(
+    <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} />)}>
+      {t('doc.add_doc')}
+    </Btn>,
+    [tripId, t],
+  );
+
   if (isLoading || parentLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -417,14 +418,6 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-        <h2 style={{ flex: 1 }}>{t('doc.page_title')}</h2>
-        <Btn variant="primary" icon="plus"
-          onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} />)}>
-          {t('doc.add_doc')}
-        </Btn>
-      </div>
-
       {/* Shared section */}
       <section style={{ marginBottom: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>

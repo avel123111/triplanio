@@ -11,16 +11,8 @@ import { isProActive } from '@/lib/subscription';
 import { supabase } from '@/api/supabaseClient';
 import HeaderActions from '@/components/HeaderActions';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
+import { avatarGradient } from '@/lib/avatarRamp';
 import '../design/app.css';
-
-// ─── Avatar helpers (inline so we can render directly into the 76×76 circle) ──
-
-const AVATAR_COLORS = [
-  ['#2167e2', '#5a8ff0'], ['#c9603a', '#e08158'], ['#1f8a5b', '#4ab98a'],
-  ['#9c4ad9', '#c66ce2'], ['#c98a1a', '#e0a64b'], ['#4a6cd9', '#7a92e8'],
-  ['#a83e6a', '#c96792'], ['#3d8aa8', '#5fadc9'],
-];
-function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
 
 // ─── Other helpers ─────────────────────────────────────────────────────────────
 
@@ -66,7 +58,7 @@ function LegalRow({ icon, title, desc, href, last }) {
         <Icon name={icon} size={14} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)' }}>{title}</div>
+        <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{title}</div>
         <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{desc}</div>
       </div>
       <Icon name="external" size={13} style={{ color: 'var(--muted-2)' }} />
@@ -81,7 +73,7 @@ function SettingRow({ label, desc, on, onChange, last }) {
       borderBottom: last ? 'none' : '1px solid var(--line-2)',
     }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)' }}>{label}</div>
+        <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{label}</div>
         {desc && <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{desc}</div>}
       </div>
       <Toggle on={on} onChange={onChange} />
@@ -311,11 +303,11 @@ function ConnectedAccountsSection() {
             <div style={{ width: 52, height: 52, borderRadius: 14, background: TG_BLUE, color: 'white', display: 'grid', placeItems: 'center', zIndex: 2, border: '2.5px solid var(--surface)', boxShadow: '0 8px 20px -8px ' + TG_BLUE }}>
               <Icon name="telegram" size={24} />
             </div>
-            <div style={{ width: 48, height: 48, borderRadius: 13, marginLeft: -12, background: 'linear-gradient(135deg, var(--ai) 0%, #c66ce2 100%)', color: 'white', display: 'grid', placeItems: 'center', zIndex: 1, border: '2.5px solid var(--surface)', boxShadow: '0 8px 20px -8px var(--ai)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 13, marginLeft: -12, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center', zIndex: 1, border: '2.5px solid var(--surface)', boxShadow: '0 8px 20px -8px var(--ai)' }}>
               <Icon name="sparkles" size={21} />
             </div>
           </div>
-          <div style={{ fontWeight: 700, fontSize: 'var(--fs-lg)', marginBottom: 8 }}>{t('telegram.account_empty_title')}</div>
+          <div style={{ fontWeight: 700, fontSize: 'var(--fs-h4)', marginBottom: 8 }}>{t('telegram.account_empty_title')}</div>
           <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, maxWidth: 420, margin: '0 auto 18px' }}>
             {t('telegram.account_empty_desc')}
           </div>
@@ -456,10 +448,9 @@ export default function ScreenAccount() {
   // ── Avatar background (fills the 76×76 circle exactly) ────────────────────
   const avatarName = fullName || user?.email || '?';
   const avatarInitials = avatarName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
-  const [ac1, ac2] = AVATAR_COLORS[hashStr(avatarName) % AVATAR_COLORS.length];
   const avatarBgStyle = avatarUrl
     ? { backgroundImage: `url(${avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: `linear-gradient(135deg, ${ac1}, ${ac2})` };
+    : { background: avatarGradient(avatarName) };
 
   // ── Seed form from user profile ────────────────────────────────────────────
   useEffect(() => {
@@ -687,7 +678,7 @@ export default function ScreenAccount() {
         </div>
         <div className="app-header__crumb">
           <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ink-2)' }}>{t('account.title')}</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--ink-2)' }}>{t('account.title')}</span>
         </div>
         <HeaderActions
           user={user}
@@ -789,11 +780,11 @@ export default function ScreenAccount() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 4, display: 'block' }}>{t('account.display_name')}</label>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 700, marginBottom: 4, display: 'block' }}>{t('account.display_name')}</label>
               <input className="input" value={fullName} onChange={e => setFullName(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 4, display: 'block' }}>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
                 E-mail <Badge variant="quiet" style={{ marginLeft: 4 }}>{t('account.readonly')}</Badge>
               </label>
               <input className="input" value={user.email} readOnly style={{ background: 'var(--wash)', color: 'var(--muted)' }} />
@@ -807,7 +798,7 @@ export default function ScreenAccount() {
 
             {/* Language */}
             <div>
-              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 6, display: 'block' }}>{t('settings.language')}</label>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 700, marginBottom: 6, display: 'block' }}>{t('settings.language')}</label>
               <div style={{ position: 'relative', maxWidth: 260 }}>
                 <button
                   onClick={() => setLangOpen(v => !v)}
@@ -846,7 +837,7 @@ export default function ScreenAccount() {
 
             {/* Theme */}
             <div>
-              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 6, display: 'block' }}>{t('settings.theme')}</label>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 700, marginBottom: 6, display: 'block' }}>{t('settings.theme')}</label>
               <div className="tweaks__seg">
                 <button className={theme === 'light'  ? 'active' : ''} onClick={() => setTheme('light')}>{t('settings.theme_light')}</button>
                 <button className={theme === 'dark'   ? 'active' : ''} onClick={() => setTheme('dark')}>{t('settings.theme_dark')}</button>

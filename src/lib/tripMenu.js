@@ -3,6 +3,7 @@
 // actual <button> rendering lives in each surface (full sidebar vs icon rail).
 
 export const LENS_ITEMS = [
+  { id: 'overview', labelKey: 'trip_menu.overview', icon: 'grid' },
   { id: 'timeline', labelKey: 'trip_menu.timeline', icon: 'list' },
   { id: 'map', labelKey: 'trip_menu.map', icon: 'map' },
   { id: 'calendar', labelKey: 'trip_menu.calendar', icon: 'calendar' },

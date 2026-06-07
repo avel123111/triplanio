@@ -23,6 +23,7 @@ import budget from './budget';
 import chat from './chat';
 import admin from './admin';
 import trip_menu from './trip_menu';
+import overview from './overview';
 import ai_plan from './ai_plan';
 import planner from './planner';
 import account from './account';
@@ -37,6 +38,6 @@ export default {
   ...common, ...event, ...nav, ...trips, ...trip, ...visit, ...hotel, ...activity,
   ...transfer, ...member, ...notif, ...view, ...settings, ...auth, ...calendar,
   ...doc, ...service, ...sub, ...pub, ...booking, ...telegram, ...budget, ...chat,
-  ...admin, ...trip_menu, ...ai_plan, ...planner, ...account, ...tse, ...sys, ...tl,
+  ...admin, ...trip_menu, ...overview, ...ai_plan, ...planner, ...account, ...tse, ...sys, ...tl,
   ...validation, ...confirm, ...landing,
 };

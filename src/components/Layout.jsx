@@ -70,7 +70,7 @@ function BottomNavItem({ to, icon: Icon, label, end }) {
       to={to}
       end={end}
       className={({ isActive }) =>
-        `nav-link flex-1 flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
+        `nav-link flex-1 flex flex-col items-center justify-center gap-1 text-[length:var(--fs-micro)] font-medium transition-colors ${
           isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
         }`
       }

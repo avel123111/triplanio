@@ -1,21 +1,15 @@
 import React from 'react';
+import * as RadixDialog from '@radix-ui/react-dialog';
 import { Icon } from './icons';
-import { useIsMobile } from '../hooks/use-mobile';
 import { useT } from '@/lib/i18n/I18nContext';
-import { hashStr } from '@/lib/hash';
+import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules
 // =====================================================================
 
-// ----- Avatar -----
-const AVATAR_COLORS = [
-  ["#2167e2", "#5a8ff0"], ["#c9603a", "#e08158"], ["#1f8a5b", "#4ab98a"],
-  ["#9c4ad9", "#c66ce2"], ["#c98a1a", "#e0a64b"], ["#4a6cd9", "#7a92e8"],
-  ["#a83e6a", "#c96792"], ["#3d8aa8", "#5fadc9"]
-];
-
+// ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
 export const Avatar = ({ name = "?", size, role, kind, photo, className = "", style: styleProp }) => {
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
   if (kind === "ai") {
@@ -24,10 +18,9 @@ export const Avatar = ({ name = "?", size, role, kind, photo, className = "", st
   if (kind === "placeholder") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--placeholder ${className}`} style={styleProp}>{initials}</div>;
   }
-  const [a, b] = AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length];
   const style = photo
     ? { backgroundImage: `url(${photo})`, backgroundSize: "cover", backgroundPosition: "center", ...styleProp }
-    : { background: `linear-gradient(135deg, ${a}, ${b})`, ...styleProp };
+    : { background: avatarGradient(name), ...styleProp };
   return (
     <div className={`avatar ${size ? "avatar--" + size : ""} ${className}`} style={style}>
       {!photo && initials}
@@ -298,7 +291,7 @@ export const CityPhoto = ({ city, h = 80, w = "100%", radius = 10 }) => {
         <path d="M0 60 Q 50 40 100 55 T 200 50 L 200 100 L 0 100 Z" fill="rgba(255,255,255,.5)" />
         <path d="M0 75 Q 60 55 120 70 T 200 65 L 200 100 L 0 100 Z" fill="rgba(255,255,255,.3)" />
       </svg>
-      <div style={{ position: "absolute", top: 6, left: 8, fontSize: 'var(--fs-xl)' }}>{p.emoji}</div>
+      <div style={{ position: "absolute", top: 6, left: 8, fontSize: 'var(--fs-h3)' }}>{p.emoji}</div>
     </div>
   );
 };
@@ -313,14 +306,31 @@ export function ModalHost() {
     window.__closeModal = () => setStack(s => s.slice(0, -1));
     window.__closeAllModals = () => setStack([]);
   }, []);
-  if (stack.length === 0) return null;
+  // Each imperatively-opened modal is wrapped in a Radix Dialog so the whole
+  // window.__openModal stack gains focus-trap, Esc-to-close, scroll-lock and
+  // ARIA for free — while keeping the Atlantic .dlg look. Only the top modal is
+  // `modal` (traps focus / locks scroll); lower ones stay visible underneath.
   return stack.map((content, i) => (
-    <div key={i} className="dlg-backdrop"
-      onClick={(e) => { if (e.target === e.currentTarget) setStack(s => s.slice(0, -1)); }}
-      style={{ zIndex: 200 + i * 10 }}
+    <RadixDialog.Root
+      key={i}
+      open
+      modal={i === stack.length - 1}
+      onOpenChange={(o) => { if (!o) setStack(s => s.slice(0, -1)); }}
     >
-      {content}
-    </div>
+      <RadixDialog.Portal>
+        <RadixDialog.Overlay className="dlg-backdrop" style={{ zIndex: 200 + i * 10 }} />
+        <RadixDialog.Content
+          className="dlg-modal"
+          style={{ zIndex: 201 + i * 10 }}
+          aria-describedby={undefined}
+        >
+          {/* a11y name fallback — content keeps its own visible <h2> as the title.
+              TODO: surface the real per-dialog title to screen readers. */}
+          <RadixDialog.Title className="sr-only">Triplanio</RadixDialog.Title>
+          {content}
+        </RadixDialog.Content>
+      </RadixDialog.Portal>
+    </RadixDialog.Root>
   ));
 }
 
@@ -427,7 +437,7 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
       borderRadius: 12, padding: 12,
       display: "flex", gap: 12, maxWidth: 360,
     }}>
-      <div style={{ width: 48, height: 48, borderRadius: 8, background: p?.color || "var(--brand)", color: "white", display: "grid", placeItems: "center", flexShrink: 0, fontSize: 'var(--fs-xl)', fontWeight: 700 }}>
+      <div style={{ width: 48, height: 48, borderRadius: 8, background: p?.color || "var(--brand)", color: "white", display: "grid", placeItems: "center", flexShrink: 0, fontSize: 'var(--fs-h3)', fontWeight: 700 }}>
         <Icon name={type === "hotel" ? "bed" : type === "flight" ? "plane" : type === "train" ? "train" : "spark"} size={20} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -489,6 +499,17 @@ export function weekday(iso, loc) {
     try { return new Intl.DateTimeFormat(_LOCMAP[loc] || loc, { weekday: 'short' }).format(d); } catch { /* fallthrough */ }
   }
   return _WEEKDAYS[d.getDay()];
+}
+
+const _WEEKDAYS_LONG = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+// Full weekday name (Lumo timeline header writes them out in full).
+export function weekdayLong(iso, loc) {
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return '';
+  if (loc && loc !== 'ru') {
+    try { return new Intl.DateTimeFormat(_LOCMAP[loc] || loc, { weekday: 'long' }).format(d); } catch { /* fallthrough */ }
+  }
+  return _WEEKDAYS_LONG[d.getDay()];
 }
 
 // ----- Mock event stream -----
@@ -582,7 +603,7 @@ function TransferCardHub({ e, onClick }) {
         <Icon name={meta.icon} size={17} />
       </div>
       <div>
-        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-xl)', fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{e.time}</div>
+        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-h3)', fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{e.time}</div>
         <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginTop: 4 }}>{e.from}</div>
         {e.depart_loc && <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{e.depart_loc}</div>}
       </div>
@@ -597,7 +618,7 @@ function TransferCardHub({ e, onClick }) {
         </div>
       </div>
       <div style={{ textAlign: "right" }}>
-        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-xl)', fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{arriveTime}</div>
+        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-h3)', fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{arriveTime}</div>
         <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginTop: 4 }}>{e.to}</div>
         {e.arrive_loc && <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{e.arrive_loc}</div>}
       </div>
@@ -617,7 +638,7 @@ function TransferCardStrip({ e, onClick }) {
       padding: "12px 14px", background: "var(--surface)",
       borderRadius: 12, cursor: "pointer", textAlign: "left"
     }}>
-      <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-lg)', fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: "var(--ink)" }}>{e.time || "-"}</div>
+      <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-h4)', fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: "var(--ink)" }}>{e.time || "-"}</div>
       <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
         <Icon name={meta.icon} size={15} />
       </div>
@@ -656,9 +677,9 @@ function TransferCardStacked({ e, onClick }) {
           {meta.label} · <span className="num">{e.duration}</span>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-xl)', fontWeight: 700, letterSpacing: "-0.02em" }}>{e.time}</span>
+          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-h3)', fontWeight: 700, letterSpacing: "-0.02em" }}>{e.time}</span>
           <Icon name="arrowR" size={12} style={{ color: "var(--muted-2)" }} />
-          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-xl)', fontWeight: 700, letterSpacing: "-0.02em" }}>{arriveTime}</span>
+          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-h3)', fontWeight: 700, letterSpacing: "-0.02em" }}>{arriveTime}</span>
           <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>· {e.to_city || e.to}</span>
         </div>
         <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -695,191 +716,97 @@ function _evMeta(e) {
 }
 
 // ── Mobile transfer row - stacked with a vertical departure→arrival scale ──────
-function EventRowMobileTransfer({ e, onClick }) {
-  const t = useT();
-  const meta = _evMeta(e);
-  const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "-";
-  return (
-    <button onClick={onClick} style={{ width: "100%", display: "flex", alignItems: "stretch", gap: 11, padding: "13px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left" }}>
-      <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', color: "var(--ink)", minWidth: 42, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
-        <span style={{ whiteSpace: "nowrap" }}>{e.time || "-"}</span>
-        {e.duration && <span className="muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 500 }}>{e.duration}</span>}
-        <span style={{ whiteSpace: "nowrap" }}>{arrive}</span>
-      </div>
-      <div style={{ width: 22, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", paddingTop: 3, paddingBottom: 3, flexShrink: 0 }}>
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.c }} />
-        <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
-        <span style={{ width: 24, height: 24, borderRadius: "50%", background: meta.soft, color: meta.c, display: "grid", placeItems: "center", border: `2px solid ${meta.c}` }}>
-          <Icon name={meta.icon} size={12} />
-        </span>
-        <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.c, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px " + meta.c }} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 5 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "-"}</div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em" }}>{t(meta.labelKey)}</span>
-          {e.carrier ? <> · {e.carrier}</> : null}
-        </div>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "-"}</div>
-        {(e.price || e.platformUrl) && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
-            {e.price ? <span className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{fmt(e.price, e.cur)}</span> : null}
-            {e.platformUrl && <PartnerPill url={e.platformUrl} />}
-          </div>
-        )}
-      </div>
-    </button>
-  );
+// Event-type → Lumo tile colour tokens (--evs soft bg / --evi ink).
+const _EV_TOK = {
+  hotel:    { s: "var(--ev-hotel-soft)",    i: "var(--ev-hotel-ink)" },
+  transfer: { s: "var(--ev-transfer-soft)", i: "var(--ev-transfer-ink)" },
+  activity: { s: "var(--ev-activity-soft)", i: "var(--ev-activity-ink)" },
+  car:      { s: "var(--ev-car-soft)",      i: "var(--ev-car-ink)" },
+  deadline: { s: "var(--ev-deadline-soft)", i: "var(--ev-deadline-ink)" },
+};
+function _evTok(e) {
+  if (e.type === "flight" || e.type === "transfer") return _EV_TOK.transfer;
+  if (e.type === "hotel-checkin" || e.type === "hotel-checkout") return _EV_TOK.hotel;
+  if (e.type === "hotel-deadline") return _EV_TOK.deadline;
+  if (e.type === "car-pickup" || e.type === "car-return") return _EV_TOK.car;
+  return _EV_TOK.activity;
 }
 
-// ── Mobile row - stacked layout for hotel / activity / car / deadline events ───
-function EventRowMobile({ e, onClick }) {
+// Timeline event plate — Lumo "Таймлайн поездки" (.tl3-ev): time on the left
+// (mono), .tl3-card with a coloured .tile + title/sub. Transfers render as the
+// column .tl3-card--tr (from → mode → to). Missing-transfer → .tl3-warn.
+export function StreamEventRow({ e, onClick }) {
   const t = useT();
-  if (e.type === "flight" || e.type === "transfer") return <EventRowMobileTransfer e={e} onClick={onClick} />;
-  const meta = _evMeta(e);
-  return (
-    <button onClick={onClick} style={{ width: "100%", padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${meta.c}`, borderRadius: 12, cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", minWidth: 42, flexShrink: 0 }}>{e.time || "-"}</span>
-        <div style={{ width: 30, height: 30, borderRadius: 8, background: meta.soft, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
-          <Icon name={meta.icon} size={15} />
-        </div>
-        <span style={{ flex: 1, fontSize: 'var(--fs-micro)', textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t(meta.labelKey)}</span>
-        {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)', flexShrink: 0 }}>{fmt(e.price, e.cur)}</span>}
-      </div>
-      <div>
-        <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', lineHeight: 1.3, textWrap: "pretty" }}>{e.title}</div>
-        {(e.address || e.duration) && (
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 3 }}>
-            {e.duration ? <span className="num">{e.duration}</span> : null}{e.duration && e.address ? " · " : ""}{e.address || ""}
-          </div>
-        )}
-      </div>
-      {e.platformUrl && <div><PartnerPill url={e.platformUrl} /></div>}
-    </button>
-  );
-}
 
-export function StreamEventRow({ e, onClick, last, editMode }) {
-  const t = useT();
-  const isMobile = useIsMobile();
   if (e.type === "transfer-missing") {
     const [hidden, setHidden] = React.useState(false);
     if (hidden) return null;
     return (
-      <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--warning-soft)", border: "1.5px dashed var(--warning)", borderRadius: 12, textAlign: "left" }}>
-        <Icon name="warning" size={16} style={{ color: "var(--warning)" }} />
-        <div style={{ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 600 }}>{t('view.map_no_transfer')} · {e.from} → {e.to}</div>
-        <Btn variant="primary" size="sm" icon="plus" onClick={onClick}>{t('tse.add_transfer')}</Btn>
-        <button onClick={() => setHidden(true)} title={t('tl.hide_warning')} style={{ width: 24, height: 24, borderRadius: 6, border: "none", background: "transparent", color: "var(--warning)", cursor: "pointer", display: "grid", placeItems: "center" }}>
-          <Icon name="close" size={12} />
+      <div className="tl3-warn">
+        <span className="tile"><Icon name="warning" size={19} /></span>
+        <div className="x">
+          <b>{t('view.map_no_transfer')}</b>
+          <span>{e.from} → {e.to}</span>
+        </div>
+        <button onClick={onClick}>{t('tse.add_transfer')}</button>
+        <button onClick={() => setHidden(true)} title={t('tl.hide_warning')}
+          style={{ background: "transparent", color: "var(--warning-ink)", border: 0, padding: 6, cursor: "pointer", display: "grid", placeItems: "center", borderRadius: 8 }}>
+          <Icon name="close" size={14} />
         </button>
       </div>
     );
   }
-  // Mobile: stacked, phone-friendly rows for every event type.
-  if (isMobile) return <EventRowMobile e={e} onClick={onClick} />;
-  // Desktop: v11 "day-card row" design, each event in its own surface card.
-  if (e.type === "flight" || e.type === "transfer") return <TransferRowV11 e={e} onClick={onClick} />;
-  return <EventRowV11 e={e} onClick={onClick} />;
-}
 
-// ── Desktop v11 event card - flush colour bar + time + icon + title/label/sub ──
-function EventRowV11({ e, onClick }) {
-  const t = useT();
   const meta = _evMeta(e);
-  const sub = [e.duration, e.address].filter(Boolean).join(" · ");
-  return (
-    <button onClick={onClick} className="dz-lift" style={{
-      width: "100%", display: "flex", alignItems: "stretch", padding: 0,
-      background: "var(--surface)", borderRadius: 14,
-      overflow: "hidden", cursor: "pointer", textAlign: "left",
-    }}>
-      <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
-      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, padding: "13px 16px" }}>
-        <div className="num" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', minWidth: 52, color: (e.time && e.time !== "?") ? "var(--ink)" : "var(--warning)", flexShrink: 0 }}>{e.time || "-"}</div>
-        <div style={{ width: 38, height: 38, borderRadius: 10, background: meta.soft, color: meta.c, display: "grid", placeItems: "center", flexShrink: 0 }}>
-          <Icon name={meta.icon} size={17} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <span style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</span>
-            {meta.labelKey && <span style={{ fontSize: 'var(--fs-micro)', textTransform: "uppercase", letterSpacing: ".06em", color: meta.c, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>{t(meta.labelKey)}</span>}
+  const price = e.price != null ? fmt(e.price, e.cur) : null;
+
+  if (e.type === "flight" || e.type === "transfer") {
+    const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "—";
+    const small = [e.carrier, e.duration].filter(Boolean).join(" · ");
+    return (
+      <div className="tl3-ev tl3-ev--tr">
+        <div className="time time--tr"><span>{e.time || "—"}</span><span>{arrive}</span></div>
+        <button className="tl3-card tl3-card--tr" onClick={onClick}>
+          <div className="rv-end">
+            <b>{e.from || "—"}</b>
+            {e.from_address && e.from_address !== e.from && <span>{e.from_address}</span>}
           </div>
-          {sub && <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sub}</div>}
-        </div>
-        {e.price != null && <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)', flexShrink: 0 }}>{fmt(e.price, e.cur)}</div>}
-        {e.platformUrl && <PartnerPill url={e.platformUrl} />}
+          <div className="rv-conn">
+            <span className="dline" />
+            <span className="rv-mode">
+              <span className="ic"><Icon name={meta.icon} size={16} /></span>
+              {t(meta.labelKey)}{small && <small> · {small}</small>}
+            </span>
+            <span className="dline" />
+          </div>
+          <div className="rv-end">
+            {e.to_address && e.to_address !== e.to && <span>{e.to_address}</span>}
+            <b>{e.to || "—"}</b>
+          </div>
+        </button>
       </div>
-    </button>
-  );
-}
+    );
+  }
 
-// ── Desktop v11 transfer card - vertical departure→arrival mini-rail ───────────
-function TransferRowV11({ e, onClick }) {
-  const t = useT();
-  const meta = _evMeta(e);
-  const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "-";
+  const tok = _evTok(e);
+  const sub = [t(meta.labelKey), e.duration, e.address].filter(Boolean).join(" · ");
   return (
-    <button onClick={onClick} className="dz-lift" style={{
-      width: "100%", display: "flex", alignItems: "stretch", padding: 0, minHeight: 120,
-      background: "var(--surface)", borderRadius: 14,
-      overflow: "hidden", cursor: "pointer", textAlign: "left",
-    }}>
-      <div style={{ width: 4, background: meta.c, flexShrink: 0 }} />
-      {/* Card height is fixed on the BUTTON (minHeight:120) - taller than mobile, never
-          collapses. The inner block stretches to it (align-items:stretch), and the
-          time / rail / from-to columns (all justify-content:space-between) spread their
-          content top→bottom: from anchors to the top, to to the bottom, the rail line
-          grows, and duration + icon stay centered. Vertical margin matches mobile (13px). */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "stretch", gap: 12, padding: "13px 16px" }}>
-        {/* time / duration / arrive */}
-        <div className="num" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 'var(--fs-strong)', color: "var(--ink)", minWidth: 52, paddingTop: 2, paddingBottom: 2, flexShrink: 0 }}>
-          <span style={{ whiteSpace: "nowrap" }}>{e.time || "-"}</span>
-          {e.duration && <span className="muted" style={{ fontSize: 'var(--fs-micro)', fontWeight: 500 }}>{e.duration}</span>}
-          <span style={{ whiteSpace: "nowrap" }}>{arrive}</span>
+    <div className="tl3-ev">
+      <div className="time">{e.time && e.time !== "?" ? e.time : "—"}</div>
+      <button className="tl3-card" style={{ "--evs": tok.s, "--evi": tok.i }} onClick={onClick}>
+        <span className="tile"><Icon name={meta.icon} size={20} /></span>
+        <div className="body">
+          <b>{e.title}</b>
+          {sub && <div className="sb">{sub}</div>}
         </div>
-        {/* mini rail */}
-        <div style={{ width: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", paddingTop: 3, paddingBottom: 3, flexShrink: 0 }}>
-          <span style={{ width: 9, height: 9, borderRadius: "50%", background: meta.c }} />
-          <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
-          <span style={{ width: 26, height: 26, borderRadius: "50%", background: meta.soft, color: meta.c, display: "grid", placeItems: "center", border: `2px solid ${meta.c}` }}>
-            <Icon name={meta.icon} size={13} />
-          </span>
-          <span style={{ flex: 1, width: 2, background: meta.c, opacity: .35 }} />
-          <span style={{ width: 9, height: 9, borderRadius: "50%", background: meta.c, border: "2px solid var(--surface)", boxShadow: "0 0 0 1px " + meta.c }} />
-        </div>
-        {/* from → to - cities (uppercase) anchor the edges, addresses sit inward
-            next to the label: CITY / addr / label / addr / CITY (desktop). */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 4 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from || "-"}</div>
-            {e.from_address && e.from_address !== e.from && (
-              <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.from_address}</div>
-            )}
-          </div>
-          <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            <span style={{ color: meta.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>{t(meta.labelKey)}</span>
-            {e.carrier ? <> · {e.carrier}</> : null}
-            {e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}
-          </div>
-          <div style={{ minWidth: 0 }}>
-            {e.to_address && e.to_address !== e.to && (
-              <div className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to_address}</div>
-            )}
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.to || "-"}</div>
-          </div>
-        </div>
-        {/* price + chip */}
-        {(e.price != null || e.platformUrl) && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 8, flexShrink: 0 }}>
-            {e.price != null && <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{fmt(e.price, e.cur)}</div>}
+        {(price || e.platformUrl) && (
+          <span className="meta" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            {price && <span>{price}</span>}
             {e.platformUrl && <PartnerPill url={e.platformUrl} />}
-          </div>
+          </span>
         )}
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 
@@ -938,7 +865,7 @@ export function TripIdentityStrip({ compact }) {
             <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.32)" />
             <circle cx="680" cy="50" r="28" fill="rgba(255,255,255,.65)" />
           </svg>
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 30%, rgba(0,0,0,.35) 100%)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "var(--overlay-grad-soft)" }} />
           <div style={{ position: "absolute", left: 22, right: 22, bottom: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ color: "white", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(26px, 4vw, 38px)", letterSpacing: "-0.03em", lineHeight: 1, textShadow: "0 2px 12px rgba(0,0,0,.3)" }}>{TRIP.title}</div>

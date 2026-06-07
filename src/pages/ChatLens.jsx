@@ -20,7 +20,7 @@ import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
-import { Avatar, Card } from '../design/index';
+import { Avatar, Card, EmptyState } from '../design/index';
 import { Icon } from '../design/icons';
 import { chatParticipants, pluralPeople } from '@/lib/chat';
 
@@ -440,10 +440,8 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           {isLoading ? (
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>{t('chat.loading_messages')}</div>
           ) : msgs.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10, color: 'var(--muted-2)' }}><Icon name="chat" size={28} /></div>
-              <div style={{ fontWeight: 500, marginBottom: 6 }}>{t('chat.empty_title')}</div>
-              <div style={{ fontSize: 'var(--fs-meta)' }}>{t('chat.empty_desc')}</div>
+            <div style={{ margin: 'auto' }}>
+              <EmptyState icon="chat" title={t('chat.empty_title')} body={t('chat.empty_desc')} />
             </div>
           ) : messageRows}
         </div>

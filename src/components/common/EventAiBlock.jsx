@@ -190,15 +190,7 @@ export default function EventAiBlock({
 
   if (state === 'locked') {
     return (
-      <div
-        className="mb-4 rounded-xl border"
-        style={{
-          position: 'relative', padding: '14px 16px',
-          background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)',
-          borderColor: 'var(--ai-soft-12)',
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-        }}
-      >
+      <div className="aiblk mb-4" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <AiIcon locked />
         <div style={{ flex: 1, minWidth: 200 }}>
           <Title />
@@ -206,7 +198,7 @@ export default function EventAiBlock({
             {t('event.ai_locked_hint')}
           </div>
         </div>
-        <Button size="sm" onClick={onUpgrade} className="bg-gradient-to-r from-primary via-chart-1 to-chart-3">
+        <Button size="sm" onClick={onUpgrade} className="text-white" style={{ background: 'var(--ai-gradient)' }}>
           <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('trips.go_pro')}
         </Button>
       </div>
@@ -215,17 +207,7 @@ export default function EventAiBlock({
 
   if (state === 'available') {
     return (
-      <button
-        type="button"
-        onClick={() => setState('idle')}
-        className="mb-4 w-full text-left rounded-xl border transition"
-        style={{
-          padding: '12px 16px',
-          background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.06) 100%)',
-          borderColor: 'var(--ai-soft-12)',
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-        }}
-      >
+      <button type="button" onClick={() => setState('idle')} className="aiblk mb-4 w-full text-left" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <AiIcon />
         <div style={{ flex: 1, minWidth: 180 }}>
           <Title />
@@ -250,8 +232,8 @@ export default function EventAiBlock({
       >
         <div
           style={{
-            width: 40, height: 40, borderRadius: 10,
-            background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white',
+            width: 30, height: 30, borderRadius: 10,
+            background: 'var(--ai-grad)', color: 'white',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}
         >
@@ -268,7 +250,7 @@ export default function EventAiBlock({
           <div className="h-1 rounded mt-2 overflow-hidden" style={{ background: 'var(--ai-soft-12)' }}>
             <div
               className="h-full transition-all"
-              style={{ width: `${progress}%`, background: 'linear-gradient(90deg, var(--ai), #c66ce2)' }}
+              style={{ width: `${progress}%`, background: 'linear-gradient(90deg, var(--ai), var(--ai-2))' }}
             />
           </div>
         </div>
@@ -282,14 +264,14 @@ export default function EventAiBlock({
         className="mb-4 rounded-xl border"
         style={{
           padding: '12px 16px',
-          background: 'rgba(31,138,91,.10)',
+          background: 'var(--success-soft)',
           borderColor: 'var(--success)',
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
         }}
       >
         <div
           style={{
-            width: 32, height: 32, borderRadius: 8,
+            width: 30, height: 30, borderRadius: 10,
             background: 'var(--success)', color: 'white',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}
@@ -323,14 +305,7 @@ export default function EventAiBlock({
 
   // idle / uploaded
   return (
-    <div
-      className="mb-4 rounded-xl border"
-      style={{
-        padding: 18,
-        background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.06) 100%)',
-        borderColor: 'var(--ai-soft-12)',
-      }}
-    >
+    <div className="aiblk mb-4">
       <div className="flex items-center gap-3 mb-3 flex-wrap">
         <AiIcon />
         <div style={{ flex: 1, minWidth: 200 }}>
@@ -373,7 +348,7 @@ export default function EventAiBlock({
               <div className="flex-1 min-w-0">
                 <div className="text-sm truncate">{f.name}</div>
                 {f.file?.size && (
-                  <div className="text-[11px] text-muted-foreground">{formatSize(f.file.size)}</div>
+                  <div className="text-[length:var(--fs-micro)] text-muted-foreground">{formatSize(f.file.size)}</div>
                 )}
               </div>
               <button
@@ -416,40 +391,29 @@ export default function EventAiBlock({
             style={{ minHeight: 84 }}
           />
           <div className="flex items-center gap-2 flex-wrap mt-1">
-            <Button variant="ghost" size="sm" onClick={() => inputRef.current?.click()}>
+            <button type="button" className="btn btn--ghost btn--sm" onClick={() => inputRef.current?.click()}>
               <Upload className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_pdf_screenshot')}
-            </Button>
-            <span className="text-[11px] text-muted-foreground">
+            </button>
+            <span className="text-[length:var(--fs-micro)] text-muted-foreground">
               {dragOver ? t('event.ai_drop_active') : t('event.ai_drop_idle')}
             </span>
             <div className="flex-1" />
-            <Button
-              size="sm"
-              onClick={runParse}
-              disabled={!text.trim() && files.length === 0}
-              style={{ background: 'var(--ai)', borderColor: 'var(--ai)' }}
-              className="text-white hover:opacity-90"
-            >
+            <button type="button" className="btn btn--ai btn--sm" onClick={runParse} disabled={!text.trim() && files.length === 0}>
               <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_recognize')}
-            </Button>
+            </button>
           </div>
         </div>
       )}
 
       {state === 'uploaded' && (
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="ghost" size="sm" onClick={() => setState('idle')}>
+          <button type="button" className="btn btn--ghost btn--sm" onClick={() => setState('idle')}>
             <Edit3 className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_paste_text')}
-          </Button>
+          </button>
           <div className="flex-1" />
-          <Button
-            size="sm"
-            onClick={runParse}
-            style={{ background: 'var(--ai)', borderColor: 'var(--ai)' }}
-            className="text-white hover:opacity-90"
-          >
+          <button type="button" className="btn btn--ai btn--sm" onClick={runParse}>
             <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_recognize_booking')}
-          </Button>
+          </button>
         </div>
       )}
 
@@ -478,7 +442,7 @@ function AiIcon({ locked }) {
       className="relative shrink-0"
       style={{
         width: 32, height: 32, borderRadius: 8,
-        background: 'linear-gradient(135deg, #6a3ee2, #c66ce2)', color: 'white',
+        background: 'var(--ai-grad)', color: 'white',
         display: 'grid', placeItems: 'center',
         filter: locked ? 'saturate(.7)' : 'none',
       }}
@@ -506,7 +470,7 @@ function Title() {
   return (
     <div className="text-sm font-semibold flex items-center gap-1.5 flex-wrap">
       {t('event.ai_fill_title')}
-      <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Pro</span>
+      <span className="text-[length:var(--fs-nano)] uppercase font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--ai-soft)', color: 'var(--ai-ink)' }}>Pro</span>
     </div>
   );
 }

@@ -18,7 +18,9 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
+import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
+import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colors';
 import { getActiveLocale } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton, Severity } from '../design/index';
@@ -222,9 +224,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
         {t('budget.fx_intro')}
       </div>
       {others.length === 0 ? (
-        <div className="muted" style={{ fontSize: 'var(--fs-base)', textAlign: 'center', padding: 14 }}>
-          {t('budget.fx_empty')}
-        </div>
+        <EmptyState icon="wallet" title={t('budget.fx_no_other')} body={t('budget.fx_empty')} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {others.map(code => {
@@ -258,14 +258,15 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
 
 // ─── AddCategoryDialog ────────────────────────────────────────────────────────
 
-const CAT_COLORS = ['#e2503a','#2167e2','#6a3ee2','#1f8a5b','#e08158','#c98a1a','#c9603a','#888'];
+// Category palette = the Lumo --cat-1..8 tokens (single source: category-colors).
+const CAT_COLORS = CATEGORY_HEXES;
 const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'spark', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
 function AddCategoryDialog({ tripId, existing, onSaved }) {
   const { t } = useI18n();
   const { user } = useAuth();
   const [name, setName] = useState(existing?.name || '');
-  const [color, setColor] = useState(existing?.color || CAT_COLORS[0]);
+  const [color, setColor] = useState(existing?.color || DEFAULT_CATEGORY_HEX);
   const [icon, setIcon] = useState(existing?.icon || CAT_ICONS_BUDGET[0]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -360,7 +361,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, showCategory, catName, m
         <Icon name={icon || SOURCE_ICON[src] || 'wallet'} size={13} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {expense.title || '-'}
         </div>
         <div className="muted" style={{ fontSize: 'var(--fs-micro)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -490,6 +491,15 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     }));
   }, [cats, fx, overrides, mainCurrency]);
 
+  // Primary actions live in the global screen-title bar (the per-screen header).
+  useTripScreenActions(
+    <>
+      <Btn variant="ghost" size="sm" icon="card" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
+      <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
+    </>,
+    [tripId, t, mainCurrency, budgetExpenses, budgetCategories],
+  );
+
   // Skeleton
   if (isLoading) {
     return (
@@ -508,7 +518,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         {/* Всего потрачено */}
         <Card>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('budget.total_spent')}</div>
-          <div className="num" style={{ fontSize: 'var(--fs-3xl)', fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(totalSpent, mainCurrency)}</div>
+          <div className="num" style={{ fontSize: 'var(--fs-h2)', fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(totalSpent, mainCurrency)}</div>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 4 }}>
             {noExpenses ? t('trip.budget_empty') : `${budgetExpenses.length} ${budgetExpenses.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}`}
           </div>
@@ -517,7 +527,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         {/* На одного */}
         <Card>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('budget.per_person_label')}</div>
-          <div className="num" style={{ fontSize: 'var(--fs-3xl)', fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
+          <div className="num" style={{ fontSize: 'var(--fs-h2)', fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 4 }}>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')} · {t('budget.split_evenly')}</div>
         </Card>
 
@@ -589,7 +599,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         {grouping === 'category' && (
           <Btn variant="ghost" size="sm" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
         )}
-        <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
       </div>
 
       {grouping === 'category' ? (
@@ -611,7 +620,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                     <Icon name={catIcon(c)} size={14} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       {c.name}
                       {c.kind === 'custom' && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)', padding: '1px 5px' }}>{t('budget.custom_short')}</Badge>}
                     </div>
@@ -643,10 +652,11 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {activeCat.items.length === 0 && (
-                  <div style={{ padding: 22, textAlign: 'center', color: 'var(--muted)', border: '1.5px dashed var(--line)', borderRadius: 10 }}>
-                    <Icon name={catIcon(activeCat)} size={20} style={{ color: activeCat.color, marginBottom: 6, display: 'block', marginLeft: 'auto', marginRight: 'auto' }} />
-                    <div>{t('budget.cat_empty', { name: activeCat.name })} <a href="#" onClick={e => { e.preventDefault(); openAddExpense(); }}>{t('budget.add_first')}</a></div>
-                  </div>
+                  <EmptyState
+                    icon={catIcon(activeCat)}
+                    title={t('budget.cat_empty', { name: activeCat.name })}
+                    action={<Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>}
+                  />
                 )}
                 {activeCat.items.map(exp => {
                   const r = conv(exp);
@@ -719,7 +729,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, onOpen, onAdd }) {
                 <Icon name="pin" size={14} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)' }}>{g.city === '-' ? t('budget.no_city') : g.city}</div>
+                <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{g.city === '-' ? t('budget.no_city') : g.city}</div>
                 <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{g.items.length} {g.items.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}</div>
               </div>
               <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{money(g.total, mainCurrency)}</div>

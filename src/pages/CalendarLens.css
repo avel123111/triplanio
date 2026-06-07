@@ -96,7 +96,7 @@
   background: var(--brand); color: #fff; border-radius: 999px;
   width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
 }
-.cal-wdnum { font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: -.02em; color: var(--ink); }
+.cal-wdnum { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h3); letter-spacing: -.02em; color: var(--ink); }
 .cal-wdname { color: var(--muted); font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
 .cal-wdcity { color: var(--muted); font-size: var(--fs-micro); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

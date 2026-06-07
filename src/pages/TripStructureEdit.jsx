@@ -22,6 +22,9 @@ import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import TripSidebar from '@/components/trips/TripSidebar';
+import TripHeaderBar from '@/components/trips/TripHeaderBar';
+import TripScreenBar from '@/components/trips/TripScreenBar';
+import { getGradientById } from '@/lib/trip-gradients';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 
@@ -147,6 +150,7 @@ export default function TripStructureEdit() {
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [pendingLeave, setPendingLeave] = useState(null); // navigation target awaiting the unsaved-changes prompt
+  const [sideOpen, setSideOpen] = useState(false); // mobile menu drawer
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
   const [undoStack, setUndoStack] = useState([]); // history of draft snapshots (JSON) for step-undo
@@ -532,28 +536,24 @@ export default function TripStructureEdit() {
         <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
         <span className="app-header__brand-name">Triplanio</span>
       </div>
-      <div className="app-header__crumb">
-        <span className="app-header__crumb-sep">/</span>
-        <div className="app-header__crumb-trip">
-          <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
-            {trip?.title || '…'}
-          </span>
-        </div>
-      </div>
-      {draft && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, marginLeft: 'auto', paddingLeft: 14, borderLeft: '1px solid var(--line)' }}>
-          {changeCount > 0 && <Badge variant="brand" icon="edit">{t('tse.unsaved_count', { n: changeCount })}</Badge>}
-          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <Btn variant="quiet" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
-            <Btn variant="quiet" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
-            <Btn variant="quiet" size="sm" icon="map" onClick={() => setShowMap((v) => !v)} className={showMap ? 'is-on' : ''} title={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaLabel={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaPressed={showMap} />
-          </div>
-          <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={() => onSave()}>{saving ? t('tse.saving') : t('common.save')}</Btn>
-        </div>
-      )}
+      <div style={{ flex: 1 }} />
       <HeaderActions user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} />
     </header>
   );
+
+  // Editor action cluster — projected into the global screen-title bar, the same
+  // way lenses surface their primary actions. (Title + dates now live in the
+  // gradient hero; only meaningful once the draft has loaded.)
+  //   Undo  = step back one action.   Reset = discard all edits, stay in editor.
+  const editorActions = draft ? (
+    <>
+      {changeCount > 0 && <Badge variant="brand" icon="edit">{t('tse.unsaved_count', { n: changeCount })}</Badge>}
+      <Btn variant="quiet" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
+      <Btn variant="quiet" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
+      <Btn variant="quiet" size="sm" icon="map" onClick={() => setShowMap((v) => !v)} className={showMap ? 'is-on' : ''} title={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaLabel={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaPressed={showMap} />
+      <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={() => onSave()}>{saving ? t('tse.saving') : t('common.save')}</Btn>
+    </>
+  ) : null;
 
   if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">{t('tse.err_load')}{String(shellError.message || shellError)}</div></div></>;
   if (lock === 'blocked' || lock === 'error') {
@@ -645,17 +645,38 @@ export default function TripStructureEdit() {
   // Presses on inner controls (steppers, booking cells, links) are ignored.
   const armDrag = (e, dIdx, nodeId) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    // Touch: only the grip starts a drag, so swiping a card still scrolls the list.
-    // Mouse: the whole card is draggable.
-    if (e.pointerType !== 'mouse' && !e.target?.closest?.('.te-grip')) return;
     if (e.target?.closest?.('.te-stepper, .te-step, .te-cellbtn, .te-actchip, .te-hotelicon, .te-addmini, a, input, select, textarea')) return;
     const rowEl = rowElRefs.current.get(nodeId);
     if (!rowEl) return;
-    const rect = rowEl.getBoundingClientRect();
-    dragInfoRef.current = { id: nodeId, dIdx, startX: e.clientX, startY: e.clientY, grabOffset: e.clientY - rect.top, ty: 0, activated: false, lastTarget: null };
-    window.addEventListener('pointermove', stableMove);
-    window.addEventListener('pointerup', stableEnd, { once: true });
-    window.addEventListener('pointercancel', stableEnd, { once: true });
+    const cx = e.clientX, cy = e.clientY;
+    const begin = () => {
+      const rect = rowEl.getBoundingClientRect();
+      dragInfoRef.current = { id: nodeId, dIdx, startX: cx, startY: cy, grabOffset: cy - rect.top, ty: 0, activated: false, lastTarget: null };
+      window.addEventListener('pointermove', stableMove);
+      window.addEventListener('pointerup', stableEnd, { once: true });
+      window.addEventListener('pointercancel', stableEnd, { once: true });
+    };
+    // Mouse: whole card draggable immediately. Touch/pen: long-press (430ms) on
+    // the row arms the drag — any scroll/lift before then cancels, so the list
+    // still scrolls normally and there's no accidental reordering.
+    if (e.pointerType === 'mouse') { begin(); return; }
+    let timer = null;
+    const clear = () => {
+      if (timer) { clearTimeout(timer); timer = null; }
+      window.removeEventListener('pointermove', preMove);
+      window.removeEventListener('pointerup', preUp);
+      window.removeEventListener('pointercancel', preUp);
+    };
+    const preMove = (ev) => { if (Math.hypot(ev.clientX - cx, ev.clientY - cy) > 9) clear(); };
+    const preUp = () => clear();
+    window.addEventListener('pointermove', preMove, { passive: true });
+    window.addEventListener('pointerup', preUp, { once: true });
+    window.addEventListener('pointercancel', preUp, { once: true });
+    timer = setTimeout(() => {
+      clear();
+      try { navigator.vibrate?.(12); } catch { /* haptic optional */ }
+      begin();
+    }, 430);
   };
   // Per-render move/end closures (read live values), reached via the stable
   // dispatchers above so the window listeners pair up across re-renders.
@@ -813,11 +834,48 @@ export default function TripStructureEdit() {
   // the .te-panefade entry animation replays.
   const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
 
+  // Trip-start stepper — temporarily relocated into the screen header bar
+  // (its dedicated left-column header block was removed; final placement TBD).
+  const startStepperEl = draft ? (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: 2 }} title={t('planner.trip_start')}>
+      <button className="ts-step" onClick={() => shiftStart(-1)} title={t('tse.start_earlier')}><Icon name="back" size={13} /></button>
+      <span className="num" style={{ padding: '0 8px', fontSize: 'var(--fs-meta)', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDW(startDate)}</span>
+      <button className="ts-step" onClick={() => shiftStart(1)} title={t('tse.start_later')}><Icon name="chev" size={13} /></button>
+    </div>
+  ) : null;
+
   return (
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
     {headerEl}
+    <TripHeaderBar
+      title={trip?.title}
+      subtitle={
+        <>
+          <span>{fmtD(startDate, lang)} – {fmtD(endDate, lang)}</span>
+          {totalNights != null && <><span>·</span><span>{totalNights} {dayWord(totalNights, t)}</span></>}
+          {cities.length > 0 && <><span>·</span><span>{cities.length} {cities.length === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}</span></>}
+        </>
+      }
+      coverImageUrl={trip?.cover_image_url || null}
+      coverGradientCss={(!trip?.cover_image_url && getGradientById(trip?.cover_gradient)) ? getGradientById(trip?.cover_gradient).css : null}
+      useDefaultWaves={!trip?.cover_image_url && !getGradientById(trip?.cover_gradient)}
+      onMenu={() => setSideOpen(true)}
+    />
+    {/* Mobile menu drawer — burger opens the full sidebar (the static icon-rail
+        is hidden on mobile). */}
+    <div className={'ts-drawer' + (sideOpen ? ' is-open' : '')}>
+      <div className="ts-drawer__scrim" onClick={() => setSideOpen(false)} />
+      <TripSidebar
+        tripId={tripId} trip={trip} isEditScreen
+        onNavigate={(id) => { setSideOpen(false); guardedLeave(`/trip/${tripId}?lens=${id}`); }}
+        isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
+        onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
+        onProInfo={() => nav(`/pro?tripId=${tripId}`)}
+        onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)}
+      />
+    </div>
     <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
-      <div style={{ flex: '0 0 56px', minWidth: 0, position: 'relative', minHeight: 0 }}>
+      <div className="ts-railwrap" style={{ flex: '0 0 56px', minWidth: 0, position: 'relative', minHeight: 0 }}>
         <TripSidebar
           tripId={tripId} trip={trip} isEditScreen collapsed
           onNavigate={(id) => guardedLeave(`/trip/${tripId}?lens=${id}`)}
@@ -827,28 +885,16 @@ export default function TripStructureEdit() {
           onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)}
         />
       </div>
-      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: showMap ? 'minmax(0, 60fr) minmax(0, 40fr)' : '1fr', gap: 0, overflow: 'hidden' }}>
+      {/* content column — screen-title bar sits BESIDE the sidebar (like every
+          other screen) so the menu doesn't shift when navigating into the editor */}
+      <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <TripScreenBar title={t('trip.edit_structure')} actions={editorActions && <>{startStepperEl}{editorActions}</>} />
+      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: showMap ? 'minmax(0, 1fr) minmax(0, 1fr)' : '1fr', gap: 0, overflow: 'hidden' }}>
         {/* LEFT - page title + cities (scrolling list) */}
-        <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
+        <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--surface)' }}>
           <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={leftPanel ? (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } } : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
           {leftPanelEl || (<>
-          {/* page title */}
-          <div style={{ flexShrink: 0, padding: '16px 20px 14px', borderBottom: '1px solid var(--line-2)' }}>
-            <div className="eyebrow" style={{ color: 'var(--brand)', marginBottom: 5 }}>{t('tse.section_eyebrow')}</div>
-            <h1 style={{ fontSize: 'var(--fs-title)', lineHeight: 1.2, marginBottom: 6, letterSpacing: '-0.02em' }}>{trip?.title || '…'}</h1>
-            <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{fmtD(startDate, lang)} - {fmtD(endDate, lang)}{totalNights != null ? ` · ${totalNights} ${dayWord(totalNights, t)}` : ''} · {cities.length} {cities.length === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}{membersCount > 0 ? ` · ${t('tse.members_short', { n: membersCount })}` : ''}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <span className="eyebrow" style={{ fontSize: 'var(--fs-micro)' }}>{t('planner.trip_start')}</span>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: 2 }}>
-                <button className="ts-step" onClick={() => shiftStart(-1)} title={t('tse.start_earlier')}><Icon name="back" size={13} /></button>
-                <span className="num" style={{ padding: '0 8px', fontSize: 'var(--fs-meta)', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDW(startDate)}</span>
-                <button className="ts-step" onClick={() => shiftStart(1)} title={t('tse.start_later')}><Icon name="chev" size={13} /></button>
-              </div>
-              <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('tse.moves_whole_trip')}</span>
-            </div>
-          </div>
-
-          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 18px', background: 'var(--wash)' }}>
+          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--bg)' }}>
           <div className="te-thead" style={{ padding: '0 4px 6px' }}>
             <span className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</span>
@@ -927,8 +973,8 @@ export default function TripStructureEdit() {
 
         {/* RIGHT - full-height map (hideable); warnings live in a collapsible overlay widget */}
         {showMap && (
-        <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--surface)' }}>
-          <div className="ts-map" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+        <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--bg)' }}>
+          <div className="ts-map" style={{ position: 'absolute', inset: 14, overflow: 'hidden', borderRadius: 16, border: '1px solid var(--line)' }}>
             <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd mapControls
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
@@ -960,7 +1006,8 @@ export default function TripStructureEdit() {
           </div>
         </div>
         )}
-      </div>
+      </div>{/* /ts-grid */}
+      </div>{/* /editor content column */}
     </div>
 
       {/* Delete-city confirm — AlertDialog (focus-trapped, Esc-closable). */}
@@ -1066,7 +1113,6 @@ function ActCell({ count, warn, onClick }) {
 function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn, onOpenCity, onHotel, onAct, onNightsMinus, onNightsPlus, drag }) {
   const t = useT();
   const { lang } = useI18n();
-  const m = metaOf(seg);
   const stop = (e) => e.stopPropagation();
   // Drag handle: pointer-drag (lifts the row) + keyboard reorder (a11y). Click is
   // stopped so grabbing the grip never opens the city panel.
@@ -1085,13 +1131,12 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
       <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onPointerDown={drag.onArm} onClick={onOpenCity}>
         {gripEl}
         <span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span className="te-cityname" style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{seg.city_name}</span>
-            <span className="te-wptag">{t('tse.layover')}</span>
+        <div className="te-citycell">
+          <div className="te-cityline">
+            <span className="te-cityname">{seg.city_name}</span>
             <Conf n={cityConf} />
           </div>
-          <div className="num muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>{t('tse.transit_word')} · {fmtD(seg.start_date, lang)}</div>
+          <div className="te-dts"><span className="te-wptag">{t('tse.layover')}</span>{fmtD(seg.start_date, lang)}</div>
         </div>
         <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
           <button className="te-step" onClick={onNightsMinus} disabled aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
@@ -1107,13 +1152,12 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
     <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onPointerDown={drag.onArm} onClick={onOpenCity}>
       {gripEl}
       <span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+      <div className="te-citycell">
+        <div className="te-cityline">
           <span className="te-cityname">{seg.city_name}</span>
-          {m.country && <span className="muted" style={{ fontSize: 'var(--fs-micro)', whiteSpace: 'nowrap' }}>{m.country}</span>}
           <Conf n={cityConf} />
         </div>
-        <div className="num muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
+        <div className="te-dts">{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
       </div>
       <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
         <button className="te-step" onClick={onNightsMinus} disabled={(seg.nights || 0) <= 0} aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
@@ -1149,7 +1193,7 @@ function SeamTransfer({ a, b, t, mismatch, onOpen }) {
     <div className="te-seam">
       <button className={'te-seam__pill' + (mismatch ? ' is-warn' : '')} onClick={onOpen} title={`${a.city_name} → ${b.city_name}`}>
         <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
-        <span style={{ fontWeight: 600, fontSize: 'var(--fs-micro)', color: mismatch ? 'var(--warning)' : 'var(--ink-2)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+        <span style={{ fontWeight: 800, fontSize: 'var(--fs-meta)', color: mismatch ? 'var(--warning)' : 'var(--ev-transfer-ink)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
         {t.day_change && <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} title={tx('tse.overnight_title')} />}
         <span className="num muted" style={{ fontSize: 'var(--fs-micro)' }}>· {fmtD(t.start_datetime, lang)}</span>
       </button>
@@ -1163,18 +1207,17 @@ function GridEndpoint({ node, onRemove }) {
   const t = useT();
   const { lang } = useI18n();
   const isStart = node.kind === 'start';
-  const accent = isStart ? 'var(--brand)' : 'var(--ink-2)';
-  const soft = isStart ? 'var(--brand-soft)' : 'var(--wash)';
-  const m = metaOf(node);
+  const accent = isStart ? 'var(--brand)' : 'var(--success-ink)';
+  const soft = isStart ? 'var(--brand-soft)' : 'var(--success-soft)';
   return (
     <div className="te-end">
-      <span className="te-row__node" style={{ background: soft, color: accent, border: '1px solid ' + (isStart ? 'var(--brand-soft-12, var(--line))' : 'var(--line)') }}><Icon name={isStart ? 'flag' : 'check'} size={12} /></span>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
-          <span style={{ fontSize: 'var(--fs-strong)', fontWeight: 700, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{m.flag} {node.city_name}</span>
+      <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
+      <div className="te-citycell" style={{ flex: 1 }}>
+        <div className="te-cityline">
+          <span className="te-endlabel" style={{ color: accent, flex: 'none' }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
+          <span className="te-cityname">{node.city_name}</span>
         </div>
-        <div className="num muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div className="te-dts">
           {isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(node.start_date || node.end_date, lang)}
         </div>
       </div>
@@ -1185,7 +1228,7 @@ function GridEndpoint({ node, onRemove }) {
 
 function AddPointButton({ onOpen }) {
   const t = useT();
-  return <button onClick={onOpen} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 12, padding: '12px', borderRadius: 12, cursor: 'pointer', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, var(--line))', color: 'var(--brand)', fontSize: 'var(--fs-base)', fontWeight: 600 }}>
+  return <button className="btn btn--soft btn--block" onClick={onOpen} style={{ marginTop: 12 }}>
     <Icon name="plus" size={15} /> {t('tse.add_point_btn')}
   </button>;
 }

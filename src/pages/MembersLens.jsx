@@ -12,20 +12,24 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, Field, Skeleton } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Skeleton } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { edgeErrorMessage } from '@/lib/edgeError';
+import { useConfirm } from '@/components/common/ConfirmProvider';
+import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
 // Real roles are owner / admin / viewer. owner is assigned only at creation and
 // is never selectable here. There is no "editor" role on the backend.
 
+// Role badge colours unified with the Overview "who's going" card
+// (MembersSummaryCard): owner=warning, admin=brand, viewer=outline.
 function RoleBadge({ role }) {
   const { t } = useI18n();
-  if (role === 'owner') return <Badge variant="warm">{t('members.role_owner')}</Badge>;
-  if (role === 'admin') return <Badge>{t('trips.role_admin')}</Badge>;
-  return <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>;
+  if (role === 'owner') return <Badge variant="warning">{t('members.role_owner')}</Badge>;
+  if (role === 'admin') return <Badge variant="brand">{t('trips.role_admin')}</Badge>;
+  return <Badge variant="outline" icon="eye">{t('trips.role_viewer')}</Badge>;
 }
 
 // Status column. Active members show no status text (the role badge already
@@ -235,6 +239,7 @@ function RowMenuItem({ icon, danger, onClick, children }) {
 
 export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient }) {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const [openMenu, setOpenMenu] = useState(null);
   const [removing, setRemoving] = useState(null);
 
@@ -282,7 +287,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   }
 
   async function removeMember(memberId) {
-    if (!window.confirm(t('member.remove_confirm'))) return;
+    if (!(await confirm({ title: t('member.remove_confirm'), variant: 'destructive' }))) return;
     setOpenMenu(null);
     setRemoving(memberId);
     const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });
@@ -290,6 +295,14 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     if (error || !data?.ok) { alert(await edgeErrorMessage(error, data, t('member.err_remove'))); return; }
     refresh();
   }
+
+  // Primary action lives in the global screen-title bar (the per-screen header).
+  useTripScreenActions(
+    canManage
+      ? <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>{t('members.invite')}</Btn>
+      : null,
+    [tripId, canManage, t],
+  );
 
   if (isLoading) {
     return (
@@ -319,16 +332,9 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
-        <h2 style={{ flex: 1, marginBottom: 0 }}>{t('trip.sidebar_members')} · {allMembers.length}</h2>
-        {canManage && (
-          <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>{t('members.invite')}</Btn>
-        )}
-      </div>
-
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'visible' }}>
         {allMembers.length === 0 && (
-          <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>{t('member.empty')}</div>
+          <EmptyState icon="users" title={t('member.empty')} />
         )}
         {allMembers.map((m, i) => {
           const isOwner = m.role === 'owner';
@@ -361,7 +367,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
             }}>
               <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
               <div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 'var(--fs-strong)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   {name}
                   {m.user_id === user?.id && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)' }}>{t('member.you_self')}</Badge>}
                 </div>

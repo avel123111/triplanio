@@ -265,7 +265,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
             background: isStart || isEnd ? 'var(--ink-2)' : 'var(--brand)',
             color: 'white',
             display: 'grid', placeItems: 'center',
-            fontSize: 'var(--fs-xl)', fontWeight: 700, flexShrink: 0,
+            fontSize: 'var(--fs-h3)', fontWeight: 700, flexShrink: 0,
           }}>
             {isStart || isEnd ? <Icon name={isStart ? 'flag' : 'check'} size={18} /> : (activeIdx + 1)}
           </div>

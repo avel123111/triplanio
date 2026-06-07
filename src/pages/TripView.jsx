@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getWeather, weatherInfo } from '@/lib/weather';
@@ -11,26 +11,24 @@ import { formatTripRange, isTripInPast } from '@/lib/trip-dates';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 import { isAddonEnabled } from '@/lib/tripAddons';
-import { isLensVisible } from '@/lib/tripMenu';
+import { isLensVisible, LENS_ITEMS, MGMT_ITEMS } from '@/lib/tripMenu';
 import TripSidebar from '@/components/trips/TripSidebar';
+import TripHeaderBar from '@/components/trips/TripHeaderBar';
+import TripScreenBar, { TripScreenBarCtx } from '@/components/trips/TripScreenBar';
 import ShareDialog from '@/components/trips/ShareDialog';
-import { useUserProfiles } from '@/lib/useUserProfiles';
-import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
-import { useFxRates } from '@/lib/fx';
-import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
-import { Avatar, Btn, EmptyState, Skeleton, fmtDate, weekday, StreamEventRow } from '../design/index';
+import { Btn, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow } from '../design/index';
 import { SystemStub } from '@/lib/PageNotFound';
-import { sortVisits, cityIdentity, validateTrip, primaryIssues } from '@/lib/validation';
-import { ConflictsPanel } from '@/components/common/ValidationUI';
+import { sortVisits, cityIdentity } from '@/lib/validation';
 import { useToast } from '@/components/ui/use-toast';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import ServiceDialog from '@/components/services/ServiceDialog';
+import OverviewLens from './OverviewLens';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
 import CalendarLens from './CalendarLens';
@@ -44,6 +42,12 @@ import TripFormDialog from '@/components/trips/TripFormDialog';
 import { getGradientById } from '@/lib/trip-gradients';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import '../design/app.css';
+
+// Screen-name lookup for the global screen-title bar. Derived from the shared
+// trip-menu data so the bar title and the sidebar label never drift.
+const SCREEN_TITLE_KEY = Object.fromEntries(
+  [...LENS_ITEMS, ...MGMT_ITEMS].map((i) => [i.id, i.labelKey]),
+);
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -65,8 +69,35 @@ function cityForVisit(visitId, visits) {
   return v ? v.city_name : null;
 }
 
-export function buildEventStream(t, hotels = [], activities = [], transfers = [], visits = []) {
+export function buildEventStream(t, hotels = [], activities = [], transfers = [], visits = [], services = []) {
   const events = [];
+
+  // Car-rental services (kind='car_rental') become two point events on the
+  // timeline: pickup + return (their local datetimes drive placement).
+  for (const s of (services || [])) {
+    if (s.kind !== 'car_rental') continue;
+    const name = s.name || t('service.kind.car_rental');
+    const pickup = s.pickup_at_local || s.details?.pickup_at_local;
+    const dropoff = s.dropoff_at_local || s.details?.dropoff_at_local;
+    if (pickup) {
+      events.push({
+        type: 'car-pickup', id: s.id,
+        date: naiveDayKey(pickup), time: formatNaive(pickup, 'HH:mm'),
+        title: name, address: s.pickup_address || s.details?.pickup_address || '',
+        price: s.price ?? null, cur: s.currency,
+        _ms: parseNaive(pickup)?.toMillis() ?? 0,
+      });
+    }
+    if (dropoff) {
+      events.push({
+        type: 'car-return', id: s.id,
+        date: naiveDayKey(dropoff), time: formatNaive(dropoff, 'HH:mm'),
+        title: name, address: s.dropoff_address || s.details?.dropoff_address || '',
+        price: null, cur: s.currency,
+        _ms: parseNaive(dropoff)?.toMillis() ?? 0,
+      });
+    }
+  }
 
   for (const h of hotels) {
     const city = h.city_name || cityForVisit(h.city_visit_id, visits) || '';
@@ -190,27 +221,36 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
 
 // ─── LoadingScreen / ErrorScreen ──────────────────────────────────────────────
 
-function LoadingScreen() {
+function LoadingScreen({ lens = 'overview' }) {
   const { t } = useI18n();
   return (
-    <div className="app" style={{ minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
-      {/* Skeleton header */}
+    <div className="trip-shell">
+      {/* Skeleton top bar */}
       <header className="app-header">
         <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--line)', flexShrink: 0 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Skeleton w={28} h={28} r={7} />
           <Skeleton w={90} h={14} r={5} />
         </div>
-        <div style={{ flex: 1 }}>
-          <Skeleton w={160} h={14} r={5} />
-        </div>
+        <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: 8 }}>
           <Skeleton w={28} h={28} r={7} />
           <Skeleton w={28} h={28} r={7} />
           <Skeleton w={32} h={32} r={999} />
         </div>
       </header>
-      <div className="app-body">
+      {/* Skeleton gradient hero */}
+      <div className="trip-hero">
+        <div className="trip-hero__bg" style={{ background: 'var(--brand-grad)' }} />
+        <div className="trip-hero__ov" />
+        <div className="trip-hero__in">
+          <div style={{ flex: 1 }}>
+            <Skeleton w={200} h={20} r={6} style={{ marginBottom: 8 }} />
+            <Skeleton w={150} h={12} r={5} />
+          </div>
+        </div>
+      </div>
+      <div className="trip-body">
         {/* Skeleton sidebar */}
         <aside className="app-side">
           <div className="app-side__group">
@@ -232,27 +272,23 @@ function LoadingScreen() {
             ))}
           </div>
         </aside>
-        {/* Skeleton main content */}
-        <main style={{ minWidth: 0, padding: '28px 28px 60px' }}>
-          {/* Cover strip skeleton */}
-          <div style={{ marginBottom: 22, borderBottom: '1px solid var(--line-2)', paddingBottom: 22 }}>
-            <Skeleton w="100%" h={160} r={16} style={{ marginBottom: 14 }} />
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <Skeleton w={90} h={28} r={999} />
-              <Skeleton w={110} h={28} r={999} />
-              <div style={{ flex: 1 }} />
-              <Skeleton w={120} h={30} r={8} />
-              <Skeleton w={90} h={30} r={8} />
-              <Skeleton w={80} h={30} r={8} />
-            </div>
-          </div>
-          {/* Timeline + sidebar skeleton - same building blocks as the loaded
-              layout, so nothing reshuffles when shell → content resolves. */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
-            <SkeletonTimeline />
-            <RightRailSkeleton />
-          </div>
-        </main>
+        <div className="trip-content">
+          {/* Skeleton screen-title bar */}
+          <div className="trip-screenbar"><Skeleton w={150} h={20} r={6} /></div>
+          <main className="trip-screen-body">
+            {/* Same building blocks as the loaded layout, so nothing reshuffles
+                when shell → content resolves. Lens-aware so the Overview (default)
+                doesn't flash a timeline skeleton first. */}
+            {lens === 'overview' ? (
+              <OverviewLens isLoading />
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+                <SkeletonTimeline />
+                <RightRailSkeleton />
+              </div>
+            )}
+          </main>
+        </div>
       </div>
     </div>
   );
@@ -267,7 +303,7 @@ function ErrorScreen({ onBack }) {
     nav('/login');
   };
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--wash)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <SystemStub
         icon="lock"
         tone="warm"
@@ -282,10 +318,10 @@ function ErrorScreen({ onBack }) {
 
 // ─── TripHeader ───────────────────────────────────────────────────────────────
 
-function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
+function TripHeader({ isPro, isDark, onToggleTheme, user, nav }) {
   const { t } = useI18n();
-  const dateRange = formatTripRange(visits, '-');
-
+  // Title + dates now live in the gradient hero (TripHeaderBar), so the top bar
+  // only carries the brand and the account/notifications cluster.
   return (
     <header className="app-header">
       <button className="app-header__crumb-back" onClick={() => nav('/trips')} title={t('trip.back')}>
@@ -297,59 +333,13 @@ function TripHeader({ trip, visits, isPro, isDark, onToggleTheme, user, nav }) {
         <span className="app-header__brand-name">Triplanio</span>
       </div>
 
-      <div className="app-header__crumb">
-        <span className="app-header__crumb-sep">/</span>
-        <div className="app-header__crumb-trip">
-          <span style={{ fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
-            {trip?.title || '…'}
-          </span>
-          {dateRange && dateRange !== '-' && (
-            <span className="app-header__crumb-dates">{dateRange}</span>
-          )}
-          {trip?.is_pro_trip && !isPro && (
-            <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '2px 7px', borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.04em', flexShrink: 0 }}>PRO</span>
-          )}
-        </div>
-      </div>
+      <div style={{ flex: 1 }} />
 
       <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={onToggleTheme} />
     </header>
   );
 }
 
-
-// ─── AddDayButton - shown in edit mode after each day ────────────────────────
-function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1.5px dashed var(--line)', background: 'transparent', color: 'var(--muted)', fontSize: 'var(--fs-base)', cursor: 'pointer', transition: 'color .15s, border-color .15s' }}
-        onMouseEnter={e => { e.currentTarget.style.color = 'var(--ink)'; e.currentTarget.style.borderColor = 'var(--brand)'; }}
-        onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.borderColor = 'var(--line)'; }}
-      >
-        <Icon name="plus" size={13} /> {t('common.add')}
-      </button>
-      {open && (
-        <>
-          {/* "Add city" lives in the Structure editor now - timeline only adds activities. */}
-          <button
-            type="button"
-            onClick={() => { setOpen(false); onAddActivity?.(dayKey); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 'var(--fs-base)', fontWeight: 500, cursor: 'pointer' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--wash)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
-          >
-            <Icon name="sparkles" size={13} style={{ color: 'var(--muted)' }} /> {t('activity.add')}
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
 
 // ─── TimelineLens ─────────────────────────────────────────────────────────────
 
@@ -377,14 +367,12 @@ function SkeletonTimeline() {
   );
 }
 
-// Right-rail (budget / who's going / services) placeholder - shared by the
-// full-page LoadingScreen and ContextSide so the right column never reshuffles.
+// Right-rail (Services) placeholder — budget/who's-going moved to the Overview
+// screen, so the timeline rail now skeletons only the Services widget.
 function RightRailSkeleton() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <Skeleton w="100%" h={100} r={14} />
       <Skeleton w="100%" h={150} r={14} />
-      <Skeleton w="100%" h={120} r={14} />
     </div>
   );
 }
@@ -471,7 +459,7 @@ function useWeatherByDay(visits) {
 }
 
 
-function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, isEditMode, onAddCityForDay, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
+function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
   const { t, lang } = useI18n();
   const weatherByDay = useWeatherByDay(visits);  // hook must run before any early return
   if (isLoading) return <SkeletonTimeline />;
@@ -611,18 +599,14 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   const renderEventsDay = (day) => {
     const evs = (eventsByDate[day] || []).filter(e => !inboundEventIds.has(e.id));
     if (evs.length === 0) return null;
+    const dd = new Date(`${day}T00:00`);
+    const dayNum = Number.isNaN(dd.getTime()) ? day.slice(8, 10) : dd.getDate();
+    const monAbbr = Number.isNaN(dd.getTime()) ? '' : dd.toLocaleDateString(lang, { month: 'short' }).replace('.', '');
     return (
-      <div key={`xday-${day}`} style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, padding: '12px 0 10px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-              {fmtDate(day, lang)}
-            </span>
-            <span className="muted" style={{ fontSize: 'var(--fs-meta)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
-              {weekday(day, lang)}
-            </span>
-          </div>
-          <div style={{ flex: 1, borderBottom: '1px solid var(--line-2)', marginBottom: 6 }} />
+      <div key={`xday-${day}`} id={`tlday-${day}`} data-tlday={day} className="tl3-day">
+        <div className="tl3-dh">
+          <span className="datechip"><span className="d">{dayNum}</span><span className="m">{monAbbr}</span></span>
+          <span className="wd">{weekdayLong(day, lang)}</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {evs.map((e, idx) => (
@@ -668,30 +652,21 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     const allDayEvents = eventsByDate[day] || [];
     const dayEvents = allDayEvents.filter(e => !inboundEventIds.has(e.id));
 
+    const _dd = new Date(`${day}T00:00`);
+    const _dayNum = Number.isNaN(_dd.getTime()) ? day.slice(8, 10) : _dd.getDate();
+    const _monAbbr = Number.isNaN(_dd.getTime()) ? '' : _dd.toLocaleDateString(lang, { month: 'short' }).replace('.', '');
     rows.push(
-      <div key={`day-${day}`} style={{ marginBottom: 24 }}>
-        {/* Date separator - matches design: large bold date */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, padding: '12px 0 10px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-              {fmtDate(day, lang)}
-            </span>
-            <span className="muted" style={{ fontSize: 'var(--fs-meta)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>
-              {weekday(day, lang)}
-            </span>
-          </div>
-          {dayCity && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px 2px 6px', borderRadius: 999, background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 'var(--fs-micro)', fontWeight: 500, marginBottom: 2 }}>
-              <Icon name="pin" size={11} />
-              {dayCity.city_name}
-            </span>
-          )}
+      <div key={`day-${day}`} id={`tlday-${day}`} data-tlday={day} data-city={dayCity?.id || ''} className="tl3-day">
+        {/* Date header — Lumo .tl3-dh (datechip + weekday + city pill) */}
+        <div className="tl3-dh">
+          <span className="datechip"><span className="d">{_dayNum}</span><span className="m">{_monAbbr}</span></span>
+          <span className="wd">{weekdayLong(day, lang)}</span>
           {weatherByDay[day] && (
-            <span className="num" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 999, background: 'var(--wash)', color: 'var(--ink)', fontSize: 'var(--fs-micro)', fontWeight: 500, marginBottom: 2 }}>
-              <span>{weatherByDay[day].icon}</span><span>{weatherByDay[day].temp}°</span>
-            </span>
+            <span className="wthr"><span>{weatherByDay[day].icon}</span><span>{weatherByDay[day].temp}°</span></span>
           )}
-          <div style={{ flex: 1, borderBottom: '1px solid var(--line-2)', marginBottom: 6 }} />
+          {dayCity && (
+            <span className="daycity"><Icon name="pin" size={14} />{dayCity.city_name}</span>
+          )}
         </div>
 
         {/* Intra-day order = chronological. Each arriving city's block
@@ -751,14 +726,6 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
             </>
           );
         })()}
-        {/* Edit mode: add buttons */}
-        {isEditMode && (
-          <AddDayButton
-            dayKey={day}
-            onAddCity={onAddCityForDay}
-            onAddActivity={onAddActivityForDay}
-          />
-        )}
       </div>
     );
   }
@@ -806,9 +773,66 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // Post-trip event days (e.g. a deadline that lands after the last trip day).
   for (const d of postTripDays) rows.push(renderEventsDay(d));
 
+  return <div className="tl3">{rows}</div>;
+}
+
+// ─── CityRail ─────────────────────────────────────────────────────────────────
+// Right column of the timeline: the route's cities as scroll-rail "stations".
+// Highlights the city whose day is currently scrolled into view (Intersection
+// Observer on the .tl3-day anchors), and clicking a city scrolls the timeline to
+// that city's first day.
+function CityRail({ visits = [], scrollRef }) {
+  const { t, lang } = useI18n();
+  const cities = useMemo(
+    () => sortVisits(visits).filter(v => v.kind !== 'start' && v.kind !== 'end'),
+    [visits],
+  );
+  const [activeId, setActiveId] = useState(null);
+
+  useEffect(() => {
+    const root = scrollRef?.current;
+    if (!root || cities.length === 0) return undefined;
+    const dayEls = Array.from(root.querySelectorAll('[data-tlday]'));
+    if (dayEls.length === 0) return undefined;
+    const obs = new IntersectionObserver((entries) => {
+      const vis = entries.filter(e => e.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      const cid = vis[0]?.target.getAttribute('data-city');
+      if (cid) setActiveId(cid);
+    }, { root, rootMargin: '-8% 0px -72% 0px', threshold: 0 });
+    dayEls.forEach(el => obs.observe(el));
+    return () => obs.disconnect();
+  }, [cities, scrollRef]);
+
+  if (cities.length === 0) return null;
+
+  const go = (city) => {
+    const day = naiveDayKey(city.start_date);
+    const el = scrollRef?.current?.querySelector(`#tlday-${CSS.escape(String(day))}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const nights = (city) => {
+    const s = parseNaive(city.start_date), e = parseNaive(city.end_date);
+    if (!s || !e) return 0;
+    return Math.max(0, Math.round(e.diff(s, 'days').days));
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      {rows}
+    <div className="cityrail" style={{ position: 'sticky', top: 8 }}>
+      <div className="cr-h">{t('overview.stat_cities')}</div>
+      {cities.map((c) => {
+        const n = nights(c);
+        const range = c.start_date ? formatTripRange([c], '–') : '';
+        return (
+          <button key={c.id} className={'cr-item' + (activeId === c.id ? ' on' : '')} onClick={() => go(c)}>
+            <span className="cr-rail"><span className="cr-dot" /><span className="cr-line" /></span>
+            <span className="cr-bd">
+              <span className="cr-nm" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.city_name}</span>
+              <span className="cr-dt">{range}{n > 0 ? ` · ${n} ${t('overview.unit_nights')}` : ''}</span>
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -854,7 +878,7 @@ function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
 
   const itemStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 'var(--fs-strong)', color: 'var(--ink)' };
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--scrim)', backdropFilter: 'blur(4px)' }}
       onClick={() => window.__closeModal?.()}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 20, width: 320, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -877,6 +901,9 @@ function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
           <button onClick={handleCopy} disabled={copying} className="dz-rowhover" style={{ ...itemStyle, opacity: copying ? 0.6 : 1, cursor: copying ? 'default' : 'pointer' }}>
             <Icon name="copy" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.copy')}
           </button>
+          <button onClick={() => { window.__closeModal?.(); window.print(); }} className="dz-rowhover" style={itemStyle}>
+            <Icon name="download" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.export')}
+          </button>
           <div style={{ height: 1, background: 'var(--line-2)', margin: '6px 0' }} />
           <button onClick={() => window.__closeModal?.()} style={{ ...itemStyle, color: 'var(--muted)' }}>
             <Icon name="close" size={16} /> {t('common.close')}
@@ -887,417 +914,10 @@ function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
   );
 }
 
-// ─── TripCoverStrip ──────────────────────────────────────────────────────────
-
-function TripCoverStrip({ trip, visits, members, myRole, canEditMode, frozen, isEditMode, onToggleEdit }) {
-  const { t } = useI18n();
-  const nav = useNavigate();
-  const [routeOpen, setRouteOpen] = useState(false);
-  const [editingMetadata, setEditingMetadata] = useState(false);
-  const activeMemberCount = members.filter(m => m.status === 'active').length || 1;
-  const cities = visits.map(v => v.city_name).filter(Boolean);
-  const cityCount = uniqueCityCount(visits); // dedup repeated cities (e.g. Москва … Москва) for the count
-  const dateRange = formatTripRange(visits, '-');
-
-  // Cover priority: uploaded photo → preset gradient → default HSL gradient + SVG waves.
-  const gradient = getGradientById(trip?.cover_gradient);
-  const hasPhoto = !!trip?.cover_image_url;
-  const hasGradient = !hasPhoto && !!gradient;
-  const useDefault = !hasPhoto && !hasGradient;
-  const coverBg = hasGradient
-    ? gradient.css
-    : useDefault
-      ? 'linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)'
-      : 'var(--wash)';
-
-  return (
-    <div style={{ marginBottom: 22, borderBottom: '1px solid var(--line-2)', paddingBottom: 22 }}>
-      {/* Cover */}
-      <div style={{
-        position: 'relative', marginBottom: 18, height: 160, borderRadius: 16,
-        overflow: 'hidden',
-        background: coverBg,
-      }}>
-        {hasPhoto && (
-          <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-        )}
-        {useDefault && (
-          <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.55 }}>
-            <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.55)" />
-            <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.32)" />
-            <circle cx="680" cy="50" r="28" fill="rgba(255,255,255,.65)" />
-          </svg>
-        )}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,.38) 100%)' }} />
-        <div style={{ position: 'absolute', left: 22, right: 22, bottom: 18 }}>
-          <div style={{
-            color: 'white', fontFamily: 'var(--font-display)', fontWeight: 700,
-            fontSize: 'clamp(24px, 4vw, 36px)', letterSpacing: '-0.03em', lineHeight: 1,
-            textShadow: '0 2px 12px rgba(0,0,0,.3)',
-          }}>{trip?.title || '…'}</div>
-          {dateRange && dateRange !== '-' && (
-            <div className="num" style={{ color: 'rgba(255,255,255,.85)', fontSize: 'var(--fs-base)', marginTop: 8, fontWeight: 500 }}>
-              {dateRange}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <TripFormDialog
-        open={editingMetadata}
-        onOpenChange={setEditingMetadata}
-        trip={trip}
-        visits={visits}
-      />
-
-      {/* Meta row + actions */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          {/* Cities chip */}
-          {cities.length > 0 && (
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setRouteOpen(!routeOpen)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '5px 10px 5px 8px', borderRadius: 999,
-                  background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12)',
-                  fontSize: 'var(--fs-meta)', color: 'var(--brand)', fontWeight: 600, cursor: 'pointer',
-                }}>
-                <Icon name="pin" size={13} />
-                {cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
-                <Icon name={routeOpen ? 'chevD' : 'chev'} size={11} />
-              </button>
-              {routeOpen && (
-                <div
-                  onClick={() => setRouteOpen(false)}
-                  style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 20,
-                    background: 'var(--surface)', border: '1px solid var(--line)',
-                    borderRadius: 12, padding: '10px 12px', boxShadow: 'var(--shadow-pop)', minWidth: 180,
-                  }}>
-                  {cities.map((c, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 'var(--fs-base)' }}>
-                      <Icon name="pin" size={12} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-                      {c}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {/* Travelers chip */}
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '5px 10px 5px 8px', borderRadius: 999,
-            background: 'var(--success-soft)', border: '1px solid color-mix(in srgb, var(--success) 28%, transparent)',
-            fontSize: 'var(--fs-meta)', color: 'var(--success)', fontWeight: 600,
-          }}>
-            <Icon name="users" size={13} />
-            {activeMemberCount} {activeMemberCount === 1 ? t('trip.members_count_one') : activeMemberCount < 5 ? t('trip.members_count_few') : t('trip.members_count_many')}
-          </span>
-        </div>
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          {myRole !== 'viewer' && (
-            frozen
-              ? <Btn variant="ghost" size="sm" icon="lock" disabled>{t('trip.editing')}</Btn>
-              : <Btn variant="ghost" size="sm" icon="edit" disabled={!canEditMode} onClick={() => nav(`/trip/${trip.id}/edit`)}>{t('trip.edit_trip')}</Btn>
-          )}
-          {/* Only owner/admin can mint a share token (ensureShareToken is admin-only);
-              showing this to a viewer just produced a 403 "не удалось создать ссылку". */}
-          {myRole !== 'viewer' && (
-            <Btn variant="ghost" size="sm" icon="share" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>{t('trip.share')}</Btn>
-          )}
-          <Btn variant="ghost" size="sm" icon="download" onClick={() => window.print()}>{t('trip.export')}</Btn>
-          {/* The "…" menu holds owner/admin actions (edit, settings, members) plus
-              Copy trip. Copy is available to every participant (incl. viewers),
-              so the button always renders; manage-only items are gated by canManage. */}
-          <Btn variant="ghost" size="sm" icon="more" onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canManage={myRole !== 'viewer'} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── ContextSide ──────────────────────────────────────────────────────────────
 
-function ContextSide({ budget, budgetExpenses, budgetCategories = [], members, services = [], user, trip, isLoading, onAddService, canManage = false, budgetEnabled = false, onBudgetLocked }) {
-  const { t } = useI18n();
-  const mainCurrencyCtx = trip?.details?.main_currency || budget?.currency || 'EUR';
-  const { data: fxCtx } = useFxRates(mainCurrencyCtx);
-  const overridesCtx = budget?.fx_overrides || {};
-  const moneyCtx = (v) => fmtMoney(v, mainCurrencyCtx, 'ru-RU');
-  const convCtx = (e) => toMainCur(e.original_amount, e.original_currency || mainCurrencyCtx, mainCurrencyCtx, fxCtx, overridesCtx);
-  // Resolve display names from profiles so the widget shows real names, not
-  // emails. Include the trip owner (often missing from trip_members) and the
-  // current user so the synthetic owner row and the current user resolve.
-  const profileIds = [
-    ...((members || []).map(m => m.user_id)),
-    trip?.created_by,
-    user?.id,
-  ].filter(Boolean);
-  const profiles = useUserProfiles(profileIds, trip?.id);
-  if (isLoading) {
-    return <div style={{ position: 'sticky', top: 80 }}><RightRailSkeleton /></div>;
-  }
-  const mainCurrency = mainCurrencyCtx;
-
-  // Per-category breakdown (converted to main currency). Drives the segmented
-  // bar + legend. Only convertible expenses are summed.
-  const catBreakdown = (budgetCategories || [])
-    .map(cat => {
-      const items = (budgetExpenses || []).filter(e => e.category_id === cat.id);
-      const spent = items.reduce((s, e) => { const r = convCtx(e); return s + (r.ok ? r.value : 0); }, 0);
-      return { id: cat.id, name: cat.name, color: cat.color || 'var(--muted)', spent };
-    })
-    .filter(c => c.spent > 0)
-    .sort((a, b) => b.spent - a.spent);
-  const totalSpent = catBreakdown.reduce((s, c) => s + c.spent, 0);
-
-  // Any expense whose currency can't be converted → warning indicator.
-  const hasMissingRate = (budgetExpenses || []).some(
-    e => e.original_currency && e.original_currency !== mainCurrency && !convCtx(e).ok
-  );
-
-  // Always show the owner first, then admins, viewers, offline, pending.
-  // The owner often isn't a trip_members row (tracked via trip.created_by), so
-  // synthesize it when missing. Use the authenticated user's own name when the
-  // owner row is the current user - otherwise leave user_full_name empty and
-  // let the profile resolver fill it in.
-  const orderedMembers = (() => {
-    const ownerId = trip?.created_by || user?.id || '';
-    const all = members.filter(m => m.status !== 'declined');
-    if (ownerId && !all.some(m => m.role === 'owner' || m.user_id === ownerId)) {
-      const isMeOwner = user?.id && ownerId === user.id;
-      all.unshift({
-        id: '__owner__',
-        user_id: ownerId,
-        user_full_name: isMeOwner ? (user?.full_name || '') : '',
-        role: 'owner',
-        status: 'active',
-      });
-    }
-    const rank = (m) => {
-      if (m.role === 'owner') return 0;
-      if (m.status === 'pending' || m.status === 'invited') return 4;
-      if (m.status === 'offline') return 3;
-      if (m.role === 'admin') return 1;
-      return 2; // viewer / editor
-    };
-    return all
-      .map((m, i) => ({ m, i }))
-      .sort((a, b) => rank(a.m) - rank(b.m) || a.i - b.i)
-      .map(x => x.m);
-  })();
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 80 }}>
-      {/* Budget widget */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 'var(--fs-strong)' }}>{t('trip.sidebar_budget')}</h3>
-          {canManage && (
-            <button
-              onClick={() => (budgetEnabled ? window.__navigate?.('budget') : onBudgetLocked?.())}
-              style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }}
-              title={budgetEnabled ? t('trip.open_budget') : t('trip.enable_budget_addon')}>
-              <Icon name="chev" size={13} />
-            </button>
-          )}
-        </div>
-        {budget ? (
-          <>
-            <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h2)', fontWeight: 600 }}>
-              {moneyCtx(totalSpent)}
-            </div>
-            {hasMissingRate && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: 'var(--fs-micro)', color: 'var(--warning)' }}>
-                <Icon name="warning" size={12} />
-                <span>{t('trip.budget_no_rate')}</span>
-              </div>
-            )}
-            {/* Segmented bar - one segment per category */}
-            <div style={{ height: 8, borderRadius: 4, background: 'var(--wash)', overflow: 'hidden', marginTop: 10, marginBottom: 10, display: 'flex' }}>
-              {catBreakdown.map(c => (
-                <div key={c.id} title={c.name} style={{
-                  height: '100%',
-                  width: (totalSpent > 0 ? (c.spent / totalSpent) * 100 : 0) + '%',
-                  // keep a tiny segment visible even for very small expenses
-                  minWidth: c.spent > 0 ? 4 : 0,
-                  background: c.color,
-                }} />
-              ))}
-            </div>
-            {/* Legend */}
-            {catBreakdown.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {catBreakdown.map(c => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--fs-meta)' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                    <span className="num" style={{ fontWeight: 600 }}>{moneyCtx(c.spent)}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('trip.budget_empty')}</div>
-            )}
-          </>
-        ) : (
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('trip.budget_none')}</div>
-        )}
-      </div>
-
-      {/* Who's going widget */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <h3 style={{ flex: 1, marginBottom: 0, fontSize: 'var(--fs-strong)' }}>{t('trip.who_goes')}</h3>
-          {canManage && (
-            <button
-              onClick={() => window.__navigate?.('members')}
-              style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted-2)' }}
-              title={t('trip.open_members')}>
-              <Icon name="chev" size={13} />
-            </button>
-          )}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {orderedMembers.map((m, i) => {
-            const profile = profiles[m.user_id];
-            const resolved = profile?.full_name || m.user_full_name
-              || (m.user_id && user?.id && m.user_id === user.id ? user.full_name : '')
-              || '';
-            const name = displayName(m.invite_email, resolved);
-            const isOffline = m.status === 'offline';
-            const isPending = m.status === 'pending' || m.status === 'invited';
-            const roleIcon = m.role === 'owner' ? 'crown' : m.role === 'admin' ? 'shield' : 'eye';
-            const roleColor = m.role === 'owner' ? 'var(--warm)' : m.role === 'admin' ? 'var(--brand)' : 'var(--muted)';
-            const roleLabel = isPending ? t('trip.member_pending')
-              : isOffline ? t('trip.member_offline')
-              : m.role === 'owner' ? t('members.role_owner')
-              : m.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
-            return (
-              <div key={m.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (isPending || isOffline) ? 0.65 : 1 }}>
-                <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1.3 }}>
-                    <Icon name={roleIcon} size={11} style={{ color: roleColor, flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                  </div>
-                  <div style={{ fontSize: 'var(--fs-micro)', marginTop: 1, color: isPending ? 'var(--warning)' : 'var(--muted)' }}>{roleLabel}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Services widget */}
-      <ServicesWidget services={services} onAddService={onAddService} />
-    </div>
-  );
-}
-
-// ─── ServicesWidget ───────────────────────────────────────────────────────────
-
-// trip_services rows carry a `kind` (esim | car_rental | insurance) — there is
-// no `status` column. Mirrors base44 TripServicesCard:
-//   • added services render as solid "booked" cards;
-//   • eSIM / car_rental show a dashed placeholder at the top until added;
-//   • once added, their "add more" option moves under "Ещё" (where insurance
-//     always lives). Keep KIND_META icons in sync with the service kinds.
-const SERVICE_KIND_META = {
-  esim:       { icon: 'esim',   labelKey: 'service.kind.esim',       hintKey: 'service.hint.esim' },
-  car_rental: { icon: 'car',    labelKey: 'service.kind.car_rental', hintKey: 'service.hint.car_rental' },
-  insurance:  { icon: 'shield', labelKey: 'service.kind.insurance',  hintKey: 'service.hint.insurance' },
-};
-
-function ServicesWidget({ services = [], onAddService }) {
-  const { t } = useI18n();
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  const byKind = { esim: [], car_rental: [], insurance: [] };
-  for (const s of services) { if (byKind[s.kind]) byKind[s.kind].push(s); }
-
-  // Top placeholders: only eSIM / car_rental that have NO items yet.
-  const topAddKinds = ['esim', 'car_rental'].filter(k => byKind[k].length === 0);
-  // "Ещё": add-more for esim/car_rental that already have items, plus insurance (always).
-  const moreAddKinds = [];
-  if (byKind.esim.length > 0) moreAddKinds.push('esim');
-  if (byKind.car_rental.length > 0) moreAddKinds.push('car_rental');
-  moreAddKinds.push('insurance');
-
-  return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, padding: 16 }}>
-      <h3 style={{ marginBottom: 10, fontSize: 'var(--fs-strong)' }}>{t('trip.sidebar_services')}</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {/* Added services as booked cards */}
-        {services.map((s) => {
-          const meta = SERVICE_KIND_META[s.kind];
-          return (
-            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 0' }}>
-              <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                <Icon name={meta?.icon || 'spark'} size={14} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta ? t(meta.labelKey) : s.name}</div>
-                {s.name && <div className="muted" style={{ fontSize: 'var(--fs-micro)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>}
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Top dashed placeholders for not-yet-added eSIM / car rental */}
-        {topAddKinds.map((k) => (
-          <ServiceRowEmpty key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} name={t(SERVICE_KIND_META[k].labelKey)} desc={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
-        ))}
-
-        {/* "Ещё" — insurance + add-more for kinds that already have items */}
-        {moreOpen ? (
-          moreAddKinds.map((k) => (
-            <ServiceRowEmpty
-              key={`more-${k}`}
-              icon={SERVICE_KIND_META[k].icon}
-              name={byKind[k].length > 0 ? t('service.add_more', { label: t(SERVICE_KIND_META[k].labelKey) }) : t(SERVICE_KIND_META[k].labelKey)}
-              desc={t(SERVICE_KIND_META[k].hintKey)}
-              onClick={() => onAddService?.(k)}
-            />
-          ))
-        ) : (
-          <button onClick={() => setMoreOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: 'var(--fs-meta)', cursor: 'pointer' }}>
-            <Icon name="more" size={12} />
-            <span>{t('service.more')}</span>
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ServiceRowEmpty({ icon, name, desc, onClick }) {
-  return (
-    <button onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: 9, padding: '8px 8px',
-      background: 'transparent', border: '1.5px dashed var(--line)', borderRadius: 8,
-      cursor: 'pointer', textAlign: 'left', color: 'var(--ink)', width: '100%',
-    }}
-    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.background = 'var(--brand-soft)'; }}
-    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.background = 'transparent'; }}>
-      <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--wash)', color: 'var(--muted)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-        <Icon name={icon} size={14} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</div>
-      </div>
-      {/* Trailing "+" — a dedicated flex child, so it sits to the RIGHT of the
-          text instead of stacking above it (the old inline-icon layout bug). */}
-      <Icon name="plus" size={14} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-    </button>
-  );
-}
-
+// Timeline right rail. Budget + "who's going" moved to the Overview screen
+// (BudgetSummaryCard / MembersSummaryCard); the rail now carries only Services.
 // ─── TripView (main export) ───────────────────────────────────────────────────
 
 export default function TripView() {
@@ -1308,10 +928,9 @@ export default function TripView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
-  const lens = searchParams.get('lens') || 'timeline';
+  const lens = searchParams.get('lens') || 'overview';
 
   const { isDark, toggle: toggleTheme } = useTheme();
-  const [isEditMode, setIsEditMode] = useState(false);
   // Choice dialogs (ForkPartnerModal) - sit between the warning button and the
   // edit form so the user can pick a partner before falling back to manual entry.
   const [hotelChoice, setHotelChoice] = useState({ open: false, visit: null });
@@ -1329,6 +948,12 @@ export default function TripView() {
 
   // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
   const openEventView = (e) => {
+    // Car-rental pickup/return → open the car service in the editor dialog.
+    if (e.type === 'car-pickup' || e.type === 'car-return') {
+      const svc = (services || []).find(s => s.id === e.id);
+      if (svc) setServiceEditCar({ open: true, service: svc });
+      return;
+    }
     let kind = null;
     if (e.type === 'hotel-checkin' || e.type === 'hotel-checkout' || e.type === 'hotel-deadline') kind = 'hotel';
     else if (e.type === 'activity') kind = 'activity';
@@ -1344,10 +969,11 @@ export default function TripView() {
     window.__navigate = (target) => {
       if (target === 'collection') { nav('/trips'); return; }
       if (target === 'ai-planner') { nav('/plan-trip-ai'); return; }
-      const lensIds = ['timeline', 'map', 'calendar', 'budget', 'docs', 'members', 'settings', 'chat'];
+      const lensIds = ['overview', 'timeline', 'map', 'calendar', 'budget', 'docs', 'members', 'settings', 'chat'];
       if (lensIds.includes(target)) {
         const sp = new URLSearchParams(searchParams);
-        if (target === 'timeline') sp.delete('lens'); else sp.set('lens', target);
+        // overview is the default lens → drop the param; everything else sets it.
+        if (target === 'overview') sp.delete('lens'); else sp.set('lens', target);
         setSearchParams(sp, { replace: false });
       }
     };
@@ -1356,9 +982,9 @@ export default function TripView() {
 
   const setLens = (id) => {
     const sp = new URLSearchParams(searchParams);
-    if (id === 'timeline') sp.delete('lens'); else sp.set('lens', id);
+    if (id === 'overview') sp.delete('lens'); else sp.set('lens', id);
     setSearchParams(sp, { replace: false });
-    window.scrollTo(0, 0);
+    setSideOpen(false); // close the mobile sidebar after navigating
   };
 
   // Fetch shell (trip + cityVisits)
@@ -1403,29 +1029,12 @@ export default function TripView() {
   const myRole   = myMember?.role || (trip?.created_by === user?.id ? 'owner' : 'viewer');
 
   const stream = useMemo(
-    () => buildEventStream(t, hotels, activities, transfers, visits),
-    [t, hotels, activities, transfers, visits],
+    () => buildEventStream(t, hotels, activities, transfers, visits, services),
+    [t, hotels, activities, transfers, visits, services],
   );
 
   // Unified engine: same validateTrip that powers Edit Mode, collapsed to <=1
   // issue per entity so the timeline panel never piles up duplicates.
-  const conflicts = useMemo(
-    () => primaryIssues(validateTrip({ visits, hotels, activities, transfers })),
-    [visits, hotels, activities, transfers],
-  );
-  // Clicking a conflict opens the relevant event (hotel/activity/transfer).
-  // Paired/city issues (CITY_GAP / CITY_OVERLAP / DUP_TRANSFER) are structural -
-  // they have no single event to open, so the row stays informational.
-  const openConflict = (issue) => {
-    if (!issue?.entityId) return;
-    const kind = issue.entityKind;
-    if (kind !== 'hotel' && kind !== 'activity' && kind !== 'transfer') return;
-    // Carry the conflict text so EventModal shows it in its warning plate -
-    // same contract Edit Mode uses (openConflict -> warning: c.message).
-    const warning = t(`validation.${issue.code}`, issue.values);
-    setEventView({ open: true, kind, id: issue.entityId, warning });
-  };
-
   // Account-level Pro (header chip). For IN-TRIP gating use tripIsPro below.
   const accountPro = isProActive(user);
   const isOwner = myRole === 'owner';
@@ -1444,40 +1053,103 @@ export default function TripView() {
   const frozenNote = () => toast({ description: t('trip.frozen_note') });
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
+  // Global trip-header state: trip-metadata editor, mobile sidebar, and the
+  // right-hand actions the active lens projects into the screen-title bar.
+  const [editingMetadata, setEditingMetadata] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false);
+  const [screenActions, setScreenActions] = useState(null);
 
   // If the URL points at a lens the trip has disabled, fall back to the timeline.
   // Viewers can't open Settings/Members even by deep link → fall back too.
   const VIEWER_BLOCKED_LENSES = new Set(['settings', 'members']);
-  let shownLens = isLensVisible(trip, lens) ? lens : 'timeline';
-  if (myRole === 'viewer' && VIEWER_BLOCKED_LENSES.has(shownLens)) shownLens = 'timeline';
+  let shownLens = isLensVisible(trip, lens) ? lens : 'overview';
+  if (myRole === 'viewer' && VIEWER_BLOCKED_LENSES.has(shownLens)) shownLens = 'overview';
 
   // Latch once the map lens has been opened so it stays mounted (hidden) on other
   // tabs — see the map-lens render below for why.
   const [mapEverShown, setMapEverShown] = useState(false);
   useEffect(() => { if (shownLens === 'map') setMapEverShown(true); }, [shownLens]);
+  // The screen body is a persistent scroll container (the shell doesn't scroll),
+  // so reset it to the top whenever the active lens changes.
+  const screenBodyRef = useRef(null);
+  useEffect(() => { if (screenBodyRef.current) screenBodyRef.current.scrollTop = 0; }, [shownLens]);
 
-  if (loadingShell) return <LoadingScreen />;
+  if (loadingShell) return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} />;
   if (shellError || (!loadingShell && !trip)) return <ErrorScreen onBack={() => nav('/trips')} />;
 
+  // ── Global trip header: cover, subtitle and the right-hand hero actions ──
+  // (Share / Edit / "…"). Cover priority mirrors the old cover strip: uploaded
+  // photo → preset gradient → default waves. All dialogs open via the global
+  // modal mount, so they work from any lens.
+  const gradient = getGradientById(trip?.cover_gradient);
+  const hasPhoto = !!trip?.cover_image_url;
+  const coverGradientCss = (!hasPhoto && gradient) ? gradient.css : null;
+  const useDefaultWaves = !hasPhoto && !gradient;
+  const dateRange = formatTripRange(visits, '-');
+  const cityCount = uniqueCityCount(visits);
+  const activeMemberCount = members.filter(m => m.status === 'active').length || 1;
+  const heroSub = (
+    <>
+      {dateRange && dateRange !== '-' && <span>{dateRange}</span>}
+      {cityCount > 0 && (
+        <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}</span></>
+      )}
+      <span>·</span>
+      <span>{activeMemberCount} {activeMemberCount === 1 ? t('trip.members_count_one') : activeMemberCount < 5 ? t('trip.members_count_few') : t('trip.members_count_many')}</span>
+    </>
+  );
+  const heroActions = (
+    <>
+      {myRole !== 'viewer' && (
+        <button className="trip-hero__btn" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>
+          <Icon name="share" size={15} /><span className="trip-hero__btn-text">{t('trip.share')}</span>
+        </button>
+      )}
+      {myRole !== 'viewer' && (
+        frozen
+          ? <button className="trip-hero__btn" disabled><Icon name="lock" size={15} /><span className="trip-hero__btn-text">{t('trip.editing')}</span></button>
+          : <button className="trip-hero__btn" disabled={!canEditMode} onClick={() => nav(`/trip/${trip.id}/edit`)}><Icon name="edit" size={15} /><span className="trip-hero__btn-text">{t('trip.edit_trip')}</span></button>
+      )}
+      <button
+        className="trip-hero__btn trip-hero__btn--icon"
+        onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canManage={myRole !== 'viewer'} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)}
+      >
+        <Icon name="more" size={15} />
+      </button>
+    </>
+  );
+  // Map = edge-to-edge, no scroll. Chat = padded but fills height with its own
+  // internal scroll. Everything else = the default scrolling body.
+  const screenBodyClass = 'trip-screen-body'
+    + (shownLens === 'map' ? ' trip-screen-body--flush' : '')
+    + (shownLens === 'chat' ? ' trip-screen-body--chat' : '');
+
   return (
-    <div className="app" style={{ minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
+    <div className="trip-shell">
       <TripHeader
-        trip={trip}
-        visits={visits}
         isPro={accountPro}
         isDark={isDark}
         onToggleTheme={toggleTheme}
         user={user}
         nav={nav}
       />
-      <div className="app-body">
-        <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)} />
-        <main style={{
-          minWidth: 0,
-          padding: shownLens === 'map' ? 0 : shownLens === 'chat' ? '28px 28px 28px' : '28px 28px 60px',
-          height: (shownLens === 'map' || shownLens === 'chat') ? 'calc(100vh - 56px)' : undefined,
-          overflow: (shownLens === 'map' || shownLens === 'chat') ? 'hidden' : undefined,
-        }}>
+      <TripHeaderBar
+        title={trip?.title}
+        subtitle={heroSub}
+        coverImageUrl={trip?.cover_image_url || null}
+        coverGradientCss={coverGradientCss}
+        useDefaultWaves={useDefaultWaves}
+        onMenu={() => setSideOpen(true)}
+        actions={heroActions}
+      />
+      <TripFormDialog open={editingMetadata} onOpenChange={setEditingMetadata} trip={trip} visits={visits} />
+      <TripScreenBarCtx.Provider value={{ setActions: setScreenActions }}>
+        <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
+          <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)} />
+          <div className="trip-side-scrim" onClick={() => setSideOpen(false)} />
+          <div className="trip-content">
+            <TripScreenBar title={t(SCREEN_TITLE_KEY[shownLens] || 'trip_menu.timeline')} actions={screenActions} />
+            <main ref={screenBodyRef} className={screenBodyClass}>
           {/* Hotel choice - sits between the warning button and the edit form */}
           <ForkPartnerModal
             open={hotelChoice.open}
@@ -1522,7 +1194,7 @@ export default function TripView() {
               onOpenChange={(o) => setServiceEditCar({ open: o })}
               kind="service"
               tripId={tripId}
-              entity={null}
+              entity={serviceEditCar.service || null}
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
@@ -1533,7 +1205,7 @@ export default function TripView() {
               onOpenChange={(o) => setServiceEditSimple(s => ({ ...s, open: o }))}
               tripId={tripId}
               kind={serviceEditSimple.kind}
-              service={null}
+              service={serviceEditSimple.service || null}
             />
           )}
           {/* Activity - add new activity in edit mode */}
@@ -1560,32 +1232,40 @@ export default function TripView() {
             onEditInEditor={canEditMode ? (({ kind, id }) => nav(`/trip/${trip.id}/edit`, { state: { edit: { kind, id } } })) : null}
           />
 
+          {shownLens === 'overview' && (
+            <OverviewLens
+              trip={trip}
+              visits={visits ?? []}
+              transfers={transfers ?? []}
+              budget={budget}
+              budgetExpenses={budgetExpenses}
+              budgetCategories={budgetCategories}
+              members={members}
+              services={services}
+              user={user}
+              contentLoading={loadingContent}
+              active={shownLens === 'overview'}
+              canManage={myRole !== 'viewer'}
+              budgetEnabled={isAddonEnabled(trip, 'budget')}
+              onOpenMap={() => setLens('map')}
+              onOpenBudget={() => setLens('budget')}
+              onOpenMembers={() => setLens('members')}
+              onAddService={frozen ? frozenNote : (type) => setServiceChoice({ open: true, type })}
+              onOpenService={(s) => {
+                if (s.kind === 'car_rental') setServiceEditCar({ open: true, service: s });
+                else setServiceEditSimple({ open: true, kind: s.kind, service: s });
+              }}
+              onBudgetLocked={() => setBudgetAddonOff(true)}
+            />
+          )}
           {shownLens === 'timeline' && (
             <>
-              <TripCoverStrip
-                trip={trip}
-                visits={visits}
-                members={members}
-                myRole={myRole}
-                canEditMode={canEditMode}
-                frozen={frozen}
-                isEditMode={isEditMode}
-                onToggleEdit={() => setIsEditMode(m => !m)}
-              />
               {frozen && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--wash)', border: '1px solid var(--line)', fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>
                   <Icon name="lock" size={14} /> {t('trip.frozen_note')}
                 </div>
               )}
-              {conflicts.length > 0 && (
-                <ConflictsPanel
-                  issues={conflicts}
-                  ctx={{ hotels, activities, transfers, visits }}
-                  onOpen={openConflict}
-                  style={{ marginBottom: 14 }}
-                />
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
+              <div className="ov-anim tl-twocol" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
                 <TimelineLens
                   stream={stream}
                   visits={visits}
@@ -1599,7 +1279,6 @@ export default function TripView() {
                   onAddHotel={frozen ? frozenNote : (visit) =>
                     setHotelChoice({ open: true, visit })
                   }
-                  isEditMode={isEditMode}
                   onOpenEvent={openEventView}
                   onAddActivityForDay={frozen ? frozenNote : (dayKey) => {
                     const dayVisit = visits.find(v =>
@@ -1615,20 +1294,7 @@ export default function TripView() {
                     }
                   }}
                 />
-                <ContextSide
-                  budget={budget}
-                  budgetExpenses={budgetExpenses}
-                  budgetCategories={budgetCategories}
-                  members={members}
-                  services={services}
-                  user={user}
-                  trip={trip}
-                  isLoading={loadingContent}
-                  onAddService={frozen ? frozenNote : (type) => setServiceChoice({ open: true, type })}
-                  canManage={myRole !== 'viewer'}
-                  budgetEnabled={isAddonEnabled(trip, 'budget')}
-                  onBudgetLocked={() => setBudgetAddonOff(true)}
-                />
+                <CityRail visits={visits ?? []} scrollRef={screenBodyRef} />
               </div>
             </>
           )}
@@ -1707,9 +1373,10 @@ export default function TripView() {
               />
             </div>
           )}
-        </main>
-      </div>
-
+            </main>
+          </div>
+        </div>
+      </TripScreenBarCtx.Provider>
 
       <TripProInfoDialog
         open={tripProInfoOpen}

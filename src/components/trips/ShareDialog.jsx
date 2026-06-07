@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Btn } from '@/design/index';
+import { Btn, Dialog } from '@/design/index';
 
 // Shared trip "Share link" dialog (mints/loads a public share token). Opened via
 // the global ModalHost (window.__openModal). Used by the trip screens and the
@@ -42,34 +42,33 @@ export default function ShareDialog({ trip }) {
     });
   }
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,.45)', backdropFilter: 'blur(4px)' }}
-      onClick={() => window.__closeModal?.()}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 420, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
-        <h2 style={{ margin: '0 0 6px', fontSize: 'var(--fs-xl)' }}>{t('share.dialog_title')}</h2>
-        <div className="muted" style={{ fontSize: 'var(--fs-base)', marginBottom: 18 }}>{t('trip.share_desc')}</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1, fontSize: 'var(--fs-meta)' }} onClick={(e) => e.target.select()} />
-          {loading ? (
-            <Btn variant="primary" disabled>
-              <span className="spin-mini" style={{
-                display: 'inline-block', width: 14, height: 14,
-                border: '2px solid currentColor', borderRightColor: 'transparent',
-                borderRadius: '50%', animation: 'spin .7s linear infinite',
-                marginRight: 6, verticalAlign: -2,
-              }} />
-              {t('share.generating')}
-            </Btn>
-          ) : (
-            <Btn variant="primary" icon="check" onClick={copyLink} disabled={!shareUrl}>
-              {copied ? t('trip.link_copied') : t('share.copy')}
-            </Btn>
-          )}
-        </div>
-        {error && <div style={{ color: 'var(--danger, #dc2626)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{error}</div>}
-        <div style={{ marginTop: 18, textAlign: 'right' }}>
-          <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>
-        </div>
+    <Dialog
+      title={t('share.dialog_title')}
+      icon="share"
+      size="sm"
+      onClose={() => window.__closeModal?.()}
+      foot={<Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>}
+    >
+      <div className="muted" style={{ fontSize: 'var(--fs-base)', marginBottom: 18 }}>{t('trip.share_desc')}</div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1, fontSize: 'var(--fs-meta)' }} onClick={(e) => e.target.select()} />
+        {loading ? (
+          <Btn variant="primary" disabled>
+            <span className="spin-mini" style={{
+              display: 'inline-block', width: 14, height: 14,
+              border: '2px solid currentColor', borderRightColor: 'transparent',
+              borderRadius: '50%', animation: 'spin .7s linear infinite',
+              marginRight: 6, verticalAlign: -2,
+            }} />
+            {t('share.generating')}
+          </Btn>
+        ) : (
+          <Btn variant="primary" icon="check" onClick={copyLink} disabled={!shareUrl}>
+            {copied ? t('trip.link_copied') : t('share.copy')}
+          </Btn>
+        )}
       </div>
-    </div>
+      {error && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{error}</div>}
+    </Dialog>
   );
 }
