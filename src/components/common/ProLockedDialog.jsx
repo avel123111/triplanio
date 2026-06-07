@@ -22,7 +22,7 @@ export default function ProLockedDialog({ open, onOpenChange, feature, onUpgrade
       onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
       <div className="dlg dlg--sm">
         <div className="dlg__head">
-          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--warm-tint)', color: 'var(--warm)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--pro-soft-2)', color: 'var(--pro-ink)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="lock" size={17} />
           </div>
           <h2>{t('sub.locked_heading')}</h2>
@@ -30,7 +30,7 @@ export default function ProLockedDialog({ open, onOpenChange, feature, onUpgrade
         </div>
         <div className="dlg__body">
           <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--warm-tint)', color: 'var(--warm)', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
+            <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--pro-soft-2)', color: 'var(--pro-ink)', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
               <Icon name="lock" size={24} />
             </div>
             <div style={{ fontWeight: 700, fontSize: 'var(--fs-h4)', marginBottom: 8 }}>
@@ -43,7 +43,7 @@ export default function ProLockedDialog({ open, onOpenChange, feature, onUpgrade
         </div>
         <div className="dlg__foot">
           <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
-          <Btn variant="primary" icon="crown" onClick={() => { close(); onUpgrade?.(); }}>{t('trips.go_pro')}</Btn>
+          <Btn variant="pro" icon="crown" onClick={() => { close(); onUpgrade?.(); }}>{t('trips.go_pro')}</Btn>
         </div>
       </div>
     </div>

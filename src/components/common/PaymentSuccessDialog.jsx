@@ -37,7 +37,7 @@ export default function PaymentSuccessDialog({ open, onOpenChange, planLabel, pr
             {t('sub.success_desc')}
           </div>
           {chip && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: 'var(--warm-tint)', color: 'var(--warm)', borderRadius: 999, fontSize: 'var(--fs-meta)', fontWeight: 600 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: 'var(--pro-soft-2)', color: 'var(--pro-ink)', borderRadius: 999, fontSize: 'var(--fs-meta)', fontWeight: 700 }}>
               <Icon name="pro" size={12} /> {chip}
             </div>
           )}

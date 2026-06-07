@@ -34,7 +34,7 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
       >
         <Avatar name={user?.full_name || user?.email || '?'} photo={user?.avatar_url} size="sm" />
         {isPro && (
-          <span style={{ background: 'var(--warm-tint)', color: 'var(--warm)', padding: '1px 7px', borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.04em' }}>PRO</span>
+          <span style={{ background: 'var(--pro-gradient)', color: 'var(--pro-fg)', padding: '1px 7px', borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 800, letterSpacing: '.04em', boxShadow: '0 3px 10px -4px var(--pro)' }}>PRO</span>
         )}
       </button>
     </div>

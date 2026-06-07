@@ -95,13 +95,13 @@ export default function TripSidebar({
         </div>
       )}
       {showUpgrade && (
-        <div className="app-side__upgrade" style={{ margin: '10px 6px 0', padding: 12, borderRadius: 10, background: 'var(--warm-tint)' }}>
-          <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, color: 'var(--warm)', marginBottom: 4 }}>{t('trip_menu.free_trip_title')}</div>
+        <div className="app-side__upgrade" style={{ margin: '10px 6px 0', padding: 12, borderRadius: 10, background: 'var(--pro-soft)', border: '1px solid var(--pro-soft-2)' }}>
+          <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 700, color: 'var(--pro-ink)', marginBottom: 4 }}>{t('trip_menu.free_trip_title')}</div>
           <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--ink-2)', marginBottom: 8, lineHeight: 1.45 }}>
             {t('trip.pro_locked_lenses')}
           </div>
           {isOwner ? (
-            <Btn variant="primary" size="sm" block icon="pro" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
+            <Btn variant="pro" size="sm" block icon="pro" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
           ) : (
             <Btn variant="ghost" size="sm" block icon="lock" onClick={onProInfo}>{t('trip.pro_by_owner')}</Btn>
           )}

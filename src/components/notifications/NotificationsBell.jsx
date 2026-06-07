@@ -37,7 +37,7 @@ export function notifMeta(type = '') {
   const tp = String(type).toLowerCase();
   if (tp.includes('invite')) return { icon: 'users', color: 'var(--brand)' };
   if (tp.includes('vote') || tp.includes('hotel')) return { icon: 'vote', color: 'var(--ai)' };
-  if (tp.includes('pro') || tp.includes('subscription') || tp.includes('payment')) return { icon: 'pro', color: 'var(--warm)' };
+  if (tp.includes('pro') || tp.includes('subscription') || tp.includes('payment')) return { icon: 'pro', color: 'var(--pro)' };
   if (tp.includes('join') || tp.includes('member')) return { icon: 'user', color: 'var(--success)' };
   if (tp.includes('activity') || tp.includes('update') || tp.includes('edit')) return { icon: 'edit', color: 'var(--warm)' };
   return { icon: 'bell', color: 'var(--brand)' };

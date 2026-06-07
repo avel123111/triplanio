@@ -133,8 +133,8 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
   }}>
     <div style={{
       width: 64, height: 64, borderRadius: 16,
-      background: kind === "error" ? "var(--danger-soft)" : kind === "locked" ? "var(--warm-tint)" : "var(--brand-soft)",
-      color: kind === "error" ? "var(--danger)" : kind === "locked" ? "var(--warm)" : "var(--brand)",
+      background: kind === "error" ? "var(--danger-soft)" : kind === "locked" ? "var(--pro-soft-2)" : "var(--brand-soft)",
+      color: kind === "error" ? "var(--danger)" : kind === "locked" ? "var(--pro-ink)" : "var(--brand)",
       display: "grid", placeItems: "center", marginBottom: 16,
     }}>
       <Icon name={icon} size={28} />

@@ -198,7 +198,7 @@ export default function EventAiBlock({
             {t('event.ai_locked_hint')}
           </div>
         </div>
-        <Button size="sm" onClick={onUpgrade} className="text-white" style={{ background: 'var(--ai-gradient)' }}>
+        <Button size="sm" onClick={onUpgrade} style={{ background: 'var(--pro-gradient)', color: 'var(--pro-fg)', boxShadow: '0 6px 16px -8px var(--pro)' }}>
           <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('trips.go_pro')}
         </Button>
       </div>
@@ -470,7 +470,7 @@ function Title() {
   return (
     <div className="text-sm font-semibold flex items-center gap-1.5 flex-wrap">
       {t('event.ai_fill_title')}
-      <span className="text-[length:var(--fs-nano)] uppercase font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--ai-soft)', color: 'var(--ai-ink)' }}>Pro</span>
+      <span className="text-[length:var(--fs-nano)] uppercase font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--pro-soft-2)', color: 'var(--pro-ink)' }}>Pro</span>
     </div>
   );
 }
