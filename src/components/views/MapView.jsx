@@ -3,7 +3,7 @@ import { Icon } from '@/design/icons';
 import { useT } from '@/lib/i18n/I18nContext';
 import { mapboxgl, MAPBOX_TOKEN, applyBasemapConfig, fitToPoints } from '@/lib/mapbox';
 import { useSharedMap } from '@/lib/map/MapProvider';
-import { drawRouteLines } from '@/lib/map/routeLines';
+import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { countryFlag } from '@/lib/geo';
 import { sortVisits } from '@/lib/validation';
 
@@ -110,13 +110,11 @@ export default function MapView({
     map.on('error', onErr);
     return () => {
       map.off('error', onErr);
-      // Drop only THIS screen's overlays; the instance lives on for the next slot.
+      // Remove only this screen's markers. The route LINE layers stay on the
+      // shared instance so reopening the same route doesn't rebuild/re-fetch
+      // them — drawRouteLinesCached replaces them only when the route changes.
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
-      ['mv-dashed', 'mv-solid'].forEach((id) => {
-        try { if (map.getLayer(id)) map.removeLayer(id); } catch { /* ignore */ }
-        try { if (map.getSource(id)) map.removeSource(id); } catch { /* ignore */ }
-      });
       sharedMap.release(slot);
       mapRef.current = null;
       setReady(false);
@@ -207,7 +205,14 @@ export default function MapView({
       const to = ordered[i + 1];
       legs.push({ from, to, kind: transferByPair.get(`${from.id}__${to.id}`)?.transport_type });
     }
-    const cancelLines = drawRouteLines(map, legs, {
+    // Signature of everything the lines depend on (route order/coords +
+    // per-leg transport). If unchanged, the cached draw is a no-op → no rebuild,
+    // no OSRM refetch, no flicker when reopening the map.
+    const transfersSig = transfers
+      .map((t) => `${t.from_city_visit_id}>${t.to_city_visit_id}:${t.transport_type || ''}`)
+      .join('|');
+    const lineSig = `trip:${visitsSignature}::${transfersSig}`;
+    drawRouteLinesCached(map, lineSig, legs, {
       dashedId: 'mv-dashed', solidId: 'mv-solid',
       dashedColor: ROUTE_COLOR, solidColor: ROUTE_COLOR, dashedOpacity: 0.4,
     });
@@ -222,7 +227,7 @@ export default function MapView({
       fittedSigRef.current = visitsSignature;
     }
 
-    return () => { cancelLines(); };
+    return undefined;
   }, [ready, ordered, transfers, visitsSignature]);
 
   return (

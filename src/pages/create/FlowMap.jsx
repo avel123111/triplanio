@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { mapboxgl, applyBasemapConfig, fitToPoints, htmlMarkerEl } from '@/lib/mapbox';
 import { useSharedMap } from '@/lib/map/MapProvider';
-import { drawRouteLines } from '@/lib/map/routeLines';
+import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { groupMarkers, markerSvg, MISSING_COLOR } from '@/lib/mapRoute';
 import { Icon } from '../../design/icons';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -80,13 +80,10 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
     try { map.setProjection(projection); } catch { /* ignore */ }
     applyBasemapConfig(map, scheme);
     return () => {
-      // Drop only THIS screen's overlays; the instance lives on for the next slot.
+      // Remove only this screen's markers; the route LINE layers stay on the
+      // shared instance (drawRouteLinesCached replaces them only on change).
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
-      ['flow-dashed', 'flow-solid'].forEach((id) => {
-        try { if (map.getLayer(id)) map.removeLayer(id); } catch { /* ignore */ }
-        try { if (map.getSource(id)) map.removeSource(id); } catch { /* ignore */ }
-      });
       sharedMap.release(slot);
       mapRef.current = null;
       readyRef.current = false;
@@ -117,18 +114,19 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return undefined;
-    let cancelLines = () => {};
     let disposed = false;
     const draw = () => {
       if (disposed) return;
       const drawLegs = legs.map((leg) => ({ from: leg.from, to: leg.to, kind: transport[leg.id]?.kind }));
-      cancelLines = drawRouteLines(map, drawLegs, {
+      // Cached by accent+legs: reopening with the same route is a no-op (no
+      // rebuild, no OSRM refetch, no straight→road flicker).
+      drawRouteLinesCached(map, `create:${accent}:${legsKey}`, drawLegs, {
         dashedId: 'flow-dashed', solidId: 'flow-solid',
         dashedColor: MISSING_COLOR, solidColor: accent, dashedOpacity: 0.5,
       });
     };
     if (readyRef.current) draw(); else map.once('load', draw);
-    return () => { disposed = true; cancelLines(); };
+    return () => { disposed = true; };
   }, [legsKey]);
 
   return (

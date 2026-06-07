@@ -62,3 +62,28 @@ export function drawRouteLines(map, legs, opts) {
 
   return () => { cancelled = true; };
 }
+
+// Every line layer id any surface can draw. Used to wipe a previous route
+// (this screen's or another surface's) before drawing a different one.
+const ALL_LINE_LAYER_IDS = ['mv-dashed', 'mv-solid', 'flow-dashed', 'flow-solid'];
+
+// Cached variant. Keeps the drawn route ON THE MAP INSTANCE between screen
+// opens. If `sig` matches what's already rendered (and the layers still exist),
+// it does NOTHING — so reopening the map doesn't rebuild the route or re-hit
+// OSRM. That removes both the straight→road "snap" flicker and the repeated
+// network calls the user was seeing on every open. When the route actually
+// changes (or a different surface takes over), it cancels any pending OSRM,
+// wipes every known line layer and redraws. The cancel handle lives on the
+// instance, so it survives the React unmount that triggered the previous draw
+// (letting an in-flight OSRM upgrade finish into the persistent layer).
+export function drawRouteLinesCached(map, sig, legs, opts) {
+  const st = map.__routeLines || (map.__routeLines = { sig: null, cancel: null });
+  if (st.sig === sig && map.getSource(opts.solidId)) return; // unchanged → leave it
+  if (st.cancel) { try { st.cancel(); } catch { /* ignore */ } st.cancel = null; }
+  ALL_LINE_LAYER_IDS.forEach((id) => {
+    try { if (map.getLayer(id)) map.removeLayer(id); } catch { /* ignore */ }
+    try { if (map.getSource(id)) map.removeSource(id); } catch { /* ignore */ }
+  });
+  st.cancel = drawRouteLines(map, legs, opts);
+  st.sig = sig;
+}
