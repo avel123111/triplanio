@@ -74,4 +74,12 @@ export default {
   'account.err_billing': 'Billing error: ',
   'account.err_delete': 'Deletion error: ',
   'account.per_year_short': '/yr',
+  'account.plan_current': 'Current plan',
+  'account.nav_help': 'Help & legal',
+  'account.nav_session': 'Session & deletion',
+  'account.channels_title': 'Reminder channels',
+  'account.channels_desc': 'Where to send trip event reminders. More channels coming soon.',
+  'account.channel_whatsapp_desc': 'The same reminders — in WhatsApp.',
+  'account.channel_push': 'Push notifications',
+  'account.channel_push_desc': 'Phone push via the mobile app.',
 };

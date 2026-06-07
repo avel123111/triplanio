@@ -74,4 +74,12 @@ export default {
   'account.err_billing': 'Ошибка биллинга: ',
   'account.err_delete': 'Ошибка удаления: ',
   'account.per_year_short': '/год',
+  'account.plan_current': 'Текущий тариф',
+  'account.nav_help': 'Помощь и право',
+  'account.nav_session': 'Сессия и удаление',
+  'account.channels_title': 'Каналы напоминаний',
+  'account.channels_desc': 'Куда присылать напоминания о событиях. Скоро добавятся новые каналы.',
+  'account.channel_whatsapp_desc': 'Тот же набор напоминаний — в WhatsApp.',
+  'account.channel_push': 'Push-уведомления',
+  'account.channel_push_desc': 'Пуши на телефон через мобильное приложение.',
 };

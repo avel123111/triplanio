@@ -7,6 +7,7 @@
  *   columns: id, trip_id, user_id, invite_email, user_full_name, role, status, invite_token, ...
  */
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { useUserProfiles } from '@/lib/useUserProfiles';
@@ -240,6 +241,7 @@ function RowMenuItem({ icon, danger, onClick, children }) {
 export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient }) {
   const { t } = useI18n();
   const confirm = useConfirm();
+  const nav = useNavigate();
   const [openMenu, setOpenMenu] = useState(null);
   const [removing, setRemoving] = useState(null);
 
@@ -296,6 +298,19 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     refresh();
   }
 
+  // Leaving the trip = self-removal. removeTripMember allows a member to remove
+  // their own row (isSelf path). Once gone the user loses access, so navigate
+  // back to the trips collection rather than refreshing the now-forbidden lens.
+  async function leaveTrip(member) {
+    setOpenMenu(null);
+    if (!(await confirm({ title: t('settings.leave_confirm'), variant: 'destructive' }))) return;
+    setRemoving(member.id);
+    const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: member.id } });
+    setRemoving(null);
+    if (error || !data?.ok) { alert(await edgeErrorMessage(error, data, t('settings.leave_error'))); return; }
+    nav('/trips');
+  }
+
   // Primary action lives in the global screen-title bar (the per-screen header).
   useTripScreenActions(
     canManage
@@ -338,6 +353,11 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
         )}
         {allMembers.map((m, i) => {
           const isOwner = m.role === 'owner';
+          const isSelf = !!m.user_id && m.user_id === user?.id;
+          // Actions sit next to every row except the owner's: your own row gets
+          // "Leave trip"; other rows get state-appropriate management actions
+          // when you're an owner/admin.
+          const canActOnRow = !isOwner && (isSelf || canManage);
           const showMenu = openMenu === i;
           const isRemoving = removing === m.id;
           const profile = profiles[m.user_id];
@@ -389,7 +409,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                     {t('members.invite')}
                   </Btn>
                 )}
-                {!isOwner && m.user_id !== user?.id && canManage && (
+                {canActOnRow && (
                   <button
                     onClick={e => { e.stopPropagation(); setOpenMenu(showMenu ? null : i); }}
                     className="icon-btn"
@@ -413,18 +433,25 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                     borderRadius: 11, boxShadow: 'var(--shadow-pop)',
                     padding: 6,
                   }}>
-                    {m.status === 'pending' && (
-                      <RowMenuItem icon="send" onClick={() => resend(m.id)}>{t('members.resend')}</RowMenuItem>
+                    {isSelf ? (
+                      // Your own row: the only self-action is leaving the trip.
+                      <RowMenuItem icon="arrow" danger onClick={() => leaveTrip(m)}>{t('members.leave')}</RowMenuItem>
+                    ) : (
+                      <>
+                        {m.status === 'pending' && (
+                          <RowMenuItem icon="send" onClick={() => resend(m.id)}>{t('members.resend')}</RowMenuItem>
+                        )}
+                        {m.status === 'declined' && (
+                          <RowMenuItem icon="send" onClick={() => reinvite(m)}>{t('member.invite_again')}</RowMenuItem>
+                        )}
+                        {m.status === 'active' && (
+                          <RowMenuItem icon="edit" onClick={() => { setOpenMenu(null); window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />); }}>{t('members.change_role')}</RowMenuItem>
+                        )}
+                        <RowMenuItem icon="trash" danger onClick={() => removeMember(m.id)}>
+                          {m.status === 'pending' ? t('member.cancel_invite') : t('members.remove')}
+                        </RowMenuItem>
+                      </>
                     )}
-                    {m.status === 'declined' && (
-                      <RowMenuItem icon="send" onClick={() => reinvite(m)}>{t('member.invite_again')}</RowMenuItem>
-                    )}
-                    {m.status === 'active' && (
-                      <RowMenuItem icon="edit" onClick={() => { setOpenMenu(null); window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />); }}>{t('members.change_role')}</RowMenuItem>
-                    )}
-                    <RowMenuItem icon="trash" danger onClick={() => removeMember(m.id)}>
-                      {m.status === 'pending' ? t('member.cancel_invite') : t('members.remove')}
-                    </RowMenuItem>
                   </div>
                 )}
               </div>

@@ -32,6 +32,7 @@ export default {
   'telegram.connected': 'Подключён',
   'telegram.linked_trips': 'Привязанные путешествия',
   'telegram.go_to_trip': 'Перейти',
+  'telegram.unlink': 'Отвязать',
   'telegram.unlink_btn': 'Отвязать',
   'telegram.account_hint': 'Включить уведомления для другого путешествия можно в его «Настройках путешествия»',
   'telegram.tg_trips_one': 'уведомления по {count} путешествию',

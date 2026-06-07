@@ -74,4 +74,12 @@ export default {
   'account.err_billing': 'Error de facturación: ',
   'account.err_delete': 'Error al eliminar: ',
   'account.per_year_short': '/año',
+  'account.plan_current': 'Plan actual',
+  'account.nav_help': 'Ayuda y legal',
+  'account.nav_session': 'Sesión y eliminación',
+  'account.channels_title': 'Canales de recordatorios',
+  'account.channels_desc': 'Dónde enviar recordatorios de eventos del viaje. Pronto más canales.',
+  'account.channel_whatsapp_desc': 'Los mismos recordatorios — en WhatsApp.',
+  'account.channel_push': 'Notificaciones push',
+  'account.channel_push_desc': 'Notificaciones push en el móvil mediante la app.',
 };

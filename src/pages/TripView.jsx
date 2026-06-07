@@ -36,6 +36,7 @@ import DocsLens from './DocsLens';
 import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
 import { uniqueCityCount } from '@/lib/trip-cities';
+import { countTripMembers } from '@/lib/members';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
 import { getGradientById } from '@/lib/trip-gradients';
@@ -1076,7 +1077,7 @@ export default function TripView() {
   const useDefaultWaves = !hasPhoto && !gradient;
   const dateRange = formatTripRange(visits, '-');
   const cityCount = uniqueCityCount(visits);
-  const activeMemberCount = members.filter(m => m.status === 'active').length || 1;
+  const activeMemberCount = countTripMembers(members, trip?.created_by) || 1;
   const heroSub = (
     <>
       {dateRange && dateRange !== '-' && <span>{dateRange}</span>}

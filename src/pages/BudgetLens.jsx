@@ -22,6 +22,7 @@ import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colors';
 import { getActiveLocale } from '@/lib/i18n/format';
+import { countTripMembers } from '@/lib/members';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton, Severity } from '../design/index';
 import CurrencySelect from '@/components/budget/CurrencySelect';
@@ -454,7 +455,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
   // Summary totals (only convertible expenses are summed).
   const totalSpent = useMemo(() => cats.reduce((s, c) => s + c.spent, 0), [cats]);
-  const memberCount = members.filter(m => m.status === 'active').length || 1;
+  const memberCount = countTripMembers(members, trip?.created_by) || 1;
 
   // Foreign (non-main) currencies present in expenses.
   const foreignCurrencies = useMemo(

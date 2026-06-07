@@ -32,6 +32,7 @@ export default {
   'telegram.connected': 'Conectado',
   'telegram.linked_trips': 'Viajes vinculados',
   'telegram.go_to_trip': 'Abrir',
+  'telegram.unlink': 'Desvincular',
   'telegram.unlink_btn': 'Desvincular',
   'telegram.account_hint': 'Activa las notificaciones de otro viaje en sus «Ajustes del viaje»',
   'telegram.tg_trips_one': 'notificaciones de {count} viaje',
