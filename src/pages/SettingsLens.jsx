@@ -17,8 +17,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, Toggle } from '../design/index';
-import ProLockedDialog from '@/components/common/ProLockedDialog';
-import TripProInfoDialog from '@/components/common/TripProInfoDialog';
+import ProUpsellModal from '@/components/common/ProUpsellModal';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useToast } from '@/components/ui/use-toast';
@@ -403,8 +402,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   // Trip-level display toggles (default ON when the flag is absent).
   const [bookingWarnings, setBookingWarnings] = useState(() => trip?.details?.display?.booking_warnings !== false);
   const [chatWidget, setChatWidget] = useState(() => trip?.details?.display?.chat_widget !== false);
-  const [proLocked, setProLocked] = useState({ open: false, feature: '' });
-  const [tripProInfo, setTripProInfo] = useState({ open: false, feature: '' });
+  const [upsell, setUpsell] = useState({ open: false, mode: 'upgrade', feature: '' });
   const openUpgrade = () => nav(`/pro?tripId=${tripId}&hidePerTrip=1`);
 
   // Seed local state when the trip first loads or when switching to a different
@@ -521,8 +519,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       // Trip is not Pro. Only the owner can upgrade it → owner sees the upgrade
       // path; a non-owner (admin) is told to ask the owner instead of being sent
       // to checkout (their payment wouldn't unlock THIS trip).
-      if (isOwner) setProLocked({ open: true, feature: feat ? t(feat.labelKey) : '' });
-      else setTripProInfo({ open: true, feature: feat ? t(feat.labelKey) : '' });
+      setUpsell({ open: true, mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '' });
       return;
     }
     const newVal = !features[id];
@@ -544,8 +541,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       setFeatures(s => ({ ...s, [id]: !newVal }));  // revert
       patchAddons(prevAddons);                       // revert cache
       if (data?.code === 'PRO_REQUIRED') {
-        if (isOwner) setProLocked({ open: true, feature: feat ? t(feat.labelKey) : '' });
-        else setTripProInfo({ open: true, feature: feat ? t(feat.labelKey) : '' });
+        setUpsell({ open: true, mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '' });
       } else {
         toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
       }
@@ -749,18 +745,13 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </div>
       </Card>
 
-      <ProLockedDialog
-        open={proLocked.open}
-        feature={proLocked.feature}
-        onOpenChange={(o) => setProLocked(s => ({ ...s, open: o }))}
-        onUpgrade={openUpgrade}
-      />
-
-      <TripProInfoDialog
-        open={tripProInfo.open}
-        feature={tripProInfo.feature}
+      <ProUpsellModal
+        open={upsell.open}
+        mode={upsell.mode}
+        feature={upsell.feature}
         ownerName={members.find(m => m.user_id === trip?.created_by)?.user_full_name || ''}
-        onOpenChange={(o) => setTripProInfo(s => ({ ...s, open: o }))}
+        onOpenChange={(o) => setUpsell(s => ({ ...s, open: o }))}
+        onUpgrade={openUpgrade}
       />
     </div>
   );

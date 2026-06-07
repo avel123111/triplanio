@@ -9,7 +9,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange, isTripInPast } from '@/lib/trip-dates';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
-import TripProInfoDialog from '@/components/common/TripProInfoDialog';
+import ProUpsellModal from '@/components/common/ProUpsellModal';
 import { isAddonEnabled } from '@/lib/tripAddons';
 import { isLensVisible, LENS_ITEMS, MGMT_ITEMS } from '@/lib/tripMenu';
 import TripSidebar from '@/components/trips/TripSidebar';
@@ -1335,8 +1335,9 @@ export default function TripView() {
         </div>
       </TripScreenBarCtx.Provider>
 
-      <TripProInfoDialog
+      <ProUpsellModal
         open={tripProInfoOpen}
+        mode="info"
         onOpenChange={setTripProInfoOpen}
         ownerName={members.find(m => m.user_id === trip?.created_by)?.user_full_name || ''}
       />

@@ -1,0 +1,148 @@
+import React, { useState } from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { Icon } from '@/design/icons';
+import { Btn } from '@/design/index';
+import { useI18n } from '@/lib/i18n/I18nContext';
+
+/**
+ * ProUpsellModal — единая Pro-апселл модалка (Ф4).
+ * Radix Dialog: focus-trap, Esc, ARIA portal. Визуально — .dlg/.dlg--sm.
+ *
+ * Props:
+ *   open          – boolean
+ *   onOpenChange  – (open: boolean) => void
+ *   mode          – 'upgrade' | 'info'
+ *                     upgrade : owner/free-user → feat-list + btn--pro CTA
+ *                     info    : participant → owner explanation + copy link
+ *   feature       – optional translated feature name shown in the title
+ *   ownerName     – owner display name (info mode only)
+ *   onUpgrade     – called after close when user taps "Перейти к Pro" (upgrade mode)
+ *
+ * Replaces: ProLockedDialog (upgrade) + TripProInfoDialog (info).
+ */
+export default function ProUpsellModal({
+  open, onOpenChange,
+  mode = 'upgrade',
+  feature, ownerName,
+  onUpgrade,
+}) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  const close = () => onOpenChange?.(false);
+  const isInfo = mode === 'info';
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard unavailable */ }
+  };
+
+  // feat-list items shown in upgrade mode
+  const proFeatures = [
+    t('sub.perk_unlimited'),
+    t('sub.perk_ai'),
+    t('sub.perk_members'),
+  ];
+
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        {/* Scrim — reuses the same .dlg-backdrop class as other modals */}
+        <DialogPrimitive.Overlay className="dlg-backdrop" />
+        {/* Centred content wrapper — Radix provides focus-trap, Esc, ARIA */}
+        <DialogPrimitive.Content className="dlg-modal" aria-modal="true">
+          <div className="dlg dlg--sm">
+
+            {/* ── Header ── */}
+            <div className="dlg__head">
+              <div style={{
+                width: 36, height: 36, borderRadius: 9,
+                background: 'var(--pro-gradient)', color: 'var(--pro-fg)',
+                display: 'grid', placeItems: 'center', flexShrink: 0,
+                boxShadow: '0 4px 10px -4px var(--pro)',
+              }}>
+                <Icon name="crown" size={17} />
+              </div>
+              <h2>
+                {isInfo
+                  ? (feature ? t('sub.trip_pro_feature_named', { feature }) : t('sub.trip_pro_heading'))
+                  : (feature ? t('sub.locked_feature_named', { feature }) : t('sub.locked_heading'))
+                }
+              </h2>
+              <button className="icon-btn" onClick={close}>
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+
+            {/* ── Body ── */}
+            <div className="dlg__body">
+              {isInfo ? (
+                /* Participant: tell them the owner controls Pro */
+                <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+                  <div style={{
+                    width: 56, height: 56, borderRadius: 14,
+                    background: 'var(--pro-soft-2)', color: 'var(--pro-ink)',
+                    display: 'grid', placeItems: 'center', margin: '0 auto 12px',
+                  }}>
+                    <Icon name="crown" size={24} />
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 'var(--fs-h4)', marginBottom: 8 }}>
+                    {feature ? t('sub.trip_pro_feature_named', { feature }) : t('sub.trip_pro_generic')}
+                  </div>
+                  <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, maxWidth: 340, margin: '0 auto' }}>
+                    {t('sub.trip_pro_desc_pre')}
+                    <b>{ownerName || t('sub.trip_owner_fallback')}</b>
+                    {t('sub.trip_pro_desc_post')}
+                  </div>
+                </div>
+              ) : (
+                /* Owner/free user: show what Pro unlocks */
+                <div>
+                  <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, marginBottom: 14 }}>
+                    {t('sub.locked_desc')}
+                  </div>
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
+                    {proFeatures.map((feat, i) => (
+                      <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--fs-base)', color: 'var(--ink-2)', fontWeight: 600 }}>
+                        <span style={{
+                          width: 24, height: 24, borderRadius: 8,
+                          background: 'var(--pro-soft)', color: 'var(--pro-ink)',
+                          display: 'grid', placeItems: 'center', flexShrink: 0,
+                        }}>
+                          <Icon name="check" size={13} />
+                        </span>
+                        {feat}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* ── Footer ── */}
+            <div className="dlg__foot">
+              {isInfo ? (
+                <>
+                  <Btn variant="ghost" icon={copied ? 'check' : 'copy'} onClick={copyLink}>
+                    {copied ? t('common.copied') : t('trip.copy_link')}
+                  </Btn>
+                  <Btn variant="primary" onClick={close}>{t('common.got_it')}</Btn>
+                </>
+              ) : (
+                <>
+                  <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+                  <Btn variant="pro" icon="crown" onClick={() => { close(); onUpgrade?.(); }}>
+                    {t('trips.go_pro')}
+                  </Btn>
+                </>
+              )}
+            </div>
+
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}

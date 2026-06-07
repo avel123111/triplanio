@@ -140,7 +140,7 @@ import TimezoneHint from '@/components/common/TimezoneHint';
 import DocumentsField from '@/components/common/DocumentsField';
 import AddressAutocomplete from '@/components/common/AddressAutocomplete';
 import EventAiBlock from '@/components/common/EventAiBlock';
-import TripProInfoDialog from '@/components/common/TripProInfoDialog';
+import ProUpsellModal from '@/components/common/ProUpsellModal';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Type metadata - colours, icons, copy
@@ -1177,8 +1177,9 @@ export default function EventEditDialog({
         </Dialog>
       )}
 
-      <TripProInfoDialog
+      <ProUpsellModal
         open={tripProInfoOpen}
+        mode={isOwner ? 'upgrade' : 'info'}
         onOpenChange={setTripProInfoOpen}
       />
     </>

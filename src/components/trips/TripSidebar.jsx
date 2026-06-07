@@ -96,14 +96,20 @@ export default function TripSidebar({
       )}
       {showUpgrade && (
         <div className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
-          <div className="pro-up__title">{t('trip_menu.free_trip_title')}</div>
-          <div className="pro-up__desc">
-            {t('trip.pro_locked_lenses')}
+          <div className="ph">
+            <div className="pi">
+              <Icon name="crown" size={17} />
+            </div>
+            <div className="pt">{t('trip_menu.free_trip_title')}</div>
           </div>
+          <p>{t('trip.pro_locked_lenses')}</p>
           {isOwner ? (
             <Btn variant="pro" size="sm" block icon="pro" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
           ) : (
-            <Btn variant="ghost" size="sm" block icon="lock" onClick={onProInfo}>{t('trip.pro_by_owner')}</Btn>
+            <button className="lockmsg" onClick={onProInfo}>
+              <Icon name="lock" size={14} />
+              {t('trip.pro_by_owner')}
+            </button>
           )}
         </div>
       )}
