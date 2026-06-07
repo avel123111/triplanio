@@ -13,12 +13,10 @@ import { useI18n } from '@/lib/i18n/I18nContext';
  *   onOpenChange  – (open: boolean) => void
  *   mode          – 'upgrade' | 'info'
  *                     upgrade : owner/free-user → feat-list + btn--pro CTA
- *                     info    : participant → owner explanation + copy link
+ *                     info    : participant → owner note + feat-list + copy link
  *   feature       – optional translated feature name shown in the title
- *   ownerName     – owner display name (info mode only)
+ *   ownerName     – owner display name (info mode)
  *   onUpgrade     – called after close when user taps "Перейти к Pro" (upgrade mode)
- *
- * Replaces: ProLockedDialog (upgrade) + TripProInfoDialog (info).
  */
 export default function ProUpsellModal({
   open, onOpenChange,
@@ -39,7 +37,7 @@ export default function ProUpsellModal({
     } catch { /* clipboard unavailable */ }
   };
 
-  // feat-list items shown in upgrade mode
+  // Shared feat-list — shown in both modes (P4 design)
   const proFeatures = [
     t('sub.perk_unlimited'),
     t('sub.perk_ai'),
@@ -49,17 +47,16 @@ export default function ProUpsellModal({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        {/* Scrim — reuses the same .dlg-backdrop class as other modals */}
         <DialogPrimitive.Overlay className="dlg-backdrop" />
-        {/* Centred content wrapper — Radix provides focus-trap, Esc, ARIA */}
         <DialogPrimitive.Content className="dlg-modal" aria-modal="true">
           <div className="dlg dlg--sm">
 
             {/* ── Header ── */}
             <div className="dlg__head">
+              {/* .mi--pro equivalent: Pro-gradient tile + crown, color inline for SVG currentColor */}
               <div style={{
                 width: 36, height: 36, borderRadius: 9,
-                background: 'var(--pro-gradient)', color: 'var(--pro-fg)',
+                background: 'var(--pro-gradient)', color: '#fff',
                 display: 'grid', placeItems: 'center', flexShrink: 0,
                 boxShadow: '0 4px 10px -4px var(--pro)',
               }}>
@@ -78,47 +75,34 @@ export default function ProUpsellModal({
 
             {/* ── Body ── */}
             <div className="dlg__body">
-              {isInfo ? (
-                /* Participant: tell them the owner controls Pro */
-                <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-                  <div style={{
-                    width: 56, height: 56, borderRadius: 14,
-                    background: 'var(--pro-soft-2)', color: 'var(--pro-ink)',
-                    display: 'grid', placeItems: 'center', margin: '0 auto 12px',
-                  }}>
-                    <Icon name="crown" size={24} />
-                  </div>
-                  <div style={{ fontWeight: 700, fontSize: 'var(--fs-h4)', marginBottom: 8 }}>
-                    {feature ? t('sub.trip_pro_feature_named', { feature }) : t('sub.trip_pro_generic')}
-                  </div>
-                  <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, maxWidth: 340, margin: '0 auto' }}>
+              {/* Description — differs by mode */}
+              <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, marginBottom: 14 }}>
+                {isInfo ? (
+                  <>
                     {t('sub.trip_pro_desc_pre')}
-                    <b>{ownerName || t('sub.trip_owner_fallback')}</b>
+                    <b style={{ color: 'var(--ink-2)' }}>{ownerName || t('sub.trip_owner_fallback')}</b>
                     {t('sub.trip_pro_desc_post')}
-                  </div>
-                </div>
-              ) : (
-                /* Owner/free user: show what Pro unlocks */
-                <div>
-                  <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, marginBottom: 14 }}>
-                    {t('sub.locked_desc')}
-                  </div>
-                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
-                    {proFeatures.map((feat, i) => (
-                      <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--fs-base)', color: 'var(--ink-2)', fontWeight: 600 }}>
-                        <span style={{
-                          width: 24, height: 24, borderRadius: 8,
-                          background: 'var(--pro-soft)', color: 'var(--pro-ink)',
-                          display: 'grid', placeItems: 'center', flexShrink: 0,
-                        }}>
-                          <Icon name="check" size={13} />
-                        </span>
-                        {feat}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                  </>
+                ) : (
+                  t('sub.locked_desc')
+                )}
+              </div>
+
+              {/* Feat-list — both modes (P4 design) */}
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
+                {proFeatures.map((feat, i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--fs-base)', color: 'var(--ink-2)', fontWeight: 600 }}>
+                    <span style={{
+                      width: 24, height: 24, borderRadius: 8,
+                      background: 'var(--pro-soft)', color: 'var(--pro-ink)',
+                      display: 'grid', placeItems: 'center', flexShrink: 0,
+                    }}>
+                      <Icon name="check" size={13} />
+                    </span>
+                    {feat}
+                  </li>
+                ))}
+              </ul>
             </div>
 
             {/* ── Footer ── */}
