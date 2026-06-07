@@ -19,7 +19,7 @@ import ShareDialog from '@/components/trips/ShareDialog';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
 import HeaderActions from '@/components/HeaderActions';
-import { Btn, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow } from '../design/index';
+import { Btn, Dialog, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow } from '../design/index';
 import { SystemStub } from '@/lib/PageNotFound';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { useToast } from '@/components/ui/use-toast';
@@ -980,6 +980,7 @@ export default function TripView() {
   // mutations on the timeline (add/edit/delete) - viewing stays allowed (TZ §3a).
   const frozenNote = () => toast({ description: t('trip.frozen_note'), variant: 'info' });
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
   // Global trip-header state: mobile sidebar, and the right-hand actions the
   // active lens projects into the screen-title bar. (Trip name + cover editing
@@ -1049,7 +1050,7 @@ export default function TripView() {
   const heroActions = (
     <>
       {myRole !== 'viewer' && (
-        <button className="trip-hero__btn" onClick={() => window.__openModal?.(<ShareDialog trip={trip} />)}>
+        <button className="trip-hero__btn" onClick={() => setShareOpen(true)}>
           <Icon name="share" size={15} /><span className="trip-hero__btn-text">{t('trip.share')}</span>
         </button>
       )}
@@ -1102,7 +1103,7 @@ export default function TripView() {
       />
       <TripScreenBarCtx.Provider value={{ setActions: setScreenActions }}>
         <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
-          <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)} />
+          <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => setShareOpen(true)} />
           <div className="trip-side-scrim" onClick={() => setSideOpen(false)} />
           <div className="trip-content">
             <TripScreenBar title={t(SCREEN_TITLE_KEY[shownLens] || 'trip_menu.timeline')} actions={screenActions} />
@@ -1342,29 +1343,23 @@ export default function TripView() {
         ownerName={members.find(m => m.user_id === trip?.created_by)?.user_full_name || ''}
       />
 
-      {budgetAddonOff && (
-        <div className="dlg-backdrop" style={{ zIndex: 320 }}
-          onClick={(e) => { if (e.target === e.currentTarget) setBudgetAddonOff(false); }}>
-          <div className="dlg dlg--sm">
-            <div className="dlg__head">
-              <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                <Icon name="wallet" size={17} />
-              </div>
-              <h2>{t('trip.budget_breakdown_off')}</h2>
-              <button className="icon-btn" onClick={() => setBudgetAddonOff(false)}><Icon name="close" size={16} /></button>
-            </div>
-            <div className="dlg__body">
-              <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
-                {t('trip.budget_addon_off_desc')}
-              </div>
-            </div>
-            <div className="dlg__foot">
-              <Btn variant="ghost" onClick={() => setBudgetAddonOff(false)}>{t('common.close')}</Btn>
-              <Btn variant="primary" icon="settings" onClick={() => { setBudgetAddonOff(false); setLens('settings'); }}>{t('trip.open_settings')}</Btn>
-            </div>
-          </div>
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} />
+
+      {/* Ф6а: budgetAddonOff on Radix (focus-trap, Esc) */}
+      <Dialog
+        title={t('trip.budget_breakdown_off')}
+        icon="wallet"
+        open={budgetAddonOff}
+        onOpenChange={(o) => { if (!o) setBudgetAddonOff(false); }}
+        foot={<>
+          <Btn variant="ghost" onClick={() => setBudgetAddonOff(false)}>{t('common.close')}</Btn>
+          <Btn variant="primary" icon="settings" onClick={() => { setBudgetAddonOff(false); setLens('settings'); }}>{t('trip.open_settings')}</Btn>
+        </>}
+      >
+        <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
+          {t('trip.budget_addon_off_desc')}
         </div>
-      )}
+      </Dialog>
 
       {/* Floating chat widget: requires the chat addon AND the trip-level
           "chat widget" display toggle (default ON). The full Chat lens stays

@@ -350,23 +350,41 @@ export function ModalHost() {
 }
 
 // ---- Dialog primitive ----
-export const Dialog = ({ title, icon, onClose, size, children, foot }) => (
-  <div className={`dlg ${size ? "dlg--" + size : ""}`}>
-    <div className="dlg__head">
-      {icon && (
-        <div style={{ width: 36, height: 36, borderRadius: 9, background: "var(--brand-soft)", color: "var(--brand)", display: "grid", placeItems: "center", flexShrink: 0 }}>
-          <Icon name={icon} size={17} />
-        </div>
-      )}
-      <h2>{title}</h2>
-      <button className="icon-btn" onClick={() => { onClose?.(); window.__closeModal?.(); }}>
-        <Icon name="close" size={16} />
-      </button>
+export const Dialog = ({ title, icon, onClose, size, children, foot, open, onOpenChange }) => {
+  const handleClose = () => { onClose?.(); onOpenChange?.(false); window.__closeModal?.(); };
+  const content = (
+    <div className={`dlg ${size ? "dlg--" + size : ""}`}>
+      <div className="dlg__head">
+        {icon && (
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: "var(--brand-soft)", color: "var(--brand)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <Icon name={icon} size={17} />
+          </div>
+        )}
+        <h2>{title}</h2>
+        <button className="icon-btn" onClick={handleClose}>
+          <Icon name="close" size={16} />
+        </button>
+      </div>
+      <div className="dlg__body">{children}</div>
+      {foot && <div className="dlg__foot">{foot}</div>}
     </div>
-    <div className="dlg__body">{children}</div>
-    {foot && <div className="dlg__foot">{foot}</div>}
-  </div>
-);
+  );
+  // Controlled mode: self-managed Radix portal (focus-trap, Esc, ARIA).
+  // Legacy mode (inside ModalHost): just renders the content directly.
+  if (open !== undefined) {
+    return (
+      <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
+        <RadixDialog.Portal>
+          <RadixDialog.Overlay className="dlg-backdrop" />
+          <RadixDialog.Content className="dlg-modal" aria-modal="true">
+            {content}
+          </RadixDialog.Content>
+        </RadixDialog.Portal>
+      </RadixDialog.Root>
+    );
+  }
+  return content;
+};
 
 // ---- Partner logo helper ----
 const PARTNERS = {

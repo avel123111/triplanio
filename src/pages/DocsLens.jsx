@@ -27,8 +27,9 @@ const DOCS_KEY = (tripId) => ['trip-docs', tripId];
 
 // ─── AddDocDialog ─────────────────────────────────────────────────────────────
 
-function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
+function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange }) {
   const { t } = useI18n();
+  const close = () => onOpenChange?.(false);
   const [title,      setTitle]      = useState('');
   const [notes,      setNotes]      = useState('');
   const [linkUrl,    setLinkUrl]    = useState('');
@@ -81,13 +82,13 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
     setSaving(false);
     if (error) { setErr(error.message); return; }
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
-    window.__closeModal?.();
+    close();
   }
 
   return (
-    <Dialog title={t('doc.shared_empty')} icon="file" size=""
+    <Dialog title={t('doc.shared_empty')} icon="file" size="" open={open} onOpenChange={onOpenChange}
       foot={<>
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" loading={saving} disabled={uploading} aria-disabled={!v.canSubmit} onClick={() => v.attemptSubmit(save)}>{t('trip.form_save')}</Btn>
       </>}>
 
@@ -215,8 +216,9 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared' }) {
 
 // ─── DocDetailDialog ──────────────────────────────────────────────────────────
 
-function DocDetailDialog({ doc, tripId }) {
+function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
   const { t } = useI18n();
+  const close = () => onOpenChange?.(false);
   const confirm = useConfirm();
   const [deleting, setDeleting] = useState(false);
   const qc = useQueryClient();
@@ -226,15 +228,15 @@ function DocDetailDialog({ doc, tripId }) {
     setDeleting(true);
     await supabase.from('trip_documents').delete().eq('id', doc.id);
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
-    window.__closeModal?.();
+    close();
   }
 
   return (
-    <Dialog title={doc.title} icon="file" size=""
+    <Dialog title={doc.title} icon="file" size="" open={open} onOpenChange={onOpenChange}
       foot={<>
         <Btn variant="danger" loading={deleting} icon="trash" onClick={handleDelete}>{t('trip.delete')}</Btn>
         <div style={{ flex: 1 }} />
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>
+        <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
       </>}>
       {doc.notes && (
         <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--ink-2)', marginBottom: 14 }}>{doc.notes}</div>
@@ -271,11 +273,11 @@ function DocDetailDialog({ doc, tripId }) {
 
 // ─── DocCard ──────────────────────────────────────────────────────────────────
 
-function DocCard({ doc, tripId, scope }) {
+function DocCard({ doc, tripId, scope, onOpenDetail }) {
   const { t } = useI18n();
   return (
     <button
-      onClick={() => window.__openModal?.(<DocDetailDialog doc={doc} tripId={tripId} />)}
+      onClick={() => onOpenDetail?.(doc)}
       className="dz-lift"
       style={{
         padding: 14, background: 'var(--surface)',
@@ -319,7 +321,7 @@ function DocCard({ doc, tripId, scope }) {
 
 // ─── DocEmpty ─────────────────────────────────────────────────────────────────
 
-function DocEmpty({ scope, tripId }) {
+function DocEmpty({ scope, tripId, onOpenAdd }) {
   const { t } = useI18n();
   return (
     <EmptyState
@@ -329,7 +331,7 @@ function DocEmpty({ scope, tripId }) {
       body={scope === 'personal' ? t('doc.empty_private_desc') : t('doc.empty_shared_desc')}
       action={
         <Btn variant="ghost" icon="plus"
-          onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} defaultVisibility={scope === 'personal' ? 'private' : 'shared'} />)}>
+          onClick={() => onOpenAdd?.()}>
           {t('doc.add_doc')}
         </Btn>
       }
@@ -339,15 +341,15 @@ function DocEmpty({ scope, tripId }) {
 
 // ─── DocsGrid ─────────────────────────────────────────────────────────────────
 
-function DocsGrid({ docs, scope, tripId }) {
+function DocsGrid({ docs, scope, tripId, onOpenAdd, onOpenDetail }) {
   const { t } = useI18n();
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
       {docs.map(d => (
-        <DocCard key={d.id} doc={d} tripId={tripId} scope={scope} />
+        <DocCard key={d.id} doc={d} tripId={tripId} scope={scope} onOpenDetail={onOpenDetail} />
       ))}
       <button
-        onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} defaultVisibility={scope === 'personal' ? 'private' : 'shared'} />)}
+        onClick={() => onOpenAdd?.()}
         style={{
           padding: 14, background: 'transparent', border: '1.5px dashed var(--line)',
           borderRadius: 12, color: 'var(--muted)', cursor: 'pointer',
@@ -371,6 +373,8 @@ function DocsGrid({ docs, scope, tripId }) {
 export default function DocsLens({ tripId, isLoading: parentLoading }) {
   const { t } = useI18n();
   const { user } = useAuth();
+  const [addDocVis, setAddDocVis] = useState(null); // null | { defaultVisibility }
+  const [detailDoc, setDetailDoc] = useState(null); // null | doc object
 
   const { data: docs = [], isLoading, error } = useQuery({
     queryKey: DOCS_KEY(tripId),
@@ -391,7 +395,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
 
   // Primary action lives in the global screen-title bar (the per-screen header).
   useTripScreenActions(
-    <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__openModal?.(<AddDocDialog tripId={tripId} />)}>
+    <Btn variant="primary" size="sm" icon="plus" onClick={() => setAddDocVis({ defaultVisibility: 'shared' })}>
       {t('doc.add_doc')}
     </Btn>,
     [tripId, t],
@@ -428,8 +432,8 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
           <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('doc.section_shared_hint')}</div>
         </div>
         {sharedDocs.length === 0
-          ? <DocEmpty scope="shared" tripId={tripId} />
-          : <DocsGrid docs={sharedDocs} scope="shared" tripId={tripId} />}
+          ? <DocEmpty scope="shared" tripId={tripId} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })} />
+          : <DocsGrid docs={sharedDocs} scope="shared" tripId={tripId} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })} onOpenDetail={(doc) => setDetailDoc(doc)} />}
       </section>
 
       {/* Personal section */}
@@ -442,9 +446,12 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
           <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('doc.section_private_hint')}</div>
         </div>
         {personalDocs.length === 0
-          ? <DocEmpty scope="personal" tripId={tripId} />
-          : <DocsGrid docs={personalDocs} scope="personal" tripId={tripId} />}
+          ? <DocEmpty scope="personal" tripId={tripId} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })} />
+          : <DocsGrid docs={personalDocs} scope="personal" tripId={tripId} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })} onOpenDetail={(doc) => setDetailDoc(doc)} />}
       </section>
+
+      {addDocVis !== null && <AddDocDialog open={true} onOpenChange={(o) => { if (!o) setAddDocVis(null); }} tripId={tripId} defaultVisibility={addDocVis.defaultVisibility} />}
+      {detailDoc && <DocDetailDialog open={true} onOpenChange={(o) => { if (!o) setDetailDoc(null); }} doc={detailDoc} tripId={tripId} />}
     </>
   );
 }

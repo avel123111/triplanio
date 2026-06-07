@@ -191,6 +191,7 @@ function ReminderChannels() {
   const nav = useNavigate();
   const [items, setItems] = useState(null); // null = loading
   const [open, setOpen] = useState(true);
+  const [unlinkState, setUnlinkState] = useState(null); // null | { account }
 
   const load = React.useCallback(async () => {
     const { data, error } = await supabase.functions.invoke('telegramGetMyIntegrations');
@@ -208,9 +209,7 @@ function ReminderChannels() {
     });
     if (error) load();
   };
-  const unlink = (a) => window.__openModal?.(
-    <TelegramUnlinkDialog handle={nick(a)} onConfirm={() => doUnlink(a)} />,
-  );
+  const unlink = (a) => setUnlinkState({ account: a });
 
   const connected = Array.isArray(items) && items.length > 0;
 
@@ -284,6 +283,14 @@ function ReminderChannels() {
           </div>
         )}
         {soon}
+        {unlinkState && (
+          <TelegramUnlinkDialog
+            open={true}
+            onOpenChange={(o) => { if (!o) setUnlinkState(null); }}
+            handle={nick(unlinkState.account)}
+            onConfirm={() => doUnlink(unlinkState.account)}
+          />
+        )}
       </div>
     </div>
   );

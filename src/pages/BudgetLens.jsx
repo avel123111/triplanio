@@ -127,8 +127,9 @@ function DonutChart({ segments, total, mainCurrency, hoveredId, centerLabel }) {
 
 // ─── AddExpenseDialog (create + edit manual expense) ────────────────────────────
 
-function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved }) {
+function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
+  const close = () => onOpenChange?.(false);
   const { user } = useAuth();
   const isEdit = !!existing;
   const [title, setTitle] = useState(existing?.title || '');
@@ -167,7 +168,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
     setSaving(false);
     if (error) { setErr(error.message); return; }
     onSaved?.();
-    window.__closeModal?.();
+    close();
   }
 
   async function remove() {
@@ -177,17 +178,17 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
     setDeleting(false);
     if (error) { setErr(error.message); return; }
     onSaved?.();
-    window.__closeModal?.();
+    close();
   }
 
   return (
-    <Dialog title={isEdit ? t('budget.edit_expense') : t('budget.manual_expense')} icon="wallet" size=""
+    <Dialog title={isEdit ? t('budget.edit_expense') : t('budget.manual_expense')} icon="wallet" size="" open={open} onOpenChange={onOpenChange}
       foot={<>
         {isEdit && (
           <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting || saving}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
         )}
         <div style={{ flex: 1 }} />
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>
           {saving ? t('member.saving') : isEdit ? t('trip.form_save') : t('members.add')}
         </Btn>
@@ -239,8 +240,9 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
 
 // ─── Delete confirm (manual expense, inline trash) ─────────────────────────────
 
-function DeleteExpenseDialog({ expense, onSaved }) {
+function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
+  const close = () => onOpenChange?.(false);
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState('');
   async function remove() {
@@ -249,13 +251,13 @@ function DeleteExpenseDialog({ expense, onSaved }) {
     setDeleting(false);
     if (error) { setErr(error.message); return; }
     onSaved?.();
-    window.__closeModal?.();
+    close();
   }
   return (
-    <Dialog title={t('trip.delete')} icon="trash" size="sm"
+    <Dialog title={t('trip.delete')} icon="trash" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
         <div style={{ flex: 1 }} />
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
       </>}>
       <div style={{ fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>
@@ -276,8 +278,9 @@ function liveRateToMain(fx, code) {
   return 1 / Number(r);
 }
 
-function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx, onSaved }) {
+function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
+  const close = () => onOpenChange?.(false);
   const others = currencies.filter(c => c && c !== mainCurrency);
   const [values, setValues] = useState(() => {
     const init = {};
@@ -309,13 +312,13 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
     setSaving(false);
     if (error) { setErr(error.message); return; }
     onSaved?.();
-    window.__closeModal?.();
+    close();
   }
 
   return (
-    <Dialog title={t('budget.fx_button')} icon="arrowSwap" size="" foot={<>
+    <Dialog title={t('budget.fx_button')} icon="arrowSwap" size="" open={open} onOpenChange={onOpenChange} foot={<>
       <div style={{ flex: 1 }} />
-      <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
+      <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
       <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
       <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginBottom: 8 }}>
@@ -362,8 +365,9 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
 const CAT_COLORS = CATEGORY_HEXES;
 const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'spark', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
-function AddCategoryDialog({ tripId, existing, onSaved }) {
+function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
+  const close = () => onOpenChange?.(false);
   const { user } = useAuth();
   const [name, setName] = useState(existing?.name || '');
   const [color, setColor] = useState(existing?.color || DEFAULT_CATEGORY_HEX);
@@ -394,14 +398,14 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
     setSaving(false);
     if (error) { setErr(error.message); return; }
     onSaved?.();
-    window.__closeModal?.();
+    close();
   }
 
   return (
-    <Dialog title={existing ? t('budget.edit_category') : t('budget.category_new')} icon="grid" size="sm"
+    <Dialog title={existing ? t('budget.edit_category') : t('budget.category_new')} icon="grid" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
         <div style={{ flex: 1 }} />
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
       </>}>
       <Field label={t('trip.title_label')}>
@@ -488,6 +492,10 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const [activeCatId, setActiveCatId] = useState(null);
   const [hoveredSeg, setHoveredSeg] = useState(null);
   const [sourceView, setSourceView] = useState({ open: false, kind: null, id: null });
+  const [expenseModal, setExpenseModal] = useState(null); // null | { existing?: row }
+  const [deleteExpense, setDeleteExpense] = useState(null); // null | expense row
+  const [categoryModal, setCategoryModal] = useState(null); // null | { existing?: row }
+  const [fxOpen, setFxOpen] = useState(false);
 
   // Main display currency: trip settings (default EUR); trip_budgets.currency
   // is a legacy fallback.
@@ -501,25 +509,22 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const cityNames = cityVisits.map(v => v.city_name).filter(Boolean);
 
   function openAddExpense() {
-    window.__openModal?.(<AddExpenseDialog tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityNames} onSaved={refresh} />);
+    setExpenseModal({});
   }
   function openEditExpense(expense) {
-    window.__openModal?.(<AddExpenseDialog tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityNames} existing={expense} onSaved={refresh} />);
+    setExpenseModal({ existing: expense });
   }
   function openDeleteExpense(expense) {
-    window.__openModal?.(<DeleteExpenseDialog expense={expense} onSaved={refresh} />);
+    setDeleteExpense(expense);
   }
   function openAddCategory() {
-    window.__openModal?.(<AddCategoryDialog tripId={tripId} onSaved={refresh} />);
+    setCategoryModal({});
   }
   function openEditCategory(cat) {
-    window.__openModal?.(<AddCategoryDialog tripId={tripId} existing={cat} onSaved={refresh} />);
+    setCategoryModal({ existing: cat });
   }
   function openFxDialog() {
-    window.__openModal?.(
-      <FxRatesDialog tripId={tripId} mainCurrency={mainCurrency} currencies={foreignCurrencies}
-        currentOverrides={overrides} fx={fx} onSaved={refresh} />
-    );
+    setFxOpen(true);
   }
 
   // Open an expense - system expense → its source event view; manual → edit dialog.
@@ -834,6 +839,11 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         onOpenChange={(o) => setSourceView(s => ({ ...s, open: o }))}
         canEdit={true}
       />
+
+      {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityNames} existing={expenseModal.existing ?? null} onSaved={refresh} />}
+      {deleteExpense && <DeleteExpenseDialog open={true} onOpenChange={(o) => { if (!o) setDeleteExpense(null); }} expense={deleteExpense} onSaved={refresh} />}
+      {categoryModal !== null && <AddCategoryDialog open={true} onOpenChange={(o) => { if (!o) setCategoryModal(null); }} tripId={tripId} existing={categoryModal.existing ?? null} onSaved={refresh} />}
+      <FxRatesDialog open={fxOpen} onOpenChange={setFxOpen} tripId={tripId} mainCurrency={mainCurrency} currencies={foreignCurrencies} currentOverrides={budget?.fx_overrides} fx={fx} onSaved={refresh} />
     </div>
   );
 }

@@ -53,8 +53,9 @@ const ROLES = [
   { value: 'viewer', labelKey: 'member.role_viewer_desc' },
 ];
 
-function InviteDialog({ tripId, onSaved, promoteMember }) {
+function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
   const { t } = useI18n();
+  const close = () => onOpenChange?.(false);
   const [tab, setTab] = useState('email');
   const [role, setRole] = useState('viewer');
   const [copied, setCopied] = useState(false);
@@ -80,7 +81,7 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
     }
     setSaving(false);
     onSaved?.();
-    window.__closeModal?.();
+    close();
   }
 
   async function addOffline() {
@@ -93,13 +94,13 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
     setSaving(false);
     if (error || data?.error) { setErr((data?.error || error?.message) || t('members.error_generic')); return; }
     onSaved?.();
-    window.__closeModal?.();
+    close();
   }
 
   return (
-    <Dialog title={t('member.invite_to_trip')} icon="users" size=""
+    <Dialog title={t('member.invite_to_trip')} icon="users" size="" open={open} onOpenChange={onOpenChange}
       foot={<>
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>
+        <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
         {tab === 'email' && <Btn variant="primary" icon="send" onClick={() => v.attemptSubmit(inviteByEmail)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
         {tab === 'offline' && <Btn variant="primary" icon="user" onClick={() => v.attemptSubmit(addOffline)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.adding') : t('members.add')}</Btn>}
       </>}>
@@ -182,8 +183,9 @@ function InviteDialog({ tripId, onSaved, promoteMember }) {
 
 // ─── ChangeRoleDialog ─────────────────────────────────────────────────────────
 
-function ChangeRoleDialog({ member, tripId, onSaved }) {
+function ChangeRoleDialog({ member, tripId, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
+  const close = () => onOpenChange?.(false);
   const [role, setRole] = useState(member.role || 'viewer');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -197,13 +199,13 @@ function ChangeRoleDialog({ member, tripId, onSaved }) {
     setSaving(false);
     if (error || data?.error) { setErr((data?.error || error?.message) || t('members.error_generic')); return; }
     onSaved?.();
-    window.__closeModal?.();
+    close();
   }
 
   return (
-    <Dialog title={t('members.change_role')} icon="edit" size="sm"
+    <Dialog title={t('members.change_role')} icon="edit" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" onClick={save} disabled={saving}>{saving ? t('member.saving') : t('trip.form_save')}</Btn>
       </>}>
       <div style={{ marginBottom: 14, fontSize: 'var(--fs-base)', color: 'var(--muted)' }}>
@@ -227,6 +229,9 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   const { toast } = useToast();
   const nav = useNavigate();
   const [removing, setRemoving] = useState(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [promoteState, setPromoteState] = useState(null); // null | { member }
+  const [roleState, setRoleState] = useState(null); // null | { member }
 
   const canManage = myRole === 'owner' || myRole === 'admin';
   // Resolve display names from profiles. Include the trip owner - they often
@@ -285,7 +290,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   // Primary action lives in the global screen-title bar (the per-screen header).
   useTripScreenActions(
     canManage
-      ? <Btn variant="primary" size="sm" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>{t('members.invite')}</Btn>
+      ? <Btn variant="primary" size="sm" icon="plus" onClick={() => setInviteOpen(true)}>{t('members.invite')}</Btn>
       : null,
     [tripId, canManage, t],
   );
@@ -375,7 +380,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 {m.status === 'offline' && canManage && (
                   <Btn variant="ghost" size="sm" icon="send"
-                    onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} promoteMember={m} onSaved={refresh} />)}>
+                    onClick={() => setPromoteState({ member: m })}>
                     {t('members.invite')}
                   </Btn>
                 )}
@@ -399,7 +404,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                       : [
                           m.status === 'pending' && { icon: 'send', label: t('members.resend'), onSelect: () => resend(m.id) },
                           m.status === 'declined' && { icon: 'send', label: t('member.invite_again'), onSelect: () => reinvite(m) },
-                          m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />) },
+                          m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => setRoleState({ member: m }) },
                           { icon: 'trash', label: m.status === 'pending' ? t('member.cancel_invite') : t('members.remove'), danger: true, onSelect: () => removeMember(m.id) },
                         ]
                     }
@@ -421,10 +426,13 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
             <div style={{ fontWeight: 600, marginBottom: 2 }}>{t('member.invite_more_title')}</div>
             <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('member.invite_more_desc')}</div>
           </div>
-          <Btn variant="primary" icon="plus" onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} onSaved={refresh} />)}>{t('members.invite')}</Btn>
+          <Btn variant="primary" icon="plus" onClick={() => setInviteOpen(true)}>{t('members.invite')}</Btn>
         </div>
       )}
 
+      <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} tripId={tripId} onSaved={refresh} />
+      {promoteState && <InviteDialog open={!!promoteState} onOpenChange={(o) => { if (!o) setPromoteState(null); }} tripId={tripId} promoteMember={promoteState.member} onSaved={refresh} />}
+      {roleState && <ChangeRoleDialog open={!!roleState} onOpenChange={(o) => { if (!o) setRoleState(null); }} member={roleState.member} tripId={tripId} onSaved={refresh} />}
     </>
   );
 }

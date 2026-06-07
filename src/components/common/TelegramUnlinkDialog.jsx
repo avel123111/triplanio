@@ -4,28 +4,27 @@ import { useT } from '@/lib/i18n/I18nContext';
 
 /**
  * Shared destructive confirm for removing a Telegram binding.
- *
- * Used in two places (single source of truth - matches the design modal):
- *   - Trip settings (SettingsLens → TelegramSection): remove a bound chat from a trip.
- *   - Account settings (ScreenAccount → ConnectedAccountsSection): unlink a trip.
- *
- * Both render it through the design ModalHost (window.__openModal). The actual
- * deletion is the caller's `onConfirm` (telegramDisconnect({ tripId, integrationId })).
+ * Supports both controlled (open/onOpenChange) and legacy ModalHost usage.
  *
  * Props:
- *   handle    - display string for the chat (@username or first name), shown in the body.
- *   onConfirm - called when the user confirms; the dialog closes itself afterwards.
+ *   handle       - display string for the chat (@username or first name)
+ *   onConfirm    - called when user confirms
+ *   open         - controlled open state (optional)
+ *   onOpenChange - controlled close handler (optional)
  */
-export default function TelegramUnlinkDialog({ handle, onConfirm }) {
+export default function TelegramUnlinkDialog({ handle, onConfirm, open, onOpenChange }) {
   const t = useT();
+  const close = () => { onOpenChange?.(false); window.__closeModal?.(); };
   return (
     <Dialog
       title={t('telegram.unlink_title')}
       icon="warning"
       size="sm"
+      open={open}
+      onOpenChange={onOpenChange}
       foot={<>
-        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.cancel')}</Btn>
-        <Btn variant="danger-solid" onClick={() => { onConfirm?.(); window.__closeModal?.(); }}>
+        <Btn variant="ghost" onClick={close}>{t('common.cancel')}</Btn>
+        <Btn variant="danger-solid" onClick={() => { onConfirm?.(); close(); }}>
           {t('telegram.unlink_confirm')}
         </Btn>
       </>}

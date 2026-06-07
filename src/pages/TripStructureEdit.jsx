@@ -151,6 +151,7 @@ export default function TripStructureEdit() {
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [pendingLeave, setPendingLeave] = useState(null); // navigation target awaiting the unsaved-changes prompt
   const [sideOpen, setSideOpen] = useState(false); // mobile menu drawer
+  const [shareOpen, setShareOpen] = useState(false);
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
   const [undoStack, setUndoStack] = useState([]); // history of draft snapshots (JSON) for step-undo
@@ -871,7 +872,7 @@ export default function TripStructureEdit() {
         isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
         onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
         onProInfo={() => nav(`/pro?tripId=${tripId}`)}
-        onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)}
+        onShare={() => setShareOpen(true)}
       />
     </div>
     <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
@@ -882,7 +883,7 @@ export default function TripStructureEdit() {
           isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
           onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
           onProInfo={() => nav(`/pro?tripId=${tripId}`)}
-          onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)}
+          onShare={() => setShareOpen(true)}
         />
       </div>
       {/* content column — screen-title bar sits BESIDE the sidebar (like every
@@ -1067,6 +1068,7 @@ export default function TripStructureEdit() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} />
     </div>
   );
 }

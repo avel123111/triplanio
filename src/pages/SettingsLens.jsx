@@ -95,7 +95,7 @@ function FeatureCard({ feat, on, onChange, hasPro }) {
 // Real binding flow: telegramStartLink → open deep link → poll telegramGetIntegration
 // until a new binding appears (user pressed Start in Telegram).
 
-function TelegramConnectDialog({ tripId, onLinked }) {
+function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
   const { t } = useI18n();
   const [stage, setStage] = useState('generating'); // generating | idle | connecting | connected | error
   const [url, setUrl] = useState('');
@@ -156,9 +156,11 @@ function TelegramConnectDialog({ tripId, onLinked }) {
   const copyLink = () => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   const mmss = `${String(Math.floor(countdown / 60)).padStart(2, '0')}:${String(countdown % 60).padStart(2, '0')}`;
 
+  const closeConnect = () => { onOpenChange?.(false); window.__closeModal?.(); };
   return (
     <Dialog title={t('telegram.connect_title')} icon="telegram" size=""
-      foot={<Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>}>
+      open={open} onOpenChange={onOpenChange}
+      foot={<Btn variant="ghost" onClick={closeConnect}>{t('common.close')}</Btn>}>
       <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, marginBottom: 16 }}>
         {t('settings.tg_connect_desc')}
       </div>
@@ -265,7 +267,7 @@ function TelegramConnectDialog({ tripId, onLinked }) {
           <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.55, marginBottom: 14 }}>
             {t('settings.tg_connected_desc')}
           </div>
-          <Btn variant="primary" icon="check" block onClick={() => window.__closeModal?.()}>{t('view.edit_mode_done')}</Btn>
+          <Btn variant="primary" icon="check" block onClick={closeConnect}>{t('view.edit_mode_done')}</Btn>
         </>
       )}
     </Dialog>
@@ -281,6 +283,8 @@ function TelegramConnectDialog({ tripId, onLinked }) {
 function TelegramSection({ tripId }) {
   const { t } = useI18n();
   const [accounts, setAccounts] = useState(null); // null = loading
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [unlinkState, setUnlinkState] = useState(null); // null | { account }
 
   const load = React.useCallback(async () => {
     const { data, error } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
@@ -308,11 +312,8 @@ function TelegramSection({ tripId }) {
     });
     if (error) load();
   };
-  const remove = (a) => window.__openModal?.(
-    <TelegramUnlinkDialog handle={handle(a) || displayName(a)} onConfirm={() => doRemove(a)} />
-  );
-
-  const openConnect = () => window.__openModal?.(<TelegramConnectDialog tripId={tripId} onLinked={load} />);
+  const remove = (a) => setUnlinkState({ account: a });
+  const openConnect = () => setConnectOpen(true);
 
   if (accounts === null) {
     return <div className="muted" style={{ fontSize: 'var(--fs-base)', padding: 8 }}>{t('common.loading')}</div>;
@@ -331,6 +332,7 @@ function TelegramSection({ tripId }) {
         <Btn variant="primary" icon="telegram" onClick={openConnect}>
           {t('telegram.connect_title')}
         </Btn>
+        <TelegramConnectDialog open={connectOpen} onOpenChange={setConnectOpen} tripId={tripId} onLinked={load} />
       </div>
     );
   }
@@ -353,6 +355,15 @@ function TelegramSection({ tripId }) {
       <Btn variant="ghost" icon="plus" onClick={openConnect}>
         {t('telegram.connect_another')}
       </Btn>
+      <TelegramConnectDialog open={connectOpen} onOpenChange={setConnectOpen} tripId={tripId} onLinked={load} />
+      {unlinkState && (
+        <TelegramUnlinkDialog
+          open={true}
+          onOpenChange={(o) => { if (!o) setUnlinkState(null); }}
+          handle={handle(unlinkState.account) || displayName(unlinkState.account)}
+          onConfirm={() => doRemove(unlinkState.account)}
+        />
+      )}
     </div>
   );
 }

@@ -3,10 +3,9 @@ import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, Dialog } from '@/design/index';
 
-// Shared trip "Share link" dialog (mints/loads a public share token). Opened via
-// the global ModalHost (window.__openModal). Used by the trip screens and the
-// structure editor so the sidebar Share item behaves identically in both.
-export default function ShareDialog({ trip }) {
+// Shared trip "Share link" dialog. Supports both controlled (open/onOpenChange)
+// and legacy ModalHost usage.
+export default function ShareDialog({ trip, open, onOpenChange }) {
   const { t } = useI18n();
   const [shareUrl, setShareUrl] = useState('');
   const [loading, setLoading] = useState(true);
@@ -46,8 +45,9 @@ export default function ShareDialog({ trip }) {
       title={t('share.dialog_title')}
       icon="share"
       size="sm"
-      onClose={() => window.__closeModal?.()}
-      foot={<Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('common.close')}</Btn>}
+      open={open}
+      onOpenChange={onOpenChange}
+      foot={<Btn variant="ghost" onClick={() => onOpenChange?.(false) ?? window.__closeModal?.()}>{t('common.close')}</Btn>}
     >
       <div className="muted" style={{ fontSize: 'var(--fs-base)', marginBottom: 18 }}>{t('trip.share_desc')}</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
