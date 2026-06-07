@@ -17,6 +17,7 @@ import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Skeleton } from '../desi
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { edgeErrorMessage } from '@/lib/edgeError';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { ActionMenu, ActionItem } from '@/components/ui/ActionMenu';
 import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
@@ -217,32 +218,12 @@ function ChangeRoleDialog({ member, tripId, onSaved }) {
   );
 }
 
-// ─── RowMenu ──────────────────────────────────────────────────────────────────
-
-function RowMenuItem({ icon, danger, onClick, children }) {
-  return (
-    <button onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      width: '100%', padding: '8px 10px',
-      background: 'transparent', border: 'none',
-      borderRadius: 7, cursor: 'pointer', textAlign: 'left',
-      fontSize: 'var(--fs-base)', color: danger ? 'var(--danger)' : 'var(--ink)',
-    }}
-    onMouseEnter={e => e.currentTarget.style.background = danger ? 'var(--danger-soft)' : 'var(--wash)'}
-    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-      <Icon name={icon} size={14} />
-      {children}
-    </button>
-  );
-}
-
 // ─── MembersLens ──────────────────────────────────────────────────────────────
 
 export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient }) {
   const { t } = useI18n();
   const confirm = useConfirm();
   const nav = useNavigate();
-  const [openMenu, setOpenMenu] = useState(null);
   const [removing, setRemoving] = useState(null);
 
   const canManage = myRole === 'owner' || myRole === 'admin';
@@ -255,14 +236,6 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   ].filter(Boolean);
   const profiles = useUserProfiles(profileIds, tripId);
 
-  // Close menu on outside click
-  React.useEffect(() => {
-    if (openMenu == null) return;
-    const fn = e => { if (!e.target.closest?.('[data-row-menu]')) setOpenMenu(null); };
-    setTimeout(() => document.addEventListener('click', fn), 0);
-    return () => document.removeEventListener('click', fn);
-  }, [openMenu]);
-
   function refresh() {
     // B5: invalidate both content (members list) and shell (header avatar row)
     queryClient?.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) });
@@ -270,7 +243,6 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   }
 
   async function resend(memberId) {
-    setOpenMenu(null);
     await supabase.functions.invoke('resendTripInvite', { body: { member_id: memberId } });
   }
 
@@ -278,7 +250,6 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   // inviteTripMember resets a declined row back to pending and re-sends the
   // notification + email (reusing the existing role).
   async function reinvite(member) {
-    setOpenMenu(null);
     setRemoving(member.id);
     const { data, error } = await supabase.functions.invoke('inviteTripMember', {
       body: { trip_id: tripId, email: member.invite_email, role: member.role || 'viewer' },
@@ -290,7 +261,6 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
 
   async function removeMember(memberId) {
     if (!(await confirm({ title: t('member.remove_confirm'), variant: 'destructive' }))) return;
-    setOpenMenu(null);
     setRemoving(memberId);
     const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });
     setRemoving(null);
@@ -302,7 +272,6 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   // their own row (isSelf path). Once gone the user loses access, so navigate
   // back to the trips collection rather than refreshing the now-forbidden lens.
   async function leaveTrip(member) {
-    setOpenMenu(null);
     if (!(await confirm({ title: t('settings.leave_confirm'), variant: 'destructive' }))) return;
     setRemoving(member.id);
     const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: member.id } });
@@ -358,7 +327,6 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
           // "Leave trip"; other rows get state-appropriate management actions
           // when you're an owner/admin.
           const canActOnRow = !isOwner && (isSelf || canManage);
-          const showMenu = openMenu === i;
           const isRemoving = removing === m.id;
           const profile = profiles[m.user_id];
           // Display name = real name when known. When nothing is recorded,
@@ -402,7 +370,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
               <div><StatusDot status={m.status} /></div>
 
               {/* Actions */}
-              <div style={{ display: 'flex', gap: 4, position: 'relative', alignItems: 'center' }} data-row-menu>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 {m.status === 'offline' && canManage && (
                   <Btn variant="ghost" size="sm" icon="send"
                     onClick={() => window.__openModal?.(<InviteDialog tripId={tripId} promoteMember={m} onSaved={refresh} />)}>
@@ -410,49 +378,39 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                   </Btn>
                 )}
                 {canActOnRow && (
-                  <button
-                    onClick={e => { e.stopPropagation(); setOpenMenu(showMenu ? null : i); }}
-                    className="icon-btn"
-                    style={{
-                      width: 30, height: 30,
-                      background: showMenu ? 'var(--brand-soft)' : 'transparent',
-                      color: showMenu ? 'var(--brand)' : 'var(--muted)',
-                      border: '1px solid ' + (showMenu ? 'var(--brand)' : 'transparent'),
-                    }}
-                    title={t('member.actions')}
+                  <ActionMenu
+                    align="end"
+                    width={220}
+                    trigger={
+                      <button
+                        className="icon-btn menu-trig"
+                        style={{ width: 30, height: 30, color: 'var(--muted)', border: '1px solid transparent' }}
+                        title={t('member.actions')}
+                      >
+                        <Icon name="more" size={15} />
+                      </button>
+                    }
                   >
-                    <Icon name="more" size={15} />
-                  </button>
-                )}
-
-                {showMenu && (
-                  <div style={{
-                    position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 20,
-                    width: 220,
-                    background: 'var(--surface)', border: '1px solid var(--line)',
-                    borderRadius: 11, boxShadow: 'var(--shadow-pop)',
-                    padding: 6,
-                  }}>
                     {isSelf ? (
                       // Your own row: the only self-action is leaving the trip.
-                      <RowMenuItem icon="arrow" danger onClick={() => leaveTrip(m)}>{t('members.leave')}</RowMenuItem>
+                      <ActionItem icon="arrow" danger onSelect={() => leaveTrip(m)}>{t('members.leave')}</ActionItem>
                     ) : (
                       <>
                         {m.status === 'pending' && (
-                          <RowMenuItem icon="send" onClick={() => resend(m.id)}>{t('members.resend')}</RowMenuItem>
+                          <ActionItem icon="send" onSelect={() => resend(m.id)}>{t('members.resend')}</ActionItem>
                         )}
                         {m.status === 'declined' && (
-                          <RowMenuItem icon="send" onClick={() => reinvite(m)}>{t('member.invite_again')}</RowMenuItem>
+                          <ActionItem icon="send" onSelect={() => reinvite(m)}>{t('member.invite_again')}</ActionItem>
                         )}
                         {m.status === 'active' && (
-                          <RowMenuItem icon="edit" onClick={() => { setOpenMenu(null); window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />); }}>{t('members.change_role')}</RowMenuItem>
+                          <ActionItem icon="edit" onSelect={() => window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />)}>{t('members.change_role')}</ActionItem>
                         )}
-                        <RowMenuItem icon="trash" danger onClick={() => removeMember(m.id)}>
+                        <ActionItem icon="trash" danger onSelect={() => removeMember(m.id)}>
                           {m.status === 'pending' ? t('member.cancel_invite') : t('members.remove')}
-                        </RowMenuItem>
+                        </ActionItem>
                       </>
                     )}
-                  </div>
+                  </ActionMenu>
                 )}
               </div>
             </div>
