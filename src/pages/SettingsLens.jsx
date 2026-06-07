@@ -56,35 +56,36 @@ function featuresFromTrip(trip) {
   return state;
 }
 
-// ─── FeatureRow ───────────────────────────────────────────────────────────────
+// ─── FeatureCard ──────────────────────────────────────────────────────────────
 
-function FeatureRow({ feat, on, onChange, hasPro, last }) {
+// Addon widget card (Lumo DS §D1 `.addon-card`). Icon + switch on top, title +
+// description below, optional upgrade CTA in the foot. The accent colour is
+// passed through the `--ac` custom property.
+function FeatureCard({ feat, on, onChange, hasPro }) {
   const { t } = useI18n();
-  const locked = feat.pro && !hasPro;
+  const proLocked = feat.pro && !hasPro;
+  const cls = 'addon-card'
+    + (on ? ' addon-card--on' : '')
+    + (feat.locked ? ' addon-card--locked' : '');
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: last ? 'none' : '1px solid var(--line-2)' }}>
-      <div style={{
-        width: 38, height: 38, borderRadius: 10,
-        background: (feat.color || 'var(--muted)') + (on ? '22' : '11'),
-        color: feat.color || 'var(--muted)',
-        display: 'grid', placeItems: 'center', flexShrink: 0,
-        opacity: feat.locked ? 0.4 : 1,
-      }}>
-        <Icon name={feat.icon} size={17} />
+    <div className={cls} style={{ '--ac': feat.color || 'var(--brand)' }}>
+      <div className="addon-card__top">
+        <div className="addon-card__ic"><Icon name={feat.icon} size={20} /></div>
+        {feat.locked
+          ? <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
+          : proLocked
+            ? <Badge variant="warm" icon="pro">Pro</Badge>
+            : <Toggle on={on} onChange={onChange} />}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {t(feat.labelKey)}
-          {feat.pro && !hasPro && <Badge variant="warm" icon="pro">Pro</Badge>}
-          {feat.pro &&  hasPro && <Badge variant="success" icon="check">{t('settings.feat_available')}</Badge>}
-          {feat.locked && <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>}
+      <div className="addon-card__title">
+        {t(feat.labelKey)}
+        {feat.pro && hasPro && !feat.locked && <Badge variant="success" icon="check">{t('settings.feat_available')}</Badge>}
+      </div>
+      <div className="addon-card__desc">{t(feat.descKey)}</div>
+      {proLocked && !feat.locked && (
+        <div className="addon-card__foot">
+          <Btn variant="soft" size="sm" icon="lock" onClick={onChange} block>{t('settings.feat_enable')}</Btn>
         </div>
-        <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t(feat.descKey)}</div>
-      </div>
-      {locked ? (
-        <Btn variant="ghost" size="sm" icon="lock" onClick={onChange}>{t('settings.feat_enable')}</Btn>
-      ) : (
-        <Toggle on={on} onChange={onChange} locked={feat.locked} />
       )}
     </div>
   );
@@ -633,23 +634,20 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </div>
       </Card>
 
-      {/* ── Features · integrations · warnings (2-col → 1-col on mobile) ── */}
-      <div className="settings-grid">
-        <div className="settings-col">
-          {/* Feature toggles */}
-          <Card title={t('settings.optional_features')}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {(() => {
-                const visible = FEATURES.filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection');
-                return visible.map((f, i) => (
-                  <FeatureRow key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
-                    onChange={() => toggleFeature(f.id, f.pro)} last={i === visible.length - 1} />
-                ));
-              })()}
-            </div>
-          </Card>
+      {/* ── Features: addon widget cards (Lumo DS §D1), full width ── */}
+      <Card title={t('settings.optional_features')}>
+        <div className="addon-grid">
+          {FEATURES
+            .filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection')
+            .map(f => (
+              <FeatureCard key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
+                onChange={() => toggleFeature(f.id, f.pro)} />
+            ))}
         </div>
+      </Card>
 
+      {/* ── Integrations · warnings (2-col → 1-col on mobile) ── */}
+      <div className="settings-grid">
         <div className="settings-col">
           {/* Chat widget - trip-level toggle for the floating dock button.
               Only shown when the Group Chat addon is on. */}
@@ -683,23 +681,25 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             </Card>
           )}
 
+          {/* Warnings / display - extensible bag of trip-level display toggles. */}
+          <Card title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 800 }}>{t('settings.warn_bookings_title')}</div>
+                <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{t('settings.warn_bookings_desc')}</div>
+              </div>
+              <Toggle on={bookingWarnings} onChange={toggleBookingWarnings} />
+            </div>
+          </Card>
+        </div>
+
+        <div className="settings-col">
           {/* Telegram - only when the Telegram addon is enabled. */}
           {features.tg && (
             <Card title={t('settings.feat_tg_title')} subtitle={t('settings.feat_tg_desc')}>
               <TelegramSection tripId={tripId} />
             </Card>
           )}
-
-          {/* Warnings / display - extensible bag of trip-level display toggles. */}
-          <Card title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700 }}>{t('settings.warn_bookings_title')}</div>
-                <div className="muted" style={{ fontSize: 'var(--fs-micro)', lineHeight: 1.45 }}>{t('settings.warn_bookings_desc')}</div>
-              </div>
-              <Toggle on={bookingWarnings} onChange={toggleBookingWarnings} />
-            </div>
-          </Card>
 
           {/* Approvers — hidden while hotel-voting is parked (see SHOW_HOTEL_VOTING). */}
           {SHOW_HOTEL_VOTING && (

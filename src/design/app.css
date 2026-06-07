@@ -559,6 +559,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .btn[disabled], .btn.is-disabled { opacity: .55; pointer-events: none; }
 /* Every button confirms the press — instant tactile feedback. Placed last so it
    wins over .btn--primary:hover's translateY on equal specificity. */
+/* DS: buttons lift on hover, then confirm the press with a scale-down. */
+@media (hover:hover) { .btn:hover:not([disabled]):not(.is-disabled) { transform: translateY(-2px); } }
 .btn:active:not([disabled]):not(.is-disabled) { transform: scale(0.97); }
 
 .card {
@@ -576,22 +578,29 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .card-h h3 { flex: 1; }
 
 /* Form field */
-.field { display: flex; flex-direction: column; gap: 6px; }
-.field__label { font-size: var(--fs-meta); font-weight: 700; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
-.field__hint { font-size: var(--fs-micro); color: var(--muted); }
-.field__sub { font-size: var(--fs-micro); color: var(--muted); margin-top: 2px; }
+.field { display: flex; flex-direction: column; gap: 7px; }
+/* Lumo DS: form labels are 13px / 800 / ink-2 — readable, not thin. */
+.field__label { font-size: 13px; font-weight: 800; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.field__hint { font-size: var(--fs-micro); color: var(--muted); font-weight: 600; }
+.field__sub { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; font-weight: 600; }
+/* Lumo DS inputs: 14.5px/500 on a soft surface-3 fill with a defined 1.5px
+   line-strong border + 4px focus ring (was thin 1px on flat white). */
 .input, .select, .textarea {
   width: 100%;
-  padding: 9px 11px;
+  padding: 11px 13px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  font-size: var(--fs-base);
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface-3);
+  font-size: 14.5px;
+  font-weight: 500;
   color: var(--ink);
+  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
+.input::placeholder, .textarea::placeholder { color: var(--muted-2); }
+.input:hover:not(:focus), .select:hover:not(:focus), .textarea:hover:not(:focus) { border-color: var(--line-hover); }
 .input:focus, .select:focus, .textarea:focus {
-  outline: none; border-color: var(--brand);
-  box-shadow: 0 0 0 3px var(--brand-soft);
+  outline: none; border-color: var(--brand); background: var(--surface);
+  box-shadow: 0 0 0 4px var(--primary-ring);
 }
 .textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
 .field--ai .input, .field--ai .select, .field--ai .textarea {
@@ -1753,4 +1762,32 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .settings-identity__cover { position: static; }
   .settings-grid { grid-template-columns: 1fr; }
 }
+
+/* Addon / feature widget cards (Lumo DS §D1). Each card carries an accent
+   colour via the inline --ac custom property. */
+.addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.addon-card {
+  --ac: var(--brand);
+  position: relative; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 16px; display: flex; flex-direction: column; min-height: 150px;
+  box-shadow: var(--shadow-soft);
+  transition: transform .2s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s, background .2s;
+}
+@media (hover:hover) { .addon-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); } }
+.addon-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.addon-card__ic {
+  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none;
+  background: color-mix(in srgb, var(--ac) 13%, transparent); color: var(--ac); transition: background .2s;
+}
+.addon-card__title {
+  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h4); color: var(--ink);
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 5px; line-height: 1.2;
+}
+.addon-card__desc { font-size: var(--fs-meta); color: var(--muted); line-height: 1.45; flex: 1; font-weight: 500; }
+.addon-card__foot { margin-top: 13px; display: flex; align-items: center; gap: 8px; }
+.addon-card--on { border-color: color-mix(in srgb, var(--ac) 42%, var(--line)); background: color-mix(in srgb, var(--ac) 5%, var(--surface)); }
+.addon-card--on .addon-card__ic { background: color-mix(in srgb, var(--ac) 22%, transparent); }
+.addon-card--locked { opacity: .74; }
+.addon-card--locked .addon-card__ic { filter: grayscale(.35); opacity: .55; }
 
