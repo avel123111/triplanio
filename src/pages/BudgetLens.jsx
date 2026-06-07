@@ -12,6 +12,12 @@
  * converted into it via money.js `toMain` (override-aware). Amounts are
  * formatted with `fmtMoney` (2 decimals). Manual FX overrides persist on
  * trip_budgets.fx_overrides.
+ *
+ * Layout: Lumo redesign (2026-06-07). Summary band (category donut + total /
+ * per-person / FX stat cards), a two-pane drill-down (categories ⇄ cities) and
+ * richly tagged expense rows. The shell (sidebar, header, lens tabs, Pro gate)
+ * is owned by TripView; this component renders only the budget body. Styling
+ * lives in BudgetLens.css (page-scoped `.bgt-*` classes on Lumo tokens).
  */
 import React, { useState, useMemo } from 'react';
 import { supabase } from '@/api/supabaseClient';
@@ -24,10 +30,11 @@ import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colo
 import { getActiveLocale } from '@/lib/i18n/format';
 import { countTripMembers } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Card, Dialog, Field, EmptyState, Skeleton, Severity } from '../design/index';
+import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, fmtDate } from '../design/index';
 import CurrencySelect from '@/components/budget/CurrencySelect';
 import SourceViewLoader from '@/components/budget/SourceViewLoader';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
+import './BudgetLens.css';
 
 // ─── icon helpers ─────────────────────────────────────────────────────────────
 
@@ -52,11 +59,55 @@ const SOURCE_ICON = {
 };
 
 function catIcon(cat) {
-  return SYS_ICON[cat.system_key] || SYS_ICON[cat.icon] || 'wallet';
+  return SYS_ICON[cat.system_key] || SYS_ICON[cat.icon] || cat.icon || 'wallet';
 }
 
-// money formatting helper (2 decimals, locale ru)
+// money formatting helper (2 decimals, active locale)
 const money = (value, cur) => fmtMoney(value, cur, getActiveLocale());
+
+// ─── DonutChart ─────────────────────────────────────────────────────────────
+// Pure-SVG ring driven by real category spend. `segments` = [{id,color,value}].
+// Hovered segment thickens; the rest dim, kept in sync with the legend.
+
+const DONUT_R = 40;
+const DONUT_C = 2 * Math.PI * DONUT_R; // ≈ 251.33
+
+function DonutChart({ segments, total, mainCurrency, hoveredId, centerLabel }) {
+  let acc = 0;
+  const arcs = segments.map(s => {
+    const frac = total > 0 ? s.value / total : 0;
+    const arc = frac * DONUT_C;
+    const out = { ...s, arc, offset: -acc };
+    acc += arc;
+    return out;
+  });
+  return (
+    <div className="bgt-donut">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r={DONUT_R} fill="none" stroke="var(--surface-2)" strokeWidth="14" />
+        {total > 0 && arcs.map(s => {
+          const dim = hoveredId && hoveredId !== s.id;
+          const hot = hoveredId === s.id;
+          return (
+            <circle
+              key={s.id}
+              className="bgt-donseg"
+              cx="50" cy="50" r={DONUT_R} fill="none"
+              stroke={s.color} strokeWidth={hot ? 20 : 16}
+              strokeDasharray={`${s.arc} ${DONUT_C - s.arc}`}
+              strokeDashoffset={s.offset}
+              style={{ opacity: dim ? 0.4 : 1 }}
+            />
+          );
+        })}
+      </svg>
+      <div className="bgt-donut__c">
+        <span className="v">{money(total, mainCurrency)}</span>
+        <span className="l">{centerLabel}</span>
+      </div>
+    </div>
+  );
+}
 
 // ─── AddExpenseDialog (create + edit manual expense) ────────────────────────────
 
@@ -133,8 +184,8 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
       </Field>
       <div className="field-row cols-2" style={{ marginTop: 14 }}>
         <Field label={t('budget.field_amount')}>
-          <div style={{ display: 'flex', gap: 6 }} data-vfield="amount" className={inv('amount')}>
-            <input className="input num" type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} style={{ flex: 1 }} />
+          <div className="bgt-amtgrp" data-vfield="amount" >
+            <input className={`input num ${inv('amount')}`} type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
             <CurrencySelect value={currency} onChange={setCurrency} width={92} />
           </div>
           <FieldError issues={v.displayIssues} field="amount" />
@@ -165,6 +216,35 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
         </Field>
       </div>
       <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
+      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
+    </Dialog>
+  );
+}
+
+// ─── Delete confirm (manual expense, inline trash) ─────────────────────────────
+
+function DeleteExpenseDialog({ expense, onSaved }) {
+  const { t } = useI18n();
+  const [deleting, setDeleting] = useState(false);
+  const [err, setErr] = useState('');
+  async function remove() {
+    setDeleting(true);
+    const { error } = await supabase.from('budget_expenses').delete().eq('id', expense.id);
+    setDeleting(false);
+    if (error) { setErr(error.message); return; }
+    onSaved?.();
+    window.__closeModal?.();
+  }
+  return (
+    <Dialog title={t('trip.delete')} icon="trash" size="sm"
+      foot={<>
+        <div style={{ flex: 1 }} />
+        <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
+        <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
+      </>}>
+      <div style={{ fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>
+        {t('trip.delete')} «<b style={{ color: 'var(--ink)' }}>{expense.title || '-'}</b>»?
+      </div>
       {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
     </Dialog>
   );
@@ -217,35 +297,38 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
   }
 
   return (
-    <Dialog title={t('budget.fx_button')} icon="wallet" size="" foot={<>
+    <Dialog title={t('budget.fx_button')} icon="arrowSwap" size="" foot={<>
+      <div style={{ flex: 1 }} />
       <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
       <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
-      <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginBottom: 14 }}>
+      <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginBottom: 8 }}>
         {t('budget.fx_intro')}
       </div>
       {others.length === 0 ? (
         <EmptyState icon="wallet" title={t('budget.fx_no_other')} body={t('budget.fx_empty')} />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div>
           {others.map(code => {
             const live = liveRateToMain(fx, code);
             const hasOverride = currentOverrides?.[code] != null;
+            const known = hasOverride || live != null;
+            const shown = hasOverride ? Number(currentOverrides[code]) : live;
+            const hintCls = hasOverride ? 'man' : (live == null ? 'miss' : '');
             const hint = hasOverride
               ? t('budget.fx_manual', { cur: mainCurrency })
               : live != null
                 ? t('budget.fx_auto', { cur: mainCurrency })
                 : t('budget.fx_not_found', { cur: mainCurrency });
-            const hintColor = (!hasOverride && live == null) ? 'var(--danger)' : 'var(--muted)';
             return (
-              <div key={code} data-vfield={`rate.${code}`} className={inv(`rate.${code}`)}>
-                <div style={{ display: 'grid', gridTemplateColumns: '60px 110px 1fr', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 8 }}>
-                  <div className="num" style={{ fontWeight: 600 }}>1 {code}</div>
-                  <input className="input num" type="number" step="0.0001" value={values[code] ?? ''}
-                    onChange={e => { const val = e.target.value; setValues(s => ({ ...s, [code]: val })); v.markTouched(`rate.${code}`); }} placeholder="0.00" />
-                  <div style={{ fontSize: 'var(--fs-meta)', color: hintColor }}>{hint}</div>
+              <div key={code} className="bgt-fxrow" data-vfield={`rate.${code}`}>
+                <div className={`bgt-fxrow__cur ${known ? '' : 'miss'}`}>{code}</div>
+                <div className="bgt-fxrow__m">
+                  <div className="bgt-fxrow__eq">1 {code} = <b>{known ? Number(shown.toFixed(4)) : '?'}</b> {mainCurrency}</div>
+                  <div className={`bgt-fxrow__hint ${hintCls}`}>{hint}</div>
                 </div>
-                <FieldError issues={v.displayIssues} field={`rate.${code}`} />
+                <input className={`input num ${inv(`rate.${code}`)}`} type="number" step="0.0001" value={values[code] ?? ''}
+                  onChange={e => { const val = e.target.value; setValues(s => ({ ...s, [code]: val })); v.markTouched(`rate.${code}`); }} placeholder="0.00" aria-label={`${code} → ${mainCurrency}`} />
               </div>
             );
           })}
@@ -299,8 +382,9 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
   }
 
   return (
-    <Dialog title={existing ? t('budget.edit_category') : t('budget.category_new')} icon="wallet" size="sm"
+    <Dialog title={existing ? t('budget.edit_category') : t('budget.category_new')} icon="grid" size="sm"
       foot={<>
+        <div style={{ flex: 1 }} />
         <Btn variant="ghost" onClick={() => window.__closeModal?.()}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(save)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : existing ? t('trip.form_save') : t('members.add')}</Btn>
       </>}>
@@ -312,26 +396,20 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
       </Field>
       <div style={{ marginTop: 14 }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>{t('budget.color_label')}</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="bgt-swatches" role="group" aria-label={t('budget.color_label')}>
           {CAT_COLORS.map(c => (
-            <button key={c} onClick={() => setColor(c)} style={{
-              width: 28, height: 28, borderRadius: '50%', background: c,
-              border: color === c ? '2.5px solid var(--ink)' : '2px solid transparent', cursor: 'pointer'
-            }} />
+            <button key={c} type="button" className={`bgt-swatch ${color === c ? 'on' : ''}`} style={{ background: c }}
+              aria-pressed={color === c} onClick={() => setColor(c)} />
           ))}
         </div>
       </div>
       <div style={{ marginTop: 14 }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>{t('budget.icon_label')}</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div className="bgt-iconpick" role="group" aria-label={t('budget.icon_label')}>
           {CAT_ICONS_BUDGET.map(ic => (
-            <button key={ic} onClick={() => setIcon(ic)} style={{
-              width: 36, height: 36, borderRadius: 8,
-              background: icon === ic ? color + '22' : 'var(--wash)',
-              color: icon === ic ? color : 'var(--muted)',
-              border: '1px solid ' + (icon === ic ? color : 'var(--line)'),
-              display: 'grid', placeItems: 'center', cursor: 'pointer'
-            }}><Icon name={ic} size={16} /></button>
+            <button key={ic} type="button" className={icon === ic ? 'on' : ''} aria-pressed={icon === ic}
+              style={icon === ic ? { background: color + '22', borderColor: color, color } : undefined}
+              onClick={() => setIcon(ic)}><Icon name={ic} size={18} /></button>
           ))}
         </div>
       </div>
@@ -343,41 +421,44 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
 
 // ─── ExpenseRow ───────────────────────────────────────────────────────────────
 // `mainAmount` is the converted value; `ok=false` means no rate was available.
+// `mode` decides the meta line: in category view we show city + date; in city
+// view we show the category chip + date. Manual rows expose inline edit/delete;
+// booking-linked rows open their source event (chevron).
 
-function ExpenseRow({ expense, catColor, catIcon: icon, showCategory, catName, mainCurrency, mainAmount, ok, onOpen }) {
+function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, mainCurrency, mainAmount, ok, onOpen, onEdit, onDelete }) {
   const { t } = useI18n();
   const src = expense.source_kind || 'manual';
   const isManual = src === 'manual';
+  const dateStr = expense.spent_on ? fmtDate(expense.spent_on, loc) : '';
+  const color = catColor || 'var(--brand)';
   return (
-    <div
-      onClick={() => onOpen?.(expense)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '10px 12px',
-        background: 'var(--surface)',
-        border: '1px solid var(--line)',
-        borderRadius: 9, cursor: 'pointer',
-      }}>
-      <div style={{ width: 26, height: 26, borderRadius: 6, background: catColor + '22', color: catColor, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-        <Icon name={icon || SOURCE_ICON[src] || 'wallet'} size={13} />
+    <div className="bgt-exrow" onClick={() => onOpen?.(expense)}>
+      <div className="bgt-exrow__d" style={{ background: color + '22', color }}>
+        <Icon name={icon || SOURCE_ICON[src] || 'wallet'} size={18} />
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {expense.title || '-'}
-        </div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          {expense.notes && <span>{expense.notes}</span>}
-          {showCategory && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)', padding: '1px 5px' }}>{catName}</Badge>}
-          {!isManual && <Badge variant="quiet" icon="link" style={{ fontSize: 'var(--fs-micro)' }}>{t('budget.expense_auto_badge')}</Badge>}
+      <div className="bgt-exrow__m">
+        <div className="bgt-exrow__t">{expense.title || '-'}</div>
+        <div className="bgt-exrow__s">
+          {mode === 'city' && catName && <span className="bgt-tagx bgt-tagx--cat">{catName}</span>}
+          {mode !== 'city' && expense.city_name && <span>{expense.city_name}</span>}
+          {dateStr && <><span className="sep" />{dateStr}</>}
+          {isManual
+            ? <span className="bgt-tagx bgt-tagx--manual">{t('budget.manual_badge')}</span>
+            : <span className="bgt-tagx bgt-tagx--link"><Icon name="link" size={10} />{t('budget.booking_badge')}</span>}
         </div>
       </div>
-      <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)', minWidth: 64, textAlign: 'right', flexShrink: 0 }}>
-        {ok ? money(mainAmount, mainCurrency) : (
-          <span title={t('budget.rate_missing')} style={{ color: 'var(--danger)' }}>
-            {money(expense.original_amount || 0, expense.original_currency || mainCurrency)} ?
-          </span>
-        )}
+      <div className={`bgt-exrow__amt ${ok ? '' : 'miss'}`}>
+        {ok ? money(mainAmount, mainCurrency)
+          : <span title={t('budget.rate_missing')}>{money(expense.original_amount || 0, expense.original_currency || mainCurrency)} ?</span>}
       </div>
+      {isManual ? (
+        <div className="bgt-exrow__acts">
+          <button className="bgt-iconbtn" aria-label={t('trip.form_save')} onClick={e => { e.stopPropagation(); onEdit?.(expense); }}><Icon name="edit" size={15} /></button>
+          <button className="bgt-iconbtn bgt-iconbtn--danger" aria-label={t('trip.delete')} onClick={e => { e.stopPropagation(); onDelete?.(expense); }}><Icon name="trash" size={15} /></button>
+        </div>
+      ) : (
+        <svg className="bgt-exrow__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
+      )}
     </div>
   );
 }
@@ -386,8 +467,10 @@ function ExpenseRow({ expense, catColor, catIcon: icon, showCategory, catName, m
 
 export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient }) {
   const { t } = useI18n();
+  const loc = getActiveLocale();
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);
+  const [hoveredSeg, setHoveredSeg] = useState(null);
   const [sourceView, setSourceView] = useState({ open: false, kind: null, id: null });
 
   // Main display currency: trip settings (default EUR); trip_budgets.currency
@@ -406,6 +489,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   }
   function openEditExpense(expense) {
     window.__openModal?.(<AddExpenseDialog tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityNames} existing={expense} onSaved={refresh} />);
+  }
+  function openDeleteExpense(expense) {
+    window.__openModal?.(<DeleteExpenseDialog expense={expense} onSaved={refresh} />);
   }
   function openAddCategory() {
     window.__openModal?.(<AddCategoryDialog tripId={tripId} onSaved={refresh} />);
@@ -446,8 +532,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     const sorted = [...budgetCategories].sort((a, b) => rank(a) - rank(b));
     return sorted.map(cat => {
       const items = budgetExpenses.filter(e => e.category_id === cat.id);
-      const spent = items.reduce((s, e) => { const r = conv(e); return s + (r.ok ? r.value : 0); }, 0);
-      return { ...cat, items, spent, itemCount: items.length };
+      let spent = 0, missingCount = 0;
+      for (const e of items) { const r = conv(e); if (r.ok) spent += r.value; else missingCount += 1; }
+      return { ...cat, items, spent, itemCount: items.length, missingCount };
     });
   }, [budgetCategories, budgetExpenses, mainCurrency, fx, overrides]);
 
@@ -456,6 +543,12 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   // Summary totals (only convertible expenses are summed).
   const totalSpent = useMemo(() => cats.reduce((s, c) => s + c.spent, 0), [cats]);
   const memberCount = countTripMembers(members, trip?.created_by) || 1;
+
+  // Donut segments — categories with spend, in category order.
+  const donutSegments = useMemo(
+    () => cats.filter(c => c.spent > 0).map(c => ({ id: c.id, color: c.color, value: c.spent, name: c.name })),
+    [cats]
+  );
 
   // Foreign (non-main) currencies present in expenses.
   const foreignCurrencies = useMemo(
@@ -474,6 +567,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     return map;
   }, [budgetExpenses, mainCurrency, fx, overrides]);
   const missingCurrencies = Object.keys(missing);
+  const missingTotal = useMemo(() => Object.values(missing).reduce((s, n) => s + n, 0), [missing]);
 
   // City grouping - flatten all expenses with their category info.
   const cityGroups = useMemo(() => {
@@ -492,10 +586,12 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     }));
   }, [cats, fx, overrides, mainCurrency]);
 
+  const expensesPlural = (n) => n === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many');
+
   // Primary actions live in the global screen-title bar (the per-screen header).
   useTripScreenActions(
     <>
-      <Btn variant="ghost" size="sm" icon="card" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
+      <Btn variant="ghost" size="sm" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
       <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
     </>,
     [tripId, t, mainCurrency, budgetExpenses, budgetCategories],
@@ -505,7 +601,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0' }}>
-        {[1,2,3].map(i => <Skeleton key={i} style={{ height: 80, borderRadius: 12 }} />)}
+        {[1, 2, 3].map(i => <Skeleton key={i} style={{ height: 80, borderRadius: 12 }} />)}
       </div>
     );
   }
@@ -513,173 +609,204 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const noExpenses = budgetExpenses.length === 0;
 
   return (
-    <>
-      {/* Top summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 22 }}>
-        {/* Всего потрачено */}
-        <Card>
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('budget.total_spent')}</div>
-          <div className="num" style={{ fontSize: 'var(--fs-h2)', fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(totalSpent, mainCurrency)}</div>
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 4 }}>
-            {noExpenses ? t('trip.budget_empty') : `${budgetExpenses.length} ${budgetExpenses.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}`}
-          </div>
-        </Card>
-
-        {/* На одного */}
-        <Card>
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('budget.per_person_label')}</div>
-          <div className="num" style={{ fontSize: 'var(--fs-h2)', fontFamily: 'var(--font-display)', fontWeight: 600, marginTop: 4 }}>{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 4 }}>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')} · {t('budget.split_evenly')}</div>
-        </Card>
-
-        {/* Курсы валют */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <span className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('budget.fx_button')}</span>
-          </div>
-          {foreignCurrencies.length === 0 ? (
-            <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 8, lineHeight: 1.5 }}>
-              {t('budget.fx_empty')}
-            </div>
-          ) : (
-            <div className="num" style={{ fontSize: 'var(--fs-base)', color: 'var(--ink)', marginTop: 8, lineHeight: 1.7 }}>
-              {foreignCurrencies.map(cur => {
-                const ov = overrides[cur];
-                const rate = ov != null ? Number(ov) : liveRateToMain(fx, cur);
+    <div className="bgt">
+      {/* ░ SUMMARY BAND ░ */}
+      <div className="bgt-sumband">
+        <div className="card bgt-donutcard">
+          <div className="bgt-donutcard__h"><b>{t('budget.by_category_title')}</b></div>
+          <div className="bgt-donutwrap">
+            <DonutChart segments={donutSegments} total={totalSpent} mainCurrency={mainCurrency}
+              hoveredId={hoveredSeg} centerLabel={t('budget.donut_total')} />
+            <div className="bgt-dleg">
+              {donutSegments.length === 0 && (
+                <div className="muted" style={{ fontSize: 'var(--fs-meta)', padding: '6px 8px' }}>{t('budget.no_expenses')}</div>
+              )}
+              {donutSegments.map(s => {
+                const pct = totalSpent > 0 ? Math.round((s.value / totalSpent) * 100) : 0;
                 return (
-                  <div key={cur}>
-                    {rate != null
-                      ? `1 ${cur} ≈ ${Number(rate.toFixed(4))} ${mainCurrency}`
-                      : `1 ${cur} ≈ - ${mainCurrency}`}
+                  <div key={s.id} className="bgt-dleg__row"
+                    onMouseEnter={() => setHoveredSeg(s.id)} onMouseLeave={() => setHoveredSeg(null)}>
+                    <span className="bgt-dleg__d" style={{ background: s.color }} />
+                    <span className="bgt-dleg__n">{s.name}</span>
+                    <span className="bgt-dleg__v">{money(s.value, mainCurrency)}</span>
+                    <span className="bgt-dleg__p">{pct}%</span>
                   </div>
                 );
               })}
             </div>
-          )}
-          {foreignCurrencies.length > 0 && (
-            <Btn variant="ghost" size="sm" icon="edit" style={{ marginTop: 8 }} onClick={openFxDialog}>{t('budget.fx_change')}</Btn>
-          )}
-        </Card>
+          </div>
+        </div>
+
+        <div className="bgt-statstack">
+          {/* Всего потрачено */}
+          <div className="card bgt-stat bgt-stat--total">
+            <div className="bgt-stat__ic"><Icon name="wallet" size={21} /></div>
+            <div className="bgt-stat__m">
+              <div className="bgt-stat__l">{t('budget.total_spent')}</div>
+              <div className="bgt-stat__v">{money(totalSpent, mainCurrency)}</div>
+              <div className="bgt-stat__s">
+                {noExpenses ? t('trip.budget_empty')
+                  : <>{budgetExpenses.length} {expensesPlural(budgetExpenses.length)}{missingTotal > 0 && <> · {t('budget.no_rate_count', { n: missingTotal })}</>}</>}
+              </div>
+            </div>
+          </div>
+
+          {/* На одного */}
+          <div className="card bgt-stat bgt-stat--ppl">
+            <div className="bgt-stat__ic"><Icon name="users" size={21} /></div>
+            <div className="bgt-stat__m">
+              <div className="bgt-stat__l">{t('budget.per_person_label')}</div>
+              <div className="bgt-stat__v">{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>
+              <div className="bgt-stat__s">
+                <b>{memberCount} {memberCount === 1 ? t('trip.members_count_one') : t('trip.members_count_few')}</b> · {t('budget.split_evenly')}
+              </div>
+            </div>
+          </div>
+
+          {/* Курсы валют */}
+          <button type="button" className="card bgt-stat bgt-stat--fx" onClick={openFxDialog}>
+            <div className="bgt-stat__ic"><Icon name="arrowSwap" size={21} /></div>
+            <div className="bgt-stat__m">
+              <div className="bgt-stat__l">{t('budget.fx_button')}</div>
+              {foreignCurrencies.length === 0 ? (
+                <div className="bgt-stat__s" style={{ marginTop: 4 }}>{t('budget.fx_empty')}</div>
+              ) : (
+                <>
+                  <div className="bgt-fxlist">
+                    {foreignCurrencies.map(cur => {
+                      const ov = overrides[cur];
+                      const rate = ov != null ? Number(ov) : liveRateToMain(fx, cur);
+                      return rate != null
+                        ? <span key={cur}>1 {cur} ≈ {Number(rate.toFixed(4))} {mainCurrency}</span>
+                        : <span key={cur} className="miss">1 {cur} — {t('budget.fx_rate_unset')}</span>;
+                    })}
+                  </div>
+                  <div className="bgt-stat__s" style={{ marginTop: 4 }}>{t('budget.fx_tap_edit')}</div>
+                </>
+              )}
+            </div>
+          </button>
+        </div>
       </div>
 
-      {/* Missing-rate warning */}
+      {/* ░ MISSING-RATE WARNING ░ */}
       {missingCurrencies.length > 0 && (
-        <Severity level="warning" title={t('budget.rates_missing', { currencies: missingCurrencies.join(', ') })}>
-          {missingCurrencies.map(cur => `${missing[cur]} ${missing[cur] === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')} · ${cur}`).join(', ')} {t('budget.not_in_total')}{' '}
-          <a href="#" onClick={(e) => { e.preventDefault(); openFxDialog(); }} style={{ fontWeight: 500 }}>{t('budget.set_rate_manual')}</a>
+        <Severity level="warning" title={t('budget.rates_missing', { currencies: missingCurrencies.join(', ') })}
+          action={<Btn variant="quiet" size="sm" onClick={openFxDialog}>{t('budget.set_rate_manual')}</Btn>}>
+          {missingCurrencies.map(cur => `${missing[cur]} ${expensesPlural(missing[cur])} · ${cur}`).join(', ')} {t('budget.not_in_total')}
         </Severity>
       )}
 
-      {/* No-expenses hero - horizontal dashed banner (matches design) */}
+      {/* ░ NO-EXPENSES HERO ░ */}
       {noExpenses && (
         <div style={{
           marginTop: missingCurrencies.length > 0 ? 14 : 4, marginBottom: 18, padding: 24,
-          background: 'var(--surface)', border: '1.5px dashed var(--line)', borderRadius: 14,
+          background: 'var(--surface)', border: '1.5px dashed var(--line-strong)', borderRadius: 14,
           display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap',
         }}>
-          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--primary-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="wallet" size={24} />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', marginBottom: 4 }}>{t('budget.no_expenses')}</div>
-            <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.5 }}>
-              {t('budget.no_expenses_desc')}
-            </div>
+            <div style={{ fontWeight: 700, fontSize: 'var(--fs-strong)', marginBottom: 4, color: 'var(--ink)' }}>{t('budget.no_expenses')}</div>
+            <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.5 }}>{t('budget.no_expenses_desc')}</div>
           </div>
           <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.first_expense')}</Btn>
         </div>
       )}
 
-      {/* Grouping controls - always shown (categories exist even before any expense) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 22, marginBottom: 14, flexWrap: 'wrap' }}>
+      {/* ░ CONTROLS ░ */}
+      <div className="bgt-ctl">
         <div className="tweaks__seg">
           <button className={grouping === 'category' ? 'active' : ''} onClick={() => setGrouping('category')}>{t('budget.group_by_category')}</button>
           <button className={grouping === 'city' ? 'active' : ''} onClick={() => setGrouping('city')}>{t('budget.group_by_city')}</button>
         </div>
-        <div style={{ flex: 1 }} />
+        <div className="bgt-ctl__spacer" />
         {grouping === 'category' && (
-          <Btn variant="ghost" size="sm" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
+          <Btn variant="soft" size="sm" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
         )}
       </div>
 
+      {/* ░ DRILLDOWN ░ */}
       {grouping === 'category' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 18 }}>
-          {/* Left: categories */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div className="bgt-drill">
+          {/* categories */}
+          <div className="card bgt-glist" role="tablist" aria-label={t('budget.group_by_category')}>
             {cats.map(c => {
               const active = activeCat?.id === c.id;
               const empty = c.itemCount === 0;
               return (
-                <button key={c.id} onClick={() => setActiveCatId(c.id)} style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '11px 13px',
-                  background: active ? 'var(--brand-soft)' : 'var(--surface)',
-                  border: '1px solid ' + (active ? 'var(--brand-soft-12)' : 'var(--line)'),
-                  borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%',
-                }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: c.color + '22', color: c.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                    <Icon name={catIcon(c)} size={14} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {c.name}
-                      {c.kind === 'custom' && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)', padding: '1px 5px' }}>{t('budget.custom_short')}</Badge>}
-                    </div>
-                    <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{empty ? t('budget.empty_word') : `${c.itemCount} ${c.itemCount === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}`}</div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color: empty ? 'var(--muted-2)' : 'var(--ink)' }}>{money(c.spent, mainCurrency)}</div>
-                    <div className="muted num" style={{ fontSize: 'var(--fs-micro)' }}>/ {money(c.planned_amount || 0, mainCurrency)}</div>
-                  </div>
+                <button key={c.id} type="button" role="tab" aria-selected={active}
+                  className={`bgt-glist__row ${active ? 'on' : ''}`} onClick={() => setActiveCatId(c.id)}>
+                  <span className="bgt-glist__ic" style={{ background: c.color + '22', color: c.color }}>
+                    <Icon name={catIcon(c)} size={17} />
+                  </span>
+                  <span className="bgt-glist__m">
+                    <span className="bgt-glist__n">
+                      <span className="t">{c.name}</span>
+                      {c.kind === 'custom' && <Badge variant="quiet">{t('budget.custom_short')}</Badge>}
+                    </span>
+                    <span className="bgt-glist__c">
+                      {empty ? t('budget.empty_word') : `${c.itemCount} ${expensesPlural(c.itemCount)}`}
+                      {c.missingCount > 0 && <> · <span className="miss">{t('budget.no_rate_count', { n: c.missingCount })}</span></>}
+                    </span>
+                  </span>
+                  <span className="bgt-glist__r">
+                    <span className={`bgt-glist__v ${empty ? 'muted' : ''}`}>{money(c.spent, mainCurrency)}</span>
+                  </span>
                 </button>
               );
             })}
+            <button type="button" className="bgt-glist__add" onClick={openAddCategory}>
+              <Icon name="plus" size={15} /> {t('budget.add_category')}
+            </button>
           </div>
 
-          {/* Right: drill-down */}
+          {/* detail */}
           {activeCat && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10, gap: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: activeCat.color + '22', color: activeCat.color, display: 'grid', placeItems: 'center' }}>
-                  <Icon name={catIcon(activeCat)} size={15} />
+            <div className="card bgt-detail">
+              <div className="bgt-detail__h">
+                <div className="bgt-detail__ic" style={{ background: activeCat.color + '22', color: activeCat.color }}>
+                  <Icon name={catIcon(activeCat)} size={22} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ marginBottom: 2 }}>{activeCat.name}</h3>
-                  <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{money(activeCat.spent, mainCurrency)}</div>
+                <div className="bgt-detail__ti">
+                  <div className="bgt-detail__n">
+                    {activeCat.name}
+                    {activeCat.kind === 'custom' && <Badge variant="quiet">{t('budget.custom_short')}</Badge>}
+                  </div>
+                  <div className="bgt-detail__s">{activeCat.itemCount} {expensesPlural(activeCat.itemCount)}</div>
                 </div>
-                {activeCat.kind === 'custom' && (
+                <div className="bgt-detail__amt">
+                  <div className="v">{money(activeCat.spent, mainCurrency)}</div>
+                  <div className="l">{t('budget.spent_label')}</div>
+                </div>
+              </div>
+              {activeCat.kind === 'custom' && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
                   <Btn variant="ghost" size="sm" icon="edit" onClick={() => openEditCategory(activeCat)}>{t('visit.change')}</Btn>
-                )}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {activeCat.items.length === 0 && (
-                  <EmptyState
-                    icon={catIcon(activeCat)}
-                    title={t('budget.cat_empty', { name: activeCat.name })}
-                    action={<Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>}
-                  />
-                )}
-                {activeCat.items.map(exp => {
-                  const r = conv(exp);
-                  return (
-                    <ExpenseRow
-                      key={exp.id}
-                      expense={exp}
-                      catColor={activeCat.color}
-                      catIcon={catIcon(activeCat)}
-                      mainCurrency={mainCurrency}
-                      mainAmount={r.value}
-                      ok={r.ok}
-                      onOpen={openExpense}
-                    />
-                  );
-                })}
-              </div>
+                </div>
+              )}
+              {activeCat.items.length === 0 ? (
+                <EmptyState icon={catIcon(activeCat)} title={t('budget.cat_empty', { name: activeCat.name })}
+                  action={<Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>} />
+              ) : (
+                <div className="bgt-exlist">
+                  {activeCat.items.map(exp => {
+                    const r = conv(exp);
+                    return (
+                      <ExpenseRow key={exp.id} expense={exp} catColor={activeCat.color} catIcon={catIcon(activeCat)}
+                        mode="category" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
+                        onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} />
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
       ) : (
-        <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} conv={conv} onOpen={openExpense} onAdd={openAddExpense} />
+        <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} conv={conv} loc={loc}
+          expensesPlural={expensesPlural} onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} onAdd={openAddExpense} />
       )}
 
       {/* Source event view (clicking a system expense) */}
@@ -690,70 +817,67 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         onOpenChange={(o) => setSourceView(s => ({ ...s, open: o }))}
         canEdit={true}
       />
-    </>
+    </div>
   );
 }
 
 // ─── CityGrouping ─────────────────────────────────────────────────────────────
 
-function CityGrouping({ cityGroups, mainCurrency, conv, onOpen, onAdd }) {
+function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onOpen, onEdit, onDelete, onAdd }) {
   const { t } = useI18n();
   const [activeCity, setActiveCity] = useState(cityGroups[0]?.city || '');
   const cur = cityGroups.find(g => g.city === activeCity) || cityGroups[0];
 
   if (cityGroups.length === 0) {
     return (
-      <EmptyState
-        icon="pin"
-        title={t('budget.cities_empty')}
-        body={t('budget.cities_empty_desc')}
-        action={<Btn variant="primary" icon="plus" onClick={onAdd}>{t('budget.add_expense')}</Btn>}
-      />
+      <EmptyState icon="pin" title={t('budget.cities_empty')} body={t('budget.cities_empty_desc')}
+        action={<Btn variant="primary" icon="plus" onClick={onAdd}>{t('budget.add_expense')}</Btn>} />
     );
   }
   if (!cur) return null;
+  const cityLabel = (c) => c === '-' ? t('budget.no_city') : c;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 18 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="bgt-drill">
+      <div className="card bgt-glist" role="tablist" aria-label={t('budget.group_by_city')}>
         {cityGroups.map(g => {
-          const isActive = g.city === activeCity;
+          const active = g.city === activeCity;
           return (
-            <button key={g.city} onClick={() => setActiveCity(g.city)} style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '11px 13px',
-              background: isActive ? 'var(--brand-soft)' : 'var(--surface)',
-              border: '1px solid ' + (isActive ? 'var(--brand-soft-12)' : 'var(--line)'),
-              borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%',
-            }}>
-              <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center' }}>
-                <Icon name="pin" size={14} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{g.city === '-' ? t('budget.no_city') : g.city}</div>
-                <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{g.items.length} {g.items.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}</div>
-              </div>
-              <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{money(g.total, mainCurrency)}</div>
+            <button key={g.city} type="button" role="tab" aria-selected={active}
+              className={`bgt-glist__row ${active ? 'on' : ''}`} onClick={() => setActiveCity(g.city)}>
+              <span className="bgt-glist__ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
+                <Icon name="pin" size={17} />
+              </span>
+              <span className="bgt-glist__m">
+                <span className="bgt-glist__n"><span className="t">{cityLabel(g.city)}</span></span>
+                <span className="bgt-glist__c">{g.items.length} {expensesPlural(g.items.length)}</span>
+              </span>
+              <span className="bgt-glist__r"><span className="bgt-glist__v">{money(g.total, mainCurrency)}</span></span>
             </button>
           );
         })}
       </div>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10, gap: 8 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center' }}>
-            <Icon name="pin" size={15} />
+      <div className="card bgt-detail">
+        <div className="bgt-detail__h">
+          <div className="bgt-detail__ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
+            <Icon name="pin" size={22} />
           </div>
-          <div style={{ flex: 1 }}>
-            <h3 style={{ marginBottom: 2 }}>{cur.city === '-' ? t('budget.no_city') : cur.city}</h3>
-            <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{cur.items.length} {cur.items.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')} · {money(cur.total, mainCurrency)}</div>
+          <div className="bgt-detail__ti">
+            <div className="bgt-detail__n">{cityLabel(cur.city)}</div>
+            <div className="bgt-detail__s">{cur.items.length} {expensesPlural(cur.items.length)}</div>
+          </div>
+          <div className="bgt-detail__amt">
+            <div className="v">{money(cur.total, mainCurrency)}</div>
+            <div className="l">{t('budget.spent_label')}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div className="bgt-exlist">
           {cur.items.map(it => {
             const r = conv(it);
             return (
-              <ExpenseRow key={it.id} expense={it} catColor={it.catColor} catIcon={it.catIcon} catName={it.catName} showCategory
-                mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok} onOpen={onOpen} />
+              <ExpenseRow key={it.id} expense={it} catColor={it.catColor} catIcon={it.catIcon} catName={it.catName}
+                mode="city" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
+                onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />
             );
           })}
         </div>

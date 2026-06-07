@@ -110,4 +110,13 @@ export default {
   'budget.no_expenses_desc': 'Las reservas de hotel, traslados y actividades aparecen aquí automáticamente. Añade tus propios gastos (comida, taxis, recuerdos) a mano.',
   'budget.split_evenly': 'a partes iguales',
   'budget.cat_empty': 'Aún no hay nada en «{name}»',
+
+  // Lumo redesign 2026-06-07
+  'budget.by_category_title': 'Gastos por categoría',
+  'budget.donut_total': 'total',
+  'budget.no_rate_count': '{n} sin tipo',
+  'budget.fx_tap_edit': 'Toca para editar',
+  'budget.fx_rate_unset': 'sin definir',
+  'budget.booking_badge': 'reserva',
+  'budget.manual_badge': 'manual',
 };

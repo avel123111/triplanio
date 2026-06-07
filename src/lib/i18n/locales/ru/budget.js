@@ -110,4 +110,13 @@ export default {
   'budget.no_expenses_desc': 'Брони отелей, переезды и активности появятся здесь автоматически. Свои траты (еду, такси, сувениры) добавляй вручную.',
   'budget.split_evenly': 'поровну',
   'budget.cat_empty': 'В категории «{name}» пока пусто',
+
+  // Lumo redesign 2026-06-07
+  'budget.by_category_title': 'Расходы по категориям',
+  'budget.donut_total': 'всего',
+  'budget.no_rate_count': '{n} без курса',
+  'budget.fx_tap_edit': 'Нажмите, чтобы изменить',
+  'budget.fx_rate_unset': 'не задан',
+  'budget.booking_badge': 'бронь',
+  'budget.manual_badge': 'ручная',
 };

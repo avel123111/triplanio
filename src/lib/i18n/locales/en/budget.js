@@ -111,4 +111,13 @@ export default {
   'budget.no_expenses_desc': 'Hotel bookings, transfers and activities show up here automatically. Add your own expenses (food, taxis, souvenirs) by hand.',
   'budget.split_evenly': 'split evenly',
   'budget.cat_empty': 'Nothing in "{name}" yet',
+
+  // Lumo redesign 2026-06-07
+  'budget.by_category_title': 'Spending by category',
+  'budget.donut_total': 'total',
+  'budget.no_rate_count': '{n} without a rate',
+  'budget.fx_tap_edit': 'Tap to edit',
+  'budget.fx_rate_unset': 'not set',
+  'budget.booking_badge': 'booking',
+  'budget.manual_badge': 'manual',
 };
