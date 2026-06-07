@@ -759,6 +759,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       <TripProInfoDialog
         open={tripProInfo.open}
         feature={tripProInfo.feature}
+        ownerName={members.find(m => m.user_id === trip?.created_by)?.user_full_name || ''}
         onOpenChange={(o) => setTripProInfo(s => ({ ...s, open: o }))}
       />
     </div>

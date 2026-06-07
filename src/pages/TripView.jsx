@@ -1338,6 +1338,7 @@ export default function TripView() {
       <TripProInfoDialog
         open={tripProInfoOpen}
         onOpenChange={setTripProInfoOpen}
+        ownerName={members.find(m => m.user_id === trip?.created_by)?.user_full_name || ''}
       />
 
       {budgetAddonOff && (

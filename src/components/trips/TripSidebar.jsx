@@ -95,9 +95,9 @@ export default function TripSidebar({
         </div>
       )}
       {showUpgrade && (
-        <div className="app-side__upgrade" style={{ margin: '10px 6px 0', padding: 12, borderRadius: 10, background: 'var(--pro-soft)', border: '1px solid var(--pro-soft-2)' }}>
-          <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 700, color: 'var(--pro-ink)', marginBottom: 4 }}>{t('trip_menu.free_trip_title')}</div>
-          <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--ink-2)', marginBottom: 8, lineHeight: 1.45 }}>
+        <div className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
+          <div className="pro-up__title">{t('trip_menu.free_trip_title')}</div>
+          <div className="pro-up__desc">
             {t('trip.pro_locked_lenses')}
           </div>
           {isOwner ? (

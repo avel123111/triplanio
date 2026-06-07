@@ -22,8 +22,8 @@ export default function ProLockedDialog({ open, onOpenChange, feature, onUpgrade
       onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
       <div className="dlg dlg--sm">
         <div className="dlg__head">
-          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--pro-soft-2)', color: 'var(--pro-ink)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-            <Icon name="lock" size={17} />
+          <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--pro-gradient)', color: 'var(--pro-fg)', display: 'grid', placeItems: 'center', flexShrink: 0, boxShadow: '0 4px 10px -4px var(--pro)' }}>
+            <Icon name="crown" size={17} />
           </div>
           <h2>{t('sub.locked_heading')}</h2>
           <button className="icon-btn" onClick={close}><Icon name="close" size={16} /></button>

@@ -644,6 +644,27 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 }
 /* Pro badge — gold gradient (Lumo). Single source: recolour via --pro* tokens. */
 .badge--pro { background: var(--pro-gradient); color: var(--pro-fg); box-shadow: 0 4px 12px -4px var(--pro); }
+
+/* Pro upgrade plate — sidebar / inline gate (Lumo .pro-up) */
+.pro-up {
+  background: var(--pro-soft);
+  border: 1px solid var(--pro-soft-2);
+  border-radius: 14px;
+  padding: 13px;
+}
+.pro-up__title {
+  font-size: var(--fs-meta); font-weight: 700; color: var(--pro-ink); margin-bottom: 4px;
+}
+.pro-up__desc {
+  font-size: var(--fs-micro); color: var(--ink-2); margin-bottom: 8px; line-height: 1.45;
+}
+/* locktag — inline "Pro only" chip on gated items (Lumo .locktag) */
+.locktag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: var(--fs-micro); font-weight: 800;
+  color: var(--pro-ink); background: var(--pro-soft);
+  padding: 3px 8px; border-radius: 999px;
+}
 .badge--success { background: var(--success-soft); color: var(--success); }
 .badge--danger { background: var(--danger-soft); color: var(--danger); }
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }
@@ -729,7 +750,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .lens-tab.is-pro::after {
   content: "Pro"; font-size: var(--fs-nano); font-weight: 700;
   padding: 1px 4px; border-radius: 3px;
-  background: var(--warm-tint); color: var(--warm);
+  background: var(--pro-soft); color: var(--pro-ink);
   letter-spacing: .03em;
 }
 
