@@ -77,7 +77,12 @@ export function MapProvider({ children }) {
     const el = map.getContainer();
     if (el.parentNode !== slot) slot.appendChild(el);
     ownerRef.current = slot;
-    // Mapbox can't observe the DOM move; resize after the browser lays out.
+    // Mapbox can't observe the DOM move. Resize SYNCHRONOUSLY now so the new
+    // slot's dimensions are picked up before the consumer's draw/fit effect runs
+    // in this same effect flush — otherwise fitBounds computes zoom against the
+    // previous screen's canvas size (too close on big→small, too far on
+    // small→big). The rAF resize stays as a safety net for late layout.
+    try { map.resize(); } catch { /* ignore */ }
     requestAnimationFrame(() => { try { map.resize(); } catch { /* ignore */ } });
     return map;
   }, [ensureMap]);
