@@ -46,7 +46,7 @@
   --line-2: #F1F0F8;
   --line-strong: #DBD9E7;
   --line-hover: #D2D0E0;
-  --bg:      #FAFAFF;
+  --bg:      #fcfcfc;
   --surface: #FFFFFF;
   --surface-2: #EEEEF7;
   --surface-3: #FAFAFE;
@@ -566,8 +566,11 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
   padding: 18px;
+  /* Neutral #fcfcfc page bg removes the lavender hue that used to separate
+     white cards from the canvas — lift them with a soft elevation instead. */
+  box-shadow: var(--shadow-soft);
 }
-.card--soft { background: var(--wash); border-color: transparent; }
+.card--soft { background: var(--wash); border-color: transparent; box-shadow: none; }
 .card--quiet { background: var(--surface); border-color: var(--line-2); }
 .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .card-h h3 { flex: 1; }
@@ -1723,5 +1726,31 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .ts-screen .ts-drawer.is-open .ts-drawer__scrim { opacity: 1; }
   .ts-screen .ts-drawer .app-side { position: absolute; left: 0; top: 0; bottom: 0; width: 264px; max-width: 84vw; transform: translateX(-100%); transition: transform .28s var(--ease-spring); box-shadow: var(--sh-2); background: var(--surface); }
   .ts-screen .ts-drawer.is-open .app-side { transform: translateX(0); }
+}
+
+/* ===== Trip Settings lens ====================================================
+   Centered, full-width-aware layout. The old screen pinned content to a
+   left 720px column, leaving the right half of wide displays empty. This
+   container centers and a 2-col grid uses the space, collapsing to a single
+   column on tablet/mobile. */
+.settings-lens { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+/* Identity card: live cover preview + name/description/currency/notes. */
+.settings-identity { display: grid; grid-template-columns: 280px 1fr; gap: 22px; align-items: start; }
+.settings-identity__cover { position: sticky; top: 0; }
+.settings-identity__fields { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* Two-column zone for features / integrations / warnings. */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.settings-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* Header Save cluster (lives in the identity Card's `action` slot). */
+.settings-save { display: flex; align-items: center; gap: 10px; }
+.settings-save__msg { font-size: var(--fs-meta); color: var(--success); font-weight: 600; white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .settings-identity { grid-template-columns: 1fr; gap: 16px; }
+  .settings-identity__cover { position: static; }
+  .settings-grid { grid-template-columns: 1fr; }
 }
 

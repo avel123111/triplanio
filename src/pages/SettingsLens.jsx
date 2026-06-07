@@ -23,6 +23,7 @@ import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { telegram as tgBrand } from '@/lib/externalBrands';
 import CurrencySelect from '@/components/budget/CurrencySelect';
+import TripCoverPicker from '@/components/trips/TripCoverPicker';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
 // `addon` is the key persisted under trip.details.addons (matches TripView lens ids
@@ -386,6 +387,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const nav = useNavigate();
 
   const [title,   setTitle]   = useState(trip?.title        || '');
+  const [description, setDescription] = useState(trip?.description || '');
+  const [notes,   setNotes]   = useState(trip?.notes        || '');
+  const [coverImageUrl, setCoverImageUrl] = useState(trip?.cover_image_url || '');
+  const [coverGradient, setCoverGradient] = useState(trip?.cover_gradient || '');
   const [currency, setCurrency] = useState(trip?.details?.main_currency || trip?.main_currency || 'EUR');
   const [saving,  setSaving]  = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -406,11 +411,27 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   // object would wipe the user's in-progress title edit right before they save it.
   useEffect(() => {
     if (trip?.title)        setTitle(trip.title);
+    setDescription(trip?.description || '');
+    setNotes(trip?.notes || '');
+    setCoverImageUrl(trip?.cover_image_url || '');
+    setCoverGradient(trip?.cover_gradient || '');
     if (trip?.details?.main_currency || trip?.main_currency) setCurrency(trip.details?.main_currency || trip.main_currency || 'EUR');
     setFeatures(featuresFromTrip(trip));
     setBookingWarnings(trip?.details?.display?.booking_warnings !== false);
     setChatWidget(trip?.details?.display?.chat_widget !== false);
   }, [trip?.id]);
+
+  // Dirty state for the identity block (title / description / currency / cover /
+  // notes). Toggles below auto-save on click, so the Save button only governs
+  // these manually-edited fields and stays disabled until something changes.
+  const persistedCurrency = trip?.details?.main_currency || trip?.main_currency || 'EUR';
+  const dirty =
+    title.trim()    !== (trip?.title || '') ||
+    description     !== (trip?.description || '') ||
+    notes           !== (trip?.notes || '') ||
+    coverImageUrl   !== (trip?.cover_image_url || '') ||
+    coverGradient   !== (trip?.cover_gradient || '') ||
+    currency        !== persistedCurrency;
 
   // Trip-level display toggle. Persisted under details.display via the edge
   // function (trips RLS is owner-only). Architecture note: `display` is an
@@ -448,14 +469,24 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
   }
 
-  // Save basic settings
+  // Save identity settings: title, description, notes, cover (gradient/image)
+  // and main currency. All these columns are whitelisted by updateTripSettings
+  // (title/description/cover_image_url/cover_gradient/notes); currency lives
+  // under details.main_currency.
   async function saveSettings() {
     if (!title.trim()) return;
     setSaving(true);
     const prevCurrency = trip?.details?.main_currency || trip?.main_currency || 'EUR';
+    const fields = {
+      title: title.trim(),
+      description: description.trim() || null,
+      notes: notes || null,
+      cover_image_url: coverImageUrl || null,
+      cover_gradient: coverGradient || null,
+    };
     // trips RLS is owner-only → write via edge function so admins can save too.
     const { data, error } = await supabase.functions.invoke('updateTripSettings', {
-      body: { tripId, fields: { title: title.trim() }, main_currency: currency },
+      body: { tripId, fields, main_currency: currency },
     });
     // Main currency changed → existing FX overrides were defined against the OLD
     // main currency and are now meaningless. Reset them (trip_budgets is participant-RLS).
@@ -464,12 +495,19 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     }
     setSaving(false);
     if (error || !data?.ok) { setSaveMsg(t('settings.save_error2', { message: error?.message || data?.code || t('members.error_generic') })); return; }
-    // Optimistically patch the shell cache so the header/title updates instantly,
-    // then invalidate to reconcile with the server.
+    // Optimistically patch the shell cache so the header title + cover update
+    // instantly, then invalidate to reconcile with the server.
     queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
-      old?.trip ? { ...old, trip: { ...old.trip, title: title.trim(), details: { ...(old.trip.details || {}), main_currency: currency } } } : old);
+      old?.trip ? { ...old, trip: { ...old.trip,
+        title: fields.title,
+        description: fields.description,
+        notes: fields.notes,
+        cover_image_url: fields.cover_image_url,
+        cover_gradient: fields.cover_gradient,
+        details: { ...(old.trip.details || {}), main_currency: currency } } } : old);
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
+    queryClient?.invalidateQueries({ queryKey: ['trips'] }); // trips list shows title/cover/description
     setSaveMsg(t('settings.saved'));
     setTimeout(() => setSaveMsg(''), 2000);
   }
@@ -549,38 +587,111 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const viewerMems   = members.filter(m => m.role === 'viewer'  && m.status === 'active');
 
   return (
-    <div style={{ maxWidth: 720 }}>
-      {/* Basic settings */}
-      <Card title={t('settings.section_basic')} style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Field label={t('trip.title_label')}>
-            <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
-          </Field>
-          <Field label={t('settings.main_currency_label')}>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <CurrencySelect value={currency} onChange={setCurrency} width={200} />
-              <Btn variant="primary" loading={saving} onClick={saveSettings}>{t('trip.form_save')}</Btn>
-              {saveMsg && <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--success)', alignSelf: 'center' }}>{saveMsg}</span>}
+    <div className="settings-lens">
+      {/* ── Identity: cover + name / description / currency / notes ──────────
+          Save here governs only these manually-edited fields; the feature and
+          display toggles below auto-save on click. */}
+      <Card
+        title={t('settings.section_basic')}
+        action={
+          <div className="settings-save">
+            {saveMsg && <span className="settings-save__msg">{saveMsg}</span>}
+            <Btn variant="primary" loading={saving} disabled={!dirty || !title.trim()} onClick={saveSettings}>
+              {t('trip.form_save')}
+            </Btn>
+          </div>
+        }
+      >
+        <div className="settings-identity">
+          <div className="settings-identity__cover">
+            <Field label={t('trip.form_cover')}>
+              <TripCoverPicker
+                coverImageUrl={coverImageUrl}
+                coverGradient={coverGradient}
+                tripId={tripId}
+                onChange={({ cover_image_url, cover_gradient }) => {
+                  setCoverImageUrl(cover_image_url);
+                  setCoverGradient(cover_gradient);
+                }}
+              />
+            </Field>
+          </div>
+          <div className="settings-identity__fields">
+            <Field label={t('trip.title_label')}>
+              <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
+            </Field>
+            <Field label={t('trip.description')}>
+              <input className="input" value={description} onChange={e => setDescription(e.target.value)} placeholder={t('trip.form_description_placeholder')} />
+            </Field>
+            <Field label={t('settings.main_currency_label')} sub={t('settings.main_currency_hint')}>
+              <CurrencySelect value={currency} onChange={setCurrency} width={220} />
+            </Field>
+            <Field label={t('trip.form_notes')}>
+              <textarea className="textarea" rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('trip.form_notes_placeholder')} />
+            </Field>
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Features · integrations · warnings (2-col → 1-col on mobile) ── */}
+      <div className="settings-grid">
+        <div className="settings-col">
+          {/* Feature toggles */}
+          <Card title={t('settings.optional_features')}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {(() => {
+                const visible = FEATURES.filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection');
+                return visible.map((f, i) => (
+                  <FeatureRow key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
+                    onChange={() => toggleFeature(f.id, f.pro)} last={i === visible.length - 1} />
+                ));
+              })()}
             </div>
-            <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 4 }}>{t('settings.main_currency_hint')}</div>
-          </Field>
+          </Card>
+        </div>
 
-          <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)', margin: 0 }} />
-
-          {/* Warnings - section header + per-warning toggles (design: trip-settings.jsx §29).
-              `display` in trip.details is an extensible bag, so future warning/display
-              toggles slot in as more rows under this same header. */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                <Icon name="warning" size={17} />
+        <div className="settings-col">
+          {/* Chat widget - trip-level toggle for the floating dock button.
+              Only shown when the Group Chat addon is on. */}
+          {features.chat && (
+            <Card title={t('settings.chat_widget_title')}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('settings.chat_widget_label')}</div>
+                  <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>
+                    {t('settings.chat_widget_desc')}
+                  </div>
+                </div>
+                <Toggle on={chatWidget} onChange={toggleChatWidget} />
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('settings.warnings_title')}</div>
-                <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{t('settings.warnings_desc')}</div>
-              </div>
-            </div>
 
+              <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{
+                  position: 'relative', width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+                  background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, var(--ai) 100%)',
+                  color: 'white', display: 'grid', placeItems: 'center',
+                  opacity: chatWidget ? 1 : 0.35, transition: 'opacity .15s ease',
+                }}>
+                  <Icon name="chat" size={20} />
+                </div>
+                <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>
+                  {chatWidget
+                    ? t('settings.chat_widget_on')
+                    : t('settings.chat_widget_off')}
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Telegram - only when the Telegram addon is enabled. */}
+          {features.tg && (
+            <Card title={t('settings.feat_tg_title')} subtitle={t('settings.feat_tg_desc')}>
+              <TelegramSection tripId={tripId} />
+            </Card>
+          )}
+
+          {/* Warnings / display - extensible bag of trip-level display toggles. */}
+          <Card title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700 }}>{t('settings.warn_bookings_title')}</div>
@@ -588,77 +699,24 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               </div>
               <Toggle on={bookingWarnings} onChange={toggleBookingWarnings} />
             </div>
-          </div>
-        </div>
-      </Card>
+          </Card>
 
-      {/* Feature toggles */}
-      <Card title={t('settings.optional_features')} style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {(() => {
-            const visible = FEATURES.filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection');
-            return visible.map((f, i) => (
-              <FeatureRow key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
-                onChange={() => toggleFeature(f.id, f.pro)} last={i === visible.length - 1} />
-            ));
-          })()}
-        </div>
-      </Card>
-
-      {/* Chat widget - trip-level toggle for the floating dock button.
-          Only shown when the Group Chat addon is on (the widget can't exist
-          without it). Hidden entirely otherwise. */}
-      {features.chat && (
-        <Card title={t('settings.chat_widget_title')} style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('settings.chat_widget_label')}</div>
-              <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>
-                {t('settings.chat_widget_desc')}
+          {/* Approvers — hidden while hotel-voting is parked (see SHOW_HOTEL_VOTING). */}
+          {SHOW_HOTEL_VOTING && (
+            <Card title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {approvers.map(m => <ApproverRow key={m.id} member={m} locked />)}
+                {viewerMems.map(m => <ApproverRow key={m.id} member={m} locked={false} />)}
+                {members.length === 0 && (
+                  <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>{t('settings.members_loading')}</div>
+                )}
               </div>
-            </div>
-            <Toggle on={chatWidget} onChange={toggleChatWidget} />
-          </div>
-
-          <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{
-              position: 'relative', width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-              background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, var(--ai) 100%)',
-              color: 'white', display: 'grid', placeItems: 'center',
-              opacity: chatWidget ? 1 : 0.35, transition: 'opacity .15s ease',
-            }}>
-              <Icon name="chat" size={20} />
-            </div>
-            <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>
-              {chatWidget
-                ? t('settings.chat_widget_on')
-                : t('settings.chat_widget_off')}
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Telegram - only when the Telegram addon is enabled. */}
-      {features.tg && (
-        <Card title={t('settings.feat_tg_title')} subtitle={t('settings.feat_tg_desc')} style={{ marginBottom: 16 }}>
-          <TelegramSection tripId={tripId} />
-        </Card>
-      )}
-
-      {/* Approvers — hidden while hotel-voting is parked (see SHOW_HOTEL_VOTING). */}
-      {SHOW_HOTEL_VOTING && (
-      <Card title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')} style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {approvers.map(m => <ApproverRow key={m.id} member={m} locked />)}
-          {viewerMems.map(m => <ApproverRow key={m.id} member={m} locked={false} />)}
-          {members.length === 0 && (
-            <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>{t('settings.members_loading')}</div>
+            </Card>
           )}
         </div>
-      </Card>
-      )}
+      </div>
 
-      {/* Danger zone */}
+      {/* ── Danger zone (full width) ── */}
       <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {myRole !== 'owner' && (

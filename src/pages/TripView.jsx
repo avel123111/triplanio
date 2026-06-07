@@ -38,7 +38,6 @@ import ChatLens from './ChatLens';
 import { uniqueCityCount } from '@/lib/trip-cities';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
-import TripFormDialog from '@/components/trips/TripFormDialog';
 import { getGradientById } from '@/lib/trip-gradients';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import '../design/app.css';
@@ -840,16 +839,13 @@ function CityRail({ visits = [], scrollRef }) {
 // ─── Share / More dialogs ─────────────────────────────────────────────────────
 
 
-function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
+function MoreMenuDialog({ trip, canManage = false }) {
   const { t } = useI18n();
   const nav = useNavigate();
   const qc = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
   const [copying, setCopying] = useState(false);
-  const openEditMetadata = () => {
-    onEditMetadata?.();
-  };
 
   // Copy trip — available to every participant. The new trip is owned by the
   // caller; copyTrip strips Pro status + Pro-only addons server-side.
@@ -882,11 +878,8 @@ function MoreMenuDialog({ trip, visits, canManage = false, onEditMetadata }) {
       onClick={() => window.__closeModal?.()}>
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 20, width: 320, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {canManage && (
-            <button onClick={openEditMetadata} className="dz-rowhover" style={itemStyle}>
-              <Icon name="edit" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.edit_metadata')}
-            </button>
-          )}
+          {/* "Edit metadata" retired: trip name + cover now live in the Settings
+              lens (identity block). The Settings item below is the single entry. */}
           {canManage && (
             <button onClick={() => { window.__closeModal?.(); window.__navigate?.('settings'); }} className="dz-rowhover" style={itemStyle}>
               <Icon name="settings" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.settings_title')}
@@ -1053,9 +1046,9 @@ export default function TripView() {
   const frozenNote = () => toast({ description: t('trip.frozen_note') });
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
-  // Global trip-header state: trip-metadata editor, mobile sidebar, and the
-  // right-hand actions the active lens projects into the screen-title bar.
-  const [editingMetadata, setEditingMetadata] = useState(false);
+  // Global trip-header state: mobile sidebar, and the right-hand actions the
+  // active lens projects into the screen-title bar. (Trip name + cover editing
+  // moved into the Settings lens; the metadata modal was retired.)
   const [sideOpen, setSideOpen] = useState(false);
   const [screenActions, setScreenActions] = useState(null);
 
@@ -1112,7 +1105,7 @@ export default function TripView() {
       )}
       <button
         className="trip-hero__btn trip-hero__btn--icon"
-        onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} visits={visits} canManage={myRole !== 'viewer'} onEditMetadata={() => { window.__closeModal?.(); setEditingMetadata(true); }} />)}
+        onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} canManage={myRole !== 'viewer'} />)}
       >
         <Icon name="more" size={15} />
       </button>
@@ -1142,7 +1135,6 @@ export default function TripView() {
         onMenu={() => setSideOpen(true)}
         actions={heroActions}
       />
-      <TripFormDialog open={editingMetadata} onOpenChange={setEditingMetadata} trip={trip} visits={visits} />
       <TripScreenBarCtx.Provider value={{ setActions: setScreenActions }}>
         <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
           <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => window.__openModal?.(<ShareDialog trip={trip} />)} />

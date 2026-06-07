@@ -45,7 +45,7 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: minmax(0,1fr) minmax(0,1.05fr);
-  background: var(--surface);
+  background: #fcfcfc;
   font-family: var(--font-body);
   font-size: var(--fs-strong);
   color: var(--ink);
