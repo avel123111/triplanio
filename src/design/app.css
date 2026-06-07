@@ -653,22 +653,24 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .badge--outline { background: transparent; color: var(--muted); border: 1.5px solid var(--line-strong); }
 .badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
-/* Severity */
+/* Severity (Lumo .sev — soft plate with a tinted icon chip) */
 .sev {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 13px 15px;
+  border-radius: var(--r-md);
   font-size: var(--fs-meta);
-  line-height: 1.45;
+  line-height: 1.5;
   border: 1px solid;
+  color: var(--ink-2);
 }
-.sev__icon { flex-shrink: 0; margin-top: 1px; }
-.sev--info { background: var(--brand-soft); border-color: var(--brand-soft-12); color: var(--ink); }
-.sev--info .sev__icon { color: var(--brand); }
-.sev--warning { background: var(--warning-soft); border-color: var(--warning-soft); color: var(--ink); }
-.sev--warning .sev__icon { color: var(--warning); }
-.sev--error { background: var(--danger-soft); border-color: var(--danger-soft); color: var(--ink); }
-.sev--error .sev__icon { color: var(--danger); }
+.sev__icon { flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; }
+.sev__icon svg { width: 17px; height: 17px; }
+.sev--info { background: var(--brand-soft); border-color: var(--brand-soft-12); }
+.sev--info .sev__icon { background: color-mix(in srgb, var(--brand) 18%, transparent); color: var(--brand); }
+.sev--warning { background: var(--warning-soft); border-color: var(--warning-soft); }
+.sev--warning .sev__icon { background: color-mix(in srgb, var(--warning) 22%, transparent); color: var(--warning-ink); }
+.sev--error { background: var(--danger-soft); border-color: var(--danger-soft); }
+.sev--error .sev__icon { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger-ink); }
 
 /* Avatars */
 .avatar {
@@ -1921,14 +1923,6 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .acct-tgrow__t { font-weight: 700; font-size: var(--fs-base); color: var(--ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .acct-tghint { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: var(--fs-micro); color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
 .acct-subhead { font-family: var(--font-display); font-weight: 600; color: var(--ink); font-size: var(--fs-strong); }
-
-/* severity plate (danger zone — matches the Lumo .sev exactly) */
-.acct-sev { display: flex; gap: 12px; padding: 14px 16px; border-radius: var(--r-md); align-items: flex-start; margin-top: 14px; background: var(--danger-soft); }
-.acct-sev__ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger-ink); }
-.acct-sev__ic svg { width: 17px; height: 17px; }
-.acct-sev__body { flex: 1; min-width: 0; font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.5; }
-.acct-sev__t { display: block; color: var(--ink); font-weight: 800; font-size: var(--fs-base); margin-bottom: 3px; }
-.acct-sev__body b { font-weight: 800; color: var(--ink); }
 
 /* responsive: collapse to single column; nav becomes a horizontal scroller */
 @media (max-width: 860px) {

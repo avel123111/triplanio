@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Toggle, ModalHost,
+  Badge, Btn, Toggle, ModalHost, Severity,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -604,14 +604,10 @@ export default function ScreenAccount() {
       {/* Payment / action error banner (full width, above the workspace) */}
       {errorMsg && (
         <div style={{ maxWidth: 1120, margin: '16px auto 0', padding: '0 24px', width: '100%', boxSizing: 'border-box' }}>
-          <div className="acct-sev" style={{ marginTop: 0 }}>
-            <span className="acct-sev__ic"><Icon name="error" size={17} /></span>
-            <div className="acct-sev__body">
-              <b className="acct-sev__t">{t('account.error_title')}</b>
-              {errorMsg}
-            </div>
-            <Btn variant="ghost" size="sm" onClick={() => setErrorMsg(null)}>{t('common.close')}</Btn>
-          </div>
+          <Severity level="error" title={t('account.error_title')}
+            action={<Btn variant="ghost" size="sm" onClick={() => setErrorMsg(null)}>{t('common.close')}</Btn>}>
+            {errorMsg}
+          </Severity>
         </div>
       )}
 
@@ -841,35 +837,27 @@ export default function ScreenAccount() {
               </div>
 
               {deleteState === 'blocked' && (
-                <div className="acct-sev">
-                  <span className="acct-sev__ic"><Icon name="warning" size={17} /></span>
-                  <div className="acct-sev__body">
-                    <b className="acct-sev__t">{t('account.cancel_sub_first')}</b>
-                    {t('account.delete_blocked_desc')}
-                    <div style={{ marginTop: 8 }}>
-                      <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={handleManageSubscription}>
-                        {portalLoading ? t('account.opening') : t('account.open_billing_portal')}
-                      </Btn>
-                    </div>
+                <Severity level="warning" title={t('account.cancel_sub_first')}>
+                  {t('account.delete_blocked_desc')}
+                  <div style={{ marginTop: 8 }}>
+                    <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={handleManageSubscription}>
+                      {portalLoading ? t('account.opening') : t('account.open_billing_portal')}
+                    </Btn>
                   </div>
-                </div>
+                </Severity>
               )}
 
               {deleteState === 'confirm' && (
-                <div className="acct-sev">
-                  <span className="acct-sev__ic"><Icon name="trash" size={17} /></span>
-                  <div className="acct-sev__body">
-                    <b className="acct-sev__t">{t('account.confirm_delete')}</b>
-                    {t('account.confirm_delete_desc_1')} <b>{t('account.delete_word')}</b> {t('account.confirm_delete_desc_2')}
-                    <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <input className="input" placeholder={t('account.delete_word')} value={deleteInput} onChange={e => setDeleteInput(e.target.value)} style={{ flex: 1, minWidth: 150 }} />
-                      <Btn variant="danger-solid" size="sm" disabled={deleteInput !== t('account.delete_word') || deletingAccount} onClick={performDeleteAccount}>
-                        {deletingAccount ? t('account.deleting') : t('account.delete_forever')}
-                      </Btn>
-                      <Btn variant="ghost" size="sm" onClick={() => setDeleteState(null)}>{t('common.cancel')}</Btn>
-                    </div>
+                <Severity level="error" icon="trash" title={t('account.confirm_delete')}>
+                  {t('account.confirm_delete_desc_1')} <b>{t('account.delete_word')}</b> {t('account.confirm_delete_desc_2')}
+                  <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <input className="input" placeholder={t('account.delete_word')} value={deleteInput} onChange={e => setDeleteInput(e.target.value)} style={{ flex: 1, minWidth: 150 }} />
+                    <Btn variant="danger-solid" size="sm" disabled={deleteInput !== t('account.delete_word') || deletingAccount} onClick={performDeleteAccount}>
+                      {deletingAccount ? t('account.deleting') : t('account.delete_forever')}
+                    </Btn>
+                    <Btn variant="ghost" size="sm" onClick={() => setDeleteState(null)}>{t('common.cancel')}</Btn>
                   </div>
-                </div>
+                </Severity>
               )}
             </div>
 

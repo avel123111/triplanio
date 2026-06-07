@@ -41,13 +41,13 @@ export const AvatarStack = ({ people = [], max = 4, size = "sm" }) => (
 );
 
 // ----- Severity message -----
-export const Severity = ({ level = "info", title, children, action }) => (
+export const Severity = ({ level = "info", title, children, action, icon }) => (
   <div className={`sev sev--${level}`}>
     <span className="sev__icon">
-      <Icon name={level === "info" ? "info" : level === "warning" ? "warning" : "error"} size={16} />
+      <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
     </span>
-    <div style={{ flex: 1 }}>
-      {title && <div style={{ fontWeight: 600, marginBottom: 2 }}>{title}</div>}
+    <div style={{ flex: 1, minWidth: 0 }}>
+      {title && <div style={{ fontWeight: 800, color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
       {children}
     </div>
     {action}
@@ -214,17 +214,17 @@ export const TRIPS = [
 ];
 
 // ----- DismissibleSeverity -----
-export const DismissibleSeverity = ({ level = "info", title, children, onDismiss, action }) => {
+export const DismissibleSeverity = ({ level = "info", title, children, onDismiss, action, icon }) => {
   const t = useT();
   const [open, setOpen] = React.useState(true);
   if (!open) return null;
   return (
     <div className={`sev sev--${level}`} style={{ position: "relative" }}>
       <span className="sev__icon">
-        <Icon name={level === "info" ? "info" : level === "warning" ? "warning" : "error"} size={16} />
+        <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
       </span>
-      <div style={{ flex: 1, paddingRight: 28 }}>
-        {title && <div style={{ fontWeight: 600, marginBottom: 2 }}>{title}</div>}
+      <div style={{ flex: 1, minWidth: 0, paddingRight: 28 }}>
+        {title && <div style={{ fontWeight: 800, color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
         {children}
         {action && <div style={{ marginTop: 8 }}>{action}</div>}
       </div>
