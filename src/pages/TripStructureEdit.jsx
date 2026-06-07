@@ -443,7 +443,7 @@ export default function TripStructureEdit() {
   });
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
-      toast({ description: kind === 'start' ? t('tse.start_already_set') : t('tse.end_already_set') });
+      toast({ description: kind === 'start' ? t('tse.start_already_set') : t('tse.end_already_set'), variant: 'warning' });
       return;
     }
     const node = {
@@ -473,7 +473,7 @@ export default function TripStructureEdit() {
     if (c.hotelId) setLeftPanel({ type: 'event', kind: 'hotel', id: c.hotelId, warning: c.message });
     else if (c.activityId) setLeftPanel({ type: 'event', kind: 'activity', id: c.activityId, warning: c.message });
     else if (c.transferId) setLeftPanel({ type: 'event', kind: 'transfer', id: c.transferId, warning: c.message });
-    else toast({ description: `${c.message} ${t('tse.fix_hint_suffix')}` });
+    else toast({ description: `${c.message} ${t('tse.fix_hint_suffix')}`, variant: 'warning' });
   };
   const openTransferRow = (a, b, tr) => {
     if (tr) {
@@ -482,7 +482,7 @@ export default function TripStructureEdit() {
       setLeftPanel({ type: 'event', kind: 'transfer', id: tr.id, warning: issue?.message || null });
       return;
     }
-    if (isTmpId(a?.id) || isTmpId(b?.id)) { toast({ description: t('tse.save_new_city_first') }); return; }
+    if (isTmpId(a?.id) || isTmpId(b?.id)) { toast({ description: t('tse.save_new_city_first'), variant: 'warning' }); return; }
     setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: a, toVisit: b });
   };
 
@@ -497,7 +497,7 @@ export default function TripStructureEdit() {
     const p_edits = {};
     const p_deletes = { cities: (draft.removed || []).filter((n) => !isTmp(n.id)).map((n) => n.id) };
     const { error } = await supabase.rpc('save_trip_edit', { p_trip: tripId, p_nodes, p_cities_new, p_edits, p_deletes });
-    if (error) { setSaving(false); alert(t('tse.err_save') + (error.message || error)); return; }
+    if (error) { setSaving(false); toast({ description: t('tse.err_save') + (error.message || error), variant: 'destructive' }); return; }
     clearDraftStore();
     invalidateTripData(qc, tripId);
     setPendingLeave(null);
@@ -803,8 +803,8 @@ export default function TripStructureEdit() {
           onOpenHotel={(id) => openEvent('hotel', id)} onAddHotel={() => createBooking('hotel', node)}
           onOpenActivity={(id) => openEvent('activity', id)} onAddActivity={() => createBooking('activity', node)}
           onOpenTransfer={(tr) => openEvent('transfer', tr.id)}
-          onAddArrival={() => { if (!prev) return; if (isTmpId(prev.id) || isTmpId(node.id)) { toast({ description: t('tse.save_new_city_first') }); return; } setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: prev, toVisit: node }); }}
-          onAddDeparture={() => { if (!next) return; if (isTmpId(node.id) || isTmpId(next.id)) { toast({ description: t('tse.save_new_city_first') }); return; } setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: node, toVisit: next }); }}
+          onAddArrival={() => { if (!prev) return; if (isTmpId(prev.id) || isTmpId(node.id)) { toast({ description: t('tse.save_new_city_first'), variant: 'warning' }); return; } setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: prev, toVisit: node }); }}
+          onAddDeparture={() => { if (!next) return; if (isTmpId(node.id) || isTmpId(next.id)) { toast({ description: t('tse.save_new_city_first'), variant: 'warning' }); return; } setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: node, toVisit: next }); }}
         />
       );
     }

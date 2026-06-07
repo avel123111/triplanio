@@ -18,6 +18,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { edgeErrorMessage } from '@/lib/edgeError';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { ActionMenu, ActionItem } from '@/components/ui/ActionMenu';
+import { useToast } from '@/components/ui/use-toast';
 import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
@@ -223,6 +224,7 @@ function ChangeRoleDialog({ member, tripId, onSaved }) {
 export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient }) {
   const { t } = useI18n();
   const confirm = useConfirm();
+  const { toast } = useToast();
   const nav = useNavigate();
   const [removing, setRemoving] = useState(null);
 
@@ -255,7 +257,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
       body: { trip_id: tripId, email: member.invite_email, role: member.role || 'viewer' },
     });
     setRemoving(null);
-    if (error || data?.error) { alert(await edgeErrorMessage(error, data, t('member.err_send_invite'))); return; }
+    if (error || data?.error) { toast({ description: await edgeErrorMessage(error, data, t('member.err_send_invite')), variant: 'destructive' }); return; }
     refresh();
   }
 
@@ -264,7 +266,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     setRemoving(memberId);
     const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });
     setRemoving(null);
-    if (error || !data?.ok) { alert(await edgeErrorMessage(error, data, t('member.err_remove'))); return; }
+    if (error || !data?.ok) { toast({ description: await edgeErrorMessage(error, data, t('member.err_remove')), variant: 'destructive' }); return; }
     refresh();
   }
 
@@ -276,7 +278,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     setRemoving(member.id);
     const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: member.id } });
     setRemoving(null);
-    if (error || !data?.ok) { alert(await edgeErrorMessage(error, data, t('settings.leave_error'))); return; }
+    if (error || !data?.ok) { toast({ description: await edgeErrorMessage(error, data, t('settings.leave_error')), variant: 'destructive' }); return; }
     nav('/trips');
   }
 

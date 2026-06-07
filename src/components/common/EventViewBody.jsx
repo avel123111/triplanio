@@ -15,6 +15,7 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/api/supabaseClient';
 import { safeStorageName } from '@/lib/storage';
 import { parseNaive } from '@/lib/naive-time';
@@ -387,6 +388,7 @@ export function useEntitySource(kind, id, { open = true, onError, refreshKey = 0
 
 export function useEntityDocs(kind, entity, canEdit) {
   const { t } = useI18n();
+  const { toast } = useToast();
   const qc = useQueryClient();
   const [docs, setDocs] = useState(() => {
     if (!entity) return [];
@@ -403,7 +405,7 @@ export function useEntityDocs(kind, entity, canEdit) {
     const files = Array.from(fileList || []);
     if (!files.length || !canEdit) return;
     const tooBig = files.find((f) => f.size > 10 * 1024 * 1024);
-    if (tooBig) { alert(t('event.file_too_big10')); return; }
+    if (tooBig) { toast({ description: t('event.file_too_big10'), variant: 'warning' }); return; }
     setUploading(true);
     try {
       const uploaded = [];

@@ -17,12 +17,14 @@ import { Btn, Skeleton } from '@/design/index';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
 import { PanelShell, EventPanelBody, kindIcon } from '@/components/common/EventPanels';
+import { useToast } from '@/components/ui/use-toast';
 
 const TABLE_BY_KIND = { hotel: 'hotel_stays', transfer: 'transfers', activity: 'activities', service: 'trip_services' };
 const LABEL_KEY = { hotel: 'budget.cat_accommodation', activity: 'budget.source_activity', service: 'service.car_default_name' };
 
 export default function EventSourcePanel({ kind, id, canEdit = false, warning = null, autoEdit = false, onClose }) {
   const { t } = useI18n();
+  const { toast } = useToast();
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState(autoEdit);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -104,7 +106,7 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
     setDeleting(true);
     const { error } = await supabase.from(table).delete().eq('id', data.id);
     setDeleting(false);
-    if (error) { alert(t('event.delete_failed') + ': ' + error.message); return; }
+    if (error) { toast({ description: t('event.delete_failed') + ': ' + error.message, variant: 'destructive' }); return; }
     invalidate();
     onClose?.();
   };

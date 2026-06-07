@@ -1,10 +1,9 @@
 import { useToast } from "@/components/ui/use-toast";
 import {
   Toast,
+  ToastBody,
   ToastClose,
-  ToastDescription,
   ToastProvider,
-  ToastTitle,
   ToastViewport,
 } from "@/components/ui/toast";
 
@@ -24,12 +23,7 @@ export function Toaster() {
         .map(function ({ id, title, description, action, open: _open, onOpenChange: _onOpenChange, ...props }) {
           return (
             <Toast key={id} {...props}>
-              <div className="grid gap-1">
-                {title && <ToastTitle>{title}</ToastTitle>}
-                {description && (
-                  <ToastDescription>{description}</ToastDescription>
-                )}
-              </div>
+              <ToastBody title={title} description={description} />
               {action}
               <ToastClose onClick={() => dismiss(id)} />
             </Toast>

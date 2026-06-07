@@ -15,6 +15,7 @@ import EventModal from '@/components/common/EventModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
 import { useT } from '@/lib/i18n/I18nContext';
+import { useToast } from '@/components/ui/use-toast';
 import ServiceDialog from '@/components/services/ServiceDialog';
 
 const TABLE_BY_KIND = {
@@ -26,6 +27,7 @@ const TABLE_BY_KIND = {
 
 export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false, warning = null, onEditInEditor = null }) {
   const t = useT();
+  const { toast } = useToast();
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState(false);
 
@@ -81,7 +83,7 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     const table = TABLE_BY_KIND[kind];
     if (!table) return;
     const { error } = await supabase.from(table).delete().eq('id', data.id);
-    if (error) { alert(t('event.delete_failed') + ': ' + error.message); throw error; }
+    if (error) { toast({ description: t('event.delete_failed') + ': ' + error.message, variant: 'destructive' }); throw error; }
     onOpenChange(false);
     invalidate();
   };

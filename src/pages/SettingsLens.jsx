@@ -446,7 +446,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     });
     if (error || !data?.ok) {
       setBookingWarnings(!next); // revert
-      alert(t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }));
+      toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
       return;
     }
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
@@ -465,7 +465,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     });
     if (error || !data?.ok) {
       setChatWidget(!next); // revert
-      alert(t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }));
+      toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
       return;
     }
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
@@ -510,7 +510,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
     queryClient?.invalidateQueries({ queryKey: ['trips'] }); // trips list shows title/cover/description
-    toast({ description: t('settings.saved') });
+    toast({ description: t('settings.saved'), variant: 'success' });
   }
 
   // Toggle feature → persist to trip.details.addons, then invalidate shell query.
@@ -547,7 +547,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         if (isOwner) setProLocked({ open: true, feature: feat ? t(feat.labelKey) : '' });
         else setTripProInfo({ open: true, feature: feat ? t(feat.labelKey) : '' });
       } else {
-        alert(t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }));
+        toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
       }
       return;
     }
@@ -558,7 +558,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   async function leaveTrip() {
     if (!(await confirm({ title: t('settings.leave_confirm'), variant: 'destructive' }))) return;
     const myMember = members.find(m => m.user_id === user?.id && m.status === 'active');
-    if (!myMember) { alert(t('settings.leave_not_found')); return; }
+    if (!myMember) { toast({ description: t('settings.leave_not_found'), variant: 'destructive' }); return; }
     // Only leave (navigate away) once the backend actually removed the row.
     // removeTripMember now returns a non-2xx with the reason on failure, so we
     // must read the response - navigating on a silent failure left the user
@@ -569,7 +569,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (error || !data?.ok) {
       let msg = error?.message || t('settings.leave_error');
       try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
-      alert(t('settings.save_error2', { message: msg }));
+      toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
       return;
     }
     nav('/trips');
@@ -580,7 +580,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (!(await confirm({ title: t('settings.delete_confirm1'), variant: 'destructive' }))) return;
     if (!(await confirm({ title: t('settings.delete_confirm2'), variant: 'destructive' }))) return;
     const { error } = await supabase.from('trips').delete().eq('id', tripId);
-    if (error) { alert(t('settings.save_error2', { message: error.message })); return; }
+    if (error) { toast({ description: t('settings.save_error2', { message: error.message }), variant: 'destructive' }); return; }
     nav('/trips');
   }
 

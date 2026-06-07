@@ -864,7 +864,7 @@ function MoreMenuDialog({ trip, canManage = false }) {
       if (error || data?.error) throw new Error(serverMsg || error?.message || 'copy failed');
       qc.invalidateQueries({ queryKey: ['trips', user?.id] });
       window.__closeModal?.();
-      toast({ description: t('trip.copy_done') });
+      toast({ description: t('trip.copy_done'), variant: 'success' });
       if (data?.tripId) nav(`/trip/${data.tripId}`);
     } catch (e) {
       toast({ description: e?.message || t('trip.copy_error'), variant: 'destructive' });
@@ -1044,7 +1044,7 @@ export default function TripView() {
   const frozen = !!trip?.editing_by;
   // While the trip is being edited in the Structure editor, freeze ALL event
   // mutations on the timeline (add/edit/delete) - viewing stays allowed (TZ §3a).
-  const frozenNote = () => toast({ description: t('trip.frozen_note') });
+  const frozenNote = () => toast({ description: t('trip.frozen_note'), variant: 'info' });
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
   // Global trip-header state: mobile sidebar, and the right-hand actions the
