@@ -22,7 +22,7 @@ import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { telegram as tgBrand } from '@/lib/externalBrands';
-import CurrencySelect from '@/components/budget/CurrencySelect';
+import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
@@ -625,7 +625,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
               <input className="input" value={description} onChange={e => setDescription(e.target.value)} placeholder={t('trip.form_description_placeholder')} />
             </Field>
             <Field label={t('settings.main_currency_label')} sub={t('settings.main_currency_hint')}>
-              <CurrencySelect value={currency} onChange={setCurrency} width={220} />
+              <CurrencyCombobox value={currency} onChange={setCurrency} />
             </Field>
             <Field label={t('trip.form_notes')}>
               <textarea className="textarea" rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('trip.form_notes_placeholder')} />

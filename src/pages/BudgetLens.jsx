@@ -32,7 +32,7 @@ import { getActiveLocale } from '@/lib/i18n/format';
 import { countTripMembers } from '@/lib/members';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, fmtDate } from '../design/index';
-import CurrencySelect from '@/components/budget/CurrencySelect';
+import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import SourceViewLoader from '@/components/budget/SourceViewLoader';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
@@ -201,8 +201,8 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
       <div className="field-row cols-2" style={{ marginTop: 14 }}>
         <Field label={t('budget.field_amount')}>
           <div className="bgt-amtgrp" data-vfield="amount" >
-            <input className={`input num ${inv('amount')}`} type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
-            <CurrencySelect value={currency} onChange={setCurrency} width={96} />
+            <input className={`input num bgt-amtgrp__amt ${inv('amount')}`} type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
+            <CurrencyCombobox value={currency} onChange={setCurrency} className="bgt-amtgrp__cur num" />
           </div>
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>

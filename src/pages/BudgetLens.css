@@ -119,10 +119,10 @@
 }
 
 /* ════════ MODAL INTERNALS ════════ */
-/* amount + currency joined group (input + CurrencySelect trigger) */
+/* amount + currency joined group (amount input + CurrencyCombobox trigger) */
 .bgt-amtgrp { display: flex; align-items: stretch; }
-.bgt-amtgrp .input { border-top-right-radius: 0; border-bottom-right-radius: 0; flex: 1; min-width: 0; }
-.bgt-amtgrp .select { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 0; }
+.bgt-amtgrp__amt { border-top-right-radius: 0; border-bottom-right-radius: 0; flex: 1; min-width: 0; }
+.bgt-amtgrp__cur { width: 122px; flex: none; border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 0; }
 
 /* colour swatches */
 .bgt-swatches { display: flex; flex-wrap: wrap; gap: 9px; }
