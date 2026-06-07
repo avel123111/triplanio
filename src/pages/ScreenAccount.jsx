@@ -557,8 +557,8 @@ export default function ScreenAccount() {
   const isDark = theme === 'dark';
 
   const planBadge =
-    planState === 'with-sub' ? <Badge variant="warm" icon="pro">{t('account.badge_pro_sub')}</Badge>
-    : planState === 'annual' ? <Badge variant="warm" icon="pro">{t('account.badge_pro_yearly')}</Badge>
+    planState === 'with-sub' ? <Badge variant="pro" icon="pro">{t('account.badge_pro_sub')}</Badge>
+    : planState === 'annual' ? <Badge variant="pro" icon="pro">{t('account.badge_pro_yearly')}</Badge>
     : planState === 'cancelled' ? <Badge variant="quiet" icon="warning">{t('account.badge_pro_cancelled')}</Badge>
     : null;
 

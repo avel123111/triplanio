@@ -642,7 +642,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
-.badge--warm { background: var(--warm-tint); color: var(--warm); }
+/* Pro badge — gold gradient (Lumo). Single source: recolour via --pro* tokens. */
+.badge--pro { background: var(--pro-gradient); color: var(--pro-fg); box-shadow: 0 4px 12px -4px var(--pro); }
 .badge--success { background: var(--success-soft); color: var(--success); }
 .badge--danger { background: var(--danger-soft); color: var(--danger); }
 .badge--warning { background: var(--warning-soft); color: var(--warning-ink); }

@@ -75,7 +75,7 @@ function FeatureCard({ feat, on, onChange, hasPro }) {
         {feat.locked
           ? <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
           : proLocked
-            ? <Badge variant="warm" icon="pro">Pro</Badge>
+            ? <Badge variant="pro" icon="pro">Pro</Badge>
             : <Toggle on={on} onChange={onChange} />}
       </div>
       <div className="addon-card__title">

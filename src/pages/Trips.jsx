@@ -75,7 +75,9 @@ const CollectionTripCover = ({ trip }) => {
       )}
       <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 6 }}>
         {trip.pro && (
-          <div style={{ background: 'rgba(255,255,255,.92)', color: 'var(--warm)', fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.05em', padding: '3px 8px', borderRadius: 999 }}>Pro</div>
+          <div style={{ background: 'var(--pro-gradient)', color: 'var(--pro-fg)', fontSize: 'var(--fs-micro)', fontWeight: 800, letterSpacing: '.04em', padding: '3px 9px', borderRadius: 999, boxShadow: '0 4px 12px -4px var(--pro)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="pro" size={11} /> Pro
+          </div>
         )}
         {trip.role !== 'owner' && (
           <div style={{ background: 'rgba(15,23,42,.6)', color: 'white', fontSize: 'var(--fs-micro)', fontWeight: 600, padding: '3px 8px', borderRadius: 999, backdropFilter: 'blur(8px)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -139,7 +141,7 @@ const TripRow = ({ trip, onClick }) => {
       {trip.role === 'admin'  && <Badge>{t('trips.role_admin')}</Badge>}
       {trip.role === 'viewer' && <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>}
     </div>
-    <div>{trip.pro && <Badge variant="warm">Pro</Badge>}</div>
+    <div>{trip.pro && <Badge variant="pro" icon="pro">Pro</Badge>}</div>
     <Icon name="chev" size={14} style={{ color: 'var(--muted-2)' }} />
   </button>
   );
@@ -206,7 +208,7 @@ function CollectionEmpty({ onManual, onAi }) {
           <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 14 }}>
             <Icon name="sparkles" size={19} />
           </div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }} className="ai-text">{t('trips.start_with_ai')} <Badge variant="warm" style={{ marginLeft: 4 }}>Pro</Badge></div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }} className="ai-text">{t('trips.start_with_ai')} <Badge variant="pro" icon="pro" style={{ marginLeft: 4 }}>Pro</Badge></div>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.ai_desc_full')}</div>
         </button>
       </div>
