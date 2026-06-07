@@ -25,7 +25,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
 import { useTripScreenActions } from '@/components/trips/TripScreenBar';
-import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
+import { toMain as toMainCur } from '@/lib/budget/money';
+import { currencySymbol } from '@/lib/budget/currencies';
 import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colors';
 import { getActiveLocale } from '@/lib/i18n/format';
 import { countTripMembers } from '@/lib/members';
@@ -58,12 +59,27 @@ const SOURCE_ICON = {
   manual:   'edit',
 };
 
+// System categories carry a stable key; their display name is localized
+// (the stored `name` is an English seed). Custom categories use their name.
+const SYS_NAME_KEY = {
+  accommodation: 'budget.cat_accommodation',
+  transport:     'budget.cat_transport',
+  activities:    'budget.cat_activities',
+  services:      'budget.cat_services',
+};
+
 function catIcon(cat) {
   return SYS_ICON[cat.system_key] || SYS_ICON[cat.icon] || cat.icon || 'wallet';
 }
 
-// money formatting helper (2 decimals, active locale)
-const money = (value, cur) => fmtMoney(value, cur, getActiveLocale());
+// Budget amounts follow the Lumo design: rounded to whole units with the
+// currency symbol as a prefix (e.g. €1 487). Grouping uses the active locale.
+const money = (value, cur) => {
+  const sym = currencySymbol(cur);
+  const n = Math.round(Number(value) || 0);
+  const grouped = new Intl.NumberFormat(getActiveLocale() || undefined, { maximumFractionDigits: 0 }).format(n);
+  return sym ? `${sym}${grouped}` : `${grouped}${cur ? ' ' + cur : ''}`;
+};
 
 // ─── DonutChart ─────────────────────────────────────────────────────────────
 // Pure-SVG ring driven by real category spend. `segments` = [{id,color,value}].
@@ -186,7 +202,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
         <Field label={t('budget.field_amount')}>
           <div className="bgt-amtgrp" data-vfield="amount" >
             <input className={`input num ${inv('amount')}`} type="number" placeholder="0" value={amount} onChange={e => { setAmount(e.target.value); v.markTouched('amount'); }} />
-            <CurrencySelect value={currency} onChange={setCurrency} width={92} />
+            <CurrencySelect value={currency} onChange={setCurrency} width={96} />
           </div>
           <FieldError issues={v.displayIssues} field="amount" />
         </Field>
@@ -198,7 +214,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
         <Field label={t('budget.field_category')}>
           <div data-vfield="categoryId" className={inv('categoryId')}>
             <select className="select" value={categoryId} onChange={e => { setCategoryId(e.target.value); v.markTouched('categoryId'); }}>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.map(c => <option key={c.id} value={c.id}>{c.displayName || c.name}</option>)}
             </select>
           </div>
           <FieldError issues={v.displayIssues} field="categoryId" />
@@ -322,7 +338,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
                 : t('budget.fx_not_found', { cur: mainCurrency });
             return (
               <div key={code} className="bgt-fxrow" data-vfield={`rate.${code}`}>
-                <div className={`bgt-fxrow__cur ${known ? '' : 'miss'}`}>{code}</div>
+                <div className={`bgt-fxrow__cur ${known ? '' : 'miss'}`}>{currencySymbol(code) || code}</div>
                 <div className="bgt-fxrow__m">
                   <div className="bgt-fxrow__eq">1 {code} = <b>{known ? Number(shown.toFixed(4)) : '?'}</b> {mainCurrency}</div>
                   <div className={`bgt-fxrow__hint ${hintCls}`}>{hint}</div>
@@ -534,9 +550,10 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       const items = budgetExpenses.filter(e => e.category_id === cat.id);
       let spent = 0, missingCount = 0;
       for (const e of items) { const r = conv(e); if (r.ok) spent += r.value; else missingCount += 1; }
-      return { ...cat, items, spent, itemCount: items.length, missingCount };
+      const displayName = SYS_NAME_KEY[cat.system_key] ? t(SYS_NAME_KEY[cat.system_key]) : cat.name;
+      return { ...cat, displayName, items, spent, itemCount: items.length, missingCount };
     });
-  }, [budgetCategories, budgetExpenses, mainCurrency, fx, overrides]);
+  }, [budgetCategories, budgetExpenses, mainCurrency, fx, overrides, t]);
 
   const activeCat = cats.find(c => c.id === (activeCatId || cats[0]?.id)) || cats[0];
 
@@ -546,7 +563,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
   // Donut segments — categories with spend, in category order.
   const donutSegments = useMemo(
-    () => cats.filter(c => c.spent > 0).map(c => ({ id: c.id, color: c.color, value: c.spent, name: c.name })),
+    () => cats.filter(c => c.spent > 0).map(c => ({ id: c.id, color: c.color, value: c.spent, name: c.displayName })),
     [cats]
   );
 
@@ -576,7 +593,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       for (const exp of cat.items) {
         const city = exp.city_name || '-';
         if (!cityMap[city]) cityMap[city] = [];
-        cityMap[city].push({ ...exp, catColor: cat.color, catIcon: catIcon(cat), catName: cat.name });
+        cityMap[city].push({ ...exp, catColor: cat.color, catIcon: catIcon(cat), catName: cat.displayName });
       }
     }
     return Object.entries(cityMap).map(([city, items]) => ({
@@ -717,9 +734,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
       {/* ░ CONTROLS ░ */}
       <div className="bgt-ctl">
-        <div className="tweaks__seg">
-          <button className={grouping === 'category' ? 'active' : ''} onClick={() => setGrouping('category')}>{t('budget.group_by_category')}</button>
-          <button className={grouping === 'city' ? 'active' : ''} onClick={() => setGrouping('city')}>{t('budget.group_by_city')}</button>
+        <div className="bgt-seg" role="group" aria-label={t('budget.group_by_category')}>
+          <button type="button" className={grouping === 'category' ? 'on' : ''} aria-pressed={grouping === 'category'} onClick={() => setGrouping('category')}><Icon name="grid" size={14} />{t('budget.group_by_category')}</button>
+          <button type="button" className={grouping === 'city' ? 'on' : ''} aria-pressed={grouping === 'city'} onClick={() => setGrouping('city')}><Icon name="pin" size={14} />{t('budget.group_by_city')}</button>
         </div>
         <div className="bgt-ctl__spacer" />
         {grouping === 'category' && (
@@ -743,7 +760,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                   </span>
                   <span className="bgt-glist__m">
                     <span className="bgt-glist__n">
-                      <span className="t">{c.name}</span>
+                      <span className="t">{c.displayName}</span>
                       {c.kind === 'custom' && <Badge variant="quiet">{t('budget.custom_short')}</Badge>}
                     </span>
                     <span className="bgt-glist__c">
@@ -771,7 +788,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                 </div>
                 <div className="bgt-detail__ti">
                   <div className="bgt-detail__n">
-                    {activeCat.name}
+                    {activeCat.displayName}
                     {activeCat.kind === 'custom' && <Badge variant="quiet">{t('budget.custom_short')}</Badge>}
                   </div>
                   <div className="bgt-detail__s">{activeCat.itemCount} {expensesPlural(activeCat.itemCount)}</div>
@@ -787,7 +804,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                 </div>
               )}
               {activeCat.items.length === 0 ? (
-                <EmptyState icon={catIcon(activeCat)} title={t('budget.cat_empty', { name: activeCat.name })}
+                <EmptyState icon={catIcon(activeCat)} title={t('budget.cat_empty', { name: activeCat.displayName })}
                   action={<Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>} />
               ) : (
                 <div className="bgt-exlist">
