@@ -818,7 +818,7 @@ function CityRail({ visits = [], scrollRef }) {
   };
 
   return (
-    <div className="cityrail" style={{ position: 'sticky', top: 80 }}>
+    <div className="cityrail" style={{ position: 'sticky', top: 8 }}>
       <div className="cr-h">{t('overview.stat_cities')}</div>
       {cities.map((c) => {
         const n = nights(c);

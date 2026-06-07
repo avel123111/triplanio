@@ -23,11 +23,13 @@ import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/c
 // Real roles are owner / admin / viewer. owner is assigned only at creation and
 // is never selectable here. There is no "editor" role on the backend.
 
+// Role badge colours unified with the Overview "who's going" card
+// (MembersSummaryCard): owner=warning, admin=brand, viewer=outline.
 function RoleBadge({ role }) {
   const { t } = useI18n();
-  if (role === 'owner') return <Badge variant="warm">{t('members.role_owner')}</Badge>;
-  if (role === 'admin') return <Badge>{t('trips.role_admin')}</Badge>;
-  return <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>;
+  if (role === 'owner') return <Badge variant="warning">{t('members.role_owner')}</Badge>;
+  if (role === 'admin') return <Badge variant="brand">{t('trips.role_admin')}</Badge>;
+  return <Badge variant="outline" icon="eye">{t('trips.role_viewer')}</Badge>;
 }
 
 // Status column. Active members show no status text (the role badge already
