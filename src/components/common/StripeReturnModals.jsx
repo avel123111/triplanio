@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import PaymentSuccessDialog from '@/components/common/PaymentSuccessDialog';
-import PaymentFailDialog from '@/components/common/PaymentFailDialog';
+import PaymentResultDialog from '@/components/common/PaymentResultDialog';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
@@ -61,18 +60,13 @@ export default function StripeReturnModals() {
   }, [searchParams, setSearchParams, qc]);
 
   return (
-    <>
-      <PaymentSuccessDialog
-        open={payModal === 'success'}
-        onOpenChange={(o) => { if (!o) setPayModal(null); }}
-        planLabel={planLabel}
-        priceLabel={priceLabel}
-      />
-      <PaymentFailDialog
-        open={payModal === 'fail'}
-        onOpenChange={(o) => { if (!o) setPayModal(null); }}
-        onRetry={() => { setPayModal(null); nav('/pro'); }}
-      />
-    </>
+    <PaymentResultDialog
+      open={!!payModal}
+      status={payModal}
+      onOpenChange={(o) => { if (!o) setPayModal(null); }}
+      planLabel={planLabel}
+      priceLabel={priceLabel}
+      onRetry={() => { setPayModal(null); nav('/pro'); }}
+    />
   );
 }
