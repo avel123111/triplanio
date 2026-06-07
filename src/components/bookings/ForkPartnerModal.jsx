@@ -1,13 +1,7 @@
 import React, { useMemo } from 'react';
 import { ExternalLink, Bed, Plane, Car, Wifi, ShieldCheck, Info, ArrowLeft } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Btn } from '@/design/index';
 import {
   hotelPlatforms,
   transferPlatforms,
@@ -313,7 +307,7 @@ export default function ForkPartnerModal({
           <div style={{ flex: 1, minWidth: 0 }}><div className="te-panel__title">{t(meta.titleKey)}</div></div>
         </div>
         <div className="te-panel__body scrollbar-thin">{body}</div>
-        <div className="te-panel__foot"><Button variant="outline" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Button></div>
+        <div className="te-panel__foot"><Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn></div>
         {styleTag}
       </div>
     );
@@ -322,18 +316,16 @@ export default function ForkPartnerModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-md grid place-items-center shrink-0 text-white" style={{ background: meta.color }}>
-              <ManualIcon className="w-4 h-4" />
-            </span>
-            <span>{t(meta.titleKey)}</span>
-          </DialogTitle>
-        </DialogHeader>
+        <div className="dlg__head">
+          <span style={{ width: 36, height: 36, borderRadius: 9, background: meta.colorSoft, color: meta.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <ManualIcon style={{ width: 17, height: 17 }} />
+          </span>
+          <h2>{t(meta.titleKey)}</h2>
+        </div>
         <div className="dlg__body">{body}</div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Button>
-        </DialogFooter>
+        <div className="dlg__foot">
+          <Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn>
+        </div>
         {styleTag}
       </DialogContent>
     </Dialog>

@@ -13,7 +13,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Skeleton } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { edgeErrorMessage } from '@/lib/edgeError';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -55,7 +55,6 @@ const ROLES = [
 
 function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
   const { t } = useI18n();
-  const { toast } = useToast();
   const close = () => onOpenChange?.(false);
   const [tab, setTab] = useState('email');
   const [role, setRole] = useState('viewer');
@@ -64,17 +63,19 @@ function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
   const [offlineName, setOfflineName] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
   const v = useHybridValidation('invite', tab === 'offline' ? { mode: 'offline', name: offlineName } : tab === 'email' ? { mode: 'email', email } : { mode: 'link' });
   const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
 
   async function inviteByEmail() {
     const trimmed = email.trim().toLowerCase();
     setSaving(true);
+    setErr('');
     const { data, error } = await supabase.functions.invoke('inviteTripMember', {
       body: { trip_id: tripId, email: trimmed, role },
     });
     setSaving(false);
-    if (error || data?.error) { toast({ description: await edgeErrorMessage(error, data, t('members.error_generic')), variant: 'destructive' }); return; }
+    if (error || data?.error) { setErr(await edgeErrorMessage(error, data, t('members.error_generic'))); return; }
     // Promoting an offline placeholder → remove it now that a real invite exists.
     if (promoteMember?.id) {
       await supabase.functions.invoke('removeTripMember', { body: { member_id: promoteMember.id } });
@@ -86,11 +87,12 @@ function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
   async function addOffline() {
     const name = offlineName.trim();
     setSaving(true);
+    setErr('');
     const { data, error } = await supabase.functions.invoke('addOfflineTripMember', {
       body: { tripId, name },
     });
     setSaving(false);
-    if (error || data?.error) { toast({ description: (data?.error || error?.message) || t('members.error_generic'), variant: 'destructive' }); return; }
+    if (error || data?.error) { setErr((data?.error || error?.message) || t('members.error_generic')); return; }
     onSaved?.();
     close();
   }
@@ -174,6 +176,7 @@ function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
       </>}
 
       <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
+      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
     </Dialog>
   );
 }
@@ -182,18 +185,19 @@ function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
 
 function ChangeRoleDialog({ member, tripId, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
-  const { toast } = useToast();
   const close = () => onOpenChange?.(false);
   const [role, setRole] = useState(member.role || 'viewer');
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
 
   async function save() {
     setSaving(true);
+    setErr('');
     const { data, error } = await supabase.functions.invoke('updateTripMemberRole', {
       body: { member_id: member.id, role },
     });
     setSaving(false);
-    if (error || data?.error) { toast({ description: (data?.error || error?.message) || t('members.error_generic'), variant: 'destructive' }); return; }
+    if (error || data?.error) { setErr((data?.error || error?.message) || t('members.error_generic')); return; }
     onSaved?.();
     close();
   }
@@ -212,6 +216,7 @@ function ChangeRoleDialog({ member, tripId, onSaved, open, onOpenChange }) {
           {ROLES.map(r => <option key={r.value} value={r.value}>{t(r.labelKey)}</option>)}
         </select>
       </Field>
+      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
     </Dialog>
   );
 }
