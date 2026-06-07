@@ -1899,24 +1899,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .acct-sw-card .pv { height: 30px; border-radius: 7px; margin-bottom: 7px; border: 1px solid var(--line-2); }
 .acct-sw-card .lb { font-size: var(--fs-micro); font-weight: 800; color: var(--ink-2); text-align: center; }
 
-/* language picker (searchable popover) */
-.acct-lang { position: relative; }
-.acct-lang__trigger { width: 100%; display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--surface-3); border: 1.5px solid var(--line-strong); border-radius: var(--r-sm); cursor: pointer; font: inherit; font-size: var(--fs-base); font-weight: 600; color: var(--ink); transition: border-color .2s, background .2s; }
-.acct-lang__trigger:hover { border-color: var(--line-hover); }
+/* language flag chip (reused by the language SearchSelect trigger + options) */
 .acct-lang__flag { width: 24px; height: 24px; border-radius: 7px; background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; font-size: var(--fs-micro); font-weight: 800; flex: none; }
-.acct-lang { z-index: 5; }
-.acct-lang.is-open { z-index: 40; }
-.acct-lang__pop { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-2); padding: 8px; z-index: 40; }
-.acct-lang__search { position: relative; margin-bottom: 6px; }
-.acct-lang__search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--muted-2); }
-.acct-lang__search input { width: 100%; padding: 8px 12px 8px 32px; font: inherit; font-size: var(--fs-meta); border-radius: var(--r-sm); border: 1.5px solid var(--line); background: var(--surface-3); color: var(--ink); }
-.acct-lang__search input:focus { outline: none; border-color: var(--brand); }
-.acct-lang__list { max-height: 206px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
-.acct-lang__opt { display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 10px; border: none; background: transparent; border-radius: var(--r-sm); cursor: pointer; font: inherit; font-size: var(--fs-base); font-weight: 600; color: var(--ink); text-align: left; transition: background .14s; }
-.acct-lang__opt:hover { background: var(--surface-2); }
-.acct-lang__opt[aria-selected="true"] { background: var(--primary-soft); color: var(--brand); }
-.acct-lang__opt .sub { color: var(--muted); font-weight: 600; font-size: var(--fs-micro); margin-left: auto; }
-.acct-lang__opt .chk { width: 15px; height: 15px; color: var(--brand); opacity: 0; } .acct-lang__opt[aria-selected="true"] .chk { opacity: 1; }
 
 /* reminder channels */
 .acct-chanlist { display: flex; flex-direction: column; gap: 10px; }
@@ -2032,4 +2016,20 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .sheet-sep { height: 1px; background: var(--line); margin: 6px 14px; }
 @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes sheetFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ============================================================
+   C4 · SearchSelect — searchable picker (currency, language, …).
+   Desktop: anchored Radix popover. Mobile: bottom-sheet (.sheet).
+   ============================================================ */
+.ss-search { position: relative; padding: 6px 6px 8px; }
+.ss-search > svg { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--muted-2); pointer-events: none; }
+.ss-search input { padding-left: 32px; }
+.ss-list { max-height: 264px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 6px 6px; display: flex; flex-direction: column; gap: 1px; }
+.ss-opt { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: 0; background: transparent; border-radius: 10px; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink-2); cursor: pointer; text-align: left; }
+.ss-opt:hover, .ss-opt[data-active] { background: var(--accent); color: var(--accent-ink); }
+.ss-opt .chk { margin-left: auto; flex: none; width: 15px; height: 15px; color: var(--primary); }
+.ss-empty { padding: 16px; text-align: center; font-size: var(--fs-meta); color: var(--muted); }
+/* bigger touch rows when the picker is shown inside a bottom-sheet */
+.sheet .ss-list { max-height: 56vh; }
+.sheet .ss-opt { padding: 13px 12px; font-size: 15px; }
 

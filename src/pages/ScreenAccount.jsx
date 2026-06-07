@@ -10,6 +10,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 import { supabase } from '@/api/supabaseClient';
 import HeaderActions from '@/components/HeaderActions';
+import SearchSelect from '@/components/ui/SearchSelect';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
 import '../design/app.css';
@@ -325,8 +326,6 @@ export default function ScreenAccount() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
-  const [langOpen, setLangOpen] = useState(false);
-  const [langQuery, setLangQuery] = useState('');
   const [activeSec, setActiveSec] = useState('profile');
   const openUpgrade = () => nav('/pro?hidePerTrip=1');
   const [errorMsg, setErrorMsg] = useState(null);
@@ -390,14 +389,6 @@ export default function ScreenAccount() {
     els.forEach(el => obs.observe(el));
     return () => obs.disconnect();
   }, [user, planLoading]);
-
-  // ── Close language popover on outside click ────────────────────────────────
-  useEffect(() => {
-    if (!langOpen) return;
-    const fn = e => { if (!e.target.closest?.('[data-lang]')) setLangOpen(false); };
-    setTimeout(() => document.addEventListener('click', fn), 0);
-    return () => document.removeEventListener('click', fn);
-  }, [langOpen]);
 
   // ── API ────────────────────────────────────────────────────────────────────
   const loadPlan = async () => {
@@ -561,13 +552,6 @@ export default function ScreenAccount() {
       </div>
     );
   }
-
-  const currentLang = LANGS.find(l => l.code === lang) || LANGS[0];
-  const filteredLangs = LANGS.filter(l => {
-    const q = langQuery.trim().toLowerCase();
-    if (!q) return true;
-    return l.native.toLowerCase().includes(q) || l.sub.toLowerCase().includes(q) || l.code.includes(q);
-  });
 
   const isPro = isProActive(user);
   const isDark = theme === 'dark';
@@ -734,34 +718,30 @@ export default function ScreenAccount() {
                   <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="globe" size={16} /></span>
                   <b>{t('settings.language')}</b>
                 </div>
-                <div className={`acct-lang${langOpen ? ' is-open' : ''}`} data-lang>
-                  <button className="acct-lang__trigger" aria-haspopup="listbox" aria-expanded={langOpen}
-                    onClick={() => { setLangQuery(''); setLangOpen(v => !v); }}>
-                    <span className="acct-lang__flag">{currentLang.flag}</span>
-                    <span>{currentLang.native}</span>
-                    <span style={{ flex: 1 }} />
-                    <Icon name={langOpen ? 'chevD' : 'chev'} size={14} style={{ color: 'var(--muted)' }} />
-                  </button>
-                  {langOpen && (
-                    <div className="acct-lang__pop" role="listbox">
-                      <div className="acct-lang__search">
-                        <Icon name="search" size={14} />
-                        <input value={langQuery} onChange={e => setLangQuery(e.target.value)} placeholder={t('common.search')} autoFocus aria-label={t('common.search')} />
-                      </div>
-                      <div className="acct-lang__list">
-                        {filteredLangs.map(l => (
-                          <button key={l.code} className="acct-lang__opt" role="option" aria-selected={l.code === lang}
-                            onClick={() => { setLang(l.code); setLangOpen(false); }}>
-                            <span className="acct-lang__flag">{l.flag}</span>
-                            {l.native}
-                            <span className="sub">{l.sub}</span>
-                            <Icon name="check" size={15} className="chk" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                <SearchSelect
+                  value={lang}
+                  onChange={setLang}
+                  options={LANGS}
+                  getKey={(l) => l.code}
+                  matches={(l, q) => l.native.toLowerCase().includes(q) || l.sub.toLowerCase().includes(q) || l.code.includes(q)}
+                  renderValue={(l) => (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span className="acct-lang__flag">{l.flag}</span>{l.native}
+                    </span>
                   )}
-                </div>
+                  renderOption={(l) => (
+                    <>
+                      <span className="acct-lang__flag">{l.flag}</span>
+                      <span>{l.native}</span>
+                      <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{l.sub}</span>
+                    </>
+                  )}
+                  searchPlaceholder={t('common.search')}
+                  emptyText={t('common.not_found')}
+                  title={t('settings.language')}
+                  triggerClassName="input"
+                  width={264}
+                />
               </div>
 
               {/* Theme */}
