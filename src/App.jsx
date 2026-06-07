@@ -20,6 +20,7 @@ import Inbox from '@/pages/Inbox';
 import Pro from '@/pages/Pro';
 import StripeReturnModals from '@/components/common/StripeReturnModals';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
+import { MapProvider } from '@/lib/map/MapProvider';
 import { ModalHost } from '@/design/index';
 
 const AuthenticatedApp = () => {
@@ -115,10 +116,15 @@ function App() {
           <I18nProvider>
             <QueryClientProvider client={queryClientInstance}>
               <ConfirmProvider>
-                <Router>
-                  <AuthenticatedApp />
-                </Router>
-                <Toaster />
+                {/* One Mapbox instance for the whole app, above the router so it
+                    survives route changes (overview ↔ map ↔ editor ↔ planner ↔
+                    create ↔ different trip). Lazy: non-map routes pay nothing. */}
+                <MapProvider>
+                  <Router>
+                    <AuthenticatedApp />
+                  </Router>
+                  <Toaster />
+                </MapProvider>
               </ConfirmProvider>
             </QueryClientProvider>
           </I18nProvider>

@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '@/design/icons';
 import { useT } from '@/lib/i18n/I18nContext';
-import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints, lineFeature, setLineLayer } from '@/lib/mapbox';
+import { mapboxgl, MAPBOX_TOKEN, applyBasemapConfig, fitToPoints } from '@/lib/mapbox';
+import { useSharedMap } from '@/lib/map/MapProvider';
+import { drawRouteLines } from '@/lib/map/routeLines';
 import { countryFlag } from '@/lib/geo';
-import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import { sortVisits } from '@/lib/validation';
 
 const MARKER_COLOR = 'hsl(243 75% 59%)';
@@ -50,11 +51,17 @@ export default function MapView({
   children,
 }) {
   const t = useT();
+  const sharedMap = useSharedMap();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const fittedSigRef = useRef('');
-  const [ready, setReady] = useState(false);
+  // Seed `ready` from the shared map's current state so revisiting a map screen
+  // doesn't flash the spinner/fade-in (the instance is already loaded).
+  const [ready, setReady] = useState(() => {
+    const m = sharedMap?.getMap?.();
+    return !!(m && m.isStyleLoaded && m.isStyleLoaded());
+  });
   const [projection, setProjection] = useState('mercator');
   // Internal toggles (driven by the on-map control buttons). Seeded from props and
   // re-synced if the prop changes (e.g. the app theme), but the buttons can override.
@@ -82,34 +89,38 @@ export default function MapView({
     [ordered],
   );
 
-  // --- Init map once. Day/night is applied via config (below), not by
-  // re-creating the map - so markers/routes persist across theme toggles. ---
+  // --- Claim the app-wide singleton map into this screen's slot. The map is
+  // NOT created or destroyed here: it's acquired (its element moved into our
+  // container) on mount and parked back on unmount, so the instance, camera,
+  // tiles and sources persist across screens/trips. Day/night and projection
+  // are applied via config below, not by re-creating the map. ---
   useEffect(() => {
-    if (!containerRef.current || !MAPBOX_TOKEN) return undefined;
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: MAP_STYLE,
-      config: baseConfig(schemeRef.current),
-      center: [0, 20],
-      zoom: 2,
-      projection: 'mercator',
-      cooperativeGestures: true,
-      // Default attribution sits bottom-RIGHT, where the editor's warnings widget
-      // lives — its control would swallow those clicks. Move it bottom-LEFT.
-      attributionControl: false,
-    });
-    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
+    const slot = containerRef.current;
+    if (!slot) return undefined;
+    if (!sharedMap || !sharedMap.hasToken) { setError('No Mapbox token'); return undefined; }
+    const map = sharedMap.acquire(slot, schemeRef.current);
+    if (!map) { setError('No map'); return undefined; }
     mapRef.current = map;
-    setReady(false);
     fittedSigRef.current = '';
-    map.on('load', () => setReady(true));
-    map.on('error', (e) => { if (e?.error?.message) setError(e.error.message); });
+    // 'load'/'style.load' only fire on the instance's first life; on reuse the
+    // style is already loaded, so check synchronously and fall back to the event.
+    const markReady = () => setReady(true);
+    if (map.isStyleLoaded()) markReady(); else map.once('style.load', markReady);
+    const onErr = (e) => { if (e?.error?.message) setError(e.error.message); };
+    map.on('error', onErr);
     return () => {
+      map.off('error', onErr);
+      // Drop only THIS screen's overlays; the instance lives on for the next slot.
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
-      map.remove();
+      ['mv-dashed', 'mv-solid'].forEach((id) => {
+        try { if (map.getLayer(id)) map.removeLayer(id); } catch { /* ignore */ }
+        try { if (map.getSource(id)) map.removeSource(id); } catch { /* ignore */ }
+      });
+      sharedMap.release(slot);
       mapRef.current = null;
       setReady(false);
+      fittedSigRef.current = '';
     };
   }, []);
 
@@ -161,7 +172,6 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    let cancelled = false;
 
     // Markers - clear previous, then group visits that share a location.
     markersRef.current.forEach((m) => m.remove());
@@ -184,50 +194,23 @@ export default function MapView({
       markersRef.current.push(marker);
     });
 
-    // Routes - dashed for "no transfer", solid for road/flight/other.
+    // Routes - dashed for "no transfer", solid for road/flight/other. Leg kind
+    // comes from the transfer between consecutive visits (none ⇒ dashed).
     const transferByPair = new globalThis.Map();
     transfers.forEach((t) => {
       const k = `${t.from_city_visit_id}__${t.to_city_visit_id}`;
       if (!transferByPair.has(k)) transferByPair.set(k, t);
     });
-
-    const dashedFeatures = [];
-    const solidFeatures = []; // indexed; road legs upgraded in place after OSRM
-    const roadTasks = [];
-
+    const legs = [];
     for (let i = 0; i < ordered.length - 1; i++) {
       const from = ordered[i];
       const to = ordered[i + 1];
-      if (!from.latitude || !to.latitude) continue;
-      const straight = [[from.longitude, from.latitude], [to.longitude, to.latitude]];
-      const t = transferByPair.get(`${from.id}__${to.id}`);
-      if (!t) { dashedFeatures.push(lineFeature(straight)); continue; }
-      if (isFlightTransport(t.transport_type)) {
-        const arc = geodesicLine(from.latitude, from.longitude, to.latitude, to.longitude).map(([la, lo]) => [lo, la]);
-        solidFeatures.push(lineFeature(arc));
-      } else if (isRoadTransport(t.transport_type)) {
-        const idx = solidFeatures.length;
-        solidFeatures.push(lineFeature(straight)); // straight now, upgrade to road geometry async
-        roadTasks.push({ idx, from, to, t });
-      } else {
-        solidFeatures.push(lineFeature(straight));
-      }
+      legs.push({ from, to, kind: transferByPair.get(`${from.id}__${to.id}`)?.transport_type });
     }
-
-    setLineLayer(map, 'mv-dashed', dashedFeatures, { color: ROUTE_COLOR, width: 2, dashed: true, opacity: 0.4 });
-    setLineLayer(map, 'mv-solid', solidFeatures, { color: ROUTE_COLOR, width: 3.5 });
-
-    (async () => {
-      for (const task of roadTasks) {
-        const route = await fetchOsrmRoute(task.from.latitude, task.from.longitude, task.to.latitude, task.to.longitude, task.t.transport_type);
-        if (cancelled || !mapRef.current) return;
-        const coords = route && route.length > 1 ? route.map(([la, lo]) => [lo, la]) : null;
-        if (coords) {
-          solidFeatures[task.idx] = lineFeature(coords);
-          setLineLayer(map, 'mv-solid', solidFeatures, { color: ROUTE_COLOR, width: 3.5 });
-        }
-      }
-    })();
+    const cancelLines = drawRouteLines(map, legs, {
+      dashedId: 'mv-dashed', solidId: 'mv-solid',
+      dashedColor: ROUTE_COLOR, solidColor: ROUTE_COLOR, dashedOpacity: 0.4,
+    });
 
     // Fit once per distinct set of visits - animate the camera so the map
     // glides out/in to the route as it changes (e.g. while editing structure).
@@ -239,7 +222,7 @@ export default function MapView({
       fittedSigRef.current = visitsSignature;
     }
 
-    return () => { cancelled = true; };
+    return () => { cancelLines(); };
   }, [ready, ordered, transfers, visitsSignature]);
 
   return (

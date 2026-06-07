@@ -1058,10 +1058,6 @@ export default function TripView() {
   let shownLens = isLensVisible(trip, lens) ? lens : 'overview';
   if (myRole === 'viewer' && VIEWER_BLOCKED_LENSES.has(shownLens)) shownLens = 'overview';
 
-  // Latch once the map lens has been opened so it stays mounted (hidden) on other
-  // tabs — see the map-lens render below for why.
-  const [mapEverShown, setMapEverShown] = useState(false);
-  useEffect(() => { if (shownLens === 'map') setMapEverShown(true); }, [shownLens]);
   // The screen body is a persistent scroll container (the shell doesn't scroll),
   // so reset it to the top whenever the active lens changes.
   const screenBodyRef = useRef(null);
@@ -1348,22 +1344,22 @@ export default function TripView() {
               ownerId={trip?.created_by}
             />
           )}
-          {/* Map lens: mount once first opened, then keep it alive but hidden on
-              other tabs so the Mapbox instance (and its loaded tiles/route) is
-              reused instead of re-initialised on every tab switch. */}
-          {mapEverShown && (
-            <div style={{ display: shownLens === 'map' ? 'block' : 'none', height: '100%' }}>
-              <ScreenMap
-                trip={trip}
-                visits={visits ?? []}
-                transfers={transfers ?? []}
-                hotels={hotels ?? []}
-                activities={activities ?? []}
-                canEdit={myRole === 'owner' || myRole === 'editor' || myRole === 'admin'}
-                active={shownLens === 'map'}
-                openEvent={(kind, id) => setEventView({ open: true, kind, id })}
-              />
-            </div>
+          {/* Map lens: rendered only while active. The Mapbox instance itself is
+              the app-wide singleton (see MapProvider) — it survives this mount/
+              unmount, so the map isn't re-initialised on tab switches. Only one
+              MapView may be mounted at a time, so this must be conditional (not
+              kept hidden) to avoid two surfaces fighting over the single map. */}
+          {shownLens === 'map' && (
+            <ScreenMap
+              trip={trip}
+              visits={visits ?? []}
+              transfers={transfers ?? []}
+              hotels={hotels ?? []}
+              activities={activities ?? []}
+              canEdit={myRole === 'owner' || myRole === 'editor' || myRole === 'admin'}
+              active
+              openEvent={(kind, id) => setEventView({ open: true, kind, id })}
+            />
           )}
             </main>
           </div>

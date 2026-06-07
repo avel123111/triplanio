@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { mapboxgl, MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints, htmlMarkerEl, lineFeature, setLineLayer } from '@/lib/mapbox';
+import { mapboxgl, applyBasemapConfig, fitToPoints, htmlMarkerEl } from '@/lib/mapbox';
+import { useSharedMap } from '@/lib/map/MapProvider';
+import { drawRouteLines } from '@/lib/map/routeLines';
 import { groupMarkers, markerSvg, MISSING_COLOR } from '@/lib/mapRoute';
-import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import { Icon } from '../../design/icons';
 import { useT } from '@/lib/i18n/I18nContext';
 
@@ -29,11 +30,16 @@ function buildLegs(home, cities, returnCity, finalPoint) {
 // =====================================================================
 export default function FlowMap({ home, cities = [], returnCity, transport = {}, finalPoint = false, accent = ROUTE_COLOR, badge }) {
   const t = useT();
+  const sharedMap = useSharedMap();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const readyRef = useRef(false);
-  const [ready, setReady] = useState(false);
+  // Seed from the shared map's state so revisiting doesn't flash the spinner.
+  const [ready, setReady] = useState(() => {
+    const m = sharedMap?.getMap?.();
+    return !!(m && m.isStyleLoaded && m.isStyleLoaded());
+  });
   // On-map controls (same set as MapView): projection / theme / start-finish.
   const [projection, setProjection] = useState('mercator');
   const [scheme, setScheme] = useState(() => (typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'));
@@ -58,23 +64,34 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
   const ptsKey = pts.map((p) => `${p.lat},${p.lng}`).join('|');
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
-  // Init map once.
+  // Claim the app-wide singleton map into this screen's slot (see MapProvider).
+  // The instance is NOT created/destroyed here — acquired on mount, parked on
+  // unmount — so the map survives create → trip and isn't re-initialised.
   useEffect(() => {
-    if (!containerRef.current || mapRef.current || !MAPBOX_TOKEN) return undefined;
-    const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: MAP_STYLE,
-      config: baseConfig(dark ? 'DARK' : 'LIGHT'),
-      center: positions[0] || [15, 50],
-      zoom: 4,
-      projection: 'mercator',
-      attributionControl: false,
-      cooperativeGestures: true,
-    });
+    const slot = containerRef.current;
+    if (!slot || !sharedMap || !sharedMap.hasToken) return undefined;
+    const map = sharedMap.acquire(slot, scheme);
+    if (!map) return undefined;
     mapRef.current = map;
-    map.on('load', () => { readyRef.current = true; setReady(true); });
-    return () => { map.remove(); mapRef.current = null; readyRef.current = false; };
+    const markReady = () => { readyRef.current = true; setReady(true); };
+    if (map.isStyleLoaded()) markReady(); else map.once('style.load', markReady);
+    // Re-assert this screen's view state on a reused instance (the projection/
+    // theme effects below only fire on later changes, not on a fresh mount).
+    try { map.setProjection(projection); } catch { /* ignore */ }
+    applyBasemapConfig(map, scheme);
+    return () => {
+      // Drop only THIS screen's overlays; the instance lives on for the next slot.
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      ['flow-dashed', 'flow-solid'].forEach((id) => {
+        try { if (map.getLayer(id)) map.removeLayer(id); } catch { /* ignore */ }
+        try { if (map.getSource(id)) map.removeSource(id); } catch { /* ignore */ }
+      });
+      sharedMap.release(slot);
+      mapRef.current = null;
+      readyRef.current = false;
+      setReady(false);
+    };
   }, []);
 
   // Numbered markers + fit.
@@ -95,43 +112,23 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
   }, [ptsKey]);
 
   // Route lines: dashed = no transport, solid = flight/road/other; road via OSRM.
+  // Same geometry rule as the trip MapView — shared in drawRouteLines (only the
+  // leg source, layer ids and colours differ here).
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return undefined;
-    let cancelled = false;
+    let cancelLines = () => {};
+    let disposed = false;
     const draw = () => {
-      const dashed = [];
-      const solid = [];
-      const roadTasks = [];
-      legs.forEach((leg) => {
-        if (!leg.from?.latitude || !leg.to?.latitude) return;
-        const straight = [[leg.from.longitude, leg.from.latitude], [leg.to.longitude, leg.to.latitude]];
-        const kind = transport[leg.id]?.kind;
-        if (!kind) { dashed.push(lineFeature(straight)); return; }
-        if (isFlightTransport(kind)) {
-          const arc = geodesicLine(leg.from.latitude, leg.from.longitude, leg.to.latitude, leg.to.longitude).map(([la, lo]) => [lo, la]);
-          solid.push(lineFeature(arc));
-        } else if (isRoadTransport(kind)) {
-          const idx = solid.length;
-          solid.push(lineFeature(straight));
-          roadTasks.push({ idx, leg, kind });
-        } else {
-          solid.push(lineFeature(straight));
-        }
+      if (disposed) return;
+      const drawLegs = legs.map((leg) => ({ from: leg.from, to: leg.to, kind: transport[leg.id]?.kind }));
+      cancelLines = drawRouteLines(map, drawLegs, {
+        dashedId: 'flow-dashed', solidId: 'flow-solid',
+        dashedColor: MISSING_COLOR, solidColor: accent, dashedOpacity: 0.5,
       });
-      setLineLayer(map, 'flow-dashed', dashed, { color: MISSING_COLOR, width: 2, dashed: true, opacity: 0.5 });
-      setLineLayer(map, 'flow-solid', solid, { color: accent, width: 3.5 });
-      (async () => {
-        for (const task of roadTasks) {
-          const route = await fetchOsrmRoute(task.leg.from.latitude, task.leg.from.longitude, task.leg.to.latitude, task.leg.to.longitude, task.kind);
-          if (cancelled || !mapRef.current) return;
-          const coords = route && route.length > 1 ? route.map(([la, lo]) => [lo, la]) : null;
-          if (coords) { solid[task.idx] = lineFeature(coords); setLineLayer(map, 'flow-solid', solid, { color: accent, width: 3.5 }); }
-        }
-      })();
     };
     if (readyRef.current) draw(); else map.once('load', draw);
-    return () => { cancelled = true; };
+    return () => { disposed = true; cancelLines(); };
   }, [legsKey]);
 
   return (
