@@ -10,7 +10,6 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { useT } from '@/lib/i18n/I18nContext';
-import { cn } from '@/lib/utils';
 
 /**
  * Reusable confirm/alert dialog - replacement for native window.confirm()/alert().
@@ -53,10 +52,7 @@ export default function ConfirmDialog({
           {!singleButton && <AlertDialogCancel>{finalCancelLabel}</AlertDialogCancel>}
           <AlertDialogAction
             onClick={() => onConfirm?.()}
-            className={cn(
-              variant === 'destructive' &&
-                'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-            )}
+            variant={variant}
           >
             {finalConfirmLabel}
           </AlertDialogAction>
