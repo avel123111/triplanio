@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Severity, Toggle, ModalHost,
+  Badge, Btn, Toggle, ModalHost,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -244,7 +244,7 @@ function ReminderChannels() {
         ) : connected ? (
           <div>
             <button className="acct-chan acct-chan--btn" aria-expanded={open} onClick={() => setOpen(v => !v)}>
-              <span className="acct-chan__ic" style={{ background: 'var(--tg-soft)', color: 'var(--tg)' }}><Icon name="telegram" size={20} /></span>
+              <span className="acct-chan__ic" style={{ background: 'var(--info-soft)', color: 'var(--info)' }}><Icon name="telegram" size={20} /></span>
               <span className="acct-chan__main">
                 <span className="acct-chan__t">Telegram <Badge variant="success" icon="check">{t('telegram.connected')}</Badge></span>
                 <span className="acct-chan__s">{t('telegram.account_section_subtitle')}</span>
@@ -274,7 +274,7 @@ function ReminderChannels() {
           </div>
         ) : (
           <div className="acct-chan">
-            <span className="acct-chan__ic" style={{ background: 'var(--surface-2)', color: 'var(--tg)' }}><Icon name="telegram" size={20} /></span>
+            <span className="acct-chan__ic" style={{ background: 'var(--surface-2)', color: 'var(--info)' }}><Icon name="telegram" size={20} /></span>
             <div className="acct-chan__main">
               <div className="acct-chan__t">Telegram</div>
               <div className="acct-chan__s">{t('telegram.account_empty_desc')}</div>
@@ -620,11 +620,14 @@ export default function ScreenAccount() {
       {/* Payment / action error banner (full width, above the workspace) */}
       {errorMsg && (
         <div style={{ maxWidth: 1120, margin: '16px auto 0', padding: '0 24px', width: '100%', boxSizing: 'border-box' }}>
-          <Severity level="error" title={t('account.error_title')} action={
+          <div className="acct-sev" style={{ marginTop: 0 }}>
+            <span className="acct-sev__ic"><Icon name="error" size={17} /></span>
+            <div className="acct-sev__body">
+              <b className="acct-sev__t">{t('account.error_title')}</b>
+              {errorMsg}
+            </div>
             <Btn variant="ghost" size="sm" onClick={() => setErrorMsg(null)}>{t('common.close')}</Btn>
-          }>
-            {errorMsg}
-          </Severity>
+          </div>
         </div>
       )}
 
@@ -858,21 +861,25 @@ export default function ScreenAccount() {
               </div>
 
               {deleteState === 'blocked' && (
-                <div style={{ marginTop: 14 }}>
-                  <Severity level="error" title={t('account.cancel_sub_first')}>
+                <div className="acct-sev">
+                  <span className="acct-sev__ic"><Icon name="warning" size={17} /></span>
+                  <div className="acct-sev__body">
+                    <b className="acct-sev__t">{t('account.cancel_sub_first')}</b>
                     {t('account.delete_blocked_desc')}
                     <div style={{ marginTop: 8 }}>
                       <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={handleManageSubscription}>
                         {portalLoading ? t('account.opening') : t('account.open_billing_portal')}
                       </Btn>
                     </div>
-                  </Severity>
+                  </div>
                 </div>
               )}
 
               {deleteState === 'confirm' && (
-                <div style={{ marginTop: 14 }}>
-                  <Severity level="error" title={t('account.confirm_delete')}>
+                <div className="acct-sev">
+                  <span className="acct-sev__ic"><Icon name="trash" size={17} /></span>
+                  <div className="acct-sev__body">
+                    <b className="acct-sev__t">{t('account.confirm_delete')}</b>
                     {t('account.confirm_delete_desc_1')} <b>{t('account.delete_word')}</b> {t('account.confirm_delete_desc_2')}
                     <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <input className="input" placeholder={t('account.delete_word')} value={deleteInput} onChange={e => setDeleteInput(e.target.value)} style={{ flex: 1, minWidth: 150 }} />
@@ -881,7 +888,7 @@ export default function ScreenAccount() {
                       </Btn>
                       <Btn variant="ghost" size="sm" onClick={() => setDeleteState(null)}>{t('common.cancel')}</Btn>
                     </div>
-                  </Severity>
+                  </div>
                 </div>
               )}
             </div>

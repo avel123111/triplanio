@@ -75,12 +75,6 @@
   --warm-soft: rgba(217,102,60,.12);
   --warm-soft-2: rgba(217,102,60,.20);
   --warm-tint: var(--warm-soft-2);
-  /* Status gradients (subscription plan faces) + Telegram brand */
-  --success-grad: linear-gradient(135deg,#4FC58C,#1F9A66);
-  --warning-grad: linear-gradient(135deg,#F2B23E,#D9820A);
-  --tg:      #229ED9;
-  --tg-soft: rgba(34,158,217,.13);
-  --tg-ink:  #15749F;
 
   /* AI */
   --ai:        #8A6BF0;
@@ -201,11 +195,6 @@
   --warm-ink:  #F0936B;
   --warm-soft: rgba(240,147,107,.16);
   --warm-soft-2: rgba(240,147,107,.24);
-  --success-grad: linear-gradient(135deg,#5FE0AA,#3CC489);
-  --warning-grad: linear-gradient(135deg,#F7C96E,#F0B24A);
-  --tg:      #38B0E3;
-  --tg-soft: rgba(56,176,227,.18);
-  --tg-ink:  #7CCBEF;
 
   /* AI — dark */
   --ai:        #A98BFF;
@@ -1876,8 +1865,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .acct-plan__p { font-size: var(--fs-meta); font-weight: 700; opacity: .9; position: relative; margin-top: 3px; }
 .acct-plan__face--free { background: var(--surface-2); color: var(--ink); } .acct-plan__face--free .acct-plan__k { color: var(--muted); }
 .acct-plan__face--mo { background: var(--brand-grad); color: #fff; }
-.acct-plan__face--yr { background: var(--success-grad); color: #fff; }
-.acct-plan__face--ca { background: var(--warning-grad); color: #fff; }
+.acct-plan__face--yr { background: var(--success); color: #fff; }
+.acct-plan__face--ca { background: var(--warning); color: #fff; }
 .acct-plan__side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .acct-plan__line { color: var(--ink-2); font-size: var(--fs-base); font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acct-plan__line b { color: var(--ink); font-weight: 700; }
@@ -1939,6 +1928,14 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .acct-tgrow__t { font-weight: 700; font-size: var(--fs-base); color: var(--ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .acct-tghint { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: var(--fs-micro); color: var(--muted); } .acct-tghint svg { width: 13px; height: 13px; flex: none; }
 .acct-subhead { font-family: var(--font-display); font-weight: 600; color: var(--ink); font-size: var(--fs-strong); }
+
+/* severity plate (danger zone — matches the Lumo .sev exactly) */
+.acct-sev { display: flex; gap: 12px; padding: 14px 16px; border-radius: var(--r-md); align-items: flex-start; margin-top: 14px; background: var(--danger-soft); }
+.acct-sev__ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger-ink); }
+.acct-sev__ic svg { width: 17px; height: 17px; }
+.acct-sev__body { flex: 1; min-width: 0; font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.5; }
+.acct-sev__t { display: block; color: var(--ink); font-weight: 800; font-size: var(--fs-base); margin-bottom: 3px; }
+.acct-sev__body b { font-weight: 800; color: var(--ink); }
 
 /* responsive: collapse to single column; nav becomes a horizontal scroller */
 @media (max-width: 860px) {
