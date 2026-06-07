@@ -367,7 +367,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
             }}>
               <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
               <div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 'var(--fs-strong)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   {name}
                   {m.user_id === user?.id && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)' }}>{t('member.you_self')}</Badge>}
                 </div>

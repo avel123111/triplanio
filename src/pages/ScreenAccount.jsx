@@ -58,7 +58,7 @@ function LegalRow({ icon, title, desc, href, last }) {
         <Icon name={icon} size={14} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)' }}>{title}</div>
+        <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{title}</div>
         <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{desc}</div>
       </div>
       <Icon name="external" size={13} style={{ color: 'var(--muted-2)' }} />
@@ -73,7 +73,7 @@ function SettingRow({ label, desc, on, onChange, last }) {
       borderBottom: last ? 'none' : '1px solid var(--line-2)',
     }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)' }}>{label}</div>
+        <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{label}</div>
         {desc && <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{desc}</div>}
       </div>
       <Toggle on={on} onChange={onChange} />
@@ -678,7 +678,7 @@ export default function ScreenAccount() {
         </div>
         <div className="app-header__crumb">
           <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ink-2)' }}>{t('account.title')}</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--ink-2)' }}>{t('account.title')}</span>
         </div>
         <HeaderActions
           user={user}
@@ -780,11 +780,11 @@ export default function ScreenAccount() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 4, display: 'block' }}>{t('account.display_name')}</label>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 700, marginBottom: 4, display: 'block' }}>{t('account.display_name')}</label>
               <input className="input" value={fullName} onChange={e => setFullName(e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 4, display: 'block' }}>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 700, marginBottom: 4, display: 'block' }}>
                 E-mail <Badge variant="quiet" style={{ marginLeft: 4 }}>{t('account.readonly')}</Badge>
               </label>
               <input className="input" value={user.email} readOnly style={{ background: 'var(--wash)', color: 'var(--muted)' }} />
@@ -798,7 +798,7 @@ export default function ScreenAccount() {
 
             {/* Language */}
             <div>
-              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 6, display: 'block' }}>{t('settings.language')}</label>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 700, marginBottom: 6, display: 'block' }}>{t('settings.language')}</label>
               <div style={{ position: 'relative', maxWidth: 260 }}>
                 <button
                   onClick={() => setLangOpen(v => !v)}
@@ -837,7 +837,7 @@ export default function ScreenAccount() {
 
             {/* Theme */}
             <div>
-              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, marginBottom: 6, display: 'block' }}>{t('settings.theme')}</label>
+              <label style={{ fontSize: 'var(--fs-meta)', fontWeight: 700, marginBottom: 6, display: 'block' }}>{t('settings.theme')}</label>
               <div className="tweaks__seg">
                 <button className={theme === 'light'  ? 'active' : ''} onClick={() => setTheme('light')}>{t('settings.theme_light')}</button>
                 <button className={theme === 'dark'   ? 'active' : ''} onClick={() => setTheme('dark')}>{t('settings.theme_dark')}</button>

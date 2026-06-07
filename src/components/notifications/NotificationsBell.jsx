@@ -224,7 +224,7 @@ function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip
         <Icon name={meta.icon} size={14} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4, fontWeight: 500 }}>{titleNode}</div>
+        <div style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4, fontWeight: 600 }}>{titleNode}</div>
         {messageText && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, lineHeight: 1.4 }}>{messageNode}</div>}
         <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>{time}</div>
 

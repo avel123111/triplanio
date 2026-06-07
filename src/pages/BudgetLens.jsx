@@ -361,7 +361,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, showCategory, catName, m
         <Icon name={icon || SOURCE_ICON[src] || 'wallet'} size={13} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {expense.title || '-'}
         </div>
         <div className="muted" style={{ fontSize: 'var(--fs-micro)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -620,7 +620,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                     <Icon name={catIcon(c)} size={14} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       {c.name}
                       {c.kind === 'custom' && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)', padding: '1px 5px' }}>{t('budget.custom_short')}</Badge>}
                     </div>
@@ -729,7 +729,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, onOpen, onAdd }) {
                 <Icon name="pin" size={14} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500, fontSize: 'var(--fs-base)' }}>{g.city === '-' ? t('budget.no_city') : g.city}</div>
+                <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{g.city === '-' ? t('budget.no_city') : g.city}</div>
                 <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{g.items.length} {g.items.length === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many')}</div>
               </div>
               <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{money(g.total, mainCurrency)}</div>

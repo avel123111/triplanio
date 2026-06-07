@@ -222,7 +222,7 @@ function InboxRow({ n, t, dateLocale, last, pending, onRespond }) {
         <Icon name={meta.icon} size={16} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, fontWeight: 500 }}>{titleNode}</div>
+        <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, fontWeight: 600 }}>{titleNode}</div>
         {messageText && <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, lineHeight: 1.4 }}>{messageNode}</div>}
         <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span>{time}</span>

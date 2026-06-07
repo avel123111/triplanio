@@ -367,7 +367,7 @@ function ApproverRow({ member, locked }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <Avatar name={name} size="sm" />
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 500 }}>{name}</div>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700 }}>{name}</div>
         <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{roleLabel}</div>
       </div>
       {locked
@@ -583,7 +583,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 500 }}>{t('settings.warn_bookings_title')}</div>
+                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700 }}>{t('settings.warn_bookings_title')}</div>
                 <div className="muted" style={{ fontSize: 'var(--fs-micro)', lineHeight: 1.45 }}>{t('settings.warn_bookings_desc')}</div>
               </div>
               <Toggle on={bookingWarnings} onChange={toggleBookingWarnings} />
