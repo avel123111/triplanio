@@ -55,8 +55,22 @@ export const Severity = ({ level = "info", title, children, action }) => (
 );
 
 // ----- Form Field -----
-export const Field = ({ label, hint, sub, ai, error, children, required }) => (
-  <div className={`field ${ai ? "field--ai" : ""} ${error ? "field--error" : ""}`}>
+// Canonical inline error / warning lines (Lumo `.err` / `.wrn`, with icon).
+const ErrLine = ({ children }) => (
+  <span className="err">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+    <span>{children}</span>
+  </span>
+);
+const WrnLine = ({ children }) => (
+  <span className="wrn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
+    <span>{children}</span>
+  </span>
+);
+
+export const Field = ({ label, hint, sub, ai, error, warning, children, required }) => (
+  <div className={`field ${ai ? "field--ai" : ""} ${error ? "field--error" : warning ? "field--warning" : ""}`}>
     {label && (
       <label className="field__label">
         {label}{required && <span style={{ color: "var(--danger)" }}>*</span>}
@@ -65,7 +79,8 @@ export const Field = ({ label, hint, sub, ai, error, children, required }) => (
     )}
     {children}
     {sub && <span className="field__sub">{sub}</span>}
-    {error && <span className="field__sub" style={{ color: "var(--danger)" }}>{error}</span>}
+    {error && <ErrLine>{error}</ErrLine>}
+    {!error && warning && <WrnLine>{warning}</WrnLine>}
   </div>
 );
 

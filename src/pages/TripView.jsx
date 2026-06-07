@@ -23,6 +23,7 @@ import { Btn, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow } from 
 import { SystemStub } from '@/lib/PageNotFound';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { useToast } from '@/components/ui/use-toast';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
@@ -840,74 +841,6 @@ function CityRail({ visits = [], scrollRef }) {
 // ─── Share / More dialogs ─────────────────────────────────────────────────────
 
 
-function MoreMenuDialog({ trip, canManage = false }) {
-  const { t } = useI18n();
-  const nav = useNavigate();
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [copying, setCopying] = useState(false);
-
-  // Copy trip — available to every participant. The new trip is owned by the
-  // caller; copyTrip strips Pro status + Pro-only addons server-side.
-  const handleCopy = async () => {
-    if (copying) return;
-    setCopying(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('copyTrip', { body: { tripId: trip.id } });
-      // Non-2xx → supabase-js puts the response in error.context; pull the real
-      // server message out of it so failures aren't masked by a generic toast.
-      let serverMsg = data?.error || null;
-      if (!serverMsg && error?.context && typeof error.context.json === 'function') {
-        try { serverMsg = (await error.context.json())?.error || null; } catch { /* ignore */ }
-      }
-      if (error || data?.error) throw new Error(serverMsg || error?.message || 'copy failed');
-      qc.invalidateQueries({ queryKey: ['trips', user?.id] });
-      window.__closeModal?.();
-      toast({ description: t('trip.copy_done'), variant: 'success' });
-      if (data?.tripId) nav(`/trip/${data.tripId}`);
-    } catch (e) {
-      toast({ description: e?.message || t('trip.copy_error'), variant: 'destructive' });
-    } finally {
-      setCopying(false);
-    }
-  };
-
-  const itemStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 'var(--fs-strong)', color: 'var(--ink)' };
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--scrim)', backdropFilter: 'blur(4px)' }}
-      onClick={() => window.__closeModal?.()}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 20, width: 320, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {/* "Edit metadata" retired: trip name + cover now live in the Settings
-              lens (identity block). The Settings item below is the single entry. */}
-          {canManage && (
-            <button onClick={() => { window.__closeModal?.(); window.__navigate?.('settings'); }} className="dz-rowhover" style={itemStyle}>
-              <Icon name="settings" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.settings_title')}
-            </button>
-          )}
-          {canManage && (
-            <button onClick={() => { window.__closeModal?.(); window.__navigate?.('members'); }} className="dz-rowhover" style={itemStyle}>
-              <Icon name="users" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.sidebar_members')}
-            </button>
-          )}
-          {canManage && <div style={{ height: 1, background: 'var(--line-2)', margin: '6px 0' }} />}
-          <button onClick={handleCopy} disabled={copying} className="dz-rowhover" style={{ ...itemStyle, opacity: copying ? 0.6 : 1, cursor: copying ? 'default' : 'pointer' }}>
-            <Icon name="copy" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.copy')}
-          </button>
-          <button onClick={() => { window.__closeModal?.(); window.print(); }} className="dz-rowhover" style={itemStyle}>
-            <Icon name="download" size={16} style={{ color: 'var(--muted)' }} /> {t('trip.export')}
-          </button>
-          <div style={{ height: 1, background: 'var(--line-2)', margin: '6px 0' }} />
-          <button onClick={() => window.__closeModal?.()} style={{ ...itemStyle, color: 'var(--muted)' }}>
-            <Icon name="close" size={16} /> {t('common.close')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── ContextSide ──────────────────────────────────────────────────────────────
 
 // Timeline right rail. Budget + "who's going" moved to the Overview screen
@@ -922,6 +855,7 @@ export default function TripView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [copyingTrip, setCopyingTrip] = useState(false);
   const lens = searchParams.get('lens') || 'overview';
 
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -1088,6 +1022,30 @@ export default function TripView() {
       <span>{activeMemberCount} {activeMemberCount === 1 ? t('trip.members_count_one') : activeMemberCount < 5 ? t('trip.members_count_few') : t('trip.members_count_many')}</span>
     </>
   );
+  // Copy trip — available to every participant. The new trip is owned by the
+  // caller; copyTrip strips Pro status + Pro-only addons server-side.
+  const handleCopyTrip = async () => {
+    if (copyingTrip) return;
+    setCopyingTrip(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('copyTrip', { body: { tripId: trip.id } });
+      // Non-2xx → supabase-js puts the response in error.context; pull the real
+      // server message out of it so failures aren't masked by a generic toast.
+      let serverMsg = data?.error || null;
+      if (!serverMsg && error?.context && typeof error.context.json === 'function') {
+        try { serverMsg = (await error.context.json())?.error || null; } catch { /* ignore */ }
+      }
+      if (error || data?.error) throw new Error(serverMsg || error?.message || 'copy failed');
+      qc.invalidateQueries({ queryKey: ['trips', user?.id] });
+      toast({ description: t('trip.copy_done'), variant: 'success' });
+      if (data?.tripId) nav(`/trip/${data.tripId}`);
+    } catch (e) {
+      toast({ description: e?.message || t('trip.copy_error'), variant: 'destructive' });
+    } finally {
+      setCopyingTrip(false);
+    }
+  };
+
   const heroActions = (
     <>
       {myRole !== 'viewer' && (
@@ -1100,12 +1058,22 @@ export default function TripView() {
           ? <button className="trip-hero__btn" disabled><Icon name="lock" size={15} /><span className="trip-hero__btn-text">{t('trip.editing')}</span></button>
           : <button className="trip-hero__btn" disabled={!canEditMode} onClick={() => nav(`/trip/${trip.id}/edit`)}><Icon name="edit" size={15} /><span className="trip-hero__btn-text">{t('trip.edit_trip')}</span></button>
       )}
-      <button
-        className="trip-hero__btn trip-hero__btn--icon"
-        onClick={() => window.__openModal?.(<MoreMenuDialog trip={trip} canManage={myRole !== 'viewer'} />)}
-      >
-        <Icon name="more" size={15} />
-      </button>
+      <ActionMenu
+        align="end"
+        width={240}
+        trigger={
+          <button className="trip-hero__btn trip-hero__btn--icon">
+            <Icon name="more" size={15} />
+          </button>
+        }
+        items={[
+          myRole !== 'viewer' && { icon: 'settings', label: t('trip.settings_title'), onSelect: () => window.__navigate?.('settings') },
+          myRole !== 'viewer' && { icon: 'users', label: t('trip.sidebar_members'), onSelect: () => window.__navigate?.('members') },
+          myRole !== 'viewer' && { separator: true },
+          { icon: 'copy', label: t('trip.copy'), disabled: copyingTrip, onSelect: handleCopyTrip },
+          { icon: 'download', label: t('trip.export'), onSelect: () => window.print() },
+        ]}
+      />
     </>
   );
   // Map = edge-to-edge, no scroll. Chat = padded but fills height with its own

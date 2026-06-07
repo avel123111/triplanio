@@ -616,6 +616,16 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   border-color: var(--danger);
   box-shadow: 0 0 0 3px var(--danger-soft);
 }
+.field--warning .input, .field--warning .select, .field--warning .textarea {
+  border-color: var(--warning);
+  box-shadow: 0 0 0 3px var(--warning-soft);
+}
+/* Canonical inline validation lines (Lumo). Standalone classes so they work
+   both inside <Field> and in custom field wrappers (e.g. the event editor). */
+.err, .wrn { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; line-height: 1.35; }
+.err { color: var(--danger-ink); }
+.wrn { color: var(--warning-ink); }
+.err svg, .wrn svg { width: 13px; height: 13px; flex: none; }
 
 .field-row { display: grid; gap: 12px; }
 .field-row.cols-2 { grid-template-columns: 1fr 1fr; }
@@ -1999,4 +2009,27 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .toast--error   .tic { background: var(--danger); }
 .toast--warning .tic { background: var(--warning); }
 .toast--info    .tic { background: var(--info); }
+
+/* ============================================================
+   C6 · Bottom sheet (Lumo) — mobile shell for menus / pickers.
+   Rendered by <Sheet> (Radix Dialog) under the mobile breakpoint.
+   ============================================================ */
+.sheet-backdrop { position: fixed; inset: 0; z-index: 200; background: var(--scrim); backdrop-filter: blur(2px); animation: sheetFade .2s ease; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; display: flex; flex-direction: column; animation: sheetUp .3s var(--ease-out, cubic-bezier(.22,1,.36,1)); }
+.sheet-grip { display: flex; justify-content: center; padding: 11px 0 3px; flex: none; }
+.sheet-grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
+.sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }
+.sheet-h h3 { font-size: 17px; font-weight: 600; flex: 1; color: var(--ink); margin: 0; font-family: var(--font-display, inherit); }
+.sheet-h .close { width: 32px; height: 32px; border-radius: 10px; background: var(--surface-2); border: 0; color: var(--muted); cursor: pointer; display: grid; place-items: center; flex: none; }
+.sheet-b { padding: 2px 12px 8px; overflow-y: auto; overscroll-behavior: contain; }
+/* big tap rows used for menu items inside a sheet */
+.sheet-row { display: flex; align-items: center; gap: 13px; width: 100%; padding: 14px 14px; border: 0; background: transparent; border-radius: 13px; font: inherit; font-size: 15px; font-weight: 700; color: var(--ink-2); cursor: pointer; text-align: left; }
+.sheet-row svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.sheet-row:active { background: var(--accent); }
+.sheet-row[disabled] { opacity: .5; pointer-events: none; }
+.sheet-row--danger { color: var(--danger-ink); }
+.sheet-row--danger svg { color: var(--danger-ink); }
+.sheet-sep { height: 1px; background: var(--line); margin: 6px 14px; }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sheetFade { from { opacity: 0; } to { opacity: 1; } }
 

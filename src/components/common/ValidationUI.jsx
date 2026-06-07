@@ -57,11 +57,14 @@ export function FieldError({ issues, field, className = '' }) {
   const { t } = useI18nFormat();
   const issue = pickFieldIssue(issues || [], field);
   if (!issue) return null;
-  const color = issue.level === 'error' ? 'var(--danger, #e74c3c)' : 'var(--warning, #c9a81a)';
+  const isErr = issue.level === 'error';
   return (
-    <p className={className} style={{ marginTop: 4, fontSize: 'var(--fs-meta)', lineHeight: 1.35, color }}>
-      {t(`validation.${issue.code}`, issue.values)}
-    </p>
+    <span className={`${isErr ? 'err' : 'wrn'}${className ? ' ' + className : ''}`} style={{ marginTop: 4 }}>
+      {isErr
+        ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+        : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>}
+      <span>{t(`validation.${issue.code}`, issue.values)}</span>
+    </span>
   );
 }
 

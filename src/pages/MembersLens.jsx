@@ -17,7 +17,7 @@ import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Skeleton } from '../desi
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { edgeErrorMessage } from '@/lib/edgeError';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { ActionMenu, ActionItem } from '@/components/ui/ActionMenu';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import { useToast } from '@/components/ui/use-toast';
 import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
@@ -383,6 +383,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                   <ActionMenu
                     align="end"
                     width={220}
+                    title={t('member.actions')}
                     trigger={
                       <button
                         className="icon-btn menu-trig"
@@ -392,27 +393,17 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                         <Icon name="more" size={15} />
                       </button>
                     }
-                  >
-                    {isSelf ? (
+                    items={isSelf
                       // Your own row: the only self-action is leaving the trip.
-                      <ActionItem icon="arrow" danger onSelect={() => leaveTrip(m)}>{t('members.leave')}</ActionItem>
-                    ) : (
-                      <>
-                        {m.status === 'pending' && (
-                          <ActionItem icon="send" onSelect={() => resend(m.id)}>{t('members.resend')}</ActionItem>
-                        )}
-                        {m.status === 'declined' && (
-                          <ActionItem icon="send" onSelect={() => reinvite(m)}>{t('member.invite_again')}</ActionItem>
-                        )}
-                        {m.status === 'active' && (
-                          <ActionItem icon="edit" onSelect={() => window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />)}>{t('members.change_role')}</ActionItem>
-                        )}
-                        <ActionItem icon="trash" danger onSelect={() => removeMember(m.id)}>
-                          {m.status === 'pending' ? t('member.cancel_invite') : t('members.remove')}
-                        </ActionItem>
-                      </>
-                    )}
-                  </ActionMenu>
+                      ? [{ icon: 'arrow', label: t('members.leave'), danger: true, onSelect: () => leaveTrip(m) }]
+                      : [
+                          m.status === 'pending' && { icon: 'send', label: t('members.resend'), onSelect: () => resend(m.id) },
+                          m.status === 'declined' && { icon: 'send', label: t('member.invite_again'), onSelect: () => reinvite(m) },
+                          m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => window.__openModal?.(<ChangeRoleDialog member={m} tripId={tripId} onSaved={refresh} />) },
+                          { icon: 'trash', label: m.status === 'pending' ? t('member.cancel_invite') : t('members.remove'), danger: true, onSelect: () => removeMember(m.id) },
+                        ]
+                    }
+                  />
                 )}
               </div>
             </div>
