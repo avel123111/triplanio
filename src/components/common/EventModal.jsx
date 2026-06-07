@@ -163,7 +163,7 @@ export default function EventModal(props) {
 
         {/* Body - either the inline delete confirm or the normal sections. */}
         {confirmDel ? (
-          <div style={{ padding: 22 }}>
+          <div style={{ padding: 22, flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-destructive/15 text-destructive grid place-items-center shrink-0">
                 <Trash2 className="w-5 h-5" />
@@ -177,7 +177,7 @@ export default function EventModal(props) {
             </div>
           </div>
         ) : (
-          <div style={{ padding: '0 22px 22px' }}>
+          <div style={{ padding: '0 22px 22px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <EventViewSections
               kind={kind} entity={entity} fromVisit={fromVisit} toVisit={toVisit}
               accent={theme.color} docs={docs} canEdit={canEdit} uploading={uploading} uploadFiles={uploadFiles}

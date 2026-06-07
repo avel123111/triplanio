@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Btn, Dialog } from '@/design/index';
+import { Btn, Dialog, Severity } from '@/design/index';
 
 // Shared trip "Share link" dialog. Supports both controlled (open/onOpenChange)
 // and legacy ModalHost usage.
@@ -68,7 +68,7 @@ export default function ShareDialog({ trip, open, onOpenChange }) {
           </Btn>
         )}
       </div>
-      {error && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{error}</div>}
+      {error && <div style={{ marginTop: 10 }}><Severity level="error">{error}</Severity></div>}
     </Dialog>
   );
 }

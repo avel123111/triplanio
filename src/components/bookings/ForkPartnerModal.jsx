@@ -330,7 +330,7 @@ export default function ForkPartnerModal({
             <span>{t(meta.titleKey)}</span>
           </DialogTitle>
         </DialogHeader>
-        {body}
+        <div className="dlg__body">{body}</div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Button>
         </DialogFooter>

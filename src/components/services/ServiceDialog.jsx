@@ -2,11 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Dialog, Btn, Field } from '@/design/index';
+import { Loader2 } from 'lucide-react';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -79,27 +76,51 @@ export default function ServiceDialog({ open, onOpenChange, tripId, kind, servic
   const title = activeKind ? t(`service.kind.${activeKind}`) : t('service.fallback');
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="dlg--sm">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? t('service.dialog_edit', { label: title }) : t('service.dialog_new', { label: title })}</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-3 py-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="svc-name">{t('service.name')}</Label>
-            <Input
+    <>
+      <Dialog
+        title={isEdit ? t('service.dialog_edit', { label: title }) : t('service.dialog_new', { label: title })}
+        icon="tag"
+        size="sm"
+        open={open}
+        onOpenChange={onOpenChange}
+        foot={<>
+          {isEdit && (
+            <Btn
+              variant="danger-ghost"
+              icon="trash"
+              onClick={() => setConfirmDel(true)}
+              disabled={deleteMut.isPending}
+            >
+              {t('common.delete')}
+            </Btn>
+          )}
+          <div style={{ flex: 1 }} />
+          <Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Btn>
+          <Btn
+            variant="primary"
+            onClick={() => saveMut.mutate()}
+            disabled={!name.trim() || saveMut.isPending}
+          >
+            {saveMut.isPending && <Loader2 style={{ width: 14, height: 14, marginRight: 6, animation: 'spin .7s linear infinite' }} />}
+            {t('common.save')}
+          </Btn>
+        </>}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Field label={t('service.name')}>
+            <input
+              className="input"
               id="svc-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('service.name_ph')}
               autoFocus
             />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="svc-price">{t('service.price')}</Label>
-              <Input
+          </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label={t('service.price')}>
+              <input
+                className="input"
                 id="svc-price"
                 type="number"
                 step="0.01"
@@ -107,37 +128,14 @@ export default function ServiceDialog({ open, onOpenChange, tripId, kind, servic
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0.00"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t('service.currency')}</Label>
+            </Field>
+            <Field label={t('service.currency')}>
               <CurrencyCombobox value={currency} onChange={setCurrency} />
-            </div>
+            </Field>
           </div>
         </div>
+      </Dialog>
 
-        <DialogFooter className="flex sm:justify-between gap-2">
-          <div>
-            {isEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmDel(true)}
-                disabled={deleteMut.isPending}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="w-3.5 h-3.5 mr-1.5" />{t('common.delete')}
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
-            <Button onClick={() => saveMut.mutate()} disabled={!name.trim() || saveMut.isPending}>
-              {saveMut.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-              {t('common.save')}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
       <ConfirmDialog
         open={confirmDel}
         onOpenChange={setConfirmDel}
@@ -147,6 +145,6 @@ export default function ServiceDialog({ open, onOpenChange, tripId, kind, servic
         variant="destructive"
         onConfirm={() => { deleteMut.mutate(); setConfirmDel(false); }}
       />
-    </Dialog>
+    </>
   );
 }

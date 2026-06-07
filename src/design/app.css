@@ -525,6 +525,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .btn--danger { --bg: var(--danger-soft); --fg: var(--danger-ink); --bd: transparent; }
 .btn--danger:hover { --bg: color-mix(in srgb, var(--danger) 22%, transparent); }
 .btn--danger-solid { --bg: var(--danger); --fg: #fff; --bd: transparent; }
+.btn--danger-ghost { --bg: transparent; --fg: var(--danger-ink); --bd: transparent; }
+.btn--danger-ghost:hover { --bg: var(--danger-soft); }
 .btn--ai { --fg: #0c0a1e; --bd: transparent; background: var(--ai-gradient); background-size: 170% 170%; box-shadow: 0 8px 20px -7px var(--ai); }
 .btn--ai:hover { background-position: 100% 0; }
 .btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); background-size: 170% 170%; box-shadow: 0 8px 20px -7px var(--pro); }

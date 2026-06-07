@@ -15,7 +15,7 @@ import { supabase } from '@/api/supabaseClient';
 import { safeStorageName } from '@/lib/storage';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, Skeleton, EmptyState } from '../design/index';
+import { Badge, Btn, Dialog, Field, Severity, Skeleton, EmptyState } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useTripScreenActions } from '@/components/trips/TripScreenBar';
@@ -93,7 +93,7 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange
       </>}>
 
       <IssuesPanel issues={v.panelIssues} style={{ marginBottom: 12 }} />
-      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginBottom: 12 }}>{err}</div>}
+      {err && <div style={{ marginBottom: 12 }}><Severity level="error">{err}</Severity></div>}
 
       {/* Visibility - two card buttons, as in base44 */}
       <div style={{ marginBottom: 16 }}>
@@ -413,9 +413,8 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
 
   if (error) {
     return (
-      <div style={{ padding: 32, textAlign: 'center', color: 'var(--danger)' }}>
-        <Icon name="error" size={32} style={{ marginBottom: 10 }} />
-        <div>{t('doc.load_error', { message: error.message })}</div>
+      <div style={{ padding: 32 }}>
+        <Severity level="error">{t('doc.load_error', { message: error.message })}</Severity>
       </div>
     );
   }

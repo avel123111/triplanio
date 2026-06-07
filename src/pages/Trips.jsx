@@ -8,7 +8,7 @@ import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '../design/icons';
-import { Badge, Btn, EmptyState, Skeleton } from '../design/index';
+import { Badge, Btn, Dialog, EmptyState, Skeleton } from '../design/index';
 import { getGradientById } from '@/lib/trip-gradients';
 import '../design/app.css';
 
@@ -151,35 +151,46 @@ const TripRow = ({ trip, onClick }) => {
 function NewTripDialog({ onClose, onManual, onAi }) {
   const { t } = useI18n();
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--scrim)', backdropFilter: 'blur(4px)' }}
-      onClick={onClose}>
-      <div onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 18, padding: 28, width: 440, maxWidth: 'calc(100vw - 32px)', boxShadow: 'var(--shadow-pop)' }}>
-        <h2 style={{ margin: '0 0 6px', fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{t('trips.new')}</h2>
-        <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-strong)', marginBottom: 22 }}>{t('trips.choice_subtitle')}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <button onClick={onManual} style={{ padding: 20, background: 'var(--surface)', border: '1.5px solid var(--line)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand)'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--line)'}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
-              <Icon name="edit" size={19} />
-            </div>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('trips.start_manual')}</div>
-            <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.manual_desc_short')}</div>
-          </button>
-          <button onClick={onAi} className="ai-card" style={{ padding: 20, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
-              <Icon name="sparkles" size={19} />
-            </div>
-            <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--ai)' }}>{t('trips.start_with_ai')}</div>
-            <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.ai_desc_short')}</div>
-          </button>
-        </div>
-        <div style={{ marginTop: 16, textAlign: 'right' }}>
-          <Btn variant="ghost" onClick={onClose}>{t('common.cancel')}</Btn>
-        </div>
+    <Dialog
+      title={t('trips.new')}
+      icon="plus"
+      size="sm"
+      open={true}
+      onOpenChange={(o) => { if (!o) onClose(); }}
+      foot={<>
+        <div style={{ flex: 1 }} />
+        <Btn variant="ghost" onClick={onClose}>{t('common.cancel')}</Btn>
+      </>}
+    >
+      <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-base)', marginBottom: 18 }}>
+        {t('trips.choice_subtitle')}
       </div>
-    </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <button
+          onClick={onManual}
+          style={{ padding: 18, background: 'var(--surface)', border: '1.5px solid var(--line)', borderRadius: 14, cursor: 'pointer', textAlign: 'left', transition: 'border-color .15s' }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand)'}
+          onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--line)'}
+        >
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
+            <Icon name="edit" size={19} />
+          </div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('trips.start_manual')}</div>
+          <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.manual_desc_short')}</div>
+        </button>
+        <button
+          onClick={onAi}
+          className="ai-card"
+          style={{ padding: 18, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
+        >
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
+            <Icon name="sparkles" size={19} />
+          </div>
+          <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--ai)' }}>{t('trips.start_with_ai')}</div>
+          <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.ai_desc_short')}</div>
+        </button>
+      </div>
+    </Dialog>
   );
 }
 

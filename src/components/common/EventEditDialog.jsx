@@ -1019,7 +1019,7 @@ export default function EventEditDialog({
               avoid nesting Radix modals (which would intercept pointer
               events on the inner buttons). */}
           {confirmDel ? (
-            <div style={{ padding: 22 }}>
+            <div style={{ padding: 22, flex: 1, overflowY: 'auto', minHeight: 0 }}>
               <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-destructive/15 text-destructive grid place-items-center shrink-0">
                   <Trash2 className="w-5 h-5" />
@@ -1034,7 +1034,7 @@ export default function EventEditDialog({
             </div>
           ) : (
           /* Body */
-          <div style={{ padding: 22 }}>
+          <div style={{ padding: 22, flex: 1, overflowY: 'auto', minHeight: 0 }}>
             {/* AI block - only for hotel & transfer (the kinds with parsers). */}
             {(currentKind === 'hotel' || currentKind === 'transfer') && (
               <EventAiBlock
@@ -1137,10 +1137,9 @@ export default function EventEditDialog({
               <>
                 {isEdit && (
                   <button
-                    className="btn btn--ghost btn--sm"
+                    className="btn btn--danger-ghost btn--sm"
                     onClick={() => setConfirmDel(true)}
                     disabled={deleteMut.isPending}
-                    style={{ color: 'var(--danger)' }}
                   >
                     <Trash2 className="w-3.5 h-3.5 mr-1.5" />{t('common.delete')}
                   </button>

@@ -10,7 +10,7 @@ import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/geo';
 import { Icon } from '../design/icons';
-import { Btn, EmptyState } from '../design/index';
+import { Btn, EmptyState, Severity } from '../design/index';
 import HeaderActions from '@/components/HeaderActions';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { getGradientById } from '@/lib/trip-gradients';
@@ -846,8 +846,8 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
       </div>
 
       {error && (
-        <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--danger-soft, #fde8e8)', border: '1px solid var(--danger, #e74c3c)', borderRadius: 10, fontSize: 'var(--fs-base)', color: 'var(--danger, #e74c3c)' }}>
-          {error}
+        <div style={{ marginTop: 12 }}>
+          <Severity level="error">{error}</Severity>
         </div>
       )}
 

@@ -13,7 +13,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Skeleton } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { edgeErrorMessage } from '@/lib/edgeError';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -176,7 +176,7 @@ function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
       </>}
 
       <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
-      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
     </Dialog>
   );
 }
@@ -216,7 +216,7 @@ function ChangeRoleDialog({ member, tripId, onSaved, open, onOpenChange }) {
           {ROLES.map(r => <option key={r.value} value={r.value}>{t(r.labelKey)}</option>)}
         </select>
       </Field>
-      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
     </Dialog>
   );
 }
