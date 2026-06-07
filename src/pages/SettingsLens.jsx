@@ -21,6 +21,7 @@ import ProLockedDialog from '@/components/common/ProLockedDialog';
 import TripProInfoDialog from '@/components/common/TripProInfoDialog';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import { useToast } from '@/components/ui/use-toast';
 import { telegram as tgBrand } from '@/lib/externalBrands';
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
@@ -394,7 +395,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const [coverGradient, setCoverGradient] = useState(trip?.cover_gradient || '');
   const [currency, setCurrency] = useState(trip?.details?.main_currency || trip?.main_currency || 'EUR');
   const [saving,  setSaving]  = useState(false);
-  const [saveMsg, setSaveMsg] = useState('');
+  const { toast } = useToast();
 
   const hasPro = isPro; // trip-level Pro (owner sub OR is_pro_trip), passed from TripView
   const isOwner = myRole === 'owner';
@@ -495,7 +496,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       await supabase.from('trip_budgets').update({ currency, fx_overrides: {} }).eq('trip_id', tripId);
     }
     setSaving(false);
-    if (error || !data?.ok) { setSaveMsg(t('settings.save_error2', { message: error?.message || data?.code || t('members.error_generic') })); return; }
+    if (error || !data?.ok) { toast({ description: t('settings.save_error2', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' }); return; }
     // Optimistically patch the shell cache so the header title + cover update
     // instantly, then invalidate to reconcile with the server.
     queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
@@ -509,8 +510,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     queryClient?.invalidateQueries({ queryKey: ['trip-content', tripId] });
     queryClient?.invalidateQueries({ queryKey: ['trips'] }); // trips list shows title/cover/description
-    setSaveMsg(t('settings.saved'));
-    setTimeout(() => setSaveMsg(''), 2000);
+    toast({ description: t('settings.saved') });
   }
 
   // Toggle feature → persist to trip.details.addons, then invalidate shell query.
@@ -596,7 +596,6 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         title={t('settings.section_basic')}
         action={
           <div className="settings-save">
-            {saveMsg && <span className="settings-save__msg">{saveMsg}</span>}
             <Btn variant="primary" loading={saving} disabled={!dirty || !title.trim()} onClick={saveSettings}>
               {t('trip.form_save')}
             </Btn>
