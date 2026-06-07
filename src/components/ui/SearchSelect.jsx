@@ -72,8 +72,8 @@ export default function SearchSelect({
       <div className="ss-search">
         <Search />
         <input
-          className="input"
-          autoFocus
+          className="input ss-input"
+          autoFocus={!isMobile}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={searchPlaceholder}

@@ -18,7 +18,10 @@ export function Sheet({ open, onOpenChange, title, children }) {
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="sheet-backdrop" />
-        <Dialog.Content className="sheet" aria-describedby={undefined}>
+        {/* Don't auto-focus into the sheet on open: on mobile that pops the
+            keyboard for a search field, which yanks the fixed sheet up the
+            screen and triggers iOS zoom. Focus is taken on user tap instead. */}
+        <Dialog.Content className="sheet" aria-describedby={undefined} onOpenAutoFocus={(e) => e.preventDefault()}>
           <div className="sheet-grip"><i /></div>
           {title ? (
             <div className="sheet-h">

@@ -232,7 +232,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
         </Field>
       </div>
       <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
-      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
     </Dialog>
   );
 }
@@ -261,7 +261,7 @@ function DeleteExpenseDialog({ expense, onSaved }) {
       <div style={{ fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>
         {t('trip.delete')} «<b style={{ color: 'var(--ink)' }}>{expense.title || '-'}</b>»?
       </div>
-      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
     </Dialog>
   );
 }
@@ -351,7 +351,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
         </div>
       )}
       <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
-      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
     </Dialog>
   );
 }
@@ -430,7 +430,7 @@ function AddCategoryDialog({ tripId, existing, onSaved }) {
         </div>
       </div>
       <IssuesPanel issues={v.panelIssues} style={{ marginTop: 12 }} />
-      {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
     </Dialog>
   );
 }

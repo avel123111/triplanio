@@ -7,7 +7,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 import { parseEdgeError } from '@/lib/edgeError';
 import { Icon } from '@/design/icons';
-import { Btn, Skeleton } from '@/design/index';
+import { Btn, Skeleton, Severity } from '@/design/index';
 import HeaderActions from '@/components/HeaderActions';
 import '../design/app.css';
 
@@ -235,8 +235,8 @@ export default function Pro() {
         </div>
 
         {errorMsg && (
-          <div style={{ maxWidth: 760, margin: '20px auto 0', padding: '12px 14px', borderRadius: 10, background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 'var(--fs-base)', lineHeight: 1.5 }}>
-            {errorMsg}
+          <div style={{ maxWidth: 760, margin: '20px auto 0' }}>
+            <Severity level="error">{errorMsg}</Severity>
           </div>
         )}
 
