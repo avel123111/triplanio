@@ -8,9 +8,8 @@ import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, EmptyState, Skeleton } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, EmptyState, Skeleton } from '../design/index';
 import { getGradientById } from '@/lib/trip-gradients';
-import { avatarGradient } from '@/lib/avatarRamp';
 import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
@@ -30,56 +29,16 @@ function scopeLabel(t, visits = []) {
   return cities.slice(0, 2).join(' · ') + ' ' + t('trips.cities_more', { count: cities.length - 2 });
 }
 
-/** Initials for avatar (up to 2 chars) from full name or email */
-function toInitials(nameOrEmail = '') {
-  const name = nameOrEmail.trim();
-  if (!name) return '?';
-  const parts = name.split(/[\s@]+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
-
 /**
  * Shape raw Supabase trip + visits into the object the card components expect.
  *
- * Avatar / shared logic:
- *   - "Shared" = trip has ≥1 active trip_members row (accepted invite, excl. owner)
- *   - displayMembers = [owner_entry, ...active_trip_members]
- *     Owner is NOT in trip_members — we inject them from:
- *       a) currentUser (auth context) when they are the owner
- *       b) ownerProfile from get_trip_owner_profiles RPC for member trips
+ * participants = rows from get_trip_participant_profiles RPC:
+ *   { user_id, full_name, email, avatar_url, role, is_owner }
+ *   Owner is always first (ensured by participantsByTrip grouping).
+ *
+ * "Shared" = trip has ≥2 participants (owner + at least 1 accepted member).
  */
-function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, activeMembers = [], currentUser = null, ownerProfile = null) {
-  const isShared = activeMembers.length >= 1;
-
-  // Build synthetic owner entry from whatever source is available
-  let ownerEntry = null;
-  if (currentUser && trip.created_by === currentUser.id) {
-    // Current user IS the owner
-    ownerEntry = {
-      id: `owner-${trip.id}`,
-      trip_id: trip.id,
-      user_id: currentUser.id,
-      user_full_name: currentUser.full_name || currentUser.email || '',
-      invite_email: currentUser.email || '',
-      role: 'owner',
-      status: 'active',
-    };
-  } else if (ownerProfile) {
-    // Owner is someone else — profile fetched via RPC
-    ownerEntry = {
-      id: `owner-${trip.id}`,
-      trip_id: trip.id,
-      user_id: ownerProfile.user_id,
-      user_full_name: ownerProfile.full_name || ownerProfile.email || '',
-      invite_email: ownerProfile.email || '',
-      role: 'owner',
-      status: 'active',
-    };
-  }
-
-  const displayMembers = ownerEntry ? [ownerEntry, ...activeMembers] : activeMembers;
-
+function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, participants = []) {
   return {
     ...trip,
     coverHue:  strHue(trip.id),
@@ -90,8 +49,8 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, act
     pro:       !!trip.is_pro_trip,
     userIsPro: isPro,
     status:    isTripInPast(visits) ? 'past' : 'active',
-    isShared,
-    members:   displayMembers,
+    isShared:  participants.length >= 2,
+    members:   participants,
   };
 }
 
@@ -110,32 +69,23 @@ function coverBg(trip) {
     hsl(${accent}, 70%, ${isDark ? 32 : 62}%) 100%)`;
 }
 
-// ─── Mini avatar (within card / row) ────────────────────────────────────────
-const MiniAvatar = ({ member }) => {
-  const label = member.user_full_name || member.invite_email || '';
-  return (
-    <span
-      className="avatar avatar--sm"
-      style={{ background: avatarGradient(label) }}
-      title={label}
-    >
-      {toInitials(label)}
-    </span>
-  );
-};
-
-// ─── Avatar stack (max 3 + overflow badge) ──────────────────────────────────
+// ─── Avatar stack — uses the same Avatar component as MembersLens/OverviewLens
 const AvatarStack = ({ members, maxShow = 3, white = false }) => {
   if (!members || members.length === 0) return null;
-  const shown   = members.slice(0, maxShow);
+  const shown    = members.slice(0, maxShow);
   const overflow = members.length - maxShow;
   return (
-    <div className={`av-stack ${white ? 'av-stack--white' : ''}`}>
-      {shown.map((m, i) => <MiniAvatar key={m.id ?? i} member={m} />)}
+    <div className={`av-stack${white ? ' av-stack--white' : ''}`}>
+      {shown.map((m, i) => (
+        <Avatar
+          key={m.user_id ?? i}
+          name={m.full_name || m.email || '?'}
+          photo={m.avatar_url || ''}
+          size="sm"
+        />
+      ))}
       {overflow > 0 && (
-        <span className="avatar avatar--sm" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>
-          +{overflow}
-        </span>
+        <Avatar name={`+${overflow}`} size="sm" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }} />
       )}
     </div>
   );
@@ -463,15 +413,13 @@ export default function Trips() {
     enabled: hasTrips,
   });
 
-  // ── Fetch all active members for displayed trips (shared-badge + avatars) ──
-  const { data: allTripMembers = [] } = useQuery({
-    queryKey: ['all-trip-members', tripIds.join(',')],
+  // ── Single RPC: all participants (owner + active members) with avatar_url ──
+  const { data: allParticipants = [] } = useQuery({
+    queryKey: ['trip-participant-profiles', tripIds.join(',')],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('trip_members')
-        .select('id, trip_id, user_id, user_full_name, invite_email, role, status')
-        .in('trip_id', tripIds)
-        .eq('status', 'active');
+      const { data, error } = await supabase.rpc('get_trip_participant_profiles', {
+        trip_id_list: tripIds,
+      });
       if (error) throw error;
       return data || [];
     },
@@ -479,45 +427,22 @@ export default function Trips() {
     staleTime: 30_000,
   });
 
-  // ── Fetch owner profiles for trips where current user is NOT the owner ──
-  // Owners are NOT in trip_members, so we use a SECURITY DEFINER RPC that
-  // returns owner info for trips the caller participates in. Single batch call.
-  const ownerTripIds = hasTrips
-    ? allTrips.filter(tr => tr.created_by !== user?.id).map(tr => tr.id)
-    : [];
-
-  const { data: ownerProfiles = [] } = useQuery({
-    queryKey: ['trip-owner-profiles', ownerTripIds.join(',')],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_trip_owner_profiles', {
-        trip_id_list: ownerTripIds,
-      });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: ownerTripIds.length > 0,
-    staleTime: 60_000,
-  });
-
-  // Map tripId → owner profile row for fast lookup
-  const ownerByTrip = useMemo(() => {
+  // Group participants by trip_id, owner always first
+  const participantsByTrip = useMemo(() => {
     const m = {};
-    ownerProfiles.forEach(p => { m[p.trip_id] = p; });
+    allParticipants.forEach(p => {
+      if (!m[p.trip_id]) m[p.trip_id] = [];
+      if (p.is_owner) m[p.trip_id].unshift(p);
+      else m[p.trip_id].push(p);
+    });
     return m;
-  }, [ownerProfiles]);
+  }, [allParticipants]);
 
   const visitsByTrip = useMemo(() => {
     const m = {};
     allVisits.forEach(v => { (m[v.trip_id] ||= []).push(v); });
     return m;
   }, [allVisits]);
-
-  // Group active members by trip (each member row = one participant who accepted)
-  const membersByTrip = useMemo(() => {
-    const m = {};
-    allTripMembers.forEach(mem => { (m[mem.trip_id] ||= []).push(mem); });
-    return m;
-  }, [allTripMembers]);
 
   const getRoleFor = (trip) => {
     if (trip.created_by === user?.id) return 'owner';
@@ -536,12 +461,7 @@ export default function Trips() {
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
   const shownNorm = shown.map(tr =>
-    normalizeTrip(
-      t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro,
-      membersByTrip[tr.id] || [],
-      user,
-      ownerByTrip[tr.id] || null,
-    )
+    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [])
   );
 
   // ── Create flow ───────────────────────────────────────────────────────────────
