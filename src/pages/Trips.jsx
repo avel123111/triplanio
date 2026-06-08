@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Dialog, EmptyState, Skeleton } from '../design/index';
 import { getGradientById } from '@/lib/trip-gradients';
+import { avatarGradient } from '@/lib/avatarRamp';
 import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
@@ -29,8 +30,17 @@ function scopeLabel(t, visits = []) {
   return cities.slice(0, 2).join(' · ') + ' ' + t('trips.cities_more', { count: cities.length - 2 });
 }
 
+/** Initials for avatar (up to 2 chars) from full name or email */
+function toInitials(nameOrEmail = '') {
+  const name = nameOrEmail.trim();
+  if (!name) return '?';
+  const parts = name.split(/[\s@]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
 /** Shape raw Supabase trip + visits into the object the card components expect */
-function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false) {
+function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, activeMembers = []) {
   return {
     ...trip,
     coverHue:  strHue(trip.id),
@@ -38,112 +48,195 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false) {
     days:      formatTripRange(visits, '-'),
     scope:     scopeLabel(t, visits),
     role,
-    // Badge shows only for trips purchased individually as Pro trip.
-    // User subscription (isPro) unlocks features but doesn't badge every trip.
     pro:       !!trip.is_pro_trip,
     userIsPro: isPro,
     status:    isTripInPast(visits) ? 'past' : 'active',
+    // "Shared" = trip has at least 1 active (accepted) member (excl. owner)
+    isShared:  activeMembers.length >= 1,
+    members:   activeMembers,
   };
 }
 
-// ─── Trip cover gradient ──────────────────────────────────────────────────────
-const CollectionTripCover = ({ trip }) => {
-  const { t } = useI18n();
+// ─── Cover background helper ────────────────────────────────────────────────
+function coverBg(trip) {
   const gradient = trip.cover_gradient ? getGradientById(trip.cover_gradient) : null;
-  const hasPhoto = !!trip.cover_image_url;
-  const hasGradient = !hasPhoto && !!gradient;
+  if (trip.cover_image_url) return null; // photo rendered separately
+  if (gradient) return gradient.css;
+  // Procedural fallback based on trip id / title hue
+  const hue    = trip.coverHue ?? 210;
+  const accent = trip.accentHue ?? 18;
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  return `linear-gradient(to bottom left,
+    hsl(${hue}, 60%, ${isDark ? 30 : 68}%) 0%,
+    hsl(${(hue + accent) % 360}, 55%, ${isDark ? 22 : 58}%) 60%,
+    hsl(${accent}, 70%, ${isDark ? 32 : 62}%) 100%)`;
+}
 
-  // Fallback: hue-based procedural gradient for trips without a cover set
-  const hue      = trip.coverHue ?? 210;
-  const accent   = trip.accentHue ?? 18;
-  const isDark   = document.documentElement.dataset.theme === 'dark';
-  const fallbackBg = `linear-gradient(135deg,
-    hsl(${hue}, 60%, ${isDark ? 28 : 70}%) 0%,
-    hsl(${(hue + accent) % 360}, 55%, ${isDark ? 22 : 60}%) 70%,
-    hsl(${accent}, 70%, ${isDark ? 35 : 65}%) 100%)`;
-
+// ─── Mini avatar (within card / row) ────────────────────────────────────────
+const MiniAvatar = ({ member }) => {
+  const label = member.user_full_name || member.invite_email || '';
   return (
-    <div style={{ aspectRatio: '16/9', background: hasGradient ? gradient.css : fallbackBg, borderRadius: 'var(--radius-card)', position: 'relative', overflow: 'hidden' }}>
-      {hasPhoto && (
-        <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-      )}
-      {!hasPhoto && (
-        <svg viewBox="0 0 200 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.45 }}>
-          <path d={`M0 ${60 + trip.id.length % 20} Q 50 ${30 + trip.id.length % 10} 100 ${50 + trip.id.length % 15} T 200 ${40 + trip.id.length % 12}`}
-            stroke="white" strokeWidth="1" fill="none" strokeDasharray="2 3" />
-        </svg>
-      )}
-      <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 6 }}>
-        {trip.pro && (
-          <div style={{ background: 'var(--pro-gradient)', color: 'var(--pro-fg)', fontSize: 'var(--fs-micro)', fontWeight: 800, letterSpacing: '.04em', padding: '3px 9px', borderRadius: 999, boxShadow: '0 4px 12px -4px var(--pro)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Icon name="pro" size={11} /> Pro
-          </div>
-        )}
-        {trip.role !== 'owner' && (
-          <div style={{ background: 'rgba(15,23,42,.6)', color: 'white', fontSize: 'var(--fs-micro)', fontWeight: 600, padding: '3px 8px', borderRadius: 999, backdropFilter: 'blur(8px)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Icon name="users" size={11} /> {t('trips.shared_badge')}
-          </div>
-        )}
-      </div>
-      {trip.status === 'past' && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,.55)' }} />
+    <span
+      className="avatar avatar--sm"
+      style={{ background: avatarGradient(label) }}
+      title={label}
+    >
+      {toInitials(label)}
+    </span>
+  );
+};
+
+// ─── Avatar stack (max 3 + overflow badge) ──────────────────────────────────
+const AvatarStack = ({ members, maxShow = 3, white = false }) => {
+  if (!members || members.length === 0) return null;
+  const shown   = members.slice(0, maxShow);
+  const overflow = members.length - maxShow;
+  return (
+    <div className={`av-stack ${white ? 'av-stack--white' : ''}`}>
+      {shown.map((m, i) => <MiniAvatar key={m.id ?? i} member={m} />)}
+      {overflow > 0 && (
+        <span className="avatar avatar--sm" style={{ background: 'var(--surface-2)', color: 'var(--muted)' }}>
+          +{overflow}
+        </span>
       )}
     </div>
   );
 };
 
-// ─── Trip card (grid view) ───────────────────────────────────────────────────
+// ─── Role label ─────────────────────────────────────────────────────────────
+function roleLabel(t, role) {
+  if (role === 'owner')  return t('trips.role_owner');
+  if (role === 'admin')  return t('trips.role_admin');
+  if (role === 'viewer') return t('trips.role_viewer');
+  return t('trips.role_admin'); // safe fallback — 'member' role doesn't exist in schema
+}
+
+// ─── SVG icons (inline, matches design spec) ────────────────────────────────
+const IconPin   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.7-7-11a7 7 0 0114 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>;
+const IconUsers = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0M16 6a3 3 0 010 6M21 20a6 6 0 00-4-5.6"/></svg>;
+const IconChev  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6l6 6-6 6"/></svg>;
+const IconCrown = () => <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>;
+const IconGlobe = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3c-2 3-3 5.5-3 9s1 6 3 9M12 3c2 3 3 5.5 3 9s-1 6-3 9M3 12h18"/></svg>;
+
+// ─── Trip card (grid / poster view) ─────────────────────────────────────────
 const TripCard = ({ trip, onClick }) => {
   const { t } = useI18n();
+  const bg = coverBg(trip);
+
   return (
-  <button
-    onClick={onClick}
-    className="dz-lift-card"
-    style={{ background: 'var(--surface)', borderRadius: 'var(--radius-card)', padding: 14, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 12, cursor: 'pointer' }}
-  >
-    <CollectionTripCover trip={trip} />
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 'var(--fs-h3)', letterSpacing: '-0.015em', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trip.title}</div>
-        <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{trip.days}</div>
+    <button className={`tc${trip.status === 'past' ? ' tc--past' : ''}`} onClick={onClick}>
+      {/* background */}
+      <div className="tc__bg" style={{ background: bg || undefined }}>
+        {trip.cover_image_url && (
+          <img className="tc__img" src={trip.cover_image_url} alt="" />
+        )}
       </div>
-      {trip.role === 'viewer' && <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>}
-      {trip.role === 'admin'  && <Badge>{t('trips.role_admin')}</Badge>}
-    </div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>
-      <Icon name="pin" size={13} />
-      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{trip.scope}</span>
-      {trip.status === 'draft' && <Badge variant="warning" dot>{t('ai_plan.draft_label')}</Badge>}
-    </div>
-  </button>
+
+      {/* decorative blobs (only on gradient covers, looks odd on photos) */}
+      {!trip.cover_image_url && (
+        <>
+          <div className="tc__blob tc__b1" />
+          <div className="tc__blob tc__b2" />
+        </>
+      )}
+
+      {/* scrim */}
+      <div className="tc__scrim" />
+
+      {/* content */}
+      <div className="tc__in">
+        {/* top-right badges */}
+        <div className="tc__tags">
+          {trip.pro && (
+            <span className="badge badge--pro">
+              <IconCrown /> Pro
+            </span>
+          )}
+        </div>
+
+        <div className="tc__spacer" />
+
+        {/* trip info */}
+        <div className="tc__title">{trip.title}</div>
+        <div className="tc__dates tab">{trip.days}</div>
+        <div className="tc__scope">
+          <IconPin />
+          <span>{trip.scope}</span>
+        </div>
+
+        {/* shared footer: совместный chip + role + avatars */}
+        {trip.isShared && (
+          <div className="tc__foot">
+            <span className="tc__glass">
+              <IconUsers /> {t('trips.shared_badge')}
+            </span>
+            <span className="tc__glass">
+              {roleLabel(t, trip.role)}
+            </span>
+            <AvatarStack members={trip.members} maxShow={3} white />
+          </div>
+        )}
+      </div>
+    </button>
   );
 };
 
 // ─── Trip row (list view) ────────────────────────────────────────────────────
 const TripRow = ({ trip, onClick }) => {
   const { t } = useI18n();
+  const bg = coverBg(trip);
+
   return (
-  <button onClick={onClick} className="dz-bord" style={{ display: 'grid', gridTemplateColumns: '44px 1fr 180px 140px 100px 30px', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', borderRadius: 12, cursor: 'pointer', textAlign: 'left', fontSize: 'var(--fs-base)' }}>
-    <div style={{ width: 44, height: 44, borderRadius: 10, background: `hsl(${trip.coverHue ?? 210}, 50%, 60%)`, position: 'relative' }}>
-      {trip.role !== 'owner' && (
-        <span style={{ position: 'absolute', bottom: -3, right: -3, width: 20, height: 20, borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--surface)', display: 'grid', placeItems: 'center' }}>
-          <Icon name="users" size={11} style={{ color: 'var(--brand)' }} />
-        </span>
-      )}
-    </div>
-    <div>
-      <div style={{ fontWeight: 600, color: 'var(--ink)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trip.title}</div>
-      <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{trip.scope}</div>
-    </div>
-    <div className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{trip.days}</div>
-    <div>
-      {trip.role === 'owner'  && <Badge>{t('trips.role_owner')}</Badge>}
-      {trip.role === 'admin'  && <Badge>{t('trips.role_admin')}</Badge>}
-      {trip.role === 'viewer' && <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>}
-    </div>
-    <div>{trip.pro && <Badge variant="pro" icon="pro">Pro</Badge>}</div>
-    <Icon name="chev" size={14} style={{ color: 'var(--muted-2)' }} />
-  </button>
+    <button
+      onClick={onClick}
+      className={`tr${trip.status === 'past' ? ' tr--past' : ''}`}
+    >
+      {/* thumbnail */}
+      <div className="tr__thumb" style={{ background: bg || undefined }}>
+        {trip.cover_image_url && (
+          <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+        )}
+        <div className="tc__blob" style={{ width: 54, height: 54, top: -18, right: -14 }} />
+        {trip.isShared && (
+          <span className="tr__shared"><IconUsers /></span>
+        )}
+      </div>
+
+      {/* main */}
+      <div className="tr__main">
+        <div className="tr__title">{trip.title}</div>
+        <div className="tr__sub">
+          <IconPin />
+          <span>{trip.scope}</span>
+        </div>
+      </div>
+
+      {/* meta */}
+      <div className="tr__meta">
+        <span className="tr__date tab tr-hideS">{trip.days}</span>
+        {trip.isShared && (
+          <div className="tr-hideS">
+            <AvatarStack members={trip.members} maxShow={2} />
+          </div>
+        )}
+        {trip.isShared && (
+          <span className="tr-hideS">
+            {trip.role === 'viewer'
+              ? <Badge variant="quiet" icon="eye">{t('trips.role_viewer')}</Badge>
+              : trip.role === 'owner'
+                ? <Badge>{t('trips.role_owner')}</Badge>
+                : <Badge>{roleLabel(t, trip.role)}</Badge>
+            }
+          </span>
+        )}
+        {trip.pro && (
+          <span className="tr-hideS">
+            <Badge variant="pro" icon="pro">Pro</Badge>
+          </span>
+        )}
+        <span className="tr__chev"><IconChev /></span>
+      </div>
+    </button>
   );
 };
 
@@ -200,7 +293,7 @@ function CollectionEmpty({ onManual, onAi }) {
   return (
     <div style={{ maxWidth: 720, margin: '60px auto', textAlign: 'center' }}>
       <div style={{ width: 96, height: 96, margin: '0 auto 22px', borderRadius: 24, background: 'linear-gradient(135deg, var(--brand-soft), var(--ai-soft))', display: 'grid', placeItems: 'center' }}>
-        <Icon name="globe" size={42} style={{ color: 'var(--brand)' }} />
+        <span style={{ color: 'var(--brand)', display: 'contents' }}><IconGlobe /></span>
       </div>
       <h1 style={{ marginBottom: 10 }}>{t('trips.empty_heading')}</h1>
       <div className="muted" style={{ fontSize: 'var(--fs-h4)', marginBottom: 28, maxWidth: 480, margin: '0 auto 28px' }}>
@@ -214,8 +307,7 @@ function CollectionEmpty({ onManual, onAi }) {
           <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('trips.start_manual')}</div>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.manual_desc_full')}</div>
         </button>
-        <button onClick={onAi} style={{ padding: 22, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
-          className="ai-card">
+        <button onClick={onAi} className="ai-card" style={{ padding: 22, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}>
           <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 14 }}>
             <Icon name="sparkles" size={19} />
           </div>
@@ -228,8 +320,6 @@ function CollectionEmpty({ onManual, onAi }) {
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
-// Header row + toolbar placeholders - shown only on the very first load, so the
-// loading state mirrors the real page layout instead of a bare grid of boxes.
 function TripsHeaderSkeleton() {
   return (
     <>
@@ -252,31 +342,25 @@ function TripsHeaderSkeleton() {
 function TripSkeleton({ viewMode }) {
   if (viewMode === 'list') {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 160px 120px', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }}>
-            <Skeleton w={44} h={44} r={10} />
-            <div>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
+            <Skeleton w={62} h={46} r={12} />
+            <div style={{ flex: 1 }}>
               <Skeleton w="55%" h={14} r={5} style={{ marginBottom: 6 }} />
               <Skeleton w="32%" h={11} r={4} />
             </div>
-            <Skeleton w={120} h={12} r={5} />
-            <Skeleton w={84} h={12} r={5} />
+            <Skeleton w={80} h={12} r={5} />
           </div>
         ))}
       </div>
     );
   }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+    <div className="tc-grid">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} style={{ border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 'var(--radius-card)', padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Skeleton w="100%" h={120} r={12} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <Skeleton w="70%" h={17} r={6} />
-            <Skeleton w="40%" h={12} r={4} />
-          </div>
-          <Skeleton w="90%" h={12} r={4} />
+        <div key={i} style={{ borderRadius: 'var(--r-card)', overflow: 'hidden', minHeight: 256 }}>
+          <Skeleton w="100%" h={256} r={0} />
         </div>
       ))}
     </div>
@@ -288,7 +372,6 @@ export default function Trips() {
   const { t }     = useI18n();
   const { user }  = useAuth();
   const nav       = useNavigate();
-  const qc        = useQueryClient();
 
   const { isDark, toggle: toggleTheme } = useTheme();
 
@@ -305,8 +388,6 @@ export default function Trips() {
   React.useEffect(() => {
     try { localStorage.setItem('trips:viewMode', viewMode); } catch { /* ignore */ }
   }, [viewMode]);
-
-  // Stripe checkout return is handled globally in Layout (one success/fail modal).
 
   const isPro = isProActive(user);
 
@@ -331,7 +412,7 @@ export default function Trips() {
     enabled: !!user?.id,
   });
 
-  const tripIds  = allTrips.map(t => t.id);
+  const tripIds  = allTrips.map(tr => tr.id);
   const hasTrips = tripIds.length > 0;
 
   const { data: allVisits = [], isLoading: loadingVisits } = useQuery({
@@ -344,11 +425,34 @@ export default function Trips() {
     enabled: hasTrips,
   });
 
+  // ── Fetch all active members for displayed trips (shared-badge + avatars) ──
+  const { data: allTripMembers = [] } = useQuery({
+    queryKey: ['all-trip-members', tripIds.join(',')],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trip_members')
+        .select('id, trip_id, user_id, user_full_name, invite_email, role, status')
+        .in('trip_id', tripIds)
+        .eq('status', 'active');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: hasTrips,
+    staleTime: 30_000,
+  });
+
   const visitsByTrip = useMemo(() => {
     const m = {};
     allVisits.forEach(v => { (m[v.trip_id] ||= []).push(v); });
     return m;
   }, [allVisits]);
+
+  // Group active members by trip (each member row = one participant who accepted)
+  const membersByTrip = useMemo(() => {
+    const m = {};
+    allTripMembers.forEach(mem => { (m[mem.trip_id] ||= []).push(mem); });
+    return m;
+  }, [allTripMembers]);
 
   const getRoleFor = (trip) => {
     if (trip.created_by === user?.id) return 'owner';
@@ -366,8 +470,9 @@ export default function Trips() {
   const pastTrips   = allTrips.filter(tr =>  isTripInPast(visitsByTrip[tr.id] || []) && matches(tr));
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
-  // Normalize to the shape TripCard / TripRow expect
-  const shownNorm = shown.map(tr => normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro));
+  const shownNorm = shown.map(tr =>
+    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, membersByTrip[tr.id] || [])
+  );
 
   // ── Create flow ───────────────────────────────────────────────────────────────
   const checkLimit = (pick) => {
@@ -401,7 +506,7 @@ export default function Trips() {
       {/* PAGE CONTENT */}
       <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
-        {/* Loading skeleton - shown before we know if there are any trips */}
+        {/* Loading skeleton */}
         {isLoadingData && allTrips.length === 0 && (
           <>
             <TripsHeaderSkeleton />
@@ -409,12 +514,12 @@ export default function Trips() {
           </>
         )}
 
-        {/* Empty collection - only when loading is done and truly no trips */}
+        {/* Empty collection */}
         {!isLoadingData && allTrips.length === 0 && (
           <CollectionEmpty onManual={() => checkLimit('manual')} onAi={() => checkLimit('ai')} />
         )}
 
-        {/* Normal view - only when we have at least some trips data */}
+        {/* Normal view */}
         {allTrips.length > 0 && (
           <>
             {/* Header row */}
@@ -438,7 +543,7 @@ export default function Trips() {
                   {t('trips.tab_past')} · {pastTrips.length}
                 </button>
               </div>
-              <div style={{ position: 'relative', flex: 1, minWidth: 220, maxWidth: 360 }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 180, maxWidth: 340 }}>
                 <Icon name="search" size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-2)' }} />
                 <input className="input" placeholder={t('trips.search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 34 }} />
               </div>
@@ -459,42 +564,44 @@ export default function Trips() {
                 body={filterMode === 'past' ? t('trips.empty_archive_body') : t('trips.empty_search_body')}
               />
             ) : viewMode === 'grid' ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+              <div className="tc-grid">
                 {shownNorm.map(tr => (
                   <TripCard key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
                 {filterMode === 'active' && (
-                  <button
-                    onClick={() => setShowNewTrip(true)}
-                    style={{ border: '1.5px dashed var(--line)', background: 'transparent', borderRadius: 'var(--radius-card)', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10, cursor: 'pointer', color: 'var(--muted)', minHeight: 260 }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.color = 'var(--brand)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)'; }}
-                  >
-                    <Icon name="plus" size={22} />
-                    <div style={{ fontWeight: 500 }}>{t('trips.add_trip')}</div>
-                    <div style={{ fontSize: 'var(--fs-meta)', textAlign: 'center', maxWidth: 200 }}>{t('trips.add_trip_sub')}</div>
+                  <button className="tc-add" onClick={() => setShowNewTrip(true)}>
+                    <div className="tc-add__ic">
+                      <Icon name="plus" size={24} />
+                    </div>
+                    <b>{t('trips.add_trip')}</b>
+                    <small>{t('trips.add_trip_sub')}</small>
                   </button>
                 )}
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="tr-list">
                 {shownNorm.map(tr => (
                   <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
               </div>
             )}
 
-            {/* Free-limit banner */}
+            {/* Free-limit banner — Pro style, not AI style */}
             {!isPro && filterMode === 'active' && (
-              <div className="ai-card" style={{ marginTop: 36, padding: '18px 22px', background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.06) 100%)', border: '1px solid var(--ai-soft-12)', borderRadius: 'var(--radius-card)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center' }}>
-                  <Icon name="sparkles" size={18} />
+              <div className="limitcard">
+                <div className="limitcard__ic">
+                  <Icon name="pro" size={22} />
                 </div>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 2 }}>{t('trips.free_limit_title')}</div>
-                  <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('trips.free_limit_desc')}</div>
+                <div className="limitcard__body">
+                  <div className="limitcard__top">
+                    <b>{t('trips.free_limit_title')}</b>
+                    <span className="limitcard__count num">
+                      {activeTrips.length} / 1
+                    </span>
+                  </div>
+                  <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>
                 </div>
-                <Btn variant="primary" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
+                <Btn variant="pro" icon="crown" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
               </div>
             )}
           </>
