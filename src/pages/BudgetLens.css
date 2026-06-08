@@ -8,7 +8,7 @@
    as-is from the design system).
    ============================================================ */
 
-.bgt { --bgt-r: 14px; }
+.bgt { --bgt-r: 14px; overflow-x: hidden; }
 
 /* ════════ SUMMARY BAND ════════ */
 .bgt-sumband { display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; margin-bottom: 14px; }
@@ -71,7 +71,7 @@
 .bgt-glist__row.on { background: var(--primary-soft); border-color: var(--primary-soft-2); }
 .bgt-glist__ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none; }
 .bgt-glist__m { flex: 1; min-width: 0; }
-.bgt-glist__n { display: flex; align-items: center; gap: 7px; font-weight: 800; color: var(--ink); font-size: var(--fs-base); }
+.bgt-glist__n { display: flex; align-items: center; gap: 7px; font-weight: 800; color: var(--ink); font-size: var(--fs-base); min-width: 0; }
 .bgt-glist__n .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bgt-glist__c { font-size: var(--fs-micro); color: var(--muted); font-weight: 600; margin-top: 1px; }
 .bgt-glist__c .miss { color: var(--danger); }
@@ -152,8 +152,17 @@
 @media (max-width: 880px) {
   .bgt-sumband { grid-template-columns: 1fr; }
   .bgt-drill { grid-template-columns: 1fr; }
-}
-@media (max-width: 520px) {
+  /* Bug 2: donutwrap collapses to column at the same breakpoint as the sumband —
+     when the card is full-width there is no room to fit the donut + a wide currency
+     legend side-by-side, so stack them vertically to give the legend full card width */
   .bgt-donutwrap { flex-direction: column; align-items: stretch; gap: 16px; }
+}
+@media (max-width: 640px) {
+  /* Bug 1: allow category/expense names to wrap instead of truncating,
+     preventing the text from pushing the layout beyond the screen edge */
+  .bgt-glist__n { flex-wrap: wrap; align-items: flex-start; }
+  .bgt-glist__n .t { white-space: normal; word-break: break-word; }
+  .bgt-exrow__t { white-space: normal; word-break: break-word; }
+  .bgt-dleg__n { white-space: normal; word-break: break-word; }
   .bgt-fxrow > .input { width: 88px; }
 }
