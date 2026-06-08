@@ -2799,3 +2799,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .night-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--line);font-size:11px;font-weight:800;color:var(--ink-2);}
 .night-badge svg{width:12px;height:12px;}
 .pro-pill{display:inline-flex;align-items:center;margin-left:6px;font-size:9px;font-weight:800;color:var(--pro-fg);background:var(--pro-gradient);padding:1.5px 5px;border-radius:999px;}
+
+/* booking-link platform logo chip (was unsized → giant logo) */
+.bk-link .pb{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex:none;overflow:hidden;}
+.bk-link .pb img{width:100%;height:100%;object-fit:cover;}
+/* edit-modal field labels: match Lumo design (.field>label = 11px/800/muted/uppercase) */
+.ev-dlg .field__label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}

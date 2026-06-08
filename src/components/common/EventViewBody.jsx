@@ -26,8 +26,8 @@ import { optimisticContentUpdate } from '@/lib/trip-data';
 import { BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import {
   Map as MapIcon, Calendar, FileText,
-  Bed, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Camera, Upload,
-  RefreshCw, Wifi, ShieldCheck,
+  Bed, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Camera,
+  Wifi, ShieldCheck,
 } from 'lucide-react';
 
 export const TABLE_BY_KIND = {
@@ -508,48 +508,24 @@ export function EventViewSections({ kind, entity, fromVisit, toVisit, accent, do
       {kind === 'activity' && <ActivityBody entity={entity} accent={accent} />}
       {kind === 'service' && <ServiceBody entity={entity} accent={accent} />}
 
-      {/* Documents */}
-      {(docs.length > 0 || canEdit) && (
-        <Section title={`${t('activity.documents_label')}${docs.length > 0 ? ` · ${docs.length}` : ''}`} accent={accent}>
-          {docs.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {docs.map((d, i) => (
-                <a
-                  key={`${d.file_url}-${i}`}
-                  href={d.file_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="doc-row"
-                >
-                  <div className="di"><FileText /></div>
-                  <b>{d.file_name || t('event.file_word')}</b>
-                  {d.file_size && <span className="ds">{d.file_size}</span>}
-                </a>
-              ))}
-            </div>
-          )}
-          {!docs.length && <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{t('doc.tab_empty_title')}</div>}
-          {canEdit && (
-            <label
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-              className="drop-zone"
-              style={{ marginTop: docs.length ? 8 : 0 }}
-            >
-              <input
-                type="file"
-                multiple
-                style={{ display: 'none' }}
-                onChange={(e) => uploadFiles(e.target.files)}
-                disabled={uploading}
-              />
-              {uploading ? (
-                <><RefreshCw style={{ width: 20, height: 20, animation: 'spin .7s linear infinite' }} /><b>{t('trip.form_uploading')}</b></>
-              ) : (
-                <><Upload style={{ width: 20, height: 20 }} /><b>{t('event.drop_or_pick')}</b></>
-              )}
-            </label>
-          )}
+      {/* Documents — view is READ-ONLY: list only, no upload zone (design). */}
+      {docs.length > 0 && (
+        <Section title={`${t('activity.documents_label')} · ${docs.length}`} accent={accent}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {docs.map((d, i) => (
+              <a
+                key={`${d.file_url}-${i}`}
+                href={d.file_url}
+                target="_blank"
+                rel="noreferrer"
+                className="doc-row"
+              >
+                <div className="di"><FileText /></div>
+                <b>{d.file_name || t('event.file_word')}</b>
+                {d.file_size && <span className="ds">{d.file_size}</span>}
+              </a>
+            ))}
+          </div>
         </Section>
       )}
 

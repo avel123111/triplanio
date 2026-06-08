@@ -1160,10 +1160,9 @@ export default function EventEditDialog({
                   {t('common.cancel')}
                 </button>
                 <button
-                  className="btn btn--primary btn--sm"
+                  className="btn btn--danger-solid btn--sm"
                   onClick={() => deleteMut.mutate()}
                   disabled={deleteMut.isPending}
-                  style={{ '--bg': 'var(--danger)' }}
                 >
                   {deleteMut.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
                   <Trash2 className="w-3.5 h-3.5 mr-1.5" />{t('common.delete')}
@@ -1173,7 +1172,7 @@ export default function EventEditDialog({
               <>
                 {isEdit && (
                   <button
-                    className="btn btn--danger-ghost btn--sm"
+                    className="btn btn--danger btn--sm"
                     onClick={() => setConfirmDel(true)}
                     disabled={deleteMut.isPending}
                   >

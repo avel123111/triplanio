@@ -195,7 +195,7 @@ export default function EventModal(props) {
               )}
               <div style={{ flex: 1 }} />
               {canEdit && onDelete && (
-                <Btn variant="danger-ghost" size="sm" onClick={() => setConfirmDel(true)}>
+                <Btn variant="danger" size="sm" onClick={() => setConfirmDel(true)}>
                   <Trash2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.delete')}
                 </Btn>
               )}

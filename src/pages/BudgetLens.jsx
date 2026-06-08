@@ -20,6 +20,7 @@
  * lives in BudgetLens.css (page-scoped `.bgt-*` classes on Lumo tokens).
  */
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -487,6 +488,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, main
 
 export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient }) {
   const { t } = useI18n();
+  const nav = useNavigate();
   const loc = getActiveLocale();
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);
@@ -838,6 +840,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         open={sourceView.open}
         onOpenChange={(o) => setSourceView(s => ({ ...s, open: o }))}
         canEdit={true}
+        onEditInEditor={({ kind, id }) => nav(`/trip/${tripId}/edit`, { state: { edit: { kind, id } } })}
       />
 
       {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityNames} existing={expenseModal.existing ?? null} onSaved={refresh} />}

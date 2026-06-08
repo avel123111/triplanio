@@ -877,10 +877,10 @@ export default function TripView() {
 
   // Open the read/edit dialog for a timeline event (hotel / transfer / activity)
   const openEventView = (e) => {
-    // Car-rental pickup/return → open the car service in the editor dialog.
+    // Car-rental pickup/return → open the car service VIEW (not edit) like any other event.
     if (e.type === 'car-pickup' || e.type === 'car-return') {
       const svc = (services || []).find(s => s.id === e.id);
-      if (svc) setServiceEditCar({ open: true, service: svc });
+      if (svc) setEventView({ open: true, kind: 'service', id: svc.id, warning: null });
       return;
     }
     let kind = null;
@@ -1158,27 +1158,18 @@ export default function TripView() {
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
-          {/* eSIM / Insurance — view (SourceViewLoader) or create (EventEditDialog) */}
+          {/* eSIM / Insurance — CREATE only (viewing goes through the unified
+              SourceViewLoader below, like every other service/event). */}
           {serviceSimple.open && (serviceSimple.kind === 'esim' || serviceSimple.kind === 'insurance') && (
-            serviceSimple.service ? (
-              <SourceViewLoader
-                kind="service"
-                id={serviceSimple.service.id}
-                open={serviceSimple.open}
-                onOpenChange={(o) => setServiceSimple(s => ({ ...s, open: o }))}
-                canEdit={myRole !== 'viewer' && !frozen}
-              />
-            ) : (
-              <EventEditDialog
-                open={serviceSimple.open}
-                onOpenChange={(o) => setServiceSimple(s => ({ ...s, open: o }))}
-                kind="service"
-                tripId={tripId}
-                entity={null}
-                initialServiceKind={serviceSimple.kind}
-                defaultCurrency={trip?.details?.main_currency || 'EUR'}
-              />
-            )
+            <EventEditDialog
+              open={serviceSimple.open}
+              onOpenChange={(o) => setServiceSimple(s => ({ ...s, open: o }))}
+              kind="service"
+              tripId={tripId}
+              entity={null}
+              initialServiceKind={serviceSimple.kind}
+              defaultCurrency={trip?.details?.main_currency || 'EUR'}
+            />
           )}
           {/* Activity - add new activity in edit mode */}
           {activityEdit.visit && (
@@ -1223,10 +1214,7 @@ export default function TripView() {
               onOpenBudget={() => setLens('budget')}
               onOpenMembers={() => setLens('members')}
               onAddService={frozen ? frozenNote : (type) => setServiceChoice({ open: true, type })}
-              onOpenService={(s) => {
-                if (s.kind === 'car_rental') setServiceEditCar({ open: true, service: s });
-                else setServiceSimple({ open: true, kind: s.kind, service: s, mode: 'view' });
-              }}
+              onOpenService={(s) => setEventView({ open: true, kind: 'service', id: s.id })}
               onBudgetLocked={() => setBudgetAddonOff(true)}
             />
           )}
