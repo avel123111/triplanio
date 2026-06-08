@@ -22,4 +22,7 @@ export default {
   'calendar.week_no_data': 'Нет данных для этой недели',
   'calendar.more_count': 'ещё',
   'calendar.no_dates': 'Добавь даты путешествия, чтобы увидеть календарь',
+  'calendar.legend_group_cities': 'Города',
+  'calendar.legend_group_events': 'События',
+  'calendar.free_day': 'Свободный день',
 };

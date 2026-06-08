@@ -1,145 +1,502 @@
 /* =================================================================
-   Calendar lens (§15) — month + week views.
-   All sizing/contrast lives here (not inline) so it stays on the
-   design-system token ladder (--fs-*, --muted) and meets WCAG AA.
+   CalendarLens — Lumo redesign (ncal-* namespace)
+   All colours via existing app.css tokens — no new values introduced.
    ================================================================= */
 
-/* ── Toolbar ─────────────────────────────────────────────────── */
-.cal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-.cal-toolbar__title { flex: 1; margin: 0; min-width: 150px; }
-.cal-toolbar__sub { color: var(--muted); font-size: var(--fs-strong); font-weight: 400; margin-left: 10px; }
-.cal-nav { display: inline-flex; align-items: center; gap: 2px; }
-
-/* ── Shared card / horizontal scroll on narrow screens ───────── */
-.cal-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
-.cal-scroll { overflow-x: auto; }
-.cal-scroll::-webkit-scrollbar { height: 8px; }
-.cal-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
-
-/* ── Month grid ──────────────────────────────────────────────── */
-.cal-month { min-width: 560px; }
-
-.cal-wdhead { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--line); }
-.cal-wd {
-  padding: 9px 12px; font-size: var(--fs-micro); color: var(--muted);
-  letter-spacing: .06em; text-transform: uppercase; font-weight: 600;
-  border-right: 1px solid var(--line-2);
+/* ── Toolbar / Header ──────────────────────────────────────────── */
+.ncal-hd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
-.cal-wd:last-child { border-right: none; }
-
-/* One week = relative row so its city bars are clipped to that row
-   and wrap naturally instead of overflowing across the whole month. */
-.cal-week { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); }
-
-.cal-cell {
-  position: relative; min-width: 0;
-  border-right: 1px solid var(--line-2);
-  border-bottom: 1px solid var(--line-2);
-  padding: 7px 7px 6px;
-  min-height: var(--cal-cell-min, 104px);
-  /* room reserved at the top for the wrapped city bars of this row */
-  padding-top: calc(28px + var(--cal-band, 0px));
-  text-align: left;
+.ncal-hd-l { flex: 1; min-width: 0; }
+.ncal-title-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  line-height: 1;
 }
-.cal-week:last-child .cal-cell { border-bottom: none; }
-.cal-cell:nth-child(7n) { border-right: none; }
-.cal-cell--out { opacity: .4; }
-.cal-cell--trip { background: var(--brand-soft); }
-
-.cal-daynum {
-  position: absolute; top: 7px; left: 8px;
-  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-meta);
-  color: var(--ink-2);
+.ncal-month-lbl {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(32px, 6vw, 50px);
+  color: var(--ink);
+  letter-spacing: -.03em;
+  line-height: 1;
 }
-.cal-cell--trip .cal-daynum { color: var(--brand); }
-.cal-cell--today .cal-daynum {
-  background: var(--brand); color: #fff;
-  min-width: 20px; height: 20px; padding: 0 5px;
+.ncal-year-lbl {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(18px, 3.5vw, 28px);
+  color: var(--muted);
+  margin-left: 12px;
+  letter-spacing: -.02em;
+}
+.ncal-hd-r {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+  flex: none;
+}
+
+/* ── Nav pill ──────────────────────────────────────────────────── */
+.ncal-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface-2);
+  border-radius: var(--r-pill);
+  padding: 4px;
+}
+.ncal-nav-ico {
+  width: 32px; height: 32px;
+  border-radius: var(--r-pill);
+  background: transparent; border: none;
+  color: var(--muted);
+  display: grid; place-items: center;
+  transition: background .15s, color .15s;
+  cursor: pointer;
+}
+.ncal-nav-ico svg { width: 14px; height: 14px; }
+.ncal-nav-ico:hover { background: var(--surface); color: var(--ink); }
+.ncal-nav-txt {
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  background: transparent; border: none;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: var(--fs-meta); font-weight: 700;
+  transition: background .15s, color .15s;
+  cursor: pointer;
+}
+.ncal-nav-txt:hover { background: var(--surface); color: var(--ink); }
+.ncal-nav-txt.is-active { background: var(--primary-soft-2); color: var(--brand); }
+.ncal-nav-div {
+  width: 1px; height: 16px;
+  background: var(--line-strong);
+  margin: 0 2px; flex: none; align-self: center;
+}
+.ncal-nav-trip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: var(--r-pill);
+  background: var(--primary-soft); color: var(--brand);
+  border: none; font-family: var(--font-ui);
+  font-size: var(--fs-meta); font-weight: 800;
+  transition: background .15s, color .15s;
+  cursor: pointer;
+}
+.ncal-nav-trip svg { width: 13px; height: 13px; flex: none; }
+.ncal-nav-trip:hover { background: var(--primary-soft-2); }
+.ncal-nav-trip.is-active { background: var(--primary-soft-2); }
+
+/* ── View toggle ───────────────────────────────────────────────── */
+.ncal-vtgl {
+  display: inline-flex;
+  background: var(--surface-2);
+  border-radius: var(--r-pill);
+  padding: 4px; gap: 2px;
+}
+.ncal-vtgl-btn {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-meta);
+  color: var(--muted);
+  background: transparent; border: none;
+  padding: 8px 18px; border-radius: var(--r-pill);
+  transition: background .2s, color .15s, box-shadow .2s;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ncal-vtgl-btn.is-on {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--sh-1);
+}
+
+/* ── Month: weekday header ─────────────────────────────────────── */
+.ncal-wd-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 7px;
+}
+.ncal-wd {
+  text-align: center;
+  font-size: var(--fs-nano); font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted-2); padding: 5px 0;
+}
+
+/* ── Month: week row + day grid ────────────────────────────────── */
+.ncal-wk { margin-bottom: 3px; }
+.ncal-dgrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+/* ── Day cell ──────────────────────────────────────────────────── */
+.ncal-dc {
+  border-radius: var(--r-md);
+  overflow: hidden;
+  padding: 0 0 8px;
+  min-height: 100px;
+  background: var(--surface-3);
+  transition: background .18s var(--ease-out), transform .14s var(--ease-spring);
+  cursor: pointer;
+}
+.ncal-dc:hover { background: var(--surface-2); }
+.ncal-dc.is-out { opacity: .22; pointer-events: none; }
+.ncal-dc.is-trip { background: var(--primary-soft); }
+.ncal-dc.is-trip:hover { background: var(--primary-soft-2); }
+
+/* ── City strip ────────────────────────────────────────────────── */
+.ncal-cstrip {
+  height: 20px;
+  display: flex; align-items: center;
+  padding: 0 9px;
+  font-size: 9px; font-weight: 800;
+  color: rgba(255,255,255,.92);
+  letter-spacing: .05em; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden;
+  margin-bottom: 8px;
+  flex: none;
+}
+.ncal-cstrip.cs-empty {
+  background: transparent;
+  height: 20px; margin-bottom: 8px;
+}
+/* Split: multiple city segments */
+.ncal-cstrip.is-split {
+  padding: 0; gap: 1.5px;
+}
+.ncal-cstrip-seg {
+  flex: 1; height: 100%;
+  display: flex; align-items: center;
+  padding: 0 6px;
+  font-size: 9px; font-weight: 800;
+  color: rgba(255,255,255,.9);
+  letter-spacing: .04em; text-transform: uppercase;
+  overflow: hidden; white-space: nowrap; min-width: 0;
+}
+
+/* ── Day number ────────────────────────────────────────────────── */
+.ncal-dn-wrap { padding: 0 8px 4px; }
+.ncal-dn {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--fs-h3);
+  color: var(--ink-2); line-height: 1;
   display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 999px; top: 5px; left: 6px;
+  min-width: 27px; padding: 0;
+}
+.ncal-dc.is-trip .ncal-dn { color: var(--brand); }
+.ncal-dc.is-today .ncal-dn {
+  background: var(--brand); color: hsl(var(--primary-foreground));
+  border-radius: var(--r-pill);
+  padding: 4px 8px; min-width: 0;
+  box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
 
-/* City bars band — absolutely placed over the row, one lane per overlap */
-.cal-spans { position: absolute; left: 0; right: 0; top: 26px; pointer-events: none; }
-.cal-span {
-  position: absolute; height: 17px; display: flex; align-items: center;
-  padding: 0 6px; font-size: var(--fs-micro); font-weight: 600; line-height: 1;
-  color: #fff; border-radius: 4px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+/* ── Events list in month cell ─────────────────────────────────── */
+.ncal-evl {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 0 6px;
+}
+/* Event chip: dot + optional time + title */
+.ncal-ev {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 7px; border-radius: 7px;
+  font-size: var(--fs-nano); font-weight: 700; line-height: 1.3;
+  overflow: hidden; border: none; cursor: pointer;
+  text-align: left; width: 100%;
+  font-family: var(--font-ui);
+  transition: filter .14s;
+}
+.ncal-ev:hover { filter: brightness(.96); }
+.ncal-ev .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  flex: none; background: currentColor; opacity: .85;
+}
+.ncal-ev .tm { opacity: .65; flex: none; font-variant-numeric: tabular-nums; }
+.ncal-ev .t  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+
+.ncal-ev.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
+.ncal-ev.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+.ncal-ev.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
+.ncal-ev.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
+.ncal-ev.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
+
+/* "+N more" */
+.ncal-more {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  background: var(--primary-soft); color: var(--brand);
+  font-size: var(--fs-nano); font-weight: 800;
+  border: none; font-family: var(--font-ui);
+  margin-top: 2px; cursor: pointer;
+  transition: background .14s;
+}
+.ncal-more:hover { background: var(--primary-soft-2); }
+
+/* ── Week view ─────────────────────────────────────────────────── */
+.ncal-wv-scroll {
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.ncal-wv-scroll::-webkit-scrollbar { height: 5px; }
+.ncal-wv-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }
+
+.ncal-wcols {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 680px;
 }
 
-/* Day events — real buttons (keyboard + click to open) */
-.cal-events { display: flex; flex-direction: column; gap: 2px; }
-.cal-ev {
-  display: flex; align-items: center; gap: 5px; width: 100%;
-  font-size: var(--fs-micro); line-height: 1.3; text-align: left;
-  background: none; border: none; border-radius: 5px; padding: 2px 3px;
-  color: var(--ink-2); cursor: pointer;
+/* Day card */
+.ncal-wdc {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  box-shadow: var(--sh-1);
+  display: flex; flex-direction: column;
+  transition: transform .2s var(--ease-spring), box-shadow .22s;
 }
-.cal-ev:hover { background: var(--wash); }
-.cal-ev__dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.cal-ev__time { color: var(--muted); }
-.cal-ev__txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cal-ev--warn { color: var(--warning); font-weight: 600; }
-.cal-more {
-  font-size: var(--fs-micro); color: var(--brand); font-weight: 600;
-  background: none; border: none; padding: 2px 3px; cursor: pointer; text-align: left;
+.ncal-wdc:hover { transform: translateY(-3px); box-shadow: var(--sh-2); }
+
+/* City colour bar at very top of card */
+.ncal-wdc-cbar { height: 5px; flex: none; }
+.ncal-wdc-cbar.is-split { display: flex; gap: 1.5px; }
+.ncal-wdc-cbar.is-split .ncal-cstrip-seg { flex: 1; height: 100%; }
+
+/* Card header */
+.ncal-wdc-h {
+  padding: 13px 13px 10px; flex: none;
+  border-bottom: 1px solid var(--line-2);
+}
+.ncal-wdc-num {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--fs-h2);
+  color: var(--ink); line-height: 1; letter-spacing: -.03em;
+  display: inline-block;
+}
+.ncal-wdc.is-today .ncal-wdc-num {
+  background: var(--brand); color: hsl(var(--primary-foreground));
+  border-radius: var(--r-pill); padding: 3px 10px;
+  box-shadow: 0 4px 14px -4px var(--brand-glow);
+}
+.ncal-wdc-wd {
+  font-size: var(--fs-nano); font-weight: 800;
+  text-transform: uppercase; letter-spacing: .07em;
+  color: var(--muted-2); margin-top: 5px;
+}
+/* Single city badge */
+.ncal-wdc-city {
+  display: inline-flex; align-items: center;
+  padding: 3px 9px; border-radius: var(--r-pill);
+  font-size: 9px; font-weight: 800; margin-top: 8px;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+/* Multiple city badges row */
+.ncal-wdc-cities {
+  display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px;
 }
 
-/* ── Week grid ───────────────────────────────────────────────── */
-.cal-week-grid { min-width: 680px; }
-.cal-week-head { display: grid; grid-template-columns: 56px repeat(7, 1fr); border-bottom: 1px solid var(--line); }
-.cal-week-head__gutter { border-right: 1px solid var(--line-2); }
-.cal-week-day { padding: 9px 8px; border-right: 1px solid var(--line-2); text-align: center; }
-.cal-week-day:last-child { border-right: none; }
-.cal-week-day--today .cal-wdnum {
-  background: var(--brand); color: #fff; border-radius: 999px;
-  width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+/* Card body — events list */
+.ncal-wdc-b {
+  padding: 9px 10px 13px; flex: 1;
+  display: flex; flex-direction: column; gap: 5px;
 }
-.cal-wdnum { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h3); letter-spacing: -.02em; color: var(--ink); }
-.cal-wdname { color: var(--muted); font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
-.cal-wdcity { color: var(--muted); font-size: var(--fs-micro); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* all-day strip */
-.cal-allday { display: grid; grid-template-columns: 56px repeat(7, 1fr); border-bottom: 1px solid var(--line-2); }
-.cal-allday__label { font-size: var(--fs-micro); color: var(--muted); padding: 4px 6px; text-align: right; border-right: 1px solid var(--line-2); }
-.cal-allday__col { border-right: 1px solid var(--line-2); padding: 3px 4px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.cal-allday__col:last-child { border-right: none; }
-.cal-allday__chip {
-  font-size: var(--fs-micro); font-weight: 600; color: #fff; border-radius: 4px;
-  padding: 2px 5px; border: none; cursor: pointer; text-align: left;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+/* Empty day state */
+.ncal-wdc-empty {
+  text-align: center; color: var(--muted-2);
+  font-size: var(--fs-nano); font-weight: 600;
+  padding: 14px 0 6px;
 }
 
-.cal-week-body { display: grid; grid-template-columns: 56px repeat(7, 1fr); position: relative; }
-.cal-hours { border-right: 1px solid var(--line-2); }
-.cal-hour { font-size: var(--fs-micro); color: var(--muted); padding: 2px 6px; text-align: right; }
-.cal-daycol { position: relative; border-right: 1px solid var(--line-2); }
-.cal-daycol:last-child { border-right: none; }
-.cal-block {
-  position: absolute; left: 4px; right: 4px;
-  color: #fff; border-radius: 5px; padding: 3px 6px;
-  font-size: var(--fs-micro); font-weight: 600; line-height: 1.25;
-  overflow: hidden; cursor: pointer; border: none; text-align: left;
+/* Agenda event item */
+.ncal-aev {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 6px 9px 6px 11px; border-radius: 10px;
+  border: none; cursor: pointer; text-align: left;
+  font-family: var(--font-ui); position: relative; overflow: hidden;
+  transition: filter .14s, transform .12s var(--ease-spring);
 }
-.cal-block__time { font-size: var(--fs-micro); opacity: .9; }
-.cal-block__txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncal-aev::before {
+  content: ''; position: absolute;
+  left: 0; top: 6px; bottom: 6px;
+  width: 3px; border-radius: 2px;
+  background: currentColor; opacity: .75;
+}
+.ncal-aev:hover { filter: brightness(.97); }
+.ncal-aev:active { transform: scale(.98); }
+.ncal-aev .atm {
+  font-size: var(--fs-nano); font-weight: 800;
+  opacity: .7; font-variant-numeric: tabular-nums;
+}
+.ncal-aev .atl {
+  font-size: var(--fs-micro); font-weight: 800;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ncal-aev.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
+.ncal-aev.ev-activity { background: var(--ev-activity-soft); color: var(--ev-activity-ink); }
+.ncal-aev.ev-transfer { background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); }
+.ncal-aev.ev-deadline { background: var(--ev-deadline-soft); color: var(--ev-deadline-ink); }
+.ncal-aev.ev-car      { background: var(--ev-car-soft);      color: var(--ev-car-ink); }
 
-/* ── Empty / no-dates ────────────────────────────────────────── */
-.cal-empty { padding: 48px 24px; text-align: center; color: var(--muted); font-size: var(--fs-base); }
+/* ── Legend ────────────────────────────────────────────────────── */
+.ncal-legend {
+  display: flex; flex-direction: column; gap: 10px;
+  margin-top: 24px;
+}
+.ncal-legend-group {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.ncal-legend-lbl {
+  font-size: var(--fs-nano); font-weight: 800;
+  text-transform: uppercase; letter-spacing: .07em;
+  color: var(--muted-2); width: 64px; flex: none;
+}
+.ncal-leg {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--fs-meta); color: var(--muted); font-weight: 600;
+}
+.ncal-leg-sw {
+  width: 10px; height: 10px; border-radius: 3px; flex: none;
+}
 
-/* ── Legend ──────────────────────────────────────────────────── */
-.cal-legend { margin-top: 16px; font-size: var(--fs-meta); color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
-.cal-legend__item { display: inline-flex; align-items: center; gap: 6px; }
-.cal-legend__sw { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+/* ── View fade-in animation ────────────────────────────────────── */
+@keyframes ncalFadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ncal-month,
+.ncal-wv-scroll {
+  animation: ncalFadeSlideIn .22s var(--ease-out) both;
+}
 
-/* ── Focus visibility (keyboard) ─────────────────────────────── */
-.cal-ev:focus-visible,
-.cal-more:focus-visible,
-.cal-block:focus-visible,
-.cal-allday__chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+/* ── Silent city strip (trip days without explicit city label) ── */
+.ncal-cstrip--silent {
+  height: 20px;
+  background: var(--primary-soft-2);
+  margin-bottom: 8px;
+}
 
-/* ── Responsive ──────────────────────────────────────────────── */
-@media (min-width: 760px) {
-  .cal-cell { --cal-cell-min: 116px; }
+/* ── All-day event in agenda view ──────────────────────────────── */
+.ncal-aev.ev-allday .atm {
+  font-size: 9px;
+  opacity: .55;
+}
+
+/* ── Empty / no-dates ──────────────────────────────────────────── */
+.ncal-empty {
+  padding: 48px 24px; text-align: center;
+  color: var(--muted); font-size: var(--fs-base);
+}
+
+/* ── Focus visibility (keyboard nav) ───────────────────────────── */
+.ncal-ev:focus-visible,
+.ncal-more:focus-visible,
+.ncal-aev:focus-visible,
+.ncal-nav-ico:focus-visible,
+.ncal-nav-txt:focus-visible,
+.ncal-nav-trip:focus-visible,
+.ncal-vtgl-btn:focus-visible {
+  outline: 2px solid var(--brand); outline-offset: 1px;
+}
+
+/* ── Highlight animation (Сегодня / К поездке nav) ─────────────── */
+@keyframes ncalCellPulse {
+  0%   { box-shadow: 0 0 0 0   var(--primary-ring); }
+  40%  { box-shadow: 0 0 0 6px var(--primary-ring); }
+  100% { box-shadow: 0 0 0 0   transparent; }
+}
+.ncal-dc.is-highlight {
+  animation: ncalCellPulse .7s var(--ease-out) both;
+  outline: 2px solid var(--brand); outline-offset: 1px;
+}
+.ncal-wdc.is-highlight {
+  animation: ncalCellPulse .7s var(--ease-out) both;
+  outline: 2px solid var(--brand); outline-offset: 1px;
+}
+
+/* ── Responsive ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .ncal-wdc-num { font-size: var(--fs-h3); }
+  .ncal-wdc-h   { padding: 11px 11px 9px; }
+}
+
+@media (max-width: 640px) {
+  /* Header: stack */
+  .ncal-hd { flex-direction: column; gap: 10px; align-items: stretch; margin-bottom: 14px; }
+  .ncal-hd-l { width: 100%; }
+  .ncal-month-lbl { font-size: clamp(26px, 9vw, 38px); }
+  .ncal-year-lbl  { font-size: clamp(15px, 5vw, 20px); margin-left: 8px; }
+  /* Controls: nav + toggle in one row */
+  .ncal-hd-r {
+    flex-direction: row; align-items: center;
+    justify-content: space-between; width: 100%; gap: 8px;
+  }
+  .ncal-nav { gap: 1px; padding: 3px; }
+  /* Hide "К поездке" label, keep icon */
+  .ncal-nav-trip .ncal-trip-label { display: none; }
+  .ncal-nav-trip { padding: 5px 9px; gap: 0; }
+  .ncal-nav-txt { padding: 5px 10px; font-size: var(--fs-micro); }
+  .ncal-vtgl-btn { padding: 7px 13px; font-size: var(--fs-micro); }
+
+  /* Month cells */
+  .ncal-wd-row { gap: 2px; margin-bottom: 5px; }
+  .ncal-dgrid  { gap: 2px; }
+  .ncal-wk     { margin-bottom: 2px; }
+  .ncal-dc     { min-height: 64px; padding: 0 0 5px; border-radius: 10px; }
+  .ncal-cstrip { height: 14px; font-size: 0; padding: 0; margin-bottom: 5px; }
+  .ncal-cstrip-seg { font-size: 0; padding: 0; }
+  .ncal-dn     { font-size: var(--fs-base); }
+  .ncal-dn-wrap { padding: 0 4px 3px; }
+  .ncal-ev     { padding: 2px 4px; border-radius: 5px; }
+  .ncal-ev .tm { display: none; }
+  .ncal-ev .t  { font-size: 9px; line-height: 1.2; }
+  .ncal-evl    { padding: 0 3px; gap: 2px; }
+  .ncal-more   { padding: 1px 6px; font-size: 9px; }
+
+  /* Week cards: horizontal scroll */
+  .ncal-wcols {
+    grid-template-columns: repeat(7, minmax(130px, 1fr));
+    gap: 6px; min-width: unset;
+  }
+  .ncal-wdc         { border-radius: var(--r-md); }
+  .ncal-wdc-cbar    { height: 4px; }
+  .ncal-wdc-h       { padding: 10px 10px 8px; }
+  .ncal-wdc-num     { font-size: var(--fs-h3); }
+  .ncal-wdc-city    { font-size: 8px; padding: 2px 7px; margin-top: 6px; }
+  .ncal-wdc-b       { padding: 7px 8px 10px; gap: 4px; }
+  .ncal-aev         { padding: 5px 7px 5px 9px; border-radius: 8px; }
+  .ncal-aev .atl    { font-size: var(--fs-nano); }
+
+  /* Legend */
+  .ncal-legend     { gap: 8px; margin-top: 18px; }
+  .ncal-legend-lbl { width: 52px; font-size: 9px; }
+  .ncal-leg        { font-size: var(--fs-micro); gap: 5px; }
+}
+
+@media (max-width: 400px) {
+  .ncal-dc     { min-height: 50px; }
+  .ncal-cstrip { height: 12px; }
+  /* Hide event list, show single dot instead */
+  .ncal-evl { display: none; }
+  .ncal-dc.has-ev .ncal-dn-wrap::after {
+    content: ''; display: block;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--brand); margin: 2px auto 0;
+  }
+  .ncal-dn     { font-size: var(--fs-strong); }
+  .ncal-nav-txt { padding: 4px 8px; }
+  .ncal-hd-r   { flex-wrap: wrap; }
 }

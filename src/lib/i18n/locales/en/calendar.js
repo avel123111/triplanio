@@ -22,4 +22,7 @@ export default {
   'calendar.week_no_data': 'No data for this week',
   'calendar.more_count': 'more',
   'calendar.no_dates': 'Add trip dates to see the calendar',
+  'calendar.legend_group_cities': 'Cities',
+  'calendar.legend_group_events': 'Events',
+  'calendar.free_day': 'Free day',
 };
