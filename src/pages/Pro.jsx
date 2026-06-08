@@ -152,9 +152,7 @@ export default function Pro() {
         {/* Hero */}
         <div className="pro-hero">
           <div className="pro-hero-eyebrow">
-            <div className="pro-hero-eyebrow__gem">
-              <Icon name="sparkles" size={11} style={{ color: '#fff' }} />
-            </div>
+            <img src="/triplanio-logo.svg" alt="" style={{ width: 22, height: 22, borderRadius: 8, flexShrink: 0 }} />
             Triplanio Pro
           </div>
           <h1 className="pro-hero__title">{t('sub.hero_title')}</h1>
