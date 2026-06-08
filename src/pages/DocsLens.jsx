@@ -674,7 +674,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
           <div>
             <h3 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
               {t('doc.section_private')}
-              <Badge variant="count" style={{ background: 'var(--warm)', color: '#fff' }}>
+              <Badge variant="count" style={{ background: 'var(--warm)', color: 'hsl(var(--primary-foreground))' }}>
                 {personalTotal}
               </Badge>
             </h3>
