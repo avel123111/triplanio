@@ -8,6 +8,10 @@
  * Reads/writes trip_documents table directly via Supabase client.
  * visibility: 'shared' = all members see it; 'private' = only the creator.
  * Files are uploaded to Supabase Storage bucket 'documents'.
+ *
+ * Visual: Lumo redesign (2026-06-08). Page-scoped styles in DocsLens.css
+ * (.dl-* on app.css tokens). Dialogs use Radix ui/dialog (dlg__head /
+ * dlg__body / dlg__foot structure). No inline hover handlers — CSS only.
  */
 import React, { useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,21 +19,54 @@ import { supabase } from '@/api/supabaseClient';
 import { safeStorageName } from '@/lib/storage';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, Severity, Skeleton, EmptyState } from '../design/index';
+import { Badge, Btn, Field, Severity, Skeleton } from '../design/index';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
+import './DocsLens.css';
 
 // ─── query key ────────────────────────────────────────────────────────────────
 
 const DOCS_KEY = (tripId) => ['trip-docs', tripId];
+
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+/** Classify a file by extension for the colour-coded type badge. */
+function fileType(name = '') {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  if (ext === 'pdf') return 'pdf';
+  if (['doc', 'docx'].includes(ext)) return 'doc';
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'xls';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'avif'].includes(ext)) return 'img';
+  return 'file';
+}
+
+/** Inline file chip used in both cards and the detail dialog. */
+function FileChip({ file }) {
+  const type = fileType(file.file_name);
+  return (
+    <div className="dl-filechip">
+      <span className={`dl-ftag dl-ftag--${type}`}>
+        <Icon name="file" size={15} />
+      </span>
+      <span className="dl-filechip__n">{file.file_name}</span>
+    </div>
+  );
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 // ─── AddDocDialog ─────────────────────────────────────────────────────────────
 
 function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange }) {
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
+
   const [title,      setTitle]      = useState('');
   const [notes,      setNotes]      = useState('');
   const [linkUrl,    setLinkUrl]    = useState('');
@@ -39,15 +76,14 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange
   const [uploading,  setUploading]  = useState(false);
   const [err,        setErr]        = useState('');
   const fileInputRef = useRef(null);
-  const qc   = useQueryClient();
-  const { user } = useAuth();
-  const v = useHybridValidation('document', { title });
-  const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
+  const qc           = useQueryClient();
+  const { user }     = useAuth();
+  const v    = useHybridValidation('document', { title });
+  const inv  = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
 
   async function uploadFiles(files) {
     if (!files?.length) return;
-    setUploading(true);
-    setErr('');
+    setUploading(true); setErr('');
     try {
       const uploaded = [];
       for (const file of Array.from(files)) {
@@ -85,131 +121,188 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange
     close();
   }
 
+  const visOpts = [
+    {
+      value: 'shared',
+      icon:  'users',
+      label: t('doc.visibility_shared'),
+      desc:  t('doc.visibility_shared_hint'),
+    },
+    {
+      value: 'private',
+      icon:  'lock',
+      label: t('doc.visibility_private'),
+      desc:  t('doc.visibility_private_hint'),
+    },
+  ];
+
   return (
-    <Dialog title={t('doc.shared_empty')} icon="file" size="" open={open} onOpenChange={onOpenChange}
-      foot={<>
-        <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
-        <Btn variant="primary" loading={saving} disabled={uploading} aria-disabled={!v.canSubmit} onClick={() => v.attemptSubmit(save)}>{t('trip.form_save')}</Btn>
-      </>}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        {/* sr-only a11y title — visible h2 is inside dlg__head */}
+        <DialogTitle className="sr-only">{t('doc.dialog_new')}</DialogTitle>
 
-      <IssuesPanel issues={v.panelIssues} style={{ marginBottom: 12 }} />
-      {err && <div style={{ marginBottom: 12 }}><Severity level="error">{err}</Severity></div>}
-
-      {/* Visibility - two card buttons, as in base44 */}
-      <div style={{ marginBottom: 16 }}>
-        <div className="eyebrow" style={{ marginBottom: 8 }}>{t('doc.access_label')}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          {[
-            { value: 'shared',  icon: 'users', label: t('doc.visibility_shared'),   desc: t('doc.visibility_shared_hint') },
-            { value: 'private', icon: 'lock',  label: t('doc.visibility_private'),  desc: t('doc.visibility_private_hint') },
-          ].map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setVisibility(opt.value)}
-              style={{
-                border: `2px solid ${visibility === opt.value ? 'var(--brand)' : 'var(--line)'}`,
-                background: visibility === opt.value ? 'var(--brand-soft)' : 'transparent',
-                borderRadius: 12, padding: '10px 12px', textAlign: 'left', cursor: 'pointer',
-                transition: 'border-color .15s, background .15s',
-              }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-                <Icon name={opt.icon} size={13} style={{ color: visibility === opt.value ? 'var(--brand)' : 'var(--muted)' }} />
-                <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: visibility === opt.value ? 'var(--brand)' : 'var(--ink)' }}>
-                  {opt.label}
-                </span>
-              </div>
-              <div className="muted" style={{ fontSize: 'var(--fs-micro)', lineHeight: 1.4 }}>{opt.desc}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Title */}
-      <Field label={t('trip.form_title_required')}>
-        <div data-vfield="title" className={inv('title')}>
-          <input className="input" autoFocus value={title} onChange={e => { setTitle(e.target.value); v.markTouched('title'); }} placeholder={t('doc.title_ph')} />
-        </div>
-        <FieldError issues={v.displayIssues} field="title" />
-      </Field>
-
-      {/* Notes */}
-      <div style={{ marginTop: 14 }}>
-        <Field label={t('doc.notes_opt_label')}>
-          <textarea className="textarea" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('doc.notes_ph')} />
-        </Field>
-      </div>
-
-      {/* Link */}
-      <div style={{ marginTop: 14 }}>
-        <Field label={t('doc.link_label')}>
-          <input className="input" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://…" />
-        </Field>
-      </div>
-
-      {/* File upload */}
-      <div style={{ marginTop: 16 }}>
-        <div className="eyebrow" style={{ marginBottom: 8 }}>
-          <Icon name="paperclip" size={12} style={{ marginRight: 4, verticalAlign: -1, color: 'var(--brand)' }} />
-          {t('doc.files_label')}
-          {documents.length > 0 && <span className="muted" style={{ fontWeight: 400, marginLeft: 6 }}>· {documents.length}</span>}
+        {/* ── Header ── */}
+        <div className="dlg__head">
+          <span style={{
+            width: 36, height: 36, borderRadius: 9,
+            background: 'var(--brand-soft)', color: 'var(--brand)',
+            display: 'grid', placeItems: 'center', flexShrink: 0,
+          }}>
+            <Icon name="file" size={17} />
+          </span>
+          <h2>{t('doc.dialog_new')}</h2>
+          <button className="icon-btn" onClick={close}>
+            <Icon name="close" size={16} />
+          </button>
         </div>
 
-        {/* Uploaded file list */}
-        {documents.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
-            {documents.map((d, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'var(--wash)', borderRadius: 8, border: '1px solid var(--line-2)' }}>
-                <Icon name="file" size={13} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 'var(--fs-base)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.file_name}</span>
-                <button
-                  type="button"
-                  onClick={() => setDocuments(prev => prev.filter((_, j) => j !== i))}
-                  style={{ width: 20, height: 20, border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', display: 'grid', placeItems: 'center', borderRadius: 4, flexShrink: 0 }}>
-                  <Icon name="close" size={11} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Drop zone */}
-        <div
-          onClick={() => !uploading && fileInputRef.current?.click()}
-          onDragOver={e => e.preventDefault()}
-          onDrop={e => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-          style={{
-            border: '1.5px dashed var(--line)', borderRadius: 10, padding: '18px 14px',
-            textAlign: 'center', cursor: uploading ? 'default' : 'pointer',
-            background: 'var(--wash)', transition: 'border-color .15s',
-          }}
-          onMouseEnter={e => { if (!uploading) e.currentTarget.style.borderColor = 'var(--brand)'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; }}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept=".pdf,image/*,.doc,.docx,.xls,.xlsx"
-            style={{ display: 'none' }}
-            onChange={e => uploadFiles(e.target.files)}
-          />
-          {uploading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--brand)', fontSize: 'var(--fs-base)' }}>
-              <div style={{ width: 14, height: 14, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
-              {t('common.loading')}
-            </div>
-          ) : (
-            <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-base)' }}>
-              <Icon name="upload" size={16} style={{ display: 'block', margin: '0 auto 6px' }} />
-              {documents.length === 0
-                ? t('doc.upload_label')
-                : t('doc.add_more_files')}
+        {/* ── Body ── */}
+        <div className="dlg__body">
+          <IssuesPanel issues={v.panelIssues} style={{ marginBottom: 12 }} />
+          {err && (
+            <div style={{ marginBottom: 12 }}>
+              <Severity level="error">{err}</Severity>
             </div>
           )}
-        </div>
-      </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          {/* Visibility */}
+          <div style={{ marginBottom: 16 }}>
+            <div className="dl-label">{t('doc.access_label')}</div>
+            <div className="dl-vistoggle">
+              {visOpts.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`dl-visopt${opt.value === 'private' ? ' dl-visopt--mine' : ''}${visibility === opt.value ? ' is-on' : ''}`}
+                  onClick={() => setVisibility(opt.value)}>
+                  <span className="dl-visopt__ic">
+                    <Icon name={opt.icon} size={17} />
+                  </span>
+                  <span className="dl-visopt__lbl">
+                    <b>{opt.label}</b>
+                    <span>{opt.desc}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Title */}
+          <Field label={t('trip.form_title_required')}>
+            <div data-vfield="title" className={inv('title')}>
+              <input
+                className="input"
+                autoFocus
+                value={title}
+                onChange={e => { setTitle(e.target.value); v.markTouched('title'); }}
+                placeholder={t('doc.title_ph')}
+              />
+            </div>
+            <FieldError issues={v.displayIssues} field="title" />
+          </Field>
+
+          {/* Notes */}
+          <div style={{ marginTop: 14 }}>
+            <Field label={t('doc.notes_opt_label')}>
+              <textarea
+                className="textarea"
+                rows={3}
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder={t('doc.notes_ph')}
+              />
+            </Field>
+          </div>
+
+          {/* Link */}
+          <div style={{ marginTop: 14 }}>
+            <Field label={t('doc.link_label')}>
+              <input
+                className="input"
+                value={linkUrl}
+                onChange={e => setLinkUrl(e.target.value)}
+                placeholder={t('doc.link_placeholder')}
+              />
+            </Field>
+          </div>
+
+          {/* Files */}
+          <div style={{ marginTop: 16 }}>
+            <div className="dl-label">
+              <Icon name="paperclip" size={13} style={{ color: 'var(--brand)' }} />
+              {t('doc.files_label')}
+              {documents.length > 0 && (
+                <span className="muted" style={{ fontWeight: 400, marginLeft: 4 }}>
+                  · {documents.length}
+                </span>
+              )}
+            </div>
+
+            {/* Uploaded files list */}
+            {documents.length > 0 && (
+              <div className="dl-uplist">
+                {documents.map((d, i) => (
+                  <div key={i} className="dl-upitem">
+                    <span className={`dl-ftag dl-ftag--${fileType(d.file_name)}`}>
+                      <Icon name="file" size={14} />
+                    </span>
+                    <span className="dl-upitem__n">{d.file_name}</span>
+                    <button
+                      type="button"
+                      className="dl-upitem__rm"
+                      aria-label={t('doc.remove_doc_aria')}
+                      onClick={() => setDocuments(prev => prev.filter((_, j) => j !== i))}>
+                      <Icon name="close" size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Drop zone */}
+            <div
+              className={`dl-dropzone${uploading ? ' is-uploading' : ''}`}
+              onClick={() => !uploading && fileInputRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,image/*,.doc,.docx,.xls,.xlsx"
+                style={{ display: 'none' }}
+                onChange={e => uploadFiles(e.target.files)}
+              />
+              {uploading ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--brand)', fontSize: 'var(--fs-base)' }}>
+                  <span className="dl-spinner" />
+                  {t('common.loading')}
+                </div>
+              ) : (
+                <>
+                  <Icon name="upload" size={24} />
+                  <b>{documents.length === 0 ? t('doc.upload_label') : t('doc.add_more_files')}</b>
+                  <span>PDF · DOC · XLS · IMG &nbsp;·&nbsp; max 10 MB</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Footer ── */}
+        <div className="dlg__foot">
+          <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
+          <Btn
+            variant="primary"
+            loading={saving}
+            disabled={uploading}
+            aria-disabled={!v.canSubmit}
+            onClick={() => v.attemptSubmit(save)}>
+            {t('trip.form_save')}
+          </Btn>
+        </div>
+      </DialogContent>
     </Dialog>
   );
 }
@@ -217,9 +310,9 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange
 // ─── DocDetailDialog ──────────────────────────────────────────────────────────
 
 function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
-  const { t } = useI18n();
-  const close = () => onOpenChange?.(false);
-  const confirm = useConfirm();
+  const { t }    = useI18n();
+  const close    = () => onOpenChange?.(false);
+  const confirm  = useConfirm();
   const [deleting, setDeleting] = useState(false);
   const qc = useQueryClient();
 
@@ -232,88 +325,151 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
   }
 
   return (
-    <Dialog title={doc.title} icon="file" size="" open={open} onOpenChange={onOpenChange}
-      foot={<>
-        <Btn variant="danger" loading={deleting} icon="trash" onClick={handleDelete}>{t('trip.delete')}</Btn>
-        <div style={{ flex: 1 }} />
-        <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
-      </>}>
-      {doc.notes && (
-        <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--ink-2)', marginBottom: 14 }}>{doc.notes}</div>
-      )}
-      {doc.link_url && (
-        <div style={{ marginBottom: 12 }}>
-          <a href={doc.link_url} target="_blank" rel="noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--brand)', fontSize: 'var(--fs-base)' }}>
-            <Icon name="external" size={13} />
-            {doc.link_url}
-          </a>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogTitle className="sr-only">{doc.title}</DialogTitle>
+
+        {/* ── Header ── */}
+        <div className="dlg__head">
+          <span style={{
+            width: 36, height: 36, borderRadius: 9,
+            background: 'var(--brand-soft)', color: 'var(--brand)',
+            display: 'grid', placeItems: 'center', flexShrink: 0,
+          }}>
+            <Icon name="file" size={17} />
+          </span>
+          <h2>{doc.title}</h2>
+          <button className="icon-btn" onClick={close}>
+            <Icon name="close" size={16} />
+          </button>
         </div>
-      )}
-      {doc.documents?.length > 0 && (
-        <div>
-          <div className="eyebrow" style={{ marginBottom: 8 }}>{t('doc.files_label')}</div>
-          {doc.documents.map((f, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--line-2)' }}>
-              <Icon name="file" size={14} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-              <a href={f.file_url} target="_blank" rel="noreferrer"
-                style={{ fontSize: 'var(--fs-base)', color: 'var(--brand)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {f.file_name || f.file_url}
-              </a>
+
+        {/* ── Body ── */}
+        <div className="dlg__body">
+          {doc.notes && (
+            <p className="dl-dview-note">{doc.notes}</p>
+          )}
+
+          {doc.link_url && (
+            <a className="dl-dview-link" href={doc.link_url} target="_blank" rel="noreferrer">
+              <Icon name="external" size={16} />
+              <b>{doc.link_url}</b>
+            </a>
+          )}
+
+          {doc.documents?.length > 0 && (
+            <div>
+              <div className="dl-label" style={{ marginTop: doc.notes || doc.link_url ? 14 : 0 }}>
+                <Icon name="paperclip" size={13} style={{ color: 'var(--brand)' }} />
+                {t('doc.files_label')}
+              </div>
+              <div className="dl-dview-files">
+                {doc.documents.map((f, i) => (
+                  <div key={i} className="dl-filechip">
+                    <span className={`dl-ftag dl-ftag--${fileType(f.file_name)}`}>
+                      <Icon name="file" size={14} />
+                    </span>
+                    <a
+                      href={f.file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="dl-filechip__n"
+                      style={{ color: 'var(--brand)' }}>
+                      {f.file_name || f.file_url}
+                    </a>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
+
+          {!doc.notes && !doc.link_url && !doc.documents?.length && (
+            <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>
+              {t('doc.no_content')}
+            </div>
+          )}
+
+          {doc.created_at && (
+            <div className="dl-dview-meta">
+              <Icon name="calendar" size={13} />
+              {formatDate(doc.created_at)}
+            </div>
+          )}
         </div>
-      )}
-      {!doc.notes && !doc.link_url && !doc.documents?.length && (
-        <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>{t('doc.no_content')}</div>
-      )}
+
+        {/* ── Footer ── */}
+        <div className="dlg__foot">
+          <Btn variant="danger" loading={deleting} icon="trash" onClick={handleDelete}>
+            {t('trip.delete')}
+          </Btn>
+          <div style={{ flex: 1 }} />
+          <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
+        </div>
+      </DialogContent>
     </Dialog>
   );
 }
 
 // ─── DocCard ──────────────────────────────────────────────────────────────────
 
-function DocCard({ doc, tripId, scope, onOpenDetail }) {
-  const { t } = useI18n();
+function DocCard({ doc, scope, onOpenDetail }) {
+  const { t }   = useI18n();
+  const files   = doc.documents || [];
+  const shown   = files.slice(0, 2);
+  const more    = files.length - shown.length;
+  const isShared = scope !== 'personal';
+
   return (
     <button
-      onClick={() => onOpenDetail?.(doc)}
-      className="dz-lift"
-      style={{
-        padding: 14, background: 'var(--surface)',
-        borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 8,
-        cursor: 'pointer', textAlign: 'left',
-      }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: 9,
-          background: scope === 'personal' ? 'var(--warm-tint)' : 'var(--brand-soft)',
-          color:      scope === 'personal' ? 'var(--warm)'     : 'var(--brand)',
-          display: 'grid', placeItems: 'center',
-        }}>
-          <Icon name="file" size={17} />
+      className="dl-card dz-lift-card"
+      onClick={() => onOpenDetail?.(doc)}>
+
+      {/* Icon + title + visibility chip */}
+      <div className="dl-card__top">
+        <div className={`dl-card__ic dl-card__ic--${isShared ? 'shared' : 'mine'}`}>
+          <Icon name="file" size={20} />
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</div>
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
-            {(doc.documents?.length || 0)} {doc.documents?.length === 1 ? t('doc.files_count_one') : t('doc.files_count_few')}
+        <div className="dl-card__h">
+          <div className="dl-card__title">{doc.title}</div>
+          <div className="dl-card__sub">
+            {files.length > 0
+              ? `${files.length} ${files.length === 1 ? t('doc.files_count_one') : t('doc.files_count_few')}`
+              : t('doc.card_no_files')}
             {doc.link_url && t('doc.has_link')}
           </div>
         </div>
+        <span className={`dl-vischip dl-vischip--${isShared ? 'shared' : 'mine'}`}>
+          <Icon name={isShared ? 'users' : 'lock'} size={11} />
+        </span>
       </div>
+
+      {/* Notes excerpt */}
       {doc.notes && (
-        <div className="muted" style={{
-          fontSize: 'var(--fs-meta)', lineHeight: 1.5,
-          overflow: 'hidden', textOverflow: 'ellipsis',
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-        }}>{doc.notes}</div>
+        <div className="dl-card__notes">{doc.notes}</div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-        {doc.link_url && (
-          <Badge variant="quiet" icon="external">
-            {doc.link_url.replace(/^https?:\/\//, '').split('/')[0]}
-          </Badge>
-        )}
+
+      {/* File chips (max 2) */}
+      {shown.length > 0 && (
+        <div className="dl-filechips">
+          {shown.map((f, i) => <FileChip key={i} file={f} />)}
+          {more > 0 && (
+            <span className="dl-filemore">+{more} {t('doc.files_count_few')}</span>
+          )}
+        </div>
+      )}
+
+      {/* Link row (visual, non-navigating — detail dialog has the real link) */}
+      {doc.link_url && (
+        <div className="dl-linkrow">
+          <Icon name="external" size={14} style={{ color: 'var(--ev-hotel-ink)', flexShrink: 0 }} />
+          <b>{doc.link_url.replace(/^https?:\/\//, '').split('/')[0]}</b>
+          <Icon name="chev" size={13} style={{ color: 'var(--ev-hotel-ink)', opacity: .55, transform: 'rotate(0deg)' }} />
+        </div>
+      )}
+
+      {/* Footer: creation date */}
+      <div className="dl-card__foot">
+        <span className="dl-card__foot-date">{formatDate(doc.created_at)}</span>
       </div>
     </button>
   );
@@ -321,48 +477,40 @@ function DocCard({ doc, tripId, scope, onOpenDetail }) {
 
 // ─── DocEmpty ─────────────────────────────────────────────────────────────────
 
-function DocEmpty({ scope, tripId, onOpenAdd }) {
-  const { t } = useI18n();
+function DocEmpty({ scope, onOpenAdd }) {
+  const { t }    = useI18n();
+  const isShared = scope !== 'personal';
   return (
-    <EmptyState
-      icon="file"
-      kind={scope === 'personal' ? 'locked' : 'empty'}
-      title={scope === 'personal' ? t('doc.empty_private') : t('doc.empty_shared')}
-      body={scope === 'personal' ? t('doc.empty_private_desc') : t('doc.empty_shared_desc')}
-      action={
-        <Btn variant="ghost" icon="plus"
-          onClick={() => onOpenAdd?.()}>
-          {t('doc.add_doc')}
-        </Btn>
-      }
-    />
+    <div className="dl-empty">
+      <div className={`dl-empty__ic dl-empty__ic--${isShared ? 'shared' : 'mine'}`}>
+        <Icon name="file" size={28} />
+      </div>
+      <b>{isShared ? t('doc.empty_shared') : t('doc.empty_private')}</b>
+      <span>{isShared ? t('doc.empty_shared_desc') : t('doc.empty_private_desc')}</span>
+      <Btn variant="ghost" icon="plus" onClick={() => onOpenAdd?.()}>
+        {t('doc.add_doc')}
+      </Btn>
+    </div>
   );
 }
 
 // ─── DocsGrid ─────────────────────────────────────────────────────────────────
 
-function DocsGrid({ docs, scope, tripId, onOpenAdd, onOpenDetail }) {
-  const { t } = useI18n();
+function DocsGrid({ docs, scope, onOpenAdd, onOpenDetail }) {
+  const { t }    = useI18n();
+  const isShared = scope !== 'personal';
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
       {docs.map(d => (
-        <DocCard key={d.id} doc={d} tripId={tripId} scope={scope} onOpenDetail={onOpenDetail} />
+        <DocCard key={d.id} doc={d} scope={scope} onOpenDetail={onOpenDetail} />
       ))}
       <button
-        onClick={() => onOpenAdd?.()}
-        style={{
-          padding: 14, background: 'transparent', border: '1.5px dashed var(--line)',
-          borderRadius: 12, color: 'var(--muted)', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 130,
-          transition: 'border-color .15s, color .15s',
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.borderColor = scope === 'personal' ? 'var(--warm)' : 'var(--brand)';
-          e.currentTarget.style.color       = scope === 'personal' ? 'var(--warm)' : 'var(--brand)';
-        }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)'; }}>
-        <Icon name="plus" size={18} />
-        <span>{t('doc.shared_empty')}</span>
+        className={`dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
+        onClick={() => onOpenAdd?.()}>
+        <span className="dl-addcard__ic">
+          <Icon name="plus" size={22} />
+        </span>
+        <b>{t('doc.add_doc')}</b>
       </button>
     </div>
   );
@@ -371,7 +519,7 @@ function DocsGrid({ docs, scope, tripId, onOpenAdd, onOpenDetail }) {
 // ─── DocsLens (main export) ───────────────────────────────────────────────────
 
 export default function DocsLens({ tripId, isLoading: parentLoading }) {
-  const { t } = useI18n();
+  const { t }   = useI18n();
   const { user } = useAuth();
   const [addDocVis, setAddDocVis] = useState(null); // null | { defaultVisibility }
   const [detailDoc, setDetailDoc] = useState(null); // null | doc object
@@ -421,36 +569,77 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
 
   return (
     <>
-      {/* Shared section */}
+      {/* ── Shared section ── */}
       <section style={{ marginBottom: 30 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <Icon name="users" size={14} style={{ color: 'var(--brand)' }} />
-          <h3 style={{ marginBottom: 0 }}>{t('doc.section_shared')}</h3>
-          <Badge variant="quiet">{sharedDocs.length}</Badge>
-          <div style={{ flex: 1 }} />
-          <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('doc.section_shared_hint')}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
+          <div className="dl-sec-ic dl-sec-ic--shared">
+            <Icon name="users" size={17} />
+          </div>
+          <div>
+            <h3 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
+              {t('doc.section_shared')}
+              <Badge variant="quiet">{sharedDocs.length}</Badge>
+            </h3>
+            <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
+              {t('doc.section_shared_hint')}
+            </div>
+          </div>
         </div>
+
         {sharedDocs.length === 0
-          ? <DocEmpty scope="shared" tripId={tripId} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })} />
-          : <DocsGrid docs={sharedDocs} scope="shared" tripId={tripId} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })} onOpenDetail={(doc) => setDetailDoc(doc)} />}
+          ? <DocEmpty scope="shared" onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })} />
+          : <DocsGrid
+              docs={sharedDocs}
+              scope="shared"
+              onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })}
+              onOpenDetail={setDetailDoc}
+            />}
       </section>
 
-      {/* Personal section */}
+      {/* ── Personal section ── */}
       <section style={{ marginBottom: 30 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <Icon name="user" size={14} style={{ color: 'var(--warm)' }} />
-          <h3 style={{ marginBottom: 0 }}>{t('doc.section_private')}</h3>
-          <Badge variant="quiet">{personalDocs.length}</Badge>
-          <div style={{ flex: 1 }} />
-          <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('doc.section_private_hint')}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
+          <div className="dl-sec-ic dl-sec-ic--mine">
+            <Icon name="user" size={17} />
+          </div>
+          <div>
+            <h3 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
+              {t('doc.section_private')}
+              <Badge variant="quiet">{personalDocs.length}</Badge>
+            </h3>
+            <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
+              {t('doc.section_private_hint')}
+            </div>
+          </div>
         </div>
+
         {personalDocs.length === 0
-          ? <DocEmpty scope="personal" tripId={tripId} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })} />
-          : <DocsGrid docs={personalDocs} scope="personal" tripId={tripId} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })} onOpenDetail={(doc) => setDetailDoc(doc)} />}
+          ? <DocEmpty scope="personal" onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })} />
+          : <DocsGrid
+              docs={personalDocs}
+              scope="personal"
+              onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })}
+              onOpenDetail={setDetailDoc}
+            />}
       </section>
 
-      {addDocVis !== null && <AddDocDialog open={true} onOpenChange={(o) => { if (!o) setAddDocVis(null); }} tripId={tripId} defaultVisibility={addDocVis.defaultVisibility} />}
-      {detailDoc && <DocDetailDialog open={true} onOpenChange={(o) => { if (!o) setDetailDoc(null); }} doc={detailDoc} tripId={tripId} />}
+      {/* Dialogs */}
+      {addDocVis !== null && (
+        <AddDocDialog
+          open={true}
+          onOpenChange={o => { if (!o) setAddDocVis(null); }}
+          tripId={tripId}
+          defaultVisibility={addDocVis.defaultVisibility}
+        />
+      )}
+      {detailDoc && (
+        <DocDetailDialog
+          open={true}
+          onOpenChange={o => { if (!o) setDetailDoc(null); }}
+          doc={detailDoc}
+          tripId={tripId}
+        />
+      )}
     </>
   );
 }
