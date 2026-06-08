@@ -20,7 +20,7 @@ import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import AiField from '@/components/ui/AiField';
 import {
   Loader2, Sparkles, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft,
-  Bed, Plane, Camera, Car as CarIcon, Train, Bus, Ship, Footprints, Moon,
+  Bed, Plane, Camera, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, Wifi, ShieldCheck,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
 
@@ -167,6 +167,24 @@ const TYPE_META = {
     Icon: CarIcon, labelKey: 'event.type_car',
     titleNewKey: 'event.title_new_car', titleEditKey: 'event.title_edit_car',
   },
+};
+
+// Per-subtype header theming for `service` rows. The unified EventEditDialog
+// keys its header (icon / colour / title) off currentKind, but for services the
+// concrete subtype (esim / insurance / car_rental) decides the look. Without
+// this, esim/insurance render with the car-rental header (icon + "Аренда авто").
+const SERVICE_META = {
+  esim: {
+    color: 'var(--ev-esim)', soft: 'var(--ev-esim-soft)',
+    Icon: Wifi, labelKey: 'service.kind.esim',
+    titleNewKey: 'service.esim_new', titleEditKey: 'service.esim_edit',
+  },
+  insurance: {
+    color: 'var(--ev-insurance)', soft: 'var(--ev-insurance-soft)',
+    Icon: ShieldCheck, labelKey: 'service.kind.insurance',
+    titleNewKey: 'service.insurance_new', titleEditKey: 'service.insurance_edit',
+  },
+  car_rental: TYPE_META.service,
 };
 
 const TABLE_BY_KIND = {
@@ -460,7 +478,7 @@ export default function EventEditDialog({
   // too (the parent always tells us the right kind for the entity it passed).
   const [currentKind, setCurrentKind] = useState(initialKind || 'hotel');
   const isEdit = !!entity;
-  const meta = TYPE_META[currentKind] || TYPE_META.hotel;
+  const baseMeta = TYPE_META[currentKind] || TYPE_META.hotel;
   // City-contextual header: "Проживание в Париже" / "Переезд Париж → Рим" /
   // "Активность в Риме". Falls back to the generic new/edit title when the
   // city context is unknown (e.g. orphan entity or service without a visit).
@@ -485,6 +503,12 @@ export default function EventEditDialog({
   const [form, setForm] = useState(() =>
     buildInitialForm(initialKind || 'hotel', entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency, initialServiceKind })
   );
+
+  // For services, the header (icon / colour / title) follows the concrete
+  // subtype (esim / insurance / car_rental), not the generic `service` kind.
+  const meta = (currentKind === 'service' && SERVICE_META[form.service_kind])
+    ? SERVICE_META[form.service_kind]
+    : baseMeta;
   const [aiFields, setAiFields] = useState(new Set());
   // Six-state AI flow per the prototype: locked / available / idle /
   // uploaded / parsing / parsed. Starts as 'available' for Pro users once
