@@ -39,6 +39,8 @@ export default {
   'sub.choose_plan': 'Elegir plan',
   'sub.badge_popular': 'Popular',
   'sub.badge_discount': '-33%',
+  'sub.badge_once': 'pago único',
+  'sub.badge_sub': 'suscripción',
 
   // Billing periods (rendered after the price loaded from Stripe)
   'sub.period_month': '/mes',

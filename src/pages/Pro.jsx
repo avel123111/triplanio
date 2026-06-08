@@ -23,7 +23,8 @@ export default function Pro() {
 
   const tripId = searchParams.get('tripId') || null;
   // pro_trip may only be bought by the trip OWNER. If a non-owner lands here with
-  // a tripId (e.g. a leaked link from a shared trip), hide the per-trip plan -   // they can still buy a subscription, but can't buy Pro for someone else's trip.
+  // a tripId (e.g. a leaked link from a shared trip), hide the per-trip plan —
+  // they can still buy a subscription, but can't buy Pro for someone else's trip.
   const [tripOwner, setTripOwner] = useState(null); // null = unknown
   useEffect(() => {
     if (!tripId) return;
@@ -107,16 +108,19 @@ export default function Pro() {
     {
       type: 'pro_trip', title: t('sub.plan_trip_title'),
       caption: t('sub.plan_trip_desc'),
+      badge: t('sub.badge_once') || 'one-time',
       features: [t('sub.plan_trip_feat_1'), t('sub.plan_trip_feat_2'), t('sub.plan_trip_feat_3')],
     },
     {
       type: 'pro_monthly', title: t('sub.plan_monthly_title'),
       caption: t('sub.plan_monthly_desc'), popular: true,
+      badge: t('sub.badge_sub') || 'subscription',
       features: [t('sub.plan_monthly_feat_1'), t('sub.plan_monthly_feat_2'), t('sub.plan_monthly_feat_3'), t('sub.plan_monthly_feat_4')],
     },
     {
       type: 'pro_yearly', title: t('sub.plan_yearly_title'),
       caption: t('sub.plan_yearly_desc'), save: '−33%',
+      badge: t('sub.badge_sub') || 'subscription',
       features: [t('sub.plan_yearly_feat_1'), t('sub.plan_yearly_feat_2')],
     },
   ];
@@ -124,132 +128,180 @@ export default function Pro() {
   const plans = hidePerTrip ? allPlans.filter(p => p.type !== 'pro_trip') : allPlans;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
-      <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
+    <div className="pro-page">
+
+      {/* ── App header (kept as-is per design spec) ── */}
+      <header className="app-header">
         <button className="app-header__crumb-back" onClick={() => nav(-1)} title={t('common.back')}>
           <Icon name="back" size={14} />
         </button>
         <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
-          <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
+          <img src="/triplanio-logo.svg" alt="Triplanio" className="app-header__brand-mark" />
           <span className="app-header__brand-name">Triplanio</span>
         </div>
         <div className="app-header__crumb">
           <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ink-2)' }}>Pro</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--ink-2)' }}>Pro</span>
         </div>
         <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
       </header>
 
-      <main style={{ flex: 1, padding: '40px 24px 60px', maxWidth: 1080, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 14px 8px 8px', background: 'var(--brand-soft)', color: 'var(--brand)', borderRadius: 999, fontSize: 'var(--fs-base)', fontWeight: 600, marginBottom: 18 }}>
-            <img src="/triplanio-logo.svg" style={{ width: 18, height: 18 }} alt="" />
-            <span>Triplanio Pro</span>
+      {/* ── Scrollable main zone ── */}
+      <main className="pro-main">
+
+        {/* Hero */}
+        <div className="pro-hero">
+          <div className="pro-hero-eyebrow">
+            <div className="pro-hero-eyebrow__gem">
+              <Icon name="sparkles" size={11} style={{ color: '#fff' }} />
+            </div>
+            Triplanio Pro
           </div>
-          <h1 style={{ fontSize: 'var(--fs-display)', marginBottom: 10, maxWidth: 720, margin: '0 auto 10px', letterSpacing: '-0.02em' }}>
-            {t('sub.hero_title')}
-          </h1>
-          <div className="muted" style={{ fontSize: 'var(--fs-h3)', maxWidth: 560, margin: '0 auto', lineHeight: 1.55 }}>
-            {t('sub.hero_sub')}
-          </div>
+          <h1 className="pro-hero__title">{t('sub.hero_title')}</h1>
+          <p className="pro-hero__sub">{t('sub.hero_sub')}</p>
           {hidePerTrip && tripId === null && (
-            <div className="muted" style={{ fontSize: 'var(--fs-base)', marginTop: 14 }}>
-              <Icon name="info" size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
+            <div className="pro-hero__note">
+              <Icon name="info" size={12} />
               {t('sub.per_trip_note')}
             </div>
           )}
         </div>
 
-        <div role="radiogroup" aria-label={t('sub.choose_plan')} style={{ display: 'grid', gridTemplateColumns: `repeat(${plans.length}, minmax(0, 1fr))`, gap: 14, maxWidth: hidePerTrip ? 760 : 'none', margin: '0 auto' }}>
+        {/* Plans grid */}
+        <div
+          className={`pro-plans${plans.length === 2 ? ' pro-plans--2' : ''}`}
+          role="radiogroup"
+          aria-label={t('sub.choose_plan')}
+        >
           {pricesLoading && !prices
             ? Array.from({ length: plans.length }).map((_, i) => (
-                <div key={i} style={{ padding: 24, borderRadius: 16, background: 'var(--surface)', border: '1px solid var(--line)' }}>
-                  <Skeleton w="60%" h={22} />
-                  <div style={{ marginTop: 8 }}><Skeleton w="80%" h={12} /></div>
-                  <div style={{ marginTop: 18 }}><Skeleton w="50%" h={36} /></div>
+                <div
+                  key={i}
+                  className="plan-card-skel"
+                  style={{ '--card-delay': `${0.04 + i * 0.09}s` }}
+                >
+                  <Skeleton w="55%" h={20} />
+                  <div style={{ marginTop: 8 }}><Skeleton w="75%" h={11} /></div>
+                  <div style={{ marginTop: 20 }}><Skeleton w="48%" h={34} /></div>
                   <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {[0, 1, 2, 3].map((j) => <Skeleton key={j} w={`${90 - j * 8}%`} h={11} />)}
+                    {[0, 1, 2, 3].map((j) => <Skeleton key={j} w={`${88 - j * 7}%`} h={11} />)}
                   </div>
-                  <div style={{ marginTop: 22 }}><Skeleton w="100%" h={40} r={10} /></div>
+                  <div style={{ marginTop: 22 }}><Skeleton w="100%" h={40} r={11} /></div>
                 </div>
               ))
-            : plans.map((p) => {
+            : plans.map((p, i) => {
                 const { price, period } = renderPrice(p.type);
                 const selected = picked === p.type;
                 return (
                   <div
                     key={p.type}
+                    className={[
+                      'plan-card',
+                      p.popular ? 'plan-card--featured' : '',
+                      selected ? 'plan-card--selected' : '',
+                    ].filter(Boolean).join(' ')}
+                    style={{ '--card-delay': `${0.04 + i * 0.09}s` }}
                     role="radio"
                     aria-checked={selected}
                     aria-label={p.title}
                     tabIndex={0}
                     onClick={() => setPicked(p.type)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPicked(p.type); } }}
-                    style={{
-                      padding: 24, borderRadius: 16, cursor: 'pointer',
-                      background: selected ? 'var(--brand-soft)' : 'var(--surface)',
-                      border: '2px solid ' + (selected ? 'var(--brand)' : 'var(--line)'),
-                      color: 'var(--ink)', position: 'relative',
-                      boxShadow: selected ? '0 0 0 4px var(--brand-soft)' : 'none',
-                      transition: 'all .15s ease',
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPicked(p.type); }
                     }}
                   >
+                    {/* Accent ribbon for featured plan */}
+                    {p.popular && <div className="plan-ribbon" />}
                     {p.popular && (
-                      <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: 'var(--brand)', color: 'white', padding: '4px 12px', borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.04em', boxShadow: '0 4px 14px rgba(33,103,226,.3)' }}>
-                        {t('sub.most_popular')}
+                      <div className="plan-popular-badge">
+                        ★ {t('sub.most_popular')}
                       </div>
                     )}
-                    {p.save && (
-                      <div style={{ position: 'absolute', top: 16, right: 16, background: 'var(--success)', color: 'white', padding: '3px 10px', borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700 }}>{p.save}</div>
-                    )}
-                    {selected && (
-                      <div style={{ position: 'absolute', top: 16, left: 16, width: 22, height: 22, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', boxShadow: '0 2px 8px rgba(33,103,226,.4)' }}>
-                        <Icon name="check" size={13} />
+
+                    <div className="plan-card__body">
+                      {/* Card header: name + type chip */}
+                      <div className="plan-card__top">
+                        <div className="plan-card__name">{p.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 'none' }}>
+                          <span className="plan-type-chip">{p.badge}</span>
+                          {p.save && <span className="plan-save-tag">{p.save}</span>}
+                        </div>
                       </div>
-                    )}
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-h2)', fontWeight: 600, letterSpacing: '-0.015em', marginBottom: 6, marginTop: selected ? 22 : 0 }}>{p.title}</div>
-                    <div style={{ fontSize: 'var(--fs-base)', opacity: 0.7, marginBottom: 18 }}>{p.caption}</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
-                      <span className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-display)', fontWeight: 600, letterSpacing: '-0.03em' }}>{price}</span>
-                      <span style={{ fontSize: 'var(--fs-base)', opacity: 0.7 }}>{period}</span>
+
+                      {/* Price */}
+                      <div className="plan-price">
+                        <span className="plan-price__amount">{price}</span>
+                        <span className="plan-price__period">{period}</span>
+                      </div>
+
+                      <div className="plan-divider" />
+
+                      {/* Feature list */}
+                      <ul className="plan-features">
+                        {p.features.map((f, j) => (
+                          <li key={j} className="plan-feature">
+                            <div className="plan-feature__check">
+                              <Icon name="check" size={9} />
+                            </div>
+                            <span>{f}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)', margin: '18px 0' }} />
-                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {p.features.map((f, i) => (
-                        <li key={i} style={{ display: 'flex', gap: 8, fontSize: 'var(--fs-base)', lineHeight: 1.4 }}>
-                          <Icon name="check" size={14} style={{ flexShrink: 0, marginTop: 2, color: 'var(--success)' }} />
-                          <span>{f}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <button style={{
-                      marginTop: 22, width: '100%', padding: '11px 14px',
-                      background: selected ? 'var(--brand)' : 'var(--surface)',
-                      color: selected ? 'white' : 'var(--ink)',
-                      border: '1px solid ' + (selected ? 'var(--brand)' : 'var(--line)'),
-                      borderRadius: 10, fontWeight: 600, fontSize: 'var(--fs-strong)', cursor: 'pointer',
-                    }}>{selected ? t('sub.selected') : t('sub.select')}</button>
+
+                    {/* Select button */}
+                    <div className="plan-card__footer">
+                      <button
+                        className={`plan-select-btn${selected ? ' plan-select-btn--active' : ''}`}
+                        tabIndex={-1}
+                      >
+                        {selected ? (
+                          <>
+                            <span className="plan-select-btn__check">
+                              <Icon name="check" size={10} />
+                            </span>
+                            {t('sub.selected')}
+                          </>
+                        ) : (
+                          t('sub.select')
+                        )}
+                      </button>
+                    </div>
                   </div>
                 );
-              })}
+              })
+          }
         </div>
 
+        {/* Error */}
         {errorMsg && (
-          <div style={{ maxWidth: 760, margin: '20px auto 0' }}>
+          <div className="pro-error">
             <Severity level="error">{errorMsg}</Severity>
           </div>
         )}
 
-        <div style={{ marginTop: 30, padding: 18, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <Icon name="lock" size={20} style={{ color: 'var(--muted)' }} />
-          <div style={{ flex: 1, minWidth: 220, fontSize: 'var(--fs-base)' }}>
-            <b>{t('sub.secure_checkout')}</b>{t('sub.secure_checkout_meta')}
-          </div>
-          <Btn variant="primary" size="lg" iconRight="arrow" disabled={loading} onClick={() => !loading && handleUpgrade(picked)}>
-            {loading ? t('sub.processing') : t('sub.go_to_payment')}
-          </Btn>
-        </div>
       </main>
+
+      {/* ── Sticky CTA strip ── */}
+      <footer className="pro-cta-strip">
+        <div className="pro-cta-strip__icon">
+          <Icon name="lock" size={15} />
+        </div>
+        <div className="pro-cta-strip__text">
+          <strong>{t('sub.secure_checkout')}</strong>
+          {t('sub.secure_checkout_meta')}
+        </div>
+        <Btn
+          variant="primary"
+          size="lg"
+          iconRight="arrow"
+          disabled={loading}
+          onClick={() => !loading && handleUpgrade(picked)}
+        >
+          {loading ? t('sub.processing') : t('sub.go_to_payment')}
+        </Btn>
+      </footer>
+
     </div>
   );
 }
