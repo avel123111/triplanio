@@ -294,7 +294,7 @@ function EsimEdit({ service, tripId, t, onClose, onSaved, onDeleted, canEdit }) 
       <div style={{ padding: '15px 20px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Field label={`${t('service.name')} *`}>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)}
-            placeholder={t('service.esim_notes_ph').split('…')[0] || 'Airalo España 5GB…'} autoFocus />
+            placeholder="Airalo 5GB, Holafly…" autoFocus />
         </Field>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
