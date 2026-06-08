@@ -239,6 +239,24 @@ export function transferAiCityAdvisories(data = {}, fromVisit = null, toVisit = 
 function validateService(d = {}, ctx = {}) {
   const out = [];
   const ref = { entityKind: 'service', entityId: d.id };
+  // Branch by service subtype (esim / insurance / car_rental)
+  const svcKind = d.service_kind || 'car_rental';
+
+  if (svcKind === 'esim') {
+    if (isBlank(d.name)) out.push(mk('error', 'SVC_NAME_REQUIRED', 'field', { field: 'name', ...ref }));
+    return out;
+  }
+
+  if (svcKind === 'insurance') {
+    if (isBlank(d.name)) out.push(mk('error', 'SVC_NAME_REQUIRED', 'field', { field: 'name', ...ref }));
+    // Date order: date_finish must not precede date_start
+    if (d.date_start && d.date_finish && d.date_finish < d.date_start) {
+      out.push(mk('warning', 'INS_DATE_ORDER', 'field', { field: 'date_finish', ...ref }));
+    }
+    return out;
+  }
+
+  // car_rental (default)
   if (isBlank(d.name)) out.push(mk('error', 'SVC_NAME_REQUIRED', 'field', { field: 'name', ...ref }));
   if (!d.isEdit && isBlank(d.pickupAddress)) out.push(mk('error', 'SVC_PICKUP_ADDR_REQUIRED', 'field', { field: 'pickupAddress', ...ref }));
   if (!d.pickup) out.push(mk('error', 'SVC_PICKUP_REQUIRED', 'field', { field: 'pickup', ...ref }));

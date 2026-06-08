@@ -27,7 +27,7 @@ import { BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import {
   ExternalLink, Map as MapIcon, Calendar, FileText,
   Bed, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Camera, Upload,
-  RefreshCw,
+  RefreshCw, Wifi, ShieldCheck,
 } from 'lucide-react';
 
 export const TABLE_BY_KIND = {
@@ -44,25 +44,25 @@ export const TRANSPORT_ICONS = {
 
 export function eventTheme(kind, entity) {
   if (kind === 'hotel') {
-    return { color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', Icon: Bed, labelKey: 'budget.cat_accommodation' };
+    return { color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', ink: 'var(--ev-hotel-ink)', Icon: Bed, labelKey: 'budget.cat_accommodation' };
   }
   if (kind === 'activity') {
-    return { color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', Icon: Camera, labelKey: 'budget.source_activity' };
+    return { color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', ink: 'var(--ev-activity-ink)', Icon: Camera, labelKey: 'budget.source_activity' };
   }
   if (kind === 'service') {
     if (entity?.kind === 'esim') {
-      return { color: 'var(--ev-esim)', soft: 'var(--ev-esim-soft)', Icon: CarIcon, labelKey: 'service.kind.esim' };
+      return { color: 'var(--ev-esim)', soft: 'var(--ev-esim-soft)', ink: 'var(--ev-esim-ink)', Icon: Wifi, labelKey: 'service.kind.esim' };
     }
     if (entity?.kind === 'insurance') {
-      return { color: 'var(--ev-insurance)', soft: 'var(--ev-insurance-soft)', Icon: CarIcon, labelKey: 'service.kind.insurance' };
+      return { color: 'var(--ev-insurance)', soft: 'var(--ev-insurance-soft)', ink: 'var(--ev-insurance-ink)', Icon: ShieldCheck, labelKey: 'service.kind.insurance' };
     }
-    return { color: 'var(--ev-car)', soft: 'var(--ev-car-soft)', Icon: CarIcon, labelKey: 'service.car_default_name' };
+    return { color: 'var(--ev-car)', soft: 'var(--ev-car-soft)', ink: 'var(--ev-car-ink)', Icon: CarIcon, labelKey: 'service.car_default_name' };
   }
   // transfer
   const tt = entity?.transport_type;
   const Icon = TRANSPORT_ICONS[tt] || Plane;
   return {
-    color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)',
+    color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)', ink: 'var(--ev-transfer-ink)',
     Icon, labelKey: tt === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer',
   };
 }
@@ -227,11 +227,12 @@ function ActivityBody({ entity, accent }) {
 function EsimBody({ entity, accent }) {
   const { t } = useI18n();
   const d = entity.details || {};
+  const price = fmtPrice(entity.price, entity.currency);
   return (
     <>
       <Section title={t('service.esim_cost_section')} accent={accent}>
         <div className="grid grid-cols-2 gap-3">
-          <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
+          <KV label={t('budget.field_amount')} mono>{price}</KV>
           <KV label={t('service.currency')}>{entity.currency}</KV>
         </div>
       </Section>
@@ -242,23 +243,24 @@ function EsimBody({ entity, accent }) {
 function InsuranceBody({ entity, accent }) {
   const { t } = useI18n();
   const d = entity.details || {};
-  const fmtDate = (iso) => {
+  const fmtInsDate = (iso) => {
     if (!iso) return null;
     try { return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); }
     catch { return iso; }
   };
+  const price = fmtPrice(entity.price, entity.currency);
   return (
     <>
       <Section title={t('service.insurance_section')} accent={accent}>
         <div className="grid grid-cols-2 gap-3">
           {d.policy_number && <KV label={t('service.policy_number')} mono>{d.policy_number}</KV>}
-          {d.date_start && <KV label={t('service.date_start')}>{fmtDate(d.date_start)}</KV>}
-          {d.date_finish && <KV label={t('service.date_finish')}>{fmtDate(d.date_finish)}</KV>}
+          {d.date_start && <KV label={t('service.date_start')} mono>{fmtInsDate(d.date_start)}</KV>}
+          {d.date_finish && <KV label={t('service.date_finish')} mono>{fmtInsDate(d.date_finish)}</KV>}
         </div>
       </Section>
       <Section title={t('service.insurance_cost_section')} accent={accent}>
         <div className="grid grid-cols-2 gap-3">
-          <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
+          <KV label={t('budget.field_amount')} mono>{price}</KV>
           <KV label={t('service.currency')}>{entity.currency}</KV>
         </div>
       </Section>
@@ -513,52 +515,56 @@ export function EventViewSections({ kind, entity, fromVisit, toVisit, accent, do
       {kind === 'service' && <ServiceBody entity={entity} accent={accent} />}
 
       {/* Documents */}
-      <Section title={t('activity.documents_label')} accent={accent} count={docs.length}>
-        {docs.length > 0 ? (
-          <div className="flex flex-col gap-1.5">
-            {docs.map((d, i) => (
-              <a
-                key={`${d.file_url}-${i}`}
-                href={d.file_url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2.5 px-2.5 py-2 border rounded-md text-sm hover:bg-secondary/50 transition"
-              >
-                <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="flex-1 truncate">{d.file_name || t('event.file_word')}</span>
-                <ExternalLink className="w-3 h-3 text-muted-foreground" />
-              </a>
-            ))}
-          </div>
-        ) : (
-          <div className="text-xs text-muted-foreground">{t('doc.tab_empty_title')}</div>
-        )}
-        {canEdit && (
-          <label
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
-            className="mt-2 block cursor-pointer border-2 border-dashed rounded-md py-3 px-3 text-center text-xs text-muted-foreground hover:border-primary/60 transition"
-          >
-            <input
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => uploadFiles(e.target.files)}
-              disabled={uploading}
-            />
-            {uploading ? (
-              <span className="inline-flex items-center gap-2"><RefreshCw className="w-3.5 h-3.5 animate-spin" />{t('trip.form_uploading')}</span>
-            ) : (
-              <span className="inline-flex items-center gap-2"><Upload className="w-3.5 h-3.5" />{t('event.drop_or_pick')}</span>
-            )}
-          </label>
-        )}
-      </Section>
+      {(docs.length > 0 || canEdit) && (
+        <Section title={`${t('activity.documents_label')}${docs.length > 0 ? ` · ${docs.length}` : ''}`} accent={accent}>
+          {docs.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {docs.map((d, i) => (
+                <a
+                  key={`${d.file_url}-${i}`}
+                  href={d.file_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="doc-row"
+                >
+                  <div className="di"><FileText /></div>
+                  <b>{d.file_name || t('event.file_word')}</b>
+                  {d.file_size && <span className="ds">{d.file_size}</span>}
+                </a>
+              ))}
+            </div>
+          )}
+          {!docs.length && <div className="text-xs text-muted-foreground">{t('doc.tab_empty_title')}</div>}
+          {canEdit && (
+            <label
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); uploadFiles(e.dataTransfer.files); }}
+              className="drop-zone"
+              style={{ marginTop: docs.length ? 8 : 0 }}
+            >
+              <input
+                type="file"
+                multiple
+                style={{ display: 'none' }}
+                onChange={(e) => uploadFiles(e.target.files)}
+                disabled={uploading}
+              />
+              {uploading ? (
+                <><RefreshCw style={{ width: 20, height: 20, animation: 'spin .7s linear infinite' }} /><b>{t('trip.form_uploading')}</b></>
+              ) : (
+                <><Upload style={{ width: 20, height: 20 }} /><b>{t('event.drop_or_pick')}</b></>
+              )}
+            </label>
+          )}
+        </Section>
+      )}
 
       {/* Notes */}
       {(entity.notes || entity.details?.notes) && (
         <Section title={t('activity.view_notes')} accent={accent}>
-          <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">{entity.notes || entity.details?.notes}</div>
+          <div className="notes-block" style={{ background: 'transparent', border: 'none', padding: 0 }}>
+            {entity.notes || entity.details?.notes}
+          </div>
         </Section>
       )}
     </>

@@ -209,7 +209,7 @@ export default function EventModal(props) {
               <div style={{ flex: 1 }} />
               <Btn variant="ghost" size="sm" onClick={() => setOpen(false)}>{t('common.close')}</Btn>
               {canEdit && onEdit && (
-                <Btn size="sm" onClick={onEdit} style={{ background: theme.color, borderColor: theme.color, color: '#fff' }}>
+                <Btn variant="primary" size="sm" onClick={onEdit} style={{ '--bg': theme.color }}>
                   <Edit2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.edit_trip')}
                 </Btn>
               )}

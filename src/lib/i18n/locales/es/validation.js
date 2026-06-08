@@ -49,6 +49,7 @@ export default {
   'validation.SVC_DROPOFF_REQUIRED': 'Indica la fecha y hora de devolución',
   'validation.SVC_ORDER': 'La devolución debe ser posterior a la recogida',
   'validation.SVC_OUT_OF_TRIP': 'El servicio está fuera de las fechas del viaje',
+  'validation.INS_DATE_ORDER': 'La fecha de fin del seguro debe ser posterior a la fecha de inicio',
   // City visit
   'validation.CITY_DATES_REQUIRED': 'Indica las fechas de la ciudad',
   'validation.CITY_ORDER': 'La fecha de salida no puede ser anterior a la llegada',

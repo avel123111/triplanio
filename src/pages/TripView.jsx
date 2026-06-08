@@ -28,8 +28,6 @@ import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
-import EsimDialog from '@/components/services/EsimDialog';
-import InsuranceDialog from '@/components/services/InsuranceDialog';
 import OverviewLens from './OverviewLens';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
@@ -1160,27 +1158,27 @@ export default function TripView() {
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
-          {/* eSIM dialog - view (from ServicesCard) or edit/create (from ForkPartnerModal) */}
-          {serviceSimple.open && serviceSimple.kind === 'esim' && (
-            <EsimDialog
-              open={serviceSimple.open}
-              onOpenChange={(o) => setServiceSimple(s => ({ ...s, open: o }))}
-              tripId={tripId}
-              service={serviceSimple.service || null}
-              canEdit={myRole !== 'viewer' && !frozen}
-              defaultEditMode={serviceSimple.mode === 'edit'}
-            />
-          )}
-          {/* Insurance dialog - view (from ServicesCard) or edit/create (from ForkPartnerModal) */}
-          {serviceSimple.open && serviceSimple.kind === 'insurance' && (
-            <InsuranceDialog
-              open={serviceSimple.open}
-              onOpenChange={(o) => setServiceSimple(s => ({ ...s, open: o }))}
-              tripId={tripId}
-              service={serviceSimple.service || null}
-              canEdit={myRole !== 'viewer' && !frozen}
-              defaultEditMode={serviceSimple.mode === 'edit'}
-            />
+          {/* eSIM / Insurance — view (SourceViewLoader) or create (EventEditDialog) */}
+          {serviceSimple.open && (serviceSimple.kind === 'esim' || serviceSimple.kind === 'insurance') && (
+            serviceSimple.service ? (
+              <SourceViewLoader
+                kind="service"
+                id={serviceSimple.service.id}
+                open={serviceSimple.open}
+                onOpenChange={(o) => setServiceSimple(s => ({ ...s, open: o }))}
+                canEdit={myRole !== 'viewer' && !frozen}
+              />
+            ) : (
+              <EventEditDialog
+                open={serviceSimple.open}
+                onOpenChange={(o) => setServiceSimple(s => ({ ...s, open: o }))}
+                kind="service"
+                tripId={tripId}
+                entity={null}
+                initialServiceKind={serviceSimple.kind}
+                defaultCurrency={trip?.details?.main_currency || 'EUR'}
+              />
+            )
           )}
           {/* Activity - add new activity in edit mode */}
           {activityEdit.visit && (

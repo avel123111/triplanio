@@ -236,9 +236,14 @@ function emptyActivityForm(defCur = 'EUR') {
   };
 }
 
-function emptyServiceForm(defCur = 'EUR') {
+function emptyServiceForm(defCur = 'EUR', svcKind = 'car_rental') {
+  const base = { service_kind: svcKind, name: '', price: '', currency: defCur, documents: [], notes: '' };
+  if (svcKind === 'esim') return base;
+  if (svcKind === 'insurance') return { ...base, policy_number: '', date_start: '', date_finish: '' };
+  // car_rental
   return {
-    name: '',
+    ...base,
+    service_kind: 'car_rental',
     pickup_at_local: '',
     pickup_address: '',
     pickup_latitude: null, pickup_longitude: null,
@@ -250,8 +255,6 @@ function emptyServiceForm(defCur = 'EUR') {
     return_different_location: false,
     booking_reference: '',
     booking_url: '', booking_platform: '',
-    price: '', currency: defCur,
-    documents: [], notes: '',
   };
 }
 
@@ -314,12 +317,32 @@ function activityToForm(a, tz) {
 function serviceToForm(svc) {
   if (!svc) return emptyServiceForm();
   const d = svc.details || {};
+  const svcKind = svc.kind || 'car_rental';
+  const base = {
+    service_kind: svcKind,
+    name: svc.name || '',
+    price: svc.price ?? d.price ?? '',
+    currency: svc.currency || d.currency || 'EUR',
+    documents: getDetailsDocuments(d),
+    notes: d.notes || '',
+  };
+  if (svcKind === 'esim') return base;
+  if (svcKind === 'insurance') {
+    return {
+      ...base,
+      policy_number: d.policy_number || '',
+      date_start: d.date_start || '',
+      date_finish: d.date_finish || '',
+    };
+  }
+  // car_rental
   const hasDifferentDropoff = !!(
     (d.dropoff_address && d.dropoff_address !== d.pickup_address) ||
     (d.dropoff_timezone && d.dropoff_timezone !== d.pickup_timezone)
   );
   return {
-    name: svc.name || '',
+    ...base,
+    service_kind: 'car_rental',
     pickup_at_local: d.pickup_at_local || '',
     pickup_address: d.pickup_address || '',
     pickup_latitude: d.pickup_latitude ?? null,
@@ -334,10 +357,6 @@ function serviceToForm(svc) {
     booking_reference: d.booking_reference || '',
     booking_url: d.booking_url || '',
     booking_platform: d.booking_platform || '',
-    price: svc.price ?? d.price ?? '',
-    currency: svc.currency || d.currency || 'EUR',
-    documents: getDetailsDocuments(d),
-    notes: d.notes || '',
   };
 }
 
@@ -388,7 +407,7 @@ function defaultsForNewActivity(visit, tz, defaultStart, defCur = 'EUR') {
 }
 
 function buildInitialForm(kind, entity, ctx) {
-  const { visit, fromVisit, toVisit, defaultStart, defaultCurrency } = ctx;
+  const { visit, fromVisit, toVisit, defaultStart, defaultCurrency, initialServiceKind } = ctx;
   const defCur = defaultCurrency || 'EUR';
   const tz = visit?.timezone || 'UTC';
   const startTz = fromVisit?.timezone || 'UTC';
@@ -402,7 +421,7 @@ function buildInitialForm(kind, entity, ctx) {
   if (kind === 'hotel') return defaultsForNewHotel(visit, tz, defCur);
   if (kind === 'transfer') return defaultsForNewTransfer(fromVisit, toVisit, startTz, endTz, defCur);
   if (kind === 'activity') return defaultsForNewActivity(visit, tz, defaultStart, defCur);
-  return emptyServiceForm(defCur);
+  return emptyServiceForm(defCur, initialServiceKind || 'car_rental');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -420,6 +439,8 @@ export default function EventEditDialog({
   entity = null,
   defaultStart = null,
   defaultCurrency = 'EUR',
+  // For service create mode: 'car_rental' | 'esim' | 'insurance'. Ignored in edit mode (subtype comes from entity).
+  initialServiceKind = 'car_rental',
   // Shell variant. 'dialog' (default) = the shadcn Dialog overlay used app-wide.
   // 'panel' = render the SAME content inline (no overlay) for the trip-editor
   // left panel. Behaviour/state are identical; only the outer wrapper differs.
@@ -462,7 +483,7 @@ export default function EventEditDialog({
   const endTz = toVisit?.timezone || 'UTC';
 
   const [form, setForm] = useState(() =>
-    buildInitialForm(initialKind || 'hotel', entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency })
+    buildInitialForm(initialKind || 'hotel', entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency, initialServiceKind })
   );
   const [aiFields, setAiFields] = useState(new Set());
   // Six-state AI flow per the prototype: locked / available / idle /
@@ -513,7 +534,7 @@ export default function EventEditDialog({
     if (!open) return;
     const k = initialKind || 'hotel';
     setCurrentKind(k);
-    setForm(buildInitialForm(k, entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
+    setForm(buildInitialForm(k, entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency, initialServiceKind }));
     setAiFields(new Set());
     setExtraSegments([]);
     setAiSegFields(new Set()); setAiAdvisories([]);
@@ -623,8 +644,10 @@ export default function EventEditDialog({
     }
     if (currentKind === 'service') {
       return {
-        id: entity?.id, name: form.name, pickupAddress: form.pickup_address, isEdit,
+        id: entity?.id, service_kind: form.service_kind || 'car_rental', name: form.name,
+        pickupAddress: form.pickup_address, isEdit,
         pickup: localToUtc(form.pickup_at_local, tz), dropoff: localToUtc(form.dropoff_at_local, tz),
+        date_start: form.date_start || null, date_finish: form.date_finish || null,
       };
     }
     return {};
@@ -1392,6 +1415,37 @@ function buildActivityPayload(form, visit, tz) {
 }
 
 function buildServicePayload(form, tripId, t) {
+  const svcKind = form.service_kind || 'car_rental';
+  if (svcKind === 'esim') {
+    return {
+      trip_id: tripId,
+      kind: 'esim',
+      name: form.name.trim() || 'eSIM',
+      price: form.price === '' ? null : Number(form.price),
+      currency: form.currency || 'EUR',
+      details: {
+        documents: Array.isArray(form.documents) ? form.documents : [],
+        notes: form.notes || undefined,
+      },
+    };
+  }
+  if (svcKind === 'insurance') {
+    return {
+      trip_id: tripId,
+      kind: 'insurance',
+      name: form.name.trim() || t('service.kind.insurance'),
+      price: form.price === '' ? null : Number(form.price),
+      currency: form.currency || 'EUR',
+      details: {
+        policy_number: form.policy_number || undefined,
+        date_start: form.date_start || undefined,
+        date_finish: form.date_finish || undefined,
+        documents: Array.isArray(form.documents) ? form.documents : [],
+        notes: form.notes || undefined,
+      },
+    };
+  }
+  // car_rental
   const useSame = !form.return_different_location;
   const dropoffAddress = useSame ? form.pickup_address : form.dropoff_address;
   const dropoffLat = useSame ? form.pickup_latitude  : form.dropoff_latitude;
@@ -1404,7 +1458,8 @@ function buildServicePayload(form, tripId, t) {
     name: form.name.trim() || t('service.car_default_name'),
     price: form.price === '' ? null : Number(form.price),
     currency: form.currency || 'EUR',
-    // Top-level UTC columns mirror details.pickup_at_local/dropoff_at_local -     // used by get_pending_reminders to query upcoming car rentals without
+    // Top-level UTC columns mirror details.pickup_at_local/dropoff_at_local -
+    // used by get_pending_reminders to query upcoming car rentals without
     // scanning JSONB. Legacy *_at_local stays in details for backward
     // compatibility with older records and existing display paths.
     pickup_datetime:  form.pickup_at_local  ? localToUtc(form.pickup_at_local,  pickupTz)              : null,
@@ -1874,10 +1929,10 @@ function LayoverToggle({ form, setForm, color }) {
       <SectionHeader>{t('trip.sidebar_route')}</SectionHeader>
       <div style={{ padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}>
-          <span style={{ position: 'relative', display: 'inline-block', width: 32, height: 18, flexShrink: 0 }}>
-            <input type="checkbox" checked={form.hasLayovers} onChange={(e) => (e.target.checked ? enable() : disable())} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', margin: 0 }} />
-            <span style={{ position: 'absolute', inset: 0, background: form.hasLayovers ? color : 'var(--line)', borderRadius: 999, transition: 'background .15s' }} />
-            <span style={{ position: 'absolute', top: 2, left: form.hasLayovers ? 16 : 2, width: 14, height: 14, borderRadius: '50%', background: 'white', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,.15)' }} />
+          <span className="sw-wrap" style={{ '--brand': color }}>
+            <input type="checkbox" checked={form.hasLayovers} onChange={(e) => (e.target.checked ? enable() : disable())} />
+            <span className="sw-track" />
+            <span className="sw-knob" />
           </span>
           <span style={{ flex: 1 }}>
             <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 500 }}>{t('event.with_layovers')}</span>
@@ -2188,7 +2243,109 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
   );
 }
 
+function EsimServiceFields({ form, setField, issues, setUploading }) {
+  const { t } = useI18nFormat();
+  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  return (
+    <>
+      <SectionHeader>{t('service.kind.esim')}</SectionHeader>
+      <div data-vfield="name" className={inv('name')}>
+        <Label>{t('service.name')}</Label>
+        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('service.name_ph')} autoFocus />
+        <FieldError issues={issues} field="name" />
+      </div>
+
+      <SectionHeader>{t('service.esim_cost_section')}</SectionHeader>
+      <div className="kv-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div>
+          <Label>{t('service.price')}</Label>
+          <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
+        </div>
+        <div>
+          <Label>{t('service.currency')}</Label>
+          <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
+        </div>
+      </div>
+
+      <SectionHeader>{t('service.esim_docs_section')}</SectionHeader>
+      <DocumentsField
+        value={form.documents}
+        onChange={(docs) => setField('documents', docs)}
+        onUploadingChange={setUploading}
+        bare
+      />
+      <div className="mt-3">
+        <Label>{t('service.notes')}</Label>
+        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('service.esim_notes_ph')} />
+      </div>
+    </>
+  );
+}
+
+function InsuranceServiceFields({ form, setField, issues, setUploading }) {
+  const { t } = useI18nFormat();
+  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  return (
+    <>
+      <SectionHeader>{t('service.kind.insurance')}</SectionHeader>
+      <div data-vfield="name" className={inv('name')}>
+        <Label>{t('service.name')}</Label>
+        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('service.name_ph')} autoFocus />
+        <FieldError issues={issues} field="name" />
+      </div>
+
+      <SectionHeader>{t('service.insurance_section')}</SectionHeader>
+      <div style={{ marginBottom: 10 }}>
+        <Label>{t('service.policy_number')}</Label>
+        <Input className="font-mono" value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div data-vfield="date_start" className={inv('date_start')}>
+          <Label>{t('service.date_start')}</Label>
+          <Input type="date" value={form.date_start} onChange={(e) => setField('date_start', e.target.value)} />
+        </div>
+        <div data-vfield="date_finish" className={inv('date_finish')}>
+          <Label>{t('service.date_finish')}</Label>
+          <Input type="date" value={form.date_finish} onChange={(e) => setField('date_finish', e.target.value)} />
+          <FieldError issues={issues} field="date_finish" />
+        </div>
+      </div>
+
+      <SectionHeader>{t('service.insurance_cost_section')}</SectionHeader>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div>
+          <Label>{t('service.price')}</Label>
+          <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
+        </div>
+        <div>
+          <Label>{t('service.currency')}</Label>
+          <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
+        </div>
+      </div>
+
+      <SectionHeader>{t('service.insurance_docs_section')}</SectionHeader>
+      <DocumentsField
+        value={form.documents}
+        onChange={(docs) => setField('documents', docs)}
+        onUploadingChange={setUploading}
+        bare
+      />
+      <div className="mt-3">
+        <Label>{t('service.notes')}</Label>
+        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('service.insurance_notes_ph')} />
+      </div>
+    </>
+  );
+}
+
 function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading }) {
+  const svcKind = form.service_kind || 'car_rental';
+  if (svcKind === 'esim') return <EsimServiceFields form={form} setField={setField} issues={issues} setUploading={setUploading} />;
+  if (svcKind === 'insurance') return <InsuranceServiceFields form={form} setField={setField} issues={issues} setUploading={setUploading} />;
+  return <CarRentalServiceFields form={form} setField={setField} setForm={setForm} aiFields={aiFields} setTime={setTime} issues={issues} isEdit={isEdit} setUploading={setUploading} />;
+}
+
+function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading }) {
   const { t } = useI18nFormat();
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);

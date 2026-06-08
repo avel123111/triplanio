@@ -49,6 +49,7 @@ export default {
   'validation.SVC_DROPOFF_REQUIRED': 'Set the return date and time',
   'validation.SVC_ORDER': 'Return must be after pickup',
   'validation.SVC_OUT_OF_TRIP': 'Service is outside the trip dates',
+  'validation.INS_DATE_ORDER': 'Insurance end date must be after start date',
   // City visit
   'validation.CITY_DATES_REQUIRED': 'Set the city dates',
   'validation.CITY_ORDER': 'Departure date cannot be before arrival',
