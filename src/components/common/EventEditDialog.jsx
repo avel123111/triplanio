@@ -19,7 +19,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import AiField from '@/components/ui/AiField';
 import {
-  Loader2, Sparkles, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft,
+  Loader2, Sparkles, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft, X,
   Bed, Plane, Camera, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, Wifi, ShieldCheck,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
