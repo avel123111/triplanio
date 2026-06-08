@@ -390,16 +390,6 @@ export default function Trips() {
     enabled: !!user?.id,
   });
 
-  const { data: myMemberships = [] } = useQuery({
-    queryKey: ['my-memberships', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('trip_members').select('*').eq('user_id', user.id).eq('status', 'active');
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.id,
-  });
-
   const tripIds  = allTrips.map(tr => tr.id);
   const hasTrips = tripIds.length > 0;
 
@@ -444,10 +434,12 @@ export default function Trips() {
     return m;
   }, [allVisits]);
 
+  // Derive current user's role from the participant profiles RPC result
   const getRoleFor = (trip) => {
-    if (trip.created_by === user?.id) return 'owner';
-    const m = myMemberships.find(m => m.trip_id === trip.id);
-    return m?.role || 'member';
+    const parts = participantsByTrip[trip.id] || [];
+    const me = parts.find(p => p.user_id === user?.id);
+    if (!me) return trip.created_by === user?.id ? 'owner' : 'member';
+    return me.is_owner ? 'owner' : (me.role || 'member');
   };
 
   // ── Partition ────────────────────────────────────────────────────────────────
