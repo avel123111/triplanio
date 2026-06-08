@@ -1294,6 +1294,7 @@ export default function TripView() {
             <DocsLens
               tripId={tripId}
               isLoading={loadingContent}
+              members={members}
             />
           )}
           {shownLens === 'settings' && (

@@ -71,4 +71,10 @@ export default {
   'doc.remove_doc_aria': 'Удалить документ',
   'doc.upload_files': 'Загрузить файлы • до {mb}MB каждый',
   'doc.remaining': ' (осталось {n})',
+  'doc.only_you': 'Только вы',
+  'doc.search_ph': 'Поиск по названию…',
+  'doc.filter_label': 'Фильтр',
+  'doc.filter_all': 'Все',
+  'doc.filter_files': 'С файлами',
+  'doc.filter_links': 'Со ссылками',
 };

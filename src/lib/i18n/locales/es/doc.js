@@ -71,4 +71,10 @@ export default {
   'doc.remove_doc_aria': 'Eliminar documento',
   'doc.upload_files': 'Subir archivos • hasta {mb}MB cada uno',
   'doc.remaining': ' (quedan {n})',
+  'doc.only_you': 'Solo tú',
+  'doc.search_ph': 'Buscar por título…',
+  'doc.filter_label': 'Filtro',
+  'doc.filter_all': 'Todo',
+  'doc.filter_files': 'Con archivos',
+  'doc.filter_links': 'Con enlaces',
 };

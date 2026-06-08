@@ -4,6 +4,7 @@
  * Props:
  *   tripId     - string
  *   isLoading  - boolean (parent loading state, passed as fallback)
+ *   members    - trip_members rows (user_id, user_full_name, avatar_url)
  *
  * Reads/writes trip_documents table directly via Supabase client.
  * visibility: 'shared' = all members see it; 'private' = only the creator.
@@ -13,13 +14,13 @@
  * (.dl-* on app.css tokens). Dialogs use Radix ui/dialog (dlg__head /
  * dlg__body / dlg__foot structure). No inline hover handlers — CSS only.
  */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { safeStorageName } from '@/lib/storage';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Field, Severity, Skeleton } from '../design/index';
+import { Avatar, Badge, Btn, Field, Severity, Skeleton } from '../design/index';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -412,12 +413,21 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
 
 // ─── DocCard ──────────────────────────────────────────────────────────────────
 
-function DocCard({ doc, scope, onOpenDetail }) {
-  const { t }   = useI18n();
-  const files   = doc.documents || [];
-  const shown   = files.slice(0, 2);
-  const more    = files.length - shown.length;
+function DocCard({ doc, scope, members, onOpenDetail }) {
+  const { t }    = useI18n();
+  const { user } = useAuth();
+  const files    = doc.documents || [];
+  const shown    = files.slice(0, 2);
+  const more     = files.length - shown.length;
   const isShared = scope !== 'personal';
+
+  // Uploader info: resolve from members array or fall back to current user
+  const uploader = useMemo(() => {
+    if (!isShared) return { name: null, photo: null }; // personal → "Только вы"
+    const m = members?.find(m => m.user_id === doc.created_by);
+    if (m) return { name: m.user_full_name || m.invite_email || '?', photo: m.avatar_url || null };
+    return { name: user?.full_name || '?', photo: null };
+  }, [doc.created_by, members, isShared, user]);
 
   return (
     <button
@@ -463,12 +473,23 @@ function DocCard({ doc, scope, onOpenDetail }) {
         <div className="dl-linkrow">
           <Icon name="external" size={14} style={{ color: 'var(--ev-hotel-ink)', flexShrink: 0 }} />
           <b>{doc.link_url.replace(/^https?:\/\//, '').split('/')[0]}</b>
-          <Icon name="chev" size={13} style={{ color: 'var(--ev-hotel-ink)', opacity: .55, transform: 'rotate(0deg)' }} />
+          <Icon name="chev" size={13} style={{ color: 'var(--ev-hotel-ink)', opacity: .55 }} />
         </div>
       )}
 
-      {/* Footer: creation date */}
+      {/* Footer: avatar + name + date */}
       <div className="dl-card__foot">
+        {isShared ? (
+          <>
+            <Avatar name={uploader.name} photo={uploader.photo} size="sm" />
+            <span className="dl-card__foot-who">{uploader.name}</span>
+          </>
+        ) : (
+          <>
+            <Avatar name={user?.full_name || '?'} size="sm" />
+            <span className="dl-card__foot-who">{t('doc.only_you')}</span>
+          </>
+        )}
         <span className="dl-card__foot-date">{formatDate(doc.created_at)}</span>
       </div>
     </button>
@@ -487,7 +508,12 @@ function DocEmpty({ scope, onOpenAdd }) {
       </div>
       <b>{isShared ? t('doc.empty_shared') : t('doc.empty_private')}</b>
       <span>{isShared ? t('doc.empty_shared_desc') : t('doc.empty_private_desc')}</span>
-      <Btn variant="ghost" icon="plus" onClick={() => onOpenAdd?.()}>
+      <Btn
+        variant="soft"
+        size="sm"
+        icon="plus"
+        style={!isShared ? { background: 'var(--warm-soft)', color: 'var(--warm-ink)' } : undefined}
+        onClick={() => onOpenAdd?.()}>
         {t('doc.add_doc')}
       </Btn>
     </div>
@@ -496,13 +522,13 @@ function DocEmpty({ scope, onOpenAdd }) {
 
 // ─── DocsGrid ─────────────────────────────────────────────────────────────────
 
-function DocsGrid({ docs, scope, onOpenAdd, onOpenDetail }) {
+function DocsGrid({ docs, scope, members, onOpenAdd, onOpenDetail }) {
   const { t }    = useI18n();
   const isShared = scope !== 'personal';
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
       {docs.map(d => (
-        <DocCard key={d.id} doc={d} scope={scope} onOpenDetail={onOpenDetail} />
+        <DocCard key={d.id} doc={d} scope={scope} members={members} onOpenDetail={onOpenDetail} />
       ))}
       <button
         className={`dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
@@ -518,11 +544,13 @@ function DocsGrid({ docs, scope, onOpenAdd, onOpenDetail }) {
 
 // ─── DocsLens (main export) ───────────────────────────────────────────────────
 
-export default function DocsLens({ tripId, isLoading: parentLoading }) {
-  const { t }   = useI18n();
+export default function DocsLens({ tripId, isLoading: parentLoading, members = [] }) {
+  const { t }    = useI18n();
   const { user } = useAuth();
-  const [addDocVis, setAddDocVis] = useState(null); // null | { defaultVisibility }
-  const [detailDoc, setDetailDoc] = useState(null); // null | doc object
+  const [addDocVis,    setAddDocVis]    = useState(null); // null | { defaultVisibility }
+  const [detailDoc,    setDetailDoc]    = useState(null); // null | doc object
+  const [searchQuery,  setSearchQuery]  = useState('');
+  const [filter,       setFilter]       = useState('all'); // 'all' | 'files' | 'links'
 
   const { data: docs = [], isLoading, error } = useQuery({
     queryKey: DOCS_KEY(tripId),
@@ -538,8 +566,19 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
     enabled: !!tripId,
   });
 
-  const sharedDocs   = docs.filter(d => d.visibility === 'shared');
-  const personalDocs = docs.filter(d => d.visibility === 'private' && d.created_by === user?.id);
+  // Search + filter (applied after visibility split)
+  const filterDoc = (d) => {
+    if (searchQuery && !d.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (filter === 'files'  && !d.documents?.length) return false;
+    if (filter === 'links'  && !d.link_url)          return false;
+    return true;
+  };
+
+  const sharedDocs   = docs.filter(d => d.visibility === 'shared'                          && filterDoc(d));
+  const personalDocs = docs.filter(d => d.visibility === 'private' && d.created_by === user?.id && filterDoc(d));
+  // Raw counts (unfiltered) for badges
+  const sharedTotal   = docs.filter(d => d.visibility === 'shared').length;
+  const personalTotal = docs.filter(d => d.visibility === 'private' && d.created_by === user?.id).length;
 
   // Primary action lives in the global screen-title bar (the per-screen header).
   useTripScreenActions(
@@ -552,7 +591,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
   if (isLoading || parentLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Skeleton w="100%" h={36} r={8} />
+        <Skeleton w="100%" h={44} r={22} />
         <Skeleton w="100%" h={180} r={12} />
         <Skeleton w="100%" h={180} r={12} />
       </div>
@@ -567,8 +606,37 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
     );
   }
 
+  const filterOpts = [
+    { key: 'all',   label: t('doc.filter_all') },
+    { key: 'files', label: t('doc.filter_files') },
+    { key: 'links', label: t('doc.filter_links') },
+  ];
+
   return (
-    <>
+    <div className="dl-root">
+      {/* ── Toolbar: search + filter ── */}
+      <div className="dl-toolbar">
+        <label className="dl-search">
+          <span className="dl-search__icon"><Icon name="search" size={16} /></span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder={t('doc.search_ph')}
+          />
+        </label>
+        <div className="seg" role="group" aria-label={t('doc.filter_label')}>
+          {filterOpts.map(opt => (
+            <button
+              key={opt.key}
+              aria-pressed={filter === opt.key}
+              onClick={() => setFilter(opt.key)}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ── Shared section ── */}
       <section style={{ marginBottom: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
@@ -578,7 +646,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
           <div>
             <h3 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
               {t('doc.section_shared')}
-              <Badge variant="quiet">{sharedDocs.length}</Badge>
+              <Badge variant="count">{sharedTotal}</Badge>
             </h3>
             <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
               {t('doc.section_shared_hint')}
@@ -591,6 +659,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
           : <DocsGrid
               docs={sharedDocs}
               scope="shared"
+              members={members}
               onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })}
               onOpenDetail={setDetailDoc}
             />}
@@ -605,7 +674,9 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
           <div>
             <h3 style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
               {t('doc.section_private')}
-              <Badge variant="quiet">{personalDocs.length}</Badge>
+              <Badge variant="count" style={{ background: 'var(--warm)', color: '#fff' }}>
+                {personalTotal}
+              </Badge>
             </h3>
             <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
               {t('doc.section_private_hint')}
@@ -618,6 +689,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
           : <DocsGrid
               docs={personalDocs}
               scope="personal"
+              members={members}
               onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })}
               onOpenDetail={setDetailDoc}
             />}
@@ -640,6 +712,6 @@ export default function DocsLens({ tripId, isLoading: parentLoading }) {
           tripId={tripId}
         />
       )}
-    </>
+    </div>
   );
 }
