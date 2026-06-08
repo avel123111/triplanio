@@ -4,7 +4,11 @@
  * (tap an event) and the budget (tap a system expense to see what created it).
  *
  * - View → EventModal (new design).
- * - Edit (canEdit) → the existing create/edit Dialog for that entity.
+ * - Edit hotel/transfer → always navigates to edit screen (onEditInEditor).
+ * - Edit activity → EventEditDialog (inline, no screen nav needed).
+ * - Edit esim → EsimDialog (view→edit transition inside the dialog).
+ * - Edit insurance → InsuranceDialog (view→edit transition inside the dialog).
+ * - Edit car_rental → EventEditDialog.
  * - Delete (canEdit) → confirm, delete the row, invalidate trip queries.
  */
 import React, { useEffect, useState } from 'react';
@@ -16,7 +20,8 @@ import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
-import ServiceDialog from '@/components/services/ServiceDialog';
+import EsimDialog from '@/components/services/EsimDialog';
+import InsuranceDialog from '@/components/services/InsuranceDialog';
 
 const TABLE_BY_KIND = {
   hotel: 'hotel_stays',
@@ -49,20 +54,41 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     }
   };
 
-  // Edit mode - swap in the unified create/edit dialog. Non-car-rental
-  // services (esim, insurance) stay on the simple ServiceDialog since the
-  // unified one only models the rich car-rental shape.
+  const closeEdit = (o) => {
+    if (!o) { setEditMode(false); onOpenChange(false); invalidate(); }
+  };
+
+  // eSIM — use dedicated dialog that handles view+edit internally
+  if (kind === 'service' && data.kind === 'esim') {
+    return (
+      <EsimDialog
+        open={open}
+        onOpenChange={(o) => { if (!o) { invalidate(); } onOpenChange(o); }}
+        tripId={data.trip_id}
+        service={data}
+        canEdit={canEdit}
+        defaultEditMode={editMode}
+      />
+    );
+  }
+
+  // Insurance — same pattern
+  if (kind === 'service' && data.kind === 'insurance') {
+    return (
+      <InsuranceDialog
+        open={open}
+        onOpenChange={(o) => { if (!o) { invalidate(); } onOpenChange(o); }}
+        tripId={data.trip_id}
+        service={data}
+        canEdit={canEdit}
+        defaultEditMode={editMode}
+      />
+    );
+  }
+
+  // Edit mode for activity and car_rental — inline EventEditDialog
   if (editMode) {
-    const closeEdit = (o) => {
-      if (!o) { setEditMode(false); onOpenChange(false); invalidate(); }
-    };
-    if (kind === 'service' && data.kind && data.kind !== 'car_rental') {
-      return <ServiceDialog open onOpenChange={closeEdit} tripId={data.trip_id} kind={data.kind} service={data} />;
-    }
-    if ((kind === 'hotel' && visit)
-        || (kind === 'transfer' && fromVisit && toVisit)
-        || (kind === 'activity' && visit)
-        || kind === 'service') {
+    if ((kind === 'activity' && visit) || kind === 'service') {
       return (
         <EventEditDialog
           open
@@ -76,6 +102,10 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
         />
       );
     }
+    // hotel/transfer without onEditInEditor: shouldn't reach here normally,
+    // but fall back to edit screen nav if available, otherwise close.
+    if (onEditInEditor) { onEditInEditor({ kind, id: data.id }); onOpenChange(false); }
+    else { setEditMode(false); }
     return null;
   }
 
@@ -88,13 +118,24 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     invalidate();
   };
 
+  // Hotel and transfer: Edit button always goes to the edit screen.
+  // Activity and car_rental: Edit button opens inline dialog.
+  const handleEdit = () => {
+    if ((kind === 'hotel' || kind === 'transfer') && onEditInEditor) {
+      onOpenChange(false);
+      onEditInEditor({ kind, id: data.id });
+    } else {
+      setEditMode(true);
+    }
+  };
+
   return (
     <EventModal
       event={{ kind, entity: data, visit, fromVisit, toVisit, tripId: data.trip_id }}
       warning={warning}
       canEdit={canEdit}
       onClose={() => onOpenChange(false)}
-      onEdit={onEditInEditor ? () => { onOpenChange(false); onEditInEditor({ kind, id: data.id }); } : () => setEditMode(true)}
+      onEdit={handleEdit}
       onDelete={handleDelete}
     />
   );

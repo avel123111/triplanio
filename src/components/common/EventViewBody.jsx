@@ -47,10 +47,15 @@ export function eventTheme(kind, entity) {
     return { color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', Icon: Bed, labelKey: 'budget.cat_accommodation' };
   }
   if (kind === 'activity') {
-    const Icon = entity?.category === 'food' ? Camera : entity?.category === 'sight' ? Camera : Camera;
-    return { color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', Icon, labelKey: 'budget.source_activity' };
+    return { color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', Icon: Camera, labelKey: 'budget.source_activity' };
   }
   if (kind === 'service') {
+    if (entity?.kind === 'esim') {
+      return { color: 'var(--ev-esim)', soft: 'var(--ev-esim-soft)', Icon: CarIcon, labelKey: 'service.kind.esim' };
+    }
+    if (entity?.kind === 'insurance') {
+      return { color: 'var(--ev-insurance)', soft: 'var(--ev-insurance-soft)', Icon: CarIcon, labelKey: 'service.kind.insurance' };
+    }
     return { color: 'var(--ev-car)', soft: 'var(--ev-car-soft)', Icon: CarIcon, labelKey: 'service.car_default_name' };
   }
   // transfer
@@ -219,8 +224,54 @@ function ActivityBody({ entity, accent }) {
   );
 }
 
+function EsimBody({ entity, accent }) {
+  const { t } = useI18n();
+  const d = entity.details || {};
+  return (
+    <>
+      <Section title={t('service.esim_cost_section')} accent={accent}>
+        <div className="grid grid-cols-2 gap-3">
+          <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
+          <KV label={t('service.currency')}>{entity.currency}</KV>
+        </div>
+      </Section>
+    </>
+  );
+}
+
+function InsuranceBody({ entity, accent }) {
+  const { t } = useI18n();
+  const d = entity.details || {};
+  const fmtDate = (iso) => {
+    if (!iso) return null;
+    try { return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); }
+    catch { return iso; }
+  };
+  return (
+    <>
+      <Section title={t('service.insurance_section')} accent={accent}>
+        <div className="grid grid-cols-2 gap-3">
+          {d.policy_number && <KV label={t('service.policy_number')} mono>{d.policy_number}</KV>}
+          {d.date_start && <KV label={t('service.date_start')}>{fmtDate(d.date_start)}</KV>}
+          {d.date_finish && <KV label={t('service.date_finish')}>{fmtDate(d.date_finish)}</KV>}
+        </div>
+      </Section>
+      <Section title={t('service.insurance_cost_section')} accent={accent}>
+        <div className="grid grid-cols-2 gap-3">
+          <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
+          <KV label={t('service.currency')}>{entity.currency}</KV>
+        </div>
+      </Section>
+    </>
+  );
+}
+
 function ServiceBody({ entity, accent }) {
   const { t } = useI18n();
+  // Route esim/insurance to their own bodies
+  if (entity.kind === 'esim') return <EsimBody entity={entity} accent={accent} />;
+  if (entity.kind === 'insurance') return <InsuranceBody entity={entity} accent={accent} />;
+  // car_rental
   const d = entity.details || {};
   const sameLocation = !d.dropoff_address || d.dropoff_address === d.pickup_address;
   const price = entity.price ?? d.price;
@@ -298,15 +349,19 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
     if (entity.start_datetime) metaItems.push({ icon: Calendar, text: fmtDT(entity.start_datetime) });
     if (visit?.city_name) metaItems.push({ icon: MapIcon, text: visit.city_name });
   } else if (kind === 'service') {
-    const d = entity.details || {};
-    const pickupMeta = entity.pickup_datetime
-      ? utcToLocalInput(entity.pickup_datetime, d.pickup_timezone)
-      : d.pickup_at_local;
-    const dropoffMeta = entity.dropoff_datetime
-      ? utcToLocalInput(entity.dropoff_datetime, d.dropoff_timezone || d.pickup_timezone)
-      : d.dropoff_at_local;
-    if (pickupMeta && dropoffMeta) {
-      metaItems.push({ icon: Calendar, text: `${fmtDT(pickupMeta)} → ${fmtDate(dropoffMeta)}` });
+    // car_rental: show pickup→dropoff date range in meta strip
+    // esim/insurance: no datetime meta — they're not time-bound events
+    if (entity.kind === 'car_rental') {
+      const d = entity.details || {};
+      const pickupMeta = entity.pickup_datetime
+        ? utcToLocalInput(entity.pickup_datetime, d.pickup_timezone)
+        : d.pickup_at_local;
+      const dropoffMeta = entity.dropoff_datetime
+        ? utcToLocalInput(entity.dropoff_datetime, d.dropoff_timezone || d.pickup_timezone)
+        : d.dropoff_at_local;
+      if (pickupMeta && dropoffMeta) {
+        metaItems.push({ icon: Calendar, text: `${fmtDT(pickupMeta)} → ${fmtDate(dropoffMeta)}` });
+      }
     }
   }
   const priceText = fmtPrice(price, cur);
@@ -314,7 +369,7 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
   const mapAddress = kind === 'hotel' ? entity.address
     : kind === 'transfer' ? (entity.from_address || entity.to_address)
     : kind === 'activity' ? entity.location_address
-    : entity.details?.pickup_address;
+    : (entity.kind === 'car_rental' ? entity.details?.pickup_address : null);
 
   return {
     theme, themeLabel, title, cur, price, priceText,

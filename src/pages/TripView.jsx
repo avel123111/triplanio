@@ -28,7 +28,8 @@ import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
-import ServiceDialog from '@/components/services/ServiceDialog';
+import EsimDialog from '@/components/services/EsimDialog';
+import InsuranceDialog from '@/components/services/InsuranceDialog';
 import OverviewLens from './OverviewLens';
 import BudgetLens from './BudgetLens';
 import MembersLens from './MembersLens';
@@ -867,7 +868,9 @@ export default function TripView() {
   // routes to the right edit dialog when the user picks "Manual".
   const [serviceChoice, setServiceChoice] = useState({ open: false, type: null });
   const [serviceEditCar, setServiceEditCar] = useState({ open: false });
-  const [serviceEditSimple, setServiceEditSimple] = useState({ open: false, kind: null });
+  // serviceSimple: view/edit dialog for esim and insurance
+  // mode: 'view' (open in read mode) | 'edit' (open straight in edit/create form)
+  const [serviceSimple, setServiceSimple] = useState({ open: false, kind: null, service: null, mode: 'view' });
   // City add/edit/delete moved entirely to the Structure editor (/trip/:id/edit).
   const [activityEdit, setActivityEdit] = useState({ open: false, visit: null, activity: null, defaultStart: null });
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
@@ -1141,7 +1144,8 @@ export default function TripView() {
               if (type === 'car_rental') {
                 setServiceEditCar({ open: true });
               } else if (type === 'esim' || type === 'insurance') {
-                setServiceEditSimple({ open: true, kind: type });
+                // Open in edit/create mode (no existing service yet)
+                setServiceSimple({ open: true, kind: type, service: null, mode: 'edit' });
               }
             }}
           />
@@ -1156,14 +1160,26 @@ export default function TripView() {
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
-          {/* eSIM / Insurance edit - opened from the service ForkPartnerModal */}
-          {serviceEditSimple.open && serviceEditSimple.kind && (
-            <ServiceDialog
-              open={serviceEditSimple.open}
-              onOpenChange={(o) => setServiceEditSimple(s => ({ ...s, open: o }))}
+          {/* eSIM dialog - view (from ServicesCard) or edit/create (from ForkPartnerModal) */}
+          {serviceSimple.open && serviceSimple.kind === 'esim' && (
+            <EsimDialog
+              open={serviceSimple.open}
+              onOpenChange={(o) => setServiceSimple(s => ({ ...s, open: o }))}
               tripId={tripId}
-              kind={serviceEditSimple.kind}
-              service={serviceEditSimple.service || null}
+              service={serviceSimple.service || null}
+              canEdit={myRole !== 'viewer' && !frozen}
+              defaultEditMode={serviceSimple.mode === 'edit'}
+            />
+          )}
+          {/* Insurance dialog - view (from ServicesCard) or edit/create (from ForkPartnerModal) */}
+          {serviceSimple.open && serviceSimple.kind === 'insurance' && (
+            <InsuranceDialog
+              open={serviceSimple.open}
+              onOpenChange={(o) => setServiceSimple(s => ({ ...s, open: o }))}
+              tripId={tripId}
+              service={serviceSimple.service || null}
+              canEdit={myRole !== 'viewer' && !frozen}
+              defaultEditMode={serviceSimple.mode === 'edit'}
             />
           )}
           {/* Activity - add new activity in edit mode */}
@@ -1211,7 +1227,7 @@ export default function TripView() {
               onAddService={frozen ? frozenNote : (type) => setServiceChoice({ open: true, type })}
               onOpenService={(s) => {
                 if (s.kind === 'car_rental') setServiceEditCar({ open: true, service: s });
-                else setServiceEditSimple({ open: true, kind: s.kind, service: s });
+                else setServiceSimple({ open: true, kind: s.kind, service: s, mode: 'view' });
               }}
               onBudgetLocked={() => setBudgetAddonOff(true)}
             />
