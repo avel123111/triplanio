@@ -45,19 +45,18 @@ function toInitials(nameOrEmail = '') {
  * Avatar / shared logic:
  *   - "Shared" = trip has ≥1 active trip_members row (accepted invite, excl. owner)
  *   - displayMembers = [owner_entry, ...active_trip_members]
- *     Owner is NOT in trip_members table, so we inject a synthetic entry from
- *     the auth user when they are the owner (created_by === user.id).
- *     For trips where the current user is a member, the owner isn't shown
- *     (their data is unavailable here without extra fetches) but the current
- *     user and other members ARE in trip_members and will be shown.
+ *     Owner is NOT in trip_members — we inject them from:
+ *       a) currentUser (auth context) when they are the owner
+ *       b) ownerProfile from get_trip_owner_profiles RPC for member trips
  */
-function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, activeMembers = [], currentUser = null) {
+function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, activeMembers = [], currentUser = null, ownerProfile = null) {
   const isShared = activeMembers.length >= 1;
 
-  // Build display avatar list: inject owner when current user owns this trip
-  let displayMembers = activeMembers;
+  // Build synthetic owner entry from whatever source is available
+  let ownerEntry = null;
   if (currentUser && trip.created_by === currentUser.id) {
-    const ownerEntry = {
+    // Current user IS the owner
+    ownerEntry = {
       id: `owner-${trip.id}`,
       trip_id: trip.id,
       user_id: currentUser.id,
@@ -66,8 +65,20 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, act
       role: 'owner',
       status: 'active',
     };
-    displayMembers = [ownerEntry, ...activeMembers];
+  } else if (ownerProfile) {
+    // Owner is someone else — profile fetched via RPC
+    ownerEntry = {
+      id: `owner-${trip.id}`,
+      trip_id: trip.id,
+      user_id: ownerProfile.user_id,
+      user_full_name: ownerProfile.full_name || ownerProfile.email || '',
+      invite_email: ownerProfile.email || '',
+      role: 'owner',
+      status: 'active',
+    };
   }
+
+  const displayMembers = ownerEntry ? [ownerEntry, ...activeMembers] : activeMembers;
 
   return {
     ...trip,
@@ -468,6 +479,33 @@ export default function Trips() {
     staleTime: 30_000,
   });
 
+  // ── Fetch owner profiles for trips where current user is NOT the owner ──
+  // Owners are NOT in trip_members, so we use a SECURITY DEFINER RPC that
+  // returns owner info for trips the caller participates in. Single batch call.
+  const ownerTripIds = hasTrips
+    ? allTrips.filter(tr => tr.created_by !== user?.id).map(tr => tr.id)
+    : [];
+
+  const { data: ownerProfiles = [] } = useQuery({
+    queryKey: ['trip-owner-profiles', ownerTripIds.join(',')],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_trip_owner_profiles', {
+        trip_id_list: ownerTripIds,
+      });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: ownerTripIds.length > 0,
+    staleTime: 60_000,
+  });
+
+  // Map tripId → owner profile row for fast lookup
+  const ownerByTrip = useMemo(() => {
+    const m = {};
+    ownerProfiles.forEach(p => { m[p.trip_id] = p; });
+    return m;
+  }, [ownerProfiles]);
+
   const visitsByTrip = useMemo(() => {
     const m = {};
     allVisits.forEach(v => { (m[v.trip_id] ||= []).push(v); });
@@ -498,7 +536,12 @@ export default function Trips() {
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
   const shownNorm = shown.map(tr =>
-    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, membersByTrip[tr.id] || [], user)
+    normalizeTrip(
+      t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro,
+      membersByTrip[tr.id] || [],
+      user,
+      ownerByTrip[tr.id] || null,
+    )
   );
 
   // ── Create flow ───────────────────────────────────────────────────────────────
