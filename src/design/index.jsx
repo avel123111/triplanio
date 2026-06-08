@@ -102,8 +102,8 @@ export const Btn = ({ variant = "ghost", size, icon, iconRight, block, disabled,
 );
 
 // ----- Badge -----
-export const Badge = ({ variant = "", icon, dot, children }) => (
-  <span className={`badge ${variant ? "badge--" + variant : ""}`}>
+export const Badge = ({ variant = "", icon, dot, children, style }) => (
+  <span className={`badge ${variant ? "badge--" + variant : ""}`} style={style}>
     {dot && <span className="dot" />}
     {icon && <Icon name={icon} size={11} />}
     {children}
