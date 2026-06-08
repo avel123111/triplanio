@@ -25,7 +25,7 @@ import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate } from '@/lib/trip-data';
 import { BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import {
-  ExternalLink, Map as MapIcon, Calendar, FileText,
+  Map as MapIcon, Calendar, FileText,
   Bed, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Camera, Upload,
   RefreshCw, Wifi, ShieldCheck,
 } from 'lucide-react';
@@ -88,15 +88,11 @@ export function fmtPrice(price, cur) {
 //  Section primitives (3px accent bar + body)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function Section({ title, accent, count, children, first }) {
+export function Section({ title, accent, count, children }) {
   return (
-    <div className={first ? 'mt-3' : 'mt-4 pt-4 border-t'}>
-      <div className="flex items-center gap-2 mb-2.5">
-        <div style={{ width: 3, height: 12, background: accent, borderRadius: 2 }} />
-        <span className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold text-muted-foreground flex-1">{title}</span>
-        {count != null && count > 0 && (
-          <span className="text-xs text-muted-foreground">{count}</span>
-        )}
+    <div className="ev-sec" style={accent ? { '--ev-color': accent } : undefined}>
+      <div className="ev-sec-lbl">
+        {title}{count != null && count > 0 ? ` · ${count}` : ''}
       </div>
       {children}
     </div>
@@ -106,9 +102,9 @@ export function Section({ title, accent, count, children, first }) {
 export function KV({ label, children, mono }) {
   if (children == null || children === '') return null;
   return (
-    <div>
-      <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold text-muted-foreground mb-0.5">{label}</div>
-      <div className={`text-sm leading-tight ${mono ? 'font-mono text-xs' : ''}`}>{children}</div>
+    <div className="kv">
+      <div className="k">{label}</div>
+      <div className={mono ? 'v mono' : 'v'}>{children}</div>
     </div>
   );
 }
@@ -129,19 +125,19 @@ function HotelBody({ entity, accent }) {
   return (
     <>
       {entity.address && (
-        <div className="mt-3 p-3 rounded-lg bg-secondary/40 flex items-start gap-2.5">
-          <MapIcon className="w-4 h-4 mt-0.5 shrink-0" style={{ color: accent }} />
-          <div className="text-sm leading-snug">{entity.address}</div>
+        <div className="addr">
+          <MapIcon style={{ width: 16, height: 16, color: accent, flexShrink: 0, marginTop: 1 }} />
+          <div>{entity.address}</div>
         </div>
       )}
       <Section title={t('event.checkin_checkout')} accent={accent}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="kv-grid">
           <KV label={t('trip.hotel_check_in')}>{fmtDT(entity.check_in_datetime)}</KV>
           <KV label={t('trip.hotel_check_out')}>{fmtDT(entity.check_out_datetime)}</KV>
         </div>
       </Section>
       <Section title={t('event.finance_cancel')} accent={accent}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="kv-grid">
           <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
           <KV label={t('hotel.payment_status')}>{paymentLabel(t, entity.payment_status)}</KV>
           {entity.free_cancellation && entity.free_cancellation_until && (
@@ -152,9 +148,9 @@ function HotelBody({ entity, accent }) {
       </Section>
       {(entity.phone || entity.email) && (
         <Section title={t('event.contacts')} accent={accent}>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="kv-grid">
             <KV label={t('hotel.view_phone')}>{entity.phone}</KV>
-            <KV label="E-mail">{entity.email ? <a href={`mailto:${entity.email}`} className="text-primary hover:underline">{entity.email}</a> : null}</KV>
+            <KV label="E-mail">{entity.email ? <a href={`mailto:${entity.email}`} style={{ color: 'var(--primary)' }}>{entity.email}</a> : null}</KV>
           </div>
         </Section>
       )}
@@ -170,27 +166,25 @@ function TransferBody({ entity, fromVisit, toVisit, accent }) {
   const Ic = ttIcon;
   return (
     <>
-      <div className="mt-3 p-4 rounded-xl grid items-center gap-3" style={{ gridTemplateColumns: '1fr auto 1fr', background: 'var(--wash)' }}>
+      <div className="route-block" style={{ '--ev-color': accent }}>
         <div>
-          <div className="font-display font-bold text-2xl leading-tight">{fmtTime(entity.start_datetime)}</div>
-          {fromCity && <div className="text-sm font-semibold mt-1">{fromCity}</div>}
-          {entity.from_address && (
-            <div className="text-[length:var(--fs-micro)] text-muted-foreground mt-0.5 leading-snug">{entity.from_address}</div>
-          )}
+          <div className="rd">{fmtDate(entity.start_datetime)}</div>
+          <div className="rt">{fmtTime(entity.start_datetime)}</div>
+          {fromCity && <div className="rc">{fromCity}</div>}
+          {entity.from_address && <div className="ra">{entity.from_address}</div>}
         </div>
-        <div className="text-center">
-          <Ic className="w-5 h-5 mx-auto" style={{ color: accent }} />
+        <div className="rmid">
+          <Ic />
         </div>
-        <div className="text-right">
-          <div className="font-display font-bold text-2xl leading-tight">{fmtTime(entity.end_datetime)}</div>
-          {toCity && <div className="text-sm font-semibold mt-1">{toCity}</div>}
-          {entity.to_address && (
-            <div className="text-[length:var(--fs-micro)] text-muted-foreground mt-0.5 leading-snug">{entity.to_address}</div>
-          )}
+        <div className="end">
+          <div className="rd">{fmtDate(entity.end_datetime)}</div>
+          <div className="rt">{fmtTime(entity.end_datetime)}</div>
+          {toCity && <div className="rc">{toCity}</div>}
+          {entity.to_address && <div className="ra">{entity.to_address}</div>}
         </div>
       </div>
       <Section title={t('event.carrier_booking')} accent={accent}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="kv-grid">
           <KV label={t('transfer.carrier')}>{entity.carrier}</KV>
           <KV label={t('event.flight_number')} mono>{entity.flight_number}</KV>
           <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
@@ -206,13 +200,13 @@ function ActivityBody({ entity, accent }) {
   return (
     <>
       {entity.location_address && (
-        <div className="mt-3 p-3 rounded-lg bg-secondary/40 flex items-start gap-2.5">
-          <MapIcon className="w-4 h-4 mt-0.5 shrink-0" style={{ color: accent }} />
-          <div className="text-sm leading-snug">{entity.location_address}</div>
+        <div className="addr">
+          <MapIcon style={{ width: 16, height: 16, color: accent, flexShrink: 0, marginTop: 1 }} />
+          <div>{entity.location_address}</div>
         </div>
       )}
       <Section title={t('admin.notifications.when')} accent={accent}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="kv-grid">
           <KV label={t('activity.start')}>{fmtDT(entity.start_datetime)}</KV>
           <KV label={t('event.end')}>{fmtDT(entity.end_datetime)}</KV>
         </div>
@@ -231,7 +225,7 @@ function EsimBody({ entity, accent }) {
   return (
     <>
       <Section title={t('service.esim_cost_section')} accent={accent}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="kv-grid">
           <KV label={t('budget.field_amount')} mono>{price}</KV>
           <KV label={t('service.currency')}>{entity.currency}</KV>
         </div>
@@ -252,14 +246,14 @@ function InsuranceBody({ entity, accent }) {
   return (
     <>
       <Section title={t('service.insurance_section')} accent={accent}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="kv-grid">
           {d.policy_number && <KV label={t('service.policy_number')} mono>{d.policy_number}</KV>}
           {d.date_start && <KV label={t('service.date_start')} mono>{fmtInsDate(d.date_start)}</KV>}
           {d.date_finish && <KV label={t('service.date_finish')} mono>{fmtInsDate(d.date_finish)}</KV>}
         </div>
       </Section>
       <Section title={t('service.insurance_cost_section')} accent={accent}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="kv-grid">
           <KV label={t('budget.field_amount')} mono>{price}</KV>
           <KV label={t('service.currency')}>{entity.currency}</KV>
         </div>
@@ -287,16 +281,16 @@ function ServiceBody({ entity, accent }) {
   return (
     <>
       <Section title={t('service.car_pickup')} accent={accent}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="kv-grid">
           <KV label={t('event.pickup_where')}><div className="leading-snug">{d.pickup_address}</div></KV>
           <KV label={t('admin.notifications.when')}>{fmtDT(pickupDisplay)}</KV>
         </div>
       </Section>
       <Section title={sameLocation ? t('service.car_dropoff') : t('event.return_elsewhere')} accent={accent}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="kv-grid">
           <KV label={t('event.pickup_where')}>
             {sameLocation ? (
-              <span className="text-xs text-muted-foreground">{t('event.return_same')}</span>
+              <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{t('event.return_same')}</span>
             ) : (
               <div className="leading-snug">{d.dropoff_address}</div>
             )}
@@ -305,7 +299,7 @@ function ServiceBody({ entity, accent }) {
         </div>
       </Section>
       <Section title={t('event.finance_booking')} accent={accent}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="kv-grid">
           <KV label={t('budget.field_amount')}>{fmtPrice(price, cur)}</KV>
           <KV label={t('service.car_booking_ref')} mono>{d.booking_reference}</KV>
         </div>
@@ -534,7 +528,7 @@ export function EventViewSections({ kind, entity, fromVisit, toVisit, accent, do
               ))}
             </div>
           )}
-          {!docs.length && <div className="text-xs text-muted-foreground">{t('doc.tab_empty_title')}</div>}
+          {!docs.length && <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{t('doc.tab_empty_title')}</div>}
           {canEdit && (
             <label
               onDragOver={(e) => e.preventDefault()}
