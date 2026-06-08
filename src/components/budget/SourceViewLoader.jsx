@@ -5,10 +5,7 @@
  *
  * - View → EventModal (new design).
  * - Edit hotel/transfer → always navigates to edit screen (onEditInEditor).
- * - Edit activity → EventEditDialog (inline, no screen nav needed).
- * - Edit esim → EsimDialog (view→edit transition inside the dialog).
- * - Edit insurance → InsuranceDialog (view→edit transition inside the dialog).
- * - Edit car_rental → EventEditDialog.
+ * - Edit activity / car_rental / esim / insurance → EventEditDialog (inline).
  * - Delete (canEdit) → confirm, delete the row, invalidate trip queries.
  */
 import React, { useEffect, useState } from 'react';
@@ -20,8 +17,6 @@ import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
-import EsimDialog from '@/components/services/EsimDialog';
-import InsuranceDialog from '@/components/services/InsuranceDialog';
 
 const TABLE_BY_KIND = {
   hotel: 'hotel_stays',
@@ -58,35 +53,7 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     if (!o) { setEditMode(false); onOpenChange(false); invalidate(); }
   };
 
-  // eSIM — use dedicated dialog that handles view+edit internally
-  if (kind === 'service' && data.kind === 'esim') {
-    return (
-      <EsimDialog
-        open={open}
-        onOpenChange={(o) => { if (!o) { invalidate(); } onOpenChange(o); }}
-        tripId={data.trip_id}
-        service={data}
-        canEdit={canEdit}
-        defaultEditMode={editMode}
-      />
-    );
-  }
-
-  // Insurance — same pattern
-  if (kind === 'service' && data.kind === 'insurance') {
-    return (
-      <InsuranceDialog
-        open={open}
-        onOpenChange={(o) => { if (!o) { invalidate(); } onOpenChange(o); }}
-        tripId={data.trip_id}
-        service={data}
-        canEdit={canEdit}
-        defaultEditMode={editMode}
-      />
-    );
-  }
-
-  // Edit mode for activity and car_rental — inline EventEditDialog
+  // Edit mode for activity and all service subtypes (car_rental, esim, insurance) — inline EventEditDialog
   if (editMode) {
     if ((kind === 'activity' && visit) || kind === 'service') {
       return (
@@ -119,7 +86,7 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
   };
 
   // Hotel and transfer: Edit button always goes to the edit screen.
-  // Activity and car_rental: Edit button opens inline dialog.
+  // Activity and all service subtypes: Edit button opens inline dialog.
   const handleEdit = () => {
     if ((kind === 'hotel' || kind === 'transfer') && onEditInEditor) {
       onOpenChange(false);
