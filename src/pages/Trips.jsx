@@ -39,8 +39,36 @@ function toInitials(nameOrEmail = '') {
   return name.slice(0, 2).toUpperCase();
 }
 
-/** Shape raw Supabase trip + visits into the object the card components expect */
-function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, activeMembers = []) {
+/**
+ * Shape raw Supabase trip + visits into the object the card components expect.
+ *
+ * Avatar / shared logic:
+ *   - "Shared" = trip has ≥1 active trip_members row (accepted invite, excl. owner)
+ *   - displayMembers = [owner_entry, ...active_trip_members]
+ *     Owner is NOT in trip_members table, so we inject a synthetic entry from
+ *     the auth user when they are the owner (created_by === user.id).
+ *     For trips where the current user is a member, the owner isn't shown
+ *     (their data is unavailable here without extra fetches) but the current
+ *     user and other members ARE in trip_members and will be shown.
+ */
+function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, activeMembers = [], currentUser = null) {
+  const isShared = activeMembers.length >= 1;
+
+  // Build display avatar list: inject owner when current user owns this trip
+  let displayMembers = activeMembers;
+  if (currentUser && trip.created_by === currentUser.id) {
+    const ownerEntry = {
+      id: `owner-${trip.id}`,
+      trip_id: trip.id,
+      user_id: currentUser.id,
+      user_full_name: currentUser.full_name || currentUser.email || '',
+      invite_email: currentUser.email || '',
+      role: 'owner',
+      status: 'active',
+    };
+    displayMembers = [ownerEntry, ...activeMembers];
+  }
+
   return {
     ...trip,
     coverHue:  strHue(trip.id),
@@ -51,9 +79,8 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, act
     pro:       !!trip.is_pro_trip,
     userIsPro: isPro,
     status:    isTripInPast(visits) ? 'past' : 'active',
-    // "Shared" = trip has at least 1 active (accepted) member (excl. owner)
-    isShared:  activeMembers.length >= 1,
-    members:   activeMembers,
+    isShared,
+    members:   displayMembers,
   };
 }
 
@@ -471,7 +498,7 @@ export default function Trips() {
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
   const shownNorm = shown.map(tr =>
-    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, membersByTrip[tr.id] || [])
+    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, membersByTrip[tr.id] || [], user)
   );
 
   // ── Create flow ───────────────────────────────────────────────────────────────
@@ -535,12 +562,12 @@ export default function Trips() {
 
             {/* Filters row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18, flexWrap: 'wrap' }}>
-              <div className="tweaks__seg" style={{ flexShrink: 0 }}>
-                <button className={filterMode === 'active' ? 'active' : ''} onClick={() => setFilterMode('active')} style={{ whiteSpace: 'nowrap' }}>
-                  {t('trips.tab_active')} · {activeTrips.length}
+              <div className="seg" role="group" aria-label={t('trips.tab_active')}>
+                <button aria-pressed={filterMode === 'active'} onClick={() => setFilterMode('active')}>
+                  {t('trips.tab_active')} · <span className="num">{activeTrips.length}</span>
                 </button>
-                <button className={filterMode === 'past' ? 'active' : ''} onClick={() => setFilterMode('past')} style={{ whiteSpace: 'nowrap' }}>
-                  {t('trips.tab_past')} · {pastTrips.length}
+                <button aria-pressed={filterMode === 'past'} onClick={() => setFilterMode('past')}>
+                  {t('trips.tab_past')} · <span className="num">{pastTrips.length}</span>
                 </button>
               </div>
               <div style={{ position: 'relative', flex: 1, minWidth: 180, maxWidth: 340 }}>
@@ -548,9 +575,9 @@ export default function Trips() {
                 <input className="input" placeholder={t('trips.search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 34 }} />
               </div>
               <div style={{ flex: 1 }} />
-              <div className="tweaks__seg" title={t('trips.view')}>
-                <button className={viewMode === 'grid' ? 'active' : ''} onClick={() => setViewMode('grid')}><Icon name="grid" size={13} /></button>
-                <button className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}><Icon name="list" size={13} /></button>
+              <div className="seg" role="group" title={t('trips.view')}>
+                <button aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}><Icon name="grid" size={13} /></button>
+                <button aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}><Icon name="list" size={13} /></button>
               </div>
             </div>
 
