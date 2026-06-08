@@ -89,7 +89,9 @@ function MonthView({ weeks, eventsByDay, cityRanges, inTripDays, todayDay, onOpe
   // Returns city ranges that are active on the given calendar day.
   const citiesForDay = useCallback((day) => {
     if (day == null) return [];
-    return cityRanges.filter(r => day >= r.startDay && day <= r.endDay);
+    return cityRanges
+      .filter(r => day >= r.startDay && day <= r.endDay)
+      .sort((a, b) => a.startDay - b.startDay || a.colorIdx - b.colorIdx);
   }, [cityRanges]);
 
   return (
@@ -246,34 +248,6 @@ function WeekView({ days, eventsByDayArr, onOpenEvent }) {
               <div className="ncal-wdc-h">
                 <div className="ncal-wdc-num">{d.date}</div>
                 <div className="ncal-wdc-wd">{d.wd}</div>
-
-                {cities.length === 1 && (
-                  <div
-                    className="ncal-wdc-city"
-                    style={{
-                      background: citySoft(cities[0].colorIdx),
-                      color:      cityInk(cities[0].colorIdx),
-                    }}
-                  >
-                    {cities[0].name}
-                  </div>
-                )}
-                {cities.length > 1 && (
-                  <div className="ncal-wdc-cities">
-                    {cities.map((c, ci) => (
-                      <div
-                        key={ci}
-                        className="ncal-wdc-city"
-                        style={{
-                          background: citySoft(c.colorIdx),
-                          color:      cityInk(c.colorIdx),
-                        }}
-                      >
-                        {c.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <div className="ncal-wdc-b">
@@ -465,15 +439,20 @@ export default function CalendarLens({ stream, visits, trip, isLoading, onOpenEv
       const d      = weekStart.plus({ days: i });
       const dayStr = naiveDayKey(d.toISO());
 
-      // All visits active on this day, preserving colour index
+      // All visits active on this day — sorted by start date (L→R = chronological)
       const activeCities = visits
-        .map((v, idx) => ({ v, idx }))
-        .filter(({ v }) => {
+        .map((v, idx) => {
           const s = parseNaive(v.start_date);
           const e = parseNaive(v.end_date);
-          return s && e && d >= s && d <= e;
+          return { v, idx, s, e };
         })
-        .map(({ v, idx }) => ({ name: v.city_name || '—', colorIdx: idx }));
+        .filter(({ s, e }) => s && e && d >= s && d <= e)
+        .map(({ v, idx, s }) => ({
+          name:     v.city_name || '—',
+          colorIdx: idx,
+          startMs:  s.toMillis(),
+        }))
+        .sort((a, b) => a.startMs - b.startMs || a.colorIdx - b.colorIdx);
 
       days.push({
         wd:       WD_NAMES[i],

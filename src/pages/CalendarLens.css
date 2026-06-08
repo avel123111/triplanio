@@ -146,11 +146,15 @@
   padding: 0 0 8px;
   min-height: 100px;
   background: var(--surface-3);
-  transition: background .18s var(--ease-out), transform .14s var(--ease-spring);
+  box-shadow: 0 1px 3px rgba(39,36,51,.04), 0 3px 10px rgba(39,36,51,.07);
+  transition: background .18s var(--ease-out), transform .14s var(--ease-spring), box-shadow .18s;
   cursor: pointer;
 }
-.ncal-dc:hover { background: var(--surface-2); }
-.ncal-dc.is-out { opacity: .22; pointer-events: none; }
+.ncal-dc:hover {
+  background: var(--surface-2);
+  box-shadow: var(--sh-1);
+}
+.ncal-dc.is-out { opacity: .22; pointer-events: none; box-shadow: none; }
 .ncal-dc.is-trip { background: var(--primary-soft); }
 .ncal-dc.is-trip:hover { background: var(--primary-soft-2); }
 
@@ -399,6 +403,14 @@
 .ncal-empty {
   padding: 48px 24px; text-align: center;
   color: var(--muted); font-size: var(--fs-base);
+}
+
+/* ── Dark mode: lighter cell shadow ────────────────────────────── */
+[data-theme="dark"] .ncal-dc {
+  box-shadow: 0 1px 4px rgba(0,0,0,.25), 0 3px 10px rgba(0,0,0,.3);
+}
+[data-theme="dark"] .ncal-dc:hover {
+  box-shadow: var(--sh-1);
 }
 
 /* ── Focus visibility (keyboard nav) ───────────────────────────── */
