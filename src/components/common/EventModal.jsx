@@ -81,7 +81,7 @@ export default function EventModal(props) {
   const { docs, uploading, uploadFiles } = useEntityDocs(kind, entity, canEdit);
 
   if (!entity || !kind || !vm) return null;
-  const { theme, themeLabel, title, priceText, bookingUrl, mapAddress } = vm;
+  const { theme, themeLabel, title, priceText, bookingUrl, mapAddress, platformInfo, platformLogo } = vm;
   const eyebrow = getEyebrowText(kind, entity, t, visit, fromVisit, toVisit, themeLabel);
 
   return (
@@ -138,8 +138,19 @@ export default function EventModal(props) {
                   target="_blank"
                   rel="noreferrer"
                   className="bk-link"
+                  style={{ alignSelf: 'flex-start' }}
                 >
-                  <ExternalLink />{t('event.view_booking')}
+                  {platformLogo ? (
+                    <span className="pb" style={{ background: platformInfo?.color || 'var(--surface-2)', overflow: 'hidden' }}>
+                      <img src={platformLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </span>
+                  ) : platformInfo ? (
+                    <span className="pb" style={{ background: platformInfo.color || 'var(--muted)' }}>
+                      {(platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label || '?').charAt(0)}
+                    </span>
+                  ) : null}
+                  {t('event.view_booking')}
+                  <ExternalLink />
                 </a>
               )}
               <EventViewSections
@@ -179,7 +190,7 @@ export default function EventModal(props) {
                   size="sm"
                   onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`, '_blank', 'noopener,noreferrer')}
                 >
-                  <MapPin style={{ width: 14, height: 14, marginRight: 6 }} />{t('event.show_on_map')}
+                  <MapPin style={{ width: 14, height: 14, marginRight: 6 }} />{t('service.car_view_on_map')}
                 </Btn>
               )}
               <div style={{ flex: 1 }} />
@@ -188,7 +199,6 @@ export default function EventModal(props) {
                   <Trash2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.delete')}
                 </Btn>
               )}
-              <Btn variant="ghost" size="sm" onClick={() => setOpen(false)}>{t('common.close')}</Btn>
               {canEdit && onEdit && (
                 <Btn variant="primary" size="sm" onClick={onEdit} style={{ '--bg': theme.color }}>
                   <Edit2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.edit_trip')}

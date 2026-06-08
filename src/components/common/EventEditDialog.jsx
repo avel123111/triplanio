@@ -148,22 +148,22 @@ import ProUpsellModal from '@/components/common/ProUpsellModal';
 
 const TYPE_META = {
   hotel: {
-    color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)',
+    color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', ink: 'var(--ev-hotel-ink)',
     Icon: Bed, labelKey: 'event.type_hotel',
     titleNewKey: 'event.title_new_hotel', titleEditKey: 'event.title_edit_hotel',
   },
   transfer: {
-    color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)',
+    color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)', ink: 'var(--ev-transfer-ink)',
     Icon: Plane, labelKey: 'event.type_transfer',
     titleNewKey: 'event.title_new_transfer', titleEditKey: 'event.title_edit_transfer',
   },
   activity: {
-    color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)',
+    color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', ink: 'var(--ev-activity-ink)',
     Icon: Camera, labelKey: 'event.type_activity',
     titleNewKey: 'event.title_new_activity', titleEditKey: 'event.title_edit_activity',
   },
   service: {
-    color: 'var(--ev-car)', soft: 'var(--ev-car-soft)',
+    color: 'var(--ev-car)', soft: 'var(--ev-car-soft)', ink: 'var(--ev-car-ink)',
     Icon: CarIcon, labelKey: 'event.type_car',
     titleNewKey: 'event.title_new_car', titleEditKey: 'event.title_edit_car',
   },
@@ -175,12 +175,12 @@ const TYPE_META = {
 // this, esim/insurance render with the car-rental header (icon + "Аренда авто").
 const SERVICE_META = {
   esim: {
-    color: 'var(--ev-esim)', soft: 'var(--ev-esim-soft)',
+    color: 'var(--ev-esim)', soft: 'var(--ev-esim-soft)', ink: 'var(--ev-esim-ink)',
     Icon: Wifi, labelKey: 'service.kind.esim',
     titleNewKey: 'service.esim_new', titleEditKey: 'service.esim_edit',
   },
   insurance: {
-    color: 'var(--ev-insurance)', soft: 'var(--ev-insurance-soft)',
+    color: 'var(--ev-insurance)', soft: 'var(--ev-insurance-soft)', ink: 'var(--ev-insurance-ink)',
     Icon: ShieldCheck, labelKey: 'service.kind.insurance',
     titleNewKey: 'service.insurance_new', titleEditKey: 'service.insurance_edit',
   },
@@ -1026,62 +1026,45 @@ export default function EventEditDialog({
   // ── Render ─────────────────────────────────────────────────────────────
   const inner = (
     <>
-          {/* 4px colour stripe */}
-          <div style={{ height: 4, background: meta.color }} />
-
           {/* Header */}
-          <div
-            className="border-b"
-            style={{ padding: '16px 22px 14px', background: meta.soft, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}
-          >
+          <div className="ev-dlg-hd">
             {variant === 'panel' && (
               <button
                 onClick={() => onOpenChange?.(false)}
                 title={t('common.back')}
-                style={{ width: 28, height: 28, borderRadius: 9, border: '1px solid var(--line)', background: 'var(--secondary)', color: 'var(--secondary-ink)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}
+                className="ev-dlg-close"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft style={{ width: 15, height: 15 }} />
               </button>
             )}
-            <div
-              style={{
-                width: 40, height: 40, borderRadius: 10,
-                background: meta.color, color: 'white',
-                display: 'grid', placeItems: 'center', flexShrink: 0,
-              }}
-            >
-              <meta.Icon className="w-5 h-5" />
+            <div className="ev-dlg-ic"><meta.Icon /></div>
+            <div className="ev-dlg-info">
+              <div className="ev-dlg-eyebrow">{t(meta.labelKey)}</div>
+              <h2>{ctxTitle || (isEdit ? t(meta.titleEditKey) : t(meta.titleNewKey))}</h2>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold text-muted-foreground">
-                {t(meta.labelKey)}
-              </div>
-              <h2 className="font-display text-xl leading-tight" style={{ letterSpacing: '-0.02em' }}>
-                {ctxTitle || (isEdit ? t(meta.titleEditKey) : t(meta.titleNewKey))}
-              </h2>
-            </div>
+            {variant !== 'panel' && (
+              <button className="ev-dlg-close" onClick={() => onOpenChange(false)} aria-label={t('common.cancel')}>
+                <X style={{ width: 15, height: 15 }} />
+              </button>
+            )}
           </div>
 
           {/* Inline delete-confirm view - replaces the form when active to
               avoid nesting Radix modals (which would intercept pointer
               events on the inner buttons). */}
           {confirmDel ? (
-            <div style={{ padding: 22, flex: 1, overflowY: 'auto', minHeight: 0 }}>
-              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-destructive/15 text-destructive grid place-items-center shrink-0">
-                  <Trash2 className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-display font-semibold text-base">{t('event.delete_q', { label: t(meta.labelKey).toLowerCase() })}</div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {t('event.delete_irreversible')}
-                  </div>
+            <div className="ev-dlg-body">
+              <div className="del-confirm">
+                <div className="del-confirm-ic"><Trash2 style={{ width: 20, height: 20 }} /></div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{t('event.delete_q', { label: t(meta.labelKey).toLowerCase() })}</div>
+                  <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', marginTop: 4 }}>{t('event.delete_irreversible')}</div>
                 </div>
               </div>
             </div>
           ) : (
           /* Body */
-          <div style={{ padding: 22, flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          <div className="ev-dlg-body">
             {/* AI block - only for hotel & transfer (the kinds with parsers). */}
             {(currentKind === 'hotel' || currentKind === 'transfer') && (
               <EventAiBlock
@@ -1095,7 +1078,14 @@ export default function EventEditDialog({
               />
             )}
 
-            <fieldset disabled={aiState === 'parsing'} className={aiState === 'parsing' ? 'opacity-50 pointer-events-none select-none' : ''}>
+            <fieldset
+              disabled={aiState === 'parsing'}
+              style={{
+                border: 'none', margin: 0, padding: 0, minWidth: 0,
+                display: 'flex', flexDirection: 'column', gap: 11,
+                ...(aiState === 'parsing' ? { opacity: 0.5, pointerEvents: 'none', userSelect: 'none' } : {}),
+              }}
+            >
               {currentKind === 'hotel' && (
                 <HotelFields
                   form={form}
@@ -1158,23 +1148,22 @@ export default function EventEditDialog({
           </div>
           )}
 
-          {/* Footer — pinned to the bottom of the column in panel mode (like CityView) */}
+          {/* Footer — pinned to the bottom of the column in panel mode */}
           <div
-            className="border-t bg-secondary/30"
-            style={{ padding: '12px 22px', display: 'flex', alignItems: 'center', gap: 8,
-              ...(variant === 'panel' ? { position: 'sticky', bottom: 0, background: 'var(--wash-2)', zIndex: 3 } : {}) }}
+            className="ev-dlg-ft"
+            style={variant === 'panel' ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
             {confirmDel ? (
               <>
                 <div style={{ flex: 1 }} />
-                <button className="btn btn--ghost" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>
+                <button className="btn btn--ghost btn--sm" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>
                   {t('common.cancel')}
                 </button>
                 <button
-                  className="btn"
+                  className="btn btn--primary btn--sm"
                   onClick={() => deleteMut.mutate()}
                   disabled={deleteMut.isPending}
-                  style={{ background: 'var(--danger)', borderColor: 'var(--danger)', color: '#fff' }}
+                  style={{ '--bg': 'var(--danger)' }}
                 >
                   {deleteMut.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
                   <Trash2 className="w-3.5 h-3.5 mr-1.5" />{t('common.delete')}
@@ -1192,13 +1181,13 @@ export default function EventEditDialog({
                   </button>
                 )}
                 <div style={{ flex: 1 }} />
-                <button className="btn btn--ghost" onClick={() => onOpenChange(false)}>{t('common.cancel')}</button>
+                <button className="btn btn--ghost btn--sm" onClick={() => onOpenChange(false)}>{t('common.cancel')}</button>
                 <button
-                  className="btn btn--primary"
+                  className="btn btn--primary btn--sm"
                   onClick={handleSaveClick}
                   disabled={uploading || saveMut.isPending}
                   aria-disabled={!canSave}
-                  style={{ background: meta.color, borderColor: meta.color, color: '#fff', opacity: canSave ? 1 : 0.6 }}
+                  style={{ '--bg': meta.color, opacity: canSave ? 1 : 0.6 }}
                 >
                   {saveMut.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
                   {isEdit ? t('common.save') : t('event.create')}
@@ -1209,15 +1198,17 @@ export default function EventEditDialog({
     </>
   );
 
+  const evVars = { '--ev-color': meta.color, '--ev-soft': meta.soft, '--ev-ink': meta.ink || meta.color };
+
   return (
     <>
       {variant === 'panel' ? (
-        <div className="te-edit-panel-body" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%', overflowY: 'auto', background: 'var(--surface)' }}>
+        <div className="te-edit-panel-body ev-dlg" style={{ ...evVars, minHeight: 0, height: '100%', background: 'var(--surface)' }}>
           {inner}
         </div>
       ) : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="dlg--wide">
+          <DialogContent className="dlg--wide ev-dlg" style={{ ...evVars, padding: 0 }}>
             {inner}
           </DialogContent>
         </Dialog>
@@ -1518,8 +1509,9 @@ function buildServicePayload(form, tripId, t) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SectionHeader({ children }) {
-  // Plain heading per the design spec (event-edit.jsx) - no colour bar.
-  return <h3 style={{ margin: '22px 0 14px', fontSize: 'var(--fs-strong)', fontWeight: 600 }}>{children}</h3>;
+  // Lumo form section header: coloured uppercase label + trailing rule.
+  // Colour comes from the --ev-color set on the .ev-dlg root.
+  return <div className="f-sec">{children}</div>;
 }
 
 
@@ -1562,7 +1554,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
       </div>
 
       <SectionHeader color={color}>{t('event.checkin_checkout')}</SectionHeader>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="fld-grid">
         <div className={`min-w-0 ${inv('checkIn')}`} data-vfield="checkIn">
           <Label>{t('event.checkin_req')}</Label>
           <AiField active={aiFields.has('checkInLocal')}>
@@ -1642,7 +1634,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
       </AiField>
 
       <SectionHeader color={color}>{t('event.booking_section')}</SectionHeader>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+      <div className="fld-grid">
         <div>
           <Label>{t('event.booking_url')}</Label>
           <AiField active={aiFields.has('booking_url')}>
@@ -1675,11 +1667,11 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
         <div>
           <Label>{t('event.booking_ref')}</Label>
           <AiField active={aiFields.has('booking_reference')}>
-            <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+            <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
           </AiField>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+      <div className="fld-grid">
         <div>
           <Label>{t('event.phone')}</Label>
           <AiField active={aiFields.has('phone')}>
@@ -1703,7 +1695,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
           bare
         />
       </AiField>
-      <div className="mt-3">
+      <div>
         <Label>{t('event.notes')}</Label>
         <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
       </div>
@@ -1753,8 +1745,8 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       </div>
 
       <SectionHeader color={color}>{t('event.from_to')}</SectionHeader>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
+      <div className="fld-grid">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold" style={{ color }}>{t('event.from')}</div>
           <div>
             <Label>{t('event.addr_station')}</Label>
@@ -1785,7 +1777,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
             <FieldError issues={issues} field="start" />
           </div>
         </div>
-        <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold" style={{ color }}>{t('event.to')}</div>
           <div>
             <Label>{t('event.addr_station')}</Label>
@@ -1832,7 +1824,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       </label>
 
       <SectionHeader color={color}>{t('event.carrier_booking')}</SectionHeader>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+      <div className="fld-grid">
         <div>
           <Label>{t('event.carrier')}</Label>
           <AiField active={aiFields.has('carrier')}>
@@ -1842,11 +1834,11 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         <div>
           <Label>{t('event.flight_train_no')}</Label>
           <AiField active={aiFields.has('flight_number')}>
-            <Input className="font-mono" value={form.flight_number} onChange={(e) => setField('flight_number', e.target.value)} placeholder="TP 1379" />
+            <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.flight_number} onChange={(e) => setField('flight_number', e.target.value)} placeholder="TP 1379" />
           </AiField>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+      <div className="fld-grid">
         <div>
           <Label>{t('event.booking_url')}</Label>
           <AiField active={aiFields.has('booking_url')}>
@@ -1879,11 +1871,11 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         <div>
           <Label>{t('event.booking_ref')}</Label>
           <AiField active={aiFields.has('booking_reference')}>
-            <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+            <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
           </AiField>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+      <div className="fld-grid">
         <div>
           <Label>{t('event.price')}</Label>
           <AiField active={aiFields.has('price')}>
@@ -1927,7 +1919,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           bare
         />
       </AiField>
-      <div className="mt-3">
+      <div>
         <Label>{t('event.notes')}</Label>
         <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
       </div>
@@ -2142,7 +2134,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                   <div><Label>{t('event.carrier')}</Label><AiField active={aiOn(seg, 'carrier')}><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder={t('event.carrier_ph')} /></AiField></div>
-                  <div><Label>{t('event.flight_train_no')}</Label><AiField active={aiOn(seg, 'flight_number')}><Input className="font-mono" value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></AiField></div>
+                  <div><Label>{t('event.flight_train_no')}</Label><AiField active={aiOn(seg, 'flight_number')}><Input style={{ fontFamily: 'var(--font-mono)' }} value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></AiField></div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.5fr', gap: 12 }}>
                   <div><Label>{t('event.price')}</Label><AiField active={aiOn(seg, 'price')}><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></AiField></div>
@@ -2196,7 +2188,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         <Input value={form.title} onChange={(e) => setField('title', e.target.value)} placeholder={t('event.ph_activity_example')} />
         <FieldError issues={issues} field="title" />
       </div>
-      <div className="mt-3">
+      <div>
         <Label>{t('event.address')}</Label>
         <AddressAutocomplete
           value={form.location_address}
@@ -2214,9 +2206,9 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
       </div>
 
       <SectionHeader color={color}>{t('event.when')}</SectionHeader>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className={`rounded-lg border bg-secondary/30 p-3 ${inv('start')}`} data-vfield="start">
-          <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold mb-1" style={{ color }}>{t('event.start')}</div>
+      <div className="fld-grid">
+        <div className={`field ${inv('start')}`} data-vfield="start">
+          <Label>{t('event.start')}</Label>
           <DateTimeInput
             value={form.startLocal}
             onChange={(v) => setField('startLocal', v)}
@@ -2226,8 +2218,8 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
           <TimezoneHint tz={tz} />
           <FieldError issues={issues} field="start" />
         </div>
-        <div className={`rounded-lg border bg-secondary/30 p-3 ${inv('end')}`} data-vfield="end">
-          <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold mb-1" style={{ color }}>{t('event.end')}</div>
+        <div className={`field ${inv('end')}`} data-vfield="end">
+          <Label>{t('event.end')}</Label>
           <DateTimeInput
             value={form.endLocal}
             onChange={(v) => setField('endLocal', v)}
@@ -2240,7 +2232,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
       </div>
 
       <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="fld-grid">
         <div>
           <Label>{t('event.price')}</Label>
           <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
@@ -2259,7 +2251,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         bare
         iconColor="text-violet-600 dark:text-violet-300"
       />
-      <div className="mt-3">
+      <div>
         <Label>{t('event.notes')}</Label>
         <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
       </div>
@@ -2280,7 +2272,7 @@ function EsimServiceFields({ form, setField, issues, setUploading }) {
       </div>
 
       <SectionHeader>{t('service.esim_cost_section')}</SectionHeader>
-      <div className="kv-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className="fld-grid">
         <div>
           <Label>{t('service.price')}</Label>
           <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
@@ -2298,7 +2290,7 @@ function EsimServiceFields({ form, setField, issues, setUploading }) {
         onUploadingChange={setUploading}
         bare
       />
-      <div className="mt-3">
+      <div>
         <Label>{t('service.notes')}</Label>
         <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('service.esim_notes_ph')} />
       </div>
@@ -2319,11 +2311,11 @@ function InsuranceServiceFields({ form, setField, issues, setUploading }) {
       </div>
 
       <SectionHeader>{t('service.insurance_section')}</SectionHeader>
-      <div style={{ marginBottom: 10 }}>
+      <div>
         <Label>{t('service.policy_number')}</Label>
-        <Input className="font-mono" value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
+        <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className="fld-grid">
         <div data-vfield="date_start" className={inv('date_start')}>
           <Label>{t('service.date_start')}</Label>
           <Input type="date" value={form.date_start} onChange={(e) => setField('date_start', e.target.value)} />
@@ -2336,7 +2328,7 @@ function InsuranceServiceFields({ form, setField, issues, setUploading }) {
       </div>
 
       <SectionHeader>{t('service.insurance_cost_section')}</SectionHeader>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className="fld-grid">
         <div>
           <Label>{t('service.price')}</Label>
           <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
@@ -2354,7 +2346,7 @@ function InsuranceServiceFields({ form, setField, issues, setUploading }) {
         onUploadingChange={setUploading}
         bare
       />
-      <div className="mt-3">
+      <div>
         <Label>{t('service.notes')}</Label>
         <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('service.insurance_notes_ph')} />
       </div>
@@ -2385,7 +2377,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
       </div>
 
       <SectionHeader color={color}>{t('event.pickup')}</SectionHeader>
-      <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         <div data-vfield="pickupAddress" className={inv('pickupAddress')}>
           <Label>{isEdit ? t('event.pickup_addr') : t('event.pickup_addr_req')}</Label>
           <AddressAutocomplete
@@ -2419,19 +2411,18 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
       </div>
 
       <SectionHeader color={color}>{t('event.return_section')}</SectionHeader>
-      <div className="rounded-lg border bg-secondary/30 p-3 mb-3">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={form.return_different_location}
-            onCheckedChange={(v) => setField('return_different_location', v === true)}
-          />
-          <span className="text-sm font-medium">{t('event.return_diff_place')}</span>
-          {!form.return_different_location && (
-            <span className="text-xs text-muted-foreground">{t('event.return_same_suffix')}</span>
-          )}
-        </label>
-      </div>
-      <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
+      <label className="ch-row">
+        <input
+          type="checkbox"
+          checked={!!form.return_different_location}
+          onChange={(e) => setField('return_different_location', e.target.checked)}
+        />
+        <div className="cr-b">
+          <b>{t('event.return_diff_place')}</b>
+          {!form.return_different_location && <span>{t('event.return_same_suffix')}</span>}
+        </div>
+      </label>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {form.return_different_location && (
           <div>
             <Label>{t('event.return_addr')}</Label>
@@ -2466,7 +2457,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
       </div>
 
       <SectionHeader color={color}>{t('event.finance_booking')}</SectionHeader>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+      <div className="fld-grid">
         <div>
           <Label>{t('event.price')}</Label>
           <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
@@ -2476,7 +2467,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
           <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+      <div className="fld-grid">
         <div>
           <Label>{t('event.booking_url')}</Label>
           <div className="relative">
@@ -2506,7 +2497,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         </div>
         <div>
           <Label>{t('event.booking_ref')}</Label>
-          <Input className="font-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+          <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
         </div>
       </div>
 
@@ -2518,7 +2509,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         bare
         iconColor="text-emerald-700 dark:text-emerald-300"
       />
-      <div className="mt-3">
+      <div>
         <Label>{t('event.notes')}</Label>
         <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph_car')} />
       </div>
