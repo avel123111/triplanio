@@ -3,8 +3,8 @@ import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, Dialog, Severity } from '@/design/index';
 
-// Shared trip "Share link" dialog. Supports both controlled (open/onOpenChange)
-// and legacy ModalHost usage.
+// Shared trip "Share link" dialog. Controlled via open/onOpenChange
+// (Lumo `Dialog` → ui/dialog engine).
 export default function ShareDialog({ trip, open, onOpenChange }) {
   const { t } = useI18n();
   const [shareUrl, setShareUrl] = useState('');
@@ -47,7 +47,7 @@ export default function ShareDialog({ trip, open, onOpenChange }) {
       size="sm"
       open={open}
       onOpenChange={onOpenChange}
-      foot={<Btn variant="ghost" onClick={() => onOpenChange?.(false) ?? window.__closeModal?.()}>{t('common.close')}</Btn>}
+      foot={<Btn variant="ghost" onClick={() => onOpenChange?.(false)}>{t('common.close')}</Btn>}
     >
       <div className="muted" style={{ fontSize: 'var(--fs-base)', marginBottom: 18 }}>{t('trip.share_desc')}</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

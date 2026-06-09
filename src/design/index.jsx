@@ -1,5 +1,5 @@
 import React from 'react';
-import * as RadixDialog from '@radix-ui/react-dialog';
+import { Dialog as UIDialog, DialogContent } from '@/components/ui/dialog';
 import { Icon } from './icons';
 import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
@@ -312,79 +312,31 @@ export const CityPhoto = ({ city, h = 80, w = "100%", radius = 10 }) => {
   );
 };
 
-// =====================================================================
-// MODAL HOST - manages a stack of modal dialogs
-// =====================================================================
-export function ModalHost() {
-  const [stack, setStack] = React.useState([]);
-  React.useEffect(() => {
-    window.__openModal = (content) => setStack(s => [...s, content]);
-    window.__closeModal = () => setStack(s => s.slice(0, -1));
-    window.__closeAllModals = () => setStack([]);
-  }, []);
-  // Each imperatively-opened modal is wrapped in a Radix Dialog so the whole
-  // window.__openModal stack gains focus-trap, Esc-to-close, scroll-lock and
-  // ARIA for free — while keeping the Atlantic .dlg look. Only the top modal is
-  // `modal` (traps focus / locks scroll); lower ones stay visible underneath.
-  return stack.map((content, i) => (
-    <RadixDialog.Root
-      key={i}
-      open
-      modal={i === stack.length - 1}
-      onOpenChange={(o) => { if (!o) setStack(s => s.slice(0, -1)); }}
-    >
-      <RadixDialog.Portal>
-        <RadixDialog.Overlay className="dlg-backdrop" style={{ zIndex: 200 + i * 10 }} />
-        <RadixDialog.Content
-          className="dlg-modal"
-          style={{ zIndex: 201 + i * 10 }}
-          aria-describedby={undefined}
-        >
-          {/* a11y name fallback — content keeps its own visible <h2> as the title.
-              TODO: surface the real per-dialog title to screen readers. */}
-          <RadixDialog.Title className="sr-only">Triplanio</RadixDialog.Title>
-          {content}
-        </RadixDialog.Content>
-      </RadixDialog.Portal>
-    </RadixDialog.Root>
-  ));
-}
-
-// ---- Dialog primitive ----
+// ---- Dialog: title/icon/foot/size convenience wrapper over the ONE canonical
+//      modal engine (@/components/ui/dialog → Radix). The legacy ModalHost +
+//      window.__openModal stack has been removed; every modal in the app now
+//      runs on the same `ui/dialog` Dialog/DialogContent. ----
 export const Dialog = ({ title, icon, onClose, size, children, foot, open, onOpenChange }) => {
-  const handleClose = () => { onClose?.(); onOpenChange?.(false); window.__closeModal?.(); };
-  const content = (
-    <div className={`dlg ${size ? "dlg--" + size : ""}`}>
-      <div className="dlg__head">
-        {icon && (
-          <div style={{ width: 36, height: 36, borderRadius: 9, background: "var(--brand-soft)", color: "var(--brand)", display: "grid", placeItems: "center", flexShrink: 0 }}>
-            <Icon name={icon} size={17} />
-          </div>
-        )}
-        <h2>{title}</h2>
-        <button className="icon-btn" onClick={handleClose}>
-          <Icon name="close" size={16} />
-        </button>
-      </div>
-      <div className="dlg__body">{children}</div>
-      {foot && <div className="dlg__foot">{foot}</div>}
-    </div>
+  const handleClose = () => { onClose?.(); onOpenChange?.(false); };
+  return (
+    <UIDialog open={open === undefined ? true : open} onOpenChange={(o) => { if (!o) handleClose(); }}>
+      <DialogContent className={size ? `dlg--${size}` : ''}>
+        <div className="dlg__head">
+          {icon && (
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Icon name={icon} size={17} />
+            </div>
+          )}
+          <h2>{title}</h2>
+          <button className="icon-btn" onClick={handleClose}>
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+        <div className="dlg__body">{children}</div>
+        {foot && <div className="dlg__foot">{foot}</div>}
+      </DialogContent>
+    </UIDialog>
   );
-  // Controlled mode: self-managed Radix portal (focus-trap, Esc, ARIA).
-  // Legacy mode (inside ModalHost): just renders the content directly.
-  if (open !== undefined) {
-    return (
-      <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
-        <RadixDialog.Portal>
-          <RadixDialog.Overlay className="dlg-backdrop" />
-          <RadixDialog.Content className="dlg-modal" aria-modal="true">
-            {content}
-          </RadixDialog.Content>
-        </RadixDialog.Portal>
-      </RadixDialog.Root>
-    );
-  }
-  return content;
 };
 
 // ---- Partner logo helper ----

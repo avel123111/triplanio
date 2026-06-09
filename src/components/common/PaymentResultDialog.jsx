@@ -1,5 +1,5 @@
 import React from 'react';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -34,11 +34,8 @@ export default function PaymentResultDialog({
     : null;
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="dlg-backdrop" />
-        <DialogPrimitive.Content className="dlg-modal" aria-modal="true">
-          <div className="dlg dlg--sm">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="dlg--sm">
 
             {/* ── Body: centred icon + title + desc (P5 .modal--confirm style) ── */}
             <div className="dlg__body" style={{ textAlign: 'center', padding: '32px 24px 8px' }}>
@@ -97,9 +94,7 @@ export default function PaymentResultDialog({
               )}
             </div>
 
-          </div>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+      </DialogContent>
+    </Dialog>
   );
 }

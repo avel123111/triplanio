@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Toggle, ModalHost, Severity,
+  Badge, Btn, Toggle, Severity,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -585,7 +585,6 @@ export default function ScreenAccount() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
-      <ModalHost />
 
       {/* ── APP HEADER (shared pattern) ── */}
       <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
