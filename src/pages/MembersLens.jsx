@@ -41,8 +41,8 @@ function RoleBadge({ role }) {
 // carry a status pill.
 function StatusDot({ status }) {
   const { t } = useI18n();
-  if (status === 'pending') return <span style={{ color: 'var(--warning)', fontSize: 'var(--fs-meta)', display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--warning)', display: 'inline-block' }} />{t('member.status_pending')}</span>;
-  if (status === 'declined') return <span style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block' }} />{t('member.status_declined')}</span>;
+  if (status === 'pending') return <span className="m-status m-status--pending">{t('member.status_pending')}</span>;
+  if (status === 'declined') return <span className="m-status m-status--declined">{t('member.status_declined')}</span>;
   return null;
 }
 
@@ -323,7 +323,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
 
   return (
     <>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'visible' }}>
+      <div className="mlist">
         {allMembers.length === 0 && (
           <EmptyState icon="users" title={t('member.empty')} />
         )}
@@ -350,24 +350,15 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
           const emailLine = m.invite_email || profile?.email || '';
 
           return (
-            <div key={m.id || i} style={{
-              display: 'grid',
-              gridTemplateColumns: 'auto 1fr auto auto auto',
-              alignItems: 'center', gap: 16,
-              padding: '14px 18px',
-              borderBottom: i < allMembers.length - 1 ? '1px solid var(--line-2)' : 'none',
-              position: 'relative',
-              opacity: isRemoving ? 0.5 : 1,
-              transition: 'opacity 0.2s',
-            }}>
+            <div key={m.id || i} className={`mrow${isRemoving ? ' mrow--busy' : ''}`}>
               <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
               <div>
-                <div style={{ fontWeight: 700, fontSize: 'var(--fs-strong)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="mrow__name">
                   {name}
                   {m.user_id === user?.id && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)' }}>{t('member.you_self')}</Badge>}
                 </div>
                 {hasRealName && emailLine && (
-                  <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{emailLine}</div>
+                  <div className="mrow__email">{emailLine}</div>
                 )}
               </div>
 
@@ -377,7 +368,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
               <div><StatusDot status={m.status} /></div>
 
               {/* Actions */}
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <div className="mrow__acts">
                 {m.status === 'offline' && canManage && (
                   <Btn variant="ghost" size="sm" icon="send"
                     onClick={() => setPromoteState({ member: m })}>
@@ -418,13 +409,13 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
 
       {/* Invite banner */}
       {canManage && (
-        <div style={{ marginTop: 24, padding: 18, background: 'var(--brand-soft)', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
+        <div className="invite-banner">
+          <div className="invite-banner__ic">
             <Icon name="users" size={20} />
           </div>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>{t('member.invite_more_title')}</div>
-            <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('member.invite_more_desc')}</div>
+          <div className="invite-banner__txt">
+            <div className="invite-banner__title">{t('member.invite_more_title')}</div>
+            <div className="invite-banner__desc">{t('member.invite_more_desc')}</div>
           </div>
           <Btn variant="primary" icon="plus" onClick={() => setInviteOpen(true)}>{t('members.invite')}</Btn>
         </div>

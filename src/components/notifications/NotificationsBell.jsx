@@ -137,8 +137,7 @@ export default function NotificationsBell({ triggerClassName }) {
           <Icon name="bell" size={16} />
           <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', flex: 1 }}>{t('notif.title')}</div>
           {unread > 0 && (
-            <button onClick={() => markAllRead.mutate()}
-              style={{ background: 'transparent', border: 'none', color: 'var(--brand)', fontSize: 'var(--fs-meta)', fontWeight: 500, cursor: 'pointer' }}>
+            <button className="bell-dd__mark" onClick={() => markAllRead.mutate()}>
               {t('notif.mark_all_read')}
             </button>
           )}
@@ -146,7 +145,7 @@ export default function NotificationsBell({ triggerClassName }) {
 
         <div className="bell-dd__list scrollbar-thin">
           {isLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '28px 0', color: 'var(--muted)' }}>
+            <div className="bell-dd__loading">
               <Icon name="refresh" size={16} />
             </div>
           ) : notifications.length === 0 ? (
@@ -171,10 +170,7 @@ export default function NotificationsBell({ triggerClassName }) {
         </div>
 
         <div className="bell-dd__foot">
-          <button
-            onClick={() => { setOpen(false); nav('/inbox'); }}
-            style={{ background: 'transparent', border: 'none', color: 'var(--brand)', fontSize: 'var(--fs-base)', fontWeight: 500, cursor: 'pointer', padding: '4px 8px' }}
-          >
+          <button className="bell-dd__more" onClick={() => { setOpen(false); nav('/inbox'); }}>
             {t('notif.open_full_inbox')}
           </button>
         </div>
@@ -212,35 +208,29 @@ function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip
 
   return (
     <div
+      className={`brow${n.read ? '' : ' brow--unread'}`}
       onClick={() => { if (!n.read) onMarkRead?.(); }}
-      style={{
-        display: 'flex', gap: 10, padding: '12px 14px',
-        borderBottom: '1px solid var(--line-2)',
-        background: n.read ? 'transparent' : 'var(--brand-soft)',
-        cursor: n.read ? 'default' : 'pointer',
-      }}
     >
-      <div style={{ width: 30, height: 30, borderRadius: 8, background: `color-mix(in oklab, ${meta.color} 14%, transparent)`, color: meta.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+      <div className="n-ic n-ic--sm" style={{ '--ic': meta.color }}>
         <Icon name={meta.icon} size={14} />
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4, fontWeight: 600 }}>{titleNode}</div>
-        {messageText && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2, lineHeight: 1.4 }}>{messageNode}</div>}
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>{time}</div>
+      <div className="brow__body">
+        <div className="brow__title">{titleNode}</div>
+        {messageText && <div className="brow__msg">{messageNode}</div>}
+        <div className="brow__time">{time}</div>
 
         {showPending && (
-          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+          <div className="brow__acts">
             <Btn variant="primary" size="sm" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>
             <Btn variant="ghost" size="sm" disabled={pending} onClick={() => onRespond('decline')}>{t('notif.decline')}</Btn>
           </div>
         )}
         {isInvite && member?.status === 'active' && (
-          <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--success)', marginTop: 4 }}>✓ {t('notif.accepted')}</div>
+          <div className="brow__ok">✓ {t('notif.accepted')}</div>
         )}
 
         {n.trip_id && (member?.status === 'active' || n.type !== 'trip_invite') && (
-          <Link to={`/trip/${n.trip_id}`} onClick={onOpenTrip}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-micro)', color: 'var(--brand)', fontWeight: 500, marginTop: 6 }}>
+          <Link to={`/trip/${n.trip_id}`} onClick={onOpenTrip} className="brow__link">
             <Icon name="pin" size={12} />{t('notif.view_trip')}
           </Link>
         )}

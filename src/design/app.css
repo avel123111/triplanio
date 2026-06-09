@@ -1045,8 +1045,10 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .dlg-backdrop { padding: 12px; }
   .dlg__head { padding: 14px 16px; }
   .dlg__body { padding: 14px 16px; }
-  .dlg__foot { padding: 12px 16px; flex-wrap: wrap; gap: 6px; }
-  .dlg__foot .btn { flex: 1; justify-content: center; }
+  /* Stack footer buttons full-width on mobile so long labels never clip/overflow
+     (e.g. 3-way "Остаться / Выйти без сохранения / Сохранить"). Primary on top. */
+  .dlg__foot { padding: 12px 16px; flex-direction: column-reverse; gap: 8px; align-items: stretch; }
+  .dlg__foot .btn { flex: none; width: 100%; justify-content: center; }
   h1 { font-size: var(--fs-h2) !important; }
   h2 { font-size: var(--fs-h3); }
   /* Stack 2-column grids to 1 on small screens */
@@ -1218,7 +1220,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .dlg__foot {
   padding: 14px 22px;
   border-top: 1px solid var(--line-2);
-  display: flex; gap: 8px; justify-content: flex-end;
+  display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
   background: var(--wash-2);
 }
 
@@ -1298,18 +1300,104 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .dock-panel__tab.active { color: var(--brand); border-color: var(--brand); }
 .dock-panel__head { padding: 10px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-2); }
 
-/* Bell dropdown */
-.bell-dd {
-  position: absolute; top: 48px; right: 8px;
-  width: 360px; max-width: calc(100vw - 16px);
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 14px; box-shadow: var(--shadow-pop);
-  z-index: 85;
-  overflow: hidden;
-}
+/* ──────────────────────────────────────────────────────────────────────────
+   Notifications & Members (Lumo)
+   Semantic classes replacing the old inline-style soup in Inbox.jsx,
+   NotificationsBell.jsx and MembersLens.jsx. Tokens only — light/dark and all
+   palettes follow automatically. The bell popover container itself is the Radix
+   PopoverContent (NotificationsBell.jsx); only its head/list/foot are styled
+   here (the old absolute-positioned `.bell-dd` shell was removed as dead code).
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Bell popover — head / list / foot */
 .bell-dd__head { padding: 12px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line-2); }
 .bell-dd__list { max-height: 380px; overflow: auto; }
 .bell-dd__foot { padding: 10px 14px; border-top: 1px solid var(--line-2); background: var(--wash-2); display: flex; justify-content: center; }
+.bell-dd__mark { background: transparent; border: none; color: var(--brand); font-size: var(--fs-meta); font-weight: 500; cursor: pointer; }
+.bell-dd__more { background: transparent; border: none; color: var(--brand); font-size: var(--fs-base); font-weight: 500; cursor: pointer; padding: 4px 8px; }
+.bell-dd__loading { display: flex; justify-content: center; padding: 28px 0; color: var(--muted); }
+
+/* Per-type icon tile — colour passed in via inline `--ic` (the notifMeta accent) */
+.n-ic {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: grid; place-items: center;
+  color: var(--ic, var(--brand));
+  background: color-mix(in oklab, var(--ic, var(--brand)) 14%, transparent);
+}
+.n-ic--sm { width: 30px; height: 30px; border-radius: 8px; }
+
+/* Inbox list card + date groups */
+.nlist { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.ngrp__label {
+  padding: 10px 18px; font-size: var(--fs-micro); color: var(--muted-2);
+  letter-spacing: .1em; text-transform: uppercase; font-weight: 600;
+  background: var(--wash-2); border-bottom: 1px solid var(--line-2);
+}
+.ngrp + .ngrp .ngrp__label { border-top: 1px solid var(--line-2); }
+
+/* Inbox row */
+.nrow {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 14px;
+  padding: 14px 18px; align-items: center;
+  border-bottom: 1px solid var(--line-2);
+  transition: background .14s;
+}
+.nrow:last-child { border-bottom: none; }
+.nrow--unread { background: var(--brand-soft); }
+.nrow__body { min-width: 0; }
+.nrow__title { font-size: var(--fs-base); line-height: 1.45; font-weight: 600; }
+.nrow__title em { font-style: normal; }
+.nrow__msg { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; line-height: 1.4; }
+.nrow__meta { font-size: var(--fs-micro); color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 10px; }
+.nrow__link { color: var(--brand); font-weight: 500; display: inline-flex; align-items: center; gap: 3px; }
+.nrow__acts { display: flex; gap: 6px; align-items: center; }
+
+/* Bell popover row — compact, stacked actions */
+.brow {
+  display: flex; gap: 10px; padding: 12px 14px;
+  border-bottom: 1px solid var(--line-2);
+  transition: background .14s;
+}
+.brow:last-child { border-bottom: none; }
+.brow--unread { background: var(--brand-soft); cursor: pointer; }
+.brow__body { flex: 1; min-width: 0; }
+.brow__title { font-size: var(--fs-meta); line-height: 1.4; font-weight: 600; }
+.brow__title em { font-style: normal; }
+.brow__msg { font-size: var(--fs-micro); color: var(--muted); margin-top: 2px; line-height: 1.4; }
+.brow__time { font-size: var(--fs-micro); color: var(--muted); margin-top: 2px; }
+.brow__acts { display: flex; gap: 6px; margin-top: 8px; }
+.brow__ok { font-size: var(--fs-micro); color: var(--success); margin-top: 4px; }
+.brow__link { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-micro); color: var(--brand); font-weight: 500; margin-top: 6px; }
+
+/* ── Members list ── */
+.mlist { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: visible; }
+.mrow {
+  display: grid; grid-template-columns: auto 1fr auto auto auto;
+  align-items: center; gap: 16px; padding: 14px 18px;
+  border-bottom: 1px solid var(--line-2); position: relative;
+  transition: opacity .2s;
+}
+.mrow:last-child { border-bottom: none; }
+.mrow--busy { opacity: .5; }
+.mrow__name { font-weight: 700; font-size: var(--fs-strong); display: flex; align-items: center; gap: 8px; }
+.mrow__email { font-size: var(--fs-meta); color: var(--muted); }
+.mrow__acts { display: flex; gap: 4px; align-items: center; }
+
+/* Member status pill (pending / declined) */
+.m-status { font-size: var(--fs-meta); display: inline-flex; align-items: center; gap: 6px; }
+.m-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.m-status--pending { color: var(--warning); }
+.m-status--declined { color: var(--danger); }
+
+/* Invite banner */
+.invite-banner {
+  margin-top: 24px; padding: 18px; background: var(--brand-soft); border-radius: 14px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.invite-banner__ic { width: 44px; height: 44px; border-radius: 11px; background: var(--brand); color: #fff; display: grid; place-items: center; flex-shrink: 0; }
+.invite-banner__txt { flex: 1; min-width: 200px; }
+.invite-banner__title { font-weight: 600; margin-bottom: 2px; }
+.invite-banner__desc { font-size: var(--fs-meta); color: var(--muted); }
 
 /* Partner brand pills */
 .partner-pill {
