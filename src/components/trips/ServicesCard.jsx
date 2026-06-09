@@ -1,23 +1,21 @@
 import React, { useState } from 'react';
 import { Icon } from '@/design/icons';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
 // trip_services rows carry a `kind` (esim | car_rental | insurance). Booked
 // services render as Lumo .bookrow; not-yet-added ones as the dashed .gadd
-// (ghost-add) row — both are design-system components, no bespoke styling.
-const SERVICE_KIND_META = {
-  esim:       { icon: 'esim',   labelKey: 'service.kind.esim',       hintKey: 'service.hint.esim' },
-  car_rental: { icon: 'car',    labelKey: 'service.kind.car_rental', hintKey: 'service.hint.car_rental' },
-  insurance:  { icon: 'shield', labelKey: 'service.kind.insurance',  hintKey: 'service.hint.insurance' },
-};
+// (ghost-add) row. Colours come from the shared SERVICE_KINDS source so the
+// widget matches the service view/edit dialogs (each kind its own colour).
+const SERVICE_KIND_META = SERVICE_KINDS;
 
-// Dashed "add service" row — Lumo .gadd. `--a` sets the hover accent.
-function AddRow({ icon, label, hint, onClick }) {
+// Dashed "add service" row — Lumo .gadd. `--a` sets the per-service hover accent.
+function AddRow({ icon, label, hint, color, onClick }) {
   return (
-    <button className="gadd" style={{ '--a': 'var(--brand)' }} onClick={onClick}>
+    <button className="gadd" style={{ '--a': color }} onClick={onClick}>
       <span className="gi"><Icon name={icon} size={17} /></span>
       <span className="gt"><b>{label}</b><span>{hint}</span></span>
-      <Icon name="plus" size={15} style={{ color: 'var(--brand)', flexShrink: 0 }} />
+      <Icon name="plus" size={15} style={{ color, flexShrink: 0 }} />
     </button>
   );
 }
@@ -48,7 +46,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
             const meta = SERVICE_KIND_META[s.kind];
             return (
               <button key={s.id} className="bookrow" onClick={() => onOpenService?.(s)}>
-                <span className="bi" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
+                <span className="bi" style={{ background: meta?.soft || 'var(--primary-soft)', color: meta?.color || 'var(--brand)' }}>
                   <Icon name={meta?.icon || 'spark'} size={18} />
                 </span>
                 <div className="bt">
@@ -62,7 +60,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
 
           {/* Not-yet-added eSIM / car rental — dashed .gadd */}
           {topAddKinds.map((k) => (
-            <AddRow key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} label={t(SERVICE_KIND_META[k].labelKey)} hint={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
+            <AddRow key={`add-${k}`} icon={SERVICE_KIND_META[k].icon} color={SERVICE_KIND_META[k].color} label={t(SERVICE_KIND_META[k].labelKey)} hint={t(SERVICE_KIND_META[k].hintKey)} onClick={() => onAddService?.(k)} />
           ))}
 
           {/* "Ещё" — insurance + add-more for kinds already present */}
@@ -71,6 +69,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
               <AddRow
                 key={`more-${k}`}
                 icon={SERVICE_KIND_META[k].icon}
+                color={SERVICE_KIND_META[k].color}
                 label={byKind[k].length > 0 ? t('service.add_more', { label: t(SERVICE_KIND_META[k].labelKey) }) : t(SERVICE_KIND_META[k].labelKey)}
                 hint={t(SERVICE_KIND_META[k].hintKey)}
                 onClick={() => onAddService?.(k)}
