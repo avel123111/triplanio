@@ -1025,36 +1025,44 @@ export default function EventEditDialog({
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
+  // Editor panel uses the Lumo `.lp` shell; the app-wide modal uses `.ev-dlg`.
+  // Body content (AI block + fields + IssuesPanel) is identical for both.
+  const isPanel = variant === 'panel';
+  const bodyCls = isPanel ? 'lp-b scrollbar-thin' : 'ev-dlg-body';
+  const title = ctxTitle || (isEdit ? t(meta.titleEditKey) : t(meta.titleNewKey));
+
   const inner = (
     <>
           {/* Header */}
-          <div className="ev-dlg-hd">
-            {variant === 'panel' && (
-              <button
-                onClick={() => onOpenChange?.(false)}
-                title={t('common.back')}
-                className="ev-dlg-close"
-              >
-                <ArrowLeft style={{ width: 15, height: 15 }} />
+          {isPanel ? (
+            <div className="lp-h lp-h--ev">
+              <button className="lp-back" onClick={() => onOpenChange?.(false)} title={t('common.back')}>
+                <ArrowLeft style={{ width: 14, height: 14 }} />
               </button>
-            )}
-            <div className="ev-dlg-ic"><meta.Icon /></div>
-            <div className="ev-dlg-info">
-              <div className="ev-dlg-eyebrow">{t(meta.labelKey)}</div>
-              <h2>{ctxTitle || (isEdit ? t(meta.titleEditKey) : t(meta.titleNewKey))}</h2>
+              <span className="lp-ic" style={{ background: meta.color, color: '#fff' }}><meta.Icon /></span>
+              <div className="lp-ti">
+                <b>{title}</b>
+                <span>{t(meta.labelKey)}</span>
+              </div>
             </div>
-            {variant !== 'panel' && (
+          ) : (
+            <div className="ev-dlg-hd">
+              <div className="ev-dlg-ic"><meta.Icon /></div>
+              <div className="ev-dlg-info">
+                <div className="ev-dlg-eyebrow">{t(meta.labelKey)}</div>
+                <h2>{title}</h2>
+              </div>
               <button className="ev-dlg-close" onClick={() => onOpenChange(false)} aria-label={t('common.cancel')}>
                 <X style={{ width: 15, height: 15 }} />
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Inline delete-confirm view - replaces the form when active to
               avoid nesting Radix modals (which would intercept pointer
               events on the inner buttons). */}
           {confirmDel ? (
-            <div className="ev-dlg-body">
+            <div className={bodyCls}>
               <div className="del-confirm">
                 <div className="del-confirm-ic"><Trash2 style={{ width: 20, height: 20 }} /></div>
                 <div>
@@ -1065,7 +1073,7 @@ export default function EventEditDialog({
             </div>
           ) : (
           /* Body */
-          <div className="ev-dlg-body">
+          <div className={bodyCls}>
             {/* AI block - only for hotel & transfer (the kinds with parsers). */}
             {(currentKind === 'hotel' || currentKind === 'transfer') && (
               <EventAiBlock
@@ -1151,8 +1159,8 @@ export default function EventEditDialog({
 
           {/* Footer — pinned to the bottom of the column in panel mode */}
           <div
-            className="ev-dlg-ft"
-            style={variant === 'panel' ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
+            className={isPanel ? 'lp-f' : 'ev-dlg-ft'}
+            style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
             {confirmDel ? (
               <>
@@ -1203,7 +1211,7 @@ export default function EventEditDialog({
   return (
     <>
       {variant === 'panel' ? (
-        <div className="te-edit-panel-body ev-dlg" style={{ ...evVars, minHeight: 0, height: '100%', background: 'var(--surface)' }}>
+        <div className="te-edit-panel-body lp lp--wide" style={{ ...evVars, minHeight: 0, height: '100%', background: 'var(--surface)' }}>
           {inner}
         </div>
       ) : (
