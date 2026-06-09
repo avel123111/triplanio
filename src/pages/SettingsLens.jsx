@@ -156,7 +156,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
   const copyLink = () => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   const mmss = `${String(Math.floor(countdown / 60)).padStart(2, '0')}:${String(countdown % 60).padStart(2, '0')}`;
 
-  const closeConnect = () => { onOpenChange?.(false); window.__closeModal?.(); };
+  const closeConnect = () => onOpenChange?.(false);
   return (
     <Dialog title={t('telegram.connect_title')} icon="telegram" size=""
       open={open} onOpenChange={onOpenChange}

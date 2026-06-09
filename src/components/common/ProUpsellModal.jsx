@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -45,11 +45,8 @@ export default function ProUpsellModal({
   ];
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="dlg-backdrop" />
-        <DialogPrimitive.Content className="dlg-modal" aria-modal="true">
-          <div className="dlg dlg--sm">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="dlg--sm">
 
             {/* ── Header ── */}
             <div className="dlg__head">
@@ -124,9 +121,7 @@ export default function ProUpsellModal({
               )}
             </div>
 
-          </div>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -4,7 +4,7 @@ import { useT } from '@/lib/i18n/I18nContext';
 
 /**
  * Shared destructive confirm for removing a Telegram binding.
- * Supports both controlled (open/onOpenChange) and legacy ModalHost usage.
+ * Controlled via open/onOpenChange (Lumo `Dialog` → ui/dialog engine).
  *
  * Props:
  *   handle       - display string for the chat (@username or first name)
@@ -14,7 +14,7 @@ import { useT } from '@/lib/i18n/I18nContext';
  */
 export default function TelegramUnlinkDialog({ handle, onConfirm, open, onOpenChange }) {
   const t = useT();
-  const close = () => { onOpenChange?.(false); window.__closeModal?.(); };
+  const close = () => onOpenChange?.(false);
   return (
     <Dialog
       title={t('telegram.unlink_title')}

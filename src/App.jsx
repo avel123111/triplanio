@@ -21,7 +21,6 @@ import Pro from '@/pages/Pro';
 import StripeReturnModals from '@/components/common/StripeReturnModals';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
-import { ModalHost } from '@/design/index';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
@@ -84,9 +83,6 @@ const AuthenticatedApp = () => {
       {/* One global Stripe-return handler for the whole logged-in app - shows the
           success/fail modal regardless of which screen Stripe came back to. */}
       <StripeReturnModals />
-      {/* ONE global modal host (window.__openModal) — persists across route changes
-          so any screen (TripView, editor, …) can open modals without mounting its own. */}
-      <ModalHost />
       <Routes>
       {/* New design - standalone (own app-header, no Layout) */}
       {/* Logged-in users can still view the landing at "/" (no auto-redirect);
