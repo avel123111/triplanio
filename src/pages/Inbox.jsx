@@ -96,9 +96,9 @@ export default function Inbox() {
     .filter(g => g.items.length > 0);
 
   const TABS = [
-    ['all', t('admin.notifications.filter_all')],
-    ['unread', `${t('notif.unread')}${unreadCount ? ` · ${unreadCount}` : ''}`],
-    ['invites', `${t('notif.invitations')}${inviteCount ? ` · ${inviteCount}` : ''}`],
+    ['all', t('admin.notifications.filter_all'), 0],
+    ['unread', t('notif.unread'), unreadCount],
+    ['invites', t('notif.invitations'), inviteCount],
   ];
 
   return (
@@ -127,9 +127,11 @@ export default function Inbox() {
         </div>
 
         {notifications.length > 0 && (
-          <div className="tweaks__seg" style={{ marginBottom: 18, display: 'inline-flex' }}>
-            {TABS.map(([k, l]) => (
-              <button key={k} className={filter === k ? 'active' : ''} onClick={() => setFilter(k)}>{l}</button>
+          <div className="nfilters">
+            {TABS.map(([k, l, c]) => (
+              <button key={k} className={`fpill${filter === k ? ' on' : ''}`} onClick={() => setFilter(k)}>
+                {l}{c > 0 && <span className="fpill__c">{c}</span>}
+              </button>
             ))}
           </div>
         )}
