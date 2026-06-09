@@ -23,11 +23,11 @@ const money = (p, c) => fmtPrice(p, c) || '';
 function rangeText(a, b) { const da = fmtDate(a), db = fmtDate(b); if (!da) return ''; return db && db !== da ? `${da} – ${db}` : da; }
 function nightWord(n, t) { return n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'); }
 
-// Lumo section label: coloured uppercase tag (sl2) + optional addmini action.
+// Lumo section label: coloured uppercase tag (.sl) + optional addmini action.
 function SectionLabel({ children, color, action }) {
   return (
-    <div className="seclabel" style={{ marginTop: 6 }}>
-      <span className="sl2" style={{ color: color || 'var(--muted)' }}>{children}</span>
+    <div className="sec-lbl" style={{ marginTop: 6 }}>
+      <span className="sl" style={{ color: color || 'var(--muted)' }}>{children}</span>
       {action}
     </div>
   );
@@ -92,7 +92,7 @@ export default function CityPanel({
   const nights = isWaypoint ? 0 : (node.nights || 0);
 
   return (
-    <div className="lpanel lpanel--wide">
+    <div className="lp lp--wide">
       {/* hero header (Lumo .lp-hero — wide = 122px) */}
       <div className="lp-hero" style={{ height: 122 }}>
         <div style={{ position: 'absolute', inset: 0 }}>

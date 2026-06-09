@@ -125,7 +125,7 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
         </>
       ) : (
         <>
-          {canEdit && <Btn variant="ghost" icon="trash" onClick={() => setConfirmDel(true)}>{t('common.delete')}</Btn>}
+          {canEdit && <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)}>{t('common.delete')}</Btn>}
           <span style={{ flex: 1 }} />
           {canEdit && <Btn variant="primary" icon="edit" onClick={() => setEditMode(true)}>{t('trip.edit_trip')}</Btn>}
         </>
@@ -138,11 +138,11 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
         </div>
       )}
       {confirmDel ? (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 12, border: '1px solid color-mix(in srgb, var(--danger) 30%, var(--line))', background: 'var(--danger-soft)', marginTop: 8 }}>
-          <span style={{ width: 36, height: 36, borderRadius: 9, background: 'color-mix(in srgb, var(--danger) 16%, transparent)', color: 'var(--danger)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="trash" size={17} /></span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{t('event.delete_q', { label: themeLabel.toLowerCase() })}</div>
-            <div style={{ fontSize: 'var(--fs-base)', color: 'var(--ink-2)', marginTop: 3, lineHeight: 1.5 }}>{t('event.delete_irreversible')}</div>
+        <div className="del-confirm">
+          <div className="del-confirm-ic"><Icon name="trash" size={18} /></div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{t('event.delete_q', { label: themeLabel.toLowerCase() })}</div>
+            <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', marginTop: 4 }}>{t('event.delete_irreversible')}</div>
           </div>
         </div>
       ) : (
