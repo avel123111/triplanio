@@ -11,9 +11,11 @@ import {
 } from '@/components/bookings/buildBookingPlatforms';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
+import { SERVICE_KINDS } from '@/lib/serviceKinds';
 
-// Visual + copy metadata per fork type. Colors map to existing event palette
-// CSS vars (--ev-*) so the modal stays aligned with timeline event colors.
+// Visual + copy metadata per fork type. Service colours (esim/car/insurance)
+// come from the shared SERVICE_KINDS source so the fork modal matches the
+// service cards and view/edit dialogs; hotel/transfer use the event palette.
 const TYPE_META = {
   hotel: {
     titleKey: 'hotel.choice_title',
@@ -36,24 +38,24 @@ const TYPE_META = {
     manualKey: 'service.car_choice_manual',
     manualSubKey: 'fork.manual_sub_car',
     Icon: Car,
-    color: 'var(--ev-car)',
-    colorSoft: 'var(--ev-car-soft)',
+    color: SERVICE_KINDS.car_rental.color,
+    colorSoft: SERVICE_KINDS.car_rental.soft,
   },
   esim: {
     titleKey: 'service.esim_choice_title',
     manualKey: 'service.esim_choice_manual',
     manualSubKey: 'fork.manual_sub_esim',
     Icon: Wifi,
-    color: 'var(--success)',
-    colorSoft: 'rgba(31,138,91,.10)',
+    color: SERVICE_KINDS.esim.color,
+    colorSoft: SERVICE_KINDS.esim.soft,
   },
   insurance: {
     titleKey: 'service.insurance_choice_title',
     manualKey: 'service.insurance_choice_manual',
     manualSubKey: 'fork.manual_sub_insurance',
     Icon: ShieldCheck,
-    color: 'var(--ai)',
-    colorSoft: 'var(--ai-soft)',
+    color: SERVICE_KINDS.insurance.color,
+    colorSoft: SERVICE_KINDS.insurance.soft,
   },
 };
 
