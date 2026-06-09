@@ -1111,6 +1111,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   outline: none;
   animation: fadeIn .15s ease;
 }
+/* Drag handle is a bottom-sheet affordance only — hidden on desktop dialogs. */
+.dlg-grip { display: none; }
 
 /* ── C6 Overlay: below 640 px every .dlg-modal becomes a bottom sheet ── */
 @media (max-width: 640px) {
@@ -1135,18 +1137,17 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
     /* no keyboard → keep safe-area gap; keyboard open → no extra gap (sheet sits on it) */
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
-  .dlg-modal .dlg::before {
-    content: '';
-    display: block;
-    width: 40px; height: 5px;
-    border-radius: 999px;
-    background: var(--line-strong);
-    margin: 10px auto 2px;
-  }
+  /* Real drag handle ("бровь") — visible only as a bottom sheet. */
+  .dlg-grip { display: flex; justify-content: center; align-items: center; padding: 10px 0 4px; flex: none; touch-action: none; cursor: grab; }
+  .dlg-grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
   /* Confirm/alert dialogs: centred content stays centred in the sheet */
   .dlg-modal .dlg__body { max-height: 70vh; max-height: 70dvh; overflow-y: auto; }
   /* Wide dialogs (TripLimitDialog) — full width on mobile, normal layout */
   .dlg-modal .dlg--wide { max-width: 100%; }
+  /* backdrop-filter blur is a paint-jank source on mobile (causes the flash on
+     open) — drop it on small screens; the scrim alone is enough. */
+  .dlg-backdrop, .sheet-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .dlg-modal, .sheet { will-change: transform; }
 
 
   /* Editor left panels — slide up from bottom on mobile */
@@ -2141,7 +2142,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    ============================================================ */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 200; background: var(--scrim); backdrop-filter: blur(2px); animation: sheetFade .2s ease; }
 .sheet { position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: min(86dvh, calc(var(--vvh, 100dvh) - 8px)); display: flex; flex-direction: column; animation: sheetUp .3s var(--ease-out, cubic-bezier(.22,1,.36,1)); }
-.sheet-grip { display: flex; justify-content: center; padding: 11px 0 3px; flex: none; }
+.sheet-grip { display: flex; justify-content: center; padding: 11px 0 3px; flex: none; touch-action: none; cursor: grab; }
 .sheet-grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
 .sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }
 .sheet-h h3 { font-size: 17px; font-weight: 600; flex: 1; color: var(--ink); margin: 0; font-family: var(--font-display, inherit); }

@@ -1,5 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
+import { useSheetSwipe } from '@/lib/useSheetSwipe';
 
 /**
  * C6 · Sheet — canonical mobile bottom-sheet (Lumo `.sheet`).
@@ -14,6 +15,7 @@ import { X } from 'lucide-react';
  *   </Sheet>
  */
 export function Sheet({ open, onOpenChange, title, children }) {
+  const { elRef, gripProps } = useSheetSwipe(() => onOpenChange?.(false));
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -21,8 +23,8 @@ export function Sheet({ open, onOpenChange, title, children }) {
         {/* Don't auto-focus into the sheet on open: on mobile that pops the
             keyboard for a search field, which yanks the fixed sheet up the
             screen and triggers iOS zoom. Focus is taken on user tap instead. */}
-        <Dialog.Content className="sheet" aria-describedby={undefined} onOpenAutoFocus={(e) => e.preventDefault()}>
-          <div className="sheet-grip"><i /></div>
+        <Dialog.Content ref={elRef} className="sheet" aria-describedby={undefined} onOpenAutoFocus={(e) => e.preventDefault()}>
+          <div className="sheet-grip" {...gripProps}><i /></div>
           {title ? (
             <div className="sheet-h">
               <Dialog.Title asChild><h3>{title}</h3></Dialog.Title>
