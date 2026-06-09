@@ -866,9 +866,9 @@ export default function TripView() {
   // routes to the right edit dialog when the user picks "Manual".
   const [serviceChoice, setServiceChoice] = useState({ open: false, type: null });
   const [serviceEditCar, setServiceEditCar] = useState({ open: false });
-  // serviceSimple: view/edit dialog for esim and insurance
-  // mode: 'view' (open in read mode) | 'edit' (open straight in edit/create form)
-  const [serviceSimple, setServiceSimple] = useState({ open: false, kind: null, service: null, mode: 'view' });
+  // serviceSimple: CREATE form for a new esim/insurance (viewing existing ones
+  // goes through the unified SourceViewLoader like every other event).
+  const [serviceSimple, setServiceSimple] = useState({ open: false, kind: null });
   // City add/edit/delete moved entirely to the Structure editor (/trip/:id/edit).
   const [activityEdit, setActivityEdit] = useState({ open: false, visit: null, activity: null, defaultStart: null });
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
@@ -1143,7 +1143,7 @@ export default function TripView() {
                 setServiceEditCar({ open: true });
               } else if (type === 'esim' || type === 'insurance') {
                 // Open in edit/create mode (no existing service yet)
-                setServiceSimple({ open: true, kind: type, service: null, mode: 'edit' });
+                setServiceSimple({ open: true, kind: type });
               }
             }}
           />
