@@ -29,7 +29,11 @@ interface ReminderRow {
   user_locale: string;
   trip_id: string;
   chat_id: string;
-  context: { id: string } & Record<string, unknown>;
+  // event_timezone: IANA zone of the event location (e.g. "Europe/Madrid"),
+  // injected by get_pending_reminders. The other datetime fields in context are
+  // wall-clock-as-UTC (local time of the event), so n8n needs this to reason
+  // about how soon the event is. Normalized to 'UTC' when unknown.
+  context: { id: string; event_timezone: string } & Record<string, unknown>;
 }
 
 Deno.serve(async (req) => {
