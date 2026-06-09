@@ -894,6 +894,8 @@ export default function TripStructureEdit() {
         {/* LEFT - page title + cities (scrolling list) */}
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--surface)' }}>
           <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={leftPanel ? (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } } : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
+          {/* Mobile: dim the editor behind the panel bottom-sheet (tap to close). */}
+          {leftPanel && <div className="lp-sheet-backdrop" onClick={closeLeftPanel} />}
           {leftPanelEl || (<>
           <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--bg)' }}>
           <div className="te-thead" style={{ padding: '0 4px 6px' }}>
