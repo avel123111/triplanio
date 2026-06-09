@@ -10,7 +10,7 @@ import { useRef } from 'react';
  *   const { elRef, gripProps } = useSheetSwipe(() => onOpenChange(false));
  *   <Content ref={elRef}><div className="grip" {...gripProps} />…</Content>
  */
-export function useSheetSwipe(onDismiss, { threshold = 90 } = {}) {
+export function useSheetSwipe(onDismiss, { threshold = 90, topZone = 0 } = {}) {
   const elRef = useRef(null);
   const startY = useRef(null);
   const dy = useRef(0);
@@ -19,10 +19,16 @@ export function useSheetSwipe(onDismiss, { threshold = 90 } = {}) {
   const move = (y) => { const el = elRef.current; if (el) el.style.transform = y ? `translateY(${y}px)` : ''; };
 
   const onTouchStart = (e) => {
+    const el = elRef.current;
+    // When topZone is set, only start a drag from the grip area near the top of
+    // the sheet — so dragging the body scrolls instead of dismissing.
+    if (topZone > 0 && el) {
+      const top = el.getBoundingClientRect().top;
+      if (e.touches[0].clientY - top > topZone) { dragging.current = false; return; }
+    }
     startY.current = e.touches[0].clientY;
     dy.current = 0;
     dragging.current = true;
-    const el = elRef.current;
     if (el) el.style.transition = 'none';
   };
   const onTouchMove = (e) => {

@@ -9,6 +9,8 @@ import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { getTimezone } from '@/lib/geo';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { useSheetSwipe } from '@/lib/useSheetSwipe';
 import MapView from '@/components/views/MapView';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
 import CityPanel from '@/components/common/CityPanel';
@@ -137,6 +139,16 @@ export default function TripStructureEdit() {
   //   { type:'createTransfer', fromVisit, toVisit } - create a transfer (EventEditDialog panel variant)
   const [leftPanel, setLeftPanel] = useState(null);
   const closeLeftPanel = () => setLeftPanel(null);
+  // ≤640px: the editor panel opens as a bottom sheet (same Radix sheet + swipe
+  // mechanism as the modals), matching the .lp-sheet CSS breakpoint.
+  const [isSheet, setIsSheet] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const onChange = () => setIsSheet(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const panelSwipe = useSheetSwipe(() => closeLeftPanel(), { topZone: 56 });
   // A11y: when an in-place left panel opens, move focus into it (its back button
   // if present) so keyboard/SR users land in the new context; Esc closes it.
   const leftPaneRef = useRef(null);
@@ -894,9 +906,9 @@ export default function TripStructureEdit() {
         {/* LEFT - page title + cities (scrolling list) */}
         <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--surface)' }}>
           <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={leftPanel ? (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } } : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
-          {/* Mobile: dim the editor behind the panel bottom-sheet (tap to close). */}
-          {leftPanel && <div className="lp-sheet-backdrop" onClick={closeLeftPanel} />}
-          {leftPanelEl || (<>
+          {/* Desktop: panel replaces the column. Mobile: column keeps the cities
+              list; the panel opens as a Radix bottom-sheet (rendered below). */}
+          {(!isSheet && leftPanelEl) || (<>
           <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--bg)' }}>
           <div className="te-thead" style={{ padding: '0 4px 6px' }}>
             <span className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</span>
@@ -972,6 +984,27 @@ export default function TripStructureEdit() {
           </div>{/* /ts-leftscroll */}
           </>)}
           </div>{/* /te-panefade */}
+
+          {/* Mobile: the editor panel opens as a bottom sheet via the SAME Radix
+              sheet mechanism as modals (portal + .sheet-backdrop tap-to-close +
+              swipe + keyboard-safe dvh height). */}
+          {isSheet && leftPanelEl && (
+            <DialogPrimitive.Root open onOpenChange={(o) => { if (!o) closeLeftPanel(); }}>
+              <DialogPrimitive.Portal>
+                <DialogPrimitive.Overlay className="sheet-backdrop" />
+                <DialogPrimitive.Content
+                  className="lp-sheet"
+                  ref={panelSwipe.elRef}
+                  {...panelSwipe.gripProps}
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                  aria-describedby={undefined}
+                >
+                  <DialogPrimitive.Title className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('trip.edit_structure')}</DialogPrimitive.Title>
+                  {leftPanelEl}
+                </DialogPrimitive.Content>
+              </DialogPrimitive.Portal>
+            </DialogPrimitive.Root>
+          )}
         </div>
 
         {/* RIGHT - full-height map (hideable); warnings live in a collapsible overlay widget */}
