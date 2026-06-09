@@ -143,19 +143,16 @@ export default function Inbox() {
         ) : filtered.length === 0 ? (
           <EmptyState icon="bell" title={t('notif.filter_empty')} />
         ) : (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-            {groups.map((g, gi) => (
-              <div key={g.label}>
-                <div style={{ padding: '10px 18px', fontSize: 'var(--fs-micro)', color: 'var(--muted-2)', letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 600, background: 'var(--wash-2)', borderTop: gi > 0 ? '1px solid var(--line-2)' : 'none', borderBottom: '1px solid var(--line-2)' }}>
-                  {t(GROUP_LABEL_KEY[g.label])}
-                </div>
-                {g.items.map((n, ni) => (
+          <div className="nlist">
+            {groups.map((g) => (
+              <div key={g.label} className="ngrp">
+                <div className="ngrp__label">{t(GROUP_LABEL_KEY[g.label])}</div>
+                {g.items.map((n) => (
                   <InboxRow
                     key={n.id}
                     n={n}
                     t={t}
                     dateLocale={dateLocale}
-                    last={ni === g.items.length - 1 && gi === groups.length - 1}
                     pending={respondInvite.isPending}
                     onRespond={(action) => respondInvite.mutate({ memberId: n.trip_member_id, action })}
                   />
@@ -186,7 +183,7 @@ function InboxEmpty({ onCollection, onAi }) {
   );
 }
 
-function InboxRow({ n, t, dateLocale, last, pending, onRespond }) {
+function InboxRow({ n, t, dateLocale, pending, onRespond }) {
   const isInvite = n.type === 'trip_invite' && n.trip_member_id;
   const { data: member } = useQuery({
     queryKey: ['trip-member', n.trip_member_id],
@@ -213,27 +210,23 @@ function InboxRow({ n, t, dateLocale, last, pending, onRespond }) {
   const showPending = isInvite && member?.status === 'pending';
 
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 14, padding: '14px 18px', alignItems: 'center',
-      borderBottom: last ? 'none' : '1px solid var(--line-2)',
-      background: n.read ? 'transparent' : 'var(--brand-soft)',
-    }}>
-      <div style={{ width: 36, height: 36, borderRadius: 10, background: `color-mix(in oklab, ${meta.color} 14%, transparent)`, color: meta.color, display: 'grid', placeItems: 'center' }}>
+    <div className={`nrow${n.read ? '' : ' nrow--unread'}`}>
+      <div className="n-ic" style={{ '--ic': meta.color }}>
         <Icon name={meta.icon} size={16} />
       </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, fontWeight: 600 }}>{titleNode}</div>
-        {messageText && <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, lineHeight: 1.4 }}>{messageNode}</div>}
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="nrow__body">
+        <div className="nrow__title">{titleNode}</div>
+        {messageText && <div className="nrow__msg">{messageNode}</div>}
+        <div className="nrow__meta">
           <span>{time}</span>
           {n.trip_id && (member?.status === 'active' || n.type !== 'trip_invite') && (
-            <Link to={`/trip/${n.trip_id}`} style={{ color: 'var(--brand)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            <Link to={`/trip/${n.trip_id}`} className="nrow__link">
               <Icon name="pin" size={11} />{t('notif.view_trip')}
             </Link>
           )}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      <div className="nrow__acts">
         {showPending ? (
           <>
             <Btn variant="primary" size="sm" icon="check" disabled={pending} onClick={() => onRespond('accept')}>{t('notif.accept')}</Btn>

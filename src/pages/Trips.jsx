@@ -452,13 +452,17 @@ export default function Trips() {
   const pastTrips   = allTrips.filter(tr =>  isTripInPast(visitsByTrip[tr.id] || []) && matches(tr));
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
+  // Free-limit is owner-scoped: only trips the user owns count toward the 1-trip cap.
+  // Invited trips (admin/viewer) are excluded — matches backend getActiveTrips (created_by).
+  const ownedActiveTrips = activeTrips.filter(tr => getRoleFor(tr) === 'owner');
+
   const shownNorm = shown.map(tr =>
     normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [])
   );
 
   // ── Create flow ───────────────────────────────────────────────────────────────
   const checkLimit = (pick) => {
-    if (!isPro && activeTrips.length >= 1) {
+    if (!isPro && ownedActiveTrips.length >= 1) {
       setPendingPick(pick); setShowLimit(true);
     } else {
       nav(pick === 'ai' ? '/plan-trip-ai' : '/new-trip');
@@ -578,7 +582,7 @@ export default function Trips() {
                   <div className="limitcard__top">
                     <b>{t('trips.free_limit_title')}</b>
                     <span className="limitcard__count num">
-                      {activeTrips.length} / 1
+                      {ownedActiveTrips.length} / 1
                     </span>
                   </div>
                   <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>
@@ -602,7 +606,7 @@ export default function Trips() {
         open={showLimit}
         onOpenChange={setShowLimit}
         onProceed={handleProceed}
-        activeCount={activeTrips.length}
+        activeCount={ownedActiveTrips.length}
         isPro={isPro}
       />
     </div>
