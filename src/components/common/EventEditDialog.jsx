@@ -2267,7 +2267,7 @@ function EsimServiceFields({ form, setField, issues, setUploading }) {
       <SectionHeader>{t('service.kind.esim')}</SectionHeader>
       <div data-vfield="name" className={inv('name')}>
         <Label>{t('service.name')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('service.name_ph')} autoFocus />
+        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('service.name_ph')} />
         <FieldError issues={issues} field="name" />
       </div>
 
@@ -2306,7 +2306,7 @@ function InsuranceServiceFields({ form, setField, issues, setUploading }) {
       <SectionHeader>{t('service.kind.insurance')}</SectionHeader>
       <div data-vfield="name" className={inv('name')}>
         <Label>{t('service.name')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('service.name_ph')} autoFocus />
+        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('service.name_ph')} />
         <FieldError issues={issues} field="name" />
       </div>
 
@@ -2372,7 +2372,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
       <SectionHeader color={color}>{t('event.car_section')}</SectionHeader>
       <div data-vfield="name" className={inv('name')}>
         <Label>{t('event.company_name_req')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('event.ph_car_example')} autoFocus />
+        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('event.ph_car_example')} />
         <FieldError issues={issues} field="name" />
       </div>
 

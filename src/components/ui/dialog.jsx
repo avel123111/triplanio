@@ -24,7 +24,10 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 const DialogContent = React.forwardRef(({ className, style, children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
-    <DialogPrimitive.Content ref={ref} className="dlg-modal" {...props}>
+    {/* Don't pull focus into the dialog on open — on mobile that pops the keyboard
+        and makes the bottom-sheet jump/zoom. Focus on user tap instead. Callers can
+        override by passing their own onOpenAutoFocus. */}
+    <DialogPrimitive.Content ref={ref} className="dlg-modal" onOpenAutoFocus={(e) => e.preventDefault()} {...props}>
       <div className={cn("dlg", className)} style={style}>
         {children}
       </div>

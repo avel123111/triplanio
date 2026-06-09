@@ -870,10 +870,12 @@ function EventShell({ time, tone, icon, children }) {
 }
 
 function RowContent({ title, subtitle }) {
+  // Wrap long event text instead of truncating; overflow-wrap:anywhere breaks
+  // long unbroken tokens (URLs/refs) so they never force horizontal scroll on mobile.
   return (
     <>
-      <div className="text-sm font-medium truncate">{title}</div>
-      {subtitle && <div className="text-[11px] text-muted-foreground truncate">{subtitle}</div>}
+      <div className="text-sm font-medium" style={{ overflowWrap: 'anywhere' }}>{title}</div>
+      {subtitle && <div className="text-[11px] text-muted-foreground" style={{ overflowWrap: 'anywhere' }}>{subtitle}</div>}
     </>
   );
 }
