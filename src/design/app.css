@@ -1120,6 +1120,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
     width: 100%;
     max-width: 100%;
     max-height: 92vh;
+    max-height: 92dvh;
     display: block;
     animation: sheetUp .3s var(--ease-out);
   }
@@ -1127,6 +1128,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .dlg-modal .dlg {
     border-radius: 20px 20px 0 0;
     max-height: 92vh;
+    max-height: 92dvh;
     max-width: 100%;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
@@ -1139,7 +1141,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
     margin: 10px auto 2px;
   }
   /* Confirm/alert dialogs: centred content stays centred in the sheet */
-  .dlg-modal .dlg__body { max-height: 70vh; overflow-y: auto; }
+  .dlg-modal .dlg__body { max-height: 70vh; max-height: 70dvh; overflow-y: auto; }
   /* Wide dialogs (TripLimitDialog) — full width on mobile, normal layout */
   .dlg-modal .dlg--wide { max-width: 100%; }
 
@@ -2135,7 +2137,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    Rendered by <Sheet> (Radix Dialog) under the mobile breakpoint.
    ============================================================ */
 .sheet-backdrop { position: fixed; inset: 0; z-index: 200; background: var(--scrim); backdrop-filter: blur(2px); animation: sheetFade .2s ease; }
-.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; display: flex; flex-direction: column; animation: sheetUp .3s var(--ease-out, cubic-bezier(.22,1,.36,1)); }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 201; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: var(--sh-3); padding-bottom: max(14px, env(safe-area-inset-bottom)); max-height: 86vh; max-height: 86dvh; display: flex; flex-direction: column; animation: sheetUp .3s var(--ease-out, cubic-bezier(.22,1,.36,1)); }
 .sheet-grip { display: flex; justify-content: center; padding: 11px 0 3px; flex: none; }
 .sheet-grip i { width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); }
 .sheet-h { display: flex; align-items: center; gap: 11px; padding: 4px 18px 12px; flex: none; }
@@ -2804,3 +2806,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .bk-link .pb img{width:100%;height:100%;object-fit:cover;}
 /* edit-modal field labels: match Lumo design (.field>label = 11px/800/muted/uppercase) */
 .ev-dlg .field__label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+
+/* iOS Safari auto-zooms the viewport when a focused field has font-size < 16px.
+   Force 16px on small screens so opening any sheet/modal field never zooms. */
+@media (max-width: 640px) {
+  .input, .select, .textarea { font-size: 16px; }
+}
