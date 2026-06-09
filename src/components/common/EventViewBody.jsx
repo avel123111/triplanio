@@ -116,6 +116,16 @@ function paymentLabel(t, status) {
   return status || null;
 }
 
+// Payment status as a Lumo badge (design: badge--paid / --partial / --on-arrival).
+function PaymentBadge({ t, status }) {
+  const label = paymentLabel(t, status);
+  if (!label) return null;
+  const cls = status === 'paid' ? 'badge--paid'
+    : status === 'partial' ? 'badge--partial'
+    : status === 'pay_on_arrival' ? 'badge--on-arrival' : 'badge--quiet';
+  return <span className={`badge ${cls}`}>{label}</span>;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Per-kind body
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,7 +149,7 @@ function HotelBody({ entity, accent }) {
       <Section title={t('event.finance_cancel')} accent={accent}>
         <div className="kv-grid">
           <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
-          <KV label={t('hotel.payment_status')}>{paymentLabel(t, entity.payment_status)}</KV>
+          <KV label={t('hotel.payment_status')}><PaymentBadge t={t} status={entity.payment_status} /></KV>
           {entity.free_cancellation && entity.free_cancellation_until && (
             <KV label={t('event.free_cancel_until')}>{fmtDT(entity.free_cancellation_until)}</KV>
           )}

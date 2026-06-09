@@ -1,17 +1,18 @@
 /**
- * EventEditDialog - unified create/edit modal for hotel / transfer / activity /
- * car-rental (service kind="car_rental"). Replaces the four legacy dialogs
- * (HotelDialog, TransferDialog, ActivityDialog, CarRentalDialog).
+ * EventEditDialog - unified create/edit modal (Lumo `.ev-dlg`) for ALL kinds:
+ * hotel / transfer / activity, and every service subtype
+ * (car_rental / esim / insurance). It is the single edit engine — the legacy
+ * per-kind dialogs (Hotel/Transfer/Activity/CarRental/Esim/Insurance) are gone.
  *
- * The four "kinds" share a single chrome (colour stripe + header + footer +
- * shared AI block) but each renders its own field group. In create mode the
- * top type-picker lets the user switch between kinds - the form is reset to
- * the new kind's EMPTY shape on switch.
+ * One shared chrome (tinted header + body + footer), themed per kind/subtype via
+ * `meta` (TYPE_META / SERVICE_META → --ev-color/--ev-soft/--ev-ink). Each kind
+ * renders its own field group; service dispatches on form.service_kind.
  *
- * Simple service kinds (esim, insurance) still go through the legacy
- * ServiceDialog - they're a single name+price form and don't fit this layout.
+ * Shells: `variant="dialog"` = Radix Dialog overlay (app-wide modal, auto
+ * bottom-sheet ≤640px). `variant="panel"` = same content inline for the
+ * trip-editor left panel (hotel/transfer create/edit live here).
  *
- * Visual reference: designer's prototype `event-edit.jsx`.
+ * Visual reference: EVENTS_SERVICES_REDESIGN_LUMO design system.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -89,7 +90,7 @@ function CityPicker({ value, onPick, placeholder }) {
       />
       {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />}
       {open && results.length > 0 && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 60, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', maxHeight: 240, overflowY: 'auto' }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 250, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', maxHeight: 240, overflowY: 'auto' }}>
           {results.map((c) => (
             <button key={c.external_city_id || c.city_name} type="button" onMouseDown={() => pick(c)}
               style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', borderBottom: '1px solid var(--line-2)', background: 'transparent', cursor: 'pointer' }}>
