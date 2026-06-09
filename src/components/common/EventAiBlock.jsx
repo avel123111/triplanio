@@ -1,33 +1,22 @@
 /**
- * EventAiBlock - unified "parse a booking with AI" widget for the event edit
- * dialog. Renders six visual states from the designer's prototype:
+ * EventAiBlock — "parse a booking with AI" widget (Lumo `.ai-blk`).
+ * States: locked / available / idle / uploaded / parsing / parsed.
  *
- *   locked    - non-Pro users: locked card + upgrade CTA
- *   available - collapsed pill (Pro idle)
- *   idle      - textarea + file upload + recognize CTA
- *   uploaded  - file list + recognize CTA
- *   parsing   - spinner + progress
- *   parsed    - success banner + reset
+ * Recognition runs server-side: the browser uploads file(s) to Supabase Storage,
+ * then calls the `parseBookingWithAi` edge function with { kind, fileUrls, text }.
+ * That function forwards to the n8n webhook (per-kind prompts + schemas + LLM).
  *
- * Recognition runs server-side: the browser uploads the file(s) to Supabase
- * Storage, then calls the `parseBookingWithAi` edge function with
- * { kind, fileUrls }. That function forwards to the n8n webhook, which holds
- * the per-kind prompts + schemas and runs the LLM (Gemini). We only send
- * `kind` and the file URLs - no prompt/schema travels from the client.
- *
- * `onExtract(data, fileUrl, fileName)` is called with the parsed JSON
- * (hotel → flat field shape, transfer → segments shape) plus the uploaded
- * documents. Parent maps the values into its form.
+ * `onExtract(data, fileUrl, fileName)` is called with the parsed JSON plus the
+ * uploaded documents; the parent maps the values into its form.
  */
 import React, { useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { safeStorageName } from '@/lib/storage';
-import { Button } from '@/components/ui/button';
 import { detectPlatformFromUrl } from '@/lib/booking-platforms';
 import {
-  Sparkles, Lock, Loader2, Upload, X, FileText, Image as ImageIcon, Edit3,
-  RefreshCw, ChevronUp,
+  Sparkles, Lock, Loader2, Upload, X, FileText, Image as ImageIcon,
+  RefreshCw, ChevronUp, ChevronDown, Check,
 } from 'lucide-react';
 
 const MAX_FILES = 3;
@@ -68,23 +57,7 @@ export default function EventAiBlock({
   const [files, setFiles] = useState([]); // { file, name, file_url? }
   const [error, setError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
-  const [progress, setProgress] = useState(0);
   const inputRef = useRef(null);
-  const animRef = useRef(null);
-
-  const startFakeProgress = () => {
-    setProgress(0);
-    let p = 0;
-    const tick = () => {
-      p = Math.min(85, p + Math.random() * 12 + 3);
-      setProgress(p);
-      animRef.current = setTimeout(tick, 350);
-    };
-    tick();
-  };
-  const stopFakeProgress = () => {
-    if (animRef.current) { clearTimeout(animRef.current); animRef.current = null; }
-  };
 
   const addFiles = (list) => {
     if (!list?.length) return;
@@ -121,7 +94,6 @@ export default function EventAiBlock({
   const runParse = async () => {
     setError(null);
     setState('parsing');
-    startFakeProgress();
     try {
       // 1. Upload local files to Storage → long-lived signed URLs.
       const uploaded = await Promise.all(files.map(async (f) => {
@@ -145,13 +117,10 @@ export default function EventAiBlock({
       if (invokeErr) throw invokeErr;
       if (invoked?.error) throw new Error(invoked.error);
 
-      // Peel any n8n wrappers (array / { output } / { kind, data } / …) down to
-      // the object that actually holds the booking fields.
       const result = extractBookingPayload(invoked);
 
-      // New transfer shape = result.transfers[] (legs) + result.waypoints[]
-      // (layover cities). Older shape used result.segments[]. Pick whichever
-      // the model returned and normalise transport_type synonyms ("flight"→"plane").
+      // New transfer shape = result.transfers[] (legs) + result.waypoints[].
+      // Older shape used result.segments[]. Normalise transport_type synonyms.
       const legs = kind === 'transfer'
         ? (Array.isArray(result.transfers) ? result.transfers
           : (Array.isArray(result.segments) ? result.segments : null))
@@ -160,60 +129,51 @@ export default function EventAiBlock({
         const TT = { flight: 'plane', air: 'plane', airplane: 'plane', rail: 'train', boat: 'ferry', shuttle: 'bus' };
         legs.forEach((s) => { if (s && TT[s.transport_type]) s.transport_type = TT[s.transport_type]; });
       }
-
       if (!result.booking_platform && result.booking_url) {
         const p = detectPlatformFromUrl(result.booking_url);
         if (p) result.booking_platform = p;
       }
-      // Empty fallback only when the model returned NO legs at all.
-      if (kind === 'transfer' && !legs) {
-        result.transfers = [{}];
-      }
+      if (kind === 'transfer' && !legs) result.transfers = [{}];
+
       const documents = uploaded
         .filter((u) => u.file_url)
         .map((u) => ({ file_url: u.file_url, file_name: u.name }));
-      stopFakeProgress();
-      setProgress(100);
       onExtract(
         { ...result, documents },
         documents[0]?.file_url || null,
         documents[0]?.file_name || null,
       );
     } catch (e) {
-      stopFakeProgress();
       setError(e?.message || t('event.ai_parse_error'));
       setState('uploaded');
     }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
+  const ProPill = () => <span className="pro-pill">Pro</span>;
+  const titleEl = <b>{t('event.ai_fill_title')}<ProPill /></b>;
 
   if (state === 'locked') {
     return (
-      <div className="aiblk mb-4" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <AiIcon locked />
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <Title />
-          <div className="text-xs text-muted-foreground mt-0.5">
-            {t('event.ai_locked_hint')}
-          </div>
+      <div className="ai-blk locked">
+        <div className="ai-blk-hd">
+          <div className="ai-blk-ic"><Lock style={{ width: 16, height: 16, color: '#fff' }} /></div>
+          <div className="ai-blk-ti">{titleEl}<span>{t('event.ai_locked_hint')}</span></div>
+          <button type="button" className="btn btn--sm" style={{ background: 'var(--pro-gradient)', color: 'var(--pro-fg)', border: 0 }} onClick={onUpgrade}>
+            <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('trips.go_pro')}
+          </button>
         </div>
-        <Button size="sm" onClick={onUpgrade} style={{ background: 'var(--pro-gradient)', color: 'var(--pro-fg)', boxShadow: '0 6px 16px -8px var(--pro)' }}>
-          <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('trips.go_pro')}
-        </Button>
       </div>
     );
   }
 
   if (state === 'available') {
     return (
-      <button type="button" onClick={() => setState('idle')} className="aiblk mb-4 w-full text-left" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <AiIcon />
-        <div style={{ flex: 1, minWidth: 180 }}>
-          <Title />
-          <div className="text-xs text-muted-foreground mt-0.5">
-            {t('event.ai_available_hint')}
-          </div>
+      <button type="button" className="ai-blk" onClick={() => setState('idle')} style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}>
+        <div className="ai-blk-hd">
+          <div className="ai-blk-ic"><Sparkles style={{ width: 16, height: 16, color: '#fff' }} /></div>
+          <div className="ai-blk-ti">{titleEl}<span>{t('event.ai_available_hint')}</span></div>
+          <ChevronDown style={{ width: 16, height: 16, color: 'var(--muted)', flexShrink: 0 }} />
         </div>
       </button>
     );
@@ -221,256 +181,102 @@ export default function EventAiBlock({
 
   if (state === 'parsing') {
     return (
-      <div
-        className="mb-4 rounded-xl border"
-        style={{
-          padding: 18,
-          background: 'var(--ai-soft)',
-          borderColor: 'var(--ai-soft-12)',
-          display: 'flex', alignItems: 'center', gap: 14,
-        }}
-      >
-        <div
-          style={{
-            width: 30, height: 30, borderRadius: 10,
-            background: 'var(--ai-grad)', color: 'white',
-            display: 'grid', placeItems: 'center', flexShrink: 0,
-          }}
-        >
-          <Sparkles className="w-5 h-5" />
+      <div className="ai-blk">
+        <div className="ai-blk-hd">
+          <div className="ai-blk-ic"><Loader2 style={{ width: 16, height: 16, color: '#fff', animation: 'spin .8s linear infinite' }} /></div>
+          <div className="ai-blk-ti"><b>{t('event.ai_parsing')}</b>{files[0]?.name && <span>{files[0].name}</span>}</div>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="text-sm font-semibold flex items-center gap-1.5">
-            {t('event.ai_parsing')}
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          </div>
-          {files[0]?.name && (
-            <div className="text-xs text-muted-foreground mt-0.5 truncate">{files[0].name}</div>
-          )}
-          <div className="h-1 rounded mt-2 overflow-hidden" style={{ background: 'var(--ai-soft-12)' }}>
-            <div
-              className="h-full transition-all"
-              style={{ width: `${progress}%`, background: 'linear-gradient(90deg, var(--ai), var(--ai-2))' }}
-            />
-          </div>
-        </div>
+        <div className="ai-blk-body"><div className="ai-prog"><div className="ai-prog-fill" /></div></div>
       </div>
     );
   }
 
   if (state === 'parsed') {
     return (
-      <div
-        className="mb-4 rounded-xl border"
-        style={{
-          padding: '12px 16px',
-          background: 'var(--success-soft)',
-          borderColor: 'var(--success)',
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-        }}
-      >
-        <div
-          style={{
-            width: 30, height: 30, borderRadius: 10,
-            background: 'var(--success)', color: 'white',
-            display: 'grid', placeItems: 'center', flexShrink: 0,
-          }}
-        >
-          <Sparkles className="w-4 h-4" />
-        </div>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div className="text-sm font-semibold">{t('event.ai_filled', { count: parsedFieldCount, fields: pluralFields(t, parsedFieldCount) })}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">
-            {t('event.ai_highlighted_hint')}
+      <div className="ai-blk parsed">
+        <div className="ai-blk-hd">
+          <div className="ai-blk-ic"><Check style={{ width: 16, height: 16, color: '#fff' }} /></div>
+          <div className="ai-blk-ti">
+            <b>{t('event.ai_filled', { count: parsedFieldCount, fields: pluralFields(t, parsedFieldCount) })}</b>
+            <span>{t('event.ai_highlighted_hint')}</span>
           </div>
+          <button type="button" className="btn btn--ghost btn--sm" onClick={() => { onReset?.(); setText(''); setFiles([]); setState('idle'); }}>
+            <RefreshCw style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_reset')}
+          </button>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => { onReset?.(); setText(''); setFiles([]); setState('idle'); }}
-        >
-          <RefreshCw className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_reset')}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setState('available')}
-          aria-label={t('common.less')}
-        >
-          <ChevronUp className="w-3.5 h-3.5" />
-        </Button>
       </div>
     );
   }
 
   // idle / uploaded
   return (
-    <div className="aiblk mb-4">
-      <div className="flex items-center gap-3 mb-3 flex-wrap">
-        <AiIcon />
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <Title />
-          <div className="text-xs text-muted-foreground mt-0.5">
-            {state === 'uploaded'
-              ? `${files.length} ${files.length === 1 ? t('event.ai_file_ready_one') : t('event.ai_file_ready_many')} ${t('event.ai_files_ready_suffix')}`
-              : t('event.ai_paste_hint')}
-          </div>
+    <div className="ai-blk">
+      <div className="ai-blk-hd" role="button" tabIndex={0} onClick={() => setState('available')} style={{ cursor: 'pointer' }}>
+        <div className="ai-blk-ic"><Sparkles style={{ width: 16, height: 16, color: '#fff' }} /></div>
+        <div className="ai-blk-ti">
+          {titleEl}
+          <span>{state === 'uploaded'
+            ? `${files.length} ${files.length === 1 ? t('event.ai_file_ready_one') : t('event.ai_file_ready_many')} ${t('event.ai_files_ready_suffix')}`
+            : t('event.ai_paste_hint')}</span>
         </div>
-        <button
-          type="button"
-          onClick={() => setState('available')}
-          title={t('common.less')}
-          className="w-7 h-7 rounded-md grid place-items-center text-muted-foreground hover:bg-white/40 transition"
-        >
-          <ChevronUp className="w-3.5 h-3.5" />
-        </button>
+        <ChevronUp style={{ width: 16, height: 16, color: 'var(--muted)', flexShrink: 0 }} />
       </div>
 
-      {/* Files */}
-      {files.length > 0 && (
-        <div className="flex flex-col gap-1.5 mb-3">
-          {files.map((f, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2.5 rounded-lg border bg-background px-2.5 py-2"
-              style={{ borderColor: 'var(--ai-soft-12)' }}
-            >
-              <div
-                className="w-7 h-7 rounded grid place-items-center shrink-0"
-                style={{ background: 'var(--ai-soft)', color: 'var(--ai)' }}
-              >
-                {/\.(png|jpe?g|gif|webp|svg)$/i.test(f.name) ? (
-                  <ImageIcon className="w-3.5 h-3.5" />
-                ) : (
-                  <FileText className="w-3.5 h-3.5" />
-                )}
+      <div className="ai-blk-body"
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
+      >
+        {files.length > 0 && (
+          <div className="gy">
+            {files.map((f, i) => (
+              <div key={i} className="doc-row" style={{ cursor: 'default' }}>
+                <div className="di">{/\.(png|jpe?g|gif|webp|svg)$/i.test(f.name) ? <ImageIcon style={{ width: 13, height: 13 }} /> : <FileText style={{ width: 13, height: 13 }} />}</div>
+                <b>{f.name}</b>
+                {f.file?.size && <span className="ds">{formatSize(f.file.size)}</span>}
+                <button type="button" onClick={() => removeFile(i)} aria-label={t('event.ai_remove_file')}
+                  style={{ background: 'transparent', border: 0, color: 'var(--muted)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                  <X style={{ width: 14, height: 14 }} />
+                </button>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm truncate">{f.name}</div>
-                {f.file?.size && (
-                  <div className="text-[length:var(--fs-micro)] text-muted-foreground">{formatSize(f.file.size)}</div>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => removeFile(i)}
-                className="w-7 h-7 rounded grid place-items-center text-muted-foreground hover:bg-secondary"
-                aria-label={t('event.ai_remove_file')}
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-          {files.length < MAX_FILES && (
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              className="rounded-lg border-2 border-dashed py-1.5 text-center text-xs text-muted-foreground hover:bg-white/40 transition"
-              style={{ borderColor: 'var(--ai-soft-12)' }}
-            >
-              <Upload className="w-3 h-3 inline-block mr-1.5 mb-0.5" />{t('event.ai_add_more')}
-            </button>
-          )}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {/* Idle text+upload area */}
-      {state === 'idle' && (
-        <div
-          className="rounded-lg border bg-background"
-          style={{ borderColor: 'var(--ai-soft-12)', padding: 10 }}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
-        >
+        {state === 'idle' && (
           <textarea
-            className="w-full bg-transparent text-sm resize-vertical outline-none p-1.5"
+            className="textarea"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={t('event.ai_textarea_ph')}
-            style={{ minHeight: 84 }}
+            placeholder={dragOver ? t('event.ai_drop_active') : t('event.ai_textarea_ph')}
+            style={{ minHeight: 56 }}
           />
-          <div className="flex items-center gap-2 flex-wrap mt-1">
-            <button type="button" className="btn btn--ghost btn--sm" onClick={() => inputRef.current?.click()}>
-              <Upload className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_pdf_screenshot')}
-            </button>
-            <span className="text-[length:var(--fs-micro)] text-muted-foreground">
-              {dragOver ? t('event.ai_drop_active') : t('event.ai_drop_idle')}
-            </span>
-            <div className="flex-1" />
-            <button type="button" className="btn btn--ai btn--sm" onClick={runParse} disabled={!text.trim() && files.length === 0}>
-              <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_recognize')}
-            </button>
+        )}
+
+        <div style={{ display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn--ai btn--sm" onClick={runParse} disabled={!text.trim() && files.length === 0}>
+            <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize')}
+          </button>
+          <button type="button" className="btn btn--ghost btn--sm" onClick={() => inputRef.current?.click()}>
+            <Upload style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_pdf_screenshot')}
+          </button>
+        </div>
+
+        {error && (
+          <div className="err" style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+            <X style={{ width: 13, height: 13, marginTop: 1, flexShrink: 0 }} />{error}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {state === 'uploaded' && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <button type="button" className="btn btn--ghost btn--sm" onClick={() => setState('idle')}>
-            <Edit3 className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_paste_text')}
-          </button>
-          <div className="flex-1" />
-          <button type="button" className="btn btn--ai btn--sm" onClick={runParse}>
-            <Sparkles className="w-3.5 h-3.5 mr-1.5" />{t('event.ai_recognize_booking')}
-          </button>
-        </div>
-      )}
-
-      {error && (
-        <div className="mt-2 text-xs text-destructive flex items-start gap-1.5">
-          <X className="w-3.5 h-3.5 mt-0.5 shrink-0" />{error}
-        </div>
-      )}
-
-      {/* Hidden file input shared by all upload triggers */}
       <input
         ref={inputRef}
         type="file"
         multiple
-        className="hidden"
+        style={{ display: 'none' }}
         accept=".pdf,image/*"
         onChange={(e) => { addFiles(e.target.files); if (inputRef.current) inputRef.current.value = ''; }}
       />
-    </div>
-  );
-}
-
-function AiIcon({ locked }) {
-  return (
-    <div
-      className="relative shrink-0"
-      style={{
-        width: 32, height: 32, borderRadius: 8,
-        background: 'var(--ai-grad)', color: 'white',
-        display: 'grid', placeItems: 'center',
-        filter: locked ? 'saturate(.7)' : 'none',
-      }}
-    >
-      <Sparkles className="w-4 h-4" />
-      {locked && (
-        <span
-          className="absolute grid place-items-center"
-          style={{
-            bottom: -3, right: -3,
-            width: 18, height: 18, borderRadius: '50%',
-            background: 'var(--ai)', color: 'white',
-            border: '2px solid var(--background, white)',
-          }}
-        >
-          <Lock className="w-2.5 h-2.5" />
-        </span>
-      )}
-    </div>
-  );
-}
-
-function Title() {
-  const { t } = useI18n();
-  return (
-    <div className="text-sm font-semibold flex items-center gap-1.5 flex-wrap">
-      {t('event.ai_fill_title')}
-      <span className="text-[length:var(--fs-nano)] uppercase font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--pro-soft-2)', color: 'var(--pro-ink)' }}>Pro</span>
     </div>
   );
 }

@@ -132,9 +132,9 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
       )}
     >
       {warning && (
-        <div className="lp-warn" style={{ marginBottom: 4 }}>
-          <Icon name="warning" size={18} style={{ flexShrink: 0, marginTop: 1 }} />
-          <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{warning}</div>
+        <div className="warn-banner">
+          <span>⚠️</span>
+          <div>{warning}</div>
         </div>
       )}
       {confirmDel ? (
