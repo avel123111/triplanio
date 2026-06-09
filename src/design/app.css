@@ -1150,23 +1150,33 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .dlg-modal, .sheet { will-change: transform; }
 
 
-  /* Editor side panels (.lp / legacy .lpanel) — bottom sheet on mobile,
-     anchored above the keyboard like every other sheet. */
-  .lp, .lpanel {
-    position: fixed !important;
-    left: 0; right: 0; top: auto !important;
+  /* Editor side panels become bottom sheets via the SAME Radix sheet mechanism
+     as modals: TripStructureEdit portals the panel into a Radix Dialog whose
+     Content is `.lp-sheet` (the positioner, analog of .dlg-modal) holding the
+     `.lp` card. Keyboard-safe (--kb/--vvh), swipe-to-close + tap-outside (Radix
+     Overlay = .sheet-backdrop). */
+  .lp-sheet {
+    position: fixed; left: 0; right: 0; top: auto;
     bottom: var(--kb, 0px);
-    width: 100% !important;
-    flex: none !important;
-    border-radius: 20px 20px 0 0;
+    width: 100%;
+    z-index: 201;
     max-height: 92vh;
     max-height: min(92dvh, calc(var(--vvh, 100dvh) - 8px));
-    z-index: 120;
+    display: flex;
     animation: sheetUp .3s var(--ease-out);
     will-change: transform;
+  }
+  .lp-sheet > .lp {
+    width: 100%;
+    max-height: 100%;
+    flex: 1;
+    min-height: 0;
+    border-radius: 20px 20px 0 0;
+    border-left: 0; border-right: 0; border-bottom: 0;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
-  .lp::before, .lpanel::before {
+  /* grip ("бровь") at the top of the sheet */
+  .lp-sheet > .lp::before {
     content: '';
     display: block;
     width: 40px; height: 5px;
@@ -1175,15 +1185,10 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
     margin: 10px auto 2px;
     flex-shrink: 0;
   }
-  .lp-b { max-height: 70dvh; }
   /* Editor: no map on mobile — itinerary/panel take the full width. */
   .ts-grid { grid-template-columns: 1fr !important; }
   .ts-col-right { display: none !important; }
-  /* Scrim behind the editor panel sheet (rendered by TripStructureEdit). */
-  .lp-sheet-backdrop { display: block; position: fixed; inset: 0; z-index: 119; background: var(--scrim); animation: sheetFade .2s ease; }
 }
-/* Backdrop only exists as a mobile sheet scrim; hidden on desktop (panel sits in-column). */
-.lp-sheet-backdrop { display: none; }
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes blinkdot { 0%, 80%, 100% { opacity: .2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
