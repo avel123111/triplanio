@@ -91,7 +91,7 @@ function BrandMark({ size = 28 }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Login() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   // Password-recovery deep link (/reset-password) reuses this same auth shell
   // (left forms + right brand panel) but opens straight on the new-password form
@@ -287,7 +287,7 @@ export default function Login() {
       email,
       password,
       options: {
-        data: { full_name: name },
+        data: { full_name: name, language: lang },
         // Land confirmed users in the app, not on the Site-URL landing page.
         emailRedirectTo: window.location.origin + '/trips',
       },
