@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
-import { groupByLocation, createMarkerEl } from '@/lib/map/markers';
+import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers';
 import { ROUTE_COLOR } from '@/lib/map/mapStyle';
 import MapControls from '@/lib/map/MapControls';
 import { Icon } from '../../design/icons';
@@ -44,20 +44,22 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
   // marker cleanup on unmount).
   const { mapRef, ready } = useMapSurface(containerRef, { markersRef, scheme, projection });
 
+  // Unified with the trip MapView: home → start flag, return → finish flag,
+  // transit cities numbered 1..N (icons/flags come from the shared renderer).
   const pts = [];
-  if (home?.latitude && showSE) pts.push({ lat: home.latitude, lng: home.longitude, label: '🏠', name: home.city_name });
+  if (home?.latitude && showSE) pts.push({ lat: home.latitude, lng: home.longitude, label: null, kind: 'start', name: home.city_name });
   cities.forEach((c, i) => {
-    if (c.latitude) pts.push({ lat: c.latitude, lng: c.longitude, label: String(i + 1), name: c.city_name });
+    if (c.latitude) pts.push({ lat: c.latitude, lng: c.longitude, label: String(i + 1), kind: 'transit', name: c.city_name });
   });
   if (!finalPoint && returnCity?.latitude && returnCity.city_name !== home?.city_name && showSE) {
-    pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: '↩', name: returnCity.city_name });
+    pts.push({ lat: returnCity.latitude, lng: returnCity.longitude, label: null, kind: 'end', name: returnCity.city_name });
   }
 
   const positions = pts.map((p) => [p.lng, p.lat]);
   const totalNights = cities.reduce((n, c) => n + (+c.nights || 0), 0);
   const legs = buildLegs(home, cities, returnCity, finalPoint);
 
-  const ptsKey = pts.map((p) => `${p.label}@${p.lat},${p.lng}`).join('|');
+  const ptsKey = pts.map((p) => `${p.kind || ''}:${p.label}@${p.lat},${p.lng}`).join('|');
   const legsKey = legs.map((l) => `${l.from?.latitude},${l.from?.longitude}|${l.to?.latitude},${l.to?.longitude}|${transport[l.id]?.kind || ''}`).join('::');
 
   // Markers + fit.
@@ -66,9 +68,9 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
     if (!map || !ready) return undefined;
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
-    const points = pts.map((p) => ({ lng: p.lng, lat: p.lat, label: p.label, data: p.name }));
+    const points = pts.map((p) => ({ lng: p.lng, lat: p.lat, label: p.label, kind: p.kind, data: p.name }));
     groupByLocation(points).forEach((g) => {
-      const el = createMarkerEl(g.labels, { title: g.data.filter(Boolean).join(' • ') });
+      const el = createMarkerEl(g.labels.filter((l) => l != null), { icon: iconForKinds(g.kinds), title: g.data.filter(Boolean).join(' • ') });
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
       markersRef.current.push(marker);
     });

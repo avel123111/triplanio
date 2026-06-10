@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
-import { groupByLocation, createMarkerEl } from '@/lib/map/markers';
+import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers';
 import MapControls from '@/lib/map/MapControls';
 import { countryFlag } from '@/lib/geo';
 import { sortVisits } from '@/lib/validation';
@@ -102,13 +102,27 @@ export default function MapView({
     // Markers - clear previous, then group visits that share a location.
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
-    const points = ordered.map((v, i) => ({ lng: v.longitude, lat: v.latitude, label: i + 1, data: v }));
+    // Number ONLY transit cities (1,2,3…). start / end / waypoint carry no
+    // number; they render as flags / a transit glyph (see iconForKinds). Unknown
+    // kinds default to transit so legacy rows still get a number.
+    let transitNo = 0;
+    const points = ordered.map((v) => {
+      const isTransit = v.kind !== 'start' && v.kind !== 'end' && v.kind !== 'waypoint';
+      return {
+        lng: v.longitude,
+        lat: v.latitude,
+        label: isTransit ? String(++transitNo) : null,
+        kind: v.kind,
+        data: v,
+      };
+    });
     groupByLocation(points).forEach((g) => {
       const title = g.data
         .map((v) => `${countryFlag(v.country_code)} ${v.city_name}${v.country ? ', ' + v.country : ''}`)
         .join(' • ');
-      const el = createMarkerEl(g.labels, {
+      const el = createMarkerEl(g.labels.filter((l) => l != null), {
         title,
+        icon: iconForKinds(g.kinds),
         onClick: () => { const cb = onCityClickRef.current; if (cb) cb(g.data); },
       });
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);

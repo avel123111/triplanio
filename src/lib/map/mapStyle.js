@@ -15,3 +15,10 @@ export const DASHED_WIDTH = 2;
 
 // Markers share the route colour so a city pin always matches its route line.
 export const MARKER_COLOR = ROUTE_COLOR;
+
+// Anchor / waypoint marker colours. Numbered transit pins use MARKER_COLOR; the
+// start and finish flags and the waypoint (transit) pin get their own hues so
+// the trip's endpoints and layovers read at a glance on every map surface.
+export const MARKER_START_COLOR = ROUTE_COLOR; // start flag — brand blue
+export const MARKER_END_COLOR = '#E8590C'; // finish flag — contrasting orange
+export const MARKER_WAYPOINT_COLOR = ROUTE_COLOR; // layover/transit pin (icon differentiates)
