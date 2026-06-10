@@ -13,6 +13,22 @@ function aiBtnStyle() {
   };
 }
 
+// Start/finish marker in the draft list - a flag-badged row with no nights
+// (start/end cities are pure route anchors, the AI returns them without dates).
+function AnchorMini({ label, city }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 11 }}>
+      <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--ink-2)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        <Icon name="flag" size={12} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="eyebrow" style={{ fontSize: 'var(--fs-micro)', marginBottom: 1 }}>{label}</div>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{city.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{city.country}</span></div>
+      </div>
+    </div>
+  );
+}
+
 // =====================================================================
 // AI ENTRY PANEL - the method-specific entry for the unified create flow.
 // Prompt → generating → draft. Once a draft is accepted, the remaining
@@ -22,7 +38,7 @@ function aiBtnStyle() {
 // =====================================================================
 export default function PanelAi({ ctx }) {
   const t = useT();
-  const { aiState, prompt, setPrompt, aiComment, cities = [], onGenerate, goNext } = ctx;
+  const { aiState, prompt, setPrompt, aiComment, home, returnCity, cities = [], onGenerate, goNext } = ctx;
   const totalNights = cities.reduce((s, c) => s + (+c.nights || 0), 0);
   const canPrompt = prompt.trim().length > 0 && aiState !== 'generating';
 
@@ -88,6 +104,8 @@ export default function PanelAi({ ctx }) {
       {aiState === 'draft' && cities.length > 0 && (
         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div className="eyebrow">{t('ai_plan.draft_label')}</div>
+          {/* Origin point - shown only when the user named where they depart from. */}
+          {home?.city_name && <AnchorMini label={t('ai_plan.start')} city={home} />}
           {cities.map((c, i) => (
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11 }}>
               <div style={{ width: 24, height: 24, borderRadius: '50%', background: AI, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 'var(--fs-micro)', fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
@@ -97,6 +115,8 @@ export default function PanelAi({ ctx }) {
               <span className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{c.nights} {t('ai_plan.unit_nights_short')}</span>
             </div>
           ))}
+          {/* Return point - shown only when the user named where they come back to. */}
+          {returnCity?.city_name && <AnchorMini label={t('ai_plan.end')} city={returnCity} />}
         </div>
       )}
 

@@ -988,41 +988,77 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   };
 
   // ── AI draft → shared skeleton ─────────────────────────────────────────────
-  // The AI returns a cities-only skeleton (no per-day activities). We convert it
-  // into the manual-planner `cities` shape (resolving coords + timezone) and
-  // then the user edits it like any manual trip. Dates are re-anchored to the
-  // trip start via recomputeDates.
+  // The AI returns a cities-only skeleton (no activities, no transfers) where
+  // each city carries kind ∈ {start, transit, end}. We honour `kind` so the AI
+  // route fills the SAME slots the manual flow uses: start → home (origin),
+  // transit → the editable cities list, end → the return leg. From there the
+  // user edits it like any manual trip; dates are re-anchored via recomputeDates.
+
+  // Resolve one AI city into the planner shape (coords + timezone). Shared by
+  // start / transit / end so the directory lookup lives in one place.
+  const resolveAiCity = async (c, idx) => {
+    let best = null;
+    let tz = null;
+    try {
+      const r = await searchCities(`${c.city_name}${c.country ? ', ' + c.country : ''}`, lang || 'ru');
+      best = r?.[0] || null;
+    } catch { /* ignore */ }
+    if (best?.latitude) { try { tz = await getTimezone(best.latitude, best.longitude); } catch { /* ignore */ } }
+    return {
+      id: Date.now() + idx,
+      external_city_id: best?.external_city_id || null,
+      city_name: c.city_name || '',
+      country: c.country || best?.country || '',
+      country_code: (c.country_code || best?.country_code || '').toUpperCase(),
+      latitude: best?.latitude ?? null,
+      longitude: best?.longitude ?? null,
+      timezone: tz || best?.timezone || null,
+    };
+  };
+
   const applyAiDraft = async (d) => {
-    const dc = d?.cities || [];
-    const resolved = await Promise.all(dc.map(async (c, i) => {
-      let best = null;
-      let tz = null;
-      try {
-        const r = await searchCities(`${c.city_name}${c.country ? ', ' + c.country : ''}`, lang || 'ru');
-        best = r?.[0] || null;
-      } catch { /* ignore */ }
-      if (best?.latitude) { try { tz = await getTimezone(best.latitude, best.longitude); } catch { /* ignore */ } }
-      const startDate = c.start_date || '';
-      const nights = c.nights ?? c.n ?? (c.start_date && c.end_date ? daysBetweenISO(c.start_date, c.end_date) : 1);
-      return {
-        id: Date.now() + i,
-        external_city_id: best?.external_city_id || null,
-        city_name: c.city_name || '',
-        country: c.country || best?.country || '',
-        country_code: (c.country_code || best?.country_code || '').toUpperCase(),
-        latitude: best?.latitude ?? null,
-        longitude: best?.longitude ?? null,
-        timezone: tz || best?.timezone || null,
-        startDate,
-        nights: Math.max(1, +nights || 1),
-      };
-    }));
-    // Ensure a valid trip-start anchor even if the AI omitted dates.
-    const anchor = (resolved[0]?.startDate) || defaultStartISO();
-    if (resolved[0]) resolved[0].startDate = anchor;
-    const newCities = recomputeDates(resolved);
-    setCities(newCities);
+    const dc = Array.isArray(d?.cities) ? d.cities : [];
+    // Partition by kind. Missing/unknown kind defaults to transit. Only the
+    // first start / last end are honoured (a trip has one origin + one return).
+    const startSrc = dc.find((c) => c?.kind === 'start') || null;
+    const endSrc = [...dc].reverse().find((c) => c?.kind === 'end') || null;
+    const transitSrc = dc.filter((c) => c && c.kind !== 'start' && c.kind !== 'end');
+
+    const [startCity, endCity, transitResolved] = await Promise.all([
+      startSrc ? resolveAiCity(startSrc, 0) : Promise.resolve(null),
+      endSrc ? resolveAiCity(endSrc, 1) : Promise.resolve(null),
+      Promise.all(transitSrc.map(async (c, i) => {
+        const base = await resolveAiCity(c, i + 2);
+        const nights = c.start_date && c.end_date ? daysBetweenISO(c.start_date, c.end_date) : 1;
+        return { ...base, startDate: c.start_date || '', nights: Math.max(1, +nights || 1) };
+      })),
+    ]);
+
+    // Start city → home (origin marker; no nights/dates of its own).
+    setHome(startCity?.city_name ? startCity : null);
+
+    // Transit cities anchored to the first transit start_date (or default).
+    const anchor = transitResolved[0]?.startDate || defaultStartISO();
+    if (transitResolved[0]) transitResolved[0].startDate = anchor;
+    setCities(recomputeDates(transitResolved));
     setStartDateRaw(anchor);
+
+    // End city → return leg. The AI never marks the last transit city as the
+    // finish (that's the manual `finalPoint` toggle), so an explicit end is
+    // always a return node: same city as origin → "return home", else "other".
+    setFinalPoint(false);
+    if (endCity?.city_name) {
+      const sameAsHome = !!startCity?.city_name && endCity.city_name === startCity.city_name;
+      setReturnMode(sameAsHome ? 'home' : 'other');
+      setReturnCity(sameAsHome ? null : endCity);
+    } else {
+      // No explicit end. With an origin given, default to a round-trip home
+      // (matches the manual default, confirmed in the Return step); with no
+      // origin either, effectiveReturn stays null → no return leg.
+      setReturnMode('home');
+      setReturnCity(null);
+    }
+
     if (d?.title) setTripTitle(d.title);
   };
 
@@ -1331,7 +1367,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
         <div className="flow-edit scrollbar-thin">
           {step === 'home' && (isAi ? (
-            <PanelAi ctx={{ aiState, prompt, setPrompt, aiComment, cities, onGenerate, goNext }} />
+            <PanelAi ctx={{ aiState, prompt, setPrompt, aiComment, home, returnCity: effectiveReturn, cities, onGenerate, goNext }} />
           ) : (
             <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} goNext={goNext} />
           ))}

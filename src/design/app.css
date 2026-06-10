@@ -1311,13 +1311,17 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Visible highlight overlay sits BEHIND a transparent-text textarea so
    @triplanio renders bold-coloured while the caret stays in lockstep. */
 /* Overlay (visible text) and textarea (transparent, caret source) MUST share
-   identical glyph advance widths or the caret drifts ahead of the text. The
-   base .textarea rule sets font-weight:500; pin BOTH to 400 explicitly so their
-   advances match (the mention's bold look comes from -webkit-text-stroke, which
-   does not change advance width). Without this the caret runs ahead while typing,
-   most visibly around @triplanio and on mobile. */
-.chat-ov { position: absolute; inset: 0; padding: 11px 14px; font: inherit; font-size: var(--fs-base); font-weight: 400; line-height: 1.4; white-space: pre-wrap; word-break: break-word; color: var(--ink); pointer-events: none; border-radius: var(--r-sm); overflow: hidden; }
-.chat-ta { position: relative; z-index: 1; background: transparent; color: transparent; caret-color: var(--ink); width: 100%; padding: 11px 14px; font-size: var(--fs-base); font-weight: 400; line-height: 1.4; resize: none; overflow-y: hidden; display: block; }
+   identical glyph advance widths or the caret drifts ahead of the text. On iOS
+   Safari a `font: inherit` <textarea> can fall back to the system font (wider
+   than Nunito) while this <div> overlay keeps Nunito — the textarea text then
+   runs wider and the caret ends up far ahead of the visible glyphs (mobile
+   only, most visible around @triplanio). Pin BOTH layers to the SAME explicit
+   family/size/weight/letter-spacing, and disable iOS text inflation, so their
+   advances are guaranteed identical. (The mention's bold look comes from
+   -webkit-text-stroke, which does not change advance width.) */
+.chat-ov, .chat-ta { font-family: var(--font-sans); font-size: var(--fs-base); font-weight: 400; line-height: 1.4; letter-spacing: 0; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.chat-ov { position: absolute; inset: 0; padding: 11px 14px; white-space: pre-wrap; word-break: break-word; color: var(--ink); pointer-events: none; border-radius: var(--r-sm); overflow: hidden; }
+.chat-ta { position: relative; z-index: 1; background: transparent; color: transparent; caret-color: var(--ink); width: 100%; padding: 11px 14px; resize: none; overflow-y: hidden; display: block; }
 /* Keep the fill transparent on focus so the highlight overlay stays visible;
    the border + 4px ring from .textarea:focus still render around the field. */
 .chat-ta:focus { background: transparent; color: transparent; }
