@@ -1323,7 +1323,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             cities={cities}
             returnCity={effectiveReturn}
             finalPoint={finalPoint}
-            accent={isAi ? '#6a3ee2' : '#2167e2'} /* Mapbox paint needs concrete hex (not var) */
             badge={isAi
               ? { label: t('planner.badge_ai'), icon: 'sparkles', color: 'var(--ai)' }
               : { label: t('planner.badge_mine'), icon: 'map', color: 'var(--brand)' }}

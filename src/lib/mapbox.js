@@ -43,15 +43,6 @@ export function fitToPoints(map, points, opts = {}) {
   map.fitBounds(b, { padding: opts.padding ?? 48, maxZoom: opts.maxZoom ?? 8, duration });
 }
 
-// Wrap an SVG/HTML string into a DOM element usable as a mapboxgl.Marker.
-export function htmlMarkerEl(html) {
-  const el = document.createElement('div');
-  el.innerHTML = html;
-  el.style.cursor = 'pointer';
-  el.style.lineHeight = '0';
-  return el;
-}
-
 // GeoJSON LineString feature from [[lng,lat], ...].
 export const lineFeature = (coords) => ({
   type: 'Feature',
