@@ -6,7 +6,7 @@
  * members - trip_members rows from getTripDetails (include: ['content'])
  *   columns: id, trip_id, user_id, invite_email, user_full_name, role, status, invite_token, ...
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
@@ -59,6 +59,9 @@ function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
   const [tab, setTab] = useState('email');
   const [role, setRole] = useState('viewer');
   const [copied, setCopied] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkErr, setLinkErr] = useState('');
   const [email, setEmail] = useState('');
   const [offlineName, setOfflineName] = useState('');
   const [message, setMessage] = useState('');
@@ -66,6 +69,33 @@ function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
   const [err, setErr] = useState('');
   const v = useHybridValidation('invite', tab === 'offline' ? { mode: 'offline', name: offlineName } : tab === 'email' ? { mode: 'email', email } : { mode: 'link' });
   const inv = (f) => (fieldHasError(v.displayIssues, f) ? 'tv-invalid' : '');
+
+  // Generate (or reuse) a real invite link when the "link" tab is active.
+  // The role is bound to the token server-side, so switching role re-fetches.
+  useEffect(() => {
+    if (!open || tab !== 'link' || !tripId) return;
+    let cancelled = false;
+    setLinkLoading(true);
+    setLinkErr('');
+    setLinkUrl('');
+    supabase.functions.invoke('createTripInviteLink', { body: { trip_id: tripId, role } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || data?.error || !data?.token) { setLinkErr(t('trip.link_error')); return; }
+        setLinkUrl(`${window.location.origin}/join/${data.token}`);
+      })
+      .catch(() => { if (!cancelled) setLinkErr(t('trip.link_error')); })
+      .finally(() => { if (!cancelled) setLinkLoading(false); });
+    return () => { cancelled = true; };
+  }, [open, tab, role, tripId, t]);
+
+  function copyLink() {
+    if (!linkUrl) return;
+    navigator.clipboard?.writeText(linkUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   async function inviteByEmail() {
     const trimmed = email.trim().toLowerCase();
@@ -151,12 +181,15 @@ function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
       {tab === 'link' && <>
         <Field label={t('member.invite_link_label')}>
           <div style={{ display: 'flex', gap: 6 }}>
-            <input className="input mono" value={`https://triplanio.com/join/4f6b-${role === 'viewer' ? 'v' : 'a'}-x29a`}
-              readOnly style={{ flex: 1, fontSize: 'var(--fs-meta)' }} />
-            <Btn variant="primary" icon="copy" onClick={() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+            <input className="input mono" value={linkLoading ? '' : linkUrl}
+              placeholder={linkLoading ? t('share.generating') : ''}
+              readOnly style={{ flex: 1, fontSize: 'var(--fs-meta)' }}
+              onClick={(e) => e.target.select()} />
+            <Btn variant="primary" icon="copy" onClick={copyLink} disabled={linkLoading || !linkUrl}>
               {copied ? t('common.copied') : t('share.copy')}
             </Btn>
           </div>
+          {linkErr && <div style={{ marginTop: 8 }}><Severity level="error">{linkErr}</Severity></div>}
         </Field>
         <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 8, lineHeight: 1.5 }}>
           {t('member.invite_link_note')}

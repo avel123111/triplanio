@@ -13,6 +13,7 @@ import TripView from '@/pages/TripView';
 import TripStructureEdit from '@/pages/TripStructureEdit';
 import ScreenAccount from '@/pages/ScreenAccount';
 import PublicTrip from '@/pages/PublicTrip';
+import JoinTrip from '@/pages/JoinTrip';
 import Login from '@/pages/Login';
 import LandingPage from '@/pages/Landing/LandingPage';
 import ManualPlanner from '@/pages/ManualPlanner';
@@ -32,6 +33,17 @@ const AuthenticatedApp = () => {
     return (
       <Routes>
         <Route path="/public/trip/:tripId" element={<PublicTrip />} />
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    );
+  }
+
+  // Invite links — handled before the auth gate. JoinTrip itself decides whether
+  // to redeem the token (logged in) or bounce to /login (logged out).
+  if (path.startsWith('/join/')) {
+    return (
+      <Routes>
+        <Route path="/join/:token" element={<JoinTrip />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     );
