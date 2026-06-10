@@ -6,6 +6,16 @@ import './login.css';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
+// Where to land after a successful login. A pending invite-link join (see
+// JoinTrip) stores its path in sessionStorage; otherwise go to the app home.
+function postLoginPath() {
+  try {
+    const dest = sessionStorage.getItem('postLoginRedirect');
+    if (dest && dest.startsWith('/')) return dest;
+  } catch { /* ignore */ }
+  return '/trips';
+}
+
 // ── Password strength scorer ──────────────────────────────────────────────────
 function scorePassword(pw) {
   if (!pw) return 0;
@@ -126,7 +136,7 @@ export default function Login() {
   useEffect(() => {
     if (isRecoveryRoute) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) window.location.href = '/trips';
+      if (session) window.location.href = postLoginPath();
     });
   }, [isRecoveryRoute]);
 
@@ -174,7 +184,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + '/trips',
+        redirectTo: window.location.origin + postLoginPath(),
         queryParams: { prompt: 'select_account' },
       },
     });
@@ -206,7 +216,7 @@ export default function Login() {
       // page stays mounted on /login - redirect explicitly (same as email login
       // and the Google redirect flow's redirectTo). Keep isLoading=true so the
       // buttons don't flash re-enabled before the navigation tears the page down.
-      window.location.href = '/trips';
+      window.location.href = postLoginPath();
     } catch (err) {
       setError(err.message);
       setIsLoading(false);
@@ -263,7 +273,7 @@ export default function Login() {
     setIsLoading(true); setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
-      options: { redirectTo: window.location.origin + '/trips' },
+      options: { redirectTo: window.location.origin + postLoginPath() },
     });
     if (error) { setError(error.message); setIsLoading(false); }
   };
@@ -276,7 +286,7 @@ export default function Login() {
     // /login (App routes /login independently of auth state), so navigate
     // explicitly to land the user in the app. Keep isLoading=true until the
     // full navigation tears the page down (avoids a flash of re-enabled buttons).
-    window.location.href = '/trips';
+    window.location.href = postLoginPath();
   };
 
   const handleSignup = async (e) => {
@@ -289,7 +299,7 @@ export default function Login() {
       options: {
         data: { full_name: name, language: lang },
         // Land confirmed users in the app, not on the Site-URL landing page.
-        emailRedirectTo: window.location.origin + '/trips',
+        emailRedirectTo: window.location.origin + postLoginPath(),
       },
     });
     if (error) { setError(error.message); setIsLoading(false); }
