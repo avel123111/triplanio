@@ -35,9 +35,9 @@ const COLOR_WHITELIST = [
   'src/index.css', 'src/design/app.css',               // token DEFINITIONS
   'src/pages/BudgetLens.jsx',                           // CAT_COLORS data-viz; pending Lumo --cat-*
   'src/design/index.jsx',                              // weather palette; pending Lumo
-  'src/pages/create/FlowMap.jsx',                       // Mapbox paint needs concrete hex
-  'src/pages/ManualPlanner.jsx',                        // Mapbox accent hex
-  'src/components/views/MapView.jsx',                   // Mapbox ROUTE_COLOR hex
+  'src/lib/map/mapStyle.js',                            // Mapbox paint needs concrete hex (route/marker colours)
+  'src/lib/map/markers.js',                             // marker DOM uses #fff border/text
+  'src/pages/ManualPlanner.jsx',                        // planner accent hex defaults
   'src/lib/booking-platforms.js',                       // external partner brand classes
   'src/components/chat/TriplanioAvatar.jsx',            // SVG illustration fills
   'src/components/AppErrorBoundary.jsx',                // crash screen — must not depend on tokens/CSS

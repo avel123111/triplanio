@@ -7,6 +7,7 @@
 // lives in exactly one place.
 import { lineFeature, setLineLayer } from '@/lib/mapbox';
 import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
+import { ROUTE_COLOR, DASHED_COLOR, DASHED_OPACITY, SOLID_WIDTH, DASHED_WIDTH } from './mapStyle';
 
 // Per-leg OSRM geometry cache, keyed by endpoints + transport. A road route for
 // a fixed coordinate pair and mode is deterministic, so it's safe to keep for
@@ -46,8 +47,9 @@ async function osrmGeometry(from, to, kind) {
 // upgrades from writing into a parked/replaced map.
 export function drawRouteLines(map, legs, opts) {
   const {
-    dashedId, solidId, dashedColor, solidColor,
-    dashedWidth = 2, solidWidth = 3.5, dashedOpacity = 0.5,
+    dashedId, solidId,
+    dashedColor = DASHED_COLOR, solidColor = ROUTE_COLOR,
+    dashedWidth = DASHED_WIDTH, solidWidth = SOLID_WIDTH, dashedOpacity = DASHED_OPACITY,
   } = opts;
 
   const dashed = [];
