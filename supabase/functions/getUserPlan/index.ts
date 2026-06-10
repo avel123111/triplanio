@@ -4,8 +4,6 @@
  * GET/POST — no body required.
  *
  * Returns the caller's subscription plan and metadata.
- * Migrated from base44: replaces base44.auth.me() + TripSubscription entity
- * with direct Supabase queries.
  */
 
 import { corsHeaders } from '../_shared/cors.ts';

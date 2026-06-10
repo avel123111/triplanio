@@ -1,7 +1,7 @@
 -- Budget fixes round 2:
 --  #1 create_trip wrote email into trips.created_by (now uuid) -> use auth.uid()
 --  #2 budget_expenses has no notes column (manual-expense save failed)
---  #8 align categories to base44: system = accommodation/transport/activities/services;
+--  #8 canonical categories: system = accommodation/transport/activities/services;
 --     food/shopping/souvenirs/other are CUSTOM. trip_services maps to 'services'.
 
 -- #1 ---------------------------------------------------------------

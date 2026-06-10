@@ -1,4 +1,4 @@
--- Budget must always exist (like base44, which auto-seeded it on trip creation).
+-- Budget must always exist — auto-seeded on trip creation.
 -- Trigger: every new trip gets its default budget + categories, so the manual
 -- "Создать бюджет" empty state never appears. Backfill existing trips too.
 

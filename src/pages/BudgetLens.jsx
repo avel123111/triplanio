@@ -543,8 +543,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   }
 
   // Build enriched categories with converted totals.
-  // Order: the four canonical system categories first (fixed order matching
-  // base44), then all custom categories - including "food", which was demoted
+  // Order: the four canonical system categories first (fixed canonical
+  // order), then all custom categories - including "food", which was demoted
   // from system to custom and must sit with the other custom categories.
   const cats = useMemo(() => {
     const SYSTEM_ORDER = ['accommodation', 'transport', 'activities', 'services'];

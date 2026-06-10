@@ -58,7 +58,7 @@ export const NOTIFICATIONS = [
     trigger: 'User invited to a trip',
     when: 'Immediately on invite (best-effort, non-blocking)',
     audience: 'Invitee (their email)',
-    source: 'functions/inviteTripMember → functions/_emailTemplate (kind=invite_email)',
+    source: 'functions/inviteTripMember → _shared/emailTemplate.ts (renderInviteEmail)',
     i18nKeys: null,
     hardcodedText: {
       subject_en: 'Invitation to trip "{title}"',
@@ -73,7 +73,7 @@ export const NOTIFICATIONS = [
     trigger: 'Admin clicks "Resend" on a pending invite',
     when: 'On demand',
     audience: 'Invitee (their email)',
-    source: 'functions/resendTripInvite → functions/_emailTemplate (kind=resend_email)',
+    source: 'functions/resendTripInvite → _shared/emailTemplate.ts (renderInviteEmail)',
     i18nKeys: null,
     hardcodedText: {
       subject_en: 'Reminder: invitation to trip "{title}"',

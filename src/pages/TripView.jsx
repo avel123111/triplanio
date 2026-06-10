@@ -511,7 +511,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   const days = buildDayList(tripStart, tripEnd);
 
   // Sort visits using kind field (start anchor → transit cities → end anchor),
-  // matching base44's sortVisits logic from validation.js
+  // via sortVisits logic from validation.js
   const ordered = sortVisits(visits);
 
   // Build inbound transfer lookup: toVisitId → [transfer, ...]

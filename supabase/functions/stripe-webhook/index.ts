@@ -9,7 +9,6 @@
  *   One Stripe mode per Supabase project (live in prod, test in dev).
  * - Idempotency: records processed events in stripe_events table.
  *
- * Migrated from base44: replaced all base44 SDK entity calls with Supabase queries.
  * No JWT required (Stripe sends its own signature).
  */
 

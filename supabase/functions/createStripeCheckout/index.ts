@@ -11,8 +11,6 @@
  *
  * Stripe mode (test/live) is auto-detected from STRIPE_SECRET_KEY — one mode
  * per Supabase project (live in prod, test in dev).
- *
- * Migrated from base44: replaced base44 SDK entity calls with Supabase queries.
  */
 
 import { corsHeaders } from '../_shared/cors.ts';

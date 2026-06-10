@@ -1,4 +1,4 @@
--- Budget auto-sync: replicate base44's automation that mirrored bookings
+-- Budget auto-sync: mirror bookings
 -- (hotels/transfers/activities/services) into budget_expenses, via DB triggers.
 -- Also: allow the 'food' system category (seedTripBudget uses it but the old
 -- CHECK rejected it), and add city_name to budget_expenses for city grouping.

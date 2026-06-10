@@ -6,7 +6,7 @@
  * Returns { id, full_name, avatar_url } for each user id — but only for ids
  * that are active participants of the trip (prevents leaking arbitrary profiles).
  *
- * Optimization vs base44: one WHERE id = ANY(...) query instead of N individual queries.
+ * Optimization: one WHERE id = ANY(...) query instead of N individual queries.
  *
  * Exception: the AI bot (users.email = info@triplanio.com) is always allowed
  * regardless of membership.

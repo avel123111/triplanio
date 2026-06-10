@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
     const results = await Promise.all(tasks);
     const pick = (key: string) => slots[key] != null ? (results[slots[key]] as { data: unknown[] | null }).data ?? [] : undefined;
 
-    // Assemble response — same shape as base44 version
+    // Assemble response
     const response: Record<string, unknown> = { trip };
 
     if (wantShell)     response.cityVisits        = pick('cityVisits');

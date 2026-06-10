@@ -5,7 +5,7 @@
 // punctuation) so we don't accidentally highlight things like "@TriplanioX".
 //
 // BOT_EMAIL is the synthetic author email used when Triplanio writes into the
-// chat. It does NOT correspond to a real Base44 user - we render the bot
+// chat. It does NOT correspond to a real auth user - we render the bot
 // avatar/name based on this sentinel in ChatMessageBubble.
 
 export const TRIPLANIO_BOT_EMAIL = 'info@triplanio.com';

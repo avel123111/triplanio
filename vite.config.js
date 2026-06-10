@@ -1,4 +1,4 @@
-import base44 from "@base44/vite-plugin"
+import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
@@ -16,21 +16,19 @@ export default defineConfig({
   define: {
     __SENTRY_RELEASE__: JSON.stringify(SENTRY_RELEASE),
   },
+  resolve: {
+    // `@/...` → `/src/...`. Previously provided by the base44 vite plugin;
+    // now a plain native Vite alias so the app has no base44 build dependency.
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   build: {
     // 'hidden' = maps are emitted for upload but NOT referenced from the served
     // JS, so they never become publicly fetchable. Off entirely without a token.
     sourcemap: SENTRY_AUTH_TOKEN ? 'hidden' : false,
   },
   plugins: [
-    base44({
-      // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.
-      // can be removed if the code has been updated to use the new SDK imports from @base44/sdk
-      legacySDKImports: process.env.BASE44_LEGACY_SDK_IMPORTS === 'true',
-      hmrNotifier: true,
-      navigationNotifier: true,
-      analyticsTracker: true,
-      visualEditAgent: true
-    }),
     react(),
     // Must come last so it sees the final bundle. EU region is mandatory — the
     // org lives on de.sentry.io and the default (US) host would silently fail.

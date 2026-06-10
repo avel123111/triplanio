@@ -1,39 +1,27 @@
-**Welcome to your Base44 project** 
+# Triplanio
 
-**About**
+Travel planning + expense-sharing app. **React 18 + Vite 6 + Supabase + Stripe**, deployed on Vercel.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+## Local development
 
-This project contains everything you need to run your app locally.
+**Prerequisites:** Node 20+.
 
-**Edit the code in your local development environment**
+1. Clone the repository.
+2. Install dependencies: `npm install`
+3. Create an `.env.local` (see `.env.example` for the required keys: Supabase URL/anon key, Google client id, Mapbox token, bot user id, Sentry DSN).
+4. Run the dev server: `npm run dev`
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+## Scripts
 
-**Prerequisites:** 
+- `npm run dev` — Vite dev server
+- `npm run build` — production build (`vite build`)
+- `npm run preview` — preview the production build
+- `npm run lint` / `npm run lint:fix` — ESLint
+- `npm run typecheck` — `tsc -p ./jsconfig.json`
+- `npm test` — `node --test "src/**/*.test.js"`
+- `npm run check:design` — design-token guard
 
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
+## Deploy
 
-```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
-
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
-```
-
-Run the app: `npm run dev`
-
-**Publish your changes**
-
-Open [Base44.com](http://Base44.com) and click on Publish.
-
-**Docs & Support**
-
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
-
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+- **Frontend:** Vercel, auto-deploy on push (branches `dev` and `main`).
+- **Backend:** Supabase edge functions + migrations are deployed manually; two projects (prod + dev) are kept in sync.

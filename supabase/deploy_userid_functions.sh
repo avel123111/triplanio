@@ -16,7 +16,7 @@ REF="${1:?Usage: $0 <PROJECT_REF>}"
 
 # Functions that must keep verify_jwt = FALSE (webhooks / public / automation / no-JWT callers)
 # NOTE: getTripDetails was moved to the JWT list — it must require auth. It used
-# to be here as a base44 carry-over, but on Supabase verify_jwt=false exposed the
+# to be on the no-JWT list, but verify_jwt=false exposed the
 # full trip payload to anyone with the public anon key + a tripId (fail-open).
 NO_JWT=(stripe-webhook telegramWebhook triplanioAiReply seedTripBudget syncTripExpense)
 

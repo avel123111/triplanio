@@ -1322,6 +1322,12 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .chat-ov, .chat-ta { font-family: var(--font-sans); font-size: var(--fs-base); font-weight: 400; line-height: 1.4; letter-spacing: 0; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .chat-ov { position: absolute; inset: 0; padding: 11px 14px; white-space: pre-wrap; word-break: break-word; color: var(--ink); pointer-events: none; border-radius: var(--r-sm); overflow: hidden; }
 .chat-ta { position: relative; z-index: 1; background: transparent; color: transparent; caret-color: var(--ink); width: 100%; padding: 11px 14px; resize: none; overflow-y: hidden; display: block; }
+/* Mobile (≤640px) bumps .textarea to 16px to stop iOS zoom-on-focus (see the
+   .input/.select/.textarea rule in the responsive section). The overlay is a
+   <div>, not a .textarea, so it stayed 14px → 16-vs-14 advance mismatch pushed
+   the caret ahead of the visible text at narrow widths. Keep BOTH layers at
+   16px on mobile so their glyph advances stay identical. */
+@media (max-width: 640px) { .chat-ov, .chat-ta { font-size: 16px; } }
 /* Keep the fill transparent on focus so the highlight overlay stays visible;
    the border + 4px ring from .textarea:focus still render around the field. */
 .chat-ta:focus { background: transparent; color: transparent; }

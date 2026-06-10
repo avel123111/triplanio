@@ -5,8 +5,6 @@
  *
  * Creates a Stripe Billing Portal session for the current user so they can
  * manage their Pro subscription (update card, cancel, view invoices).
- *
- * Migrated from base44: replaced base44 SDK entity calls with Supabase queries.
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
