@@ -69,44 +69,31 @@ function highlightMentions(val) {
 
 function DateDivider({ date }) {
   return (
-    <div style={{ textAlign: 'center', margin: '12px 0', fontSize: 'var(--fs-micro)', color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.1em' }}>
-      <span style={{ background: 'var(--wash)', padding: '3px 10px', borderRadius: 999 }}>{date}</span>
-    </div>
+    <div className="chat-daydiv"><span>{date}</span></div>
   );
 }
 
 // ─── Msg ──────────────────────────────────────────────────────────────────────
 
 function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl }) {
-  const bubbleBg    = isMe ? 'var(--brand)' : isAi ? 'var(--ai-soft)' : 'var(--wash)';
-  const bubbleColor = isMe ? '#fff' : 'var(--ink)';
-  const nameColor   = isAi ? 'var(--ai)' : 'var(--ink)';
-  const radius      = isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px';
+  const bubbleMod = isMe ? 'chat-bubble--me' : isAi ? 'chat-bubble--ai' : 'chat-bubble--them';
 
   return (
-    <div style={{ display: 'flex', gap: 8, justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 0 : 12 }}>
+    <div className={'chat-row' + (isMe ? ' chat-row--me' : '') + (grouped ? ' chat-row--grouped' : '')}>
       {/* Incoming: avatar in its own left column; a spacer keeps grouped bubbles aligned. */}
       {!isMe && (
         grouped
-          ? <div style={{ width: 22, flexShrink: 0 }} aria-hidden />
+          ? <div className="chat-row__sp" aria-hidden />
           : (isAi ? <TriplanioAvatar size="sm" /> : <Avatar name={who} photo={avatarUrl || ''} size="sm" style={{ flexShrink: 0 }} />)
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', minWidth: 0, maxWidth: '78%' }}>
+      <div className="chat-col">
         {!grouped && !isMe && (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 3, paddingLeft: 2 }}>
-            <span style={{ fontWeight: 600, fontSize: 'var(--fs-meta)', color: nameColor }}>{who}</span>
-            <span style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)' }}>{time}</span>
+          <div className="chat-name">
+            <b className={isAi ? 'ai' : ''}>{who}</b>
+            <span className="tm">{time}</span>
           </div>
         )}
-        <div style={{
-          padding: '8px 12px',
-          background: bubbleBg,
-          color: bubbleColor,
-          fontSize: 'var(--fs-base)',
-          borderRadius: radius,
-          lineHeight: 1.45,
-          wordBreak: 'break-word',
-        }}>
+        <div className={'chat-bubble ' + bubbleMod}>
           <ChatMarkdown
             text={text}
             mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
@@ -114,7 +101,7 @@ function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl }) {
           />
         </div>
         {isMe && !grouped && (
-          <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 2, paddingRight: 2 }}>{time}</div>
+          <div className="chat-time">{time}</div>
         )}
       </div>
     </div>
@@ -125,13 +112,13 @@ function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl }) {
 
 function ChatMember({ name, role, ai, avatarUrl }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div className="chat-member">
       {ai
         ? <TriplanioAvatar size="sm" />
         : <Avatar name={name} photo={avatarUrl || ''} size="sm" style={{ width: 28, height: 28 }} />}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{role}</div>
+      <div className="chat-member__b">
+        <div className="chat-member__nm">{name}</div>
+        <div className="chat-member__rl">{role}</div>
       </div>
     </div>
   );
@@ -418,25 +405,25 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   })();
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20, height: '100%', minHeight: 0 }}>
+    <div className="chat-grid">
       {/* Chat area */}
-      <div style={{
-        background: 'var(--surface)', border: '1px solid var(--line)',
-        borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative',
-      }}>
+      <div className="chat-card">
         {/* Header */}
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h3 style={{ flex: 1, marginBottom: 0 }}>{t('chat.group_title')}</h3>
+        <div className="chat-head">
+          <span className="chat-head__ic" aria-hidden>
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 4.2L18 8l-4.4 1.8L12 14l-1.6-4.2L6 8l4.4-1.8z" /><circle cx="18.5" cy="17.5" r="2" /></svg>
+          </span>
+          <h3>{t('chat.group_title')}</h3>
           {activeMembers.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success)', fontSize: 'var(--fs-meta)' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} />
+            <span className="chat-online">
+              <span className="pulse" />
               {pluralPeople(activeMembers.length, t, lang)}
-            </div>
+            </span>
           )}
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div ref={scrollRef} className="chat-msgs scrollbar-thin">
           {isLoading ? (
             <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>{t('chat.loading_messages')}</div>
           ) : msgs.length === 0 ? (
@@ -448,90 +435,53 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
 
         {/* Thinking strip */}
         {isThinking && (
-          <div style={{
-            padding: '6px 14px',
-            background: 'var(--ai-soft)',
-            borderTop: '1px solid var(--line-2)',
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 'var(--fs-meta)', color: 'var(--ai)',
-          }}>
-            {/* shimmer bar */}
-            <div style={{
-              position: 'absolute', left: 0, right: 0, top: 0, height: 2,
-              background: 'linear-gradient(90deg, transparent 0%, var(--ai) 50%, transparent 100%)',
-              backgroundSize: '200% 100%',
-              animation: 'shimmer 1.4s linear infinite',
-            }} />
+          <div className="chat-thinking">
             <TriplanioAvatar size="xs" />
-            <span style={{ fontWeight: 500 }}>{t('chat.typing')}</span>
-            <span className="ai-dots" style={{ display: 'inline-flex', alignItems: 'center' }}>
-              <span /><span /><span />
-            </span>
+            <span>{t('chat.typing')}</span>
+            <span className="ai-dots"><span /><span /><span /></span>
           </div>
         )}
 
         {/* Input */}
-        <div style={{ borderTop: '1px solid var(--line-2)', padding: 12, position: 'relative' }}>
+        <div className="chat-composer">
           {showMention && (
-            <div style={{
-              position: 'absolute', bottom: 'calc(100% + 4px)', left: 12,
-              background: 'var(--surface)', border: '1px solid var(--line)',
-              borderRadius: 12, boxShadow: 'var(--shadow-pop)', padding: 6,
-              width: 280, zIndex: 5,
-            }}>
-              <div className="eyebrow" style={{ padding: '0 10px 2px', margin: 0 }}>{t('chat.mention')}</div>
+            <div className="chat-mention">
+              <div className="chat-mention__lbl">{t('chat.mention')}</div>
               {/* Only @Triplanio is actionable - mentioning a member does nothing,
                   so the popup lists just the assistant. */}
               <button
                 onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
-                className="dz-rowhover"
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', width: '100%', border: 'none', borderRadius: 7, cursor: 'pointer', textAlign: 'left' }}
+                className="chat-mention__row"
               >
                 <TriplanioAvatar size="sm" />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
-                  <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('chat.mention_all_hint')}</div>
-                </div>
+                <span style={{ flex: 1 }}>
+                  <b>Triplanio</b>
+                  <span>{t('chat.mention_all_hint')}</span>
+                </span>
               </button>
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <div style={{ flex: 1, position: 'relative' }}>
+          <div className="chat-composer__row">
+            <div className="chat-composer__field">
               {/* Overlay (visible) sits BEHIND a transparent-text textarea: the
                   overlay renders the full text with @Triplanio in bold purple,
                   the textarea shows only the caret - no double glyphs. */}
               <div
                 ref={ovRef}
                 aria-hidden="true"
-                style={{
-                  position: 'absolute', inset: 0,
-                  padding: '11px 14px',
-                  font: 'inherit', fontSize: 'var(--fs-base)', lineHeight: 1.4,
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  color: 'var(--ink)',
-                  pointerEvents: 'none',
-                  borderRadius: 10,
-                  overflow: 'hidden',
-                }}
+                className="chat-ov"
                 dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
               />
               <textarea
                 ref={taRef}
-                className="textarea"
+                className="textarea chat-ta"
                 placeholder={t('chat.composer_ph')}
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKey}
                 rows={1}
-                style={{
-                  position: 'relative', zIndex: 1,
-                  background: 'transparent',
-                  color: 'transparent', caretColor: 'var(--ink)',
-                  minHeight: 44, maxHeight: 100, width: '100%',
-                  padding: '11px 14px', fontSize: 'var(--fs-base)', lineHeight: 1.4,
-                  resize: 'none', overflowY: 'hidden', display: 'block',
-                }}
+                style={{ minHeight: 44, maxHeight: 100 }}
               />
             </div>
             <button
@@ -548,7 +498,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       </div>
 
       {/* Sidebar */}
-      <aside className="scrollbar-thin" style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto', minHeight: 0 }}>
+      <aside className="chat-rail scrollbar-thin">
         <Card title={t('chat.members_title')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {activeMembers.length === 0 ? (
@@ -563,7 +513,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                 />
               ))
             )}
-            <div style={{ borderTop: '1px solid var(--line-2)', paddingTop: 8, marginTop: 4 }}>
+            <div className="chat-member-sep">
               <ChatMember name="Triplanio" role={t('chat.ai_general')} ai />
             </div>
           </div>

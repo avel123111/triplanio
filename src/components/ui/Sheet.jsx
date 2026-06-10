@@ -14,7 +14,7 @@ import { useSheetSwipe } from '@/lib/useSheetSwipe';
  *     ...rows...
  *   </Sheet>
  */
-export function Sheet({ open, onOpenChange, title, children }) {
+export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
   const { elRef, gripProps } = useSheetSwipe(() => onOpenChange?.(false));
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -23,7 +23,7 @@ export function Sheet({ open, onOpenChange, title, children }) {
         {/* Don't auto-focus into the sheet on open: on mobile that pops the
             keyboard for a search field, which yanks the fixed sheet up the
             screen and triggers iOS zoom. Focus is taken on user tap instead. */}
-        <Dialog.Content ref={elRef} className="sheet" aria-describedby={undefined} onOpenAutoFocus={(e) => e.preventDefault()}>
+        <Dialog.Content ref={elRef} className={'sheet' + (className ? ' ' + className : '')} aria-describedby={undefined} onOpenAutoFocus={(e) => e.preventDefault()}>
           <div className="sheet-grip" {...gripProps}><i /></div>
           {title ? (
             <div className="sheet-h">
@@ -32,10 +32,10 @@ export function Sheet({ open, onOpenChange, title, children }) {
             </div>
           ) : (
             <Dialog.Title className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-              {title || 'Menu'}
+              {titleText || 'Menu'}
             </Dialog.Title>
           )}
-          <div className="sheet-b">{children}</div>
+          <div className={'sheet-b' + (bodyClassName ? ' ' + bodyClassName : '')}>{children}</div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

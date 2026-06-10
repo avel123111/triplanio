@@ -18,6 +18,8 @@ import ChatMarkdown from './ChatMarkdown';
 import { Avatar, EmptyState } from '@/design/index';
 import { displayName } from '@/lib/displayName';
 import { useUserProfiles } from '@/lib/useUserProfiles';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet } from '@/components/ui/Sheet';
 
 const MSGS_KEY = (cid) => ['chat-widget-msgs', cid];
 
@@ -35,6 +37,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -206,36 +209,31 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
     const who = isAi ? TRIPLANIO_BOT_NAME : nameFor(m.user_id);
     let time = '';
     try { time = new Date(m.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }); } catch { /* ignore */ }
-    const bubbleBg = isMe ? 'var(--brand)' : isAi ? 'var(--ai-soft)' : 'var(--wash)';
+    const bubbleMod = isMe ? 'chat-bubble--me' : isAi ? 'chat-bubble--ai' : 'chat-bubble--them';
     return (
-      <div key={m.id} style={{ display: 'flex', gap: 8, justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: grouped ? 0 : 12 }}>
+      <div key={m.id} className={'chat-row' + (isMe ? ' chat-row--me' : '') + (grouped ? ' chat-row--grouped' : '')}>
         {!isMe && (
           grouped
-            ? <div style={{ width: 22, flexShrink: 0 }} aria-hidden />
+            ? <div className="chat-row__sp" aria-hidden />
             : (isAi
                 ? <TriplanioAvatar size="sm" />
                 : <Avatar name={who} photo={profiles[m.user_id]?.avatar_url || ''} size="sm" style={{ flexShrink: 0 }} />)
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', minWidth: 0, maxWidth: '82%' }}>
+        <div className="chat-col">
           {!grouped && !isMe && (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2, paddingLeft: 2 }}>
-              <span style={{ fontSize: 'var(--fs-micro)', fontWeight: 600, color: isAi ? 'var(--ai)' : 'var(--ink)' }}>{who}</span>
-              <span style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)' }}>{time}</span>
+            <div className="chat-name">
+              <b className={isAi ? 'ai' : ''}>{who}</b>
+              <span className="tm">{time}</span>
             </div>
           )}
-          <div style={{
-            padding: '7px 11px', background: bubbleBg, color: isMe ? '#fff' : 'var(--ink)',
-            fontSize: 'var(--fs-base)', borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-            lineHeight: 1.45, wordBreak: 'break-word',
-            opacity: m.__pending ? 0.7 : 1,
-          }}>
+          <div className={'chat-bubble ' + bubbleMod + (m.__pending ? ' chat-bubble--pending' : '')}>
             <ChatMarkdown
               text={m.text || ''}
               mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
             />
           </div>
           {isMe && !grouped && (
-            <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 1, paddingRight: 2 }}>{time}</div>
+            <div className="chat-time">{time}</div>
           )}
         </div>
       </div>
@@ -243,35 +241,160 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [msgs, profiles, user?.id]);
 
-  // ── Closed: floating button ──
-  if (!open) {
-    return (
+  // ── Closed: floating button (rendered when the panel/sheet is shut) ──
+  const closedFab = (
+    <button
+      className="dock dock--ai"
+      onClick={() => setOpen(true)}
+      aria-label={t('chat.open_aria')}
+    >
+      <MessageCircle size={22} />
+      {unread > 0 && (
+        <div className="dock__count">{unread > 99 ? '99+' : unread}</div>
+      )}
+      {/* Sparkles sub-badge - purely decorative, signals AI is part of the chat */}
+      <span style={{
+        position: 'absolute', bottom: -3, right: -3,
+        width: 22, height: 22, borderRadius: '50%',
+        background: 'var(--ai-grad)', color: 'white',
+        border: '2px solid var(--surface)',
+        display: 'grid', placeItems: 'center',
+        pointerEvents: 'none',
+      }}>
+        <Sparkles size={11} />
+      </span>
+    </button>
+  );
+
+  // ── Open panel — shared inner parts (identical markup + logic on desktop
+  //    dock-panel and inside the mobile bottom-sheet, so chat logic is never
+  //    duplicated). ──
+  const headInner = (
+    <div className="dock-panel__head">
+      <div style={{ display: 'flex' }}>
+        {activeMembers.slice(0, 4).map((m, i) => (
+          <Avatar
+            key={m.id || i}
+            name={nameFor(m.user_id)}
+            photo={profiles[m.user_id]?.avatar_url || ''}
+            size="sm"
+            style={{ marginLeft: i === 0 ? 0 : -8, border: '1.5px solid var(--surface)', borderRadius: '50%', zIndex: 4 - i }}
+          />
+        ))}
+      </div>
+      <div className="nm">
+        {tripTitle ? <><b>{tripTitle}</b>{' · '}</> : ''}{pluralPeople(activeMembers.length, t, lang)}
+      </div>
       <button
-        className="dock"
-        onClick={() => setOpen(true)}
-        aria-label={t('chat.open_aria')}
-        style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand) 50%, var(--ai) 100%)' }}
+        className="icon-btn"
+        style={{ width: 30, height: 30 }}
+        onClick={() => navigate(`/trip/${tripId}?lens=chat`)}
+        aria-label={t('chat.open_full_aria')}
       >
-        <MessageCircle size={22} />
-        {unread > 0 && (
-          <div className="dock__count">{unread > 99 ? '99+' : unread}</div>
-        )}
-        {/* Sparkles sub-badge - purely decorative, signals AI is part of the chat */}
-        <span style={{
-          position: 'absolute', bottom: -3, right: -3,
-          width: 22, height: 22, borderRadius: '50%',
-          background: 'var(--ai-grad)', color: 'white',
-          border: '2px solid var(--surface)',
-          display: 'grid', placeItems: 'center',
-          pointerEvents: 'none',
-        }}>
-          <Sparkles size={11} />
-        </span>
+        <ExternalLink size={14} />
       </button>
+    </div>
+  );
+
+  const messagesInner = (
+    <div ref={scrollRef} className="chat-msgs scrollbar-thin">
+      {msgs.length === 0 ? (
+        <div style={{ margin: 'auto' }}>
+          <EmptyState icon="chat" title={t('chat.write_first')} />
+        </div>
+      ) : messageEls}
+      {isThinking && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
+          <TriplanioAvatar size="xs" />
+          <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--ai)', fontWeight: 500 }}>{t('chat.typing')}</span>
+          <span className="ai-dots"><span /><span /><span /></span>
+        </div>
+      )}
+    </div>
+  );
+
+  const composerInner = (
+    <div className="chat-composer">
+      {showMention && (
+        <div className="chat-mention" style={{ left: 10, width: 240 }}>
+          {/* Only @Triplanio is actionable - members aren't mentionable, so the
+              popup lists just the assistant. */}
+          <button
+            onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
+            className="chat-mention__row"
+          >
+            <TriplanioAvatar size="sm" />
+            <span style={{ flex: 1 }}>
+              <b>Triplanio</b>
+              <span>{t('chat.mention_all_hint')}</span>
+            </span>
+          </button>
+        </div>
+      )}
+      <div className="chat-composer__row">
+        <div className="chat-composer__field">
+          <div
+            ref={ovRef}
+            aria-hidden="true"
+            className="chat-ov"
+            dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
+          />
+          <textarea
+            ref={taRef}
+            className="textarea chat-ta"
+            placeholder={t('chat.widget_composer_ph')}
+            value={text}
+            rows={1}
+            onChange={(e) => {
+              const v = e.target.value;
+              setText(v);
+              setShowMention(/(^|\s)@(\w*)$/.test(v));
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+            style={{ minHeight: 40, maxHeight: 90 }}
+          />
+        </div>
+        <button
+          className="chat-send"
+          onClick={sendMessage}
+          disabled={sending || !text.trim() || !chatId}
+          aria-label={t('chat.send')}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── Mobile: open in the canonical bottom-sheet (swipe-to-dismiss, 86dvh,
+  //    scroll-lock). The FAB stays mounted so Radix can play the sheet's
+  //    enter/exit animation cleanly. ──
+  if (isMobile) {
+    return (
+      <>
+        {!open && closedFab}
+        <Sheet
+          open={open}
+          onOpenChange={setOpen}
+          titleText={t('chat.group_title')}
+          className="sheet--chat"
+          bodyClassName="sheet-b--chat"
+        >
+          {headInner}
+          {isThinking && <div className="chat-thinking-bar" />}
+          {messagesInner}
+          {composerInner}
+        </Sheet>
+      </>
     );
   }
 
-  // ── Open: panel ──
+  // ── Closed (desktop): floating button ──
+  if (!open) return closedFab;
+
+  // ── Open (desktop): docked panel ──
   return (
     <div className="dock-panel">
       {/* Tab bar - single "group chat" tab + close */}
@@ -298,132 +421,14 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
         </button>
       </div>
 
-      {/* Head: member avatars + trip name + navigate to full chat */}
-      <div className="dock-panel__head">
-        <div style={{ display: 'flex' }}>
-          {activeMembers.slice(0, 4).map((m, i) => (
-            <Avatar
-              key={m.id || i}
-              name={nameFor(m.user_id)}
-              photo={profiles[m.user_id]?.avatar_url || ''}
-              size="sm"
-              style={{ marginLeft: i === 0 ? 0 : -8, border: '1.5px solid var(--surface)', borderRadius: '50%', zIndex: 4 - i }}
-            />
-          ))}
-        </div>
-        <div style={{ flex: 1, fontSize: 'var(--fs-meta)' }}>
-          {tripTitle ? <><b>{tripTitle}</b>{' · '}</> : ''}{pluralPeople(activeMembers.length, t, lang)}
-        </div>
-        <button
-          className="icon-btn"
-          style={{ width: 30, height: 30 }}
-          onClick={() => navigate(`/trip/${tripId}?lens=chat`)}
-          aria-label={t('chat.open_full_aria')}
-        >
-          <ExternalLink size={14} />
-        </button>
-      </div>
+      {headInner}
 
       {/* Thinking shimmer bar */}
-      {isThinking && (
-        <div style={{ position: 'relative', height: 3, overflow: 'hidden', flexShrink: 0 }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, transparent 0%, var(--ai) 50%, transparent 100%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s linear infinite' }} />
-        </div>
-      )}
+      {isThinking && <div className="chat-thinking-bar" />}
 
-      {/* Messages */}
-      <div ref={scrollRef} className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {msgs.length === 0 ? (
-          <div style={{ margin: 'auto' }}>
-            <EmptyState icon="chat" title={t('chat.write_first')} />
-          </div>
-        ) : messageEls}
-        {isThinking && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
-            <TriplanioAvatar size="xs" />
-            <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--ai)', fontWeight: 500 }}>{t('chat.typing')}</span>
-            <span className="ai-dots"><span /><span /><span /></span>
-          </div>
-        )}
-      </div>
+      {messagesInner}
 
-      {/* Composer */}
-      <div style={{ borderTop: '1px solid var(--line-2)', padding: 10, position: 'relative' }}>
-        {showMention && (
-          <div style={{
-            position: 'absolute', bottom: 'calc(100% + 4px)', left: 10,
-            background: 'var(--surface)', border: '1px solid var(--line)',
-            borderRadius: 10, boxShadow: 'var(--shadow-pop)', padding: 4,
-            width: 240, zIndex: 5,
-          }}>
-            {/* Only @Triplanio is actionable - members aren't mentionable, so the
-                popup lists just the assistant. */}
-            <button
-              onMouseDown={(e) => { e.preventDefault(); applyMention('Triplanio'); }}
-              className="dz-rowhover"
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', width: '100%', border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}
-            >
-              <TriplanioAvatar size="sm" />
-              <div>
-                <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 500, color: 'var(--ai)' }}>Triplanio</div>
-                <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)' }}>{t('chat.mention_all_hint')}</div>
-              </div>
-            </button>
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <div
-              ref={ovRef}
-              aria-hidden="true"
-              style={{
-                position: 'absolute', inset: 0,
-                padding: '8px 10px', font: 'inherit', fontSize: 'var(--fs-base)', lineHeight: 1.4,
-                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                color: 'var(--ink)', pointerEvents: 'none',
-                borderRadius: 8, overflow: 'hidden',
-              }}
-              dangerouslySetInnerHTML={{ __html: highlightMentions(text) + '​' }}
-            />
-            <textarea
-              ref={taRef}
-              className="textarea"
-              placeholder={t('chat.widget_composer_ph')}
-              value={text}
-              rows={1}
-              onChange={(e) => {
-                const v = e.target.value;
-                setText(v);
-                setShowMention(/(^|\s)@(\w*)$/.test(v));
-              }}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-              style={{
-                position: 'relative', zIndex: 1, background: 'transparent',
-                color: 'transparent', caretColor: 'var(--ink)',
-                minHeight: 38, maxHeight: 90, width: '100%',
-                padding: '8px 10px', fontSize: 'var(--fs-base)', lineHeight: 1.4, resize: 'none',
-                overflowY: 'hidden', display: 'block',
-              }}
-            />
-          </div>
-          <button
-            onClick={sendMessage}
-            disabled={sending || !text.trim() || !chatId}
-            aria-label={t('chat.send')}
-            style={{
-              width: 38, height: 38, borderRadius: '50%', border: 'none',
-              background: 'var(--assistant-grad)',
-              cursor: sending || !text.trim() || !chatId ? 'not-allowed' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              opacity: (!text.trim() || !chatId) ? 0.4 : 1, flexShrink: 0,
-            }}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
-      </div>
+      {composerInner}
     </div>
   );
 }
