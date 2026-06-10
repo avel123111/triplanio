@@ -350,25 +350,27 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
           const emailLine = m.invite_email || profile?.email || '';
 
           return (
-            <div key={m.id || i} className={`mrow${isRemoving ? ' mrow--busy' : ''}`}>
+            <div key={m.id || i} className={`mbrow${isRemoving ? ' mbrow--busy' : ''}`}>
               <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
-              <div>
-                <div className="mrow__name">
+              <div className="mbrow__id">
+                <div className="mbrow__name">
                   {name}
                   {m.user_id === user?.id && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)' }}>{t('member.you_self')}</Badge>}
                 </div>
                 {hasRealName && emailLine && (
-                  <div className="mrow__email">{emailLine}</div>
+                  <div className="mbrow__email">{emailLine}</div>
                 )}
               </div>
 
-              <div>{m.status === 'offline'
-                ? <Badge variant="quiet" icon="user">{t('trip.member_offline')}</Badge>
-                : <RoleBadge role={m.role} />}</div>
-              <div><StatusDot status={m.status} /></div>
+              <div className="mbrow__meta">
+                {m.status === 'offline'
+                  ? <Badge variant="quiet" icon="user">{t('trip.member_offline')}</Badge>
+                  : <RoleBadge role={m.role} />}
+                <StatusDot status={m.status} />
+              </div>
 
               {/* Actions */}
-              <div className="mrow__acts">
+              <div className="mbrow__acts">
                 {m.status === 'offline' && canManage && (
                   <Btn variant="ghost" size="sm" icon="send"
                     onClick={() => setPromoteState({ member: m })}>
