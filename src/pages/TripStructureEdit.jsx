@@ -3,11 +3,12 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { supabase } from '@/api/supabaseClient';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
+import { layoutDates } from '@/lib/tripDates';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { Icon } from '../design/icons';
-import { Btn, Badge, Skeleton } from '../design/index';
+import { Btn, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { getTimezone } from '@/lib/geo';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -29,7 +30,7 @@ import TripHeaderBar from '@/components/trips/TripHeaderBar';
 import TripScreenBar from '@/components/trips/TripScreenBar';
 import { getGradientById } from '@/lib/trip-gradients';
 import ShareDialog from '@/components/trips/ShareDialog';
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from '@/components/ui/alert-dialog';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
@@ -47,7 +48,6 @@ const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y 
 // makes recompute idempotent on load: re-deriving dates from (nights, gap)
 // reproduces exactly what's stored, so editor = timeline = DB.
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
-const dayDiff = (aIso, bIso) => { const a = dayOf(aIso), b = dayOf(bIso); return a && b ? Math.round(b.diff(a, 'days').days) : null; };
 const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
 const flagEmoji = (cc) => (cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt(0))) : '📍');
 const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
@@ -58,39 +58,10 @@ const isTmpId = (id) => String(id || '').startsWith('tmp-');
 const colorFor = (key) => { let h = 0; const s = String(key || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return PALETTE[h % PALETTE.length]; };
 const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.id), flag: flagEmoji(n.country_code), country: n.country || '' });
 
-// Single chain laid out from the trip-start day. Each node carries its own
-// `nights` AND `gap` (= days between the previous node's checkout and this node's
-// check-in, e.g. 1 for an overnight flight). One formula, no special cases:
-//   start = previousEnd + gap;  end = start + nights;  cursor = end
-// Consequences that fall out for free:
-//   • move the start  → cursor moves → ALL nodes shift by the same delta;
-//   • change a middle node's nights → its end moves → ALL nodes AFTER it shift by
-//     the same delta, nodes before it are untouched;
-//   • gaps (night transfers) are preserved, never invented or erased.
-// Pure DATE math → idempotent: with unchanged (nights, gap) it reproduces the
-// stored dates exactly, so opening the editor never moves anything.
-function recompute(nodes, baseISO) {
-  const firstTransit = nodes.find((n) => !isAnchor(n));
-  let cursor = (baseISO ? toDT(baseISO) : toDT(firstTransit?.start_date)) || DateTime.utc();
-  cursor = cursor.startOf('day');
-  let seen = false; // the first non-anchor node anchors the trip start (gap forced 0)
-  return nodes.map((n, i) => {
-    if (isAnchor(n)) return { ...n, position: i };
-    const gap = seen && Number.isFinite(n.gap) ? n.gap : 0;
-    const startDay = cursor.plus({ days: gap });
-    seen = true;
-    if (n.kind === 'waypoint') { // single-date transit point - consumes no nights
-      const d = startDay.toISODate();
-      cursor = startDay;
-      return { ...n, start_date: d, end_date: d, nights: null, gap, position: i };
-    }
-    const nights = Math.max(0, Number.isFinite(n.nights) ? n.nights : (dayDiff(n.start_date, n.end_date) ?? 1));
-    const startD = startDay.toISODate();
-    const endD = (nights > 0 ? startDay.plus({ days: nights }) : startDay).toISODate();
-    cursor = startDay.plus({ days: nights });
-    return { ...n, start_date: startD, end_date: endD, nights, gap, position: i };
-  });
-}
+// Canonical date-chain layout (start = prevEnd + gap; end = start + nights) now
+// lives in lib/tripDates.layoutDates, shared with ManualPlanner and mirroring the
+// server recompute_trip. Used here only as optimistic reorder layout.
+const recompute = layoutDates;
 
 function buildDraft(shell, transfers = []) {
   const visits = sortVisits(shell?.cityVisits || []);
@@ -116,7 +87,7 @@ function buildDraft(shell, transfers = []) {
   // Bookings are read LIVE from `content` (edits/adds via real dialogs → DB → refetch).
   const firstTransit = nodes.find((n) => !isAnchor(n));
   const startDate = firstTransit?.start_date || (shell?.trip?.start_date || null);
-  return { nodes, removed: [], startDate };
+  return { nodes, startDate };
 }
 
 export default function TripStructureEdit() {
@@ -131,9 +102,6 @@ export default function TripStructureEdit() {
   const { isDark, toggle: toggleTheme } = useTheme();
   const accountPro = isProActive(user);
   const [draft, setDraft] = useState(null);
-  const [dirty, setDirty] = useState(false);
-  const [lock, setLock] = useState('acquiring');
-  const [saving, setSaving] = useState(false);
   // Left-column panel FSM (replaces the old view/add modals). null = the city
   // list; otherwise the left pane swaps in-place to a panel:
   //   { type:'event', kind, id, warning }    - view/edit/delete a booking (EventSourcePanel)
@@ -162,12 +130,10 @@ export default function TripStructureEdit() {
   const [showMap, setShowMap] = useState(true); // hide the map to give the itinerary full width
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
-  const [pendingLeave, setPendingLeave] = useState(null); // navigation target awaiting the unsaved-changes prompt
   const [sideOpen, setSideOpen] = useState(false); // mobile menu drawer
   const [shareOpen, setShareOpen] = useState(false);
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
-  const [undoStack, setUndoStack] = useState([]); // history of draft snapshots (JSON) for step-undo
   const endDrag = () => { setDragIdx(null); setOverGap(null); };
   const justDraggedRef = useRef(false); // suppress the click that fires right after a drag
   // FLIP refs: animate non-dragged rows smoothly to their new slot during drag.
@@ -206,35 +172,13 @@ export default function TripStructureEdit() {
     });
     prevRectsRef.current = new Map();
   }, [dragIdx, overGap]);
-  const acquiredRef = React.useRef(false);
-  const DRAFT_KEY = `ts-edit-${tripId}`;
-  const clearDraftStore = () => { try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } };
-  // Leave the editor for `to`: drop the draft and RELEASE THE EDIT LOCK immediately.
-  const leaveNow = async (to) => {
-    clearDraftStore();
-    if (acquiredRef.current) { acquiredRef.current = false; try { await supabase.rpc('release_trip_lock', { p_trip: tripId }); } catch { /* ignore */ } }
-    nav(typeof to === 'string' ? to : `/trip/${tripId}`);
-  };
-  // Guarded navigation away: prompt to save first if there are unsaved changes.
-  const guardedLeave = (to) => { if (dirty) setPendingLeave(typeof to === 'string' ? to : `/trip/${tripId}`); else leaveNow(to); };
-  const baseRef = React.useRef(null); // JSON of the originally-loaded draft (for Reset)
-  // Every structural mutation funnels through editDraft → snapshot the pre-edit
-  // draft onto the undo stack (cap 50), apply, mark dirty. `undo` pops one step.
-  const editDraft = (updater) => {
-    if (draft) setUndoStack((s) => [...s.slice(-49), JSON.stringify(draft)]);
-    setDraft((d) => (d ? updater(d) : d));
-    setDirty(true);
-  };
-  const undo = () => {
-    if (undoStack.length === 0) return;
-    const prev = undoStack[undoStack.length - 1];
-    setUndoStack((s) => s.slice(0, -1));
-    setDraft(JSON.parse(prev));
-    setDirty(baseRef.current != null && prev !== baseRef.current);
-  };
-  const canUndo = undoStack.length > 0;
-  // Сброс: вернуть к загруженному состоянию, оставаясь в редакторе.
-  const reset = () => { if (!baseRef.current) return; setDraft(JSON.parse(baseRef.current)); setDirty(false); setUndoStack([]); clearDraftStore(); };
+  // Live model: every change is persisted immediately (no draft/lock/save), so
+  // leaving is a plain navigation — nothing to save, no lock to release, no prompt.
+  const leaveNow = (to) => nav(typeof to === 'string' ? to : `/trip/${tripId}`);
+  const guardedLeave = leaveNow;
+  // Optimistic local patch only; the server owns the authoritative state (refetched
+  // after each action via runAction/closePanelAndSync). No undo/dirty/reset.
+  const editDraft = (updater) => setDraft((d) => (d ? updater(d) : d));
   // Live edit: the optimistic local patch already ran. Persist via RPC, then reconcile
   // with the authoritative server state — but ONLY if this is still the latest action.
   // A monotonic seq drops stale reconciles so rapid edits don't snap the UI back to an
@@ -248,9 +192,6 @@ export default function TripStructureEdit() {
     if (mySeq !== seqRef.current) return;           // superseded by a newer action → keep optimistic state
     try { await refetchTrip(qc, tripId); } catch { /* ignore */ }
     if (mySeq !== seqRef.current) return;           // a newer action started during the refetch
-    clearDraftStore();
-    setUndoStack([]);
-    setDirty(false);
     setDraft(null); // rebuild from fresh server state on next render (buildDraft)
   };
   // Any panel that may have WRITTEN transfers/bookings (create/event) closes through
@@ -263,10 +204,6 @@ export default function TripStructureEdit() {
     const mySeq = ++seqRef.current;
     try { await refetchTrip(qc, tripId); } catch { /* ignore */ }
     if (mySeq !== seqRef.current) return;
-    clearDraftStore();
-    baseRef.current = null; // fresh server state becomes the new baseline (no phantom dirty)
-    setUndoStack([]);
-    setDirty(false);
     setDraft(null);
   };
   // Coalesced/debounced server commit for the nights stepper (one RPC after the burst).
@@ -291,41 +228,18 @@ export default function TripStructureEdit() {
   // shell+content are available — they're cached from TripView, so the editor
   // paints on the very first render with no skeleton frame (no entry flicker).
   if (draft === null && shell && content) {
-    if (!baseRef.current) baseRef.current = JSON.stringify(buildDraft(shell, content.transfers));
-    let initial = null, initialDirty = false;
-    try { const saved = sessionStorage.getItem(DRAFT_KEY); if (saved) { const p = JSON.parse(saved); if (p?.draft) { initial = p.draft; initialDirty = !!p.dirty; } } } catch { /* ignore */ }
-    setDraft(initial || buildDraft(shell, content.transfers));
-    if (initialDirty) setDirty(true);
+    setDraft(buildDraft(shell, content.transfers));
   }
-
-  useEffect(() => { if (draft && dirty) { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, dirty })); } catch { /* quota */ } } }, [draft, dirty, DRAFT_KEY]);
-
-  useEffect(() => {
-    if (!tripId) return;
-    let alive = true;
-    supabase.rpc('acquire_trip_lock', { p_trip: tripId }).then(({ data, error }) => {
-      if (!alive) return;
-      if (error) { setLock('error'); return; }
-      acquiredRef.current = !!data?.ok;
-      setLock(data?.ok ? 'held' : 'blocked');
-    }).catch(() => { if (alive) setLock('error'); });
-    const hb = setInterval(() => { supabase.rpc('heartbeat_trip_lock', { p_trip: tripId }); }, 5 * 60 * 1000);
-    const onUnload = () => { if (acquiredRef.current) supabase.rpc('release_trip_lock', { p_trip: tripId }); };
-    window.addEventListener('beforeunload', onUnload);
-    return () => { alive = false; clearInterval(hb); window.removeEventListener('beforeunload', onUnload); if (acquiredRef.current) { supabase.rpc('release_trip_lock', { p_trip: tripId }); acquiredRef.current = false; } };
-  }, [tripId]);
 
   const trip = shell?.trip;
   // Trip-level Pro for the shared sidebar's "upgrade" card — owner-aware, via the
   // same CACHED hook as TripView so the card doesn't re-flash on the edit boundary.
   const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip);
-  // Bookings are read LIVE from content. Exclude bookings of cities slated for
-  // deletion (else they'd surface as orphans that block the very save that
-  // cascade-deletes them).
-  const removedIds = useMemo(() => new Set((draft?.removed || []).map((n) => n.id)), [draft]);
-  const liveHotels = useMemo(() => (content?.hotels || []).filter((h) => !removedIds.has(h.city_visit_id)), [content, removedIds]);
-  const liveActivities = useMemo(() => (content?.activities || []).filter((a) => !removedIds.has(a.city_visit_id)), [content, removedIds]);
-  const liveTransfers = useMemo(() => (content?.transfers || []).filter((t) => !removedIds.has(t.from_city_visit_id) && !removedIds.has(t.to_city_visit_id)), [content, removedIds]);
+  // Bookings are read LIVE from content. A removed city + its bookings are deleted
+  // server-side immediately (remove_city cascade) and gone on the next refetch.
+  const liveHotels = useMemo(() => (content?.hotels || []), [content]);
+  const liveActivities = useMemo(() => (content?.activities || []), [content]);
+  const liveTransfers = useMemo(() => (content?.transfers || []), [content]);
   // While creating a transfer, draw a synthetic leg on the map (shaped by the
   // picked transport type) so the route appears instantly, before saving.
   const mapTransfers = useMemo(() => {
@@ -357,12 +271,6 @@ export default function TripStructureEdit() {
     nav(location.pathname + (location.search || ''), { replace: true, state: {} }); // consume the intent
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
-  // Native browser prompt on close/refresh while there are unsaved structure edits.
-  useEffect(() => {
-    const h = (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
-    window.addEventListener('beforeunload', h);
-    return () => window.removeEventListener('beforeunload', h);
-  }, [dirty]);
   // Unified engine: validateTrip emits codes; primaryIssues collapses to <=1 per
   // entity (anti-pile). Adapt to the shape this screen already consumes
   // (resolved message + cityId/hotelId/activityId/transferId aliases + 'warn' level).
@@ -391,23 +299,6 @@ export default function TripStructureEdit() {
   }, [draft, liveHotels, liveActivities, liveTransfers, t]);
   const errors = issues.filter((i) => i.level === 'error').length; // always 0 now (all issues are 'warn')
   const warns = issues.length - errors;
-  // Validation NEVER blocks save anymore: every issue is a non-blocking warning.
-  // Save is gated only by dirty/saving (and the trip lock, handled separately).
-  const blocked = false;
-  // Count of UNSAVED structural changes vs the loaded baseline (added/removed/
-  // moved cities, changed nights/dates/overnight) — shown in the header.
-  const changeCount = useMemo(() => {
-    if (!draft || !dirty || !baseRef.current) return 0;
-    let base; try { base = JSON.parse(baseRef.current); } catch { return 0; }
-    const baseById = new Map((base.nodes || []).map((n) => [n.id, n]));
-    let c = (draft.removed || []).filter((n) => !String(n.id).startsWith('tmp-')).length;
-    for (const n of draft.nodes) {
-      const b = baseById.get(n.id);
-      if (!b) { c++; continue; }
-      if (b.position !== n.position || b.start_date !== n.start_date || b.end_date !== n.end_date || (b.nights || 0) !== (n.nights || 0) || (b.gap || 0) !== (n.gap || 0)) c++;
-    }
-    return c;
-  }, [draft, dirty]);
 
   // ---- structural edits ----
   // Trip start (d.startDate) is FIXED until shiftStart changes it. recompute chains
@@ -482,23 +373,15 @@ export default function TripStructureEdit() {
   const doRemoveCity = (id) => {
     editDraft((d) => {
       const node = d.nodes.find((n) => n.id === id); if (!node || isAnchor(node)) return d;
-      return { ...d, nodes: d.nodes.filter((n) => n.id !== id), removed: [...d.removed, node] };
+      return { ...d, nodes: d.nodes.filter((n) => n.id !== id) };
     });
     setConfirmDel(null);
     if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
   };
   const removeEndpoint = (id) => {
-    editDraft((d) => ({ ...d, nodes: d.nodes.filter((n) => n.id !== id), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) }));
+    editDraft((d) => ({ ...d, nodes: d.nodes.filter((n) => n.id !== id) }));
     if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
   };
-  const restoreCity = (id) => editDraft((d) => {
-    const node = d.removed.find((n) => n.id === id); if (!node) return d;
-    const arr = d.nodes.slice();
-    if (node.kind === 'start') arr.unshift(node);
-    else if (node.kind === 'end') arr.push(node);
-    else { const endIdx = arr.findIndex((n) => n.kind === 'end'); arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
-    return { ...d, nodes: recompute(arr, d.startDate), removed: d.removed.filter((n) => n.id !== id) };
-  });
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
       toast({ description: kind === 'start' ? t('tse.start_already_set') : t('tse.end_already_set'), variant: 'warning' });
@@ -554,40 +437,6 @@ export default function TripStructureEdit() {
     setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: a, toVisit: b });
   };
 
-  const onSave = async (dest) => {
-    if (!draft || blocked || saving) return;
-    setSaving(true);
-    const isTmp = (id) => String(id).startsWith('tmp-');
-    const p_nodes = draft.nodes.filter((n) => !isTmp(n.id)).map((n) => ({ id: n.id, start_date: n.start_date ?? null, end_date: n.end_date ?? null, position: n.position, kind: n.kind || 'transit' }));
-    const p_cities_new = draft.nodes.filter((n) => isTmp(n.id)).map((n) => ({ tmp: n.id, city_name: n.city_name, country: n.country ?? null, country_code: n.country_code ?? null, latitude: n.latitude ?? null, longitude: n.longitude ?? null, timezone: n.timezone ?? null, external_city_id: n.external_city_id ?? null, kind: n.kind || 'transit', start_date: n.start_date ?? null, end_date: n.end_date ?? null, position: n.position }));
-    // Bookings (incl. each transfer's day_change) are written LIVE via the panels;
-    // the structure save only persists the recomputed city dates + positions.
-    const p_edits = {};
-    const p_deletes = { cities: (draft.removed || []).filter((n) => !isTmp(n.id)).map((n) => n.id) };
-    const { error } = await supabase.rpc('save_trip_edit', { p_trip: tripId, p_nodes, p_cities_new, p_edits, p_deletes });
-    if (error) { setSaving(false); toast({ description: t('tse.err_save') + (error.message || error), variant: 'destructive' }); return; }
-    clearDraftStore();
-    invalidateTripData(qc, tripId);
-    setPendingLeave(null);
-    // Save + LEAVE (from the unsaved-changes prompt): release the lock and navigate.
-    if (typeof dest === 'string') {
-      acquiredRef.current = false;
-      setSaving(false);
-      nav(dest);
-      return;
-    }
-    // Save + STAY (header button): save_trip_edit released the lock, so re-acquire
-    // it, then rebuild the draft from the freshly-saved server state (new cities get
-    // their real ids; the diff baseline + dirty reset to "saved").
-    try { const lr = await supabase.rpc('acquire_trip_lock', { p_trip: tripId }); acquiredRef.current = !!lr?.data?.ok; } catch { /* keep editing best-effort */ }
-    try { await Promise.all([qc.refetchQueries({ queryKey: TRIP_SHELL_KEY(tripId) }), qc.refetchQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })]); } catch { /* ignore */ }
-    baseRef.current = null;
-    setUndoStack([]);
-    setDirty(false);
-    setDraft(null); // → synchronous rebuild from fresh shell/content on next render
-    setSaving(false);
-  };
-
   // Persistent app-header - rendered in EVERY branch (loading / blocked / error /
   // ready) so it never blanks out while the lock RPC + queries resolve. The page
   // title (name · dates · nights) lives in the LEFT column, not here; the header
@@ -614,35 +463,11 @@ export default function TripStructureEdit() {
   // gradient hero; only meaningful once the draft has loaded.)
   //   Undo  = step back one action.   Reset = discard all edits, stay in editor.
   const editorActions = draft ? (
-    <>
-      {changeCount > 0 && <Badge variant="brand" icon="edit">{t('tse.unsaved_count', { n: changeCount })}</Badge>}
-      <Btn variant="quiet" size="sm" icon="undo" onClick={undo} disabled={!canUndo} title={t('tse.step_back_title')}>{t('tse.step_back')}</Btn>
-      <Btn variant="quiet" size="sm" icon="refresh" onClick={reset} disabled={!dirty} title={t('tse.reset_title')}>{t('tse.reset')}</Btn>
-      <Btn variant="quiet" size="sm" icon="map" onClick={() => setShowMap((v) => !v)} className={showMap ? 'is-on' : ''} title={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaLabel={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaPressed={showMap} />
-      <Btn variant="primary" size="sm" icon="check" disabled={!dirty || blocked || saving} onClick={() => onSave()}>{saving ? t('tse.saving') : t('common.save')}</Btn>
-    </>
+    <Btn variant="quiet" size="sm" icon="map" onClick={() => setShowMap((v) => !v)} className={showMap ? 'is-on' : ''} title={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaLabel={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaPressed={showMap} />
   ) : null;
 
   if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">{t('tse.err_load')}{String(shellError.message || shellError)}</div></div></>;
-  if (lock === 'blocked' || lock === 'error') {
-    return (
-      <>{headerEl}
-      <div style={{ maxWidth: 640, margin: '40px auto', padding: 16 }}>
-        <div className={`sev sev--${lock === 'blocked' ? 'warning' : 'error'}`}>
-          <span className="sev__icon"><Icon name="warning" size={16} /></span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>{lock === 'blocked' ? t('tse.locked_title') : t('tse.lock_err_title')}</div>
-            <div style={{ fontSize: 'var(--fs-meta)' }}>{lock === 'blocked' ? t('tse.locked_desc') : t('tse.lock_err_desc')}</div>
-            <div style={{ marginTop: 12 }}><Btn variant="ghost" icon="back" onClick={() => nav(`/trip/${tripId}`)}>{t('tse.back_to_trip')}</Btn></div>
-          </div>
-        </div>
-      </div>
-      </>
-    );
-  }
-  // Don't gate the whole screen on the lock RPC — shell/content are cached (shared
-  // with TripView) so the editor paints instantly; the lock resolves in the
-  // background (and the blocked/error branch above takes over only if it fails).
+  // shell/content are cached (shared with TripView) so the editor paints instantly.
   if (loadingShell || loadingContent || !draft) {
     return <>{headerEl}<div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}><Skeleton w="40%" h={28} style={{ marginBottom: 18 }} /><Skeleton w="100%" h={120} style={{ marginBottom: 10 }} /><Skeleton w="100%" h={120} /></div></>;
   }
@@ -1039,7 +864,6 @@ export default function TripStructureEdit() {
               </div>
             </div>
           )}
-          <RemovedTray removed={draft.removed} onRestore={restoreCity} />
           </div>{/* /ts-leftscroll */}
           </>)}
           </div>{/* /te-panefade */}
@@ -1149,19 +973,6 @@ export default function TripStructureEdit() {
         }
       `}</style>
       {/* Unsaved-changes guard when leaving the editor (menu / logo / back). */}
-      <AlertDialog open={!!pendingLeave} onOpenChange={(o) => { if (!o) setPendingLeave(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('tse.unsaved_title')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('tse.unsaved_desc')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('tse.unsaved_stay')}</AlertDialogCancel>
-            <Btn variant="ghost" onClick={() => { const to = pendingLeave; setPendingLeave(null); leaveNow(to); }}>{t('tse.unsaved_leave')}</Btn>
-            <AlertDialogAction onClick={() => onSave(pendingLeave)}>{t('common.save')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} />
     </div>
   );
@@ -1368,20 +1179,6 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
     </div>
   );
 }
-
-function RemovedTray({ removed, onRestore }) {
-  const t = useT();
-  if (!removed || removed.length === 0) return null;
-  return <div style={{ marginTop: 14, padding: '11px 13px', borderRadius: 12, background: 'var(--wash)', border: '1px dashed var(--line)' }}>
-    <div className="eyebrow" style={{ marginBottom: 8 }}>{t('tse.removed_from_route')}</div>
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      {removed.map((n) => <button key={n.id} onClick={() => onRestore(n.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', fontSize: 'var(--fs-meta)', fontWeight: 600, color: 'var(--ink)' }}>
-        <Icon name="plus" size={12} style={{ color: 'var(--brand)' }} /> {flagEmoji(n.country_code)} {n.city_name}
-      </button>)}
-    </div>
-  </div>;
-}
-
 
 // (Conflicts and transfer rows now open in-place LEFT panels: EventSourcePanel
 //  for view/edit/delete, EventEditDialog variant="panel" for transfer create.

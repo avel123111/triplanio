@@ -119,7 +119,7 @@ import { searchCities, getTimezone } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
-import { validateEntity, normalizePositions, transferAiCityAdvisories } from '@/lib/validation';
+import { validateEntity, transferAiCityAdvisories } from '@/lib/validation';
 import { FieldError, IssuesPanel, fieldHasError } from '@/components/common/ValidationUI';
 import { detectPlatformFromUrl, BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
@@ -1311,112 +1311,60 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
 // segments[i].toCity (for i < N-1) is a chosen layover city → one waypoint
 // city_visit each. Then one transfer row per segment, between adjacent nodes:
 //   fromVisit → wp1 → … → wp(N-1) → toVisit.
+// Layover transfer (create) → ONE atomic server RPC (migration 0029). The server
+// inserts the N-1 waypoint city_visits with CORRECT positions BEFORE writing the
+// transfer rows, so the Ф2 recompute-on-transfer trigger lays dates by the right
+// chain order, then runs a final recompute_trip. This replaces the old client
+// insert→trigger→renumber sequence, which raced the trigger (waypoint at provisional
+// position 0 was laid first and its date/order got corrupted).
 async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
   const segs = form.segments;
   const N = segs.length;
 
-  // Waypoint NODE ordering must place each layover strictly between fromVisit
-  // and toVisit, because the timeline/edit-mode sort cities by their own
-  // start_datetime and only draw a transfer between CONSECUTIVE nodes. The
-  // node date is decoupled from the (possibly later) segment-leg times: we
-  // distribute the N-1 waypoints evenly in the gap between the two endpoints.
-  const ms = (iso) => { const x = iso ? Date.parse(iso) : NaN; return Number.isNaN(x) ? null : x; };
-  const fromMs = ms(fromVisit?.end_date) ?? ms(fromVisit?.start_date);
-  const toMs = ms(toVisit?.start_date) ?? ms(toVisit?.end_date);
-  const MIN = 60000;
-  const nodeMsAt = (i) => { // i: 0..N-2
-    if (fromMs != null && toMs != null && toMs > fromMs) return fromMs + ((toMs - fromMs) * (i + 1)) / N;
-    if (toMs != null) return toMs - (N - 1 - i + 1) * MIN;   // just before toVisit, ascending
-    if (fromMs != null) return fromMs + (i + 1) * MIN;        // just after fromVisit, ascending
-    return ms(localToUtc(segs[i].endLocal, 'UTC')) ?? Date.now() + i * MIN; // fallback
-  };
-
-  // 1. Create the N-1 waypoint nodes (one per intermediate boundary).
-  const wpRows = [];
+  // N-1 intermediate layover cities (each segment's toCity, except the last leg).
+  const waypoints = [];
   for (let i = 0; i < N - 1; i++) {
     const c = segs[i].toCity;
     if (!c?.city_name) throw new Error(t('event.err_layover_city'));
-    const tz = c.timezone || 'UTC';
-    const at = new Date(nodeMsAt(i)).toISOString();
-    wpRows.push({
-      trip_id: tripId,
-      external_city_id: c.external_city_id || null,
+    waypoints.push({
       city_name: c.city_name,
+      external_city_id: c.external_city_id || null,
       country: c.country || null,
       country_code: c.country_code || null,
       latitude: c.latitude ?? null,
       longitude: c.longitude ?? null,
-      timezone: tz,
-      kind: 'waypoint',
-      start_date: at.slice(0, 10),
-      end_date: at.slice(0, 10),
-      // Provisional - renumbered authoritatively by normalizePositions below.
-      position: 0,
-      created_by: user?.id,
+      timezone: c.timezone || 'UTC',
     });
   }
-  let wpIds = [];
-  if (wpRows.length) {
-    const { data, error } = await supabase.from('city_visits').insert(wpRows).select('id');
-    if (error) throw error;
-    wpIds = (data || []).map((x) => x.id);
-  }
 
-  // 2. node id chain: from → waypoints… → to
-  const nodeIds = [fromVisit?.id, ...wpIds, toVisit?.id];
-
-  // 3. One transfer per segment between adjacent nodes.
-  const trRows = segs.map((s, i) => ({
-    trip_id: tripId,
-    from_city_visit_id: nodeIds[i],
-    to_city_visit_id: nodeIds[i + 1],
+  // One leg per segment. Booking link is shared; documents/notes ride the first leg.
+  const segments = segs.map((s, i) => ({
     transport_type: s.transport_type,
-    // Per-segment overnight flag (auto-raised from this segment's dates, toggle in the editor).
     day_change: !!s.day_change,
     start_datetime: localToUtc(s.startLocal, 'UTC'),
     end_datetime: localToUtc(s.endLocal, 'UTC'),
-    carrier: s.carrier || undefined,
+    carrier: s.carrier || null,
     flight_number: s.flight_number || null,
-    from_address: s.from_address || undefined,
-    to_address: s.to_address || undefined,
-    booking_reference: s.booking_reference || undefined,
-    // Booking link is shared across the whole itinerary; documents/notes go on
-    // the first leg to avoid duplication.
+    from_address: s.from_address || null,
+    to_address: s.to_address || null,
+    booking_reference: s.booking_reference || null,
     booking_url: form.booking_url || null,
     booking_platform: form.booking_platform || null,
     price: s.price === '' || s.price == null ? null : Number(s.price),
     currency: s.currency || 'EUR',
     documents: i === 0 && Array.isArray(form.documents) ? form.documents : [],
-    voucher_file_url: '',
-    voucher_file_name: '',
     notes: i === 0 ? (form.notes || null) : null,
-    details: {},
-    created_by: user?.id,
   }));
-  const { data, error } = await supabase.from('transfers').insert(trRows).select();
+
+  const { error } = await supabase.rpc('add_layover_transfer', {
+    p_trip: tripId,
+    p_from: fromVisit?.id,
+    p_to: toVisit?.id,
+    p_waypoints: waypoints,
+    p_segments: segments,
+  });
   if (error) throw error;
-
-  // 4. Renumber positions across the WHOLE trip so the new waypoint(s) thread
-  // cleanly into the node order (no collisions/duplicates) - authoritative for
-  // both the timeline (sort tie-break) and Edit Mode (position-driven recompute).
-  try {
-    const { data: allVisits } = await supabase
-      .from('city_visits')
-      .select('id, kind, start_date, end_date, position')
-      .eq('trip_id', tripId);
-    if (allVisits?.length) {
-      const normalized = normalizePositions(allVisits);
-      const byId = new Map(allVisits.map((v) => [v.id, v.position]));
-      const changed = normalized.filter((v) => byId.get(v.id) !== v.position);
-      await Promise.all(changed.map((v) =>
-        supabase.from('city_visits').update({ position: v.position }).eq('id', v.id)
-      ));
-    }
-  } catch (e) {
-    console.error('waypoint position renumber failed', e);
-  }
-
-  return data?.[0];
+  return null;
 }
 
 function buildActivityPayload(form, visit, tz) {
