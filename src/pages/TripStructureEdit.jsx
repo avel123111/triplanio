@@ -456,9 +456,16 @@ export default function TripStructureEdit() {
     const next = Math.max(0, Math.min(60, base + delta));
     if (next === base) return;
     nightsTarget.current.set(id, next);
-    // optimistic local patch on every click (instant; NO server call during the burst)
-    applyNodes(draft.nodes.map((n) => (n.id !== id ? n
-      : next === 0 ? { ...n, kind: 'waypoint', nights: 0 } : { ...n, kind: 'transit', nights: next })));
+    // partial optimism: instantly reflect ONLY the touched city (its nights + its own
+    // end_date). Downstream dates are NOT recomputed on the client — they come from the
+    // server (recompute_trip) on refetch. No second date engine in the editor.
+    editDraft((d) => ({ ...d, nodes: d.nodes.map((n) => {
+      if (n.id !== id) return n;
+      const end = next > 0 && n.start_date ? toDT(n.start_date).plus({ days: next }).toISODate() : n.start_date;
+      return next === 0
+        ? { ...n, kind: 'waypoint', nights: 0, end_date: n.start_date }
+        : { ...n, kind: 'transit', nights: next, end_date: end };
+    }) }));
     if (String(id).startsWith('tmp-')) return;
     // debounce: send ONE set_city_nights with the FINAL value ~350ms after the last click
     const timers = nightsCommit.current;
@@ -475,8 +482,12 @@ export default function TripStructureEdit() {
     const base = cur ? toDT(cur).plus({ days: delta }).toISO() : null;
     if (!base) return;
     startTarget.current = base;
-    // optimistic local shift every click (no server call during the burst)
-    editDraft((d) => ({ ...d, startDate: base, nodes: recompute(d.nodes, base) }));
+    // partial optimism: shift ALL dates by the same delta (exact, no recompute engine)
+    editDraft((d) => ({ ...d, startDate: base, nodes: d.nodes.map((n) => ({
+      ...n,
+      start_date: n.start_date ? toDT(n.start_date).plus({ days: delta }).toISODate() : n.start_date,
+      end_date: n.end_date ? toDT(n.end_date).plus({ days: delta }).toISODate() : n.end_date,
+    })) }));
     // debounce: send ONE set_trip_start_date with the FINAL value ~350ms after last click
     if (startCommit.current) clearTimeout(startCommit.current);
     startCommit.current = setTimeout(() => {
@@ -490,16 +501,20 @@ export default function TripStructureEdit() {
   // leave the draft (the city goes to the tray; on save save_trip_edit deletes the
   // city + children). Bookings are stashed on the node so Restore brings them back.
   const removeCity = (id) => { const n = draft.nodes.find((x) => x.id === id); if (n && !isAnchor(n)) setConfirmDel(n); };
+  // partial optimism: drop the node from the list now; downstream dates are NOT
+  // recomputed on the client — the server (remove_city → recompute_trip) reflows
+  // the chain and runAction refetches it. (removed-tray push stays until the
+  // draft/tray teardown slice.)
   const doRemoveCity = (id) => {
     editDraft((d) => {
       const node = d.nodes.find((n) => n.id === id); if (!node || isAnchor(node)) return d;
-      return { ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id), d.startDate), removed: [...d.removed, node] };
+      return { ...d, nodes: d.nodes.filter((n) => n.id !== id), removed: [...d.removed, node] };
     });
     setConfirmDel(null);
     if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
   };
   const removeEndpoint = (id) => {
-    editDraft((d) => ({ ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id), d.startDate), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) }));
+    editDraft((d) => ({ ...d, nodes: d.nodes.filter((n) => n.id !== id), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) }));
     if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
   };
   const restoreCity = (id) => editDraft((d) => {
@@ -523,12 +538,15 @@ export default function TripStructureEdit() {
       nights: kind === 'transit' ? 2 : null, gap: 0, start_date: null, end_date: null,
     };
     let insertIdx = null;
+    // partial optimism: splice the tmp node into place; its dates stay null until
+    // the server (add_city → recompute_trip) lays them and runAction refetches.
+    // No client recompute — existing cities keep their dates.
     editDraft((d) => {
       const arr = d.nodes.slice();
       if (kind === 'start') { arr.unshift(node); insertIdx = 0; }
       else if (kind === 'end') { arr.push(node); insertIdx = null; }
       else { const endIdx = arr.findIndex((n) => n.kind === 'end'); insertIdx = endIdx === -1 ? null : endIdx; arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
-      return { ...d, nodes: recompute(arr, d.startDate) };
+      return { ...d, nodes: arr };
     });
     runAction(() => rpcAddCity(tripId, {
       city_name: city.city_name, kind,
