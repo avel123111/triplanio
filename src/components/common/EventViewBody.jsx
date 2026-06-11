@@ -396,20 +396,22 @@ export async function getEntityRow(table, id) {
 }
 
 export function useEntitySource(kind, id, { open = true, onError, refreshKey = 0 } = {}) {
-  const [src, setSrc] = useState({ data: null, visit: null, fromVisit: null, toVisit: null });
+  // State is TAGGED with the id it belongs to. A persistently-mounted consumer
+  // (SourceViewLoader lives for the whole TripView) keeps this state between
+  // opens, so without the tag the next open would briefly render the PREVIOUS
+  // entity before the effect runs — flashing stale content and forcing a
+  // remount (the "appears → disappears → appears" flicker).
+  const [src, setSrc] = useState({ id: null, data: null, visit: null, fromVisit: null, toVisit: null });
 
   React.useEffect(() => {
     if (!open || !id) return;
     let cancelled = false;
-    // Reset so a previously-open entity never lingers while the next one loads.
-    setSrc({ data: null, visit: null, fromVisit: null, toVisit: null });
     (async () => {
       try {
         // Gather the row AND its related city_visit(s) before publishing, so the
-        // view shell (modal / editor panel) mounts ONCE with complete data instead
-        // of re-laying-out in two passes — that second pass reads as a flicker on
-        // the mobile bottom-sheet.
-        const next = { data: null, visit: null, fromVisit: null, toVisit: null };
+        // view shell mounts ONCE with complete data instead of re-laying-out in
+        // two passes.
+        const next = { id, data: null, visit: null, fromVisit: null, toVisit: null };
         if (kind === 'hotel') {
           next.data = await getEntityRow('hotel_stays', id);
           if (next.data?.city_visit_id) next.visit = await getEntityRow('city_visits', next.data.city_visit_id).catch(() => null);
@@ -436,7 +438,15 @@ export function useEntitySource(kind, id, { open = true, onError, refreshKey = 0
     // reads rows directly, not via react-query, so cache invalidation alone misses it).
   }, [open, kind, id, refreshKey]);
 
-  return src;
+  // Only expose data once it belongs to the currently-requested id; otherwise the
+  // consumer would render the stale previous entity until the effect resolves.
+  const fresh = src.id === id;
+  return {
+    data:      fresh ? src.data : null,
+    visit:     fresh ? src.visit : null,
+    fromVisit: fresh ? src.fromVisit : null,
+    toVisit:   fresh ? src.toVisit : null,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

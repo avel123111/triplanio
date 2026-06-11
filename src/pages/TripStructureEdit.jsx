@@ -402,12 +402,26 @@ export default function TripStructureEdit() {
       toast({ description: kind === 'start' ? t('tse.start_already_set') : t('tse.end_already_set'), variant: 'warning' });
       return;
     }
+    // Optimistic placement: a new transit city must render at the END of the
+    // route immediately. sortVisits orders by start_date, so a null-date node
+    // would sort to the FRONT and then snap to the end once add_city →
+    // recompute_trip returns real dates (the "jumps to the end" glitch). Seed it
+    // with the trip's last known date (+ its nights) and a trailing position so it
+    // lands in its final slot right away; it stays muted (tmp- id) until the
+    // refetch swaps in real dates. 'start'/'end' are anchors ordered by rank, so
+    // their dates don't affect placement.
+    const provNights = kind === 'transit' ? 2 : null;
+    const lastDate = draft.nodes.reduce((m, n) => { const e = n.end_date || n.start_date; return e && (!m || e > m) ? e : m; }, null);
+    const maxPos = draft.nodes.reduce((m, n) => (Number.isFinite(n.position) && n.position > m ? n.position : m), -1);
+    const provStart = kind === 'start' ? null : lastDate;
+    const provEnd = provStart && kind === 'transit' ? toDT(provStart).plus({ days: provNights }).toISODate() : provStart;
     const node = {
       id: 'tmp-' + Math.random().toString(36).slice(2), kind,
       city_name: city.city_name, country: city.country || null, country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
-      nights: kind === 'transit' ? 2 : null, gap: 0, start_date: null, end_date: null,
+      nights: provNights, gap: 0, start_date: provStart, end_date: provEnd,
+      position: kind === 'start' ? -1 : maxPos + 1,
     };
     let insertIdx = null;
     // partial optimism: splice the tmp node into place; its dates stay null until
