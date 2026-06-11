@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { supabase } from '@/api/supabaseClient';
@@ -95,7 +95,6 @@ export default function TripStructureEdit() {
   const t = useT();
   const { lang } = useI18n();
   const nav = useNavigate();
-  const location = useLocation();
   const qc = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -263,29 +262,6 @@ export default function TripStructureEdit() {
     return [...others, previewTransfer];
   }, [liveTransfers, previewTransfer]);
   useEffect(() => { if (!(leftPanel?.type === 'create' && leftPanel.kind === 'transfer')) setPreviewTransfer(null); }, [leftPanel]);
-  // Open a create form straight away when arriving from a timeline "add manually"
-  // (the warning → partner modal → manual). Intent travels in the route state.
-  const createIntentRef = useRef(false);
-  useEffect(() => {
-    if (createIntentRef.current || !draft) return;
-    const intent = location.state?.create;
-    const editIntent = location.state?.edit;
-    if (!intent && !editIntent) return;
-    createIntentRef.current = true;
-    const byId = (id) => draft.nodes.find((n) => n.id === id);
-    if (intent?.kind === 'hotel') {
-      const v = byId(intent.cityVisitId);
-      if (v) setLeftPanel({ type: 'create', kind: 'hotel', visit: v });
-    } else if (intent?.kind === 'transfer') {
-      const fromVisit = byId(intent.fromId), toVisit = byId(intent.toId);
-      if (fromVisit && toVisit) setLeftPanel({ type: 'create', kind: 'transfer', fromVisit, toVisit });
-    } else if (editIntent?.kind && editIntent?.id) {
-      // Edit-from-timeline: open the entity's panel straight into edit mode.
-      setLeftPanel({ type: 'event', kind: editIntent.kind, id: editIntent.id, autoEdit: true });
-    }
-    nav(location.pathname + (location.search || ''), { replace: true, state: {} }); // consume the intent
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft]);
   // Unified engine: validateTrip emits codes; primaryIssues collapses to <=1 per
   // entity (anti-pile). Adapt to the shape this screen already consumes
   // (resolved message + cityId/hotelId/activityId/transferId aliases + 'warn' level).

@@ -941,12 +941,6 @@ export default function TripView() {
   // Edit Mode (structure editor) gate - exact current model (TRIP_EDIT_MODE_TZ §2):
   // anyone but a viewer; past trips require the trip to be Pro (or owner Pro).
   const canEditMode = myRole !== 'viewer' && (!isTripInPast(visits) || tripIsPro);
-  // Structure Edit Mode lock held (by anyone, incl. self in another tab) → freeze
-  // timeline mutations (TRIP_EDIT_MODE_TZ §3a). Reflected on load/refetch of the shell.
-  const frozen = !!trip?.editing_by;
-  // While the trip is being edited in the Structure editor, freeze ALL event
-  // mutations on the timeline (add/edit/delete) - viewing stays allowed (TZ §3a).
-  const frozenNote = () => toast({ description: t('trip.frozen_note'), variant: 'info' });
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);
@@ -1032,9 +1026,7 @@ export default function TripView() {
         </button>
       )}
       {myRole !== 'viewer' && (
-        frozen
-          ? <button className="trip-hero__btn" disabled><Icon name="lock" size={15} /><span className="trip-hero__btn-text">{t('trip.editing')}</span></button>
-          : <button className="trip-hero__btn" disabled={!canEditMode} onClick={() => nav(`/trip/${trip.id}/edit`)}><Icon name="edit" size={15} /><span className="trip-hero__btn-text">{t('trip.edit_trip')}</span></button>
+        <button className="trip-hero__btn" disabled={!canEditMode} onClick={() => nav(`/trip/${trip.id}/edit`)}><Icon name="edit" size={15} /><span className="trip-hero__btn-text">{t('trip.edit_trip')}</span></button>
       )}
       <ActionMenu
         align="end"
@@ -1196,7 +1188,7 @@ export default function TripView() {
             id={eventView.id}
             open={eventView.open}
             onOpenChange={(o) => setEventView(s => ({ ...s, open: o }))}
-            canEdit={myRole !== 'viewer' && !frozen}
+            canEdit={myRole !== 'viewer'}
             warning={eventView.warning}
           />
 
@@ -1218,18 +1210,13 @@ export default function TripView() {
               onOpenMap={() => setLens('map')}
               onOpenBudget={() => setLens('budget')}
               onOpenMembers={() => setLens('members')}
-              onAddService={frozen ? frozenNote : (type) => setServiceChoice({ open: true, type })}
+              onAddService={(type) => setServiceChoice({ open: true, type })}
               onOpenService={(s) => setEventView({ open: true, kind: 'service', id: s.id })}
               onBudgetLocked={() => setBudgetAddonOff(true)}
             />
           )}
           {shownLens === 'timeline' && (
             <>
-              {frozen && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--wash)', border: '1px solid var(--line)', fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>
-                  <Icon name="lock" size={14} /> {t('trip.frozen_note')}
-                </div>
-              )}
               <div className="ov-anim tl-twocol" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 24, alignItems: 'start' }}>
                 <TimelineLens
                   stream={stream}
@@ -1238,14 +1225,14 @@ export default function TripView() {
                   trip={trip}
                   isViewer={myRole === 'viewer'}
                   isLoading={loadingContent}
-                  onAddTransfer={frozen ? frozenNote : (fromVisit, toVisit) =>
+                  onAddTransfer={(fromVisit, toVisit) =>
                     setTransferChoice({ open: true, fromVisit, toVisit })
                   }
-                  onAddHotel={frozen ? frozenNote : (visit) =>
+                  onAddHotel={(visit) =>
                     setHotelChoice({ open: true, visit })
                   }
                   onOpenEvent={openEventView}
-                  onAddActivityForDay={frozen ? frozenNote : (dayKey) => {
+                  onAddActivityForDay={(dayKey) => {
                     const dayVisit = visits.find(v =>
                       v.kind === 'transit' && v.start_date && v.end_date &&
                       naiveDayKey(v.start_date) <= dayKey && dayKey <= naiveDayKey(v.end_date)
