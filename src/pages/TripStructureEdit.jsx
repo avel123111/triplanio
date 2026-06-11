@@ -63,6 +63,23 @@ const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.
 // server recompute_trip. Used here only as optimistic reorder layout.
 const recompute = layoutDates;
 
+// Adjacency-driven gap, mirroring server recompute_trip [R1]: a city's gap is 1
+// ONLY when the transfer between it and the PREVIOUS node has day_change — not any
+// transfer that merely points at this city. A baked gap goes stale after a reorder
+// (the overnight transfer is no longer adjacent) and would drift +1 vs the server,
+// so it must be re-derived on every (re)layout. ManualPlanner passes no transfers
+// → all gap 0. The first non-anchor's gap is forced 0 in layoutDates regardless.
+function applyAdjacencyGaps(nodes, transfers = []) {
+  let prevId = null;
+  return nodes.map((n) => {
+    if (isAnchor(n)) { prevId = n.id; return n; }
+    const tr = prevId ? (transfers || []).find((t) => t.from_city_visit_id === prevId && t.to_city_visit_id === n.id) : null;
+    const next = { ...n, gap: tr?.day_change ? 1 : 0 };
+    prevId = n.id;
+    return next;
+  });
+}
+
 function buildDraft(shell, transfers = []) {
   const visits = sortVisits(shell?.cityVisits || []);
   // nights = stored date span. gap (days between the previous checkout and this
@@ -70,17 +87,21 @@ function buildDraft(shell, transfers = []) {
   // / day-change transfer means this city starts +1 day after the previous one.
   // No incoming transfer or day_change=false → gap 0 (flush). Source of truth =
   // transfers.day_change; the stored city dates are just the baked-in result.
-  const dayChangeByTo = new Map();
-  for (const tr of (transfers || [])) {
-    if (tr?.to_city_visit_id) dayChangeByTo.set(tr.to_city_visit_id, !!tr.day_change);
-  }
+  // gap is adjacency-driven (mirror server recompute_trip [R1]): a city's gap is 1
+  // only if the transfer between it and the PREVIOUS node has day_change, NOT any
+  // transfer that merely points at this city (which would survive a reorder and
+  // drift +1 vs the server). First non-anchor's gap is forced 0 in layoutDates.
+  const trBetween = (a, b) => (transfers || []).find((t) => t.from_city_visit_id === a && t.to_city_visit_id === b);
+  let prevId = null;
   const nodes = visits.map((v, i) => {
     const base = { ...v, position: Number.isFinite(v.position) ? v.position : i };
-    if (isAnchor(v)) return { ...base, nights: null, gap: null };
+    if (isAnchor(v)) { prevId = v.id; return { ...base, nights: null, gap: null }; }
     const sd = dayOf(v.start_date), ed = dayOf(v.end_date);
     const isWp = v.kind === 'waypoint';
     const nights = isWp ? null : Math.max(0, (sd && ed ? Math.round(ed.diff(sd, 'days').days) : 1));
-    const gap = dayChangeByTo.get(v.id) ? 1 : 0;
+    const tr = prevId ? trBetween(prevId, v.id) : null;
+    const gap = tr?.day_change ? 1 : 0;
+    prevId = v.id;
     return { ...base, nights, gap };
   });
   // Draft holds ONLY structure (nodes + removed cities + a FIXED trip start date).
@@ -294,7 +315,7 @@ export default function TripStructureEdit() {
   // Trip start (d.startDate) is FIXED until shiftStart changes it. recompute chains
   // nodes from that date preserving each node's nights+gap, so editing one node only
   // moves the nodes after it; the start and earlier nodes never move.
-  const applyNodes = (nextNodes) => editDraft((d) => ({ ...d, nodes: recompute(nextNodes, d.startDate) }));
+  const applyNodes = (nextNodes) => editDraft((d) => ({ ...d, nodes: recompute(applyAdjacencyGaps(nextNodes, liveTransfers), d.startDate) }));
   // Live-persist a new chain order (drag/keyboard reorder). tmp cities aren't in the
   // DB yet so skip until they're real (their add already refetches). One
   // reorder_cities → server recompute → refetch.
@@ -635,7 +656,7 @@ export default function TripStructureEdit() {
       editDraft((d) => {
         const byId = new Map(d.nodes.map((n) => [n.id, n]));
         const nextNodes = order.map((id) => byId.get(id)).filter(Boolean);
-        return { ...d, nodes: recompute(nextNodes, d.startDate) };
+        return { ...d, nodes: recompute(applyAdjacencyGaps(nextNodes, liveTransfers), d.startDate) };
       });
       persistOrder(order); // live-persist the dropped order
       if (rowEl) { rowEl.style.transition = ''; rowEl.style.transform = ''; }
@@ -828,6 +849,7 @@ export default function TripStructureEdit() {
                 const aa = actsFor(n.id);
                 body = <GridNode seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
                   onOpenCity={() => openCity(n.id)}
+                  onAct={() => (aa.length ? openCity(n.id) : createBooking('activity', n))}
                   onNightsMinus={() => nudgeNights(n.id, -1)} onNightsPlus={() => nudgeNights(n.id, 1)}
                   drag={dragProps} />;
               } else {
