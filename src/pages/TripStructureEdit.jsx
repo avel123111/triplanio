@@ -174,7 +174,6 @@ export default function TripStructureEdit() {
   // Live model: every change is persisted immediately (no draft/lock/save), so
   // leaving is a plain navigation — nothing to save, no lock to release, no prompt.
   const leaveNow = (to) => nav(typeof to === 'string' ? to : `/trip/${tripId}`);
-  const guardedLeave = leaveNow;
   // Optimistic local patch only; the server owns the authoritative state (refetched
   // after each action via runAction/closePanelAndSync). No undo/dirty/reset.
   const editDraft = (updater) => setDraft((d) => (d ? updater(d) : d));
@@ -454,10 +453,10 @@ export default function TripStructureEdit() {
   //   Сброс    = discard all edits but STAY in the editor.
   const headerEl = (
     <header className="app-header">
-      <button className="app-header__crumb-back" onClick={() => guardedLeave(`/trip/${tripId}`)} title={t('tse.exit_editor')}>
+      <button className="app-header__crumb-back" onClick={() => leaveNow(`/trip/${tripId}`)} title={t('tse.exit_editor')}>
         <Icon name="back" size={15} />
       </button>
-      <div className="app-header__brand" onClick={() => guardedLeave('/trips')} style={{ cursor: 'pointer' }}>
+      <div className="app-header__brand" onClick={() => leaveNow('/trips')} style={{ cursor: 'pointer' }}>
         <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
         <span className="app-header__brand-name">Triplanio</span>
       </div>
@@ -774,7 +773,7 @@ export default function TripStructureEdit() {
       <div className="ts-drawer__scrim" onClick={() => setSideOpen(false)} />
       <TripSidebar
         tripId={tripId} trip={trip} isEditScreen
-        onNavigate={(id) => { setSideOpen(false); guardedLeave(`/trip/${tripId}?lens=${id}`); }}
+        onNavigate={(id) => { setSideOpen(false); leaveNow(`/trip/${tripId}?lens=${id}`); }}
         isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
         onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
         onProInfo={() => nav(`/pro?tripId=${tripId}`)}
@@ -785,7 +784,7 @@ export default function TripStructureEdit() {
       <div className="ts-railwrap" style={{ flex: '0 0 56px', minWidth: 0, position: 'relative', minHeight: 0 }}>
         <TripSidebar
           tripId={tripId} trip={trip} isEditScreen collapsed
-          onNavigate={(id) => guardedLeave(`/trip/${tripId}?lens=${id}`)}
+          onNavigate={(id) => leaveNow(`/trip/${tripId}?lens=${id}`)}
           isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
           onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
           onProInfo={() => nav(`/pro?tripId=${tripId}`)}
