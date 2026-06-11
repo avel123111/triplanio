@@ -613,7 +613,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   ];
 
   return (
-    <div className="dl-root">
+    <div className="dl-root ov-anim">
       {/* ── Toolbar: search + filter ── */}
       <div className="dl-toolbar">
         <label className="dl-search">

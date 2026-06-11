@@ -64,6 +64,15 @@ export default function Inbox() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
 
+  // Per-notification mark-as-read, mirroring the bell popover (NotificationsBell).
+  const markOneRead = useMutation({
+    mutationFn: async (notifId) => {
+      const { error } = await supabase.from('notifications').update({ read: true }).eq('id', notifId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+
   const respondInvite = useMutation({
     mutationFn: async ({ memberId, action }) => {
       // Use the edge function: it sets user_id on the member (so the accepter
@@ -118,7 +127,7 @@ export default function Inbox() {
         <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
       </header>
 
-      <main style={{ flex: 1, padding: '32px 24px', maxWidth: 760, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <main className="ov-anim" style={{ flex: 1, padding: '32px 24px', maxWidth: 760, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
           <h1 style={{ flex: 1, marginBottom: 0 }}>{t('notif.inbox_title')}</h1>
           {notifications.length > 0 && unreadCount > 0 && (
@@ -156,7 +165,11 @@ export default function Inbox() {
                     t={t}
                     dateLocale={dateLocale}
                     pending={respondInvite.isPending}
-                    onRespond={(action) => respondInvite.mutate({ memberId: n.trip_member_id, action })}
+                    onRespond={(action) => {
+                      if (!n.read) markOneRead.mutate(n.id);
+                      respondInvite.mutate({ memberId: n.trip_member_id, action });
+                    }}
+                    onMarkRead={() => { if (!n.read) markOneRead.mutate(n.id); }}
                   />
                 ))}
               </div>
@@ -185,7 +198,7 @@ function InboxEmpty({ onCollection, onAi }) {
   );
 }
 
-function InboxRow({ n, t, dateLocale, pending, onRespond }) {
+function InboxRow({ n, t, dateLocale, pending, onRespond, onMarkRead }) {
   const isInvite = n.type === 'trip_invite' && n.trip_member_id;
   const { data: member } = useQuery({
     queryKey: ['trip-member', n.trip_member_id],
@@ -212,7 +225,10 @@ function InboxRow({ n, t, dateLocale, pending, onRespond }) {
   const showPending = isInvite && member?.status === 'pending';
 
   return (
-    <div className={`nrow${n.read ? '' : ' nrow--unread'}`}>
+    <div
+      className={`nrow${n.read ? '' : ' nrow--unread'}`}
+      onClick={() => { if (!n.read) onMarkRead?.(); }}
+    >
       <div className="n-ic" style={{ '--ic': meta.color }}>
         <Icon name={meta.icon} size={16} />
       </div>

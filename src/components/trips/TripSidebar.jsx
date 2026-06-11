@@ -3,34 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
+import { Sheet } from '@/components/ui/Sheet';
 import { LENS_ITEMS, MGMT_ITEMS, isLensVisible, EDIT_ITEM, canEditStructure } from '@/lib/tripMenu';
 import { useUnreadChatCount } from '@/lib/chat';
 
-// Shared left trip menu — used by both the trip screens (TripView) and the
-// structure editor (TripStructureEdit) so the two are IDENTICAL: same item set
-// (addon-gated lenses + management), same role gating, same chat badge and the
-// same "upgrade to Pro" card. The only difference is navigation:
-//   • TripView   passes onNavigate=setLens (in-page lens switch), lens=current.
-//   • the editor passes onNavigate=route-nav and isEditScreen so the "Edit
-//     structure" item is the active one.
-export default function TripSidebar({
+// Shared menu BODY (groups + upgrade card). Rendered identically by:
+//   • TripSidebar      — the desktop/tablet <aside> (and the editor's slide drawer)
+//   • TripSidebarSheet — the phone bottom-sheet
+// Keeping a single body guarantees the two shells expose the exact same item
+// set, role gating, chat badge and "upgrade to Pro" card.
+function SidebarBody({
   tripId, trip, lens, onNavigate,
   isPro, proResolved = true, isOwner, myRole,
-  onUpgrade, onProInfo, onShare, isEditScreen = false, collapsed = false,
+  onUpgrade, onProInfo, onShare, isEditScreen = false,
 }) {
   const { t } = useI18n();
   const navSb = useNavigate();
-  // Collapsed rail: open on arrival, stay open until the mouse leaves. But if the
-  // user arrived NOT via the menu (mouse isn't over it), collapse it right away.
-  const [railOpen, setRailOpen] = useState(true);
-  const asideRef = useRef(null);
-  useEffect(() => {
-    if (!collapsed) return;
-    const id = requestAnimationFrame(() => {
-      if (asideRef.current && !asideRef.current.matches(':hover')) setRailOpen(false);
-    });
-    return () => cancelAnimationFrame(id);
-  }, [collapsed]);
   const lensItems = LENS_ITEMS.filter((item) => isLensVisible(trip, item.id));
   // Viewers can't open Settings or Members — hide those entirely.
   const mgmtItems = MGMT_ITEMS.filter((item) =>
@@ -40,12 +28,7 @@ export default function TripSidebar({
   const showUpgrade = proResolved && !isPro;
   const chatUnread = useUnreadChatCount(tripId);
   return (
-    <aside
-      ref={asideRef}
-      className={'app-side' + (collapsed ? ' app-side--rail' : '') + (collapsed && railOpen ? ' is-open' : '')}
-      onMouseEnter={collapsed ? () => setRailOpen(true) : undefined}
-      onMouseLeave={collapsed ? () => setRailOpen(false) : undefined}
-    >
+    <>
       <div className="app-side__group">
         <div className="app-side__group-label">{t('trip.sections_title')}</div>
         {lensItems.map((item) => (
@@ -113,6 +96,58 @@ export default function TripSidebar({
           )}
         </div>
       )}
+    </>
+  );
+}
+
+// Shared left trip menu — used by both the trip screens (TripView) and the
+// structure editor (TripStructureEdit) so the two are IDENTICAL: same item set
+// (addon-gated lenses + management), same role gating, same chat badge and the
+// same "upgrade to Pro" card. The only difference is navigation:
+//   • TripView   passes onNavigate=setLens (in-page lens switch), lens=current.
+//   • the editor passes onNavigate=route-nav and isEditScreen so the "Edit
+//     structure" item is the active one.
+export default function TripSidebar({
+  tripId, trip, lens, onNavigate,
+  isPro, proResolved = true, isOwner, myRole,
+  onUpgrade, onProInfo, onShare, isEditScreen = false, collapsed = false,
+}) {
+  // Collapsed rail: open on arrival, stay open until the mouse leaves. But if the
+  // user arrived NOT via the menu (mouse isn't over it), collapse it right away.
+  const [railOpen, setRailOpen] = useState(true);
+  const asideRef = useRef(null);
+  useEffect(() => {
+    if (!collapsed) return;
+    const id = requestAnimationFrame(() => {
+      if (asideRef.current && !asideRef.current.matches(':hover')) setRailOpen(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [collapsed]);
+  return (
+    <aside
+      ref={asideRef}
+      className={'app-side' + (collapsed ? ' app-side--rail' : '') + (collapsed && railOpen ? ' is-open' : '')}
+      onMouseEnter={collapsed ? () => setRailOpen(true) : undefined}
+      onMouseLeave={collapsed ? () => setRailOpen(false) : undefined}
+    >
+      <SidebarBody
+        tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
+        isPro={isPro} proResolved={proResolved} isOwner={isOwner} myRole={myRole}
+        onUpgrade={onUpgrade} onProInfo={onProInfo} onShare={onShare} isEditScreen={isEditScreen}
+      />
     </aside>
+  );
+}
+
+// Phone variant: the exact same menu rendered inside the canonical bottom-sheet
+// (reuses <Sheet> — max-height, swipe-to-close, scrim, focus-trap). On phones the
+// slide-in drawer is suppressed via CSS and this is shown instead. The parent
+// gates `open` on the phone breakpoint and closes it through onNavigate/onShare.
+export function TripSidebarSheet({ open, onOpenChange, ...rest }) {
+  const { t } = useI18n();
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange} title={t('trip.sections_title')}>
+      <SidebarBody {...rest} />
+    </Sheet>
   );
 }

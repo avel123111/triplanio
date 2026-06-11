@@ -525,7 +525,7 @@ export default function CalendarLens({ stream, visits, trip, isLoading, onOpenEv
     : week.label ? `· ${t('calendar.week_word')} ${week.label}` : '';
 
   return (
-    <>
+    <div className="ov-anim--cal">
       {/* ── Toolbar ────────────────────────────────────────────── */}
       <div className="ncal-hd">
         <div className="ncal-hd-l">
@@ -605,6 +605,6 @@ export default function CalendarLens({ stream, visits, trip, isLoading, onOpenEv
 
       {/* ── Legend ─────────────────────────────────────────────── */}
       <Legend visits={visits} />
-    </>
+    </div>
   );
 }

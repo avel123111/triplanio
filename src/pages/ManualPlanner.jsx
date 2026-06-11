@@ -9,6 +9,7 @@ import { isTripInPast } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/geo';
+import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
 import { Btn, EmptyState, Severity } from '../design/index';
 import HeaderActions from '@/components/HeaderActions';
@@ -88,18 +89,15 @@ function computeAutoTitle(home, cities, t) {
 }
 
 function recomputeDates(list) {
-  // Only recompute if the first city has an anchor date - otherwise leave dates alone
+  // Only recompute if the first city has an anchor date - otherwise leave dates alone.
   if (list.length === 0 || !list[0].startDate) return list;
-  let cursor = new Date(list[0].startDate + 'T00:00:00');
-  return list.map((c, i) => {
-    if (i === 0) {
-      cursor.setDate(cursor.getDate() + (+c.nights || 0));
-      return c;
-    }
-    const d = new Date(cursor);
-    cursor.setDate(cursor.getDate() + (+c.nights || 0));
-    return { ...c, startDate: ymdLocal(d) };
-  });
+  // Pre-creation planner cities are a flat nights-only chain (no transfers yet → no
+  // gap, no waypoints/anchors). Adapt to the shared canonical layout (lib/tripDates,
+  // mirroring server recompute_trip) so the planner and the editor produce identical
+  // dates on identical input — one date engine, no second implementation.
+  const nodes = list.map((c) => ({ kind: 'transit', nights: +c.nights || 0, gap: 0, start_date: c.startDate || null, end_date: null }));
+  const laid = layoutDates(nodes, list[0].startDate);
+  return list.map((c, i) => (i === 0 ? c : { ...c, startDate: laid[i].start_date }));
 }
 
 // ─── CityPicker ──────────────────────────────────────────────────────────────
@@ -506,7 +504,7 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
 
 // ─── Step 2: Cities ───────────────────────────────────────────────────────────
 
-function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startDate, setStartDate, goPrev, goNext, onReset }) {
+function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalPoint, startDate, setStartDate, goPrev, goNext, onReset }) {
   const t = useT();
   const [hasError, setHasError] = useState(false);
   const [dragIdx, setDragIdx] = useState(null);
@@ -619,6 +617,16 @@ function StepCities({ cities, setCities, home, finalPoint, setFinalPoint, startD
           >
             <Icon name="plus" size={14} /> {t('planner.add_more_city')}
           </button>
+        </div>
+      )}
+
+      {/* End anchor — mirrors the start anchor (and PanelAi) so the AI-suggested
+          return city stays visible on this step instead of seeming to vanish.
+          Read-only here; it's edited in the Return step. effectiveReturn already
+          resolves round-trips to home. */}
+      {returnCity?.city_name && (
+        <div style={{ marginTop: 12 }}>
+          <CityAnchorRow label={t('ai_plan.end')} city_name={returnCity.city_name} country={returnCity.country} kind="end" />
         </div>
       )}
 
@@ -1372,7 +1380,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} goNext={goNext} />
           ))}
           {step === 'cities' && (
-            <StepCities cities={cities} setCities={setCities} home={home} startDate={startDate} setStartDate={setStartDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} goPrev={goPrev} goNext={goNext} onReset={resetToStart} />
+            <StepCities cities={cities} setCities={setCities} home={home} returnCity={effectiveReturn} startDate={startDate} setStartDate={setStartDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} goPrev={goPrev} goNext={goNext} onReset={resetToStart} />
           )}
           {step === 'return' && (
             <StepReturn
