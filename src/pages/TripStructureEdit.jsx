@@ -235,18 +235,29 @@ export default function TripStructureEdit() {
   const canUndo = undoStack.length > 0;
   // Сброс: вернуть к загруженному состоянию, оставаясь в редакторе.
   const reset = () => { if (!baseRef.current) return; setDraft(JSON.parse(baseRef.current)); setDirty(false); setUndoStack([]); clearDraftStore(); };
-  // Live edit: the optimistic local patch already ran; now persist the change via the
-  // per-action RPC, refetch the authoritative server state (the server owns the date
-  // layout via recompute_trip), and rebuild the draft from it. On error → toast + resync.
+  // Live edit: the optimistic local patch already ran. Persist via RPC, then reconcile
+  // with the authoritative server state — but ONLY if this is still the latest action.
+  // A monotonic seq drops stale reconciles so rapid edits don't snap the UI back to an
+  // intermediate server state (no jitter). Per-action RPCs are also coalesced/debounced
+  // by their callers (e.g. the nights stepper) so the server receives only the final value.
+  const seqRef = useRef(0);
   const runAction = async (rpcFn) => {
+    const mySeq = ++seqRef.current;
     try { await rpcFn(); }
     catch (e) { toast({ description: t('tse.err_save') + (e?.message || e), variant: 'destructive' }); }
+    if (mySeq !== seqRef.current) return;           // superseded by a newer action → keep optimistic state
     try { await refetchTrip(qc, tripId); } catch { /* ignore */ }
+    if (mySeq !== seqRef.current) return;           // a newer action started during the refetch
     clearDraftStore();
     setUndoStack([]);
     setDirty(false);
     setDraft(null); // rebuild from fresh server state on next render (buildDraft)
   };
+  // Coalesced/debounced server commit for the nights stepper (one RPC after the burst).
+  const nightsCommit = useRef(new Map());   // cityId -> timeout handle
+  const nightsTarget = useRef(new Map());   // cityId -> latest target nights (sync source of truth)
+  const startCommit = useRef(null);         // debounce handle for trip start shift
+  const startTarget = useRef(null);         // latest target trip start ISO (sync source of truth)
 
   const { data: shell, isLoading: loadingShell, error: shellError } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
@@ -438,17 +449,42 @@ export default function TripStructureEdit() {
   const nudgeNights = (id, delta) => {
     const node = draft.nodes.find((n) => n.id === id);
     if (!node || isAnchor(node)) return;
-    const cur = node.kind === 'waypoint' ? 0 : (node.nights || 0);
-    const next = Math.max(0, Math.min(60, cur + delta));
-    // optimistic local patch (instant stepper + cascade preview), then persist + refetch
+    // synchronous target survives rapid clicks before re-render; clamp 0..60
+    const base = nightsTarget.current.has(id)
+      ? nightsTarget.current.get(id)
+      : (node.kind === 'waypoint' ? 0 : (node.nights || 0));
+    const next = Math.max(0, Math.min(60, base + delta));
+    if (next === base) return;
+    nightsTarget.current.set(id, next);
+    // optimistic local patch on every click (instant; NO server call during the burst)
     applyNodes(draft.nodes.map((n) => (n.id !== id ? n
       : next === 0 ? { ...n, kind: 'waypoint', nights: 0 } : { ...n, kind: 'transit', nights: next })));
-    if (!String(id).startsWith('tmp-')) runAction(() => rpcSetCityNights(id, next));
+    if (String(id).startsWith('tmp-')) return;
+    // debounce: send ONE set_city_nights with the FINAL value ~350ms after the last click
+    const timers = nightsCommit.current;
+    if (timers.has(id)) clearTimeout(timers.get(id));
+    timers.set(id, setTimeout(() => {
+      timers.delete(id);
+      const finalN = nightsTarget.current.get(id);
+      nightsTarget.current.delete(id);
+      runAction(() => rpcSetCityNights(id, finalN));
+    }, 350));
   };
   const shiftStart = (delta) => {
-    const base = draft?.startDate ? toDT(draft.startDate).plus({ days: delta }).toISO() : null;
+    const cur = startTarget.current ?? draft?.startDate;
+    const base = cur ? toDT(cur).plus({ days: delta }).toISO() : null;
+    if (!base) return;
+    startTarget.current = base;
+    // optimistic local shift every click (no server call during the burst)
     editDraft((d) => ({ ...d, startDate: base, nodes: recompute(d.nodes, base) }));
-    if (base) runAction(() => rpcSetTripStartDate(tripId, toDT(base).toISODate()));
+    // debounce: send ONE set_trip_start_date with the FINAL value ~350ms after last click
+    if (startCommit.current) clearTimeout(startCommit.current);
+    startCommit.current = setTimeout(() => {
+      startCommit.current = null;
+      const finalBase = startTarget.current;
+      startTarget.current = null;
+      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()));
+    }, 350);
   };
   // Remove a city → confirm first. On confirm the city AND its attached bookings
   // leave the draft (the city goes to the tray; on save save_trip_edit deletes the
