@@ -185,12 +185,27 @@ export default function TripStructureEdit() {
   // intermediate server state (no jitter). Per-action RPCs are also coalesced/debounced
   // by their callers (e.g. the nights stepper) so the server receives only the final value.
   const seqRef = useRef(0);
-  const runAction = async (rpcFn) => {
+  // onResult(result) runs ONLY on RPC success, under the seq-guard, BEFORE the refetch —
+  // e.g. addCity reconciles the real city_visit uuid returned by add_city into the draft
+  // immediately (shrinks the tmp- window to the RPC latency instead of the full refetch).
+  const runAction = async (rpcFn, onResult, refetchOpts) => {
     const mySeq = ++seqRef.current;
-    try { await rpcFn(); }
-    catch (e) { toast({ description: t('tse.err_save') + (e?.message || e), variant: 'destructive' }); }
+    let result;
+    try { result = await rpcFn(); }
+    catch (e) {
+      toast({ description: t('tse.err_save') + (e?.message || e), variant: 'destructive' });
+      // RPC failed → drop the optimistic patch RIGHT AWAY by rebuilding from the last
+      // good server state (cache-backed buildDraft). Don't gate the rollback on a
+      // refetch that would also fail offline. If a newer action superseded us it owns
+      // the state, so leave it alone.
+      if (mySeq === seqRef.current) setDraft(null);
+      return;
+    }
     if (mySeq !== seqRef.current) return;           // superseded by a newer action → keep optimistic state
-    try { await refetchTrip(qc, tripId); } catch { /* ignore */ }
+    if (onResult) { try { onResult(result); } catch { /* ignore */ } }
+    // refetchOpts lets date-only actions (nights/start/reorder) skip the CONTENT half
+    // (hotels/activities/transfers unchanged) → less work, less flicker. Default: both.
+    try { await refetchTrip(qc, tripId, refetchOpts); } catch { /* ignore */ }
     if (mySeq !== seqRef.current) return;           // a newer action started during the refetch
     setDraft(null); // rebuild from fresh server state on next render (buildDraft)
   };
@@ -308,7 +323,7 @@ export default function TripStructureEdit() {
   // Live-persist a new chain order (drag/keyboard reorder). tmp cities aren't in the
   // DB yet so skip until they're real (their add already refetches). One
   // reorder_cities → server recompute → refetch.
-  const persistOrder = (ids) => { if (ids.some(isTmpId)) return; runAction(() => rpcReorderCities(tripId, ids)); };
+  const persistOrder = (ids) => { if (ids.some(isTmpId)) return; runAction(() => rpcReorderCities(tripId, ids), undefined, { content: false }); };
   // Nights 0..60. Hitting 0 turns a city into a waypoint (a 0-night transit
   // stop); raising a waypoint above 0 turns it back into a transit city.
   const nudgeNights = (id, delta) => {
@@ -339,7 +354,7 @@ export default function TripStructureEdit() {
       timers.delete(id);
       const finalN = nightsTarget.current.get(id);
       nightsTarget.current.delete(id);
-      runAction(() => rpcSetCityNights(id, finalN));
+      runAction(() => rpcSetCityNights(id, finalN), undefined, { content: false });
     }, 350));
   };
   const shiftStart = (delta) => {
@@ -359,7 +374,7 @@ export default function TripStructureEdit() {
       startCommit.current = null;
       const finalBase = startTarget.current;
       startTarget.current = null;
-      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()));
+      runAction(() => rpcSetTripStartDate(tripId, toDT(finalBase).toISODate()), undefined, { content: false });
     }, 350);
   };
   // Remove a city → confirm first. On confirm the city AND its attached bookings
@@ -405,12 +420,15 @@ export default function TripStructureEdit() {
       else { const endIdx = arr.findIndex((n) => n.kind === 'end'); insertIdx = endIdx === -1 ? null : endIdx; arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
       return { ...d, nodes: arr };
     });
+    const tmpId = node.id; // swap this tmp- id for the real uuid the moment add_city returns
     runAction(() => rpcAddCity(tripId, {
       city_name: city.city_name, kind,
       country: city.country || null, country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
-    }, insertIdx));
+    }, insertIdx), (realId) => {
+      if (realId) editDraft((d) => ({ ...d, nodes: d.nodes.map((n) => (n.id === tmpId ? { ...n, id: realId } : n)) }));
+    });
   };
   const onPickCity = async (c, kind) => {
     closeLeftPanel();
@@ -433,7 +451,7 @@ export default function TripStructureEdit() {
       setLeftPanel({ type: 'event', kind: 'transfer', id: tr.id, warning: issue?.message || null });
       return;
     }
-    if (isTmpId(a?.id) || isTmpId(b?.id)) { toast({ description: t('tse.save_new_city_first'), variant: 'warning' }); return; }
+    if (isTmpId(a?.id) || isTmpId(b?.id)) return; // pending city → seam is muted; silent safety net
     setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: a, toVisit: b });
   };
 
@@ -501,7 +519,9 @@ export default function TripStructureEdit() {
   const openEvent = (kind, id) => setLeftPanel({ type: 'event', kind, id, warning: (issues.find((i) => i[`${kind}Id`] === id)?.message) || null });
   // hotel/transfer have partner offers → show the PickPanel ("Развилка") first;
   // activities have none → straight to the form.
-  const createBooking = (kind, node) => setLeftPanel(kind === 'hotel' ? { type: 'pick', kind, visit: node } : { type: 'create', kind, visit: node });
+  // A hotel/activity can only attach to a city with a real uuid — block while the
+  // city is still pending (tmp- id, add_city in flight) so the write can't hit an FK.
+  const createBooking = (kind, node) => { if (isTmpId(node?.id)) return; setLeftPanel(kind === 'hotel' ? { type: 'pick', kind, visit: node } : { type: 'create', kind, visit: node }); };
   // Stay numbering (only nights-cities are numbered).
   const stayNumById = {};
   { let sc = 0; ordered.forEach((n) => { if (n.kind === 'transit') stayNumById[n.id] = ++sc; }); }
@@ -700,8 +720,8 @@ export default function TripStructureEdit() {
           onOpenHotel={(id) => openEvent('hotel', id)} onAddHotel={() => createBooking('hotel', node)}
           onOpenActivity={(id) => openEvent('activity', id)} onAddActivity={() => createBooking('activity', node)}
           onOpenTransfer={(tr) => openEvent('transfer', tr.id)}
-          onAddArrival={() => { if (!prev) return; if (isTmpId(prev.id) || isTmpId(node.id)) { toast({ description: t('tse.save_new_city_first'), variant: 'warning' }); return; } setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: prev, toVisit: node }); }}
-          onAddDeparture={() => { if (!next) return; if (isTmpId(node.id) || isTmpId(next.id)) { toast({ description: t('tse.save_new_city_first'), variant: 'warning' }); return; } setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: node, toVisit: next }); }}
+          onAddArrival={() => { if (!prev) return; if (isTmpId(prev.id) || isTmpId(node.id)) return; setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: prev, toVisit: node }); }}
+          onAddDeparture={() => { if (!next) return; if (isTmpId(node.id) || isTmpId(next.id)) return; setLeftPanel({ type: 'pick', kind: 'transfer', fromVisit: node, toVisit: next }); }}
         />
       );
     }
@@ -805,6 +825,7 @@ export default function TripStructureEdit() {
               const dIdx = ordered.indexOf(n);     // stable index in the real order
               const next = displayNodes[displayNodes.indexOf(n) + 1];
               const tr = next ? transferFor(n.id, next.id) : null;
+              const pending = isTmpId(n.id);       // city awaiting its real uuid (add_city in flight) → muted, non-editable
               const dragging = dragIdx === dIdx;
               const dragProps = {
                 dragging,
@@ -831,13 +852,16 @@ export default function TripStructureEdit() {
                   drag={dragProps} />;
               }
               return (
-                <div className="te-seamwrap" key={n.id} ref={setRowRef(n.id)}>
+                <div className={'te-seamwrap' + (pending ? ' is-pending' : '')} key={n.id} ref={setRowRef(n.id)}>
                   {body}
                   {/* Transfer chip straddles the seam to the next city. Stays
                       mounted during drag but melts away via CSS (.is-dragging),
-                      then eases back on drop — adjacency is in flux mid-drag. */}
+                      then eases back on drop — adjacency is in flux mid-drag.
+                      A seam touching a pending (tmp) city on either side is muted
+                      (the incoming seam lives in the PREVIOUS row, so pass it
+                      explicitly — CSS from this wrap can't reach it). */}
                   {next && (
-                    <SeamTransfer a={n} b={next} t={tr} mismatch={transferMismatch(tr)} onOpen={() => openTransferRow(n, next, tr)} />
+                    <SeamTransfer a={n} b={next} t={tr} mismatch={transferMismatch(tr)} disabled={pending || isTmpId(next.id)} onOpen={() => openTransferRow(n, next, tr)} />
                   )}
                 </div>
               );
@@ -1081,15 +1105,16 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
 // separator line, its surface bg covering it — it doesn't split the rows). A pill
 // when the transfer exists, a dashed "+ переезд" when not. Click → transport panel
 // (existing) or the "Развилка" pick panel (new). Same-city legs show nothing.
-function SeamTransfer({ a, b, t, mismatch, onOpen }) {
+function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
   const tx = useT();
   const { lang } = useI18n();
   const sameCity = (a.external_city_id && b.external_city_id && a.external_city_id === b.external_city_id) || (a.city_name && a.city_name === b.city_name);
   if (sameCity && !t) return null;
+  const click = disabled ? undefined : onOpen; // a seam next to a pending city is inert
   if (!t) {
     return (
       <div className="te-seam">
-        <button className="te-seam__pill te-seam__pill--add" onClick={onOpen} title={`${a.city_name} → ${b.city_name}`}>
+        <button className={'te-seam__pill te-seam__pill--add' + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
           <Icon name="plus" size={11} /> {tx('tse.add_transfer')}
         </button>
       </div>
@@ -1098,7 +1123,7 @@ function SeamTransfer({ a, b, t, mismatch, onOpen }) {
   const meta = TKIND[t.transport_type] || TKIND.train;
   return (
     <div className="te-seam">
-      <button className={'te-seam__pill' + (mismatch ? ' is-warn' : '')} onClick={onOpen} title={`${a.city_name} → ${b.city_name}`}>
+      <button className={'te-seam__pill' + (mismatch ? ' is-warn' : '') + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
         <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
         <span style={{ fontWeight: 800, fontSize: 'var(--fs-meta)', color: mismatch ? 'var(--warning)' : 'var(--ev-transfer-ink)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
         {t.day_change && <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} title={tx('tse.overnight_title')} />}

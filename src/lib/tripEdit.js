@@ -45,9 +45,14 @@ export async function rpcReorderCities(tripId, orderedIds) {
 }
 
 // Pull the authoritative server state after a mutation (server owns the date layout).
-export async function refetchTrip(qc, tripId) {
-  await Promise.all([
-    qc.refetchQueries({ queryKey: TRIP_SHELL_KEY(tripId) }),
-    qc.refetchQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }),
-  ]);
+// Defaults to both halves. Pass { content: false } for DATE-ONLY actions (set_city_nights,
+// set_trip_start_date, reorder_cities): they re-lay city dates (SHELL = trip + cityVisits)
+// but never touch hotels/activities/transfers (CONTENT), so skipping the CONTENT refetch
+// avoids needless work and the flicker it can cause. buildDraft still reads transfers from
+// the existing CONTENT cache, which stays valid for these actions.
+export async function refetchTrip(qc, tripId, { shell = true, content = true } = {}) {
+  const jobs = [];
+  if (shell) jobs.push(qc.refetchQueries({ queryKey: TRIP_SHELL_KEY(tripId) }));
+  if (content) jobs.push(qc.refetchQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }));
+  await Promise.all(jobs);
 }
