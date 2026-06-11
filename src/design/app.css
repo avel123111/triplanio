@@ -726,6 +726,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .sev--warning .sev__icon { background: color-mix(in srgb, var(--warning) 22%, transparent); color: var(--warning-ink); }
 .sev--error { background: var(--danger-soft); border-color: var(--danger-soft); }
 .sev--error .sev__icon { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger-ink); }
+/* Detach a severity plate from the row above it when nested in a danger card
+   (e.g. account deletion: cancel-subscription / confirm-delete warnings). */
+.card--danger > .sev { margin-top: 14px; }
 
 /* Avatars */
 .avatar {
@@ -1931,6 +1934,13 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .trip-screen-body { padding: 16px 16px 48px; }
 }
 
+/* Phones: the lens menu is shown as a bottom-sheet (TripSidebarSheet), so the
+   slide-in drawer and its scrim are suppressed below 640px. */
+@media (max-width: 640px) {
+  .trip-shell .app-side { display: none; }
+  .trip-side-scrim { display: none; }
+}
+
 /* ============================================================
    TRIP OVERVIEW (main screen) — Lumo
    Two columns (map + stats / budget + members) that collapse to
@@ -2033,6 +2043,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .ovwrap .ov-col:last-child .ov-anim:nth-child(1) { animation-delay: 50ms; }
 .ovwrap .ov-col:last-child .ov-anim:nth-child(2) { animation-delay: 110ms; }
 .statrow .statcard { animation: ovIn .4s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms + 80ms); }
+/* Calendar lens: a slightly larger, longer entrance for a more dynamic feel. */
+@keyframes ovInCal { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.ov-anim--cal { animation: ovInCal .5s var(--ease-out) both; }
 
 /* Settings screen reuses the Overview entrance — each top-level block rises in,
    lightly staggered. CSS-only (no wrapper markup): targets direct children. */
@@ -2330,9 +2343,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* responsive: collapse to single column; nav becomes a horizontal scroller */
 @media (max-width: 860px) {
   .acct-shell { grid-template-columns: 1fr; gap: 18px; padding: 18px 16px 64px; }
-  .acct-nav { position: sticky; top: 56px; z-index: 40; background: color-mix(in srgb, var(--bg, var(--wash)) 90%, transparent); backdrop-filter: blur(8px); margin: 0 -16px; padding: 8px 16px; display: flex; gap: 6px; overflow-x: auto; }
-  .acct-nav__grp { display: none; }
-  .acct-nav a { margin-bottom: 0; white-space: nowrap; padding: 8px 13px; } .acct-nav a.active::before { display: none; }
+  /* The section rail is hidden on mobile — sections are reached by scrolling. */
+  .acct-nav { display: none; }
   .acct-plan { grid-template-columns: 1fr; }
   .acct-bento { grid-template-columns: 1fr; }
   .acct-hero__edit { grid-template-columns: 1fr; }
@@ -2341,6 +2353,12 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .acct-hero__row { flex-direction: column; align-items: center; text-align: center; gap: 12px; }
   .acct-hero__actions { justify-content: center; }
   .acct-hero__name { white-space: normal; }
+  /* Card rows (channel cards, delete/logout) wrap so the trailing button drops
+     to its own full-width line instead of overflowing or squeezing the text. */
+  .acct-chan { flex-wrap: wrap; row-gap: 12px; }
+  .acct-chan > .btn { flex: 1 1 100%; width: 100%; }
+  .acct-divrow { flex-wrap: wrap; row-gap: 12px; }
+  .acct-divrow > .btn { flex: 1 1 100%; width: 100%; }
 }
 /* entrance — reuse the Overview rise-in, lightly staggered per section.
    fill=backwards (NOT both): after the animation the section drops its transform,

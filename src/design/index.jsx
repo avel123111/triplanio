@@ -747,7 +747,11 @@ export function StreamEventRow({ e, onClick }) {
   const price = e.price != null ? fmt(e.price, e.cur) : null;
 
   if (e.type === "flight" || e.type === "transfer") {
-    const arrive = e.arrive_time || _addDuration(e.time, e.duration) || "—";
+    // Prefer the explicit end time from the data model (e.endTime is derived
+    // from end_datetime in buildEventStream). _addDuration only parses Cyrillic
+    // "Nч/Nм" duration strings, so on en/es locales (or a missing duration) it
+    // added zero and the arrival time collapsed to the departure time.
+    const arrive = e.endTime || e.arrive_time || _addDuration(e.time, e.duration) || "—";
     const small = [e.carrier, e.duration].filter(Boolean).join(" · ");
     return (
       <div className="tl3-ev tl3-ev--tr">

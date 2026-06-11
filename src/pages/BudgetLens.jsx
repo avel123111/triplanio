@@ -633,7 +633,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const noExpenses = budgetExpenses.length === 0;
 
   return (
-    <div className="bgt">
+    <div className="bgt ov-anim">
       {/* ░ SUMMARY BAND ░ */}
       <div className="bgt-sumband">
         <div className="card bgt-donutcard">

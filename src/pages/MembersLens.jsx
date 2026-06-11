@@ -356,7 +356,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
 
   return (
     <>
-      <div className="mlist">
+      <div className="mlist ov-anim">
         {allMembers.length === 0 && (
           <EmptyState icon="users" title={t('member.empty')} />
         )}

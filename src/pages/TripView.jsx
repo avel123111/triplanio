@@ -12,7 +12,7 @@ import { isProActive, useTripProStatus } from '@/lib/subscription';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 import { isAddonEnabled } from '@/lib/tripAddons';
 import { isLensVisible, LENS_ITEMS, MGMT_ITEMS } from '@/lib/tripMenu';
-import TripSidebar from '@/components/trips/TripSidebar';
+import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
 import TripHeaderBar from '@/components/trips/TripHeaderBar';
 import TripScreenBar, { TripScreenBarCtx } from '@/components/trips/TripScreenBar';
 import ShareDialog from '@/components/trips/ShareDialog';
@@ -987,6 +987,15 @@ export default function TripView() {
   // active lens projects into the screen-title bar. (Trip name + cover editing
   // moved into the Settings lens; the metadata modal was retired.)
   const [sideOpen, setSideOpen] = useState(false);
+  // Phones (≤640px) get the menu as a bottom-sheet instead of the slide-in
+  // drawer; the drawer + its scrim are suppressed at this breakpoint in CSS.
+  const [isPhone, setIsPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const onChange = () => setIsPhone(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
   const [screenActions, setScreenActions] = useState(null);
 
   // If the URL points at a lens the trip has disabled, fall back to the timeline.
@@ -1106,6 +1115,23 @@ export default function TripView() {
         <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
           <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => setShareOpen(true)} />
           <div className="trip-side-scrim" onClick={() => setSideOpen(false)} />
+          {/* Phone menu: bottom-sheet variant of the same sidebar (≤640px). The
+              slide-in drawer above is hidden by CSS at this breakpoint. */}
+          <TripSidebarSheet
+            open={isPhone && sideOpen}
+            onOpenChange={setSideOpen}
+            tripId={tripId}
+            trip={trip}
+            lens={lens}
+            onNavigate={setLens}
+            isPro={tripIsPro}
+            proResolved={tripProResolved}
+            isOwner={isOwner}
+            myRole={myRole}
+            onUpgrade={() => { setSideOpen(false); openUpgrade(); }}
+            onProInfo={() => { setSideOpen(false); setTripProInfoOpen(true); }}
+            onShare={() => { setSideOpen(false); setShareOpen(true); }}
+          />
           <div className="trip-content">
             <TripScreenBar title={t(SCREEN_TITLE_KEY[shownLens] || 'trip_menu.timeline')} actions={screenActions} />
             <main ref={screenBodyRef} className={screenBodyClass}>

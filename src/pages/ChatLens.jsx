@@ -405,7 +405,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   })();
 
   return (
-    <div className="chat-grid">
+    <div className="chat-grid ov-anim">
       {/* Chat area */}
       <div className="chat-card">
         {/* Header */}
