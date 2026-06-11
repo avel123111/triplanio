@@ -501,16 +501,20 @@ export default function TripStructureEdit() {
   // leave the draft (the city goes to the tray; on save save_trip_edit deletes the
   // city + children). Bookings are stashed on the node so Restore brings them back.
   const removeCity = (id) => { const n = draft.nodes.find((x) => x.id === id); if (n && !isAnchor(n)) setConfirmDel(n); };
+  // partial optimism: drop the node from the list now; downstream dates are NOT
+  // recomputed on the client — the server (remove_city → recompute_trip) reflows
+  // the chain and runAction refetches it. (removed-tray push stays until the
+  // draft/tray teardown slice.)
   const doRemoveCity = (id) => {
     editDraft((d) => {
       const node = d.nodes.find((n) => n.id === id); if (!node || isAnchor(node)) return d;
-      return { ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id), d.startDate), removed: [...d.removed, node] };
+      return { ...d, nodes: d.nodes.filter((n) => n.id !== id), removed: [...d.removed, node] };
     });
     setConfirmDel(null);
     if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
   };
   const removeEndpoint = (id) => {
-    editDraft((d) => ({ ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id), d.startDate), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) }));
+    editDraft((d) => ({ ...d, nodes: d.nodes.filter((n) => n.id !== id), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) }));
     if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
   };
   const restoreCity = (id) => editDraft((d) => {
@@ -534,12 +538,15 @@ export default function TripStructureEdit() {
       nights: kind === 'transit' ? 2 : null, gap: 0, start_date: null, end_date: null,
     };
     let insertIdx = null;
+    // partial optimism: splice the tmp node into place; its dates stay null until
+    // the server (add_city → recompute_trip) lays them and runAction refetches.
+    // No client recompute — existing cities keep their dates.
     editDraft((d) => {
       const arr = d.nodes.slice();
       if (kind === 'start') { arr.unshift(node); insertIdx = 0; }
       else if (kind === 'end') { arr.push(node); insertIdx = null; }
       else { const endIdx = arr.findIndex((n) => n.kind === 'end'); insertIdx = endIdx === -1 ? null : endIdx; arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
-      return { ...d, nodes: recompute(arr, d.startDate) };
+      return { ...d, nodes: arr };
     });
     runAction(() => rpcAddCity(tripId, {
       city_name: city.city_name, kind,
