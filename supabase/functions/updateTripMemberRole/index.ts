@@ -10,6 +10,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerAdmin } from '../_shared/tripAccess.ts';
+import { renderRoleChangedNotification } from '../_shared/emailTemplate.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -39,7 +40,36 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
     }
 
+    const roleChanged = member.role !== role;
     await supabaseAdmin.from('trip_members').update({ role }).eq('id', member_id);
+
+    // M4 — tell the affected member their role changed (in THEIR language).
+    // Only on an actual change and only for registered members. Best-effort.
+    if (roleChanged && member.user_id) {
+      try {
+        const [tripResult, memberUserResult] = await Promise.all([
+          supabaseAdmin.from('trips').select('title').eq('id', member.trip_id).single(),
+          supabaseAdmin.from('users').select('language').eq('id', member.user_id).limit(1),
+        ]);
+        const tripTitle = tripResult.data?.title ?? '';
+        const lang = memberUserResult.data?.[0]?.language ?? 'en';
+        const texts = renderRoleChangedNotification(lang, { role, title: tripTitle });
+        await supabaseAdmin.from('notifications').insert({
+          user_id: member.user_id,
+          type: 'trip_role_changed',
+          i18n_title_key: 'notif.tpl_role_changed_title',
+          i18n_message_key: role === 'admin' ? 'notif.tpl_role_changed_admin_msg' : 'notif.tpl_role_changed_viewer_msg',
+          i18n_params: { trip: tripTitle },
+          title: texts.title,
+          message: texts.message,
+          trip_id: member.trip_id,
+          read: false,
+          created_by: user.id,
+        });
+      } catch (e) {
+        console.error('updateTripMemberRole: role-change notification failed', e);
+      }
+    }
 
     return Response.json({ ok: true }, { headers: corsHeaders });
 
