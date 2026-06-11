@@ -11,7 +11,7 @@
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import { renderJoinedNotification } from '../_shared/emailTemplate.ts';
+import { renderJoinedNotification, renderDeclinedNotification } from '../_shared/emailTemplate.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -47,6 +47,44 @@ Deno.serve(async (req) => {
         .from('trip_members')
         .update({ status: 'declined' })
         .eq('id', member_id);
+
+      // M1 — notify the inviter that the invite was declined (in THEIR language).
+      // Best-effort: a failure here must not fail the decline itself.
+      if (member.invited_by) {
+        try {
+          const { data: callerUsers } = await supabaseAdmin
+            .from('users').select('full_name').eq('id', user.id).limit(1);
+          const callerName = callerUsers?.[0]?.full_name || member.user_full_name || user.email!;
+
+          const [tripResult, inviterResult] = await Promise.all([
+            supabaseAdmin.from('trips').select('title').eq('id', member.trip_id).single(),
+            supabaseAdmin.from('users').select('language').eq('id', member.invited_by).limit(1),
+          ]);
+          const trip = tripResult.data;
+          const inviterLang = inviterResult.data?.[0]?.language ?? 'en';
+
+          if (trip) {
+            const notifTexts = renderDeclinedNotification(inviterLang, {
+              name: callerName,
+              title: trip.title,
+            });
+            await supabaseAdmin.from('notifications').insert({
+              user_id: member.invited_by,
+              type: 'trip_invite_declined',
+              i18n_title_key: 'notif.tpl_invite_declined_title',
+              i18n_message_key: 'notif.tpl_invite_declined_msg',
+              i18n_params: { name: callerName, trip: trip.title },
+              title: notifTexts.title,
+              message: notifTexts.message,
+              trip_id: member.trip_id,
+              read: false,
+              created_by: user.id,
+            });
+          }
+        } catch (e) {
+          console.error('respondTripInvite: decline notification failed', e);
+        }
+      }
     } else {
       // Fetch caller's display name
       const { data: callerUsers } = await supabaseAdmin

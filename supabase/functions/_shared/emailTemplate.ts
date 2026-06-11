@@ -19,6 +19,15 @@ interface L {
   notif_msg: (inviter: string, role: string) => string;
   joined_title: (name: string) => string;
   joined_msg: (title: string) => string;
+  declined_title: (name: string) => string;
+  declined_msg: (title: string) => string;
+  left_title: (name: string) => string;
+  left_msg: (title: string) => string;
+  removed_title: string;
+  removed_msg: (title: string) => string;
+  role_changed_title: string;
+  role_changed_msg: (roleLabel: string, title: string) => string;
+  role_label: (role: string) => string;
 }
 
 const I18N: Record<Lang, L> = {
@@ -39,6 +48,15 @@ const I18N: Record<Lang, L> = {
       `${inviter} invites you as ${role === 'admin' ? 'an admin' : 'a viewer'}.`,
     joined_title: (name) => `${name} joined the trip`,
     joined_msg: (title) => `Accepted invitation to "${title}".`,
+    declined_title: (name) => `${name} declined the invitation`,
+    declined_msg: (title) => `To the trip "${title}"`,
+    left_title: (name) => `${name} left the trip`,
+    left_msg: (title) => `"${title}"`,
+    removed_title: 'You were removed from the trip',
+    removed_msg: (title) => `"${title}"`,
+    role_changed_title: 'Your role has changed',
+    role_changed_msg: (roleLabel, title) => `You are now ${roleLabel} in "${title}"`,
+    role_label: (role) => (role === 'admin' ? 'an admin' : 'a viewer'),
   },
   ru: {
     role_admin: 'администратора (с правом редактирования)',
@@ -57,6 +75,15 @@ const I18N: Record<Lang, L> = {
       `${inviter} приглашает вас как ${role === 'admin' ? 'администратора' : 'участника'}.`,
     joined_title: (name) => `${name} присоединился к путешествию`,
     joined_msg: (title) => `Принял приглашение в «${title}».`,
+    declined_title: (name) => `${name} отклонил приглашение`,
+    declined_msg: (title) => `В путешествие «${title}»`,
+    left_title: (name) => `${name} покинул путешествие`,
+    left_msg: (title) => `«${title}»`,
+    removed_title: 'Тебя удалили из путешествия',
+    removed_msg: (title) => `«${title}»`,
+    role_changed_title: 'Твоя роль изменилась',
+    role_changed_msg: (roleLabel, title) => `Теперь ты ${roleLabel} в «${title}»`,
+    role_label: (role) => (role === 'admin' ? 'администратор' : 'наблюдатель'),
   },
   es: {
     role_admin: 'administrador (con derechos de edición)',
@@ -75,6 +102,15 @@ const I18N: Record<Lang, L> = {
       `${inviter} te invita como ${role === 'admin' ? 'administrador' : 'lector'}.`,
     joined_title: (name) => `${name} se unió al viaje`,
     joined_msg: (title) => `Aceptó la invitación a «${title}».`,
+    declined_title: (name) => `${name} rechazó la invitación`,
+    declined_msg: (title) => `Al viaje «${title}»`,
+    left_title: (name) => `${name} salió del viaje`,
+    left_msg: (title) => `«${title}»`,
+    removed_title: 'Te eliminaron del viaje',
+    removed_msg: (title) => `«${title}»`,
+    role_changed_title: 'Tu rol ha cambiado',
+    role_changed_msg: (roleLabel, title) => `Ahora eres ${roleLabel} en «${title}»`,
+    role_label: (role) => (role === 'admin' ? 'administrador' : 'lector'),
   },
 };
 
@@ -131,5 +167,53 @@ export function renderJoinedNotification(
   return {
     title: L.joined_title(params.name),
     message: L.joined_msg(params.title),
+  };
+}
+
+// M1 — invite declined (shown to the inviter)
+export function renderDeclinedNotification(
+  lang: string | null | undefined,
+  params: { name: string; title: string },
+): { title: string; message: string } {
+  const L = I18N[getLang(lang)];
+  return {
+    title: L.declined_title(params.name),
+    message: L.declined_msg(params.title),
+  };
+}
+
+// M2 — member left the trip (shown to owner + admins)
+export function renderMemberLeftNotification(
+  lang: string | null | undefined,
+  params: { name: string; title: string },
+): { title: string; message: string } {
+  const L = I18N[getLang(lang)];
+  return {
+    title: L.left_title(params.name),
+    message: L.left_msg(params.title),
+  };
+}
+
+// M3 — you were removed from the trip (shown to the removed member)
+export function renderMemberRemovedNotification(
+  lang: string | null | undefined,
+  params: { title: string },
+): { title: string; message: string } {
+  const L = I18N[getLang(lang)];
+  return {
+    title: L.removed_title,
+    message: L.removed_msg(params.title),
+  };
+}
+
+// M4 — your role changed (shown to the affected member)
+export function renderRoleChangedNotification(
+  lang: string | null | undefined,
+  params: { role: string; title: string },
+): { title: string; message: string } {
+  const L = I18N[getLang(lang)];
+  return {
+    title: L.role_changed_title,
+    message: L.role_changed_msg(L.role_label(params.role), params.title),
   };
 }
