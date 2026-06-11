@@ -20,10 +20,10 @@
  * lives in BudgetLens.css (page-scoped `.bgt-*` classes on Lumo tokens).
  */
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
 import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { toMain as toMainCur } from '@/lib/budget/money';
@@ -129,6 +129,7 @@ function DonutChart({ segments, total, mainCurrency, hoveredId, centerLabel }) {
 // ─── AddExpenseDialog (create + edit manual expense) ────────────────────────────
 
 function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved, open, onOpenChange }) {
+  const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const { user } = useAuth();
@@ -196,7 +197,7 @@ function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], exist
       </>}>
       <Field label={t('trip.description')}>
         <div data-vfield="title" className={inv('title')}>
-          <input className="input" value={title} onChange={e => { setTitle(e.target.value); v.markTouched('title'); }} placeholder={t('budget.desc_ph')} autoFocus />
+          <input className="input" value={title} onChange={e => { setTitle(e.target.value); v.markTouched('title'); }} placeholder={t('budget.desc_ph')} autoFocus={!isMobile} />
         </div>
         <FieldError issues={v.displayIssues} field="title" />
       </Field>
@@ -367,6 +368,7 @@ const CAT_COLORS = CATEGORY_HEXES;
 const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'spark', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
 function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
+  const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const { user } = useAuth();
@@ -411,7 +413,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
       </>}>
       <Field label={t('trip.title_label')}>
         <div data-vfield="name" className={inv('name')}>
-          <input className="input" value={name} onChange={e => { setName(e.target.value); v.markTouched('name'); }} placeholder={t('budget.cat_name_ph')} autoFocus />
+          <input className="input" value={name} onChange={e => { setName(e.target.value); v.markTouched('name'); }} placeholder={t('budget.cat_name_ph')} autoFocus={!isMobile} />
         </div>
         <FieldError issues={v.displayIssues} field="name" />
       </Field>
@@ -488,7 +490,6 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, main
 
 export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient }) {
   const { t } = useI18n();
-  const nav = useNavigate();
   const loc = getActiveLocale();
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);
@@ -840,7 +841,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         open={sourceView.open}
         onOpenChange={(o) => setSourceView(s => ({ ...s, open: o }))}
         canEdit={true}
-        onEditInEditor={({ kind, id }) => nav(`/trip/${tripId}/edit`, { state: { edit: { kind, id } } })}
       />
 
       {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityNames} existing={expenseModal.existing ?? null} onSaved={refresh} />}

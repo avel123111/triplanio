@@ -22,6 +22,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Field, Severity, Skeleton } from '../design/index';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useTripScreenActions } from '@/components/trips/TripScreenBar';
@@ -65,6 +66,7 @@ function formatDate(iso) {
 // ─── AddDocDialog ─────────────────────────────────────────────────────────────
 
 function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange }) {
+  const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
 
@@ -194,7 +196,7 @@ function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange
             <div data-vfield="title" className={inv('title')}>
               <input
                 className="input"
-                autoFocus
+                autoFocus={!isMobile}
                 value={title}
                 onChange={e => { setTitle(e.target.value); v.markTouched('title'); }}
                 placeholder={t('doc.title_ph')}

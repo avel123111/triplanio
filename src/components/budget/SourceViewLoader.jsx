@@ -4,8 +4,9 @@
  * (tap an event) and the budget (tap a system expense to see what created it).
  *
  * - View → EventModal (new design).
- * - Edit hotel/transfer → always navigates to edit screen (onEditInEditor).
- * - Edit activity / car_rental / esim / insurance → EventEditDialog (inline).
+ * - Edit (all kinds) → EventEditDialog (inline). Live-edit model (TRIP-126):
+ *   hotel/transfer no longer redirect into the structure editor. onEditInEditor
+ *   is a legacy fallback used only for orphan entities lacking city context.
  * - Delete (canEdit) → confirm, delete the row, invalidate trip queries.
  */
 import React, { useEffect, useState } from 'react';
@@ -53,9 +54,16 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     if (!o) { setEditMode(false); onOpenChange(false); invalidate(); }
   };
 
-  // Edit mode for activity and all service subtypes (car_rental, esim, insurance) — inline EventEditDialog
+  // Edit mode — inline EventEditDialog for every kind. hotel/activity use
+  // `visit`, transfer uses `fromVisit`/`toVisit`, service stands alone; all
+  // supplied by useEntitySource. Live-edit model (TRIP-126): editing a
+  // hotel/transfer no longer redirects into the structure editor.
   if (editMode) {
-    if ((kind === 'activity' && visit) || kind === 'service') {
+    const haveCtx = (kind === 'hotel' && visit)
+      || (kind === 'transfer' && (fromVisit || toVisit))
+      || (kind === 'activity' && visit)
+      || kind === 'service';
+    if (haveCtx) {
       return (
         <EventEditDialog
           open
@@ -69,8 +77,8 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
         />
       );
     }
-    // hotel/transfer without onEditInEditor: shouldn't reach here normally,
-    // but fall back to edit screen nav if available, otherwise close.
+    // Orphan entity (no city context): fall back to the legacy editor nav if a
+    // handler was provided, otherwise just leave edit mode.
     if (onEditInEditor) { onEditInEditor({ kind, id: data.id }); onOpenChange(false); }
     else { setEditMode(false); }
     return null;
@@ -85,16 +93,8 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
     invalidate();
   };
 
-  // Hotel and transfer: Edit button always goes to the edit screen.
-  // Activity and all service subtypes: Edit button opens inline dialog.
-  const handleEdit = () => {
-    if ((kind === 'hotel' || kind === 'transfer') && onEditInEditor) {
-      onOpenChange(false);
-      onEditInEditor({ kind, id: data.id });
-    } else {
-      setEditMode(true);
-    }
-  };
+  // All kinds edit inline via EventEditDialog (live-edit model, TRIP-126).
+  const handleEdit = () => setEditMode(true);
 
   return (
     <EventModal

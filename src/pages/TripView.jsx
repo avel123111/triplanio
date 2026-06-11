@@ -826,6 +826,9 @@ export default function TripView() {
   // edit form so the user can pick a partner before falling back to manual entry.
   const [hotelChoice, setHotelChoice] = useState({ open: false, visit: null });
   const [transferChoice, setTransferChoice] = useState({ open: false, fromVisit: null, toVisit: null });
+  // Manual hotel/transfer create opened in-place (live-edit, TRIP-138) instead
+  // of redirecting into the structure editor.
+  const [manualEvt, setManualEvt] = useState({ open: false, kind: null, visit: null, fromVisit: null, toVisit: null });
   // Right-rail service add - opens ForkPartnerModal for the chosen kind, then
   // routes to the right edit dialog when the user picks "Manual".
   const [serviceChoice, setServiceChoice] = useState({ open: false, type: null });
@@ -1106,7 +1109,7 @@ export default function TripView() {
             type="hotel"
             visit={hotelChoice.visit}
             tripId={tripId}
-            onManual={() => { setHotelChoice((s) => ({ ...s, open: false })); nav(`/trip/${tripId}/edit`, { state: { create: { kind: 'hotel', cityVisitId: hotelChoice.visit?.id } } }); }}
+            onManual={() => { setHotelChoice((s) => ({ ...s, open: false })); setManualEvt({ open: true, kind: 'hotel', visit: hotelChoice.visit, fromVisit: null, toVisit: null }); }}
           />
           {/* Transfer choice - sits between the warning button and the edit form */}
           <ForkPartnerModal
@@ -1116,7 +1119,7 @@ export default function TripView() {
             fromVisit={transferChoice.fromVisit}
             toVisit={transferChoice.toVisit}
             tripId={tripId}
-            onManual={() => { setTransferChoice((s) => ({ ...s, open: false })); nav(`/trip/${tripId}/edit`, { state: { create: { kind: 'transfer', fromId: transferChoice.fromVisit?.id, toId: transferChoice.toVisit?.id } } }); }}
+            onManual={() => { setTransferChoice((s) => ({ ...s, open: false })); setManualEvt({ open: true, kind: 'transfer', visit: null, fromVisit: transferChoice.fromVisit, toVisit: transferChoice.toVisit }); }}
           />
           {/* Service choice - opened from the right-rail ServicesWidget */}
           <ForkPartnerModal
@@ -1174,6 +1177,19 @@ export default function TripView() {
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
+          {/* Manual hotel/transfer create opened in-place (TRIP-138) */}
+          {manualEvt.open && (
+            <EventEditDialog
+              open={manualEvt.open}
+              onOpenChange={(o) => setManualEvt((s) => ({ ...s, open: o }))}
+              kind={manualEvt.kind}
+              tripId={tripId}
+              visit={manualEvt.visit}
+              fromVisit={manualEvt.fromVisit}
+              toVisit={manualEvt.toVisit}
+              defaultCurrency={trip?.details?.main_currency || 'EUR'}
+            />
+          )}
           {/* SourceViewLoader - opens the read/edit dialog when a timeline event is clicked */}
           <SourceViewLoader
             kind={eventView.kind}
@@ -1182,7 +1198,6 @@ export default function TripView() {
             onOpenChange={(o) => setEventView(s => ({ ...s, open: o }))}
             canEdit={myRole !== 'viewer' && !frozen}
             warning={eventView.warning}
-            onEditInEditor={canEditMode ? (({ kind, id }) => nav(`/trip/${trip.id}/edit`, { state: { edit: { kind, id } } })) : null}
           />
 
           {shownLens === 'overview' && (

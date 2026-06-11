@@ -18,6 +18,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { edgeErrorMessage } from '@/lib/edgeError';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { ActionMenu } from '@/components/ui/ActionMenu';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/components/ui/use-toast';
 import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
@@ -54,6 +55,7 @@ const ROLES = [
 ];
 
 function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
+  const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const [tab, setTab] = useState('email');
@@ -166,7 +168,7 @@ function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
       {tab === 'email' && <>
         <Field label="E-mail">
           <div data-vfield="email" className={inv('email')}>
-            <input className="input" type="email" value={email} onChange={e => { setEmail(e.target.value); v.markTouched('email'); }} placeholder="name@example.com" autoFocus />
+            <input className="input" type="email" value={email} onChange={e => { setEmail(e.target.value); v.markTouched('email'); }} placeholder="name@example.com" autoFocus={!isMobile} />
           </div>
           <FieldError issues={v.displayIssues} field="email" />
         </Field>
@@ -199,7 +201,7 @@ function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
       {tab === 'offline' && <>
         <Field label={t('members.offline_name')} hint={t('member.offline_name_hint')}>
           <div data-vfield="name" className={inv('name')}>
-            <input className="input" value={offlineName} onChange={e => { setOfflineName(e.target.value); v.markTouched('name'); }} placeholder={t('member.offline_name_ph')} autoFocus />
+            <input className="input" value={offlineName} onChange={e => { setOfflineName(e.target.value); v.markTouched('name'); }} placeholder={t('member.offline_name_ph')} autoFocus={!isMobile} />
           </div>
           <FieldError issues={v.displayIssues} field="name" />
         </Field>

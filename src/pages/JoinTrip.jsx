@@ -59,7 +59,7 @@ export default function JoinTrip() {
   return (
     <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, textAlign: 'center' }}>
       <div style={{ maxWidth: 380 }}>
-        <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 16 }}>{BRAND_NAME}</div>
+        <div style={{ fontWeight: 800, fontSize: 'var(--fs-h2)', marginBottom: 16 }}>{BRAND_NAME}</div>
 
         {state === 'working' && (
           <>

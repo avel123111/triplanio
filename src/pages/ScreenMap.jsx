@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
 import MapView from '@/components/views/MapView';
@@ -394,8 +393,8 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
 
 function TransferRow({ transfer, prevVisit, toCity, onOpen, canEdit = false }) {
   const { t } = useI18n();
-  const nav = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const fromName = prevVisit?.city_name || t('view.map_prev_city');
   const toName = toCity?.city_name || '';
 
@@ -447,10 +446,17 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen, canEdit = false }) {
             fromVisit={prevVisit}
             toVisit={toCity}
             tripId={tripId}
-            onManual={() => {
-              setModalOpen(false);
-              if (tripId) nav(`/trip/${tripId}/edit`, { state: { create: { kind: 'transfer', fromId: prevVisit?.id, toId: toCity?.id } } });
-            }}
+            onManual={() => { setModalOpen(false); setCreateOpen(true); }}
+          />
+        )}
+        {createOpen && (
+          <EventEditDialog
+            open={createOpen}
+            onOpenChange={setCreateOpen}
+            kind="transfer"
+            fromVisit={prevVisit}
+            toVisit={toCity}
+            tripId={tripId}
           />
         )}
       </>
@@ -501,8 +507,8 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen, canEdit = false }) {
 
 function HotelRow({ hotel, visit, onOpen, canEdit = false }) {
   const { t } = useI18n();
-  const nav = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   if (!hotel) {
     // Viewers don't see the "no hotel" warning (can't act on it).
     if (!canEdit) return null;
@@ -544,10 +550,16 @@ function HotelRow({ hotel, visit, onOpen, canEdit = false }) {
             type="hotel"
             visit={visit}
             tripId={tripId}
-            onManual={() => {
-              setModalOpen(false);
-              if (tripId) nav(`/trip/${tripId}/edit`, { state: { create: { kind: 'hotel', cityVisitId: visit?.id } } });
-            }}
+            onManual={() => { setModalOpen(false); setCreateOpen(true); }}
+          />
+        )}
+        {createOpen && (
+          <EventEditDialog
+            open={createOpen}
+            onOpenChange={setCreateOpen}
+            kind="hotel"
+            visit={visit}
+            tripId={tripId}
           />
         )}
       </>

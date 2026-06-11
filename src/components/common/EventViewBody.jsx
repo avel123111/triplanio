@@ -396,41 +396,37 @@ export async function getEntityRow(table, id) {
 }
 
 export function useEntitySource(kind, id, { open = true, onError, refreshKey = 0 } = {}) {
-  const [data, setData] = useState(null);
-  const [visit, setVisit] = useState(null);
-  const [fromVisit, setFromVisit] = useState(null);
-  const [toVisit, setToVisit] = useState(null);
+  const [src, setSrc] = useState({ data: null, visit: null, fromVisit: null, toVisit: null });
 
   React.useEffect(() => {
     if (!open || !id) return;
     let cancelled = false;
-    setData(null); setVisit(null); setFromVisit(null); setToVisit(null);
+    // Reset so a previously-open entity never lingers while the next one loads.
+    setSrc({ data: null, visit: null, fromVisit: null, toVisit: null });
     (async () => {
       try {
+        // Gather the row AND its related city_visit(s) before publishing, so the
+        // view shell (modal / editor panel) mounts ONCE with complete data instead
+        // of re-laying-out in two passes — that second pass reads as a flicker on
+        // the mobile bottom-sheet.
+        const next = { data: null, visit: null, fromVisit: null, toVisit: null };
         if (kind === 'hotel') {
-          const h = await getEntityRow('hotel_stays', id);
-          if (cancelled) return;
-          setData(h);
-          if (h?.city_visit_id) { const v = await getEntityRow('city_visits', h.city_visit_id).catch(() => null); if (!cancelled) setVisit(v); }
+          next.data = await getEntityRow('hotel_stays', id);
+          if (next.data?.city_visit_id) next.visit = await getEntityRow('city_visits', next.data.city_visit_id).catch(() => null);
         } else if (kind === 'transfer') {
-          const tr = await getEntityRow('transfers', id);
-          if (cancelled) return;
-          setData(tr);
+          next.data = await getEntityRow('transfers', id);
           const [fv, tv] = await Promise.all([
-            tr?.from_city_visit_id ? getEntityRow('city_visits', tr.from_city_visit_id).catch(() => null) : null,
-            tr?.to_city_visit_id ? getEntityRow('city_visits', tr.to_city_visit_id).catch(() => null) : null,
+            next.data?.from_city_visit_id ? getEntityRow('city_visits', next.data.from_city_visit_id).catch(() => null) : null,
+            next.data?.to_city_visit_id ? getEntityRow('city_visits', next.data.to_city_visit_id).catch(() => null) : null,
           ]);
-          if (!cancelled) { setFromVisit(fv); setToVisit(tv); }
+          next.fromVisit = fv; next.toVisit = tv;
         } else if (kind === 'activity') {
-          const a = await getEntityRow('activities', id);
-          if (cancelled) return;
-          setData(a);
-          if (a?.city_visit_id) { const v = await getEntityRow('city_visits', a.city_visit_id).catch(() => null); if (!cancelled) setVisit(v); }
+          next.data = await getEntityRow('activities', id);
+          if (next.data?.city_visit_id) next.visit = await getEntityRow('city_visits', next.data.city_visit_id).catch(() => null);
         } else if (kind === 'service') {
-          const s = await getEntityRow('trip_services', id);
-          if (cancelled) return;
-          setData(s);
+          next.data = await getEntityRow('trip_services', id);
         }
+        if (!cancelled) setSrc(next);
       } catch {
         if (!cancelled) onError?.();
       }
@@ -440,7 +436,7 @@ export function useEntitySource(kind, id, { open = true, onError, refreshKey = 0
     // reads rows directly, not via react-query, so cache invalidation alone misses it).
   }, [open, kind, id, refreshKey]);
 
-  return { data, visit, fromVisit, toVisit };
+  return src;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
