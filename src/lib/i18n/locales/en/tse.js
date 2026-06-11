@@ -31,7 +31,6 @@ export default {
   'tse.add_transfer': 'Add transfer',
   'tse.mismatch_suffix': ' · mismatch',
   'tse.overnight_title': 'Overnight transfer (day change): the next city and all following ones shift +1 day',
-  'tse.save_new_city_first': 'Save the structure first: a transfer can only be added to a saved city',
   'tse.map_globe': 'Globe view',
   'tse.map_flat': 'Flat map',
   'tse.map_light': 'Light map',

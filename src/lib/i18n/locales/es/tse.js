@@ -31,7 +31,6 @@ export default {
   'tse.add_transfer': 'Añadir transporte',
   'tse.mismatch_suffix': ' · no coincide',
   'tse.overnight_title': 'Transporte nocturno (cambio de día): la siguiente ciudad y todas las posteriores se desplazan +1 día',
-  'tse.save_new_city_first': 'Guarda la estructura primero: solo puedes añadir un transporte a una ciudad guardada',
   'tse.map_globe': 'Globo',
   'tse.map_flat': 'Mapa plano',
   'tse.map_light': 'Mapa claro',
