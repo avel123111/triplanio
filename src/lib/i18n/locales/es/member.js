@@ -61,6 +61,7 @@ export default {
   'member.join_error_invalid': 'Este enlace de invitación no es válido',
   'member.join_error_expired': 'Este enlace de invitación ha caducado. Pide uno nuevo',
   'member.join_error_revoked': 'Este enlace de invitación fue revocado',
+  'member.join_error_blocked': 'Te eliminaron de este viaje. Pídele al propietario que te invite de nuevo para volver.',
   'member.offline_name_hint': 'sin cuenta, solo se muestra en participantes',
   'member.offline_name_ph': 'Alex, mamá, etc.',
   'member.offline_note': 'Un participante offline no recibe notificaciones ni vota',
