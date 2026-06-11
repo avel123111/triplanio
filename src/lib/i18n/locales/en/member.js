@@ -61,6 +61,7 @@ export default {
   'member.join_error_invalid': 'This invite link is not valid',
   'member.join_error_expired': 'This invite link has expired. Ask for a new one',
   'member.join_error_revoked': 'This invite link was revoked',
+  'member.join_error_blocked': 'You were removed from this trip. Ask the owner to invite you again to rejoin.',
   'member.offline_name_hint': 'no account, just shown in participants',
   'member.offline_name_ph': 'Alex, mom, etc.',
   'member.offline_note': 'An offline participant gets no notifications and doesn\'t vote',

@@ -49,6 +49,7 @@ export default function JoinTrip() {
       setErrKey(
         reason === 'expired' ? 'member.join_error_expired'
         : reason === 'revoked' ? 'member.join_error_revoked'
+        : reason === 'blocked' ? 'member.join_error_blocked'
         : 'member.join_error_invalid',
       );
       setState('error');
