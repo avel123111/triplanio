@@ -35,6 +35,13 @@ export function emphasize(text, parts = []) {
 // Icon + accent colour for a notification, by type.
 export function notifMeta(type = '') {
   const tp = String(type).toLowerCase();
+  // Specific member/booking events first — they'd otherwise be swallowed by the
+  // broader 'invite' / 'member' substring matches below.
+  if (tp.includes('declined')) return { icon: 'user', color: 'var(--muted)' };
+  if (tp.includes('removed')) return { icon: 'user', color: 'var(--danger)' };
+  if (tp.includes('left')) return { icon: 'user', color: 'var(--warm)' };
+  if (tp.includes('role')) return { icon: 'shield', color: 'var(--brand)' };
+  if (tp.includes('booking')) return { icon: 'bed', color: 'var(--ai)' };
   if (tp.includes('invite')) return { icon: 'users', color: 'var(--brand)' };
   if (tp.includes('vote') || tp.includes('hotel')) return { icon: 'vote', color: 'var(--ai)' };
   if (tp.includes('pro') || tp.includes('subscription') || tp.includes('payment')) return { icon: 'pro', color: 'var(--pro)' };
@@ -195,6 +202,8 @@ function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip
   const renderParams = (params = {}) => {
     const resolved = { ...params };
     if (resolved.role_key) { resolved.role = t(resolved.role_key); delete resolved.role_key; }
+    // Booking notifications carry `kind` as a code (hotel/transfer/service) — localize it.
+    if (resolved.kind) resolved.kind = t('notif.booking_kind_' + resolved.kind);
     return resolved;
   };
   const titleText = n.i18n_title_key ? t(n.i18n_title_key, renderParams(n.i18n_params)) : n.title;
