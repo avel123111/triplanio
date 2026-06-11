@@ -176,21 +176,21 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
   for (const tr of transfers) {
     const kind = tr.transport_type || tr.kind || 'car';
     const isPlane = kind === 'plane';
-    // If the transfer has no explicit start_datetime (e.g. created via the
-    // ManualPlanner transport step), anchor it to the arrival day of the
-    // to-visit so it still appears in the timeline above the city header.
+    // The transfer plaque renders in its DEPARTURE day. With an explicit
+    // start_datetime that's its own day; without one (e.g. created via the
+    // ManualPlanner transport step) anchor to the from-visit's last day - the
+    // day you leave - falling back to the to-visit's arrival day only when there
+    // is no dated from-city (e.g. a leg out of the dateless start anchor).
     const explicitDate = naiveDayKey(tr.start_datetime);
     const toVisit = visits.find(v => v.id === tr.to_city_visit_id);
     const fromVisit = visits.find(v => v.id === tr.from_city_visit_id);
-    // For dateless transfers anchor to the to-visit's arrival day, or - for
-    // legs into a dateless end anchor - to the from-visit's end day.
-    const fallbackDate = (toVisit && naiveDayKey(toVisit.start_date))
-      || (fromVisit && naiveDayKey(fromVisit.end_date))
+    const fallbackDate = (fromVisit && naiveDayKey(fromVisit.end_date))
+      || (toVisit && naiveDayKey(toVisit.start_date))
       || null;
     const eventDate = explicitDate || fallbackDate;
     const eventMs = parseNaive(tr.start_datetime)?.toMillis()
-      ?? parseNaive(toVisit?.start_date)?.toMillis()
       ?? parseNaive(fromVisit?.end_date)?.toMillis()
+      ?? parseNaive(toVisit?.start_date)?.toMillis()
       ?? 0;
     events.push({
       type: isPlane ? 'flight' : 'transfer',
@@ -530,32 +530,21 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // could diverge from it). Anchors are rendered separately as StreamAnchor.
   const transitCities = ordered.filter(v => v.kind !== 'start' && v.kind !== 'end');
 
-  // Inbound transfer EVENTS (from the stream) for a destination visit - used to
-  // render the actual transfer card above its hero.
-  const inboundEventsFor = (visitId) =>
-    stream.filter(e => {
-      if (e.type !== 'transfer' && e.type !== 'flight') return false;
-      const tr = (transfers || []).find(t => t.id === e.id);
-      return tr?.to_city_visit_id === visitId;
-    });
   const hasTransferBetween = (prev, city) =>
     !!prev && (inboundByVisit[city.id] || []).some(tr => tr.from_city_visit_id === prev.id);
 
-  // Inbound-transfer event ids - excluded from a day's general event list
-  // (they belong inside the arrival block, above the city hero).
+  // Transfer plaques now render inline in their own DEPARTURE day (buildEvent
+  // Stream sets `date` = departure day). They are no longer pulled into the
+  // arrival block, so nothing is excluded from the day stream.
   const inboundEventIds = new Set();
-  for (const c of transitCities) for (const e of inboundEventsFor(c.id)) inboundEventIds.add(e.id);
-  // The leg INTO the finish anchor is rendered in the end block below, so keep
-  // it out of the general day list too.
-  const _endAnchor = ordered[ordered.length - 1];
-  if (_endAnchor && _endAnchor.kind === 'end') {
-    for (const e of inboundEventsFor(_endAnchor.id)) inboundEventIds.add(e.id);
-  }
 
   // Renders one city's arrival block: [transfer card | missing-transfer warning]
   // then the CityHero. `prev` = the previously-rendered city (or start anchor).
   const renderArrival = (city, prev) => {
     const out = [];
+    // Only the missing-transfer warning lives in the arrival block now; the
+    // transfer plaque itself renders in its own departure day (in the day
+    // stream), not above the destination city.
     if (prev && cityIdentity(prev) !== cityIdentity(city) && !hasTransferBetween(prev, city)) {
       if (showBookingWarnings) out.push(
         <div key={`mt-${city.id}`} style={{ marginBottom: 8 }}>
@@ -565,21 +554,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
           />
         </div>
       );
-    } else {
-      const inEv = inboundEventsFor(city.id);
-      if (inEv.length > 0) {
-        out.push(
-          <div key={`in-${city.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
-            {inEv.map(e => <StreamEventRow key={e.id} e={e} onClick={() => onOpenEvent?.(e)} />)}
-          </div>
-        );
-      }
     }
-    // The city "hero" card was removed from the timeline feed. City context is
-    // carried by the per-day city chip in the date separator, and hotels render
-    // as their own check-in/check-out/deadline rows in the day stream. The
-    // arrival block now contributes only the inbound transfer card (or the
-    // missing-transfer warning) above the day's events.
     return out;
   };
 
@@ -678,13 +653,12 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
             being forced under the new city's hero. Arrival blocks keep their
             itinerary order, which drives the prevCity transfer/warning pairing. */}
         {(() => {
-          const blocks = arrivingToday.map(c => {
-            const inEv = inboundEventsFor(c.id);
-            const anchorMs = inEv.length
-              ? Math.min(...inEv.map(e => e._ms ?? Number.POSITIVE_INFINITY))
-              : (parseNaive(c.start_date)?.toMillis() ?? Number.NEGATIVE_INFINITY);
-            return { anchorMs, city: c };
-          });
+          const blocks = arrivingToday.map(c => ({
+            // The arrival block (warning only) anchors at the city's start; the
+            // transfer plaque no longer lives here.
+            anchorMs: parseNaive(c.start_date)?.toMillis() ?? Number.NEGATIVE_INFINITY,
+            city: c,
+          }));
           const firstAnchorMs = blocks.length
             ? Math.min(...blocks.map(b => b.anchorMs))
             : Number.POSITIVE_INFINITY;
@@ -735,19 +709,9 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   const endVisit = ordered[ordered.length - 1];
   if (endVisit && endVisit.kind === 'end' && prevCity && prevCity.id !== endVisit.id
       && cityIdentity(prevCity) !== cityIdentity(endVisit)) {
-    if (hasTransferBetween(prevCity, endVisit)) {
-      const inEndEv = inboundEventsFor(endVisit.id).filter(e => {
-        const tr = (transfers || []).find(t => t.id === e.id);
-        return tr?.from_city_visit_id === prevCity.id;
-      });
-      if (inEndEv.length > 0) {
-        rows.push(
-          <div key="in-end" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
-            {inEndEv.map(e => <StreamEventRow key={e.id} e={e} onClick={() => onOpenEvent?.(e)} />)}
-          </div>
-        );
-      }
-    } else if (showBookingWarnings) {
+    // The transfer into the finish anchor renders in its own departure day now;
+    // here we only surface the missing-transfer warning when there is none.
+    if (!hasTransferBetween(prevCity, endVisit) && showBookingWarnings) {
       rows.push(
         <div key="mt-end" style={{ marginBottom: 8 }}>
           <MissingTransferWarning
