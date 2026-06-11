@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
+import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, refetchTrip } from '@/lib/tripEdit';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton } from '../design/index';
@@ -234,6 +235,18 @@ export default function TripStructureEdit() {
   const canUndo = undoStack.length > 0;
   // Сброс: вернуть к загруженному состоянию, оставаясь в редакторе.
   const reset = () => { if (!baseRef.current) return; setDraft(JSON.parse(baseRef.current)); setDirty(false); setUndoStack([]); clearDraftStore(); };
+  // Live edit: the optimistic local patch already ran; now persist the change via the
+  // per-action RPC, refetch the authoritative server state (the server owns the date
+  // layout via recompute_trip), and rebuild the draft from it. On error → toast + resync.
+  const runAction = async (rpcFn) => {
+    try { await rpcFn(); }
+    catch (e) { toast({ description: t('tse.err_save') + (e?.message || e), variant: 'destructive' }); }
+    try { await refetchTrip(qc, tripId); } catch { /* ignore */ }
+    clearDraftStore();
+    setUndoStack([]);
+    setDirty(false);
+    setDraft(null); // rebuild from fresh server state on next render (buildDraft)
+  };
 
   const { data: shell, isLoading: loadingShell, error: shellError } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
@@ -422,16 +435,21 @@ export default function TripStructureEdit() {
   }, [overnightSig]);
   // Nights 0..60. Hitting 0 turns a city into a waypoint (a 0-night transit
   // stop); raising a waypoint above 0 turns it back into a transit city.
-  const nudgeNights = (id, delta) => applyNodes(draft.nodes.map((n) => {
-    if (n.id !== id) return n;
-    const cur = n.kind === 'waypoint' ? 0 : (n.nights || 0);
+  const nudgeNights = (id, delta) => {
+    const node = draft.nodes.find((n) => n.id === id);
+    if (!node || isAnchor(node)) return;
+    const cur = node.kind === 'waypoint' ? 0 : (node.nights || 0);
     const next = Math.max(0, Math.min(60, cur + delta));
-    return next === 0 ? { ...n, kind: 'waypoint', nights: 0 } : { ...n, kind: 'transit', nights: next };
-  }));
-  const shiftStart = (delta) => editDraft((d) => {
-    const base = d.startDate ? toDT(d.startDate).plus({ days: delta }).toISO() : null;
-    return { ...d, startDate: base, nodes: recompute(d.nodes, base) };
-  });
+    // optimistic local patch (instant stepper + cascade preview), then persist + refetch
+    applyNodes(draft.nodes.map((n) => (n.id !== id ? n
+      : next === 0 ? { ...n, kind: 'waypoint', nights: 0 } : { ...n, kind: 'transit', nights: next })));
+    if (!String(id).startsWith('tmp-')) runAction(() => rpcSetCityNights(id, next));
+  };
+  const shiftStart = (delta) => {
+    const base = draft?.startDate ? toDT(draft.startDate).plus({ days: delta }).toISO() : null;
+    editDraft((d) => ({ ...d, startDate: base, nodes: recompute(d.nodes, base) }));
+    if (base) runAction(() => rpcSetTripStartDate(tripId, toDT(base).toISODate()));
+  };
   // Remove a city → confirm first. On confirm the city AND its attached bookings
   // leave the draft (the city goes to the tray; on save save_trip_edit deletes the
   // city + children). Bookings are stashed on the node so Restore brings them back.
@@ -439,13 +457,15 @@ export default function TripStructureEdit() {
   const doRemoveCity = (id) => {
     editDraft((d) => {
       const node = d.nodes.find((n) => n.id === id); if (!node || isAnchor(node)) return d;
-      // bookings stay in `content`; they're filtered out of conflicts via removedIds
-      // and cascade-deleted on save (p_deletes.cities).
       return { ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id), d.startDate), removed: [...d.removed, node] };
     });
     setConfirmDel(null);
+    if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
   };
-  const removeEndpoint = (id) => editDraft((d) => ({ ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id), d.startDate), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) }));
+  const removeEndpoint = (id) => {
+    editDraft((d) => ({ ...d, nodes: recompute(d.nodes.filter((n) => n.id !== id), d.startDate), removed: [...d.removed, d.nodes.find((n) => n.id === id)].filter(Boolean) }));
+    if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
+  };
   const restoreCity = (id) => editDraft((d) => {
     const node = d.removed.find((n) => n.id === id); if (!node) return d;
     const arr = d.nodes.slice();
@@ -466,13 +486,20 @@ export default function TripStructureEdit() {
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
       nights: kind === 'transit' ? 2 : null, gap: 0, start_date: null, end_date: null,
     };
+    let insertIdx = null;
     editDraft((d) => {
       const arr = d.nodes.slice();
-      if (kind === 'start') arr.unshift(node);
-      else if (kind === 'end') arr.push(node);
-      else { const endIdx = arr.findIndex((n) => n.kind === 'end'); arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
+      if (kind === 'start') { arr.unshift(node); insertIdx = 0; }
+      else if (kind === 'end') { arr.push(node); insertIdx = null; }
+      else { const endIdx = arr.findIndex((n) => n.kind === 'end'); insertIdx = endIdx === -1 ? null : endIdx; arr.splice(endIdx === -1 ? arr.length : endIdx, 0, node); }
       return { ...d, nodes: recompute(arr, d.startDate) };
     });
+    runAction(() => rpcAddCity(tripId, {
+      city_name: city.city_name, kind,
+      country: city.country || null, country_code: city.country_code || null,
+      latitude: city.latitude ?? null, longitude: city.longitude ?? null,
+      timezone: city.timezone || null, external_city_id: city.external_city_id || null,
+    }, insertIdx));
   };
   const onPickCity = async (c, kind) => {
     closeLeftPanel();
