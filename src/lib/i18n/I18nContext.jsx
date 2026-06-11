@@ -13,7 +13,7 @@ import {
 } from './format';
 
 const I18nContext = createContext({
-  lang: 'ru',
+  lang: 'en',
   setLang: () => {},
   t: (key) => key,
 });
@@ -27,7 +27,7 @@ function detectInitialLang(user) {
     if (stored && TRANSLATIONS[stored]) return stored;
   } catch (e) { /* ignore */ }
   const browser = (typeof navigator !== 'undefined' ? navigator.language : 'ru').slice(0, 2);
-  return TRANSLATIONS[browser] ? browser : 'ru';
+  return TRANSLATIONS[browser] ? browser : 'en';
 }
 
 export function I18nProvider({ children }) {

@@ -61,6 +61,7 @@ export default {
   'member.join_error_invalid': 'Ссылка-приглашение недействительна',
   'member.join_error_expired': 'Срок действия ссылки истёк. Попросите новую',
   'member.join_error_revoked': 'Ссылка-приглашение отозвана',
+  'member.join_error_blocked': 'Вас удалили из этого путешествия. Чтобы вернуться, попросите владельца пригласить вас снова.',
   'member.offline_name_hint': 'без аккаунта, только отображается в участниках',
   'member.offline_name_ph': 'Серёжа, мама и т.д',
   'member.offline_note': 'Офлайн-участник не получает уведомлений и не голосует',
