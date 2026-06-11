@@ -278,7 +278,10 @@ a.dl-filechip__n:hover { color: var(--brand); }
 .dl-search input::placeholder { color: var(--muted-2); }
 
 /* ─── Entrance animation ──────────────────────────────────────── */
-.dl-root { animation: fadeIn .2s ease; }
+/* Canonical lens entrance (matches .ov-anim / ovIn used by the other lenses):
+   soft fade + 8px rise. Previously a faster, near-imperceptible fadeIn that
+   made this screen look like it had no open animation. */
+.dl-root { animation: ovIn .42s var(--ease-out) both; }
 
 /* ─── Spinner (upload progress) ───────────────────────────────── */
 .dl-spinner {
