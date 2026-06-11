@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
-import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, refetchTrip } from '@/lib/tripEdit';
+import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton } from '../design/index';
@@ -253,6 +253,22 @@ export default function TripStructureEdit() {
     setDirty(false);
     setDraft(null); // rebuild from fresh server state on next render (buildDraft)
   };
+  // Any panel that may have WRITTEN transfers/bookings (create/event) closes through
+  // here: pull fresh server state and rebuild the draft from it. The server already
+  // recomputed the date chain (incl. overnight day_change, Ф2 trigger) and added any
+  // layover cities to the shell, so the rebuild reflects them with no client-side
+  // gap mirror or manual shell merge. seq-guard so a concurrent runAction wins.
+  const closePanelAndSync = async () => {
+    closeLeftPanel();
+    const mySeq = ++seqRef.current;
+    try { await refetchTrip(qc, tripId); } catch { /* ignore */ }
+    if (mySeq !== seqRef.current) return;
+    clearDraftStore();
+    baseRef.current = null; // fresh server state becomes the new baseline (no phantom dirty)
+    setUndoStack([]);
+    setDirty(false);
+    setDraft(null);
+  };
   // Coalesced/debounced server commit for the nights stepper (one RPC after the burst).
   const nightsCommit = useRef(new Map());   // cityId -> timeout handle
   const nightsTarget = useRef(new Map());   // cityId -> latest target nights (sync source of truth)
@@ -283,28 +299,6 @@ export default function TripStructureEdit() {
   }
 
   useEffect(() => { if (draft && dirty) { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ draft, dirty })); } catch { /* quota */ } } }, [draft, dirty, DRAFT_KEY]);
-
-  // Cities created OUTSIDE the draft (layover waypoints, etc.) arrive via the shell
-  // refetch — merge them into the draft so they appear without a page reload.
-  useEffect(() => {
-    if (!draft || !shell?.cityVisits) return;
-    const known = new Set(draft.nodes.map((n) => n.id));
-    const removed = new Set((draft.removed || []).map((n) => n.id));
-    const missing = shell.cityVisits.filter((v) => v && !known.has(v.id) && !removed.has(v.id) && !String(v.id).startsWith('tmp-'));
-    if (missing.length === 0) return;
-    editDraft((d) => {
-      const add = missing.map((v) => {
-        const base = { ...v, position: Number.isFinite(v.position) ? v.position : 999 };
-        if (isAnchor(v)) return { ...base, nights: null, gap: null };
-        const sd = dayOf(v.start_date), ed = dayOf(v.end_date);
-        const isWp = v.kind === 'waypoint';
-        const nights = isWp ? null : Math.max(0, (sd && ed ? Math.round(ed.diff(sd, 'days').days) : 1));
-        return { ...base, nights, gap: 0 };
-      });
-      return { ...d, nodes: recompute(sortVisits([...d.nodes, ...add]), d.startDate) };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shell]);
 
   useEffect(() => {
     if (!tripId) return;
@@ -420,30 +414,10 @@ export default function TripStructureEdit() {
   // nodes from that date preserving each node's nights+gap, so editing one node only
   // moves the nodes after it; the start and earlier nodes never move.
   const applyNodes = (nextNodes) => editDraft((d) => ({ ...d, nodes: recompute(nextNodes, d.startDate) }));
-  // Mirror the live transfers' day_change flag into the draft's city gaps. The
-  // overnight toggle lives in the transfer panels and writes day_change LIVE; this
-  // turns that flag into the date cascade (the destination city + every following
-  // one shift ±1). buildDraft already seeds the gaps on load, so the signature
-  // matches there and this fires ONLY on a real change (panel toggle/edit), marking
-  // the structure dirty so the shifted dates get persisted on Save.
-  const overnightSig = useMemo(
-    () => (liveTransfers || []).filter((tr) => tr.day_change).map((tr) => tr.to_city_visit_id).sort().join(','),
-    [liveTransfers],
-  );
-  useEffect(() => {
-    if (!draft) return;
-    const onSet = new Set(overnightSig ? overnightSig.split(',') : []);
-    const firstId = sortVisits(draft.nodes).find((n) => !isAnchor(n))?.id; // recompute pins this city's gap to 0
-    let changed = false;
-    const next = draft.nodes.map((n) => {
-      if (isAnchor(n)) return n;
-      const want = (onSet.has(n.id) && n.id !== firstId) ? 1 : 0;
-      if ((n.gap || 0) !== want) { changed = true; return { ...n, gap: want }; }
-      return n;
-    });
-    if (changed) applyNodes(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overnightSig]);
+  // Live-persist a new chain order (drag/keyboard reorder). tmp cities aren't in the
+  // DB yet so skip until they're real (their add already refetches). One
+  // reorder_cities → server recompute → refetch.
+  const persistOrder = (ids) => { if (ids.some(isTmpId)) return; runAction(() => rpcReorderCities(tripId, ids)); };
   // Nights 0..60. Hitting 0 turns a city into a waypoint (a 0-night transit
   // stop); raising a waypoint above 0 turns it back into a transit city.
   const nudgeNights = (id, delta) => {
@@ -720,7 +694,9 @@ export default function TripStructureEdit() {
     return arr;
   })();
   // Keyboard reorder (a11y): move a city one slot up/down, clamped inside the
-  // start/end anchors. Same applyNodes path as drag, so dates recompute identically.
+  // start/end anchors. Same applyNodes path as drag, so the new order + dates show
+  // instantly (recompute = optimistic UI); the server reorder_cities → recompute_trip
+  // is then authoritative on refetch.
   const moveNodeById = (id, dir) => {
     const idx = ordered.findIndex((n) => n.id === id);
     if (idx < 0 || isAnchor(ordered[idx])) return;
@@ -733,6 +709,7 @@ export default function TripStructureEdit() {
     arr.splice(j, 0, node);
     captureRects();
     applyNodes(arr);
+    persistOrder(arr.map((n) => n.id)); // live-persist the new chain order
   };
   // Arm a pointer drag from ANYWHERE on the row. It becomes a real drag only once
   // the pointer crosses a small threshold, so a plain tap still opens the city.
@@ -826,6 +803,7 @@ export default function TripStructureEdit() {
         const nextNodes = order.map((id) => byId.get(id)).filter(Boolean);
         return { ...d, nodes: recompute(nextNodes, d.startDate) };
       });
+      persistOrder(order); // live-persist the dropped order
       if (rowEl) { rowEl.style.transition = ''; rowEl.style.transform = ''; }
       dragInfoRef.current = null;
       endDrag();
@@ -854,7 +832,7 @@ export default function TripStructureEdit() {
     leftPanelEl = (
       <EventSourcePanel
         kind={leftPanel.kind} id={leftPanel.id} warning={leftPanel.warning}
-        autoEdit={leftPanel.autoEdit} canEdit onClose={closeLeftPanel}
+        autoEdit={leftPanel.autoEdit} canEdit onClose={closePanelAndSync}
       />
     );
   } else if (leftPanel?.type === 'pick') {
@@ -873,7 +851,7 @@ export default function TripStructureEdit() {
         visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
         defaultCurrency={trip?.details?.main_currency || 'EUR'}
         onPreviewTransfer={setPreviewTransfer}
-        onOpenChange={(o) => { if (!o) { setPreviewTransfer(null); closeLeftPanel(); qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); } }}
+        onOpenChange={(o) => { if (!o) { setPreviewTransfer(null); closePanelAndSync(); } }}
       />
     );
   } else if (leftPanel?.type === 'city') {
