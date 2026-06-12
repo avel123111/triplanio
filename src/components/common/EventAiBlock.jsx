@@ -160,7 +160,9 @@ export default function EventAiBlock({
   // Canonical AI pattern — design-system A4 (6 states). Pro badge shows only on
   // the gated entry states (locked / available); the AI gradient + tints all
   // resolve from tokens so light/dark + every palette follow automatically.
-  const ProBadge = () => <Badge variant="pro" icon="pro">Pro</Badge>;
+  // Design-system A4 Pro badge: text-only gold pill (no crown — the crown wraps
+  // in the tight header). flexShrink:0 so it never collapses next to the title.
+  const ProBadge = () => <Badge variant="pro" style={{ fontSize: 'var(--fs-micro)', padding: '2px 8px', flexShrink: 0 }}>Pro</Badge>;
   const isImage = (name) => /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
 
   if (state === 'locked') {

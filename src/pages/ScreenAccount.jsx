@@ -652,21 +652,6 @@ export default function ScreenAccount() {
         {/* CONTENT */}
         <div className="acct-content">
 
-          {/* ░░ IN-APP NOTIFICATIONS — quick link to the inbox ░░ */}
-          <button type="button" className="acct-inbox" onClick={() => nav('/inbox')}>
-            <span className="acct-inbox__ic"><Icon name="bell" size={18} /></span>
-            <span className="acct-inbox__bd">
-              <span className="acct-inbox__t">{t('account.inbox_title')}</span>
-              <span className="acct-inbox__s">{t('account.inbox_sub')}</span>
-            </span>
-            {unreadCount > 0 && (
-              <span className="acct-inbox__count" aria-label={t('account.inbox_unread', { count: unreadCount })}>
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-            <Icon name="arrowR" size={16} />
-          </button>
-
           {/* ░░ PROFILE ░░ */}
           <section id="acct-profile">
             <h2 className="acct-sectitle">{t('account.identity')}</h2>
@@ -807,6 +792,21 @@ export default function ScreenAccount() {
           {/* ░░ NOTIFICATIONS + CHANNELS ░░ */}
           <section id="acct-notify">
             <h2 className="acct-sectitle">{t('account.email_notifs')}</h2>
+
+            {/* In-app notifications — quick link to the inbox with unread count */}
+            <button type="button" className="acct-inbox" style={{ marginBottom: 16 }} onClick={() => nav('/inbox')}>
+              <span className="acct-inbox__ic"><Icon name="bell" size={18} /></span>
+              <span className="acct-inbox__bd">
+                <span className="acct-inbox__t">{t('account.inbox_title')}</span>
+                <span className="acct-inbox__s">{t('account.inbox_sub')}</span>
+              </span>
+              {unreadCount > 0 && (
+                <span className="acct-inbox__count" aria-label={t('account.inbox_unread', { count: unreadCount })}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+              <Icon name="arrowR" size={16} />
+            </button>
 
             <div className="card" style={{ marginBottom: 16 }}>
               <div className="acct-subhead" style={{ marginBottom: 6 }}>E-mail</div>
