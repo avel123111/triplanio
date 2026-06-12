@@ -77,6 +77,8 @@ export default {
   'settings.leave_trip': 'Leave the trip',
   'settings.leave_btn': 'Leave',
   'settings.leave_desc': 'You will stop seeing the trip. The owner can invite you again.',
+  'settings.readonly_banner_title': 'View only',
+  'settings.readonly_banner_desc': "You don't have permission to change settings — only the owner and admins can. You can only leave the trip.",
   'settings.leave_owner_blocked': 'Transfer ownership to another participant before leaving',
   'settings.delete_trip': 'Delete the trip',
   'settings.delete_desc': 'Irreversible. All trip data will be deleted.',

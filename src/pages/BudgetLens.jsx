@@ -616,7 +616,10 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   // Primary actions live in the global screen-title bar (the per-screen header).
   useTripScreenActions(
     <>
-      <Btn variant="ghost" size="sm" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
+      <Btn variant="ghost" size="sm" icon="arrowSwap" onClick={openFxDialog}
+        className="screenbar-action--icononly" ariaLabel={t('budget.fx_button')} title={t('budget.fx_button')}>
+        <span className="screenbar-action__label">{t('budget.fx_button')}</span>
+      </Btn>
       <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
     </>,
     [tripId, t, mainCurrency, budgetExpenses, budgetCategories],

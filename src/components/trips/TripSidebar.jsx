@@ -20,9 +20,9 @@ function SidebarBody({
   const { t } = useI18n();
   const navSb = useNavigate();
   const lensItems = LENS_ITEMS.filter((item) => isLensVisible(trip, item.id));
-  // Viewers can't open Settings or Members — hide those entirely.
+  // Viewers see Settings (read-only, to leave the trip) but not Members. (TRIP-137)
   const mgmtItems = MGMT_ITEMS.filter((item) =>
-    !(myRole === 'viewer' && (item.id === 'settings' || item.id === 'members')));
+    !(myRole === 'viewer' && item.id === 'members'));
   const canShare = myRole !== 'viewer';
   // Only after Pro state is resolved — avoids the banner flashing on pro trips.
   const showUpgrade = proResolved && !isPro;

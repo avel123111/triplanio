@@ -961,7 +961,9 @@ export default function TripView() {
 
   // If the URL points at a lens the trip has disabled, fall back to the timeline.
   // Viewers can't open Settings/Members even by deep link → fall back too.
-  const VIEWER_BLOCKED_LENSES = new Set(['settings', 'members']);
+  // Viewers may open Settings (read-only — see SettingsLens `readOnly`) so they
+  // can leave the trip; Members stays owner/admin-only. (TRIP-137)
+  const VIEWER_BLOCKED_LENSES = new Set(['members']);
   let shownLens = isLensVisible(trip, lens) ? lens : 'overview';
   if (myRole === 'viewer' && VIEWER_BLOCKED_LENSES.has(shownLens)) shownLens = 'overview';
 
@@ -1037,9 +1039,9 @@ export default function TripView() {
           </button>
         }
         items={[
-          myRole !== 'viewer' && { icon: 'settings', label: t('trip.settings_title'), onSelect: () => window.__navigate?.('settings') },
+          { icon: 'settings', label: t('trip.settings_title'), onSelect: () => window.__navigate?.('settings') },
           myRole !== 'viewer' && { icon: 'users', label: t('trip.sidebar_members'), onSelect: () => window.__navigate?.('members') },
-          myRole !== 'viewer' && { separator: true },
+          { separator: true },
           { icon: 'copy', label: t('trip.copy'), disabled: copyingTrip, onSelect: handleCopyTrip },
           { icon: 'download', label: t('trip.export'), onSelect: () => window.print() },
         ]}
