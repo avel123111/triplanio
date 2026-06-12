@@ -163,9 +163,9 @@ export default function CityPanel({
       </div>
       </div>
       <div className="lp-f">
-        <Btn variant="ghost" icon="trash" onClick={onRemove}>{t('tse.remove')}</Btn>
+        <Btn variant="danger" size="sm" icon="trash" onClick={onRemove}>{t('common.delete')}</Btn>
         <span style={{ flex: 1 }} />
-        <Btn variant="primary" icon="check" onClick={onBack}>{t('common.done')}</Btn>
+        <Btn variant="primary" size="sm" icon="check" onClick={onBack}>{t('common.done')}</Btn>
       </div>
     </div>
   );

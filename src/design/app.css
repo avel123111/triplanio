@@ -2987,7 +2987,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .ai-blk-lock svg{width:9px;height:9px;}
 .ai-blk-ti{flex:1;min-width:0;}
 .ai-blk-ti b{font-size:13px;font-weight:800;color:var(--ai-ink);display:flex;align-items:center;gap:6px;}
-.ai-blk-ti span{display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:1px;}
+/* direct child only — must NOT leak onto the Pro <Badge> span nested in the title */
+.ai-blk-ti > span{display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:1px;}
 /* collapse chevron (idle/uploaded/parsed → available) */
 .ai-blk-x{width:26px;height:26px;border:0;background:transparent;cursor:pointer;color:var(--muted);display:grid;place-items:center;border-radius:8px;flex:none;}
 .ai-blk-x:hover{background:var(--ai-soft);color:var(--ai-ink);}

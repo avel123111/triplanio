@@ -157,13 +157,29 @@ export default function EventAiBlock({
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  // Canonical AI pattern — design-system A4 (6 states). Pro badge shows only on
-  // the gated entry states (locked / available); the AI gradient + tints all
-  // resolve from tokens so light/dark + every palette follow automatically.
-  // Design-system A4 Pro badge: text-only gold pill (no crown — the crown wraps
-  // in the tight header). flexShrink:0 so it never collapses next to the title.
-  const ProBadge = () => <Badge variant="pro" style={{ fontSize: 'var(--fs-micro)', padding: '2px 8px', flexShrink: 0 }}>Pro</Badge>;
+  // Canonical AI pattern — design-system A4. Pro badge = the shared design-system
+  // <Badge variant="pro" icon="pro"> (identical to Trip Settings / Trips list).
+  // flexShrink:0 so the crown+text stay on one line in the tight header.
+  const ProBadge = () => <Badge variant="pro" icon="pro" style={{ flexShrink: 0 }}>Pro</Badge>;
   const isImage = (name) => /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
+
+  // checking — Pro/entitlement status not yet resolved. Render a non-interactive
+  // placeholder (NOT the clickable 'available' pill) so a non-Pro user can't open
+  // and use the parser before the check lands.
+  if (state === 'checking') {
+    return (
+      <div className="ai-blk" aria-busy="true">
+        <div className="ai-blk-hd">
+          <div className="ai-blk-ic"><Sparkles size={15} /></div>
+          <div className="ai-blk-ti">
+            <b>{t('event.ai_fill_title')}<ProBadge /></b>
+            <span>{t('event.ai_available_hint')}</span>
+          </div>
+          <span className="ai-spin" />
+        </div>
+      </div>
+    );
+  }
 
   if (state === 'locked') {
     return (

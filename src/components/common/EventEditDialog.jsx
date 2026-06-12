@@ -512,9 +512,10 @@ export default function EventEditDialog({
     : baseMeta;
   const [aiFields, setAiFields] = useState(new Set());
   // Six-state AI flow per the prototype: locked / available / idle /
-  // uploaded / parsing / parsed. Starts as 'available' for Pro users once
-  // checkSubscriptionStatus resolves; non-Pro lands in 'locked'.
-  const [aiState, setAiState] = useState('available');
+  // uploaded / parsing / parsed. Starts as 'checking' (non-interactive) until
+  // checkSubscriptionStatus resolves — then Pro → 'available', non-Pro → 'locked'.
+  // This prevents a non-Pro user from opening/using the parser during the gap.
+  const [aiState, setAiState] = useState('checking');
 
   // Pro state: null = checking, true/false = resolved. isOwner tells whether the
   // caller owns this trip - only the owner may be sent to checkout; a participant
@@ -565,6 +566,7 @@ export default function EventEditDialog({
     setAiSegFields(new Set()); setAiAdvisories([]);
     setTimeMissing({});
     setTouched(new Set()); setSubmitted(false);
+    setAiState('checking'); // re-gate the parser on every open until Pro is re-checked
   }, [open, entity?.id, initialKind]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pro check - runs whenever the dialog opens with a tripId we can verify.
