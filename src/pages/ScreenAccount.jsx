@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
@@ -304,6 +305,24 @@ export default function ScreenAccount() {
   const { lang, setLang } = useI18n();
   const { theme, setTheme } = useTheme();
   const nav = useNavigate();
+
+  // In-app notifications — reuse the bell's query key so the cache is shared
+  // (no extra fetch) and the unread count stays in sync across the app.
+  const { data: inboxNotifs = [] } = useQuery({
+    queryKey: ['notifications', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return [];
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.email,
+  });
+  const unreadCount = inboxNotifs.filter(n => !n.read).length;
 
   let searchParams;
   try {
@@ -632,6 +651,21 @@ export default function ScreenAccount() {
 
         {/* CONTENT */}
         <div className="acct-content">
+
+          {/* ░░ IN-APP NOTIFICATIONS — quick link to the inbox ░░ */}
+          <button type="button" className="acct-inbox" onClick={() => nav('/inbox')}>
+            <span className="acct-inbox__ic"><Icon name="bell" size={18} /></span>
+            <span className="acct-inbox__bd">
+              <span className="acct-inbox__t">{t('account.inbox_title')}</span>
+              <span className="acct-inbox__s">{t('account.inbox_sub')}</span>
+            </span>
+            {unreadCount > 0 && (
+              <span className="acct-inbox__count" aria-label={t('account.inbox_unread', { count: unreadCount })}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+            <Icon name="arrowR" size={16} />
+          </button>
 
           {/* ░░ PROFILE ░░ */}
           <section id="acct-profile">

@@ -14,6 +14,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { safeStorageName } from '@/lib/storage';
 import { detectPlatformFromUrl } from '@/lib/booking-platforms';
+import { Badge } from '@/design/index';
 import {
   Sparkles, Lock, Upload, X, FileText, Image as ImageIcon,
   RefreshCw, ChevronUp, Check,
@@ -144,16 +145,22 @@ export default function EventAiBlock({
         documents[0]?.file_name || null,
       );
     } catch (e) {
-      setError(e?.message || t('event.ai_parse_error'));
+      // supabase.functions.invoke surfaces a generic "Edge Function returned a
+      // non-2xx status code" when the edge fn / n8n can't read the document.
+      // Show a clear, friendly hint instead of that raw string. Explicit thrown
+      // messages (e.g. upload errors) are kept as-is.
+      const raw = typeof e?.message === 'string' ? e.message : '';
+      const isParseFailure = e?.name === 'FunctionsHttpError' || /non-2xx|edge function/i.test(raw);
+      setError(isParseFailure ? t('event.ai_parse_error') : (raw || t('event.ai_parse_error')));
       setState('uploaded');
     }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  // Canonical AI pattern — design-system A4 (6 states). Pro pill shows only on
+  // Canonical AI pattern — design-system A4 (6 states). Pro badge shows only on
   // the gated entry states (locked / available); the AI gradient + tints all
   // resolve from tokens so light/dark + every palette follow automatically.
-  const ProPill = () => <span className="pro-pill">Pro</span>;
+  const ProBadge = () => <Badge variant="pro" icon="pro">Pro</Badge>;
   const isImage = (name) => /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
 
   if (state === 'locked') {
@@ -165,7 +172,7 @@ export default function EventAiBlock({
             <span className="ai-blk-lock"><Lock size={9} /></span>
           </div>
           <div className="ai-blk-ti">
-            <b>{t('event.ai_fill_title')}<ProPill /></b>
+            <b>{t('event.ai_fill_title')}<ProBadge /></b>
             <span>{t('event.ai_locked_hint')}</span>
           </div>
           <button type="button" className="btn btn--pro btn--sm" onClick={onUpgrade}>
@@ -182,7 +189,7 @@ export default function EventAiBlock({
         <div className="ai-blk-hd">
           <div className="ai-blk-ic"><Sparkles size={15} /></div>
           <div className="ai-blk-ti">
-            <b>{t('event.ai_fill_title')}<ProPill /></b>
+            <b>{t('event.ai_fill_title')}<ProBadge /></b>
             <span>{t('event.ai_available_hint')}</span>
           </div>
         </div>
@@ -234,7 +241,7 @@ export default function EventAiBlock({
           <b>{t('event.ai_fill_title')}</b>
           <span>{state === 'uploaded'
             ? `${files.length} ${files.length === 1 ? t('event.ai_file_ready_one') : t('event.ai_file_ready_many')} ${t('event.ai_files_ready_suffix')}`
-            : t('event.ai_paste_hint')}</span>
+            : t('event.ai_available_hint')}</span>
         </div>
         <span className="ai-blk-x" aria-hidden="true"><ChevronUp size={14} /></span>
       </div>
@@ -274,7 +281,7 @@ export default function EventAiBlock({
             <span className="ai-blk-hint">{t('event.ai_drop_idle')}</span>
             <div style={{ flex: 1 }} />
             <button type="button" className="btn btn--ai btn--sm" onClick={runParse} disabled={!text.trim() && files.length === 0}>
-              <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize')}
+              <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize_booking')}
             </button>
           </div>
         </div>

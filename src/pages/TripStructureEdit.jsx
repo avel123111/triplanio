@@ -524,6 +524,14 @@ export default function TripStructureEdit() {
   const actWarnId = (aid) => !!aid && issues.some((i) => i.activityId === aid);
   const arrivalFor = (id) => liveTransfers.find((t) => t.to_city_visit_id === id);
   const departureFor = (id) => liveTransfers.find((t) => t.from_city_visit_id === id);
+  // Anchor dates: start = trip start (first city's start); finish = last city's
+  // end, +1 day when the final leg into the finish is an overnight transfer
+  // (day_change) — mirrors server recompute_trip's gap rule.
+  const endNode = ordered.find((n) => n.kind === 'end') || null;
+  const finishTransfer = endNode ? arrivalFor(endNode.id) : null;
+  const finishDate = endDate && finishTransfer?.day_change
+    ? (toDT(endDate)?.plus({ days: 1 })?.toISODate() || endDate)
+    : endDate;
   // panel navigation
   const openCity = (id) => { if (justDraggedRef.current) { justDraggedRef.current = false; return; } setLeftPanel({ type: 'city', id }); };
   const openEvent = (kind, id) => setLeftPanel({ type: 'event', kind, id, warning: (issues.find((i) => i[`${kind}Id`] === id)?.message) || null });
@@ -844,7 +852,7 @@ export default function TripStructureEdit() {
               };
               let body;
               if (isAnchor(n)) {
-                body = <GridEndpoint node={n} onRemove={() => removeEndpoint(n.id)} />;
+                body = <GridEndpoint node={n} date={n.kind === 'start' ? startDate : finishDate} onRemove={() => removeEndpoint(n.id)} />;
               } else if (n.kind === 'waypoint') {
                 const aa = actsFor(n.id);
                 body = <GridNode seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
@@ -1146,7 +1154,7 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
 
 // Start / Finish anchor row — flag (start) / check (finish) node, label + city,
 // departure/arrival date below. Flat flex row in the itinerary table.
-function GridEndpoint({ node, onRemove }) {
+function GridEndpoint({ node, date, onRemove }) {
   const t = useT();
   const { lang } = useI18n();
   const isStart = node.kind === 'start';
@@ -1161,7 +1169,7 @@ function GridEndpoint({ node, onRemove }) {
           <span className="te-cityname">{node.city_name}</span>
         </div>
         <div className="te-dts">
-          {isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(node.start_date || node.end_date, lang)}
+          {isStart ? t('tse.departure_word') : t('tse.arrival_word')} · {fmtD(date || node.start_date || node.end_date, lang)}
         </div>
       </div>
       <button className="ts-step" style={{ width: 24, height: 24, color: 'var(--muted)', flexShrink: 0 }} onClick={onRemove} title={t('tse.remove')}><Icon name="close" size={13} /></button>

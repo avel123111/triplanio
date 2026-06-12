@@ -1693,7 +1693,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
     .te-seam__pill.is-disabled { opacity: .45; pointer-events: none; cursor: default; }
     .te-table .te-row { border-radius: 15px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--sh-1); }
     .te-table .te-row:hover { box-shadow: var(--sh-2); border-color: var(--line-hover); }
-    .te-end { display: flex; align-items: center; gap: 11px; padding: 15px 12px; border-radius: 12px; border: 1px solid var(--line); background: color-mix(in srgb, var(--wash) 55%, var(--surface)); }
+    .te-end { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: color-mix(in srgb, var(--wash) 55%, var(--surface)); }
     .te-row__node { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; flex-shrink: 0; }
     .te-endlabel { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
     .te-wptag { font-size: 9.5px; font-weight: 800; color: var(--ev-transfer-ink); text-transform: uppercase; letter-spacing: .05em; padding: 2px 7px; border-radius: 999px; background: var(--ev-transfer-soft); white-space: nowrap; flex: none; }
@@ -2084,14 +2084,22 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    ============================================================ */
 .tl3 { display: flex; flex-direction: column; }
 .tl3-day { padding-bottom: 8px; scroll-margin-top: 12px; overflow-x: clip; }
-.tl3-dh { display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 16px 0 12px; }
-.tl3-dh .datechip { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 50px; height: 54px; border-radius: 15px; background: var(--primary-soft); flex: none; }
+.tl3-dh { display: flex; align-items: center; gap: 12px; padding: 16px 0 12px; }
+.tl3-dh .datechip { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 50px; height: 54px; border-radius: 15px; background: var(--primary-soft); flex: none; transition: background .2s var(--ease-out); }
 .tl3-dh .datechip .d { font-family: var(--font-display); font-size: 21px; font-weight: 600; color: var(--brand); line-height: 1; }
 .tl3-dh .datechip .m { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--brand); opacity: .85; margin-top: 2px; }
+/* right column: weekday + weather on one line, the day's cities tucked under it */
+.tl3-dhx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.tl3-dhrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .tl3-dh .wd { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--ink); text-transform: capitalize; }
-.tl3-dh .daycity { margin-left: auto; max-width: 100%; overflow-wrap: anywhere; display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 700; color: var(--ink-2); background: var(--surface-2); padding: 7px 14px; border-radius: var(--r-pill); }
-.tl3-dh .daycity svg { width: 14px; height: 14px; color: var(--brand); }
 .tl3-dh .wthr { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
+/* cities line: subtle and iconic — pin + name(s), no heavy pill (waypoints excluded) */
+.tl3-dh .daycity { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; overflow-wrap: anywhere; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.tl3-dh .daycity svg { width: 13px; height: 13px; color: var(--brand); flex: none; }
+/* Today — filled date chip + badge next to the weekday */
+.tl3-today { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: var(--r-pill); background: var(--primary-soft); color: var(--brand); font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; line-height: 1.5; }
+.tl3-day.today .datechip { background: var(--brand); }
+.tl3-day.today .datechip .d, .tl3-day.today .datechip .m { color: hsl(var(--primary-foreground)); opacity: 1; }
 
 .tl3-ev { display: flex; gap: 14px; align-items: center; padding: 4px 0; }
 .tl3-ev .time { width: 48px; flex: none; text-align: right; font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--muted); }
@@ -2337,6 +2345,16 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .acct-chan__t { font-weight: 700; font-size: var(--fs-strong); color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .acct-chan__s { color: var(--muted); font-size: var(--fs-meta); margin-top: 2px; }
 .acct-chan--btn { cursor: pointer; width: 100%; text-align: left; font-family: inherit; } .acct-chan--btn:hover { border-color: var(--line-hover); background: var(--surface-3); }
+/* In-app notifications quick-link card (account → /inbox) */
+.acct-inbox { display: flex; align-items: center; gap: 13px; width: 100%; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); cursor: pointer; text-align: left; font-family: inherit; color: var(--ink); transition: border-color .2s var(--ease-out), background .2s var(--ease-out), transform .12s var(--ease-out); }
+.acct-inbox:hover { border-color: var(--line-hover); background: var(--surface-3); }
+.acct-inbox:active { transform: scale(.99); }
+.acct-inbox__ic { width: 38px; height: 38px; border-radius: 11px; flex: none; display: grid; place-items: center; background: var(--primary-soft); color: var(--brand); }
+.acct-inbox__bd { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.acct-inbox__t { font-size: var(--fs-strong); font-weight: 700; color: var(--ink); }
+.acct-inbox__s { font-size: var(--fs-meta); font-weight: 500; color: var(--muted); }
+.acct-inbox__count { flex: none; min-width: 22px; height: 22px; padding: 0 7px; border-radius: var(--r-pill); background: var(--brand); color: hsl(var(--primary-foreground)); font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+.acct-inbox > svg { color: var(--muted); flex: none; }
 .acct-chan--soon { opacity: .7; }
 .acct-chan__chev { color: var(--muted); flex: none; transition: transform .2s var(--ease-out); }
 .acct-chan--btn[aria-expanded="true"] .acct-chan__chev { transform: rotate(90deg); }
@@ -3115,7 +3133,6 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .lay-pill svg{width:11px;height:11px;}
 .night-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--line);font-size:11px;font-weight:800;color:var(--ink-2);}
 .night-badge svg{width:12px;height:12px;}
-.pro-pill{display:inline-flex;align-items:center;margin-left:6px;font-size:9px;font-weight:800;color:var(--pro-fg);background:var(--pro-gradient);padding:1.5px 5px;border-radius:999px;}
 
 /* booking-link platform logo chip (was unsized → giant logo) */
 .bk-link .pb{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex:none;overflow:hidden;}

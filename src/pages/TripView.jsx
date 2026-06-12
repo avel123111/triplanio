@@ -462,6 +462,21 @@ function useWeatherByDay(visits) {
 function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
   const { t, lang } = useI18n();
   const weatherByDay = useWeatherByDay(visits);  // hook must run before any early return
+
+  // Auto-scroll to today's day when the timeline opens — but only if today falls
+  // inside the rendered range (otherwise the #tlday element doesn't exist and
+  // this is a no-op). Runs once per mount, after the day rows have painted.
+  const didScrollTodayRef = useRef(false);
+  useEffect(() => {
+    if (didScrollTodayRef.current) return;
+    const n = new Date();
+    const todayKey = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+    const el = document.getElementById(`tlday-${todayKey}`);
+    if (!el) return;
+    didScrollTodayRef.current = true;
+    requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, [isLoading, stream, visits]);
+
   if (isLoading) return <SkeletonTimeline />;
 
   // Show missing-transfer / missing-hotel hints only when (a) the trip-level
@@ -593,6 +608,8 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   };
 
   const rows = [];
+  const _tnow = new Date();
+  const todayKey = `${_tnow.getFullYear()}-${String(_tnow.getMonth() + 1).padStart(2, '0')}-${String(_tnow.getDate()).padStart(2, '0')}`;
   // Running predecessor across the whole itinerary walk (seed = start anchor).
   let prevCity = ordered[0]?.kind === 'start' ? ordered[0] : null;
 
@@ -618,11 +635,18 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     // shares its single day with the previous and next city).
     const arrivingToday = transitCities.filter(c => naiveDayKey(c.start_date) === day);
 
-    // Header chip = the latest transit city whose range covers this day.
-    const dayCity = [...transitCities].reverse().find(c => {
+    // Header cities = every real (non-waypoint) transit city whose range covers
+    // this day, in itinerary order. Most days have one; a pass-through/transition
+    // day can list two (e.g. "Madrid · Barcelona"). Waypoints (0-night layovers)
+    // are intentionally excluded from the header.
+    const dayCities = transitCities.filter(c => {
+      if (c.kind === 'waypoint') return false;
       const s = naiveDayKey(c.start_date), e = naiveDayKey(c.end_date);
       return s && e && day >= s && day <= e;
-    }) || null;
+    });
+    // data-city drives the CityRail active-state observer → point it at the
+    // current (last) real city of the day so it maps to a rail station.
+    const dayCity = dayCities[dayCities.length - 1] || null;
 
     const allDayEvents = eventsByDate[day] || [];
     const dayEvents = allDayEvents.filter(e => !inboundEventIds.has(e.id));
@@ -630,18 +654,25 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     const _dd = new Date(`${day}T00:00`);
     const _dayNum = Number.isNaN(_dd.getTime()) ? day.slice(8, 10) : _dd.getDate();
     const _monAbbr = Number.isNaN(_dd.getTime()) ? '' : _dd.toLocaleDateString(lang, { month: 'short' }).replace('.', '');
+    const _isToday = day === todayKey;
     rows.push(
-      <div key={`day-${day}`} id={`tlday-${day}`} data-tlday={day} data-city={dayCity?.id || ''} className="tl3-day">
-        {/* Date header — Lumo .tl3-dh (datechip + weekday + city pill) */}
+      <div key={`day-${day}`} id={`tlday-${day}`} data-tlday={day} data-city={dayCity?.id || ''} className={`tl3-day${_isToday ? ' today' : ''}`}>
+        {/* Date header — datechip on the left; weekday + weather on the first
+            line, the day's real cities (waypoints excluded) tucked underneath. */}
         <div className="tl3-dh">
           <span className="datechip"><span className="d">{_dayNum}</span><span className="m">{_monAbbr}</span></span>
-          <span className="wd">{weekdayLong(day, lang)}</span>
-          {weatherByDay[day] && (
-            <span className="wthr"><span>{weatherByDay[day].icon}</span><span>{weatherByDay[day].temp}°</span></span>
-          )}
-          {dayCity && (
-            <span className="daycity"><Icon name="pin" size={14} />{dayCity.city_name}</span>
-          )}
+          <div className="tl3-dhx">
+            <div className="tl3-dhrow">
+              <span className="wd">{weekdayLong(day, lang)}</span>
+              {_isToday && <span className="tl3-today">{t('view.today')}</span>}
+              {weatherByDay[day] && (
+                <span className="wthr"><span>{weatherByDay[day].icon}</span><span>{weatherByDay[day].temp}°</span></span>
+              )}
+            </div>
+            {dayCities.length > 0 && (
+              <span className="daycity"><Icon name="pin" size={13} />{dayCities.map(c => c.city_name).join(' · ')}</span>
+            )}
+          </div>
         </div>
 
         {/* Intra-day order = chronological. Each arriving city's block
@@ -748,7 +779,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
 function CityRail({ visits = [], scrollRef }) {
   const { t, lang } = useI18n();
   const cities = useMemo(
-    () => sortVisits(visits).filter(v => v.kind !== 'start' && v.kind !== 'end'),
+    () => sortVisits(visits).filter(v => v.kind !== 'start' && v.kind !== 'end' && v.kind !== 'waypoint'),
     [visits],
   );
   const [activeId, setActiveId] = useState(null);
