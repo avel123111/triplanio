@@ -78,6 +78,8 @@ export default {
   'settings.leave_trip': 'Выйти из путешествия',
   'settings.leave_btn': 'Выйти',
   'settings.leave_desc': 'Ты перестанешь видеть путешествие. Владелец сможет пригласить тебя снова.',
+  'settings.readonly_banner_title': 'Только чтение',
+  'settings.readonly_banner_desc': 'У тебя нет прав менять настройки — их могут изменять владелец и администраторы. Тебе доступен только выход из путешествия.',
   'settings.leave_owner_blocked': 'Передай владение другому участнику, прежде чем выходить',
   'settings.delete_trip': 'Удалить путешествие',
   'settings.delete_desc': 'Безвозвратно. Все данные путешествия будут удалены.',

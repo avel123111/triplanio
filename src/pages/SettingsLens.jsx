@@ -16,7 +16,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Dialog, Field, Toggle } from '../design/index';
+import { Avatar, Badge, Btn, Card, Dialog, Field, Severity, Toggle } from '../design/index';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -409,6 +409,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   const hasPro = isPro; // trip-level Pro (owner sub OR is_pro_trip), passed from TripView
   const isOwner = myRole === 'owner';
+  // Viewers get Settings in read-only mode: identity fields muted, management
+  // cards hidden, only "Leave trip" stays active (TRIP-137). NOTE: this is a UI
+  // guard only — server-side write protection is TRIP-136 (RLS), not this.
+  const readOnly = myRole === 'viewer';
   const [features, setFeatures] = useState(() => featuresFromTrip(trip));
   // Trip-level display toggles (default ON when the flag is absent).
   const [bookingWarnings, setBookingWarnings] = useState(() => trip?.details?.display?.booking_warnings !== false);
@@ -596,19 +600,33 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
 
   return (
     <div className="settings-lens">
+      {/* Viewer read-only notice — only this banner + the Leave button are
+          interactive for a viewer (TRIP-137). */}
+      {readOnly && (
+        <Severity level="info" title={t('settings.readonly_banner_title')}>
+          {t('settings.readonly_banner_desc')}
+        </Severity>
+      )}
       {/* ── Identity: cover + name / description / currency / notes ──────────
           Save here governs only these manually-edited fields; the feature and
           display toggles below auto-save on click. */}
       <Card
         title={t('settings.section_basic')}
-        action={
+        action={readOnly ? null : (
           <div className="settings-save">
             <Btn variant="primary" loading={saving} disabled={!dirty || !title.trim()} onClick={saveSettings}>
               {t('trip.form_save')}
             </Btn>
           </div>
-        }
+        )}
       >
+        {/* Read-only: native fieldset disables inputs/buttons/file input/combobox;
+            pointer-events + opacity mute the whole block visually. */}
+        <fieldset
+          disabled={readOnly}
+          style={{ border: 0, margin: 0, padding: 0, minWidth: 0,
+            ...(readOnly ? { opacity: 0.65, pointerEvents: 'none' } : {}) }}
+        >
         <div className="settings-identity">
           <div className="settings-identity__cover">
             <Field label={t('trip.form_cover')}>
@@ -638,8 +656,12 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             </Field>
           </div>
         </div>
+        </fieldset>
       </Card>
 
+      {/* Management cards (features, integrations, warnings, approvers) are
+          owner/admin controls — hidden for a read-only viewer. */}
+      {!readOnly && (<>
       {/* ── Features: addon widget cards (Lumo DS §D1), full width ── */}
       <Card title={t('settings.optional_features')}>
         <div className="addon-grid">
@@ -721,6 +743,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           )}
         </div>
       </div>
+      </>)}
 
       {/* ── Danger zone (full width) ── */}
       <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>
