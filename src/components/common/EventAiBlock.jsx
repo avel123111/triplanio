@@ -15,8 +15,8 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { safeStorageName } from '@/lib/storage';
 import { detectPlatformFromUrl } from '@/lib/booking-platforms';
 import {
-  Sparkles, Lock, Loader2, Upload, X, FileText, Image as ImageIcon,
-  RefreshCw, ChevronUp, ChevronDown, Check,
+  Sparkles, Lock, Upload, X, FileText, Image as ImageIcon,
+  RefreshCw, ChevronUp, Check,
 } from 'lucide-react';
 
 const MAX_FILES = 3;
@@ -150,16 +150,25 @@ export default function EventAiBlock({
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
+  // Canonical AI pattern — design-system A4 (6 states). Pro pill shows only on
+  // the gated entry states (locked / available); the AI gradient + tints all
+  // resolve from tokens so light/dark + every palette follow automatically.
   const ProPill = () => <span className="pro-pill">Pro</span>;
-  const titleEl = <b>{t('event.ai_fill_title')}<ProPill /></b>;
+  const isImage = (name) => /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
 
   if (state === 'locked') {
     return (
       <div className="ai-blk locked">
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Lock style={{ width: 16, height: 16, color: '#fff' }} /></div>
-          <div className="ai-blk-ti">{titleEl}<span>{t('event.ai_locked_hint')}</span></div>
-          <button type="button" className="btn btn--sm" style={{ background: 'var(--pro-gradient)', color: 'var(--pro-fg)', border: 0 }} onClick={onUpgrade}>
+          <div className="ai-blk-ic">
+            <Sparkles size={15} />
+            <span className="ai-blk-lock"><Lock size={9} /></span>
+          </div>
+          <div className="ai-blk-ti">
+            <b>{t('event.ai_fill_title')}<ProPill /></b>
+            <span>{t('event.ai_locked_hint')}</span>
+          </div>
+          <button type="button" className="btn btn--pro btn--sm" onClick={onUpgrade}>
             <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('trips.go_pro')}
           </button>
         </div>
@@ -169,11 +178,13 @@ export default function EventAiBlock({
 
   if (state === 'available') {
     return (
-      <button type="button" className="ai-blk" onClick={() => setState('idle')} style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}>
+      <button type="button" className="ai-blk ai-blk--pill" onClick={() => setState('idle')} style={{ width: '100%', textAlign: 'left' }}>
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Sparkles style={{ width: 16, height: 16, color: '#fff' }} /></div>
-          <div className="ai-blk-ti">{titleEl}<span>{t('event.ai_available_hint')}</span></div>
-          <ChevronDown style={{ width: 16, height: 16, color: 'var(--muted)', flexShrink: 0 }} />
+          <div className="ai-blk-ic"><Sparkles size={15} /></div>
+          <div className="ai-blk-ti">
+            <b>{t('event.ai_fill_title')}<ProPill /></b>
+            <span>{t('event.ai_available_hint')}</span>
+          </div>
         </div>
       </button>
     );
@@ -183,10 +194,13 @@ export default function EventAiBlock({
     return (
       <div className="ai-blk">
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Loader2 style={{ width: 16, height: 16, color: '#fff', animation: 'spin .8s linear infinite' }} /></div>
-          <div className="ai-blk-ti"><b>{t('event.ai_parsing')}</b>{files[0]?.name && <span>{files[0].name}</span>}</div>
+          <div className="ai-blk-ic"><Sparkles size={15} /></div>
+          <div className="ai-blk-ti">
+            <b>{t('event.ai_parsing')}<span className="ai-spin" /></b>
+            {files[0]?.name && <span>{files[0].name}</span>}
+            <div className="ai-prog"><div className="ai-prog-fill" /></div>
+          </div>
         </div>
-        <div className="ai-blk-body"><div className="ai-prog"><div className="ai-prog-fill" /></div></div>
       </div>
     );
   }
@@ -195,7 +209,7 @@ export default function EventAiBlock({
     return (
       <div className="ai-blk parsed">
         <div className="ai-blk-hd">
-          <div className="ai-blk-ic"><Check style={{ width: 16, height: 16, color: '#fff' }} /></div>
+          <div className="ai-blk-ic"><Check size={15} /></div>
           <div className="ai-blk-ti">
             <b>{t('event.ai_filled', { count: parsedFieldCount, fields: pluralFields(t, parsedFieldCount) })}</b>
             <span>{t('event.ai_highlighted_hint')}</span>
@@ -203,23 +217,26 @@ export default function EventAiBlock({
           <button type="button" className="btn btn--ghost btn--sm" onClick={() => { onReset?.(); setText(''); setFiles([]); setState('idle'); }}>
             <RefreshCw style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_reset')}
           </button>
+          <button type="button" className="ai-blk-x" onClick={() => setState('available')} aria-label={t('event.collapse')}>
+            <ChevronUp size={14} />
+          </button>
         </div>
       </div>
     );
   }
 
-  // idle / uploaded
+  // idle / uploaded — same shell; textarea and files are independent and combine.
   return (
     <div className="ai-blk">
       <div className="ai-blk-hd" role="button" tabIndex={0} onClick={() => setState('available')} style={{ cursor: 'pointer' }}>
-        <div className="ai-blk-ic"><Sparkles style={{ width: 16, height: 16, color: '#fff' }} /></div>
+        <div className="ai-blk-ic"><Sparkles size={15} /></div>
         <div className="ai-blk-ti">
-          {titleEl}
+          <b>{t('event.ai_fill_title')}</b>
           <span>{state === 'uploaded'
             ? `${files.length} ${files.length === 1 ? t('event.ai_file_ready_one') : t('event.ai_file_ready_many')} ${t('event.ai_files_ready_suffix')}`
             : t('event.ai_paste_hint')}</span>
         </div>
-        <ChevronUp style={{ width: 16, height: 16, color: 'var(--muted)', flexShrink: 0 }} />
+        <span className="ai-blk-x" aria-hidden="true"><ChevronUp size={14} /></span>
       </div>
 
       <div className="ai-blk-body"
@@ -230,36 +247,36 @@ export default function EventAiBlock({
         {files.length > 0 && (
           <div className="gy">
             {files.map((f, i) => (
-              <div key={i} className="doc-row" style={{ cursor: 'default' }}>
-                <div className="di">{/\.(png|jpe?g|gif|webp|svg)$/i.test(f.name) ? <ImageIcon style={{ width: 13, height: 13 }} /> : <FileText style={{ width: 13, height: 13 }} />}</div>
+              <div key={i} className="ai-file">
+                <div className="di">{isImage(f.name) ? <ImageIcon size={14} /> : <FileText size={14} />}</div>
                 <b>{f.name}</b>
                 {f.file?.size && <span className="ds">{formatSize(f.file.size)}</span>}
-                <button type="button" onClick={() => removeFile(i)} aria-label={t('event.ai_remove_file')}
-                  style={{ background: 'transparent', border: 0, color: 'var(--muted)', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                  <X style={{ width: 14, height: 14 }} />
+                <button type="button" className="ai-file-x" onClick={() => removeFile(i)} aria-label={t('event.ai_remove_file')}>
+                  <X size={13} />
                 </button>
               </div>
             ))}
           </div>
         )}
 
-        {state === 'idle' && (
+        {/* unified textarea + actions container — borderless field, divider'd row */}
+        <div className="ai-input">
           <textarea
             className="textarea"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={dragOver ? t('event.ai_drop_active') : t('event.ai_textarea_ph')}
-            style={{ minHeight: 56 }}
           />
-        )}
-
-        <div style={{ display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn--ai btn--sm" onClick={runParse} disabled={!text.trim() && files.length === 0}>
-            <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize')}
-          </button>
-          <button type="button" className="btn btn--ghost btn--sm" onClick={() => inputRef.current?.click()}>
-            <Upload style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_pdf_screenshot')}
-          </button>
+          <div className="ai-input-row">
+            <button type="button" className="btn btn--ghost btn--sm" onClick={() => inputRef.current?.click()}>
+              <Upload style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_pdf_screenshot')}
+            </button>
+            <span className="ai-blk-hint">{t('event.ai_drop_idle')}</span>
+            <div style={{ flex: 1 }} />
+            <button type="button" className="btn btn--ai btn--sm" onClick={runParse} disabled={!text.trim() && files.length === 0}>
+              <Sparkles style={{ width: 13, height: 13, marginRight: 5 }} />{t('event.ai_recognize')}
+            </button>
+          </div>
         </div>
 
         {error && (
