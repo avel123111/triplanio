@@ -12,6 +12,7 @@ import {
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
+import Stay22HotelList from '@/components/bookings/Stay22HotelList';
 
 // Visual + copy metadata per fork type. Service colours (esim/car/insurance)
 // come from the shared SERVICE_KINDS source so the fork modal matches the
@@ -87,9 +88,10 @@ export default function ForkPartnerModal({
   // editor's left column (same content, PanelShell-style chrome + back button).
   variant = 'dialog',
 }) {
-  const { t } = useI18nFormat();
+  const { t, lang } = useI18nFormat();
   const logClick = usePartnerLogger(tripId);
   const meta = TYPE_META[type] || TYPE_META.hotel;
+  const tripCurrency = trip?.details?.main_currency || 'EUR';
 
   const platforms = useMemo(() => {
     if (type === 'hotel') return hotelPlatforms(visit, t);
@@ -287,6 +289,11 @@ export default function ForkPartnerModal({
             {t('fork.info')}
           </div>
         </div>
+
+        {/* Live Stay22 stays — hotel fork, panel only. Fetched on open, FE-only. */}
+        {type === 'hotel' && variant === 'panel' && (
+          <Stay22HotelList visit={visit} currency={tripCurrency} lang={lang} tripId={tripId} />
+        )}
 
     </>
   );
