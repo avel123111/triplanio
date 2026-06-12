@@ -2201,8 +2201,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .settings-identity { display: grid; grid-template-columns: 280px 1fr; gap: 22px; align-items: start; }
 .settings-identity__cover { position: static; }
 .settings-identity__fields { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-/* Field names in the identity card read as titles, not body text (DS large-label). */
-.settings-identity .field__label { font-size: var(--fs-h4); }
+/* Field names in the identity card match the "Leave trip" row title style. */
+.settings-identity .field__label { font-size: var(--fs-base); font-weight: 600; color: var(--ink); }
 
 /* Two-column zone for features / integrations / warnings. */
 .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
@@ -2960,7 +2960,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 }
 
 /* ─── AI Block (panel-mode hotel/transfer) ──────────────────────────────── */
-.ai-blk{border:1.5px solid var(--ai-soft-2);border-radius:13px;background:var(--ai-gradient-soft);overflow:hidden;margin-bottom:14px;}
+.ai-blk{border:1.5px solid var(--ai-soft-2);border-radius:13px;background:var(--ai-gradient-soft);overflow:hidden;margin-bottom:14px;flex:none;}
 .ai-blk-hd{display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer;}
 .ai-blk-ic{width:32px;height:32px;border-radius:10px;background:var(--ai-gradient);display:grid;place-items:center;flex:none;}
 .ai-blk-ic svg{width:16px;height:16px;color:#fff;}
