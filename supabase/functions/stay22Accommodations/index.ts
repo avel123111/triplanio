@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     if (!apiKey) return Response.json({ error: 'STAY22_API_KEY not configured' }, { status: 500, headers: corsHeaders });
 
     const body = await req.json();
-    const { lat, lng, radius, checkin, checkout, currency, lang, page, adults, children } = body;
+    const { lat, lng, radius, checkin, checkout, currency, lang, page, adults, children, rooms, min, max } = body;
 
     if (lat === undefined || lat === null || lng === undefined || lng === null) {
       return Response.json({ error: 'lat and lng are required' }, { status: 400, headers: corsHeaders });
@@ -61,6 +61,11 @@ Deno.serve(async (req) => {
     if (checkout) params.set('checkout', String(checkout));
     if (currency) params.set('currency', String(currency));
     if (lang) params.set('lang', String(lang));
+    // Optional filters (only sent when the user applies them in the panel).
+    // rooms: omitted by default; min/max: per-night price in USD per Stay22 docs.
+    if (rooms) params.set('rooms', String(rooms));
+    if (min != null && min !== '') params.set('min', String(min));
+    if (max != null && max !== '') params.set('max', String(max));
 
     const res = await fetch(`${STAY22_BASE}?${params}`, {
       headers: { 'X-API-KEY': apiKey, accept: 'application/json' },

@@ -58,9 +58,24 @@ export function normalizeStay22(data) {
   };
 }
 
+// Normalize the optional filters object into edge-function fields. Only
+// non-empty values are returned, so "no filters / reset" sends nothing extra
+// and the edge function keeps its defaults (adults=2, children=0, no rooms,
+// no price bounds). min/max are per-night price in USD (Stay22 semantics).
+export function filterParams(filters) {
+  if (!filters) return {};
+  const out = {};
+  if (filters.adults > 0) out.adults = filters.adults;
+  if (filters.children > 0) out.children = filters.children;
+  if (filters.rooms > 0) out.rooms = filters.rooms;
+  if (filters.min != null && filters.min !== '') out.min = filters.min;
+  if (filters.max != null && filters.max !== '') out.max = filters.max;
+  return out;
+}
+
 // Build the edge-function payload from a city-visit node + trip context.
 // Returns null when coordinates are missing (hook stays disabled).
-export function buildStay22Params({ visit, currency, lang, page }) {
+export function buildStay22Params({ visit, currency, lang, page, filters }) {
   const lat = visit?.latitude;
   const lng = visit?.longitude;
   if (lat == null || lng == null) return null;
@@ -74,10 +89,12 @@ export function buildStay22Params({ visit, currency, lang, page }) {
     ...(currency && { currency }),
     ...(lang && { lang }),
     page: page && page > 0 ? page : 1,
+    ...filterParams(filters),
   };
 }
 
-export const STAY22_KEY = (visit, currency, lang, page) => [
+// Stable cache key — includes filters so applying/resetting refetches.
+export const STAY22_KEY = (visit, currency, lang, page, filters) => [
   'stay22',
   visit?.id || `${visit?.latitude},${visit?.longitude}`,
   dateOnly(visit?.start_date),
@@ -85,4 +102,5 @@ export const STAY22_KEY = (visit, currency, lang, page) => [
   currency || '',
   lang || '',
   page || 1,
+  JSON.stringify(filterParams(filters)),
 ];

@@ -22,10 +22,10 @@ export { normalizeStay22, buildStay22Params, STAY22_KEY };
  * @param {number} args.page     1-based page
  * @param {boolean} args.enabled fetch only while the panel is open
  */
-export function useStay22Accommodations({ visit, currency, lang, page = 1, enabled = true }) {
-  const params = buildStay22Params({ visit, currency, lang, page });
+export function useStay22Accommodations({ visit, currency, lang, page = 1, filters, enabled = true }) {
+  const params = buildStay22Params({ visit, currency, lang, page, filters });
   return useQuery({
-    queryKey: STAY22_KEY(visit, currency, lang, page),
+    queryKey: STAY22_KEY(visit, currency, lang, page, filters),
     enabled: !!enabled && !!params,
     placeholderData: keepPreviousData, // keep the previous page visible while the next loads
     staleTime: 5 * 60 * 1000,
