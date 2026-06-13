@@ -160,7 +160,7 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         </div>
 
         <div className="s22f-actions">
-          <button type="button" className="btn btn--ghost btn--sm" onClick={resetAll} disabled={!dirty && !applied}>
+          <button type="button" className="btn btn--quiet btn--sm" onClick={resetAll} disabled={!dirty && !applied}>
             <RotateCcw size={14} />{t('fork.f_reset')}
           </button>
           <button type="button" className="btn btn--primary btn--sm" onClick={apply} disabled={!dirty}>
@@ -187,6 +187,7 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
       {/* ===== Header ===== */}
       <div className="s22-head">
         <div className="s22-ti">
+          <img className="s22-logo" src="https://r2.stay22.com/2025_booking.png" alt="Booking.com" />
           <b>{t('fork.stay22_title')}</b>
           {dateLine && <span className="s22-dates">{dateLine}</span>}
         </div>
@@ -333,6 +334,7 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         .s22-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
         .s22-ti { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
         .s22-ti b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-strong); color: var(--ink); }
+        .s22-logo { width: 20px; height: 20px; border-radius: 5px; flex: none; align-self: center; box-shadow: var(--sh-1); }
         .s22-dates { font-size: var(--fs-meta); color: var(--muted); font-variant-numeric: tabular-nums; }
         .s22-count { font-size: var(--fs-meta); color: var(--muted); font-weight: 700; white-space: nowrap; }
 
@@ -351,7 +353,7 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         .s22-rate { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
         .s22-stars { color: var(--pro); letter-spacing: .5px; font-size: 11px; }
         .s22-score { display: inline-flex; align-items: center; gap: 6px; }
-        .s22-sc { display: inline-grid; place-items: center; min-width: 30px; height: 19px; padding: 0 5px; border-radius: 6px 6px 6px 2px; background: var(--primary); color: var(--primary-fg); font-family: var(--font-display); font-weight: 700; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+        .s22-sc { display: inline-grid; place-items: center; min-width: 30px; height: 19px; padding: 0 5px; border-radius: 6px 6px 6px 2px; background: var(--bk); color: var(--bk-fg); font-family: var(--font-display); font-weight: 700; font-size: 11.5px; font-variant-numeric: tabular-nums; }
         .s22-cnt { font-size: 11px; color: var(--muted); font-weight: 600; }
         .s22-addr { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: var(--fs-micro); color: var(--muted); overflow: hidden; }
         .s22-addr svg { flex: none; color: var(--muted-2); }

@@ -36,6 +36,8 @@
   --brand-ink:    #16294A;
   --brand-glow:   color-mix(in srgb, var(--brand) 32%, transparent);
   --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
+  --bk:           #003B95;  /* Booking.com brand navy — supplier/score badge */
+  --bk-fg:        #fff;
 
   /* Neutrals / surfaces */
   --ink:    hsl(var(--foreground));      /* ← index.css --foreground (Lumo #272433) */
@@ -168,6 +170,7 @@
   --primary-soft-2: rgba(111,178,255,.24);
   --brand-ink:    #BFD3F5;
   --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
+  --bk:           #1A66D9;  /* Booking navy — dark theme */
 
   /* Neutrals / surfaces — dark */
   --ink-2:  #C4C1D2;

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ExternalLink, Bed, Plane, Car, Wifi, ShieldCheck, Info, ArrowLeft, ChevronRight } from 'lucide-react';
+import { ExternalLink, Bed, Plane, Car, Wifi, ShieldCheck, ArrowLeft, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Btn } from '@/design/index';
 import {
@@ -171,12 +171,6 @@ export default function ForkPartnerModal({
         )}
       </div>
 
-      {/* Info note */}
-      <div className="fork-note">
-        <Info size={14} />
-        <span>{t('fork.info')}</span>
-      </div>
-
       {/* Live Stay22 stays — hotel fork, panel only. Fetched on open, FE-only. */}
       {type === 'hotel' && variant === 'panel' && (
         <Stay22HotelList visit={visit} currency={tripCurrency} lang={lang} tripId={tripId} />
@@ -208,23 +202,22 @@ export default function ForkPartnerModal({
       .fork-partner__mid b { display: block; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-meta); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .fork-partner__mid span { display: block; font-size: var(--fs-nano); color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .fork-partner__ext { color: var(--muted-2); flex: none; }
-      .fork-note { display: flex; align-items: flex-start; gap: 8px; font-size: var(--fs-micro); color: var(--muted); font-weight: 600; line-height: 1.5; }
-      .fork-note svg { flex: none; color: var(--muted-2); margin-top: 2px; }
+      .fork-addzone { container-type: inline-size; }
+      @container (max-width: 380px) { .fork-partners { grid-template-columns: 1fr; } }
       @media (max-width: 480px) { .fork-partners { grid-template-columns: 1fr; } }
     `}</style>
   );
 
   if (variant === 'panel') {
     return (
-      <div className="te-panel">
-        <div className="te-panel__top">
-          <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: meta.color }} />
-          <button className="te-back" onClick={() => onOpenChange(false)} title={t('fork.cancel')}><ArrowLeft className="w-4 h-4" /></button>
-          <span className="te-panel__icon" style={{ background: meta.colorSoft, color: meta.color }}><ManualIcon className="w-4 h-4" /></span>
-          <div style={{ flex: 1, minWidth: 0 }}><div className="te-panel__title">{t(meta.titleKey)}</div></div>
+      <div className="lp lp--wide" style={{ '--ev-soft': meta.colorSoft, '--ev-ink': meta.color }}>
+        <div className="lp-h lp-h--ev">
+          <button className="lp-back" onClick={() => onOpenChange(false)} title={t('fork.cancel')}><ArrowLeft className="w-4 h-4" /></button>
+          <span className="lp-ic" style={{ background: meta.colorSoft, color: meta.color }}><ManualIcon className="w-4 h-4" /></span>
+          <div className="lp-ti"><b>{t(meta.titleKey)}</b></div>
         </div>
-        <div className="te-panel__body scrollbar-thin">{body}</div>
-        <div className="te-panel__foot"><Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn></div>
+        <div className="lp-b scrollbar-thin">{body}</div>
+        <div className="lp-f"><Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn></div>
         {styleTag}
       </div>
     );
