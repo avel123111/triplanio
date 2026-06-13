@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   MapPin, ExternalLink, ChevronLeft, ChevronRight, ChevronDown,
-  Users, Search, RotateCcw, Minus, Plus, X, Hotel,
+  Users, Search, RotateCcw, Minus, Plus, X, Hotel, AlertTriangle,
 } from 'lucide-react';
-import { Skeleton, EmptyState } from '@/design/index';
+import { Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useStay22Accommodations } from '@/lib/stay22';
@@ -212,12 +212,20 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
       )}
 
       {isError && !showSkeletons && (
-        <EmptyState kind="error" icon="alert" title={t('fork.stay22_error_title')} body={t('fork.stay22_error_body')}
-          action={<button type="button" className="btn btn--ghost btn--sm" onClick={() => refetch()}><RotateCcw size={14} />{t('fork.stay22_retry')}</button>} />
+        <div className="s22-state s22-state--err">
+          <span className="s22-si"><AlertTriangle size={20} /></span>
+          <b>{t('fork.stay22_error_title')}</b>
+          <p>{t('fork.stay22_error_body')}</p>
+          <button type="button" className="btn btn--soft btn--sm s22-retry" onClick={() => refetch()}><RotateCcw size={14} />{t('fork.stay22_retry')}</button>
+        </div>
       )}
 
       {!isError && !showSkeletons && hotels.length === 0 && (
-        <EmptyState icon="search" title={t('fork.stay22_empty_title')} body={t('fork.stay22_empty_body')} />
+        <div className="s22-state s22-state--emp">
+          <span className="s22-si"><Search size={20} /></span>
+          <b>{t('fork.stay22_empty_title')}</b>
+          <p>{t('fork.stay22_empty_body')}</p>
+        </div>
       )}
 
       {!isError && hotels.length > 0 && (
@@ -251,7 +259,7 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
                         {meta.nights ? <span>{t('fork.stay22_for_nights', { count: meta.nights })}</span> : null}
                       </span>
                     ) : <span />}
-                    <span className="s22-book">{t('fork.stay22_book')}<ExternalLink size={13} /></span>
+                    <span className="btn btn--primary btn--sm">{t('fork.stay22_book')}<ExternalLink size={13} /></span>
                   </div>
                 </div>
               </a>
@@ -284,17 +292,17 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         .s22f-chip:active { transform: scale(.98); }
         .s22f-chip svg { color: var(--muted); flex: none; }
         .s22f-chip .s22f-chev { color: var(--muted-2); transition: transform .2s var(--ease-out); }
-        .s22f-chip[aria-expanded="true"] { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-ring); }
+        .s22f-chip[aria-expanded="true"] { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
         .s22f-chip[aria-expanded="true"] .s22f-chev { transform: rotate(180deg); }
-        .s22f-chip--active { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
-        .s22f-chip--active svg { color: var(--primary); }
+        .s22f-chip--active { border-color: var(--brand); background: var(--primary-soft); color: var(--brand); }
+        .s22f-chip--active svg { color: var(--brand); }
 
         .s22f-price { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
         .s22f-plbl { font-size: 13px; font-weight: 800; color: var(--ink-2); }
         .s22f-pmuted { font-weight: 600; color: var(--muted); }
         .s22f-pfields { display: flex; align-items: center; gap: 8px; }
         .s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong); border-radius: var(--r-sm); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
-        .s22f-field:focus-within { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 4px var(--primary-ring); }
+        .s22f-field:focus-within { border-color: var(--brand); background: var(--surface); box-shadow: 0 0 0 4px var(--primary-ring); }
         .s22f-cur { font-family: var(--font-display); font-weight: 700; color: var(--muted); font-size: 14px; flex: none; }
         .s22f-field input { border: 0; outline: 0; background: transparent; width: 100%; min-width: 0; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; padding: 0; }
         .s22f-field input::placeholder { color: var(--muted-2); }
@@ -310,15 +318,15 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         .s22f-popfoot { display: flex; gap: 8px; padding: 8px 6px 4px; }
         .s22f-popfoot .btn { flex: 1; }
         .s22f-step { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
-        .s22f-step button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--primary); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
+        .s22f-step button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
         .s22f-step button:hover:not(:disabled) { background: var(--surface); }
         .s22f-step button:active:not(:disabled) { transform: scale(.88); }
         .s22f-step button:disabled { color: var(--muted-2); cursor: default; }
         .s22f-val { min-width: 32px; text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
 
         .s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--primary-soft); color: var(--primary); font-family: var(--font-display); font-weight: 600; font-size: var(--fs-micro); }
-        .s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--primary-soft-2); color: var(--primary); display: grid; place-items: center; cursor: pointer; }
+        .s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--primary-soft); color: var(--brand); font-family: var(--font-display); font-weight: 600; font-size: var(--fs-micro); }
+        .s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--primary-soft-2); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
         .s22f-resetall { margin-left: auto; background: 0; border: 0; color: var(--muted); font-family: var(--font-display); font-weight: 700; font-size: var(--fs-micro); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
         .s22f-resetall:hover { color: var(--ink); }
 
@@ -340,6 +348,15 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
 
         /* ---- list + cards ---- */
         .s22-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
+
+        /* ---- empty / error states ---- */
+        .s22-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px 18px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); background: var(--wash); }
+        .s22-si { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 4px; }
+        .s22-state--err .s22-si { background: var(--danger-soft); color: var(--danger-ink); }
+        .s22-state--emp .s22-si { background: var(--surface-2); color: var(--muted); }
+        .s22-state b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); color: var(--ink); }
+        .s22-state p { margin: 0; font-size: var(--fs-meta); color: var(--muted); max-width: 28ch; }
+        .s22-retry { margin-top: 6px; }
         .s22-card { display: flex; gap: 13px; padding: 11px; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
         .s22-card--sk { cursor: default; }
         @media (hover: hover) and (pointer: fine) { .s22-card:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); } }
@@ -362,8 +379,7 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         .s22-price { display: flex; flex-direction: column; line-height: 1.15; }
         .s22-price b { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-strong); color: var(--ink); font-variant-numeric: tabular-nums; }
         .s22-price span { font-size: var(--fs-nano); color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
-        .s22-book { flex: none; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-meta); padding: 8px 13px; border-radius: var(--r-pill); background: var(--primary); color: var(--primary-fg); box-shadow: 0 5px 14px -5px color-mix(in srgb, var(--primary) 60%, transparent); transition: transform .14s var(--ease-spring), filter .18s; }
-        @media (hover: hover) and (pointer: fine) { .s22-card:hover .s22-book { filter: brightness(1.05); } }
+        .s22-foot .btn { flex: none; }
 
         /* ---- pager ---- */
         .s22-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
@@ -371,7 +387,7 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         .s22-pg:disabled { opacity: .4; cursor: default; }
         .s22-pg:not(:disabled):active { transform: scale(.94); }
         @media (hover: hover) and (pointer: fine) { .s22-pg:not(:disabled):hover { border-color: var(--line-hover); } }
-        .s22-pg--on { background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
+        .s22-pg--on { background: var(--brand); border-color: var(--brand); color: #fff; }
         .s22-gap { color: var(--muted-2); padding: 0 2px; }
 
         @media (prefers-reduced-motion: reduce) {
