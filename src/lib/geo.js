@@ -91,6 +91,19 @@ export async function reverseGeocode(lat, lon, lang) {
   };
 }
 
+// Resolve the canonical English city name for coordinates (LocationIQ reverse,
+// accept-language=en). Used for Stay22 address search and partner/referral links
+// (Booking, Airbnb) that need a stable English name regardless of the user's
+// display language. Returns '' when unavailable.
+export async function cityNameEn(lat, lon) {
+  if (lat == null || lon == null) return '';
+  const rows = await liq('reverse', { lat, lon, lang: 'en' });
+  const d = rows[0];
+  if (!d) return '';
+  const a = d.address || {};
+  return a.city || a.town || a.village || a.hamlet || a.suburb || a.municipality || d.name || '';
+}
+
 // Country code → emoji flag
 export function countryFlag(code) {
   if (!code || code.length !== 2) return '🌍';
