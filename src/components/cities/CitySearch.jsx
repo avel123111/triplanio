@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { searchCities, countryFlag } from '@/lib/geo';
 import { Loader2, MapPin } from 'lucide-react';
 import { useI18n, useT } from '@/lib/i18n/I18nContext';
+import GeoAttribution from '@/components/common/GeoAttribution';
 
 export default function CitySearch({ onSelect }) {
   const t = useT();
@@ -45,6 +46,7 @@ export default function CitySearch({ onSelect }) {
               </div>
             </button>
           ))}
+          <GeoAttribution />
         </div>
       )}
     </div>

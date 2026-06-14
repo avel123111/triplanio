@@ -3,6 +3,7 @@ import { supabase } from '@/api/supabaseClient';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Loader2, MapPin } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import GeoAttribution from '@/components/common/GeoAttribution';
 
 /**
  * LocationIQ-powered address autocomplete (proxied via the `geoLocationiq` edge
@@ -185,6 +186,7 @@ export default function AddressAutocomplete({
               </li>
             ))}
           </ul>
+          <GeoAttribution />
         </PopoverContent>
       )}
     </Popover>
