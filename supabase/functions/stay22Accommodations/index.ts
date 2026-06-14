@@ -38,16 +38,15 @@ Deno.serve(async (req) => {
     if (!apiKey) return Response.json({ error: 'STAY22_API_KEY not configured' }, { status: 500, headers: corsHeaders });
 
     const body = await req.json();
-    const { lat, lng, radius, checkin, checkout, currency, lang, page, adults, children, rooms, min, max } = body;
+    const { lat, lng, address, radius, checkin, checkout, currency, lang, page, adults, children, rooms, min, max } = body;
 
-    if (lat === undefined || lat === null || lng === undefined || lng === null) {
-      return Response.json({ error: 'lat and lng are required' }, { status: 400, headers: corsHeaders });
+    const hasCoords = lat !== undefined && lat !== null && lng !== undefined && lng !== null;
+    if (!hasCoords && !address) {
+      return Response.json({ error: 'lat/lng or address is required' }, { status: 400, headers: corsHeaders });
     }
 
     const params = new URLSearchParams({
       provider: 'booking',
-      lat: String(lat),
-      lng: String(lng),
       pageSize: String(PAGE_SIZE),
       page: String(page && page > 0 ? page : 1),
       aid: AID,
@@ -56,6 +55,14 @@ Deno.serve(async (req) => {
       adults: String(adults ?? 2),
       children: String(children ?? 0),
     });
+    // Geo method: prefer address search when available (more reliable than
+    // lat/lng for some cities — see TRIP-85). Fall back to coordinates.
+    if (address) {
+      params.set('address', String(address));
+    } else {
+      params.set('lat', String(lat));
+      params.set('lng', String(lng));
+    }
     if (radius) params.set('radius', String(radius));
     if (checkin) params.set('checkin', String(checkin));
     if (checkout) params.set('checkout', String(checkout));

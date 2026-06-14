@@ -88,6 +88,9 @@ export function buildStay22Params({ visit, currency, lang, page, filters }) {
     ...(checkout && { checkout }),
     ...(currency && { currency }),
     ...(lang && { lang }),
+    // Canonical English city name → Stay22 address search (more reliable than
+    // lat/lng for some cities). The edge prefers address when present.
+    ...(visit?.city_name_en && { address: visit.city_name_en }),
     page: page && page > 0 ? page : 1,
     ...filterParams(filters),
   };

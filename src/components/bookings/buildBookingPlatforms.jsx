@@ -33,11 +33,15 @@ export function hotelPlatforms(visit, t) {
   const tz = visit?.timezone || 'UTC';
   const checkin = localDate(visit?.start_date, tz);
   const checkout = ensureNextDay(checkin, localDate(visit?.end_date, tz));
-  const cityQuery = `${visit?.city_name || ''}${visit?.country ? ', ' + visit.country : ''}`;
+  // Referral links use the canonical English city name (city_name_en) when
+  // available — Booking/Airbnb match better on English; falls back to the
+  // localized display name.
+  const cityEn = visit?.city_name_en || visit?.city_name || '';
+  const cityQuery = `${cityEn}${visit?.country ? ', ' + visit.country : ''}`;
   const slugify = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
-  const airbnbSlug = [visit?.city_name, visit?.country].filter(Boolean).map(slugify).filter(Boolean).join('--')
-    || encodeURIComponent(visit?.city_name || '');
+  const airbnbSlug = [cityEn, visit?.country].filter(Boolean).map(slugify).filter(Boolean).join('--')
+    || encodeURIComponent(cityEn);
 
   return [
     {
