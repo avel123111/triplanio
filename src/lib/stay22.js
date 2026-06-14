@@ -22,7 +22,7 @@ async function ensureCityNameEn(visit) {
   if (!visit) return '';
   if (visit.city_name_en) return visit.city_name_en;
   if (visit.id && enCache.has(visit.id)) return enCache.get(visit.id);
-  const en = await cityNameEn(visit.latitude, visit.longitude);
+  const en = await cityNameEn(visit.city_name, visit.country_code);
   if (visit.id) enCache.set(visit.id, en);
   if (en && visit.id) {
     // Benign metadata write; RLS gates city_visits writes to trip participants.

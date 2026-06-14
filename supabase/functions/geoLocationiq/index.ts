@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
         q: String(q),
         format: 'json',
         addressdetails: '1',
+        namedetails: '1', // returns name:en / int_name / name → canonical English city name
         limit: lim,
         'accept-language': acceptLang,
       });
@@ -83,6 +84,7 @@ Deno.serve(async (req) => {
       const params = new URLSearchParams({
         key: apiKey,
         q: String(q),
+        namedetails: '1', // returns name:en / int_name / name → canonical English city name
         limit: lim,
         'accept-language': acceptLang,
       });
