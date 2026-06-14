@@ -10,7 +10,7 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { Icon } from '../design/icons';
 import { Btn, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
-import { getTimezone } from '@/lib/geo';
+import { tzFromCoords } from '@/lib/timezone';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useSheetSwipe } from '@/lib/useSheetSwipe';
 import MapView from '@/components/views/MapView';
@@ -442,8 +442,7 @@ export default function TripStructureEdit() {
   };
   const onPickCity = async (c, kind) => {
     closeLeftPanel();
-    let tz = 'UTC';
-    try { tz = (await getTimezone(c.latitude, c.longitude)) || 'UTC'; } catch { /* keep */ }
+    const tz = tzFromCoords(c.latitude, c.longitude);
     addCity({ ...c, timezone: tz }, kind);
   };
 

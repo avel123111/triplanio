@@ -56,19 +56,6 @@ export async function searchCities(query, lang) {
     .slice(0, 12);
 }
 
-// Resolve IANA timezone from lat/lon via Open-Meteo (free, no key)
-export async function getTimezone(lat, lon) {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&timezone=auto&forecast_days=1`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return 'UTC';
-    const data = await res.json();
-    return data.timezone || 'UTC';
-  } catch {
-    return 'UTC';
-  }
-}
-
 // Reverse geocode lat/lon → city object (Nominatim reverse, no key needed)
 // `lang` = app locale so the detected city/country come back localized
 // (matches searchCities). Falls back to the browser language, then 'en'.

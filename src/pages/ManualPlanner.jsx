@@ -8,7 +8,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { isTripInPast } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
-import { searchCities, getTimezone, countryFlag, reverseGeocode } from '@/lib/geo';
+import { searchCities, countryFlag, reverseGeocode } from '@/lib/geo';
+import { tzFromCoords } from '@/lib/timezone';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
 import { Btn, EmptyState, Severity } from '../design/index';
@@ -140,7 +141,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
     setResults([]);
     setQ(city.city_name);
     setLoading(true);
-    const tz = await getTimezone(city.latitude, city.longitude);
+    const tz = tzFromCoords(city.latitude, city.longitude);
     setLoading(false);
     onChange({ ...city, timezone: tz });
   };
@@ -388,7 +389,7 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
       async (pos) => {
         const city = await reverseGeocode(pos.coords.latitude, pos.coords.longitude, lang);
         if (city) {
-          const tz = await getTimezone(city.latitude, city.longitude);
+          const tz = tzFromCoords(city.latitude, city.longitude);
           const full = { ...city, timezone: tz };
           setNearbyCity(full);
           setGeoState('allowed');
@@ -1011,7 +1012,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       const r = await searchCities(`${c.city_name}${c.country ? ', ' + c.country : ''}`, lang || 'ru');
       best = r?.[0] || null;
     } catch { /* ignore */ }
-    if (best?.latitude) { try { tz = await getTimezone(best.latitude, best.longitude); } catch { /* ignore */ } }
+    if (best?.latitude) { tz = tzFromCoords(best.latitude, best.longitude); }
     return {
       id: Date.now() + idx,
       external_city_id: best?.external_city_id || null,

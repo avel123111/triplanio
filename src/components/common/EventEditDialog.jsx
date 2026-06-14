@@ -73,7 +73,7 @@ function CityPicker({ value, onPick, placeholder }) {
   };
   const pick = async (c) => {
     setOpen(false); setResults([]); setQ(c.city_name); setLoading(true);
-    let tz = null; try { tz = await getTimezone(c.latitude, c.longitude); } catch { /* ignore */ }
+    const tz = tzFromCoords(c.latitude, c.longitude);
     setLoading(false);
     onPick({ city_name: c.city_name, country: c.country, country_code: c.country_code, latitude: c.latitude, longitude: c.longitude, timezone: tz, external_city_id: c.external_city_id });
   };
@@ -115,7 +115,7 @@ function makeSegment(defCur = 'EUR') {
 }
 
 import { supabase } from '@/api/supabaseClient';
-import { searchCities, getTimezone } from '@/lib/geo';
+import { searchCities } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
@@ -124,7 +124,7 @@ import { FieldError, IssuesPanel, fieldHasError } from '@/components/common/Vali
 import { detectPlatformFromUrl, BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY } from '@/lib/trip-data';
-import { resolveTimezoneFromCoords } from '@/lib/timezone-resolver';
+import { tzFromCoords } from '@/lib/timezone';
 
 // Ensure a user-entered URL like "booking.com" opens absolutely (otherwise the
 // browser treats it as relative and prepends the current app path → /trip/.../booking.com).
@@ -957,7 +957,7 @@ export default function EventEditDialog({
           const r = await searchCities(`${name}${cc}`, lang);
           const best = r?.[0];
           if (best?.latitude) {
-            let tz = null; try { tz = await getTimezone(best.latitude, best.longitude); } catch { /* ignore */ }
+            const tz = tzFromCoords(best.latitude, best.longitude);
             formSegs[i].toCity = { city_name: best.city_name, country: best.country, country_code: best.country_code, latitude: best.latitude, longitude: best.longitude, timezone: tz, external_city_id: best.external_city_id };
           }
         } catch { /* leave null - user picks the layover city manually */ }
@@ -2349,7 +2349,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
                 pickup_longitude: p.longitude ?? null,
                 pickup_timezone: '',
               }));
-              const tzResolved = await resolveTimezoneFromCoords(p.latitude, p.longitude);
+              const tzResolved = tzFromCoords(p.latitude, p.longitude);
               if (tzResolved) setField('pickup_timezone', tzResolved);
             }}
             placeholder={t('event.ph_pickup_example')}
@@ -2395,7 +2395,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
                   dropoff_longitude: p.longitude ?? null,
                   dropoff_timezone: '',
                 }));
-                const tzResolved = await resolveTimezoneFromCoords(p.latitude, p.longitude);
+                const tzResolved = tzFromCoords(p.latitude, p.longitude);
                 if (tzResolved) setField('dropoff_timezone', tzResolved);
               }}
               placeholder={t('event.ph_return_example')}
