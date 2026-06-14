@@ -5,16 +5,40 @@ import { Loader2, MapPin } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
- * Google Places-powered address autocomplete.
- * Falls back to plain text input on errors (so users can always type freely).
+ * LocationIQ-powered address autocomplete (proxied via the `geoLocationiq` edge
+ * function). LocationIQ autocomplete returns coordinates inline, so there is no
+ * second "details" round-trip and no Google session token — selecting a result
+ * resolves the place immediately. Falls back to plain text input on errors (so
+ * users can always type freely).
  *
  * Props mirror <Input>:
  *   value, onChange (string -> void), placeholder, className, etc.
  *
  * Additional:
- *   onPlaceSelected?: ({ formatted_address, name, latitude, longitude, place_id }) => void
+ *   onPlaceSelected?: ({ formatted_address, name, latitude, longitude, place_id, description }) => void
  *   language?: 'ru' | 'en' | 'es' - overrides the user's app language (rarely needed)
+ *
+ * Attribution: LocationIQ data is OpenStreetMap (ODbL). On the Free plan a
+ * "Search by LocationIQ" backlink + OSM attribution are required near the search.
  */
+
+// Normalize one LocationIQ autocomplete result into the shape the list renders
+// and consumers expect (coords inline — no details call needed).
+function normalizeLiq(item) {
+  const dn = item.display_name || '';
+  const main = item.address?.name || dn.split(',')[0] || dn;
+  const secondary = dn.startsWith(main) ? dn.slice(main.length).replace(/^,\s*/, '') : dn;
+  return {
+    place_id: String(item.place_id),
+    description: dn,
+    main_text: main,
+    secondary_text: secondary,
+    latitude: item.lat != null ? parseFloat(item.lat) : null,
+    longitude: item.lon != null ? parseFloat(item.lon) : null,
+    address: item.address || null,
+  };
+}
+
 export default function AddressAutocomplete({
   value,
   onChange,
@@ -32,20 +56,9 @@ export default function AddressAutocomplete({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
-  const sessionTokenRef = useRef(null);
   const debounceRef = useRef(null);
   const lastQueryRef = useRef('');
   const inputRef = useRef(null);
-
-  // Generate a session token per "search session" (cleared on selection).
-  const ensureSessionToken = () => {
-    if (!sessionTokenRef.current) {
-      sessionTokenRef.current = (typeof crypto !== 'undefined' && crypto.randomUUID)
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random()}`;
-    }
-    return sessionTokenRef.current;
-  };
 
   const fetchPredictions = async (q) => {
     if (!q || q.trim().length < 2) {
@@ -55,18 +68,17 @@ export default function AddressAutocomplete({
     }
     setLoading(true);
     try {
-      const sessionToken = ensureSessionToken();
-      const res = await supabase.functions.invoke('placesAutocomplete', {
-        body: {
-          action: 'autocomplete',
-          input: q.trim(),
-          language: effectiveLang,
-          sessionToken,
-        },
+      const { data, error } = await supabase.functions.invoke('geoLocationiq', {
+        body: { action: 'autocomplete', q: q.trim(), lang: effectiveLang, limit: 8 },
       });
       // Ignore stale responses
       if (lastQueryRef.current !== q) return;
-      const list = res?.data?.predictions || [];
+      if (error) {
+        setPredictions([]);
+        setOpen(false);
+        return;
+      }
+      const list = (data?.results || []).map(normalizeLiq);
       setPredictions(list);
       setOpen(list.length > 0);
       setHighlighted(-1);
@@ -86,43 +98,21 @@ export default function AddressAutocomplete({
     debounceRef.current = setTimeout(() => fetchPredictions(v), 250);
   };
 
-  const selectPrediction = async (p) => {
+  const selectPrediction = (p) => {
     setOpen(false);
     setPredictions([]);
     onChange?.(p.description);
-    if (onPlaceSelected) {
-      try {
-        const sessionToken = sessionTokenRef.current;
-        const res = await supabase.functions.invoke('placesAutocomplete', {
-          body: {
-            action: 'details',
-            // Edge fn expects `placeId` (camelCase). Sending `place_id` made it
-            // 400 → details never resolved → coords never reached the form.
-            placeId: p.place_id,
-            sessionToken,
-            language: effectiveLang,
-          },
-        });
-        // Edge fn returns { result: <google place> } with coords nested under
-        // result.geometry.location. Flatten to the shape consumers expect
-        // (see JSDoc): { formatted_address, name, latitude, longitude, ... }.
-        const r = res?.data?.result;
-        if (r) {
-          onPlaceSelected({
-            formatted_address: r.formatted_address,
-            name: r.name,
-            latitude: r.geometry?.location?.lat ?? null,
-            longitude: r.geometry?.location?.lng ?? null,
-            utc_offset_minutes: r.utc_offset_minutes,
-            address_components: r.address_components,
-            place_id: p.place_id,
-            description: p.description,
-          });
-        }
-      } catch { /* ignore - user can still see the address text */ }
-    }
-    // Clear session token after a successful selection (Google billing best practice)
-    sessionTokenRef.current = null;
+    // LocationIQ autocomplete already carries coords — resolve immediately,
+    // no details round-trip. Timezone is computed by the caller from coords.
+    onPlaceSelected?.({
+      formatted_address: p.description,
+      name: p.main_text,
+      latitude: p.latitude,
+      longitude: p.longitude,
+      address_components: p.address,
+      place_id: p.place_id,
+      description: p.description,
+    });
   };
 
   const handleKeyDown = (e) => {

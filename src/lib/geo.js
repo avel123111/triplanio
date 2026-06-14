@@ -1,24 +1,35 @@
-// Search cities via OSM Nominatim (no API key required)
-// Returns: { external_city_id, city_name, country, country_code, latitude, longitude, timezone }
-// We use a public, no-key approach with Nominatim for location and timeapi.io for timezone lookup as fallback.
-// Since timeapi.io may be unreliable, we approximate timezone by longitude when needed.
+// City / address geocoding via LocationIQ (managed Nominatim on OSM/ODbL),
+// proxied through the `geoLocationiq` edge function so the LocationIQ key stays
+// server-side. LocationIQ mirrors the Nominatim response shape (place_id, lat,
+// lon, display_name, address{}, type, class, importance), so the mapping below
+// is unchanged from the previous direct-Nominatim implementation.
+//
+// Results may be stored permanently (OSM/ODbL + attribution — a "Search by
+// LocationIQ" backlink is required on the Free plan). Timezones are resolved
+// separately offline via src/lib/timezone.js (tz-lookup).
+// Returns: { external_city_id, city_name, country, country_code, latitude, longitude }
+import { supabase } from '@/api/supabaseClient';
 
-const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
+// Thin call into the geoLocationiq edge proxy. Returns the LocationIQ result
+// array (Nominatim-shaped) or [] on any error.
+async function liq(action, body) {
+  const { data, error } = await supabase.functions.invoke('geoLocationiq', {
+    body: { action, ...body },
+  });
+  if (error) return [];
+  return data?.results || [];
+}
 
 export async function searchCities(query, lang) {
   if (!query || query.length < 2) return [];
-  // No featureType filter - Nominatim's city filter is too restrictive and misses
-  // many resort towns / villages / suburbs (e.g. Maspalomas).
-  // We request more results and filter to populated places client-side.
   // Caller passes the app language so city/country names come back localized.
   const acceptLang = lang
     || (typeof navigator !== 'undefined' && navigator.language)
     || 'en';
-  const url =
-    `${NOMINATIM}?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=20&accept-language=${encodeURIComponent(acceptLang)}`;
-  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-  if (!res.ok) return [];
-  const data = await res.json();
+  // No type filter upstream - the geocoder's city filter is too restrictive and
+  // misses resort towns / villages / suburbs (e.g. Maspalomas). We request more
+  // results and filter to populated places client-side.
+  const data = await liq('search', { q: query, lang: acceptLang, limit: 20 });
 
   const POPULATED = new Set([
     'city', 'town', 'village', 'hamlet', 'suburb', 'neighbourhood',
@@ -56,33 +67,28 @@ export async function searchCities(query, lang) {
     .slice(0, 12);
 }
 
-// Reverse geocode lat/lon → city object (Nominatim reverse, no key needed)
+// Reverse geocode lat/lon → city object.
 // `lang` = app locale so the detected city/country come back localized
 // (matches searchCities). Falls back to the browser language, then 'en'.
 export async function reverseGeocode(lat, lon, lang) {
-  try {
-    const acceptLang = lang
-      || (typeof navigator !== 'undefined' && navigator.language)
-      || 'en';
-    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1&accept-language=${encodeURIComponent(acceptLang)}`;
-    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    if (!res.ok) return null;
-    const d = await res.json();
-    const a = d.address || {};
-    const name = a.city || a.town || a.village || a.hamlet || a.suburb || a.municipality || d.name;
-    if (!name) return null;
-    return {
-      external_city_id: String(d.place_id),
-      city_name: name,
-      country: a.country || '',
-      country_code: (a.country_code || '').toUpperCase(),
-      latitude: parseFloat(d.lat),
-      longitude: parseFloat(d.lon),
-      display_name: d.display_name,
-    };
-  } catch {
-    return null;
-  }
+  const acceptLang = lang
+    || (typeof navigator !== 'undefined' && navigator.language)
+    || 'en';
+  const rows = await liq('reverse', { lat, lon, lang: acceptLang });
+  const d = rows[0];
+  if (!d) return null;
+  const a = d.address || {};
+  const name = a.city || a.town || a.village || a.hamlet || a.suburb || a.municipality || d.name;
+  if (!name) return null;
+  return {
+    external_city_id: String(d.place_id),
+    city_name: name,
+    country: a.country || '',
+    country_code: (a.country_code || '').toUpperCase(),
+    latitude: parseFloat(d.lat),
+    longitude: parseFloat(d.lon),
+    display_name: d.display_name,
+  };
 }
 
 // Country code → emoji flag
