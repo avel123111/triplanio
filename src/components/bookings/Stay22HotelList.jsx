@@ -103,7 +103,7 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
     ? `${fmtShort(meta.checkin, locale)} – ${fmtShort(meta.checkout, locale)}${meta.nights ? ` · ${t('fork.stay22_nights', { count: meta.nights })}` : ''}`
     : '';
 
-  const onCardClick = (h) => logClick({ partner: 'booking', type: 'hotel', link: h.url });
+  const onCardClick = (h) => logClick({ partner: 'booking', type: 'hotel', link: h.url, provider: 'stay22' });
 
   return (
     <div className="s22">
