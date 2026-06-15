@@ -52,14 +52,14 @@ export default function AppHeader({
   return (
     <header className={'app-header' + (isTrip ? ' app-header--trip' : '')}>
       <div className="app-header__left">
-        {onMenu && (
-          <button className="app-header__gbtn app-header__menu" onClick={onMenu} aria-label="Menu" type="button">
-            <Icon name="list" size={18} />
-          </button>
-        )}
         {onBack && (
           <button className="app-header__gbtn" onClick={onBack} title={backTitle} aria-label={backTitle || 'Back'} type="button">
             <Icon name="back" size={17} />
+          </button>
+        )}
+        {onMenu && (
+          <button className="app-header__gbtn app-header__menu" onClick={onMenu} aria-label="Menu" type="button">
+            <Icon name="list" size={18} />
           </button>
         )}
 
