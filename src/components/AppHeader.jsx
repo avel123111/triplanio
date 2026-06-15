@@ -74,7 +74,9 @@ export default function AppHeader({
           <>
             <span className="app-header__vdiv" />
             <div className="app-header__trip">
-              <h1 className="app-header__trip-title">{title || '…'}</h1>
+              {/* div, not <h1>: a global `h1 { font-size: var(--fs-h2) !important }`
+                  mobile rule would otherwise inflate the header title past desktop. */}
+              <div className="app-header__trip-title">{title || '…'}</div>
               {meta && <div className="app-header__trip-meta">{meta}</div>}
             </div>
           </>
