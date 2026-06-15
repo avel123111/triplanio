@@ -3,7 +3,7 @@ import {
   Plus, TriangleAlert, X, ChevronRight, ArrowLeft, MapPin, FileText, Check, Info,
   Sparkles, Lock, Camera, Wallet, Trash2, ExternalLink, Calendar, BedDouble, Users,
   Pencil, ArrowRight, Sparkle, Ellipsis, Map, Link, Flag, MessageCircle, Bell, User,
-  Share2, Send, Search, BadgeCheck, Plane, Paperclip, Moon, List, LayoutGrid, Globe,
+  Share2, Send, Search, Plane, Paperclip, Moon, List, LayoutGrid, Globe,
   GripVertical, Crown, ArrowRightLeft, Upload, TrainFront, Sun, Shield, RefreshCw,
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
 } from 'lucide-react';
@@ -64,7 +64,7 @@ const LUCIDE = {
   cam: Camera, wallet: Wallet, trash: Trash2, external: ExternalLink, calendar: Calendar,
   bed: BedDouble, users: Users, edit: Pencil, arrowR: ArrowRight, spark: Sparkle,
   more: Ellipsis, map: Map, link: Link, flag: Flag, chat: MessageCircle, bell: Bell,
-  user: User, share: Share2, send: Send, search: Search, pro: BadgeCheck, plane: Plane,
+  user: User, share: Share2, send: Send, search: Search, pro: Crown, plane: Plane,
   paperclip: Paperclip, moon: Moon, list: List, grid: LayoutGrid, globe: Globe,
   drag: GripVertical, crown: Crown, arrowSwap: ArrowRightLeft, arrowRight: ArrowRight,
   upload: Upload, train: TrainFront, sun: Sun, shield: Shield, refresh: RefreshCw,
