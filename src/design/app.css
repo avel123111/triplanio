@@ -462,9 +462,10 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 
 /* Account button + avatar ring + PRO badge */
 .app-header__account { display: flex; align-items: center; gap: 7px; background: transparent; border: 0; cursor: pointer; padding: 0 2px; }
-/* Profile avatar — slightly larger than the 38px utility circles, single solid
-   white ring (override the base .avatar border + sm size). */
-.app-header .app-header__avatar { width: 40px; height: 40px; border: 2px solid #fff; box-shadow: none; font-size: var(--fs-base); }
+/* Profile avatar — same 38px diameter as the theme/notification circles, single
+   solid white ring (override the base .avatar border + sm size). box-sizing is
+   border-box, so the 2px ring sits inside the 38px box → equal outer diameter. */
+.app-header .app-header__avatar { width: 38px; height: 38px; border: 2px solid #fff; box-shadow: none; font-size: var(--fs-base); }
 .app-header__pro {
   font-family: var(--font-display); font-weight: 800; font-size: 11px; line-height: 1; letter-spacing: .04em;
   color: var(--pro-fg); background: var(--pro-gradient); padding: 6px 9px; border-radius: 8px;
@@ -979,8 +980,11 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Mobile app shell */
 @media (max-width: 880px) {
   .app-header { padding: 0 12px; height: 54px; min-height: 54px; gap: 9px; }
-  .app-header__brand-name, .app-header__vdiv { display: none; }   /* wordmark + dividers off; logo stays (no text) */
-  .app-header--trip .app-header__logo { display: none; }          /* trip screens: burger + title instead of the logo */
+  /* Non-trip screens keep logo + "Triplanio" on mobile (matches the design).
+     Only trip screens drop the brand block for burger + title. */
+  .app-header--trip .app-header__logo,
+  .app-header--trip .app-header__brand-name,
+  .app-header--trip .app-header__vdiv { display: none; }
   .app-header__menu { display: grid; }                /* mobile burger appears */
   .app-header__trip-meta { display: none; }
   .app-header__trip-title { font-size: 16px; }
