@@ -74,6 +74,7 @@ const PARTNER_NAME = {
   booking: 'Booking.com', airbnb: 'Airbnb', skyscanner: 'Skyscanner', omio: 'Omio', kiwi: 'Kiwi.com',
   rentalcars: 'Rentalcars', discovercars: 'DiscoverCars', airalo: 'Airalo', yesim: 'Yesim',
   safetywing: 'SafetyWing', ektatraveling: 'Ekta Traveling',
+  aviasales: 'Aviasales', ostrovok: 'Островок', yandextravel: 'Яндекс Путешествия',
 };
 
 /**
@@ -101,13 +102,13 @@ export default function ForkPartnerModal({
   const tripCurrency = trip?.details?.main_currency || 'EUR';
 
   const platforms = useMemo(() => {
-    if (type === 'hotel') return hotelPlatforms(visit, t);
-    if (type === 'transfer') return transferPlatforms(fromVisit, toVisit, t);
+    if (type === 'hotel') return hotelPlatforms(visit, t, lang);
+    if (type === 'transfer') return transferPlatforms(fromVisit, toVisit, t, lang);
     if (type === 'car_rental') return carRentalPlatforms(trip, t);
     if (type === 'esim') return esimPlatforms(visits, t);
     if (type === 'insurance') return insurancePlatforms(t);
     return [];
-  }, [type, visit, fromVisit, toVisit, visits, trip, t]);
+  }, [type, visit, fromVisit, toVisit, visits, trip, t, lang]);
 
   const count = platforms.length;
 
@@ -117,7 +118,9 @@ export default function ForkPartnerModal({
   };
 
   const handlePartnerClick = (p) => {
-    logClick({ partner: p.key, type: CLICK_TYPE[type] || type, link: p.url });
+    // provider is the affiliate network (e.g. travelpayouts); undefined for
+    // non-affiliate direct search links → logged as NULL.
+    logClick({ partner: p.key, type: CLICK_TYPE[type] || type, link: p.url, provider: p.provider });
     // Browser still follows the anchor's href to open the new tab.
   };
 

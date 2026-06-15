@@ -28,8 +28,17 @@ const findOn = (t, name) => (t ? t('booking.find_on', { name }) : name);
 const findFlightsOn = (t, name) => (t ? t('booking.find_flights_on', { name }) : name);
 const findTicketsOn = (t, name) => (t ? t('booking.find_tickets_on', { name }) : name);
 
-// HOTEL: Booking.com, Airbnb
-export function hotelPlatforms(visit, t) {
+// Wrap a target URL in a TravelPayouts tp.media redirect (shared marker 654801).
+// The target is passed as the encoded `u` param so attribution is preserved even
+// for homepage fallbacks.
+const tpLink = (campaignId, p, targetUrl) =>
+  `https://tp.media/r?campaign_id=${campaignId}&marker=654801&p=${p}&trs=532202&u=${encodeURIComponent(targetUrl)}`;
+// Date helpers for partner URLs: dd.LL.yyyy (Ostrovok) and ddLL / DDMM (Aviasales).
+const dmyDot = (iso) => (iso ? DateTime.fromISO(iso).toFormat('dd.LL.yyyy') : '');
+const ddmm = (iso) => (iso ? DateTime.fromISO(iso).toFormat('ddLL') : '');
+
+// HOTEL: Booking.com, Airbnb (+ Ostrovok, Yandex Travel for ru UI)
+export function hotelPlatforms(visit, t, lang) {
   const tz = visit?.timezone || 'UTC';
   const checkin = localDate(visit?.start_date, tz);
   const checkout = ensureNextDay(checkin, localDate(visit?.end_date, tz));
@@ -42,6 +51,17 @@ export function hotelPlatforms(visit, t) {
     .replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
   const airbnbSlug = [cityEn, visit?.country].filter(Boolean).map(slugify).filter(Boolean).join('--')
     || encodeURIComponent(cityEn);
+
+  // RU-market hotel partners (TravelPayouts): exact city via city_name_en slug +
+  // country (en) + dates; fall back to the partner homepage when data is missing.
+  const countryEn = countryNameEn(visit?.country_code);
+  const cityEnSlug = visit?.city_name_en ? slugify(visit.city_name_en).toLowerCase() : '';
+  const ostrovokUrl = (countryEn && cityEnSlug)
+    ? `https://ostrovok.ru/hotel/${countryEn}/${cityEnSlug}/${checkin && checkout ? `?dates=${dmyDot(checkin)}-${dmyDot(checkout)}` : ''}`
+    : 'https://ostrovok.ru/';
+  const yandexUrl = cityEnSlug
+    ? `https://travel.yandex.ru/hotels/${cityEnSlug}/${checkin && checkout ? `?checkinDate=${checkin}&checkoutDate=${checkout}` : ''}`
+    : 'https://travel.yandex.ru/hotels/';
 
   return [
     {
@@ -65,6 +85,27 @@ export function hotelPlatforms(visit, t) {
         adults: '2', ...(checkin && { checkin }), ...(checkout && { checkout }),
       }).toString()}`,
     },
+    // RU-only partners (.ru sites via TravelPayouts). provider=travelpayouts.
+    ...(lang === 'ru' ? [
+      {
+        key: 'ostrovok',
+        label: bookOn(t, 'Островок'),
+        hint: cityQuery,
+        logo: 'https://img.wway.io/travelpayouts/brands/icon/459@svg',
+        color: 'border-cyan-200 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-100 dark:hover:bg-cyan-900/40',
+        url: tpLink(459, 7038, ostrovokUrl),
+        provider: 'travelpayouts',
+      },
+      {
+        key: 'yandextravel',
+        label: bookOn(t, 'Яндекс Путешествия'),
+        hint: cityQuery,
+        logo: 'https://img.wway.io/travelpayouts/brands/icon/193@svg',
+        color: 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 hover:bg-red-100 dark:hover:bg-red-900/40',
+        url: tpLink(193, 5916, yandexUrl),
+        provider: 'travelpayouts',
+      },
+    ] : []),
   ];
 }
 
@@ -118,6 +159,7 @@ export function esimPlatforms(visits, t) {
       logo: 'https://www.airalo.com/favicon.ico',
       color: 'border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-200 hover:bg-violet-100 dark:hover:bg-violet-900/40',
       url: airaloUrl,
+      provider: 'travelpayouts',
     },
     {
       key: 'yesim',
@@ -126,6 +168,7 @@ export function esimPlatforms(visits, t) {
       logo: 'https://yesim.app/favicon.ico',
       color: 'border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-teal-900/40',
       url: yesimUrl,
+      provider: 'travelpayouts',
     },
   ];
 }
@@ -149,14 +192,25 @@ export function insurancePlatforms(t) {
       logo: platformLogoUrl('ektatraveling', 'ektatraveling.com'),
       color: 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/40',
       url: 'https://ektatraveling.tpx.lt/ej8OjLU3',
+      provider: 'travelpayouts',
     },
   ];
 }
 
-// TRANSFER: Skyscanner (flights) + Omio (multi-modal) + Kiwi
-export function transferPlatforms(fromVisit, toVisit, t) {
+// TRANSFER: Skyscanner (flights) + Omio (multi-modal) + Kiwi (+ Aviasales for ru UI)
+export function transferPlatforms(fromVisit, toVisit, t, lang) {
   const from = fromVisit?.city_name || '';
   const to = toVisit?.city_name || '';
+  // Aviasales (TravelPayouts) flight search: origin/dest IATA city codes + flight
+  // date (DDMM) + 1 pax. The transfer fork has no own date → use the arrival day
+  // (toVisit.start_date), fall back to the departure city's last day. If either
+  // IATA city code is missing, link to the Aviasales homepage instead.
+  const fromIata = fromVisit?.iata_city_code;
+  const toIata = toVisit?.iata_city_code;
+  const flightDate = toVisit?.start_date || fromVisit?.end_date;
+  const aviasalesUrl = (fromIata && toIata && flightDate)
+    ? `https://www.aviasales.ru/search/${fromIata}${ddmm(flightDate)}${toIata}1`
+    : 'https://www.aviasales.ru/';
   return [
     {
       key: 'skyscanner',
@@ -182,5 +236,17 @@ export function transferPlatforms(fromVisit, toVisit, t) {
       color: 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 hover:bg-red-100 dark:hover:bg-red-900/40',
       url: `https://www.kiwi.com/en/search/results/${encodeURIComponent(from)}/${encodeURIComponent(to)}`,
     },
+    // RU-only partner (.ru site via TravelPayouts). provider=travelpayouts.
+    ...(lang === 'ru' ? [
+      {
+        key: 'aviasales',
+        label: findFlightsOn(t, 'Aviasales'),
+        hint: `${from} → ${to}`,
+        logo: 'https://img.wway.io/travelpayouts/brands/icon/100@svg',
+        color: 'border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-200 hover:bg-sky-100 dark:hover:bg-sky-900/40',
+        url: tpLink(100, 4114, aviasalesUrl),
+        provider: 'travelpayouts',
+      },
+    ] : []),
   ];
 }

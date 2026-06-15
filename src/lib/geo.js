@@ -46,9 +46,13 @@ export async function searchCities(query, lang) {
         a.city || a.town || a.village || a.hamlet || a.suburb ||
         a.neighbourhood || a.municipality || a.locality || a.county ||
         a.state || d.name || d.display_name.split(',')[0];
+      const nd = d.namedetails || {};
       return {
         external_city_id: String(d.place_id),
         city_name: name,
+        // Canonical English name from namedetails: explicit name:en, else the
+        // international name, else the default OSM name (Latin for many cities).
+        city_name_en: nd['name:en'] || nd['int_name'] || nd['name'] || '',
         country: a.country || '',
         country_code: (a.country_code || '').toUpperCase(),
         latitude: parseFloat(d.lat),
@@ -91,17 +95,16 @@ export async function reverseGeocode(lat, lon, lang) {
   };
 }
 
-// Resolve the canonical English city name for coordinates (LocationIQ reverse,
-// accept-language=en). Used for Stay22 address search and partner/referral links
-// (Booking, Airbnb) that need a stable English name regardless of the user's
-// display language. Returns '' when unavailable.
-export async function cityNameEn(lat, lon) {
-  if (lat == null || lon == null) return '';
-  const rows = await liq('reverse', { lat, lon, lang: 'en' });
-  const d = rows[0];
-  if (!d) return '';
-  const a = d.address || {};
-  return a.city || a.town || a.village || a.hamlet || a.suburb || a.municipality || d.name || '';
+// Resolve the canonical English city name by forward-searching the (possibly
+// localized) city name; searchCities reads namedetails (name:en / int_name /
+// name), which is accurate — unlike reverse geocoding, which returned
+// sub-localities (Tao/Khok Tum, see TRIP-142). Used for Stay22 address search and
+// partner/referral links. Returns '' when unavailable.
+export async function cityNameEn(cityName, countryCode) {
+  if (!cityName) return '';
+  const rows = await searchCities(cityName, 'en');
+  const best = (countryCode && rows.find(r => r.country_code === String(countryCode).toUpperCase())) || rows[0];
+  return best?.city_name_en || '';
 }
 
 // Country code → emoji flag
