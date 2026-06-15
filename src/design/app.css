@@ -399,6 +399,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 }
 .app-header__logo img { width: 32px; height: 32px; display: block; border-radius: 8px; }
 .app-header__brand-name { font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; color: #fff; }
+.app-header--trip .app-header__brand-name { display: none; }   /* trip screens: logo only, no wordmark */
 
 /* Vertical separators (brand ⋮ trip ⋮ utilities) */
 .app-header__vdiv { width: 1px; height: 28px; background: rgba(255,255,255,.28); flex: 0 0 auto; }
@@ -461,7 +462,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 
 /* Account button + avatar ring + PRO badge */
 .app-header__account { display: flex; align-items: center; gap: 7px; background: transparent; border: 0; cursor: pointer; padding: 0 2px; }
-.app-header__avatar { box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+/* Profile avatar — slightly larger than the 38px utility circles, single solid
+   white ring (override the base .avatar border + sm size). */
+.app-header .app-header__avatar { width: 40px; height: 40px; border: 2px solid #fff; box-shadow: none; font-size: var(--fs-base); }
 .app-header__pro {
   font-family: var(--font-display); font-weight: 800; font-size: 11px; line-height: 1; letter-spacing: .04em;
   color: var(--pro-fg); background: var(--pro-gradient); padding: 6px 9px; border-radius: 8px;
@@ -976,10 +979,11 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Mobile app shell */
 @media (max-width: 880px) {
   .app-header { padding: 0 12px; height: 54px; min-height: 54px; gap: 9px; }
-  .app-header__logo, .app-header__brand-name, .app-header__vdiv { display: none; }
+  .app-header__brand-name, .app-header__vdiv { display: none; }   /* wordmark + dividers off; logo stays (no text) */
+  .app-header--trip .app-header__logo { display: none; }          /* trip screens: burger + title instead of the logo */
   .app-header__menu { display: grid; }                /* mobile burger appears */
   .app-header__trip-meta { display: none; }
-  .app-header__trip-title { font-size: 17px; }
+  .app-header__trip-title { font-size: 16px; }
   .app-header__act-text { display: none; }            /* trip actions collapse to icons */
   .app-header__act { padding: 9px 10px; }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */

@@ -43,13 +43,14 @@ export default function AppHeader({
   title,
   meta,
   actions,
+  isTrip = false,
 }) {
   const nav = useNavigate();
   const goBrand = onBrand || (() => nav('/trips'));
   const hasTrip = title != null || meta != null;
 
   return (
-    <header className="app-header">
+    <header className={'app-header' + (isTrip ? ' app-header--trip' : '')}>
       <div className="app-header__left">
         {onMenu && (
           <button className="app-header__gbtn app-header__menu" onClick={onMenu} aria-label="Menu" type="button">

@@ -223,7 +223,7 @@ function LoadingScreen({ lens = 'overview' }) {
   return (
     <div className="trip-shell">
       {/* Skeleton unified top bar (brand gradient) */}
-      <header className="app-header">
+      <header className="app-header app-header--trip">
         <div className="app-header__left">
           <div className="app-header__brand">
             <span className="app-header__logo"><img src="/triplanio-logo.svg" alt="Triplanio" /></span>
@@ -1064,6 +1064,7 @@ export default function TripView() {
   return (
     <div className="trip-shell">
       <AppHeader
+        isTrip
         user={user}
         isPro={accountPro}
         isDark={isDark}
