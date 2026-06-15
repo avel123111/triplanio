@@ -17,34 +17,41 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Btn } from '@/design/index';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
-import { Edit2, Trash2, ExternalLink, MapPin, X } from 'lucide-react';
+import {
+  Edit2, Trash2, ExternalLink, MapPin, X,
+  Plane, TrainFront, Bus, Car, Ship, Footprints, Hotel, Drama,
+} from 'lucide-react';
 import {
   useEventViewModel, useEntityDocs, EventViewSections,
 } from '@/components/common/EventViewBody';
 
 // ── Eyebrow (category line) per kind ─────────────────────────────────────────
-const TRANSPORT_EMOJI = {
-  plane: '✈️', train: '🚂', bus: '🚌', car: '🚗', taxi: '🚗',
-  ferry: '⛴️', walk: '🚶', own_transport: '🚗', other: '🚗',
+const TRANSPORT_ICON = {
+  plane: Plane, train: TrainFront, bus: Bus, car: Car, taxi: Car,
+  ferry: Ship, walk: Footprints, own_transport: Car, other: Car,
 };
+
+const EyeIcon = ({ as: As }) => (
+  As ? <As size={14} style={{ verticalAlign: '-2px', marginRight: 6, flex: '0 0 auto' }} /> : null
+);
 
 function getEyebrowText(kind, entity, t, visit, fromVisit, toVisit, themeLabel) {
   if (kind === 'hotel') {
-    return `🏨 ${t('budget.cat_accommodation')}${visit?.city_name ? ' · ' + visit.city_name : ''}`;
+    return <><EyeIcon as={Hotel} />{t('budget.cat_accommodation')}{visit?.city_name ? ' · ' + visit.city_name : ''}</>;
   }
   if (kind === 'transfer') {
-    const emoji = TRANSPORT_EMOJI[entity?.transport_type] || '🚗';
+    const TIcon = TRANSPORT_ICON[entity?.transport_type] || Car;
     const route = (fromVisit?.city_name && toVisit?.city_name)
       ? ' · ' + fromVisit.city_name + ' → ' + toVisit.city_name : '';
-    return `${emoji} ${themeLabel}${route}`;
+    return <><EyeIcon as={TIcon} />{themeLabel}{route}</>;
   }
   if (kind === 'activity') {
-    return `🎭 ${t('budget.source_activity')}${visit?.city_name ? ' · ' + visit.city_name : ''}`;
+    return <><EyeIcon as={Drama} />{t('budget.source_activity')}{visit?.city_name ? ' · ' + visit.city_name : ''}</>;
   }
   if (kind === 'service') {
     if (entity?.kind === 'esim') return t('service.esim_eyebrow');
     if (entity?.kind === 'insurance') return t('service.insurance_eyebrow');
-    return `🚗 ${t('service.car_kind_label')}`;
+    return <><EyeIcon as={Car} />{t('service.car_kind_label')}</>;
   }
   return themeLabel;
 }

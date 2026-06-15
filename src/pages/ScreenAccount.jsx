@@ -218,7 +218,7 @@ function ReminderChannels() {
   const soon = (
     <>
       <div className="acct-chan acct-chan--soon">
-        <span className="acct-chan__ic" style={{ background: 'var(--surface-2)', color: 'var(--success)' }}><Icon name="chat" size={20} /></span>
+        <span className="acct-chan__ic" style={{ background: 'var(--surface-2)', color: 'var(--success)' }}><Icon name="whatsapp" size={20} /></span>
         <div className="acct-chan__main">
           <div className="acct-chan__t">WhatsApp <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge></div>
           <div className="acct-chan__s">{t('account.channel_whatsapp_desc')}</div>

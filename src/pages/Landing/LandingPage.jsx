@@ -6,6 +6,7 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { Icon as BaseIcon } from '@/design/icons';
 
 /* =========================================================
    Landing page - ported from triplanio_landing static site.
@@ -31,42 +32,9 @@ function TriplanioMark({ size = 28 }) {
   );
 }
 
-function Icon({ name, size = 20, stroke = 'currentColor', strokeWidth = 1.6, fill = 'none', ...rest }) {
-  const paths = {
-    compass: <><circle cx="12" cy="12" r="9" /><path d="m15.5 8.5-2 5-5 2 2-5 5-2z" /></>,
-    timeline: <><circle cx="6" cy="6" r="2" /><circle cx="6" cy="18" r="2" /><path d="M6 8v8" /><path d="M10 6h10" /><path d="M10 12h7" /><path d="M10 18h10" /></>,
-    users: <><circle cx="9" cy="8" r="3.2" /><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5" /><circle cx="17" cy="9" r="2.6" /><path d="M15 14c3 0 6 1.8 6 5" /></>,
-    sparkles: <><path d="M12 4l1.6 4.4L18 10l-4.4 1.6L12 16l-1.6-4.4L6 10l4.4-1.6L12 4z" /><path d="M19 16l.7 1.9L21.6 18.6 19.7 19.3 19 21.2 18.3 19.3 16.4 18.6 18.3 17.9 19 16z" /></>,
-    chat: <><path d="M21 12a8 8 0 1 1-3.1-6.3" /><path d="M21 5v4h-4" /><path d="M8 11h.01M12 11h.01M16 11h.01" /></>,
-    wallet: <><path d="M3 7a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v2H5a2 2 0 0 1-2-2z" /><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7H7a2 2 0 0 1-2-2" /><circle cx="16" cy="14" r="1.4" /></>,
-    globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></>,
-    devices: <><rect x="2" y="5" width="14" height="10" rx="1.5" /><path d="M6 19h6" /><path d="M9 15v4" /><rect x="17" y="9" width="5" height="11" rx="1.2" /></>,
-    lock: <><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
-    gift: <><rect x="3" y="9" width="18" height="5" rx="1.2" /><path d="M4 14v7h16v-7" /><path d="M12 9v12" /><path d="M12 9c-2 0-4-1-4-3a2 2 0 0 1 4 0c0 2-2 3-4 3" /><path d="M12 9c2 0 4-1 4-3a2 2 0 0 0-4 0c0 2 2 3 4 3" /></>,
-    map: <><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" /><path d="M9 4v14M15 6v14" /></>,
-    calendar: <><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16" /><path d="M9 3v4M15 3v4" /></>,
-    bed: <><path d="M3 18v-7a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v7" /><path d="M3 14h18" /><path d="M3 18v3M21 18v3" /><circle cx="8" cy="11.5" r="1.4" /></>,
-    plane: <path d="M21 12.5 3 18l4-5-4-5 18 5.5a.5.5 0 0 1 0 1z" />,
-    train: <><rect x="6" y="4" width="12" height="13" rx="3" /><path d="M6 11h12" /><path d="M9 17l-2 3M15 17l2 3" /><circle cx="9" cy="14" r=".8" fill="currentColor" stroke="none" /><circle cx="15" cy="14" r=".8" fill="currentColor" stroke="none" /></>,
-    cam: <><rect x="3" y="7" width="18" height="13" rx="2" /><circle cx="12" cy="13.5" r="3.5" /><path d="M8 7l1.5-2h5L16 7" /></>,
-    check: <path d="m5 12 4 4 10-10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
-    chevron: <path d="m9 6 6 6-6 6" />,
-    plus: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
-    menu: <><path d="M4 7h16" /><path d="M4 12h16" /><path d="M4 17h16" /></>,
-    close: <><path d="m6 6 12 12" /><path d="M18 6 6 18" /></>,
-    arrowRight: <><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>,
-    twitter: <path d="M18.2 4h2.7l-5.9 6.8L22 20h-5.5l-4.3-5.6L7 20H4.2l6.4-7.3L4 4h5.6l3.9 5.1L18.2 4Zm-1 14.4h1.5L7.1 5.5H5.5l11.7 12.9Z" fill="currentColor" stroke="none" />,
-    instagram: <><rect x="3.5" y="3.5" width="17" height="17" rx="4.5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" /></>,
-    telegram: <path d="m4 12 16-7-3 16-5-5-2.5 4-1-5L4 12Zm5.5 1.6 8-6.4-9.5 5.4L9.5 13.6Z" fill="currentColor" stroke="none" />,
-    whatsapp: <path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.6-1.2A9 9 0 1 0 12 3Zm5.1 12.7c-.2.6-1.2 1.1-1.7 1.2-.5.1-1 .1-1.5 0a7.3 7.3 0 0 1-2.8-1.3 9 9 0 0 1-2.8-3.3c-.3-.5-.5-1-.5-1.5 0-.6.3-1 .5-1.2.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .5.4l.7 1.6c.1.3 0 .5-.1.7l-.4.5c-.1.2-.3.3-.1.6.2.4.7 1.1 1.3 1.6.7.6 1.4.9 1.7 1 .3.1.5.1.7-.1l.6-.7c.2-.2.4-.2.6-.1l1.5.7c.3.2.4.3.4.4.1.1.1.6 0 1.2Z" fill="currentColor" stroke="none" />,
-  };
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke}
-      strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...rest}>
-      {paths[name]}
-    </svg>
-  );
-}
+// Иконки лендинга идут через единый набор (@/design/icons → lucide + бренд).
+// Тонкая обёртка сохраняет дефолтный размер 20 этого экрана.
+const Icon = (props) => <BaseIcon size={20} {...props} />;
 
 /* ── Flag ── */
 function Flag({ kind, width = 18, height = 12 }) {
@@ -585,7 +553,7 @@ function ConciergeVisual() {
         <div className="phone__head">
           <span className="av">T</span>
           <div><div className="name">Triplanio</div><div className="sub">{t('landing.phone.via')}</div></div>
-          <Icon name="telegram" size={16} stroke="none" fill="#2167e2" style={{marginLeft:'auto'}}/>
+          <Icon name="telegram" size={16} color="#229ED9" style={{marginLeft:'auto'}}/>
         </div>
         <div className="phone__body">
           <div className="phone__time">{t('landing.phone.today')}</div>
@@ -774,7 +742,7 @@ function LandingFooter({ lang, setLang }) {
           <span>{t('landing.footer.copy')}</span>
           <div className="footer__social" aria-label="Social">
             <a href="#" aria-label="Twitter / X"><Icon name="twitter" size={16}/></a>
-            <a href="#" aria-label="Instagram"><Icon name="instagram" size={16}/></a>
+            <a href="#" aria-label="Instagram"><Icon name="instagram" size={16} color="#E4405F"/></a>
           </div>
         </div>
       </div>
