@@ -13,12 +13,11 @@ import ProUpsellModal from '@/components/common/ProUpsellModal';
 import { isAddonEnabled } from '@/lib/tripAddons';
 import { isLensVisible, LENS_ITEMS, MGMT_ITEMS } from '@/lib/tripMenu';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
-import TripHeaderBar from '@/components/trips/TripHeaderBar';
+import AppHeader from '@/components/AppHeader';
 import TripScreenBar, { TripScreenBarCtx } from '@/components/trips/TripScreenBar';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
-import HeaderActions from '@/components/HeaderActions';
 import { Btn, Dialog, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow } from '../design/index';
 import { SystemStub } from '@/lib/PageNotFound';
 import { sortVisits, cityIdentity } from '@/lib/validation';
@@ -36,10 +35,8 @@ import DocsLens from './DocsLens';
 import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
 import { uniqueCityCount } from '@/lib/trip-cities';
-import { countTripMembers } from '@/lib/members';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
-import { getGradientById } from '@/lib/trip-gradients';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import '../design/app.css';
 
@@ -225,31 +222,23 @@ function LoadingScreen({ lens = 'overview' }) {
   const { t } = useI18n();
   return (
     <div className="trip-shell">
-      {/* Skeleton top bar */}
+      {/* Skeleton unified top bar (brand gradient) */}
       <header className="app-header">
-        <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--line)', flexShrink: 0 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Skeleton w={28} h={28} r={7} />
-          <Skeleton w={90} h={14} r={5} />
-        </div>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Skeleton w={28} h={28} r={7} />
-          <Skeleton w={28} h={28} r={7} />
-          <Skeleton w={32} h={32} r={999} />
-        </div>
-      </header>
-      {/* Skeleton gradient hero */}
-      <div className="trip-hero">
-        <div className="trip-hero__bg" style={{ background: 'var(--brand-grad)' }} />
-        <div className="trip-hero__ov" />
-        <div className="trip-hero__in">
-          <div style={{ flex: 1 }}>
-            <Skeleton w={200} h={20} r={6} style={{ marginBottom: 8 }} />
+        <div className="app-header__left">
+          <div className="app-header__brand">
+            <span className="app-header__logo"><img src="/triplanio-logo.svg" alt="Triplanio" /></span>
+            <span className="app-header__brand-name">Triplanio</span>
+          </div>
+          <span className="app-header__vdiv" />
+          <div className="app-header__trip">
+            <Skeleton w={190} h={18} r={6} style={{ marginBottom: 6 }} />
             <Skeleton w={150} h={12} r={5} />
           </div>
         </div>
-      </div>
+        <div className="app-header__right">
+          <Skeleton w={32} h={32} r={999} />
+        </div>
+      </header>
       <div className="trip-body">
         {/* Skeleton sidebar */}
         <aside className="app-side">
@@ -318,27 +307,6 @@ function ErrorScreen({ onBack }) {
 
 // ─── TripHeader ───────────────────────────────────────────────────────────────
 
-function TripHeader({ isPro, isDark, onToggleTheme, user, nav }) {
-  const { t } = useI18n();
-  // Title + dates now live in the gradient hero (TripHeaderBar), so the top bar
-  // only carries the brand and the account/notifications cluster.
-  return (
-    <header className="app-header">
-      <button className="app-header__crumb-back" onClick={() => nav('/trips')} title={t('trip.back')}>
-        <Icon name="back" size={15} />
-      </button>
-
-      <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
-        <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
-        <span className="app-header__brand-name">Triplanio</span>
-      </div>
-
-      <div style={{ flex: 1 }} />
-
-      <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={onToggleTheme} />
-    </header>
-  );
-}
 
 
 // ─── TimelineLens ─────────────────────────────────────────────────────────────
@@ -1010,21 +978,29 @@ export default function TripView() {
   // (Share / Edit / "…"). Cover priority mirrors the old cover strip: uploaded
   // photo → preset gradient → default waves. All dialogs open via the global
   // modal mount, so they work from any lens.
-  const gradient = getGradientById(trip?.cover_gradient);
-  const hasPhoto = !!trip?.cover_image_url;
-  const coverGradientCss = (!hasPhoto && gradient) ? gradient.css : null;
-  const useDefaultWaves = !hasPhoto && !gradient;
   const dateRange = formatTripRange(visits, '-');
   const cityCount = uniqueCityCount(visits);
-  const activeMemberCount = countTripMembers(members, trip?.created_by) || 1;
+  // Trip length in nights, rendered with the day-word — same meta as the editor
+  // header (dates · days · cities).
+  const tripNights = (() => {
+    const starts = visits.map((v) => v.start_date).filter(Boolean).sort();
+    const ends = visits.map((v) => v.end_date).filter(Boolean).sort();
+    const s = starts[0] || trip?.start_date;
+    const e = ends[ends.length - 1] || trip?.end_date;
+    if (!s || !e) return null;
+    const n = Math.round(DateTime.fromISO(e).diff(DateTime.fromISO(s), 'days').days);
+    return n >= 0 ? n : null;
+  })();
+  const dayWord = (n) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
   const heroSub = (
     <>
       {dateRange && dateRange !== '-' && <span>{dateRange}</span>}
+      {tripNights != null && (
+        <><span>·</span><span>{tripNights} {dayWord(tripNights)}</span></>
+      )}
       {cityCount > 0 && (
         <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : cityCount < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}</span></>
       )}
-      <span>·</span>
-      <span>{activeMemberCount} {activeMemberCount === 1 ? t('trip.members_count_one') : activeMemberCount < 5 ? t('trip.members_count_few') : t('trip.members_count_many')}</span>
     </>
   );
   // Copy trip — available to every participant. The new trip is owned by the
@@ -1054,18 +1030,18 @@ export default function TripView() {
   const heroActions = (
     <>
       {myRole !== 'viewer' && (
-        <button className="trip-hero__btn" onClick={() => setShareOpen(true)}>
-          <Icon name="share" size={15} /><span className="trip-hero__btn-text">{t('trip.share')}</span>
+        <button className="app-header__act" onClick={() => setShareOpen(true)}>
+          <Icon name="share" size={15} /><span className="app-header__act-text">{t('trip.share')}</span>
         </button>
       )}
       {myRole !== 'viewer' && (
-        <button className="trip-hero__btn" disabled={!canEditMode} onClick={() => nav(`/trip/${trip.id}/edit`)}><Icon name="edit" size={15} /><span className="trip-hero__btn-text">{t('trip.edit_trip')}</span></button>
+        <button className="app-header__act" disabled={!canEditMode} onClick={() => nav(`/trip/${trip.id}/edit`)}><Icon name="edit" size={15} /><span className="app-header__act-text">{t('trip.edit_trip')}</span></button>
       )}
       <ActionMenu
         align="end"
         width={240}
         trigger={
-          <button className="trip-hero__btn trip-hero__btn--icon">
+          <button className="app-header__act app-header__act--icon">
             <Icon name="more" size={15} />
           </button>
         }
@@ -1087,20 +1063,16 @@ export default function TripView() {
 
   return (
     <div className="trip-shell">
-      <TripHeader
+      <AppHeader
+        user={user}
         isPro={accountPro}
         isDark={isDark}
         onToggleTheme={toggleTheme}
-        user={user}
-        nav={nav}
-      />
-      <TripHeaderBar
-        title={trip?.title}
-        subtitle={heroSub}
-        coverImageUrl={trip?.cover_image_url || null}
-        coverGradientCss={coverGradientCss}
-        useDefaultWaves={useDefaultWaves}
+        onBack={() => nav('/trips')}
+        backTitle={t('trip.back')}
         onMenu={() => setSideOpen(true)}
+        title={trip?.title}
+        meta={heroSub}
         actions={heroActions}
       />
       <TripScreenBarCtx.Provider value={{ setActions: setScreenActions }}>

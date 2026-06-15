@@ -36,6 +36,7 @@
   --brand-ink:    #16294A;
   --brand-glow:   color-mix(in srgb, var(--brand) 32%, transparent);
   --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
+  --header-grad:  linear-gradient(105deg,#2A6FD6 0%,#2173C8 52%,#1C63BA 100%); /* unified top bar — white-text safe */
   --bk:           #003B95;  /* Booking.com brand navy — supplier/score badge */
   --bk-fg:        #fff;
 
@@ -170,6 +171,7 @@
   --primary-soft-2: rgba(111,178,255,.24);
   --brand-ink:    #BFD3F5;
   --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
+  --header-grad:  linear-gradient(105deg,#234F84 0%,#21588F 55%,#1B4373 100%); /* unified top bar — dark, white-text safe */
   --bk:           #1A66D9;  /* Booking navy — dark theme */
 
   /* Neutrals / surfaces — dark */
@@ -362,38 +364,78 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   color: var(--ink);
   font-family: var(--font-ui);
 }
+/* ===================================================================
+   UNIFIED TOP BAR — single brand-gradient header used app-wide. Collapses
+   the former white `.app-header` + the gradient trip hero (`.trip-hero`)
+   into one bar. Layout: [menu*][back*] logo · Triplanio │ trip title+meta …
+   trip actions │ theme · bell · account+PRO. White-on-glass controls.
+   =================================================================== */
 .app-header {
-  display: flex; align-items: center; gap: 18px;
-  padding: 10px 24px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 18px;
   position: sticky; top: 0; z-index: 50;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-  height: 56px;
+  background: var(--header-grad);
+  color: #fff;
+  height: 60px; min-height: 60px;
 }
-.app-header__brand { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-.app-header__brand-mark { width: 32px; height: 32px; border-radius: 8px; box-shadow: 0 1px 2px rgba(15,23,42,.06); }
-.app-header__brand-name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h4); letter-spacing: -0.02em; }
+.app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
+.app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.app-header__util  { display: flex; align-items: center; gap: 8px; }
 
-.app-header__crumb { display: flex; align-items: center; gap: 10px; padding-left: 4px; flex: 1; min-width: 0; }
-.app-header__crumb-sep { color: var(--muted-2); font-size: var(--fs-base); }
-.app-header__crumb-back {
-  width: 28px; height: 28px; display: grid; place-items: center;
-  border-radius: 8px; border: 1px solid var(--line); background: var(--surface);
-  color: var(--muted); flex-shrink: 0;
+/* Round glass buttons (back / mobile burger) */
+.app-header__gbtn {
+  width: 38px; height: 38px; flex: 0 0 auto; border-radius: 50%; cursor: pointer;
+  color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26);
+  display: grid; place-items: center; transition: background .15s var(--ease-out);
 }
-.app-header__crumb-back:hover { background: var(--wash); color: var(--ink); }
-.app-header__crumb-trip { display: flex; align-items: center; gap: 8px; font-size: var(--fs-base); color: var(--ink-2); font-weight: 500; flex-wrap: wrap; min-width: 0; }
-.app-header__crumb-dates { color: var(--muted); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
+.app-header__gbtn:hover { background: rgba(255,255,255,.24); }
+.app-header__menu { display: none; }                /* burger — shown on mobile only */
 
-.app-header__nav { display: flex; gap: 4px; margin-left: 12px; }
-.app-header__nav a {
-  font-size: var(--fs-base); padding: 6px 10px; border-radius: 7px;
-  color: var(--muted); font-weight: 500;
+/* Brand block — logo in a white plaque + wordmark */
+.app-header__brand { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 0 0 auto; min-width: 0; }
+.app-header__logo {
+  width: 38px; height: 38px; flex: 0 0 auto; border-radius: 11px; display: grid; place-items: center;
+  background: #fff; padding: 3px; box-shadow: 0 3px 10px rgba(0,0,0,.22); overflow: hidden;
 }
-.app-header__nav a:hover { background: var(--wash); color: var(--ink); }
-.app-header__nav a.active { background: var(--brand-soft); color: var(--brand); }
+.app-header__logo img { width: 32px; height: 32px; display: block; border-radius: 8px; }
+.app-header__brand-name { font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; color: #fff; }
 
-.app-header__right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+/* Vertical separators (brand ⋮ trip ⋮ utilities) */
+.app-header__vdiv { width: 1px; height: 28px; background: rgba(255,255,255,.28); flex: 0 0 auto; }
+
+/* Trip context — title + meta (dates · days · cities) */
+.app-header__trip { min-width: 0; display: flex; flex-direction: column; justify-content: center; flex: 0 1 auto; }
+.app-header__trip-title {
+  margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1.15;
+  letter-spacing: -0.01em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.app-header__trip-meta {
+  font-size: 12.5px; color: rgba(255,255,255,.82); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; gap: 6px; align-items: center;
+}
+
+/* Trip-action group (Share / Edit / …) — glass pill with inner dividers */
+.app-header__trip-actions {
+  display: flex; align-items: stretch; gap: 4px; padding: 4px; border-radius: 13px;
+  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26); flex: 0 0 auto;
+}
+.app-header__act {
+  display: inline-flex; align-items: center; gap: 8px; position: relative;
+  border: 0; background: transparent; color: #fff; cursor: pointer;
+  font-family: var(--font-display); font-weight: 600; font-size: 13.5px; line-height: 1;
+  padding: 9px 13px; border-radius: 9px; white-space: nowrap; transition: background .15s var(--ease-out);
+}
+.app-header__act:hover { background: rgba(255,255,255,.20); }
+.app-header__act svg { width: 17px; height: 17px; flex: 0 0 auto; }
+.app-header__act--icon { padding: 9px 11px; }
+.app-header__act[disabled] { opacity: .5; cursor: default; }
+.app-header__act[disabled]:hover { background: transparent; }
+.app-header__act + .app-header__act::before {
+  content: ""; position: absolute; left: -4px; top: 20%; height: 60%; width: 1px; background: rgba(255,255,255,.28);
+}
+
+/* Base neutral icon button (used OUTSIDE the header too — keeps light styling). */
 .icon-btn {
   position: relative;
   width: 34px; height: 34px;
@@ -409,13 +451,23 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--warm); border: 2px solid var(--surface);
 }
-.app-header__avatar {
-  width: 30px; height: 30px; border-radius: 50%;
-  background: linear-gradient(135deg, #c9603a, #e08158);
-  color: white; display: grid; place-items: center;
-  font-size: var(--fs-meta); font-weight: 600;
-  border: 1px solid var(--line);
+/* On-brand override — only inside the gradient header. */
+.app-header .icon-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26);
 }
+.app-header .icon-btn:hover { background: rgba(255,255,255,.24); color: #fff; }
+.app-header .icon-btn .dot { background: var(--danger); border: 1.5px solid #fff; }
+
+/* Account button + avatar ring + PRO badge */
+.app-header__account { display: flex; align-items: center; gap: 7px; background: transparent; border: 0; cursor: pointer; padding: 0 2px; }
+.app-header__avatar { box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+.app-header__pro {
+  font-family: var(--font-display); font-weight: 800; font-size: 11px; line-height: 1; letter-spacing: .04em;
+  color: var(--pro-fg); background: var(--pro-gradient); padding: 6px 9px; border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.18);
+}
+
 
 /* Main content area */
 .app-body {
@@ -923,11 +975,14 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 
 /* Mobile app shell */
 @media (max-width: 880px) {
-  .app-header { padding: 8px 14px; height: 52px; gap: 10px; }
-  .app-header__brand-name { display: none; }
-  .app-header__nav { display: none; }
-  .app-header__crumb-dates { display: none; }
-  .app-header__crumb-trip { font-size: var(--fs-base); }
+  .app-header { padding: 0 12px; height: 54px; min-height: 54px; gap: 9px; }
+  .app-header__logo, .app-header__brand-name, .app-header__vdiv { display: none; }
+  .app-header__menu { display: grid; }                /* mobile burger appears */
+  .app-header__trip-meta { display: none; }
+  .app-header__trip-title { font-size: 17px; }
+  .app-header__act-text { display: none; }            /* trip actions collapse to icons */
+  .app-header__act { padding: 9px 10px; }
+  .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
   .app-body { grid-template-columns: 1fr; }
   .app-side {
     position: fixed; left: 0; top: 0; bottom: 0;
@@ -1857,39 +1912,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Top bar sits as a fixed-height flex row inside the shell (no document scroll). */
 .trip-shell .app-header { position: static; top: auto; flex: none; }
 
-/* ---- Gradient hero (.thead) ---- */
-.trip-hero {
-  position: relative; flex: none;
-  height: 76px; min-height: 76px;
-  display: flex; align-items: center; overflow: hidden;
-}
-.trip-hero__bg { position: absolute; inset: 0; }
-.trip-hero__bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.trip-hero__ov { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,12,26,.12), rgba(10,12,26,.5)); }
-.trip-hero__in { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 0 22px; min-width: 0; }
-.trip-hero__menu {
-  display: none; width: 38px; height: 38px; border-radius: 11px; flex: none;
-  background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3);
-  color: #fff; place-items: center; cursor: pointer;
-}
-.trip-hero__menu svg { width: 19px; height: 19px; }
-.trip-hero__title { min-width: 0; }
-.trip-hero__title h2 { font-family: var(--font-display); font-weight: 600; font-size: 21px; color: #fff; line-height: 1.05; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.trip-hero__sub { font-size: 12px; color: rgba(255,255,255,.9); font-weight: 700; margin-top: 2px; display: flex; gap: 8px; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; align-items: center; }
-.trip-hero__sp { flex: 1; }
-.trip-hero__actions { display: flex; align-items: center; gap: 8px; flex: none; }
-.trip-hero__btn {
-  display: inline-flex; align-items: center; gap: 7px; font: inherit;
-  font-family: var(--font-display); font-weight: 600; font-size: 13px; color: #fff;
-  background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3);
-  border-radius: 12px; padding: 9px 14px; cursor: pointer;
-  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
-  transition: background .16s var(--ease-out); white-space: nowrap;
-}
-.trip-hero__btn:hover { background: rgba(255,255,255,.28); }
-.trip-hero__btn svg { width: 15px; height: 15px; }
-.trip-hero__btn--icon { padding: 9px; width: 38px; justify-content: center; }
-.trip-hero__btn[disabled] { opacity: .5; cursor: default; }
+/* Gradient hero (.trip-hero / .thead) removed — title, meta and trip actions
+   now live in the unified <AppHeader> at the top of the shell. */
 
 /* ---- Body: sidebar + content ---- */
 .trip-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr; grid-template-rows: minmax(0, 1fr); position: relative; }
@@ -1927,10 +1951,6 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .trip-side-scrim { display: none; }
 
 @media (max-width: 880px) {
-  .trip-hero__menu { display: grid; }
-  .trip-hero__in { padding: 0 14px; }
-  .trip-hero__title h2 { font-size: 18px; }
-  .trip-hero__btn-text { display: none; }
   .trip-body { grid-template-columns: 1fr; }
   .trip-shell .app-side {
     position: absolute; top: 0; left: 0; bottom: 0;

@@ -10,7 +10,7 @@ import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 import { supabase } from '@/api/supabaseClient';
-import HeaderActions from '@/components/HeaderActions';
+import AppHeader from '@/components/AppHeader';
 import SearchSelect from '@/components/ui/SearchSelect';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
@@ -605,26 +605,16 @@ export default function ScreenAccount() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
 
-      {/* ── APP HEADER (shared pattern) ── */}
-      <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title={t('notif.to_collection')}>
-          <Icon name="back" size={14} />
-        </button>
-        <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
-          <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
-          <span className="app-header__brand-name">Triplanio</span>
-        </div>
-        <div className="app-header__crumb">
-          <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--ink-2)' }}>{t('account.title')}</span>
-        </div>
-        <HeaderActions
-          user={user}
-          isPro={isPro}
-          isDark={isDark}
-          onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        />
-      </header>
+      {/* ── APP HEADER ── */}
+      <AppHeader
+        user={user}
+        isPro={isPro}
+        isDark={isDark}
+        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        onBack={() => nav('/trips')}
+        backTitle={t('notif.to_collection')}
+        title={t('account.title')}
+      />
 
       {/* Payment / action error banner (full width, above the workspace) */}
       {errorMsg && (

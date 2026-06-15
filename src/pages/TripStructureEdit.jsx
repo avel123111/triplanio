@@ -20,15 +20,14 @@ import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
 import { useToast } from '@/components/ui/use-toast';
-import HeaderActions from '@/components/HeaderActions';
+import AppHeader from '@/components/AppHeader';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import TripSidebar from '@/components/trips/TripSidebar';
-import TripHeaderBar from '@/components/trips/TripHeaderBar';
 import TripScreenBar from '@/components/trips/TripScreenBar';
-import { getGradientById } from '@/lib/trip-gradients';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from '@/components/ui/alert-dialog';
 
@@ -472,17 +471,15 @@ export default function TripStructureEdit() {
   //   Отменить = discard ALL edits, release the lock, return to the timeline.
   //   Сброс    = discard all edits but STAY in the editor.
   const headerEl = (
-    <header className="app-header">
-      <button className="app-header__crumb-back" onClick={() => leaveNow(`/trip/${tripId}`)} title={t('tse.exit_editor')}>
-        <Icon name="back" size={15} />
-      </button>
-      <div className="app-header__brand" onClick={() => leaveNow('/trips')} style={{ cursor: 'pointer' }}>
-        <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
-        <span className="app-header__brand-name">Triplanio</span>
-      </div>
-      <div style={{ flex: 1 }} />
-      <HeaderActions user={user} isPro={accountPro} isDark={isDark} onToggleTheme={toggleTheme} />
-    </header>
+    <AppHeader
+      user={user}
+      isPro={accountPro}
+      isDark={isDark}
+      onToggleTheme={toggleTheme}
+      onBack={() => leaveNow(`/trip/${tripId}`)}
+      backTitle={t('tse.exit_editor')}
+      onBrand={() => leaveNow('/trips')}
+    />
   );
 
   // Editor action cluster — projected into the global screen-title bar, the same
@@ -778,22 +775,53 @@ export default function TripStructureEdit() {
     </div>
   ) : null;
 
+  // Editor header trip-actions — same set as the other trip screens, but the
+  // "Edit" button is disabled (we are already in the editor). Menu items that
+  // navigate to a trip lens exit the editor first via leaveNow.
+  const editorHeaderActions = (
+    <>
+      {myRole !== 'viewer' && (
+        <button className="app-header__act" onClick={() => setShareOpen(true)}>
+          <Icon name="share" size={15} /><span className="app-header__act-text">{t('trip.share')}</span>
+        </button>
+      )}
+      <button className="app-header__act" disabled title={t('trip.edit_trip')} aria-label={t('trip.edit_trip')}>
+        <Icon name="edit" size={15} /><span className="app-header__act-text">{t('trip.edit_trip')}</span>
+      </button>
+      <ActionMenu
+        align="end"
+        width={240}
+        trigger={<button className="app-header__act app-header__act--icon" aria-label={t('common.more') || '…'}><Icon name="more" size={15} /></button>}
+        items={[
+          { icon: 'settings', label: t('trip.settings_title'), onSelect: () => leaveNow(`/trip/${tripId}?lens=settings`) },
+          myRole !== 'viewer' && { icon: 'users', label: t('trip.sidebar_members'), onSelect: () => leaveNow(`/trip/${tripId}?lens=members`) },
+          { separator: true },
+          { icon: 'download', label: t('trip.export'), onSelect: () => window.print() },
+        ]}
+      />
+    </>
+  );
+
   return (
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
-    {headerEl}
-    <TripHeaderBar
+    <AppHeader
+      user={user}
+      isPro={accountPro}
+      isDark={isDark}
+      onToggleTheme={toggleTheme}
+      onBack={() => leaveNow(`/trip/${tripId}`)}
+      backTitle={t('tse.exit_editor')}
+      onBrand={() => leaveNow('/trips')}
+      onMenu={() => setSideOpen(true)}
       title={trip?.title}
-      subtitle={
+      meta={
         <>
           <span>{fmtD(startDate, lang)} – {fmtD(endDate, lang)}</span>
           {totalNights != null && <><span>·</span><span>{totalNights} {dayWord(totalNights, t)}</span></>}
           {cities.length > 0 && <><span>·</span><span>{cities.length} {cities.length === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}</span></>}
         </>
       }
-      coverImageUrl={trip?.cover_image_url || null}
-      coverGradientCss={(!trip?.cover_image_url && getGradientById(trip?.cover_gradient)) ? getGradientById(trip?.cover_gradient).css : null}
-      useDefaultWaves={!trip?.cover_image_url && !getGradientById(trip?.cover_gradient)}
-      onMenu={() => setSideOpen(true)}
+      actions={editorHeaderActions}
     />
     {/* Mobile menu drawer — burger opens the full sidebar (the static icon-rail
         is hidden on mobile). */}

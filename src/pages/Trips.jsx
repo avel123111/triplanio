@@ -13,7 +13,7 @@ import { getGradientById } from '@/lib/trip-gradients';
 import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
-import HeaderActions from '@/components/HeaderActions';
+import AppHeader from '@/components/AppHeader';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 function strHue(str = '') {
@@ -481,13 +481,7 @@ export default function Trips() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
 
       {/* APP HEADER */}
-      <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
-          <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
-          <span className="app-header__brand-name">Triplanio</span>
-        </div>
-        <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
-      </header>
+      <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
 
       {/* PAGE CONTENT */}
       <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
