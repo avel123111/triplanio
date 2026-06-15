@@ -473,6 +473,7 @@ export default function TripStructureEdit() {
   //   Сброс    = discard all edits but STAY in the editor.
   const headerEl = (
     <AppHeader
+      isTrip
       user={user}
       isPro={accountPro}
       isDark={isDark}
@@ -829,6 +830,7 @@ export default function TripStructureEdit() {
   return (
     <div className="ts-screen" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--surface)' }}>
     <AppHeader
+      isTrip
       user={user}
       isPro={accountPro}
       isDark={isDark}
