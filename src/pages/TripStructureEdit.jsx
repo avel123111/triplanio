@@ -147,6 +147,7 @@ export default function TripStructureEdit() {
   }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
   const [showMap, setShowMap] = useState(true); // hide the map to give the itinerary full width
+  const [copyingTrip, setCopyingTrip] = useState(false); // header "…" → Copy trip
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [sideOpen, setSideOpen] = useState(false); // mobile menu drawer
@@ -775,6 +776,28 @@ export default function TripStructureEdit() {
     </div>
   ) : null;
 
+  // Copy trip — same action as the other trip screens. The new trip is owned by
+  // the caller; copyTrip strips Pro status + Pro-only addons server-side.
+  const handleCopyTrip = async () => {
+    if (copyingTrip) return;
+    setCopyingTrip(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('copyTrip', { body: { tripId: trip.id } });
+      let serverMsg = data?.error || null;
+      if (!serverMsg && error?.context && typeof error.context.json === 'function') {
+        try { serverMsg = (await error.context.json())?.error || null; } catch { /* ignore */ }
+      }
+      if (error || data?.error) throw new Error(serverMsg || error?.message || 'copy failed');
+      qc.invalidateQueries({ queryKey: ['trips', user?.id] });
+      toast({ description: t('trip.copy_done'), variant: 'success' });
+      if (data?.tripId) nav(`/trip/${data.tripId}`);
+    } catch (e) {
+      toast({ description: e?.message || t('trip.copy_error'), variant: 'destructive' });
+    } finally {
+      setCopyingTrip(false);
+    }
+  };
+
   // Editor header trip-actions — same set as the other trip screens, but the
   // "Edit" button is disabled (we are already in the editor). Menu items that
   // navigate to a trip lens exit the editor first via leaveNow.
@@ -796,6 +819,7 @@ export default function TripStructureEdit() {
           { icon: 'settings', label: t('trip.settings_title'), onSelect: () => leaveNow(`/trip/${tripId}?lens=settings`) },
           myRole !== 'viewer' && { icon: 'users', label: t('trip.sidebar_members'), onSelect: () => leaveNow(`/trip/${tripId}?lens=members`) },
           { separator: true },
+          { icon: 'copy', label: t('trip.copy'), disabled: copyingTrip, onSelect: handleCopyTrip },
           { icon: 'download', label: t('trip.export'), onSelect: () => window.print() },
         ]}
       />

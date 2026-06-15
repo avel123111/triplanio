@@ -983,6 +983,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .app-header__act-text { display: none; }            /* trip actions collapse to icons */
   .app-header__act { padding: 9px 10px; }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
+  .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
   .app-body { grid-template-columns: 1fr; }
   .app-side {
     position: fixed; left: 0; top: 0; bottom: 0;
