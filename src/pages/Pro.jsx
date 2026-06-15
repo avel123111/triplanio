@@ -8,7 +8,7 @@ import { isProActive } from '@/lib/subscription';
 import { parseEdgeError } from '@/lib/edgeError';
 import { Icon } from '@/design/icons';
 import { Btn, Skeleton, Severity } from '@/design/index';
-import HeaderActions from '@/components/HeaderActions';
+import AppHeader from '@/components/AppHeader';
 import '../design/app.css';
 
 // Full-screen Pro / Pricing page. Replaces the previous UpgradePlanDialog
@@ -130,21 +130,16 @@ export default function Pro() {
   return (
     <div className="pro-page">
 
-      {/* ── App header (kept as-is per design spec) ── */}
-      <header className="app-header">
-        <button className="app-header__crumb-back" onClick={() => nav(-1)} title={t('common.back')}>
-          <Icon name="back" size={14} />
-        </button>
-        <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
-          <img src="/triplanio-logo.svg" alt="Triplanio" className="app-header__brand-mark" />
-          <span className="app-header__brand-name">Triplanio</span>
-        </div>
-        <div className="app-header__crumb">
-          <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--ink-2)' }}>Pro</span>
-        </div>
-        <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
-      </header>
+      {/* ── App header ── */}
+      <AppHeader
+        user={user}
+        isPro={isPro}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
+        onBack={() => nav(-1)}
+        backTitle={t('common.back')}
+        title="Pro"
+      />
 
       {/* ── Scrollable main zone ── */}
       <main className="pro-main">

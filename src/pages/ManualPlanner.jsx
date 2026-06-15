@@ -13,7 +13,7 @@ import { tzFromCoords } from '@/lib/timezone';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
 import { Btn, EmptyState, Severity } from '../design/index';
-import HeaderActions from '@/components/HeaderActions';
+import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { getGradientById } from '@/lib/trip-gradients';
 import FlowProgress from '@/pages/create/FlowProgress';
@@ -1293,18 +1293,14 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   if (isOverLimit) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
-        <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-          <button className="app-header__crumb-back" onClick={() => nav('/trips')} title={t('notif.to_collection')}>
-            <Icon name="back" size={14} />
-          </button>
-          <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}><img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} /><span className="app-header__brand-name">Triplanio</span></div>
-          <HeaderActions
-            user={user}
-            isPro={isPro}
-            isDark={isDark}
-            onToggleTheme={toggleTheme}
-          />
-        </header>
+        <AppHeader
+          user={user}
+          isPro={isPro}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
+          onBack={() => nav('/trips')}
+          backTitle={t('notif.to_collection')}
+        />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ maxWidth: 480, textAlign: 'center' }}>
             <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--warning-soft, #fff3cd)', color: 'var(--warning, #e6a817)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
@@ -1328,25 +1324,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg, var(--wash))' }}>
       {/* Header */}
-      <header className="app-header" style={{ flexShrink: 0, zIndex: 50 }}>
-        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title={t('notif.to_collection')}>
-          <Icon name="back" size={14} />
-        </button>
-        <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
-          <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
-          <span className="app-header__brand-name">Triplanio</span>
-        </div>
-        <div className="app-header__crumb">
-          <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ink-2)' }}>{isAi ? t('planner.step_home_ai') : t('trips.new')}</span>
-        </div>
-        <HeaderActions
-          user={user}
-          isPro={isPro}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
-        />
-      </header>
+      <AppHeader
+        user={user}
+        isPro={isPro}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
+        onBack={() => nav('/trips')}
+        backTitle={t('notif.to_collection')}
+        title={isAi ? t('planner.step_home_ai') : t('trips.new')}
+      />
 
       {/* Slim top bar: progress glued under the header */}
       <div className="flow-top">

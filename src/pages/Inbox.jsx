@@ -10,7 +10,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { ru, es, enUS } from 'date-fns/locale';
 import { Icon } from '../design/icons';
 import { Btn, Badge, Skeleton, EmptyState } from '../design/index';
-import HeaderActions from '@/components/HeaderActions';
+import AppHeader from '@/components/AppHeader';
 import { notifMeta, emphasize } from '@/components/notifications/NotificationsBell';
 import '../design/app.css';
 
@@ -112,20 +112,15 @@ export default function Inbox() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
-      <header className="app-header" style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <button className="app-header__crumb-back" onClick={() => nav('/trips')} title={t('telegram.go_to_trips')}>
-          <Icon name="back" size={14} />
-        </button>
-        <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
-          <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
-          <span className="app-header__brand-name">Triplanio</span>
-        </div>
-        <div className="app-header__crumb">
-          <span className="app-header__crumb-sep">/</span>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ink-2)' }}>{t('notif.inbox_title')}</span>
-        </div>
-        <HeaderActions user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
-      </header>
+      <AppHeader
+        user={user}
+        isPro={isPro}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
+        onBack={() => nav('/trips')}
+        backTitle={t('telegram.go_to_trips')}
+        title={t('notif.inbox_title')}
+      />
 
       <main className="ov-anim" style={{ flex: 1, padding: '32px 24px', maxWidth: 760, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>

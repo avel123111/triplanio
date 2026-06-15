@@ -5,7 +5,7 @@ import { useT } from '@/lib/i18n/I18nContext';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
-import HeaderActions from '@/components/HeaderActions';
+import AppHeader from '@/components/AppHeader';
 
 // Theme toggle has been moved into UserMenu (see components/UserMenu.jsx) so
 // it's reachable on mobile without taking header space, and the dropdown is
@@ -27,13 +27,7 @@ export default function Layout() {
 
   const body = (
     <>
-      <header className="app-header">
-        <div className="app-header__brand" onClick={() => nav('/trips')} style={{ cursor: 'pointer' }}>
-          <img src="/triplanio-logo.svg" alt="Triplanio" style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0 }} />
-          <span className="app-header__brand-name">Triplanio</span>
-        </div>
-        <HeaderActions user={user} isPro={isProActive(user)} isDark={isDark} onToggleTheme={toggleTheme} />
-      </header>
+      <AppHeader user={user} isPro={isProActive(user)} isDark={isDark} onToggleTheme={toggleTheme} />
       <main
         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10"
         style={showBottomNav ? { paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' } : undefined}
