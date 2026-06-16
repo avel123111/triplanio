@@ -80,12 +80,28 @@ export function diffHours(utcA, utcB) {
   return (b - a) / 3_600_000;
 }
 
-// Compact transfer duration label, e.g. "2h 50m" / "45m".
-// NOTE: duplicated as local transferDuration() in TransferGroupReadOnly.jsx and
-// ReadOnlyTimelineView.jsx — those should be migrated to this shared helper.
-export function formatDuration(startIso, endIso) {
+// Compact duration label, e.g. "2h 50m" / "45m".
+//
+// Stored datetimes are NAIVE wall-clock: start_datetime is local to the
+// DEPARTURE city, end_datetime local to the ARRIVAL city. For a transfer whose
+// endpoints sit in different timezones, a plain wall-clock subtraction is wrong
+// by the offset difference. Pass fromTz/toTz (IANA, from each CityVisit) to get
+// the real elapsed time. When both tz are equal, missing, or invalid we fall
+// back to the naive diff (correct for same-city events like activities).
+export function formatDuration(startIso, endIso, fromTz, toTz) {
   if (!startIso || !endIso) return '';
-  const mins = Math.round((new Date(endIso) - new Date(startIso)) / 60000);
+  let mins = null;
+  if (fromTz && toTz && fromTz !== toTz) {
+    const dep = parseNaive(startIso)?.setZone(fromTz, { keepLocalTime: true });
+    const arr = parseNaive(endIso)?.setZone(toTz, { keepLocalTime: true });
+    if (dep?.isValid && arr?.isValid) mins = Math.round((arr.toMillis() - dep.toMillis()) / 60000);
+  }
+  if (mins === null) {
+    const a = parseNaive(startIso), b = parseNaive(endIso);
+    mins = (a && b)
+      ? Math.round((b.toMillis() - a.toMillis()) / 60000)
+      : Math.round((new Date(endIso) - new Date(startIso)) / 60000);
+  }
   if (mins <= 0) return '';
   if (mins < 60) return `${mins}m`;
   const h = Math.floor(mins / 60), m = mins % 60;
