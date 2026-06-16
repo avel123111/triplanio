@@ -48,11 +48,20 @@ const SCREEN_TITLE_KEY = Object.fromEntries(
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function formatDuration(t, start, end) {
+// Stored datetimes are naive wall-clock, local to each endpoint city. For a
+// transfer across timezones, pass fromTz/toTz (CityVisit.timezone) so the
+// duration reflects real elapsed time; same-city events omit them (naive diff).
+function formatDuration(t, start, end, fromTz, toTz) {
   const s = parseNaive(start);
   const e = parseNaive(end);
   if (!s || !e) return null;
-  const mins = Math.round(e.diff(s, 'minutes').minutes);
+  let mins = null;
+  if (fromTz && toTz && fromTz !== toTz) {
+    const dep = s.setZone(fromTz, { keepLocalTime: true });
+    const arr = e.setZone(toTz, { keepLocalTime: true });
+    if (dep.isValid && arr.isValid) mins = Math.round((arr.toMillis() - dep.toMillis()) / 60000);
+  }
+  if (mins === null) mins = Math.round(e.diff(s, 'minutes').minutes);
   if (mins <= 0) return null;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -205,7 +214,7 @@ export function buildEventStream(t, hotels = [], activities = [], transfers = []
       price: tr.price,
       cur: tr.currency,
       platformUrl: tr.booking_url,
-      duration: tr.end_datetime ? formatDuration(t, tr.start_datetime, tr.end_datetime) : null,
+      duration: tr.end_datetime ? formatDuration(t, tr.start_datetime, tr.end_datetime, visits.find(v => v.id === tr.from_city_visit_id)?.timezone, visits.find(v => v.id === tr.to_city_visit_id)?.timezone) : null,
       endTime: tr.end_datetime ? formatNaive(tr.end_datetime, 'HH:mm') : null,
       _ms: eventMs,
     });

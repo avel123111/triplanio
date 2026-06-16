@@ -162,7 +162,7 @@ function TransferBody({ entity, fromVisit, toVisit }) {
   const docs = getEntityDocuments(entity);
   const dep = fmtTime(entity.start_datetime), arr = fmtTime(entity.end_datetime);
   const depDate = fmtDate(entity.start_datetime), arrDate = fmtDate(entity.end_datetime);
-  const dur = formatDuration(entity.start_datetime, entity.end_datetime);
+  const dur = formatDuration(entity.start_datetime, entity.end_datetime, fromVisit?.timezone, toVisit?.timezone);
   return (
     <>
       <div className="route-block">

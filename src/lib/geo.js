@@ -13,11 +13,20 @@ import { supabase } from '@/api/supabaseClient';
 // Thin call into the geoLocationiq edge proxy. Returns the LocationIQ result
 // array (Nominatim-shaped) or [] on any error.
 async function liq(action, body) {
-  const { data, error } = await supabase.functions.invoke('geoLocationiq', {
-    body: { action, ...body },
-  });
-  if (error) return [];
-  return data?.results || [];
+  // Retry with backoff on an invoke error. LocationIQ free is ~2 req/s; when the
+  // rate limit is hit the geoLocationiq edge function returns a 502 (upstream
+  // 429), surfacing here as `error`. Without retry that becomes [] → empty search
+  // dropdown / unresolved (red) cities. A genuine no-match returns a 200 with an
+  // empty array (no error), so it is NOT retried (no added latency on normal use).
+  const backoff = [0, 600, 1200];
+  for (let attempt = 0; attempt < backoff.length; attempt++) {
+    if (backoff[attempt]) await new Promise((r) => setTimeout(r, backoff[attempt]));
+    const { data, error } = await supabase.functions.invoke('geoLocationiq', {
+      body: { action, ...body },
+    });
+    if (!error) return data?.results || [];
+  }
+  return [];
 }
 
 export async function searchCities(query, lang) {

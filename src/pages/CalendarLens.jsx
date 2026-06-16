@@ -288,8 +288,11 @@ function Legend({ visits }) {
   const uniqueCities = useMemo(() => {
     const seen = new Set();
     return visits
-      .map((v, idx) => ({ name: v.city_name, colorIdx: idx }))
-      .filter(({ name }) => {
+      // colorIdx must stay tied to the original visit index so colours match
+      // the timeline; map first (keeps idx), then filter.
+      .map((v, idx) => ({ name: v.city_name, colorIdx: idx, kind: v.kind }))
+      .filter(({ name, kind }) => {
+        if (kind === 'start' || kind === 'end') return false; // anchors hidden in calendar
         if (!name || seen.has(name)) return false;
         seen.add(name);
         return true;
@@ -374,6 +377,7 @@ export default function CalendarLens({ stream, visits, trip, isLoading, onOpenEv
     if (!month) return [];
     const out = [];
     visits.forEach((v, idx) => {
+      if (v.kind === 'start' || v.kind === 'end') return; // anchors hidden in calendar
       const s = parseNaive(v.start_date);
       const e = parseNaive(v.end_date);
       if (!s || !e) return;
@@ -446,7 +450,7 @@ export default function CalendarLens({ stream, visits, trip, isLoading, onOpenEv
           const e = parseNaive(v.end_date);
           return { v, idx, s, e };
         })
-        .filter(({ s, e }) => s && e && d >= s && d <= e)
+        .filter(({ v, s, e }) => v.kind !== 'start' && v.kind !== 'end' && s && e && d >= s && d <= e)
         .map(({ v, idx, s }) => ({
           name:     v.city_name || '—',
           colorIdx: idx,
