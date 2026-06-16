@@ -191,7 +191,7 @@ function ReminderChannels() {
   const { t } = useI18n();
   const nav = useNavigate();
   const [items, setItems] = useState(null); // null = loading
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false); // Telegram block collapsed by default
   const [unlinkState, setUnlinkState] = useState(null); // null | { account }
 
   const load = React.useCallback(async () => {
@@ -672,13 +672,9 @@ export default function ScreenAccount() {
                   <div className="acct-hero__name">{fullName || user.email}</div>
                   <div className="acct-hero__mail">{user.email}</div>
                   <div className="acct-hero__actions">
-                    <button className="acct-linkbtn" onClick={() => avatarInputRef.current?.click()}>
-                      <Icon name="cam" size={13} /> {t('common.upload')}
-                    </button>
+                    <Btn variant="secondary" size="sm" icon="cam" onClick={() => avatarInputRef.current?.click()}>{t('common.upload')}</Btn>
                     {avatarUrl && (
-                      <button className="acct-linkbtn acct-linkbtn--danger" onClick={handleRemoveAvatar}>
-                        <Icon name="trash" size={13} /> {t('account.remove_avatar')}
-                      </button>
+                      <Btn variant="danger" size="sm" icon="trash" onClick={handleRemoveAvatar}>{t('account.remove_avatar')}</Btn>
                     )}
                   </div>
                 </div>
@@ -831,7 +827,7 @@ export default function ScreenAccount() {
                     <a href="mailto:support@triplanio.com" style={{ color: 'var(--brand)' }}>support@triplanio.com</a> · {t('account.support_reply')}
                   </div>
                 </div>
-                <Btn variant="ghost" size="sm" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
+                <Btn variant="secondary" size="sm" icon="send" onClick={() => { window.location.href = 'mailto:support@triplanio.com'; }}>{t('account.write')}</Btn>
               </div>
               <a className="acct-divrow" href="/privacy" target="_blank" rel="noreferrer noopener" style={{ color: 'inherit', textDecoration: 'none' }}>
                 <span className="acct-ic-tile" style={{ background: 'var(--wash)', color: 'var(--muted)' }}><Icon name="shield" size={18} /></span>
@@ -898,7 +894,7 @@ export default function ScreenAccount() {
                   <div className="acct-divrow__t">{t('account.logout_title')}</div>
                   <div className="acct-divrow__s">{t('account.logout_desc')}</div>
                 </div>
-                <Btn variant="ghost" icon="arrow" onClick={logout}>{t('auth.logout')}</Btn>
+                <Btn variant="secondary" icon="arrow" onClick={logout}>{t('auth.logout')}</Btn>
               </div>
             </div>
           </section>

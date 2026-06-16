@@ -1,18 +1,9 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, ArrowRight, ExternalLink } from 'lucide-react';
 import { transportInfo } from '@/lib/transport';
-import { formatInTz } from '@/lib/time';
+import { formatInTz, formatDuration } from '@/lib/time';
 import { BOOKING_PLATFORMS, platformLogoUrl, normalizeExternalUrl } from '@/lib/booking-platforms';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
-
-function transferDuration(startIso, endIso) {
-  if (!startIso || !endIso) return '';
-  const mins = Math.round((new Date(endIso) - new Date(startIso)) / 60000);
-  if (mins <= 0) return '';
-  if (mins < 60) return `${mins}m`;
-  const h = Math.floor(mins / 60), m = mins % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
-}
 
 /**
  * Read-only collapsible group rendered in place of a single transfer DayEventRow
@@ -95,7 +86,9 @@ function SegmentRow({ index, transfer, fromVisit, toVisit, onClick }) {
   const endTz = toVisit?.timezone || 'UTC';
   const platformInfo = transfer.booking_platform ? BOOKING_PLATFORMS[transfer.booking_platform] : null;
   const platformLogo = platformLogoUrl(transfer.booking_platform, transfer.booking_url);
-  const dur = transferDuration(transfer.start_datetime, transfer.end_datetime);
+  // tz-aware: uses the group endpoints' timezones (per-segment layover-city tz
+  // isn't threaded here); falls back to naive when equal/missing.
+  const dur = formatDuration(transfer.start_datetime, transfer.end_datetime, fromVisit?.timezone, toVisit?.timezone);
 
   return (
     <button

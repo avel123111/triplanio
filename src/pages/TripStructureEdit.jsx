@@ -383,16 +383,14 @@ export default function TripStructureEdit() {
   // draft/tray teardown slice.)
   const doRemoveCity = (id) => {
     editDraft((d) => {
-      const node = d.nodes.find((n) => n.id === id); if (!node || isAnchor(node)) return d;
+      const node = d.nodes.find((n) => n.id === id); if (!node) return d;
       return { ...d, nodes: d.nodes.filter((n) => n.id !== id) };
     });
     setConfirmDel(null);
     if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
   };
-  const removeEndpoint = (id) => {
-    editDraft((d) => ({ ...d, nodes: d.nodes.filter((n) => n.id !== id) }));
-    if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
-  };
+  // Start/finish anchors go through the same confirm dialog as regular cities.
+  const removeEndpoint = (id) => { const n = draft.nodes.find((x) => x.id === id); if (n) setConfirmDel(n); };
   const addCity = (city, kind = 'transit') => {
     if ((kind === 'start' && draft.nodes.some((n) => n.kind === 'start')) || (kind === 'end' && draft.nodes.some((n) => n.kind === 'end'))) {
       toast({ description: kind === 'start' ? t('tse.start_already_set') : t('tse.end_already_set'), variant: 'warning' });

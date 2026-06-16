@@ -14,6 +14,7 @@ import TransferGroupReadOnly from './TransferGroupReadOnly';
 import CityNotesBlock from './CityNotesBlock';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { parseNaive, naiveDayKey, formatNaive, naiveMillis } from '@/lib/naive-time';
+import { formatDuration } from '@/lib/time';
 import { getWeather, weatherInfo } from '@/lib/weather';
 
 /**
@@ -551,18 +552,6 @@ function EventRowWrapper({
 
 /* --------------------------- Small parts --------------------------- */
 
-function transferDuration(startIso, endIso) {
-  if (!startIso || !endIso) return '';
-  const a = parseNaive(startIso);
-  const b = parseNaive(endIso);
-  if (!a || !b) return '';
-  const mins = Math.round((b.toMillis() - a.toMillis()) / 60000);
-  if (mins <= 0) return '';
-  if (mins < 60) return `${mins}m`;
-  const h = Math.floor(mins / 60), m = mins % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
-}
-
 /**
  * Big day header used as a separator between events of different days.
  *   8 ИЮЛ  ср
@@ -765,7 +754,7 @@ function DayEventRow({ event, visitsById = {}, onClickTransfer, onClickActivity,
     const platformLogo = platformLogoUrl(tr.booking_platform, tr.booking_url);
     const fromV = visitsById[tr.from_city_visit_id];
     const toV = visitsById[tr.to_city_visit_id];
-    const dur = transferDuration(tr.start_datetime, tr.end_datetime);
+    const dur = formatDuration(tr.start_datetime, tr.end_datetime, fromV?.timezone, toV?.timezone);
     const bookingUrl = normalizeExternalUrl(tr.booking_url);
     return (
       <button

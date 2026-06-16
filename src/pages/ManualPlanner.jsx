@@ -491,7 +491,7 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
             <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, marginBottom: 2 }}>{t('planner.geo_off')}</div>
             <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{t('planner.geo_off_hint')}</div>
           </div>
-          <Btn variant="ghost" size="sm" onClick={() => setGeoState('ask')}>{t('planner.retry_request')}</Btn>
+          <Btn variant="ghost" size="sm" onClick={requestGeo}>{t('planner.retry_request')}</Btn>
         </div>
       )}
 
@@ -1006,12 +1006,19 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // Resolve one AI city into the planner shape (coords + timezone). Shared by
   // start / transit / end so the directory lookup lives in one place.
   const resolveAiCity = async (c, idx) => {
+    const q = `${c.city_name}${c.country ? ', ' + c.country : ''}`;
     let best = null;
     let tz = null;
-    try {
-      const r = await searchCities(`${c.city_name}${c.country ? ', ' + c.country : ''}`, lang || 'ru');
-      best = r?.[0] || null;
-    } catch { /* ignore */ }
+    // Retry once on an empty/failed lookup: AI gives real place names, so an
+    // empty result is almost always a transient geocoder hiccup (rate-limit),
+    // not a genuine no-match. Without this, cities land unresolved → red.
+    for (let attempt = 0; attempt < 2 && !best; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 400));
+      try {
+        const r = await searchCities(q, lang || 'ru');
+        best = r?.[0] || null;
+      } catch { /* ignore, retry */ }
+    }
     if (best?.latitude) { tz = tzFromCoords(best.latitude, best.longitude); }
     return {
       id: Date.now() + idx,
@@ -1033,15 +1040,21 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     const endSrc = [...dc].reverse().find((c) => c?.kind === 'end') || null;
     const transitSrc = dc.filter((c) => c && c.kind !== 'start' && c.kind !== 'end');
 
-    const [startCity, endCity, transitResolved] = await Promise.all([
-      startSrc ? resolveAiCity(startSrc, 0) : Promise.resolve(null),
-      endSrc ? resolveAiCity(endSrc, 1) : Promise.resolve(null),
-      Promise.all(transitSrc.map(async (c, i) => {
-        const base = await resolveAiCity(c, i + 2);
-        const nights = c.start_date && c.end_date ? daysBetweenISO(c.start_date, c.end_date) : 1;
-        return { ...base, startDate: c.start_date || '', nights: Math.max(1, +nights || 1) };
-      })),
-    ]);
+    // Resolve geocoding SEQUENTIALLY, not as a parallel burst. The geocoder
+    // (LocationIQ via geoLocationiq) rate-limits concurrent requests, and liq()
+    // swallows failures into [] → cities silently landed unresolved (red, off
+    // the map). Serializing keeps every lookup under the limit; the AI draft is
+    // a one-time apply already gated behind the "thinking" step, so the small
+    // added latency is acceptable.
+    const startCity = startSrc ? await resolveAiCity(startSrc, 0) : null;
+    const endCity = endSrc ? await resolveAiCity(endSrc, 1) : null;
+    const transitResolved = [];
+    for (let i = 0; i < transitSrc.length; i++) {
+      const c = transitSrc[i];
+      const base = await resolveAiCity(c, i + 2);
+      const nights = c.start_date && c.end_date ? daysBetweenISO(c.start_date, c.end_date) : 1;
+      transitResolved.push({ ...base, startDate: c.start_date || '', nights: Math.max(1, +nights || 1) });
+    }
 
     // Start city → home (origin marker; no nights/dates of its own).
     setHome(startCity?.city_name ? startCity : null);
