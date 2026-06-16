@@ -28,10 +28,24 @@
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
-import { getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 
 const LIQ_BASE = 'https://us1.locationiq.com/v1';
 const DEFAULT_LIMIT = 12;
+
+// Normalized Postgres cache key (TRIP-145). Cities are immutable, so the key is
+// stable forever. search/autocomplete fold their text query to lowercase with
+// collapsed whitespace; autocomplete also folds its `tag` bias in (it changes the
+// result set). reverse rounds lat/lon to 5 decimals (~1 m). `lang` is keyed
+// separately by the caller because display names come back localized.
+function geocodeQueryKey(action: string, q: unknown, lat: unknown, lon: unknown, tag: unknown): string {
+  if (action === 'reverse') {
+    return `${Number(lat).toFixed(5)},${Number(lon).toFixed(5)}`;
+  }
+  let key = String(q).trim().toLowerCase().replace(/\s+/g, ' ');
+  if (action === 'autocomplete' && tag) key += `|tag:${String(tag).trim().toLowerCase()}`;
+  return key;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -94,24 +108,63 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Unknown action: ${action}` }, { status: 400, headers: corsHeaders });
     }
 
+    // --- Cache read (TRIP-145) -------------------------------------------------
+    // Cities are immutable → a hit is served straight from Postgres and never
+    // touches LocationIQ, removing ~90% of upstream traffic and the shared
+    // rate-limit pressure that turns into 502 → unresolved (red) cities.
+    const queryKey = geocodeQueryKey(action, q, lat, lon, tag);
+    const { data: cached } = await supabaseAdmin
+      .from('geocode_cache')
+      .select('id, results, hit_count')
+      .eq('action', action)
+      .eq('query_key', queryKey)
+      .eq('lang', acceptLang)
+      .maybeSingle();
+    if (cached) {
+      // Best-effort usage bump (single indexed update, far cheaper than the
+      // upstream call it replaces). Awaited for reliability; analytics only.
+      await supabaseAdmin
+        .from('geocode_cache')
+        .update({ hit_count: (cached.hit_count ?? 0) + 1, last_used_at: new Date().toISOString() })
+        .eq('id', cached.id);
+      return Response.json({ results: cached.results }, { headers: corsHeaders });
+    }
+
     const res = await fetch(url, { headers: { accept: 'application/json' } });
 
-    // LocationIQ returns 404 { error: "Unable to geocode" } when nothing matches.
-    // Treat that as an empty result set (matches the old Nominatim `return []`).
+    // Upstream errors (429 rate-limit → ... , 5xx) are NEVER cached, so a
+    // transient rate-limit blip can't poison the cache. Only genuine 200
+    // responses (data OR a real 404 "no match") are written.
+    let results: unknown[];
     if (res.status === 404) {
-      return Response.json({ results: [] }, { headers: corsHeaders });
-    }
-    if (!res.ok) {
+      // LocationIQ returns 404 { error: "Unable to geocode" } when nothing
+      // matches. Treat as an empty result set (matches the old Nominatim
+      // `return []`) and cache it — a real no-match is stable, and the 429
+      // rate-limit path is a 502 below, never reaching here.
+      results = [];
+    } else if (!res.ok) {
       const text = await res.text().catch(() => '');
       console.error('[geoLocationiq] upstream error', action, res.status, text.slice(0, 300));
       return Response.json(
         { error: 'locationiq_upstream_error', status: res.status },
         { status: 502, headers: corsHeaders },
       );
+    } else {
+      const data = await res.json();
+      results = Array.isArray(data) ? data : (data?.error ? [] : (data ? [data] : []));
     }
 
-    const data = await res.json();
-    const results = Array.isArray(data) ? data : (data?.error ? [] : (data ? [data] : []));
+    // Cache write (TRIP-145). Upsert so a concurrent miss for the same key just
+    // overwrites with identical data (no lock needed). Failures here are
+    // non-fatal — we still return the fresh results.
+    const { error: cacheErr } = await supabaseAdmin
+      .from('geocode_cache')
+      .upsert(
+        { action, query_key: queryKey, lang: acceptLang, results, last_used_at: new Date().toISOString() },
+        { onConflict: 'action,query_key,lang' },
+      );
+    if (cacheErr) console.error('[geoLocationiq] cache write failed', action, cacheErr.message);
+
     return Response.json({ results }, { headers: corsHeaders });
   } catch (e) {
     console.error('geoLocationiq error:', e);
