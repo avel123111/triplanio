@@ -2,7 +2,7 @@
 // Run: npm test  (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { uniqueCityCount, uniqueCountryCount, transitVisits, isTransitVisit } from './trip-cities.js';
+import { uniqueCityCount, uniqueCountryCount, transitVisits, isTransitVisit, uniqueTransitCities } from './trip-cities.js';
 
 // A trip: home anchor (start) → Lisbon → Porto → a pass-through waypoint →
 // Madrid → back to Lisbon → home anchor (end). Anchors + waypoint must not
@@ -31,6 +31,25 @@ test('counts ignore anchors/waypoints entirely', () => {
   const anchorsOnly = VISITS.filter((v) => v.kind !== 'transit');
   assert.equal(uniqueCityCount(anchorsOnly), 0);
   assert.equal(uniqueCountryCount(anchorsOnly), 0);
+});
+
+test('same city + country with DIFFERENT external_city_id counts once', () => {
+  // Real prod case (trip b40704dd): Moscow entered twice, two different
+  // external ids. By "city + country" it is one city — header and trips card
+  // must agree.
+  const v = [
+    { id: 'm1', kind: 'transit', city_name: 'Москва', country_code: 'RU', external_city_id: '195713348' },
+    { id: 'm2', kind: 'transit', city_name: 'Москва', country_code: 'RU', external_city_id: '196017222' },
+  ];
+  assert.equal(uniqueCityCount(v), 1);
+  assert.equal(uniqueTransitCities(v).length, 1);
+  assert.equal(uniqueCountryCount(v), 1);
+});
+
+test('uniqueTransitCities backs both count and label from one set', () => {
+  const reps = uniqueTransitCities(VISITS);
+  assert.equal(reps.length, uniqueCityCount(VISITS)); // same set drives both
+  assert.deepEqual(reps.map((v) => v.city_name), ['Lisbon', 'Porto', 'Madrid']);
 });
 
 test('dedup falls back to name+country_code when no external_city_id', () => {
