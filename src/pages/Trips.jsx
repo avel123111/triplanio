@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, EmptyState, Skeleton } from '../design/index';
 import { getGradientById } from '@/lib/trip-gradients';
+import { transitVisits } from '@/lib/trip-cities';
 import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
@@ -23,7 +24,9 @@ function strHue(str = '') {
 }
 
 function scopeLabel(t, visits = []) {
-  const cities = [...new Set(visits.map(v => v.city_name).filter(Boolean))];
+  // Only transit destinations (no start/finish anchors, no waypoints), deduped
+  // by name — same scope rule as the headline city count.
+  const cities = [...new Set(transitVisits(visits).map(v => v.city_name).filter(Boolean))];
   if (cities.length === 0) return t('trips.no_cities');
   if (cities.length <= 3) return cities.join(' · ');
   return cities.slice(0, 2).join(' · ') + ' ' + t('trips.cities_more', { count: cities.length - 2 });
