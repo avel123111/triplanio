@@ -4,18 +4,11 @@
 // Used by the Overview stat row (TripStatRow). City counting reuses the same
 // identity rule as the rest of the app via uniqueCityCount so the "cities"
 // number never drifts between the timeline header and the overview.
-import { uniqueCityCount } from '@/lib/trip-cities';
+import { uniqueCityCount, uniqueCountryCount } from '@/lib/trip-cities';
 
-/** Unique countries across the trip's city visits (by ISO country_code). */
-export function uniqueCountryCount(visits = []) {
-  if (!Array.isArray(visits)) return 0;
-  const codes = new Set();
-  for (const v of visits) {
-    const cc = (v?.country_code || '').trim().toLowerCase();
-    if (cc) codes.add(cc);
-  }
-  return codes.size;
-}
+// uniqueCountryCount is re-exported from the single source of truth so existing
+// importers of '@/lib/trip-stats' keep working.
+export { uniqueCountryCount };
 
 /** Whole nights between the trip start and end dates (>= 0). */
 function nightsBetween(startISO, endISO) {

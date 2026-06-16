@@ -7,6 +7,7 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
+import { uniqueCityCount } from '@/lib/trip-cities';
 import { Icon } from '../design/icons';
 import { Btn, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
@@ -498,7 +499,10 @@ export default function TripStructureEdit() {
 
   const ordered = sortVisits(draft.nodes);
   const seq = ordered.filter((n) => !isAnchor(n));          // cities + waypoints, in order
-  const cities = seq.filter((n) => n.kind === 'transit');   // stays only (for count/numbering)
+  const cities = seq.filter((n) => n.kind === 'transit');   // stays only (for numbering)
+  // Header count = unique transit cities (a city visited twice counts once),
+  // matching the trip header / overview / trips card everywhere.
+  const cityCount = uniqueCityCount(draft.nodes);
   const startDate = seq[0]?.start_date;
   const endDate = seq[seq.length - 1]?.end_date;
   const totalNights = nightsBetween(startDate, endDate);
@@ -842,7 +846,7 @@ export default function TripStructureEdit() {
         <>
           <span>{fmtD(startDate, lang)} – {fmtD(endDate, lang)}</span>
           {totalNights != null && <><span>·</span><span>{totalNights} {dayWord(totalNights, t)}</span></>}
-          {cities.length > 0 && <><span>·</span><span>{cities.length} {cities.length === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}</span></>}
+          {cityCount > 0 && <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}</span></>}
         </>
       }
       actions={editorHeaderActions}
