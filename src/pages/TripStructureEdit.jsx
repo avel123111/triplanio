@@ -8,6 +8,7 @@ import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcRe
 import { layoutDates } from '@/lib/tripDates';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount } from '@/lib/trip-cities';
+import { formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
 import { Btn, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
@@ -114,7 +115,6 @@ function buildDraft(shell, transfers = []) {
 export default function TripStructureEdit() {
   const { tripId } = useParams();
   const t = useT();
-  const { lang } = useI18n();
   const nav = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -503,6 +503,10 @@ export default function TripStructureEdit() {
   // Header count = unique transit cities (a city visited twice counts once),
   // matching the trip header / overview / trips card everywhere.
   const cityCount = uniqueCityCount(draft.nodes);
+  // Header date range — SAME formatter and SAME input (all draft nodes) as the
+  // trip header in TripView, so the editor header reads identically (incl. the
+  // year): "10 сент. – 4 окт. 2026".
+  const dateRange = formatTripRange(draft.nodes, '-');
   const startDate = seq[0]?.start_date;
   const endDate = seq[seq.length - 1]?.end_date;
   const totalNights = nightsBetween(startDate, endDate);
@@ -844,7 +848,7 @@ export default function TripStructureEdit() {
       title={trip?.title}
       meta={
         <>
-          <span>{fmtD(startDate, lang)} – {fmtD(endDate, lang)}</span>
+          {dateRange && dateRange !== '-' && <span>{dateRange}</span>}
           {totalNights != null && <><span>·</span><span>{totalNights} {dayWord(totalNights, t)}</span></>}
           {cityCount > 0 && <><span>·</span><span>{cityCount} {cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}</span></>}
         </>
