@@ -31,6 +31,7 @@ import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import TripSidebar from '@/components/trips/TripSidebar';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Sheet } from '@/components/ui/Sheet';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from '@/components/ui/alert-dialog';
 
 // =====================================================================
@@ -126,7 +127,7 @@ function StartCalendar({ value, onPick, lang = 'ru' }) {
   return (
     <div className="ts-cal">
       <div className="ts-cal__head">
-        <button type="button" className="ts-step" onClick={() => setView(view.minus({ months: 1 }))} aria-label="←"><Icon name="back" size={13} /></button>
+        <button type="button" className="ts-step" onClick={() => setView(view.minus({ months: 1 }))} aria-label="←"><Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} /></button>
         <span className="ts-cal__title">{view.setLocale(lang).toFormat('LLLL yyyy')}</span>
         <button type="button" className="ts-step" onClick={() => setView(view.plus({ months: 1 }))} aria-label="→"><Icon name="chev" size={13} /></button>
       </div>
@@ -844,16 +845,26 @@ export default function TripStructureEdit() {
   const startDateControl = draft ? (
     <div className="ts-startctl" title={t('planner.trip_start')}>
       <span className="ts-startctl__lbl">{t('ai_plan.start')}</span>
-      <button type="button" className="ts-step" onClick={() => shiftStart(-1)} title={t('tse.start_earlier')} aria-label={t('tse.start_earlier')}><Icon name="back" size={13} /></button>
-      <Popover open={startCalOpen} onOpenChange={setStartCalOpen}>
-        <PopoverTrigger asChild>
-          <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(startDate, lang)}</button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="ts-startcal-pop">
-          <StartCalendar value={startDate} lang={lang} onPick={pickStart} />
-        </PopoverContent>
-      </Popover>
+      <button type="button" className="ts-step" onClick={() => shiftStart(-1)} title={t('tse.start_earlier')} aria-label={t('tse.start_earlier')}><Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} /></button>
+      {isSheet ? (
+        // Phones: open the calendar in the canonical bottom-sheet (Sheet), not a popover.
+        <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')} onClick={() => setStartCalOpen(true)}>{fmtDW(startDate, lang)}</button>
+      ) : (
+        <Popover open={startCalOpen} onOpenChange={setStartCalOpen}>
+          <PopoverTrigger asChild>
+            <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(startDate, lang)}</button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="ts-startcal-pop">
+            <StartCalendar value={startDate} lang={lang} onPick={pickStart} />
+          </PopoverContent>
+        </Popover>
+      )}
       <button type="button" className="ts-step" onClick={() => shiftStart(1)} title={t('tse.start_later')} aria-label={t('tse.start_later')}><Icon name="chev" size={13} /></button>
+      {isSheet && (
+        <Sheet open={startCalOpen} onOpenChange={setStartCalOpen} title={t('planner.trip_start')}>
+          <StartCalendar value={startDate} lang={lang} onPick={pickStart} />
+        </Sheet>
+      )}
     </div>
   ) : null;
 
@@ -961,8 +972,11 @@ export default function TripStructureEdit() {
           starts at the same top edge as the route header. On phones the map is
           hidden via CSS (.ts-col-right) and the itinerary spans full width. */}
       <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 0, overflow: 'hidden' }}>
-        {/* LEFT - page title + cities (scrolling list) */}
-        <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--surface)' }}>
+        {/* LEFT - bordered container (same 14px inset / radius as the map box on
+            the right). The "Маршрут" header is the container's header; an open
+            side panel fills the same box. */}
+        <div className="ts-col-left" style={{ position: 'relative', minWidth: 0, display: 'flex', minHeight: 0, background: 'var(--bg)' }}>
+          <div className="ts-leftbox">
           <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={leftPanel ? (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } } : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
           {/* Desktop: panel replaces the column. Mobile: column keeps the cities
               list; the panel opens as a Radix bottom-sheet (rendered below). */}
@@ -1077,6 +1091,7 @@ export default function TripStructureEdit() {
               </DialogPrimitive.Portal>
             </DialogPrimitive.Root>
           )}
+          </div>{/* /ts-leftbox */}
         </div>
 
         {/* RIGHT - full-height map (always on; hidden on phones via CSS);
@@ -1140,6 +1155,9 @@ export default function TripStructureEdit() {
         .ts-step:active:not(:disabled) { transform: scale(0.9); }
         .ts-step:disabled { opacity: .3; cursor: default; }
         .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 13px; }
+        /* Left container — same 14px inset + border + radius as the map box, so
+           the editor (or an open side panel) and the map read as two equal cards. */
+        .ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 14px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface); }
         /* "Маршрут" panel header (left column) + trip-start control. */
         .ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
         .ts-routehead__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h4); color: var(--ink); }
@@ -1158,6 +1176,8 @@ export default function TripStructureEdit() {
         .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-size: var(--fs-meta); font-weight: 600; color: var(--ink); display: grid; place-items: center; }
         .ts-cal__day:hover { background: var(--wash); }
         .ts-cal__day.on { background: var(--brand); color: #fff; }
+        /* In the mobile bottom-sheet the calendar spans the sheet width. */
+        .sheet .ts-cal { width: 100%; max-width: 340px; margin: 0 auto; }
         @media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
         .te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
         @keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
@@ -1331,8 +1351,8 @@ function GridEndpoint({ node, date, onRemove }) {
     <div className="te-end">
       <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
       <div className="te-citycell" style={{ flex: 1 }}>
+        <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
         <div className="te-cityline">
-          <span className="te-endlabel" style={{ color: accent, flex: 'none' }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
           <span className="te-cityname">{node.city_name}</span>
         </div>
         <div className="te-dts">
