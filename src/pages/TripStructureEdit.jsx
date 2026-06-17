@@ -155,6 +155,7 @@ export default function TripStructureEdit() {
   const [shareOpen, setShareOpen] = useState(false);
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the city being dragged
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the city would drop into
+  const [hoveredNodeId, setHoveredNodeId] = useState(null); // itinerary row hovered → highlight its map marker
   const endDrag = () => { setDragIdx(null); setOverGap(null); };
   const justDraggedRef = useRef(false); // suppress the click that fires right after a drag
   // FLIP refs: animate non-dragged rows smoothly to their new slot during drag.
@@ -780,6 +781,19 @@ export default function TripStructureEdit() {
   } else if ((leftPanel?.type === 'create' || leftPanel?.type === 'pick') && leftPanel.kind !== 'transfer') {
     selectedNodeId = leftPanel.visit?.id ?? null;
   }
+  // When a transfer panel is open, that leg shows the "selected route" state on
+  // the map (works with transport → solid, and without → dashed highlight).
+  let selectedLeg = null;
+  if (leftPanel?.type === 'event' && leftPanel.kind === 'transfer') {
+    const tr = liveTransfers.find((x) => x.id === leftPanel.id);
+    const f = tr && byId(tr.from_city_visit_id);
+    const to = tr && byId(tr.to_city_visit_id);
+    if (f && to) selectedLeg = { from: f, to, kind: tr.transport_type };
+  } else if ((leftPanel?.type === 'create' || leftPanel?.type === 'pick') && leftPanel.kind === 'transfer') {
+    if (leftPanel.fromVisit?.latitude && leftPanel.toVisit?.latitude) {
+      selectedLeg = { from: leftPanel.fromVisit, to: leftPanel.toVisit, kind: undefined };
+    }
+  }
   // Key the left pane on its identity so React remounts it on panel change →
   // the .te-panefade entry animation replays.
   const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
@@ -941,7 +955,9 @@ export default function TripStructureEdit() {
                   drag={dragProps} />;
               }
               return (
-                <div className={'te-seamwrap' + (pending ? ' is-pending' : '')} key={n.id} ref={setRowRef(n.id)}>
+                <div className={'te-seamwrap' + (pending ? ' is-pending' : '')} key={n.id} ref={setRowRef(n.id)}
+                  onMouseEnter={() => setHoveredNodeId(n.id)}
+                  onMouseLeave={() => setHoveredNodeId((p) => (p === n.id ? null : p))}>
                   {body}
                   {/* Transfer chip straddles the seam to the next city. Stays
                       mounted during drag but melts away via CSS (.is-dragging),
@@ -1011,6 +1027,8 @@ export default function TripStructureEdit() {
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               selectedVisitId={selectedNodeId}
+              hoveredVisitId={hoveredNodeId}
+              selectedLeg={selectedLeg}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}

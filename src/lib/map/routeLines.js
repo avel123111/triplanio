@@ -8,7 +8,7 @@
 import { lineFeature, setLineLayer } from '@/lib/mapbox';
 import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
 import { DASHED_OPACITY, SOLID_WIDTH, DASHED_WIDTH } from './mapStyle';
-import { routeColor } from './mapTokens';
+import { routeColor, routeRingColor } from './mapTokens';
 
 // Per-leg OSRM geometry cache, keyed by endpoints + transport. A road route for
 // a fixed coordinate pair and mode is deterministic, so it's safe to keep for
@@ -46,7 +46,7 @@ async function osrmGeometry(from, to, kind) {
 // with their final geometry up front; only uncached road legs start straight and
 // are upgraded async. Returns cancel() — call it on redraw to stop pending
 // upgrades from writing into a parked/replaced map.
-export function drawRouteLines(map, legs, opts) {
+function drawRouteLines(map, legs, opts) {
   const {
     dashedId, solidId,
     dashedColor = routeColor(), solidColor = routeColor(),
@@ -107,12 +107,53 @@ const ALL_LINE_LAYER_IDS = ['mv-dashed', 'mv-solid', 'flow-dashed', 'flow-solid'
 // the shared instance. Called on a day/night switch so the lines follow the
 // theme without rebuilding their geometry (geometry is theme-independent, so a
 // cheap setPaintProperty is enough — no OSRM refetch, no flicker).
+// Highlight (selected route segment) layer ids: a translucent wide casing under a
+// re-coloured main line, drawn on top of the base route.
+const HL_CASING_ID = 'mv-hl-casing';
+const HL_MAIN_ID = 'mv-hl-main';
+
 export function repaintRouteLines(map) {
   if (!map) return;
   const color = routeColor();
+  const ring = routeRingColor();
   ALL_LINE_LAYER_IDS.forEach((id) => {
     try { if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', color); } catch { /* layer not present */ }
   });
+  try { if (map.getLayer(HL_MAIN_ID)) map.setPaintProperty(HL_MAIN_ID, 'line-color', color); } catch { /* not present */ }
+  try { if (map.getLayer(HL_CASING_ID)) map.setPaintProperty(HL_CASING_ID, 'line-color', ring); } catch { /* not present */ }
+}
+
+// Remove the selected-segment highlight (no-op if it isn't drawn).
+export function clearRouteHighlight(map) {
+  if (!map) return;
+  [HL_MAIN_ID, HL_CASING_ID].forEach((id) => {
+    try { if (map.getLayer(id)) map.removeLayer(id); } catch { /* ignore */ }
+    try { if (map.getSource(id)) map.removeSource(id); } catch { /* ignore */ }
+  });
+}
+
+// Draw the "selected route" state for a single leg, over the base route. Works
+// for legs with transport (solid) and without (dashed) — a wide translucent
+// casing + the route colour on top. Geometry follows the same rule as the base
+// line (flight arc / cached OSRM road / straight) so the highlight traces the
+// exact rendered path. Re-added each call so it stays above a re-drawn base.
+// leg: { from:{latitude,longitude}, to:{latitude,longitude}, kind?:string }
+export function drawRouteHighlight(map, leg) {
+  if (!map || !leg?.from?.latitude || !leg?.to?.latitude) { clearRouteHighlight(map); return; }
+  const { from, to, kind } = leg;
+  let coords;
+  if (isFlightTransport(kind)) {
+    coords = geodesicLine(from.latitude, from.longitude, to.latitude, to.longitude).map(([la, lo]) => [lo, la]);
+  } else if (isRoadTransport(kind)) {
+    coords = osrmCache.get(legKey(from, to, kind)) || [[from.longitude, from.latitude], [to.longitude, to.latitude]];
+  } else {
+    coords = [[from.longitude, from.latitude], [to.longitude, to.latitude]];
+  }
+  const features = [lineFeature(coords)];
+  clearRouteHighlight(map); // re-add on top of the (possibly just redrawn) base
+  const base = kind ? SOLID_WIDTH : DASHED_WIDTH;
+  setLineLayer(map, HL_CASING_ID, features, { color: routeRingColor(), width: base + 8, opacity: 1 });
+  setLineLayer(map, HL_MAIN_ID, features, { color: routeColor(), width: base + 1.5, dashed: !kind, opacity: 1 });
 }
 
 // Cached variant. Keeps the drawn route ON THE MAP INSTANCE between screen
