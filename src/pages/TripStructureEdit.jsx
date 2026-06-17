@@ -51,13 +51,16 @@ const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y 
 // reproduces exactly what's stored, so editor = timeline = DB.
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
 const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
+// Country flag emoji from an ISO-3166 alpha-2 code (regional-indicator pair);
+// '' when there's no valid 2-letter code (so the chip just shows the name).
+const flagEmoji = (cc) => (cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt(0))) : '');
 const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
 // A city added in the editor but not yet saved carries a 'tmp-…' id (no real uuid
 // until save_trip_edit inserts it). A LIVE transfer write to such a city fails the
 // uuid type, so transfer creation is gated until the new city is saved.
 const isTmpId = (id) => String(id || '').startsWith('tmp-');
 const colorFor = (key) => { let h = 0; const s = String(key || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return PALETTE[h % PALETTE.length]; };
-const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.id), country: n.country || '' });
+const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.id), flag: flagEmoji(n.country_code), country: n.country || '' });
 
 // Canonical date-chain layout (start = prevEnd + gap; end = start + nights) now
 // lives in lib/tripDates.layoutDates, shared with ManualPlanner and mirroring the
