@@ -53,7 +53,7 @@ const ROLES = [
   { value: 'viewer', labelKey: 'member.role_viewer_desc' },
 ];
 
-function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
+export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
@@ -257,18 +257,13 @@ function ChangeRoleDialog({ member, tripId, onSaved, open, onOpenChange }) {
 
 // ─── MembersLens ──────────────────────────────────────────────────────────────
 
-export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient, autoAdd = false, onAutoAdd }) {
+export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient }) {
   const { t } = useI18n();
   const confirm = useConfirm();
   const { toast } = useToast();
   const nav = useNavigate();
   const [removing, setRemoving] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
-  // Auto-open the invite dialog when navigated here from the mobile bottom-nav
-  // add sheet (TripView sets addIntent='members'; only owner/admin reach here).
-  useEffect(() => {
-    if (autoAdd) { setInviteOpen(true); onAutoAdd?.(); }
-  }, [autoAdd]); // eslint-disable-line react-hooks/exhaustive-deps
   const [promoteState, setPromoteState] = useState(null); // null | { member }
   const [roleState, setRoleState] = useState(null); // null | { member }
 

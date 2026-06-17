@@ -19,7 +19,7 @@
  * is owned by TripView; this component renders only the budget body. Styling
  * lives in BudgetLens.css (page-scoped `.bgt-*` classes on Lumo tokens).
  */
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -127,7 +127,7 @@ function DonutChart({ segments, total, mainCurrency, hoveredId, centerLabel }) {
 
 // ─── AddExpenseDialog (create + edit manual expense) ────────────────────────────
 
-function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved, open, onOpenChange }) {
+export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved, open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
@@ -487,7 +487,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, main
 
 // ─── BudgetLens ───────────────────────────────────────────────────────────────
 
-export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient, autoAdd = false, onAutoAdd }) {
+export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
   const [grouping, setGrouping] = useState('category');
@@ -513,11 +513,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   function openAddExpense() {
     setExpenseModal({});
   }
-  // Auto-open the add-expense dialog when navigated here from the mobile bottom-nav
-  // add sheet (TripView sets addIntent='expense').
-  useEffect(() => {
-    if (autoAdd) { setExpenseModal({}); onAutoAdd?.(); }
-  }, [autoAdd]); // eslint-disable-line react-hooks/exhaustive-deps
   function openEditExpense(expense) {
     setExpenseModal({ existing: expense });
   }
