@@ -19,7 +19,7 @@
  * is owned by TripView; this component renders only the budget body. Styling
  * lives in BudgetLens.css (page-scoped `.bgt-*` classes on Lumo tokens).
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -487,7 +487,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, main
 
 // ─── BudgetLens ───────────────────────────────────────────────────────────────
 
-export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient }) {
+export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient, autoAdd = false, onAutoAdd }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
   const [grouping, setGrouping] = useState('category');
@@ -513,6 +513,11 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   function openAddExpense() {
     setExpenseModal({});
   }
+  // Auto-open the add-expense dialog when navigated here from the mobile bottom-nav
+  // add sheet (TripView sets addIntent='expense').
+  useEffect(() => {
+    if (autoAdd) { setExpenseModal({}); onAutoAdd?.(); }
+  }, [autoAdd]); // eslint-disable-line react-hooks/exhaustive-deps
   function openEditExpense(expense) {
     setExpenseModal({ existing: expense });
   }
@@ -634,11 +639,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         <Btn variant="ghost" size="sm" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
         <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
       </div>
-      {/* Mobile-only FAB for "add expense" (rates stay on the FX stat card). */}
-      <button type="button" className="bgt-fab" onClick={openAddExpense}
-        aria-label={t('budget.manual_expense')} title={t('budget.manual_expense')}>
-        <Icon name="plus" size={22} />
-      </button>
       {/* ░ SUMMARY BAND ░ */}
       <div className="bgt-sumband">
         <div className="card bgt-donutcard">

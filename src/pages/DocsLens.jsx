@@ -14,7 +14,7 @@
  * (.dl-* on app.css tokens). Dialogs use Radix ui/dialog (dlg__head /
  * dlg__body / dlg__foot structure). No inline hover handlers — CSS only.
  */
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { safeStorageName } from '@/lib/storage';
@@ -545,13 +545,18 @@ function DocsGrid({ docs, scope, members, onOpenAdd, onOpenDetail }) {
 
 // ─── DocsLens (main export) ───────────────────────────────────────────────────
 
-export default function DocsLens({ tripId, isLoading: parentLoading, members = [] }) {
+export default function DocsLens({ tripId, isLoading: parentLoading, members = [], autoAdd = false, onAutoAdd }) {
   const { t }    = useI18n();
   const { user } = useAuth();
   const [addDocVis,    setAddDocVis]    = useState(null); // null | { defaultVisibility }
   const [detailDoc,    setDetailDoc]    = useState(null); // null | doc object
   const [searchQuery,  setSearchQuery]  = useState('');
   const [filter,       setFilter]       = useState('all'); // 'all' | 'files' | 'links'
+  // Auto-open the add-doc dialog when navigated here from the mobile bottom-nav
+  // add sheet (TripView sets addIntent='docs').
+  useEffect(() => {
+    if (autoAdd) { setAddDocVis({ defaultVisibility: 'shared' }); onAutoAdd?.(); }
+  }, [autoAdd]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: docs = [], isLoading, error } = useQuery({
     queryKey: DOCS_KEY(tripId),

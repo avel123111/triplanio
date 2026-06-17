@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
@@ -373,6 +373,17 @@ export default function Trips() {
   const [search,      setSearch]      = useState('');
   const [showNewTrip, setShowNewTrip] = useState(false);
   const [showLimit,   setShowLimit]   = useState(false);
+  // The mobile bottom-nav "+" (off-trip) routes here with ?new=1 → open the same
+  // create-trip dialog (keeps the existing Pro trip-limit check). Then drop the param.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setShowNewTrip(true);
+      const sp = new URLSearchParams(searchParams);
+      sp.delete('new');
+      setSearchParams(sp, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const openUpgrade = () => nav('/pro?hidePerTrip=1');
   const [pendingPick, setPendingPick] = useState(null);
 

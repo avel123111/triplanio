@@ -257,13 +257,18 @@ function ChangeRoleDialog({ member, tripId, onSaved, open, onOpenChange }) {
 
 // ─── MembersLens ──────────────────────────────────────────────────────────────
 
-export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient }) {
+export default function MembersLens({ tripId, members = [], trip, user, role: myRole, isLoading, queryClient, autoAdd = false, onAutoAdd }) {
   const { t } = useI18n();
   const confirm = useConfirm();
   const { toast } = useToast();
   const nav = useNavigate();
   const [removing, setRemoving] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  // Auto-open the invite dialog when navigated here from the mobile bottom-nav
+  // add sheet (TripView sets addIntent='members'; only owner/admin reach here).
+  useEffect(() => {
+    if (autoAdd) { setInviteOpen(true); onAutoAdd?.(); }
+  }, [autoAdd]); // eslint-disable-line react-hooks/exhaustive-deps
   const [promoteState, setPromoteState] = useState(null); // null | { member }
   const [roleState, setRoleState] = useState(null); // null | { member }
 

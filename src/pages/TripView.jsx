@@ -14,6 +14,8 @@ import { isAddonEnabled } from '@/lib/tripAddons';
 import { isLensVisible } from '@/lib/tripMenu';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
 import AppHeader from '@/components/AppHeader';
+import { useMobileNav } from '@/components/MobileBottomNav';
+import { Sheet } from '@/components/ui/Sheet';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
@@ -947,6 +949,16 @@ export default function TripView() {
   // active lens projects into the screen-title bar. (Trip name + cover editing
   // moved into the Settings lens; the metadata modal was retired.)
   const [sideOpen, setSideOpen] = useState(false);
+  // Mobile bottom-nav bridge: the global nav's "…" opens this menu sheet and its
+  // central "+" opens the add sheet below. Intent drives auto-opening the add
+  // dialog of the lens we navigate to.
+  const { setTripCtx } = useMobileNav();
+  const [addOpen, setAddOpen] = useState(false);
+  const [addIntent, setAddIntent] = useState(null); // 'expense' | 'docs' | 'members'
+  useEffect(() => {
+    setTripCtx({ openMenu: () => setSideOpen(true), openAdd: () => setAddOpen(true) });
+    return () => setTripCtx(null);
+  }, [setTripCtx]);
   // Phones (≤640px) get the menu as a bottom-sheet instead of the slide-in
   // drawer; the drawer + its scrim are suppressed at this breakpoint in CSS.
   const [isPhone, setIsPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
@@ -1265,6 +1277,8 @@ export default function TripView() {
               isLoading={loadingContent}
               isPro={tripIsPro}
               queryClient={qc}
+              autoAdd={addIntent === 'expense'}
+              onAutoAdd={() => setAddIntent(null)}
             />
           )}
           {shownLens === 'members' && (
@@ -1276,6 +1290,8 @@ export default function TripView() {
               role={myRole}
               isLoading={loadingContent}
               queryClient={qc}
+              autoAdd={addIntent === 'members'}
+              onAutoAdd={() => setAddIntent(null)}
             />
           )}
           {shownLens === 'calendar' && (
@@ -1292,6 +1308,8 @@ export default function TripView() {
               tripId={tripId}
               isLoading={loadingContent}
               members={members}
+              autoAdd={addIntent === 'docs'}
+              onAutoAdd={() => setAddIntent(null)}
             />
           )}
           {shownLens === 'settings' && (
@@ -1341,6 +1359,33 @@ export default function TripView() {
       />
 
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} />
+
+      {/* Add bottom-sheet — opened by the mobile bottom-nav "+". Each item routes
+          to the matching lens and auto-opens its create dialog (addIntent). Items
+          are gated: expense needs the budget addon, member needs owner/admin. */}
+      <Sheet open={addOpen} onOpenChange={setAddOpen} title={t('common.add')}>
+        <div className="addsheet">
+          {isAddonEnabled(trip, 'budget') && (
+            <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setLens('budget'); setAddIntent('expense'); }}>
+              <span className="addsheet__ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="wallet" size={20} /></span>
+              <span className="addsheet__tx"><b>{t('budget.manual_expense')}</b></span>
+              <Icon name="chev" size={16} className="addsheet__chev" />
+            </button>
+          )}
+          <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setLens('docs'); setAddIntent('docs'); }}>
+            <span className="addsheet__ic" style={{ background: 'var(--ev-hotel-soft)', color: 'var(--ev-hotel-ink)' }}><Icon name="file" size={20} /></span>
+            <span className="addsheet__tx"><b>{t('doc.add_doc')}</b></span>
+            <Icon name="chev" size={16} className="addsheet__chev" />
+          </button>
+          {(myRole === 'owner' || myRole === 'admin') && (
+            <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setLens('members'); setAddIntent('members'); }}>
+              <span className="addsheet__ic" style={{ background: 'var(--ev-activity-soft)', color: 'var(--ev-activity-ink)' }}><Icon name="users" size={20} /></span>
+              <span className="addsheet__tx"><b>{t('members.invite')}</b></span>
+              <Icon name="chev" size={16} className="addsheet__chev" />
+            </button>
+          )}
+        </div>
+      </Sheet>
 
       {/* Ф6а: budgetAddonOff on Radix (focus-trap, Esc) */}
       <Dialog
