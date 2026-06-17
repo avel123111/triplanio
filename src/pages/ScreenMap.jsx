@@ -33,6 +33,7 @@ function nightsBetween(a, b) {
 function ScreenMap({ visits = [], transfers = [], hotels = [], activities = [], canEdit = false, openEvent, active = true }) {
   const { t } = useI18n();
   const [activeIdx, setActiveIdx] = useState(0);
+  const [hoverIdx, setHoverIdx] = useState(null); // stepper row hovered → highlight its map marker
 
   // Real route - visits with coordinates, in trip order. (Theme + start/finish
   // visibility are now toggled on the map itself via MapView's control buttons.)
@@ -70,6 +71,8 @@ function ScreenMap({ visits = [], transfers = [], hotels = [], activities = [], 
           mapControls
           active={active}
           colorScheme={isDark ? 'DARK' : 'LIGHT'}
+          selectedVisitId={activeVisit?.id}
+          hoveredVisitId={hoverIdx != null ? route[hoverIdx]?.id : null}
           onCityClick={(visitsAtPoint) => {
             const idx = route.findIndex(v => v.id === visitsAtPoint[0]?.id);
             if (idx !== -1) setActiveIdx(idx);
@@ -89,6 +92,7 @@ function ScreenMap({ visits = [], transfers = [], hotels = [], activities = [], 
           activeIdx={activeIdx}
           setActiveIdx={setActiveIdx}
           transfers={transfers}
+          onHover={setHoverIdx}
         />
 
         <div className="scrollbar-thin" style={{ flex: 1, overflow: 'auto', padding: 14 }}>
@@ -116,7 +120,8 @@ function ScreenMap({ visits = [], transfers = [], hotels = [], activities = [], 
 }
 
 // ----- Route stepper - adaptive: horizontal for ≤5 cities, compact list for >5 -----
-function RouteStepper({ route, activeIdx, setActiveIdx, transfers }) {
+function RouteStepper({ route, activeIdx, setActiveIdx, transfers, onHover }) {
+  const hoverProps = (i) => (onHover ? { onMouseEnter: () => onHover(i), onMouseLeave: () => onHover(null) } : {});
   const { t } = useI18n();
   const isLong = route.length > 5;
   const nCities = uniqueCityCount(route); // dedup repeated cities for the count
@@ -140,7 +145,7 @@ function RouteStepper({ route, activeIdx, setActiveIdx, transfers }) {
         <div className="scrollbar-thin" style={{ display: 'flex', alignItems: 'center', gap: 0, position: 'relative', overflowX: 'auto' }}>
           {route.map((c, i) => (
             <React.Fragment key={c.id}>
-              <button onClick={() => setActiveIdx(i)} style={{
+              <button onClick={() => setActiveIdx(i)} {...hoverProps(i)} style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                 padding: '6px 4px', background: 'transparent', border: 'none', cursor: 'pointer',
                 flex: '0 0 auto', minWidth: 60,
@@ -186,7 +191,7 @@ function RouteStepper({ route, activeIdx, setActiveIdx, transfers }) {
           {route.map((c, i) => {
             const nights = nightsBetween(c.start_date, c.end_date);
             return (
-              <button key={c.id} onClick={() => setActiveIdx(i)} style={{
+              <button key={c.id} onClick={() => setActiveIdx(i)} {...hoverProps(i)} style={{
                 display: 'grid', gridTemplateColumns: '24px 1fr auto', alignItems: 'center', gap: 10,
                 width: '100%', padding: '6px 6px 6px 0',
                 background: activeIdx === i ? 'var(--brand-soft)' : 'transparent',

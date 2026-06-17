@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
-import { drawRouteLinesCached } from '@/lib/map/routeLines';
+import { drawRouteLinesCached, drawRouteHighlight, clearRouteHighlight } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers';
 import MapControls from '@/lib/map/MapControls';
 import { countryFlag } from '@/lib/geo';
@@ -19,6 +19,18 @@ export default function MapView({
   showStartEnd = true,
   colorScheme = 'LIGHT',
   onCityClick,
+  // Optional: id of the city_visit currently selected/open in the parent (the
+  // editor's open panel, the Map lens' active stepper item). Its marker renders
+  // in the highlighted "selected" state. Falsy ⇒ nothing selected.
+  selectedVisitId = null,
+  // Optional: id of the city_visit currently hovered in a parent list (stepper,
+  // editor cities list). Its marker shows the selected look (no pulse) while
+  // hovered. Hovering a pin on the map is handled by CSS (:hover) directly.
+  hoveredVisitId = null,
+  // Optional: the route leg to show in the "selected route" state (a transfer
+  // open in the editor). { from:{latitude,longitude}, to:{latitude,longitude},
+  // kind? } — kind falsy ⇒ "no transport" (dashed) highlight. Falsy ⇒ none.
+  selectedLeg = null,
   // Optional camera focus driven by the parent (e.g. the editor's open panel):
   // array of [lng,lat] points. 1 point → flyTo the city; 2 → fit both cities.
   // Falsy/empty → no override (the whole-route auto-fit stays in charge); when
@@ -125,6 +137,9 @@ export default function MapView({
         icon: iconForKinds(g.kinds),
         onClick: () => { const cb = onCityClickRef.current; if (cb) cb(g.data); },
       });
+      // Tag the element with the visit ids at this spot so the selection/hover
+      // effect can toggle .is-sel / .is-hover without rebuilding the markers.
+      el.dataset.vids = g.data.map((v) => v && v.id).filter(Boolean).join(',');
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
       markersRef.current.push(marker);
     });
@@ -164,6 +179,38 @@ export default function MapView({
 
     return undefined;
   }, [ready, ordered, transfers, visitsSignature]);
+
+  // Selection + hover highlight — toggled on the existing marker elements (no
+  // rebuild, so hovering a list is cheap). Re-runs after a marker rebuild too
+  // (visitsSignature) so the state survives a redraw.
+  useEffect(() => {
+    if (!ready) return;
+    const sel = selectedVisitId != null ? String(selectedVisitId) : null;
+    const hov = hoveredVisitId != null ? String(hoveredVisitId) : null;
+    markersRef.current.forEach((m) => {
+      const el = m.getElement();
+      const ids = (el.dataset.vids || '').split(',').filter(Boolean);
+      const isSel = sel != null && ids.includes(sel);
+      el.classList.toggle('is-sel', isSel);
+      el.classList.toggle('is-hover', !isSel && hov != null && ids.includes(hov));
+    });
+  }, [ready, selectedVisitId, hoveredVisitId, visitsSignature]);
+
+  // Selected route segment (a transfer open in the editor) drawn over the base
+  // route; cleared when nothing is selected. Re-applied after the base redraws.
+  const selLegSig = useMemo(
+    () => (selectedLeg?.from?.latitude && selectedLeg?.to?.latitude
+      ? `${selectedLeg.from.latitude},${selectedLeg.from.longitude}>${selectedLeg.to.latitude},${selectedLeg.to.longitude}:${selectedLeg.kind || ''}`
+      : ''),
+    [selectedLeg],
+  );
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return undefined;
+    if (selLegSig) drawRouteHighlight(map, selectedLeg);
+    else clearRouteHighlight(map);
+    return undefined;
+  }, [ready, selLegSig, visitsSignature]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
