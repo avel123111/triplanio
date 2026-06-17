@@ -111,7 +111,7 @@ export default function Inbox() {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
+    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       <AppHeader
         user={user}
         isPro={isPro}

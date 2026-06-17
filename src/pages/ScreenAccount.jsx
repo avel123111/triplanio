@@ -603,7 +603,7 @@ export default function ScreenAccount() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
+    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
 
       {/* ── APP HEADER ── */}
       <AppHeader
