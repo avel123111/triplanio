@@ -492,7 +492,7 @@ export default function Trips() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
+    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
 
       {/* APP HEADER */}
       <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />

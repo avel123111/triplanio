@@ -1019,7 +1019,17 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .app-header__account { display: none; }
   .trip-screen-body { padding-bottom: 96px !important; }
   .trip-screen-body--flush, .trip-screen-body--chat { padding-bottom: 0 !important; }
-  .tr__main, .pro-main, .acct-shell { padding-bottom: 100px !important; }
+  /* App shell on phones: the standalone app pages (Trips / Account / Inbox / Pro)
+     become a fixed-height shell — the global header pins (never scrolls), the
+     content scrolls INSIDE its own container, and the bottom nav stays glued.
+     No document scroll → the iOS toolbar can't shove the header/nav around. */
+  .app-shell { display: flex !important; flex-direction: column !important; height: 100dvh !important; min-height: 0 !important; overflow: hidden !important; }
+  .app-shell > .app-header { position: static; flex: none; }
+  .app-shell > main,
+  .app-shell > .acct-shell {
+    flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+  }
 }
 
 /* ============================================================
@@ -1029,10 +1039,11 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .mbnav { display: none; }
 @media (max-width: 640px) {
   .mbnav {
-    /* Anchor to the VISUAL viewport bottom via the shared --kb var (set by
-       initKeyboardInset) so the dock drops with the page when the browser's
-       bottom toolbar hides on scroll — same mechanism the sheets already use. */
-    display: block; position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); z-index: 95;
+    /* Glued to the bottom of the (fixed) app shell. We do NOT add --kb here: that
+       var is the KEYBOARD inset for sheets; using it shoved the dock up the screen
+       on viewport shifts. The app pages use a fixed shell (no document scroll), so
+       bottom:0 sits at the visible bottom and never jumps. */
+    display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 95;
     padding: 0 14px calc(8px + env(safe-area-inset-bottom)); pointer-events: none;
   }
   .mbnav__dock {
@@ -1999,7 +2010,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    ================================================================= */
 .trip-shell {
   display: flex; flex-direction: column;
-  height: 100vh; min-height: 0; overflow: hidden;
+  /* dvh = the VISIBLE viewport (shrinks with the mobile toolbar); vh fallback for
+     older browsers. Keeps the bottom nav clearance correct on phones. */
+  height: 100vh; height: 100dvh; min-height: 0; overflow: hidden;
   background: var(--bg); color: var(--ink); font-family: var(--font-ui);
 }
 /* Top bar sits as a fixed-height flex row inside the shell (no document scroll). */

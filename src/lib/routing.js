@@ -1,27 +1,39 @@
-// Routing helpers: fetch road route via OSRM public demo server for ground transport,
-// or generate a great-circle (geodesic) polyline for flights.
+// Routing helpers: fetch a road route via the Mapbox Directions API for ground
+// transport, or generate a great-circle (geodesic) polyline for flights.
+// Mapbox Directions is called client-side with the same public token used for
+// the map tiles (MAPBOX_TOKEN). Results are rendered on the Mapbox map and are
+// NOT persisted (Mapbox forbids storing Directions results) — routeLines.js
+// keeps only a short-lived in-memory cache for the page session.
+import { MAPBOX_TOKEN } from '@/lib/mapbox';
 
+// Our transport types → Mapbox Directions profiles. Mapbox has no rail or ferry
+// profile, so trains/ferries approximate by road (as the previous integration
+// did). Walking has its own profile.
 const ROAD_PROFILES = {
   car: 'driving',
   taxi: 'driving',
   bus: 'driving',
-  train: 'driving', // OSRM has no rail profile; approximate by road
-  ferry: 'driving',
-  walk: 'foot',
+  train: 'driving', // Mapbox has no rail profile; approximate by road
+  ferry: 'driving', // Mapbox has no ferry profile; approximate by road
+  walk: 'walking',
 };
 
-// OSRM returns [lon, lat] - we convert to [lat, lon] for Leaflet.
-export async function fetchOsrmRoute(fromLat, fromLon, toLat, toLon, transportType) {
+// Fetch a road route from Mapbox Directions. Returns the geometry as
+// [[lng, lat], …] (GeoJSON order, ready for Mapbox GL) or null on any error or
+// missing token, so callers fall back to a straight line.
+export async function fetchRoadRoute(fromLat, fromLon, toLat, toLon, transportType) {
   const profile = ROAD_PROFILES[transportType];
-  if (!profile) return null;
-  const url = `https://router.project-osrm.org/route/v1/${profile}/${fromLon},${fromLat};${toLon},${toLat}?overview=full&geometries=geojson`;
+  if (!profile || !MAPBOX_TOKEN) return null;
+  const coords = `${fromLon},${fromLat};${toLon},${toLat}`;
+  const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coords}`
+    + `?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
-    const coords = data?.routes?.[0]?.geometry?.coordinates;
-    if (!coords) return null;
-    return coords.map(([lon, lat]) => [lat, lon]);
+    const line = data?.routes?.[0]?.geometry?.coordinates;
+    if (!line || line.length < 2) return null;
+    return line; // already [[lng, lat], …]
   } catch {
     return null;
   }

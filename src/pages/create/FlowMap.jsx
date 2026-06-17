@@ -77,14 +77,14 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
     return undefined;
   }, [ready, ptsKey]);
 
-  // Route lines: dashed = no transport, solid = flight/road/other; road via OSRM.
+  // Route lines: dashed = no transport, solid = flight/road/other; road via Mapbox.
   // Same shared rule + colours as the trip MapView (only the layer ids differ).
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
     const drawLegs = legs.map((leg) => ({ from: leg.from, to: leg.to, kind: transport[leg.id]?.kind }));
     // Cached by legs: reopening with the same route is a no-op (no rebuild, no
-    // OSRM refetch, no straight→road flicker).
+    // road refetch, no straight→road flicker).
     drawRouteLinesCached(map, `create:${legsKey}`, drawLegs, { dashedId: 'flow-dashed', solidId: 'flow-solid' });
     return undefined;
   }, [ready, legsKey]);

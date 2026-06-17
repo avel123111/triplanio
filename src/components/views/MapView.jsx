@@ -161,7 +161,7 @@ export default function MapView({
     }
     // Signature of everything the lines depend on (route order/coords +
     // per-leg transport). If unchanged, the cached draw is a no-op → no rebuild,
-    // no OSRM refetch, no flicker when reopening the map.
+    // no road refetch, no flicker when reopening the map.
     const transfersSig = transfers
       .map((t) => `${t.from_city_visit_id}>${t.to_city_visit_id}:${t.transport_type || ''}`)
       .join('|');

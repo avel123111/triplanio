@@ -128,7 +128,7 @@ export default function Pro() {
   const plans = hidePerTrip ? allPlans.filter(p => p.type !== 'pro_trip') : allPlans;
 
   return (
-    <div className="pro-page">
+    <div className="pro-page app-shell">
 
       {/* ── App header ── */}
       <AppHeader
