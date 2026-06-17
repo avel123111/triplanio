@@ -11,10 +11,11 @@ import { formatTripRange, isTripInPast } from '@/lib/trip-dates';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 import { isAddonEnabled } from '@/lib/tripAddons';
-import { isLensVisible, LENS_ITEMS, MGMT_ITEMS } from '@/lib/tripMenu';
+import { isLensVisible } from '@/lib/tripMenu';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
 import AppHeader from '@/components/AppHeader';
-import TripScreenBar, { TripScreenBarCtx } from '@/components/trips/TripScreenBar';
+import { useMobileNav } from '@/components/MobileBottomNav';
+import { Sheet } from '@/components/ui/Sheet';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
@@ -28,23 +29,18 @@ import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import OverviewLens from './OverviewLens';
-import BudgetLens from './BudgetLens';
-import MembersLens from './MembersLens';
+import BudgetLens, { AddExpenseDialog } from './BudgetLens';
+import MembersLens, { InviteDialog } from './MembersLens';
 import CalendarLens from './CalendarLens';
-import DocsLens from './DocsLens';
+import DocsLens, { AddDocDialog } from './DocsLens';
 import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
+import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount } from '@/lib/trip-cities';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import '../design/app.css';
-
-// Screen-name lookup for the global screen-title bar. Derived from the shared
-// trip-menu data so the bar title and the sidebar label never drift.
-const SCREEN_TITLE_KEY = Object.fromEntries(
-  [...LENS_ITEMS, ...MGMT_ITEMS].map((i) => [i.id, i.labelKey]),
-);
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -271,8 +267,6 @@ function LoadingScreen({ lens = 'overview' }) {
           </div>
         </aside>
         <div className="trip-content">
-          {/* Skeleton screen-title bar */}
-          <div className="trip-screenbar"><Skeleton w={150} h={20} r={6} /></div>
           <main className="trip-screen-body">
             {/* Same building blocks as the loaded layout, so nothing reshuffles
                 when shell → content resolves. Lens-aware so the Overview (default)
@@ -956,6 +950,16 @@ export default function TripView() {
   // active lens projects into the screen-title bar. (Trip name + cover editing
   // moved into the Settings lens; the metadata modal was retired.)
   const [sideOpen, setSideOpen] = useState(false);
+  // Mobile bottom-nav bridge: the global nav's "…" opens this menu sheet and its
+  // central "+" opens the add sheet below. Intent drives auto-opening the add
+  // dialog of the lens we navigate to.
+  const { setTripCtx } = useMobileNav();
+  const [addOpen, setAddOpen] = useState(false);
+  const [addModal, setAddModal] = useState(null); // null | 'expense' | 'docs' | 'members' — trip-level create dialog opened by the bottom-nav "+"
+  useEffect(() => {
+    setTripCtx({ openMenu: () => setSideOpen(true), openAdd: () => setAddOpen(true) });
+    return () => setTripCtx(null);
+  }, [setTripCtx]);
   // Phones (≤640px) get the menu as a bottom-sheet instead of the slide-in
   // drawer; the drawer + its scrim are suppressed at this breakpoint in CSS.
   const [isPhone, setIsPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
@@ -965,7 +969,6 @@ export default function TripView() {
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
-  const [screenActions, setScreenActions] = useState(null);
 
   // If the URL points at a lens the trip has disabled, fall back to the timeline.
   // Viewers can't open Settings/Members even by deep link → fall back too.
@@ -1085,8 +1088,7 @@ export default function TripView() {
         meta={heroSub}
         actions={heroActions}
       />
-      <TripScreenBarCtx.Provider value={{ setActions: setScreenActions }}>
-        <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
+      <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
           <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => setShareOpen(true)} />
           <div className="trip-side-scrim" onClick={() => setSideOpen(false)} />
           {/* Phone menu: bottom-sheet variant of the same sidebar (≤640px). The
@@ -1107,7 +1109,6 @@ export default function TripView() {
             onShare={() => { setSideOpen(false); setShareOpen(true); }}
           />
           <div className="trip-content">
-            <TripScreenBar title={t(SCREEN_TITLE_KEY[shownLens] || 'trip_menu.timeline')} actions={screenActions} />
             <main ref={screenBodyRef} className={screenBodyClass}>
           {/* Hotel choice - sits between the warning button and the edit form */}
           <ForkPartnerModal
@@ -1344,7 +1345,6 @@ export default function TripView() {
             </main>
           </div>
         </div>
-      </TripScreenBarCtx.Provider>
 
       <ProUpsellModal
         open={tripProInfoOpen}
@@ -1354,6 +1354,58 @@ export default function TripView() {
       />
 
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} />
+
+      {/* Add bottom-sheet — opened by the mobile bottom-nav "+". Each item opens
+          a trip-level create dialog (addModal) IN PLACE, without navigating to the
+          lens. Items are gated: expense needs the budget addon, member needs owner/admin. */}
+      <Sheet open={addOpen} onOpenChange={setAddOpen} title={t('common.add')}>
+        <div className="addsheet">
+          {isAddonEnabled(trip, 'budget') && (
+            <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('expense'); }}>
+              <span className="addsheet__ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="wallet" size={20} /></span>
+              <span className="addsheet__tx"><b>{t('budget.manual_expense')}</b></span>
+              <Icon name="chev" size={16} className="addsheet__chev" />
+            </button>
+          )}
+          <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('docs'); }}>
+            <span className="addsheet__ic" style={{ background: 'var(--ev-hotel-soft)', color: 'var(--ev-hotel-ink)' }}><Icon name="file" size={20} /></span>
+            <span className="addsheet__tx"><b>{t('doc.add_doc')}</b></span>
+            <Icon name="chev" size={16} className="addsheet__chev" />
+          </button>
+          {(myRole === 'owner' || myRole === 'admin') && (
+            <button type="button" className="addsheet__row" onClick={() => { setAddOpen(false); setAddModal('members'); }}>
+              <span className="addsheet__ic" style={{ background: 'var(--ev-activity-soft)', color: 'var(--ev-activity-ink)' }}><Icon name="users" size={20} /></span>
+              <span className="addsheet__tx"><b>{t('members.invite')}</b></span>
+              <Icon name="chev" size={16} className="addsheet__chev" />
+            </button>
+          )}
+        </div>
+      </Sheet>
+
+      {/* Trip-level create dialogs opened by the add sheet — render over ANY lens
+          without navigating (same pattern as the event dialogs above). */}
+      {addModal === 'expense' && (
+        <AddExpenseDialog
+          open
+          onOpenChange={(o) => { if (!o) setAddModal(null); }}
+          tripId={tripId}
+          categories={budgetCategoryOptions(budgetCategories, t)}
+          mainCurrency={trip?.details?.main_currency || budget?.currency || 'EUR'}
+          cities={visits.map((v) => v.city_name).filter(Boolean)}
+          onSaved={() => qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) })}
+        />
+      )}
+      {addModal === 'docs' && (
+        <AddDocDialog open onOpenChange={(o) => { if (!o) setAddModal(null); }} tripId={tripId} />
+      )}
+      {addModal === 'members' && (
+        <InviteDialog
+          open
+          onOpenChange={(o) => { if (!o) setAddModal(null); }}
+          tripId={tripId}
+          onSaved={() => { qc.invalidateQueries({ queryKey: TRIP_CONTENT_KEY(tripId) }); qc.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) }); }}
+        />
+      )}
 
       {/* Ф6а: budgetAddonOff on Radix (focus-trap, Esc) */}
       <Dialog
@@ -1374,7 +1426,7 @@ export default function TripView() {
       {/* Floating chat widget: requires the chat addon AND the trip-level
           "chat widget" display toggle (default ON). The full Chat lens stays
           reachable from the sidebar regardless of this toggle. */}
-      {isLensVisible(trip, 'chat') && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
+      {!isPhone && isLensVisible(trip, 'chat') && trip?.details?.display?.chat_widget !== false && shownLens !== 'chat' && (
         <ChatWidget tripId={tripId} members={members} tripTitle={trip?.title} ownerId={trip?.created_by} />
       )}
 

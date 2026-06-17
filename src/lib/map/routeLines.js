@@ -92,6 +92,11 @@ function drawRouteLines(map, legs, opts) {
       if (coords) {
         solid[task.idx] = lineFeature(coords);
         setLineLayer(map, solidId, solid, { color: solidColor, width: solidWidth });
+        // The selected-route highlight may trace this same road leg. Its first
+        // render used a straight fallback (OSRM wasn't cached yet); now that the
+        // real geometry is in, re-render it so it follows the curve instead of
+        // sitting on the map as a second, straight line over the curved base.
+        if (map.__hlLeg) { try { renderHighlight(map, map.__hlLeg); } catch { /* ignore */ } }
       }
     }
   })();
@@ -123,23 +128,27 @@ export function repaintRouteLines(map) {
   try { if (map.getLayer(HL_CASING_ID)) map.setPaintProperty(HL_CASING_ID, 'line-color', ring); } catch { /* not present */ }
 }
 
-// Remove the selected-segment highlight (no-op if it isn't drawn).
-export function clearRouteHighlight(map) {
-  if (!map) return;
+// Remove the highlight layers from the map (without touching the remembered leg).
+function removeHighlightLayers(map) {
   [HL_MAIN_ID, HL_CASING_ID].forEach((id) => {
     try { if (map.getLayer(id)) map.removeLayer(id); } catch { /* ignore */ }
     try { if (map.getSource(id)) map.removeSource(id); } catch { /* ignore */ }
   });
 }
 
-// Draw the "selected route" state for a single leg, over the base route. Works
-// for legs with transport (solid) and without (dashed) — a wide translucent
-// casing + the route colour on top. Geometry follows the same rule as the base
-// line (flight arc / cached OSRM road / straight) so the highlight traces the
-// exact rendered path. Re-added each call so it stays above a re-drawn base.
-// leg: { from:{latitude,longitude}, to:{latitude,longitude}, kind?:string }
-export function drawRouteHighlight(map, leg) {
-  if (!map || !leg?.from?.latitude || !leg?.to?.latitude) { clearRouteHighlight(map); return; }
+// Remove the selected-segment highlight and forget the leg (no-op if not drawn).
+export function clearRouteHighlight(map) {
+  if (!map) return;
+  map.__hlLeg = null;
+  removeHighlightLayers(map);
+}
+
+// Paint the highlight for `leg` into the HL layers (idempotent — setLineLayer
+// updates geometry in place if they already exist, so an OSRM upgrade re-render
+// just swaps the straight fallback for the real curve without changing z-order).
+// Geometry follows the SAME rule as the base line (flight arc / cached OSRM road
+// / straight) so the highlight traces the exact rendered path.
+function renderHighlight(map, leg) {
   const { from, to, kind } = leg;
   let coords;
   if (isFlightTransport(kind)) {
@@ -150,10 +159,23 @@ export function drawRouteHighlight(map, leg) {
     coords = [[from.longitude, from.latitude], [to.longitude, to.latitude]];
   }
   const features = [lineFeature(coords)];
-  clearRouteHighlight(map); // re-add on top of the (possibly just redrawn) base
   const base = kind ? SOLID_WIDTH : DASHED_WIDTH;
   setLineLayer(map, HL_CASING_ID, features, { color: routeRingColor(), width: base + 8, opacity: 1 });
   setLineLayer(map, HL_MAIN_ID, features, { color: routeColor(), width: base + 1.5, dashed: !kind, opacity: 1 });
+}
+
+// Draw the "selected route" state for a single leg, over the base route. Works
+// for legs with transport (solid) and without (dashed). The leg is remembered on
+// the instance (map.__hlLeg) so when a road leg's OSRM geometry finishes loading
+// (drawRouteLines' async loop), the highlight is re-rendered onto the curve — so
+// there's only ever ONE highlighted arc and it tracks the base exactly.
+// leg: { from:{latitude,longitude}, to:{latitude,longitude}, kind?:string }
+export function drawRouteHighlight(map, leg) {
+  if (!map || !leg?.from?.latitude || !leg?.to?.latitude) { clearRouteHighlight(map); return; }
+  map.__hlLeg = leg;
+  // Re-add above a possibly just-redrawn base by removing the old layers first.
+  removeHighlightLayers(map);
+  renderHighlight(map, leg);
 }
 
 // Cached variant. Keeps the drawn route ON THE MAP INSTANCE between screen

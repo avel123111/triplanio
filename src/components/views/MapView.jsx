@@ -27,10 +27,12 @@ export default function MapView({
   // editor cities list). Its marker shows the selected look (no pulse) while
   // hovered. Hovering a pin on the map is handled by CSS (:hover) directly.
   hoveredVisitId = null,
-  // Optional: the route leg to show in the "selected route" state (a transfer
-  // open in the editor). { from:{latitude,longitude}, to:{latitude,longitude},
-  // kind? } — kind falsy ⇒ "no transport" (dashed) highlight. Falsy ⇒ none.
-  selectedLeg = null,
+  // Optional: which leg to show in the "selected route" state, as the id pair
+  // "<fromVisitId>__<toVisitId>" (a transfer open in the editor). The geometry +
+  // transport kind are resolved from THIS component's own visits/transfers, so
+  // the highlight always matches the live base line and updates when transport
+  // is added/changed (never a stale second arc). Falsy ⇒ nothing selected.
+  selectedLegKey = null,
   // Optional camera focus driven by the parent (e.g. the editor's open panel):
   // array of [lng,lat] points. 1 point → flyTo the city; 2 → fit both cities.
   // Falsy/empty → no override (the whole-route auto-fit stays in charge); when
@@ -197,20 +199,33 @@ export default function MapView({
   }, [ready, selectedVisitId, hoveredVisitId, visitsSignature]);
 
   // Selected route segment (a transfer open in the editor) drawn over the base
-  // route; cleared when nothing is selected. Re-applied after the base redraws.
-  const selLegSig = useMemo(
-    () => (selectedLeg?.from?.latitude && selectedLeg?.to?.latitude
-      ? `${selectedLeg.from.latitude},${selectedLeg.from.longitude}>${selectedLeg.to.latitude},${selectedLeg.to.longitude}:${selectedLeg.kind || ''}`
-      : ''),
-    [selectedLeg],
-  );
+  // route. The leg's geometry + transport kind are resolved HERE from the live
+  // transfers, keyed by the same fromId__toId pair the base line uses — so there
+  // is always exactly ONE highlighted arc and it updates in lockstep when the
+  // transport is added/changed (this effect re-runs because `transferKindByPair`
+  // changes), never leaving a stale second arc. Runs after the base-draw effect
+  // (declared above), so the highlight ends up on top of a freshly redrawn base.
+  const transferKindByPair = useMemo(() => {
+    const m = new globalThis.Map();
+    transfers.forEach((t) => {
+      const k = `${t.from_city_visit_id}__${t.to_city_visit_id}`;
+      if (!m.has(k)) m.set(k, t.transport_type);
+    });
+    return m;
+  }, [transfers]);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    if (selLegSig) drawRouteHighlight(map, selectedLeg);
-    else clearRouteHighlight(map);
+    if (!selectedLegKey) { clearRouteHighlight(map); return undefined; }
+    const sep = selectedLegKey.indexOf('__');
+    const fromId = sep === -1 ? '' : selectedLegKey.slice(0, sep);
+    const toId = sep === -1 ? '' : selectedLegKey.slice(sep + 2);
+    const from = ordered.find((v) => String(v.id) === fromId);
+    const to = ordered.find((v) => String(v.id) === toId);
+    if (!from || !to) { clearRouteHighlight(map); return undefined; }
+    drawRouteHighlight(map, { from, to, kind: transferKindByPair.get(selectedLegKey) });
     return undefined;
-  }, [ready, selLegSig, visitsSignature]);
+  }, [ready, selectedLegKey, ordered, transferKindByPair, visitsSignature]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>

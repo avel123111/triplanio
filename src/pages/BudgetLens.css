@@ -149,6 +149,12 @@
 .bgt-fxrow > .input { width: 108px; flex: none; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ════════ RESPONSIVE ════════ */
+/* Header: screen title + primary actions relocated from the removed per-screen
+   bar. Tokens only (font/colour/space) — nothing new in the design system. */
+.bgt-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.bgt-head__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h3); color: var(--ink); margin: 0; }
+.bgt-head__sp { flex: 1; }
+
 @media (max-width: 880px) {
   .bgt-sumband { grid-template-columns: 1fr; }
   .bgt-drill { grid-template-columns: 1fr; }
@@ -158,6 +164,10 @@
   .bgt-donutwrap { flex-direction: column; align-items: stretch; gap: 16px; }
 }
 @media (max-width: 640px) {
+  /* Phones: hide the header buttons. Adding an expense now lives in the global
+     mobile bottom-nav "+" add sheet; "rates" opens via the FX stat card. */
+  .bgt-head .btn { display: none; }
+  .bgt-head { margin-bottom: 12px; }
   /* Bug 1: allow category/expense names to wrap instead of truncating,
      preventing the text from pushing the layout beyond the screen edge */
   .bgt-glist__n { flex-wrap: wrap; align-items: flex-start; }

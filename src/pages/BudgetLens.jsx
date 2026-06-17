@@ -25,7 +25,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFxRates } from '@/lib/fx';
-import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { toMain as toMainCur } from '@/lib/budget/money';
 import { currencySymbol } from '@/lib/budget/currencies';
 import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colors';
@@ -128,7 +127,7 @@ function DonutChart({ segments, total, mainCurrency, hoveredId, centerLabel }) {
 
 // ─── AddExpenseDialog (create + edit manual expense) ────────────────────────────
 
-function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved, open, onOpenChange }) {
+export function AddExpenseDialog({ tripId, categories, mainCurrency, cities = [], existing = null, onSaved, open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
@@ -613,18 +612,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
   const expensesPlural = (n) => n === 1 ? t('budget.expenses_count_one') : t('budget.expenses_count_many');
 
-  // Primary actions live in the global screen-title bar (the per-screen header).
-  useTripScreenActions(
-    <>
-      <Btn variant="ghost" size="sm" icon="arrowSwap" onClick={openFxDialog}
-        className="screenbar-action--icononly" ariaLabel={t('budget.fx_button')} title={t('budget.fx_button')}>
-        <span className="screenbar-action__label">{t('budget.fx_button')}</span>
-      </Btn>
-      <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
-    </>,
-    [tripId, t, mainCurrency, budgetExpenses, budgetCategories],
-  );
-
   // Skeleton
   if (isLoading) {
     return (
@@ -638,6 +625,15 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
   return (
     <div className="bgt ov-anim">
+      {/* ░ HEADER: screen title + primary actions relocated from the removed
+          per-screen bar. On phones the buttons hide (see BudgetLens.css): "add
+          expense" becomes the FAB below and "rates" is the FX stat card. ░ */}
+      <div className="bgt-head">
+        <h2 className="bgt-head__title">{t('trip.sidebar_budget')}</h2>
+        <span className="bgt-head__sp" />
+        <Btn variant="ghost" size="sm" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
+        <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
+      </div>
       {/* ░ SUMMARY BAND ░ */}
       <div className="bgt-sumband">
         <div className="card bgt-donutcard">

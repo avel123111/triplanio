@@ -29,8 +29,9 @@ import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import TripSidebar from '@/components/trips/TripSidebar';
-import TripScreenBar from '@/components/trips/TripScreenBar';
 import ShareDialog from '@/components/trips/ShareDialog';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Sheet } from '@/components/ui/Sheet';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from '@/components/ui/alert-dialog';
 
 // =====================================================================
@@ -50,7 +51,9 @@ const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y 
 // reproduces exactly what's stored, so editor = timeline = DB.
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
 const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
-const flagEmoji = (cc) => (cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt(0))) : '📍');
+// Country flag emoji from an ISO-3166 alpha-2 code (regional-indicator pair);
+// '' when there's no valid 2-letter code (so the chip just shows the name).
+const flagEmoji = (cc) => (cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt(0))) : '');
 const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
 // A city added in the editor but not yet saved carries a 'tmp-…' id (no real uuid
 // until save_trip_edit inserts it). A LIVE transfer write to such a city fails the
@@ -112,9 +115,48 @@ function buildDraft(shell, transfers = []) {
   return { nodes, startDate };
 }
 
+// Compact month-grid date picker for the trip-start control. Tokens/icons from
+// the design system; no new shared component. Picks an absolute start date which
+// the caller turns into a delta shift (shiftStart) of the whole itinerary.
+function StartCalendar({ value, onPick, lang = 'ru' }) {
+  const sel = value ? DateTime.fromISO(value, { zone: 'utc' }) : DateTime.utc();
+  const [view, setView] = useState(sel.startOf('month'));
+  const monday = DateTime.utc(2024, 1, 1); // a known Monday → localized weekday heads
+  const lead = (view.weekday + 6) % 7;     // cells before day 1 (Mon-first)
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push(null);
+  for (let d = 1; d <= view.daysInMonth; d++) cells.push(d);
+  return (
+    <div className="ts-cal">
+      <div className="ts-cal__head">
+        <button type="button" className="ts-step" onClick={() => setView(view.minus({ months: 1 }))} aria-label="←"><Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} /></button>
+        <span className="ts-cal__title">{view.setLocale(lang).toFormat('LLLL yyyy')}</span>
+        <button type="button" className="ts-step" onClick={() => setView(view.plus({ months: 1 }))} aria-label="→"><Icon name="chev" size={13} /></button>
+      </div>
+      <div className="ts-cal__grid ts-cal__wd">
+        {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+          <span key={i} className="ts-cal__wdc">{monday.plus({ days: i }).setLocale(lang).toFormat('ccc')}</span>
+        ))}
+      </div>
+      <div className="ts-cal__grid">
+        {cells.map((d, i) => (d === null
+          ? <span key={`e${i}`} />
+          : <button
+              key={d}
+              type="button"
+              className={'ts-cal__day' + (sel.hasSame(view.set({ day: d }), 'day') ? ' on' : '')}
+              onClick={() => onPick(view.set({ day: d }).toISODate())}
+            >{d}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function TripStructureEdit() {
   const { tripId } = useParams();
   const t = useT();
+  const { lang } = useI18n();
   const nav = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -147,7 +189,7 @@ export default function TripStructureEdit() {
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
   }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
-  const [showMap, setShowMap] = useState(true); // hide the map to give the itinerary full width
+  const [startCalOpen, setStartCalOpen] = useState(false); // trip-start calendar popover
   const [copyingTrip, setCopyingTrip] = useState(false); // header "…" → Copy trip
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
@@ -484,13 +526,8 @@ export default function TripStructureEdit() {
     />
   );
 
-  // Editor action cluster — projected into the global screen-title bar, the same
-  // way lenses surface their primary actions. (Title + dates now live in the
-  // gradient hero; only meaningful once the draft has loaded.)
-  //   Undo  = step back one action.   Reset = discard all edits, stay in editor.
-  const editorActions = draft ? (
-    <Btn variant="quiet" size="sm" icon="map" onClick={() => setShowMap((v) => !v)} className={showMap ? 'is-on' : ''} title={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaLabel={showMap ? t('tse.hide_map') : t('tse.show_map')} ariaPressed={showMap} />
-  ) : null;
+  // The map is always shown beside the itinerary now (the old "hide map" toggle
+  // was removed); on phones it's hidden via CSS (.ts-col-right), so no toggle.
 
   if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">{t('tse.err_load')}{String(shellError.message || shellError)}</div></div></>;
   // shell/content are cached (shared with TripView) so the editor paints instantly.
@@ -782,29 +819,54 @@ export default function TripStructureEdit() {
     selectedNodeId = leftPanel.visit?.id ?? null;
   }
   // When a transfer panel is open, that leg shows the "selected route" state on
-  // the map (works with transport → solid, and without → dashed highlight).
-  let selectedLeg = null;
+  // the map. We pass only the leg's id pair; MapView resolves geometry + kind
+  // from the live transfers (which include the in-progress previewTransfer), so
+  // the highlight is a single arc that updates as transport is added/changed.
+  let selectedLegKey = null;
   if (leftPanel?.type === 'event' && leftPanel.kind === 'transfer') {
     const tr = liveTransfers.find((x) => x.id === leftPanel.id);
-    const f = tr && byId(tr.from_city_visit_id);
-    const to = tr && byId(tr.to_city_visit_id);
-    if (f && to) selectedLeg = { from: f, to, kind: tr.transport_type };
+    if (tr) selectedLegKey = `${tr.from_city_visit_id}__${tr.to_city_visit_id}`;
   } else if ((leftPanel?.type === 'create' || leftPanel?.type === 'pick') && leftPanel.kind === 'transfer') {
-    if (leftPanel.fromVisit?.latitude && leftPanel.toVisit?.latitude) {
-      selectedLeg = { from: leftPanel.fromVisit, to: leftPanel.toVisit, kind: undefined };
+    if (leftPanel.fromVisit?.id && leftPanel.toVisit?.id) {
+      selectedLegKey = `${leftPanel.fromVisit.id}__${leftPanel.toVisit.id}`;
     }
   }
   // Key the left pane on its identity so React remounts it on panel change →
   // the .te-panefade entry animation replays.
   const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
 
-  // Trip-start stepper — temporarily relocated into the screen header bar
-  // (its dedicated left-column header block was removed; final placement TBD).
-  const startStepperEl = draft ? (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 9, padding: 2 }} title={t('planner.trip_start')}>
-      <button className="ts-step" onClick={() => shiftStart(-1)} title={t('tse.start_earlier')}><Icon name="back" size={13} /></button>
-      <span className="num" style={{ padding: '0 8px', fontSize: 'var(--fs-meta)', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtDW(startDate)}</span>
-      <button className="ts-step" onClick={() => shiftStart(1)} title={t('tse.start_later')}><Icon name="chev" size={13} /></button>
+  // Trip-start control — lives in the "Маршрут" panel header. The stepper shifts
+  // the whole itinerary by ±1 day; tapping the date opens a calendar to jump to
+  // any start (translated into a single delta shift, reusing shiftStart).
+  const pickStart = (iso) => {
+    if (!iso || !startDate) { setStartCalOpen(false); return; }
+    const delta = Math.round(toDT(iso).startOf('day').diff(toDT(startDate).startOf('day'), 'days').days);
+    if (delta !== 0) shiftStart(delta);
+    setStartCalOpen(false);
+  };
+  const startDateControl = draft ? (
+    <div className="ts-startctl" title={t('planner.trip_start')}>
+      <span className="ts-startctl__lbl">{t('ai_plan.start')}</span>
+      <button type="button" className="ts-step" onClick={() => shiftStart(-1)} title={t('tse.start_earlier')} aria-label={t('tse.start_earlier')}><Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} /></button>
+      {isSheet ? (
+        // Phones: open the calendar in the canonical bottom-sheet (Sheet), not a popover.
+        <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')} onClick={() => setStartCalOpen(true)}>{fmtDW(startDate, lang)}</button>
+      ) : (
+        <Popover open={startCalOpen} onOpenChange={setStartCalOpen}>
+          <PopoverTrigger asChild>
+            <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(startDate, lang)}</button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="ts-startcal-pop">
+            <StartCalendar value={startDate} lang={lang} onPick={pickStart} />
+          </PopoverContent>
+        </Popover>
+      )}
+      <button type="button" className="ts-step" onClick={() => shiftStart(1)} title={t('tse.start_later')} aria-label={t('tse.start_later')}><Icon name="chev" size={13} /></button>
+      {isSheet && (
+        <Sheet open={startCalOpen} onOpenChange={setStartCalOpen} title={t('planner.trip_start')}>
+          <StartCalendar value={startDate} lang={lang} onPick={pickStart} />
+        </Sheet>
+      )}
     </div>
   ) : null;
 
@@ -907,15 +969,28 @@ export default function TripStructureEdit() {
       {/* content column — screen-title bar sits BESIDE the sidebar (like every
           other screen) so the menu doesn't shift when navigating into the editor */}
       <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <TripScreenBar title={t('trip.edit_structure')} actions={editorActions && <>{startStepperEl}{editorActions}</>} />
-      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: showMap ? 'minmax(0, 1fr) minmax(0, 1fr)' : '1fr', gap: 0, overflow: 'hidden' }}>
-        {/* LEFT - page title + cities (scrolling list) */}
-        <div className="ts-col-left" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--surface)' }}>
+      {/* Two columns: itinerary (left, with the "Маршрут" panel header) + the
+          always-on map (right). The per-screen title bar was removed; the map
+          starts at the same top edge as the route header. On phones the map is
+          hidden via CSS (.ts-col-right) and the itinerary spans full width. */}
+      <div className="ts-grid" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 0, overflow: 'hidden' }}>
+        {/* LEFT - bordered container (same 14px inset / radius as the map box on
+            the right). The "Маршрут" header is the container's header; an open
+            side panel fills the same box. */}
+        <div className="ts-col-left" style={{ position: 'relative', minWidth: 0, display: 'flex', minHeight: 0, background: 'var(--bg)' }}>
+          <div className="ts-leftbox">
           <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={leftPanel ? (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } } : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
           {/* Desktop: panel replaces the column. Mobile: column keeps the cities
               list; the panel opens as a Radix bottom-sheet (rendered below). */}
           {(!isSheet && leftPanelEl) || (<>
-          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--bg)' }}>
+          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--surface)' }}>
+          {/* "Маршрут" container header — scrolls WITH the list (not sticky), the
+              same as on mobile. A left panel replaces this whole column. */}
+          <div className="ts-routehead">
+            <span className="ts-routehead__title">{t('planner.step_cities')}</span>
+            <span className="ts-routehead__sp" />
+            {startDateControl}
+          </div>
           <div className="te-thead" style={{ padding: '0 4px 6px' }}>
             <span className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</span>
@@ -1017,18 +1092,19 @@ export default function TripStructureEdit() {
               </DialogPrimitive.Portal>
             </DialogPrimitive.Root>
           )}
+          </div>{/* /ts-leftbox */}
         </div>
 
-        {/* RIGHT - full-height map (hideable); warnings live in a collapsible overlay widget */}
-        {showMap && (
+        {/* RIGHT - full-height map (always on; hidden on phones via CSS);
+            warnings live in a collapsible overlay widget */}
         <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--bg)' }}>
-          <div className="ts-map" style={{ position: 'absolute', inset: 14, overflow: 'hidden', borderRadius: 16, border: '1px solid var(--line)' }}>
+          <div className="ts-map" style={{ position: 'absolute', inset: 14, left: 7, overflow: 'hidden', borderRadius: 16, border: '1px solid var(--line)' }}>
             <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd mapControls
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               selectedVisitId={selectedNodeId}
               hoveredVisitId={hoveredNodeId}
-              selectedLeg={selectedLeg}
+              selectedLegKey={selectedLegKey}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
@@ -1056,7 +1132,6 @@ export default function TripStructureEdit() {
             </button>
           </div>
         </div>
-        )}
       </div>{/* /ts-grid */}
       </div>{/* /editor content column */}
     </div>
@@ -1081,6 +1156,35 @@ export default function TripStructureEdit() {
         .ts-step:active:not(:disabled) { transform: scale(0.9); }
         .ts-step:disabled { opacity: .3; cursor: default; }
         .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 13px; }
+        /* Left container — same 14px inset + border + radius as the map box, so
+           the editor (or an open side panel) and the map read as two equal cards. */
+        .ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 14px 7px 14px 14px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface); }
+        /* An open side panel fills the box; drop its own border/radius/shadow so the
+           container is the single frame and the rounding matches exactly. */
+        .ts-leftbox .lp { border: none; border-radius: 16px; box-shadow: none; }
+        /* Route header bleeds to the container edges and scrolls with the list. */
+        .ts-leftscroll > .ts-routehead { margin: -12px -12px 12px; }
+        /* "Маршрут" panel header (left column) + trip-start control. */
+        .ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
+        .ts-routehead__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h4); color: var(--ink); }
+        .ts-routehead__sp { flex: 1; }
+        .ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
+        .ts-startctl__lbl { font-size: var(--fs-meta); font-weight: 600; color: var(--muted); padding: 0 4px 0 6px; }
+        .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; font-size: var(--fs-meta); font-weight: 600; color: var(--ink); white-space: nowrap; }
+        .ts-startctl__date:hover { background: var(--wash); }
+        /* Trip-start calendar popover content. */
+        .ts-cal { width: 248px; }
+        .ts-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .ts-cal__title { font-weight: 600; font-size: var(--fs-base); color: var(--ink); text-transform: capitalize; }
+        .ts-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+        .ts-cal__wd { margin-bottom: 4px; }
+        .ts-cal__wdc { text-align: center; font-size: var(--fs-micro); font-weight: 700; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
+        .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-size: var(--fs-meta); font-weight: 600; color: var(--ink); display: grid; place-items: center; }
+        .ts-cal__day:hover { background: var(--wash); }
+        .ts-cal__day.on { background: var(--brand); color: #fff; }
+        /* In the mobile bottom-sheet the calendar spans the sheet width. */
+        .sheet .ts-cal { width: 100%; max-width: 340px; margin: 0 auto; }
+        @media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
         .te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
         @keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
         /* Warnings FAB: lift on hover, press on click. */
@@ -1100,7 +1204,8 @@ export default function TripStructureEdit() {
           .ts-screen { height: auto !important; min-height: 100vh; overflow: visible !important; }
           .ts-grid { grid-template-columns: 1fr !important; overflow: visible !important; }
           .ts-leftscroll { overflow: visible !important; }
-          .ts-map { flex: 0 0 340px !important; }
+          .ts-leftbox { margin: 14px !important; }
+          .ts-map { flex: 0 0 340px !important; left: 14px !important; }
           .ts-warn { flex: 0 0 auto !important; min-height: 300px; }
         }
       `}</style>
@@ -1253,8 +1358,8 @@ function GridEndpoint({ node, date, onRemove }) {
     <div className="te-end">
       <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
       <div className="te-citycell" style={{ flex: 1 }}>
+        <span className="te-endlabel" style={{ color: accent }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
         <div className="te-cityline">
-          <span className="te-endlabel" style={{ color: accent, flex: 'none' }}>{isStart ? t('ai_plan.start') : t('ai_plan.end')}</span>
           <span className="te-cityname">{node.city_name}</span>
         </div>
         <div className="te-dts">
