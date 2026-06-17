@@ -769,6 +769,17 @@ export default function TripStructureEdit() {
     else { const p = coordOf(leftPanel.visit); if (p) mapFocus = [p]; }
   }
   if (mapFocus && mapFocus.length === 0) mapFocus = null;
+  // Which city node the open panel belongs to → its map marker shows the selected
+  // state (single-city panels only; a transfer panel highlights no single city).
+  let selectedNodeId = null;
+  if (leftPanel?.type === 'city') {
+    selectedNodeId = leftPanel.id;
+  } else if (leftPanel?.type === 'event' && leftPanel.kind !== 'transfer') {
+    const e = (leftPanel.kind === 'hotel' ? liveHotels : liveActivities).find((x) => x.id === leftPanel.id);
+    selectedNodeId = e?.city_visit_id ?? null;
+  } else if ((leftPanel?.type === 'create' || leftPanel?.type === 'pick') && leftPanel.kind !== 'transfer') {
+    selectedNodeId = leftPanel.visit?.id ?? null;
+  }
   // Key the left pane on its identity so React remounts it on panel change →
   // the .te-panefade entry animation replays.
   const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
@@ -999,6 +1010,7 @@ export default function TripStructureEdit() {
             <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd mapControls
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
+              selectedVisitId={selectedNodeId}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}

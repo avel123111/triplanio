@@ -7,7 +7,8 @@
 // lives in exactly one place.
 import { lineFeature, setLineLayer } from '@/lib/mapbox';
 import { fetchOsrmRoute, geodesicLine, isFlightTransport, isRoadTransport } from '@/lib/routing';
-import { ROUTE_COLOR, DASHED_COLOR, DASHED_OPACITY, SOLID_WIDTH, DASHED_WIDTH } from './mapStyle';
+import { DASHED_OPACITY, SOLID_WIDTH, DASHED_WIDTH } from './mapStyle';
+import { routeColor } from './mapTokens';
 
 // Per-leg OSRM geometry cache, keyed by endpoints + transport. A road route for
 // a fixed coordinate pair and mode is deterministic, so it's safe to keep for
@@ -48,7 +49,7 @@ async function osrmGeometry(from, to, kind) {
 export function drawRouteLines(map, legs, opts) {
   const {
     dashedId, solidId,
-    dashedColor = DASHED_COLOR, solidColor = ROUTE_COLOR,
+    dashedColor = routeColor(), solidColor = routeColor(),
     dashedWidth = DASHED_WIDTH, solidWidth = SOLID_WIDTH, dashedOpacity = DASHED_OPACITY,
   } = opts;
 
@@ -101,6 +102,18 @@ export function drawRouteLines(map, legs, opts) {
 // Every line layer id any surface can draw. Used to wipe a previous route
 // (this screen's or another surface's) before drawing a different one.
 const ALL_LINE_LAYER_IDS = ['mv-dashed', 'mv-solid', 'flow-dashed', 'flow-solid'];
+
+// Re-apply the (theme-dependent) route colour to whatever line layers exist on
+// the shared instance. Called on a day/night switch so the lines follow the
+// theme without rebuilding their geometry (geometry is theme-independent, so a
+// cheap setPaintProperty is enough — no OSRM refetch, no flicker).
+export function repaintRouteLines(map) {
+  if (!map) return;
+  const color = routeColor();
+  ALL_LINE_LAYER_IDS.forEach((id) => {
+    try { if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', color); } catch { /* layer not present */ }
+  });
+}
 
 // Cached variant. Keeps the drawn route ON THE MAP INSTANCE between screen
 // opens. If `sig` matches what's already rendered (and the layers still exist),

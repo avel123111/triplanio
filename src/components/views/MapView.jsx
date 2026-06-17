@@ -19,6 +19,10 @@ export default function MapView({
   showStartEnd = true,
   colorScheme = 'LIGHT',
   onCityClick,
+  // Optional: id of the city_visit currently selected/open in the parent (the
+  // editor's open panel, the Map lens' active stepper item). Its marker renders
+  // in the highlighted "selected" state. Falsy ⇒ nothing selected.
+  selectedVisitId = null,
   // Optional camera focus driven by the parent (e.g. the editor's open panel):
   // array of [lng,lat] points. 1 point → flyTo the city; 2 → fit both cities.
   // Falsy/empty → no override (the whole-route auto-fit stays in charge); when
@@ -120,9 +124,11 @@ export default function MapView({
       const title = g.data
         .map((v) => `${countryFlag(v.country_code)} ${v.city_name}${v.country ? ', ' + v.country : ''}`)
         .join(' • ');
+      const selected = selectedVisitId != null && g.data.some((v) => v && v.id === selectedVisitId);
       const el = createMarkerEl(g.labels.filter((l) => l != null), {
         title,
         icon: iconForKinds(g.kinds),
+        selected,
         onClick: () => { const cb = onCityClickRef.current; if (cb) cb(g.data); },
       });
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
@@ -163,7 +169,7 @@ export default function MapView({
     }
 
     return undefined;
-  }, [ready, ordered, transfers, visitsSignature]);
+  }, [ready, ordered, transfers, visitsSignature, selectedVisitId]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>

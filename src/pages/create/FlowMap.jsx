@@ -3,7 +3,6 @@ import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers';
-import { ROUTE_COLOR } from '@/lib/map/mapStyle';
 import MapControls from '@/lib/map/MapControls';
 import { Icon } from '../../design/icons';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -115,7 +114,7 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
           position: 'absolute', top: 14, left: 14,
           display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px',
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999,
-          fontSize: 'var(--fs-micro)', fontWeight: 650, color: badge.color || ROUTE_COLOR, boxShadow: 'var(--shadow-soft)',
+          fontSize: 'var(--fs-micro)', fontWeight: 650, color: badge.color || 'var(--brand)', boxShadow: 'var(--shadow-soft)',
         }}>
           <Icon name={badge.icon || 'map'} size={12} /> {badge.label}
         </div>

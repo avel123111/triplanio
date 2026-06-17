@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MAPBOX_TOKEN, applyBasemapConfig } from '@/lib/mapbox';
+import { repaintRouteLines } from './routeLines';
 import { useSharedMap } from './MapProvider';
 
 // Shared lifecycle for any screen that shows the app-wide singleton Mapbox map.
@@ -70,9 +71,14 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     };
   }, []);
 
-  // Live day/night switch (in place — no map re-render).
+  // Live day/night switch (in place — no map re-render). Re-apply the basemap
+  // preset AND re-read the route colour token so existing line layers follow the
+  // theme (markers are CSS-tokened DOM, so they re-colour themselves).
   useEffect(() => {
-    if (mapRef.current && ready) applyBasemapConfig(mapRef.current, scheme);
+    if (mapRef.current && ready) {
+      applyBasemapConfig(mapRef.current, scheme);
+      repaintRouteLines(mapRef.current);
+    }
   }, [scheme, ready]);
 
   // Live projection (flat mercator ↔ globe).

@@ -70,6 +70,7 @@ function ScreenMap({ visits = [], transfers = [], hotels = [], activities = [], 
           mapControls
           active={active}
           colorScheme={isDark ? 'DARK' : 'LIGHT'}
+          selectedVisitId={activeVisit?.id}
           onCityClick={(visitsAtPoint) => {
             const idx = route.findIndex(v => v.id === visitsAtPoint[0]?.id);
             if (idx !== -1) setActiveIdx(idx);
