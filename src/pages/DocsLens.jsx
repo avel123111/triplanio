@@ -25,7 +25,6 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 import './DocsLens.css';
 
@@ -582,13 +581,9 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
   const sharedTotal   = docs.filter(d => d.visibility === 'shared').length;
   const personalTotal = docs.filter(d => d.visibility === 'private' && d.created_by === user?.id).length;
 
-  // Primary action lives in the global screen-title bar (the per-screen header).
-  useTripScreenActions(
-    <Btn variant="primary" size="sm" icon="plus" onClick={() => setAddDocVis({ defaultVisibility: 'shared' })}>
-      {t('doc.add_doc')}
-    </Btn>,
-    [tripId, t],
-  );
+  // The "add document" affordance lives in the screen body itself — each section
+  // shows a DocEmpty CTA (when empty) or a DocsGrid add-card (`dl-addcard`), so
+  // the removed per-screen bar didn't need a replacement button.
 
   if (isLoading || parentLoading) {
     return (

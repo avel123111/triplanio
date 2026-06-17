@@ -11,10 +11,9 @@ import { formatTripRange, isTripInPast } from '@/lib/trip-dates';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 import { isAddonEnabled } from '@/lib/tripAddons';
-import { isLensVisible, LENS_ITEMS, MGMT_ITEMS } from '@/lib/tripMenu';
+import { isLensVisible } from '@/lib/tripMenu';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
 import AppHeader from '@/components/AppHeader';
-import TripScreenBar, { TripScreenBarCtx } from '@/components/trips/TripScreenBar';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
@@ -39,12 +38,6 @@ import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import '../design/app.css';
-
-// Screen-name lookup for the global screen-title bar. Derived from the shared
-// trip-menu data so the bar title and the sidebar label never drift.
-const SCREEN_TITLE_KEY = Object.fromEntries(
-  [...LENS_ITEMS, ...MGMT_ITEMS].map((i) => [i.id, i.labelKey]),
-);
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -271,8 +264,6 @@ function LoadingScreen({ lens = 'overview' }) {
           </div>
         </aside>
         <div className="trip-content">
-          {/* Skeleton screen-title bar */}
-          <div className="trip-screenbar"><Skeleton w={150} h={20} r={6} /></div>
           <main className="trip-screen-body">
             {/* Same building blocks as the loaded layout, so nothing reshuffles
                 when shell → content resolves. Lens-aware so the Overview (default)
@@ -965,7 +956,6 @@ export default function TripView() {
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
-  const [screenActions, setScreenActions] = useState(null);
 
   // If the URL points at a lens the trip has disabled, fall back to the timeline.
   // Viewers can't open Settings/Members even by deep link → fall back too.
@@ -1085,8 +1075,7 @@ export default function TripView() {
         meta={heroSub}
         actions={heroActions}
       />
-      <TripScreenBarCtx.Provider value={{ setActions: setScreenActions }}>
-        <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
+      <div className={'trip-body' + (sideOpen ? ' is-menu-open' : '')}>
           <TripSidebar tripId={tripId} trip={trip} lens={lens} onNavigate={setLens} isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole} onUpgrade={openUpgrade} onProInfo={() => setTripProInfoOpen(true)} onShare={() => setShareOpen(true)} />
           <div className="trip-side-scrim" onClick={() => setSideOpen(false)} />
           {/* Phone menu: bottom-sheet variant of the same sidebar (≤640px). The
@@ -1107,7 +1096,6 @@ export default function TripView() {
             onShare={() => { setSideOpen(false); setShareOpen(true); }}
           />
           <div className="trip-content">
-            <TripScreenBar title={t(SCREEN_TITLE_KEY[shownLens] || 'trip_menu.timeline')} actions={screenActions} />
             <main ref={screenBodyRef} className={screenBodyClass}>
           {/* Hotel choice - sits between the warning button and the edit form */}
           <ForkPartnerModal
@@ -1344,7 +1332,6 @@ export default function TripView() {
             </main>
           </div>
         </div>
-      </TripScreenBarCtx.Provider>
 
       <ProUpsellModal
         open={tripProInfoOpen}

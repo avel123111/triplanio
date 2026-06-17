@@ -20,7 +20,6 @@ import { useConfirm } from '@/components/common/ConfirmProvider';
 import { ActionMenu } from '@/components/ui/ActionMenu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/components/ui/use-toast';
-import { useTripScreenActions } from '@/components/trips/TripScreenBar';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
@@ -322,13 +321,9 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     nav('/trips');
   }
 
-  // Primary action lives in the global screen-title bar (the per-screen header).
-  useTripScreenActions(
-    canManage
-      ? <Btn variant="primary" size="sm" icon="plus" onClick={() => setInviteOpen(true)}>{t('members.invite')}</Btn>
-      : null,
-    [tripId, canManage, t],
-  );
+  // Invite lives inline in the body (the "invite more" banner at the end of the
+  // member list), so the removed per-screen bar's invite button — which merely
+  // duplicated it — needed no replacement.
 
   if (isLoading) {
     return (
