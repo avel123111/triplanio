@@ -51,14 +51,13 @@ const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y 
 // reproduces exactly what's stored, so editor = timeline = DB.
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
 const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
-const flagEmoji = (cc) => (cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt(0))) : '📍');
 const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
 // A city added in the editor but not yet saved carries a 'tmp-…' id (no real uuid
 // until save_trip_edit inserts it). A LIVE transfer write to such a city fails the
 // uuid type, so transfer creation is gated until the new city is saved.
 const isTmpId = (id) => String(id || '').startsWith('tmp-');
 const colorFor = (key) => { let h = 0; const s = String(key || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return PALETTE[h % PALETTE.length]; };
-const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.id), flag: flagEmoji(n.country_code), country: n.country || '' });
+const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.id), country: n.country || '' });
 
 // Canonical date-chain layout (start = prevEnd + gap; end = start + nights) now
 // lives in lib/tripDates.layoutDates, shared with ManualPlanner and mirroring the
@@ -817,16 +816,16 @@ export default function TripStructureEdit() {
     selectedNodeId = leftPanel.visit?.id ?? null;
   }
   // When a transfer panel is open, that leg shows the "selected route" state on
-  // the map (works with transport → solid, and without → dashed highlight).
-  let selectedLeg = null;
+  // the map. We pass only the leg's id pair; MapView resolves geometry + kind
+  // from the live transfers (which include the in-progress previewTransfer), so
+  // the highlight is a single arc that updates as transport is added/changed.
+  let selectedLegKey = null;
   if (leftPanel?.type === 'event' && leftPanel.kind === 'transfer') {
     const tr = liveTransfers.find((x) => x.id === leftPanel.id);
-    const f = tr && byId(tr.from_city_visit_id);
-    const to = tr && byId(tr.to_city_visit_id);
-    if (f && to) selectedLeg = { from: f, to, kind: tr.transport_type };
+    if (tr) selectedLegKey = `${tr.from_city_visit_id}__${tr.to_city_visit_id}`;
   } else if ((leftPanel?.type === 'create' || leftPanel?.type === 'pick') && leftPanel.kind === 'transfer') {
-    if (leftPanel.fromVisit?.latitude && leftPanel.toVisit?.latitude) {
-      selectedLeg = { from: leftPanel.fromVisit, to: leftPanel.toVisit, kind: undefined };
+    if (leftPanel.fromVisit?.id && leftPanel.toVisit?.id) {
+      selectedLegKey = `${leftPanel.fromVisit.id}__${leftPanel.toVisit.id}`;
     }
   }
   // Key the left pane on its identity so React remounts it on panel change →
@@ -981,15 +980,14 @@ export default function TripStructureEdit() {
           {/* Desktop: panel replaces the column. Mobile: column keeps the cities
               list; the panel opens as a Radix bottom-sheet (rendered below). */}
           {(!isSheet && leftPanelEl) || (<>
-          {/* "Маршрут" panel header — screen title + trip-start control. A left
-              panel (city/transfer editor) replaces this whole column, header and
-              all, just like the list. */}
+          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--surface)' }}>
+          {/* "Маршрут" container header — scrolls WITH the list (not sticky), the
+              same as on mobile. A left panel replaces this whole column. */}
           <div className="ts-routehead">
             <span className="ts-routehead__title">{t('planner.step_cities')}</span>
             <span className="ts-routehead__sp" />
             {startDateControl}
           </div>
-          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--bg)' }}>
           <div className="te-thead" style={{ padding: '0 4px 6px' }}>
             <span className="te-th" style={{ gridColumn: 3 }}>{t('tse.col_destination')}</span>
             <span className="te-th te-th--c" style={{ gridColumn: 4 }}>{t('tse.col_nights')}</span>
@@ -1097,13 +1095,13 @@ export default function TripStructureEdit() {
         {/* RIGHT - full-height map (always on; hidden on phones via CSS);
             warnings live in a collapsible overlay widget */}
         <div className="ts-col-right" style={{ position: 'relative', minWidth: 0, minHeight: 0, background: 'var(--bg)' }}>
-          <div className="ts-map" style={{ position: 'absolute', inset: 14, overflow: 'hidden', borderRadius: 16, border: '1px solid var(--line)' }}>
+          <div className="ts-map" style={{ position: 'absolute', inset: 14, left: 7, overflow: 'hidden', borderRadius: 16, border: '1px solid var(--line)' }}>
             <MapView visits={draft.nodes} transfers={mapTransfers} visitsById={Object.fromEntries(draft.nodes.map((v) => [v.id, v]))} showStartEnd mapControls
               focus={mapFocus}
               onCityClick={(pts) => { const v = (pts || []).find((x) => !isAnchor(x)) || (pts || [])[0]; if (v) openCity(v.id); }}
               selectedVisitId={selectedNodeId}
               hoveredVisitId={hoveredNodeId}
-              selectedLeg={selectedLeg}
+              selectedLegKey={selectedLegKey}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
@@ -1157,7 +1155,12 @@ export default function TripStructureEdit() {
         .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 13px; }
         /* Left container — same 14px inset + border + radius as the map box, so
            the editor (or an open side panel) and the map read as two equal cards. */
-        .ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 14px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface); }
+        .ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 14px 7px 14px 14px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface); }
+        /* An open side panel fills the box; drop its own border/radius/shadow so the
+           container is the single frame and the rounding matches exactly. */
+        .ts-leftbox .lp { border: none; border-radius: 16px; box-shadow: none; }
+        /* Route header bleeds to the container edges and scrolls with the list. */
+        .ts-leftscroll > .ts-routehead { margin: -12px -12px 12px; }
         /* "Маршрут" panel header (left column) + trip-start control. */
         .ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
         .ts-routehead__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h4); color: var(--ink); }
@@ -1198,7 +1201,8 @@ export default function TripStructureEdit() {
           .ts-screen { height: auto !important; min-height: 100vh; overflow: visible !important; }
           .ts-grid { grid-template-columns: 1fr !important; overflow: visible !important; }
           .ts-leftscroll { overflow: visible !important; }
-          .ts-map { flex: 0 0 340px !important; }
+          .ts-leftbox { margin: 14px !important; }
+          .ts-map { flex: 0 0 340px !important; left: 14px !important; }
           .ts-warn { flex: 0 0 auto !important; min-height: 300px; }
         }
       `}</style>

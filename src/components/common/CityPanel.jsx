@@ -10,7 +10,7 @@
 import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { Btn, CityPhoto } from '@/design/index';
+import { Btn } from '@/design/index';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 
 const TKIND = {
@@ -21,7 +21,6 @@ const TKIND = {
 const ACT_ICON = { food: 'cup', sight: 'cam', experience: 'spark', sport: 'walk' };
 const money = (p, c) => fmtPrice(p, c) || '';
 function rangeText(a, b) { const da = fmtDate(a), db = fmtDate(b); if (!da) return ''; return db && db !== da ? `${da} – ${db}` : da; }
-function nightWord(n, t) { return n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'); }
 
 // Lumo section label: coloured uppercase tag (.sl) + optional addmini action.
 function SectionLabel({ children, color, action }) {
@@ -93,16 +92,17 @@ export default function CityPanel({
 
   return (
     <div className="lp lp--wide">
-      {/* hero header (Lumo .lp-hero — wide = 122px) */}
-      <div className="lp-hero" style={{ height: 122 }}>
-        <div style={{ position: 'absolute', inset: 0 }}>
-          <CityPhoto city={node.city_name} h={122} w="100%" radius={0} />
+      {/* brand hero — single row: back · city name + country chip · check-in/out.
+          (No photo / no emoji / no local-time / no weather.) */}
+      <div className="lp-hero">
+        <button className="lp-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={17} /></button>
+        <div className="lph-title">
+          <b className="lph-name">{node.city_name}</b>
+          {meta?.country && <span className="lph-fc">{meta.country}</span>}
         </div>
-        <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad)' }} />
-        <button className="lp-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={16} /></button>
-        <div className="ht">
-          <b>{node.city_name}</b>
-          <span>{rangeText(node.start_date, node.end_date)}{nights ? ` · ${nights} ${nightWord(nights, t)}` : ''}</span>
+        <div className="lph-meta">
+          <div><span className="lph-mk">{t('hotel.check_in')}</span><span className="lph-mv">{fmtDate(node.start_date) || '—'}</span></div>
+          <div><span className="lph-mk">{t('hotel.check_out')}</span><span className="lph-mv">{fmtDate(node.end_date) || '—'}</span></div>
         </div>
       </div>
 
