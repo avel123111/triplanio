@@ -1227,9 +1227,16 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    give the create-flow row a real type hierarchy instead of the cramped editor
    density. City name is the row anchor; dates/nights step up off the 10.5/11.5px
    floor onto the Lumo scale. */
-.te-row--plan .te-cityname { font-size: var(--fs-h4); }
-.te-row--plan .te-dts { font-size: var(--fs-meta); }
+.te-row--plan .te-cityname { font-size: var(--fs-h4); font-weight: 700; }
+.te-row--plan .te-dts { font-size: var(--fs-meta); white-space: nowrap; }
 .te-row--plan .te-nights { font-size: var(--fs-meta); }
+/* Mobile route row: keep name + dates legible, dates on one line (no char-wrap),
+   nights/delete compact on the right. */
+@media (max-width: 640px) {
+  .te-row--plan { gap: 10px; padding: 12px 12px; }
+  .te-row--plan .te-citycell { flex: 1 1 auto; }
+  .te-row--plan .te-dts { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
 /* Last-city card: the .te-row sits flush inside a bordered shell whose bottom
    strip holds the final-point toggle, so the toggle reads as part of the last
    city (the finish), not a stray control. */
@@ -1406,6 +1413,12 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .ai-dots span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--ai); margin: 0 1px; animation: blinkdot 1.2s infinite ease-in-out; }
 .ai-dots span:nth-child(2) { animation-delay: .15s; }
 .ai-dots span:nth-child(3) { animation-delay: .3s; }
+/* Dots inside the AI gradient button are white (design-system A6), not purple —
+   purple-on-gradient is invisible. And the AI CTA keeps its vivid gradient even
+   when disabled (thinking / empty-prompt), matching the A6 spec. */
+.btn--ai .ai-dots span { background: rgba(255,255,255,.85); }
+[data-theme="dark"] .btn--ai .ai-dots span { background: rgba(12,10,30,.65); }
+.btn--ai[disabled], .btn--ai.is-disabled { opacity: 1; }
 .dlg {
   background: var(--surface);
   border: 1px solid var(--line);

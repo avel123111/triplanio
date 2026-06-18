@@ -362,7 +362,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
         {t('planner.home_desc')}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 200px)', gap: 14, alignItems: 'start' }}>
+      <div className="field-row cols-2" style={{ alignItems: 'start' }}>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="field__label">{t('planner.start_city')}</label>
           <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} autoFocus />
@@ -597,7 +597,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         {t('planner.return_desc')}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+      <div className="field-row cols-2" style={{ marginBottom: 14 }}>
         <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
@@ -655,7 +655,7 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
         {icon ? <Icon name={icon} size={12} /> : num}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
+        <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 700, color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
         <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{sub}</div>
       </div>
     </div>
@@ -666,7 +666,7 @@ function Stat({ label, value, hint }) {
   return (
     <div>
       <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)' }}>{label}</div>
-      <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 600 }}>{value}</div>
+      <div style={{ fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{value}</div>
       {hint && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{hint}</div>}
     </div>
   );
