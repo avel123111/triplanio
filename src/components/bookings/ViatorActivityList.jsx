@@ -43,6 +43,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
   const showSkeletons = isLoading && activities.length === 0;
 
   const onCardClick = (a) => logClick({ partner: 'viator', type: 'activity', link: a.url, provider: 'viator' });
+  const cityName = visit?.city_name || visit?.cities?.name_en || '';
 
   return (
     <div className="va">
@@ -50,7 +51,10 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
       <div className="va-head">
         <div className="va-ti">
           <span className="va-logo"><Ticket size={15} /></span>
-          <b>{t('fork.activities_title')}</b>
+          <div className="va-tiwrap">
+            <b>{cityName ? t('fork.activities_title', { city: cityName }) : t('fork.activities_title_generic')}</b>
+            <span className="va-sub">{t('fork.activities_reviews_source')}</span>
+          </div>
         </div>
         {meta.total != null && meta.total > 0 && (
           <span className="va-count">{t('fork.activities_count', { n: meta.total })}</span>
@@ -143,9 +147,11 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
 
       <style>{`
         .va { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
-        .va-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-        .va-ti { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .va-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+        .va-ti { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+        .va-tiwrap { display: flex; flex-direction: column; min-width: 0; }
         .va-ti b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-strong); color: var(--ink); }
+        .va-sub { font-size: var(--fs-nano); color: var(--muted-2); margin-top: 2px; }
         .va-logo { width: 24px; height: 24px; border-radius: 6px; flex: none; display: grid; place-items: center; background: var(--ev-activity-soft); color: var(--ev-activity); }
         .va-count { font-size: var(--fs-meta); color: var(--muted); font-weight: 700; white-space: nowrap; }
         .va-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }

@@ -1312,40 +1312,28 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .dlg-modal, .sheet { will-change: transform; }
 
 
-  /* Editor side panels become bottom sheets via the SAME Radix sheet mechanism
-     as modals: TripStructureEdit portals the panel into a Radix Dialog whose
-     Content is `.lp-sheet` (the positioner, analog of .dlg-modal) holding the
-     `.lp` card. Keyboard-safe (--kb/--vvh), swipe-to-close + tap-outside (Radix
-     Overlay = .sheet-backdrop). */
+  /* Editor side panels become FULL-SCREEN panels on phones (a standalone screen
+     over the previous one), portaled into a Radix Dialog whose Content is
+     `.lp-sheet` holding the `.lp` card. Spans the whole viewport (top:0 → bottom
+     above the keyboard via --kb). Closed only by the panel's own back button —
+     no grip / swipe-to-close. */
   .lp-sheet {
-    position: fixed; left: 0; right: 0; top: auto;
+    position: fixed; left: 0; right: 0; top: 0;
     bottom: var(--kb, 0px);
     width: 100%;
     z-index: 201;
-    max-height: 92vh;
-    max-height: min(92dvh, calc(var(--vvh, 100dvh) - 8px));
     display: flex;
     animation: sheetUp .3s var(--ease-out);
     will-change: transform;
   }
   .lp-sheet > .lp {
     width: 100%;
-    max-height: 100%;
+    height: 100%;
     flex: 1;
     min-height: 0;
-    border-radius: 20px 20px 0 0;
-    border-left: 0; border-right: 0; border-bottom: 0;
+    border-radius: 0;
+    border: 0;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
-  }
-  /* grip ("бровь") at the top of the sheet */
-  .lp-sheet > .lp::before {
-    content: '';
-    display: block;
-    width: 40px; height: 5px;
-    border-radius: 999px;
-    background: var(--line-strong);
-    margin: 10px auto 2px;
-    flex-shrink: 0;
   }
   /* Editor: no map on mobile — itinerary/panel take the full width. */
   .ts-grid { grid-template-columns: 1fr !important; }
@@ -1786,7 +1774,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
     .te-warnbadge { display: inline-flex; align-items: center; gap: 2px; color: var(--warning-ink); font-size: var(--fs-micro); font-weight: 700; }
     /* A11y: keyboard-visible focus rings on editor controls. */
     .te-step:focus-visible, .ts-step:focus-visible, .te-addmini:focus-visible, .te-grip:focus-visible,
-    .te-seam__pill:focus-visible, .te-actchip:focus-visible, .te-hotelicon:focus-visible, .te-back:focus-visible {
+    .te-seam__pill:focus-visible, .te-actchip:focus-visible, .te-hotelicon:focus-visible {
       outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 8px;
     }
     /* A11y: enlarge small icon controls to a ~44px pointer target without growing
@@ -1869,17 +1857,6 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
     .te-seam__pill--add { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted-2); font-weight: 800; gap: 7px; box-shadow: var(--sh-1); }
     .te-seam__pill--add:hover { color: var(--ev-transfer-ink); border-color: var(--ev-transfer); background: var(--ev-transfer-soft); transform: translateY(-1px); }
 
-    /* ---- panels (shared) ---- */
-    .te-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-    .te-panel__top { position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 11px; padding: 16px 18px 14px 20px; border-bottom: 1px solid var(--line-2); }
-    .te-back { width: 34px; height: 34px; border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; flex-shrink: 0; transition: background .14s, border-color .14s, color .14s; }
-    .te-back:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
-    .te-panel__icon { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; flex-shrink: 0; }
-    .te-panel__title { font-family: var(--font-display); font-size: var(--fs-h4); font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .te-panel__sub { font-size: var(--fs-micro); color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .te-panel__body { flex: 1; min-height: 0; overflow: auto; padding: 16px 18px 24px; }
-    .te-panel__foot { flex-shrink: 0; padding: 12px 18px; border-top: 1px solid var(--line-2); background: var(--wash-2); display: flex; gap: 8px; justify-content: flex-end; }
-
     .te-addmini { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--brand); cursor: pointer; display: grid; place-items: center; }
     .te-addmini:hover { background: var(--brand-soft); }
 
@@ -1926,6 +1903,20 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 .lp-sec { display: flex; flex-direction: column; gap: 8px; }
 .lp-f { margin-top: auto; padding: 11px 15px; border-top: 1px solid var(--line-2); background: var(--wash); display: flex; gap: 8px; justify-content: flex-end; }
+/* Two-button footer (delete + primary) filling the bar in a ~2/8 ratio. On
+   phones the destructive button collapses to its icon (text via .btn-label-collapse). */
+.lp-f--ratio { justify-content: stretch; }
+.lp-f--ratio > .btn:first-child { flex: 2; }
+.lp-f--ratio > .btn:last-child  { flex: 8; }
+/* Event create/edit footer: a quiet icon-only Delete pinned left, Cancel
+   (secondary), and Save as the dominant CTA filling the remaining width. */
+.lp-f--edit .ev-del  { flex: none; padding-left: 14px; padding-right: 14px; }
+.lp-f--edit .ev-save { flex: 1; }
+@media (max-width: 640px) {
+  .lp-f--ratio > .btn:first-child { flex: 0 0 auto; }
+  .lp-f--single > .btn { width: 100%; }
+  .btn-label-collapse { display: none; }
+}
 
 .seclabel { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
 .sl2 { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }

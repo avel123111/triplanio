@@ -86,7 +86,7 @@ const PARTNER_NAME = {
   rentalcars: 'Rentalcars', discovercars: 'DiscoverCars', airalo: 'Airalo', yesim: 'Yesim',
   safetywing: 'SafetyWing', ektatraveling: 'Ekta Traveling',
   aviasales: 'Aviasales', ostrovok: 'Островок', yandextravel: 'Яндекс Путешествия',
-  viator: 'Viator', getyourguide: 'GetYourGuide',
+  viator: 'Viator', getyourguide: 'GetYourGuide', tripster: 'Tripster', sputnik8: 'Sputnik8',
 };
 
 /**
@@ -119,7 +119,7 @@ export default function ForkPartnerModal({
     if (type === 'car_rental') return carRentalPlatforms(trip, t);
     if (type === 'esim') return esimPlatforms(visits, t);
     if (type === 'insurance') return insurancePlatforms(t);
-    if (type === 'activity') return activityPlatforms(visit, t);
+    if (type === 'activity') return activityPlatforms(visit, t, lang);
     return [];
   }, [type, visit, fromVisit, toVisit, visits, trip, t, lang]);
 
@@ -217,8 +217,8 @@ export default function ForkPartnerModal({
       .fork-partner { display: flex; align-items: center; gap: 10px; padding: 9px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); text-decoration: none; color: inherit; cursor: pointer; min-width: 0; transition: transform .16s var(--ease-spring), border-color .16s, box-shadow .18s; }
       .fork-partner:hover { transform: translateY(-1px); border-color: var(--line-hover); box-shadow: var(--sh-1); }
       .fork-partner:active { transform: scale(.99); }
-      .fork-partner__logo { width: 32px; height: 32px; border-radius: 9px; flex: none; background: var(--wash); object-fit: cover; box-shadow: var(--sh-1); }
-      .fork-partner__logo--ph { display: grid; place-items: center; color: var(--muted); box-shadow: none; }
+      .fork-partner__logo { width: 32px; height: 32px; border-radius: 9px; flex: none; background: transparent; object-fit: contain; }
+      .fork-partner__logo--ph { display: grid; place-items: center; color: var(--muted); background: var(--wash); box-shadow: none; }
       .fork-partner__mid { flex: 1; min-width: 0; }
       .fork-partner__mid b { display: block; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-meta); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .fork-partner__mid span { display: block; font-size: var(--fs-nano); color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -238,7 +238,7 @@ export default function ForkPartnerModal({
           <div className="lp-ti"><b>{t(meta.titleKey)}</b></div>
         </div>
         <div className="lp-b scrollbar-thin">{body}</div>
-        <div className="lp-f"><Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn></div>
+        <div className="lp-f lp-f--single"><Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn></div>
         {styleTag}
       </div>
     );
@@ -255,7 +255,7 @@ export default function ForkPartnerModal({
         </div>
         <div className="dlg__body">{body}</div>
         <div className="dlg__foot">
-          <Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn>
+          <Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn>
         </div>
         {styleTag}
       </DialogContent>

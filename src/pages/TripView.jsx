@@ -809,6 +809,9 @@ export default function TripView() {
   const [serviceSimple, setServiceSimple] = useState({ open: false, kind: null });
   // City add/edit/delete moved entirely to the Structure editor (/trip/:id/edit).
   const [activityEdit, setActivityEdit] = useState({ open: false, visit: null, activity: null, defaultStart: null });
+  // Activity choice — fork modal (partner chips), opened from the timeline "add
+  // activity" like hotel/transfer; "manual" falls through to the activity form.
+  const [activityChoice, setActivityChoice] = useState({ open: false, visit: null, defaultStart: null });
   const [eventView, setEventView] = useState({ open: false, kind: null, id: null });
   const openUpgrade = () => nav(`/pro?tripId=${tripId}`);
   // Stripe-return success/fail modal is handled globally by <StripeReturnModals>.
@@ -1088,6 +1091,16 @@ export default function TripView() {
             tripId={tripId}
             onManual={() => { setHotelChoice((s) => ({ ...s, open: false })); setManualEvt({ open: true, kind: 'hotel', visit: hotelChoice.visit, fromVisit: null, toVisit: null }); }}
           />
+          {/* Activity choice - fork (partner chips), like hotel/transfer; manual → activity form */}
+          <ForkPartnerModal
+            open={activityChoice.open}
+            onOpenChange={(o) => setActivityChoice(s => ({ ...s, open: o }))}
+            type="activity"
+            visit={activityChoice.visit}
+            trip={trip}
+            tripId={tripId}
+            onManual={() => { setActivityChoice((s) => ({ ...s, open: false })); setActivityEdit({ open: true, visit: activityChoice.visit, activity: null, defaultStart: activityChoice.defaultStart }); }}
+          />
           {/* Transfer choice - sits between the warning button and the edit form */}
           <ForkPartnerModal
             open={transferChoice.open}
@@ -1227,7 +1240,7 @@ export default function TripView() {
                       const defaultStart = dayKey
                         ? DateTime.fromISO(`${dayKey}T10:00`, { zone: tz }).toUTC().toISO()
                         : null;
-                      setActivityEdit({ open: true, visit: dayVisit, activity: null, defaultStart });
+                      setActivityChoice({ open: true, visit: dayVisit, defaultStart });
                     }
                   }}
                 />

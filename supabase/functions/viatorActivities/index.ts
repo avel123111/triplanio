@@ -71,11 +71,13 @@ Deno.serve(async (req) => {
 
     const payload: Record<string, unknown> = {
       filtering,
-      sorting: { sort: sort || 'DEFAULT', order: 'ASCENDING' },
       pagination: { start, count: PAGE_SIZE },
       'campaign-value': CAMPAIGN,
     };
     if (currency) payload.currency = String(currency);
+    // Viator: DEFAULT sort must NOT carry an order (returns 400). Only attach
+    // sorting for an explicit non-default sort.
+    if (sort && sort !== 'DEFAULT') payload.sorting = { sort: String(sort), order: 'DESCENDING' };
 
     const acceptLang = LANG_MAP[String(lang || 'en')] || 'en-US';
 

@@ -162,10 +162,9 @@ export default function CityPanel({
         <GhostAdd icon="spark" accent="var(--ev-activity)" label={t('activity.add')} onClick={onAddActivity} />
       </div>
       </div>
-      <div className="lp-f">
-        <Btn variant="danger" size="sm" icon="trash" onClick={onRemove}>{t('common.delete')}</Btn>
-        <span style={{ flex: 1 }} />
-        <Btn variant="primary" size="sm" icon="check" onClick={onBack}>{t('common.done')}</Btn>
+      <div className="lp-f lp-f--ratio">
+        <Btn variant="danger" icon="trash" onClick={onRemove} ariaLabel={t('common.delete')}><span className="btn-label-collapse">{t('common.delete')}</span></Btn>
+        <Btn variant="primary" icon="check" onClick={onBack}>{t('common.done')}</Btn>
       </div>
     </div>
   );

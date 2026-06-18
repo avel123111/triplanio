@@ -1,6 +1,7 @@
 export default {
   'fork.manual_sub_activity': '¿Ya la reservaste? Añade la actividad manualmente.',
-  'fork.activities_title': 'Qué hacer en Viator',
+  'fork.activities_title': 'Qué hacer en {city}',
+  'fork.activities_title_generic': 'Qué hacer',
   'fork.activities_count': '{n} opciones',
   'fork.activities_error_title': 'No se pudieron cargar las actividades',
   'fork.activities_error_body': 'Algo salió mal. Inténtalo de nuevo.',
@@ -8,6 +9,7 @@ export default {
   'fork.activities_empty_title': 'No se encontraron actividades',
   'fork.activities_empty_body': 'Todavía no tenemos tours ni experiencias para esta ciudad.',
   'fork.activities_reviews': '{n} reseñas',
+  'fork.activities_reviews_source': 'Valoraciones recopiladas por Viator y Tripadvisor',
   'fork.activities_free_cancel': 'Cancelación gratis',
   'fork.activities_from': 'desde',
   'fork.activities_book': 'Reservar',

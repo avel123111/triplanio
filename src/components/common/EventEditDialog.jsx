@@ -1161,17 +1161,17 @@ export default function EventEditDialog({
 
           {/* Footer — pinned to the bottom of the column in panel mode */}
           <div
-            className={isPanel ? 'lp-f' : 'ev-dlg-ft'}
+            className={(isPanel ? 'lp-f' : 'ev-dlg-ft') + ' lp-f--edit'}
             style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
             {confirmDel ? (
               <>
                 <div style={{ flex: 1 }} />
-                <button className="btn btn--ghost btn--sm" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>
+                <button className="btn btn--secondary" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>
                   {t('common.cancel')}
                 </button>
                 <button
-                  className="btn btn--danger-solid btn--sm"
+                  className="btn btn--danger-solid"
                   onClick={() => deleteMut.mutate()}
                   disabled={deleteMut.isPending}
                 >
@@ -1183,17 +1183,18 @@ export default function EventEditDialog({
               <>
                 {isEdit && (
                   <button
-                    className="btn btn--danger btn--sm"
+                    className="btn btn--danger-ghost ev-del"
                     onClick={() => setConfirmDel(true)}
                     disabled={deleteMut.isPending}
+                    aria-label={t('common.delete')}
+                    title={t('common.delete')}
                   >
-                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />{t('common.delete')}
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 )}
-                <div style={{ flex: 1 }} />
-                <button className="btn btn--ghost btn--sm" onClick={() => onOpenChange(false)}>{t('common.cancel')}</button>
+                <button className="btn btn--secondary" onClick={() => onOpenChange(false)}>{t('common.cancel')}</button>
                 <button
-                  className="btn btn--primary btn--sm"
+                  className="btn btn--primary ev-save"
                   onClick={handleSaveClick}
                   disabled={uploading || saveMut.isPending}
                   aria-disabled={!canSave}

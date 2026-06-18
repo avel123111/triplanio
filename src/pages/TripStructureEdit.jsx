@@ -14,7 +14,6 @@ import { Btn, Skeleton } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { useSheetSwipe } from '@/lib/useSheetSwipe';
 import MapView from '@/components/views/MapView';
 import EventSourcePanel from '@/components/common/EventSourcePanel';
 import CityPanel from '@/components/common/CityPanel';
@@ -179,13 +178,12 @@ export default function TripStructureEdit() {
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
-  const panelSwipe = useSheetSwipe(() => closeLeftPanel(), { topZone: 56 });
   // A11y: when an in-place left panel opens, move focus into it (its back button
   // if present) so keyboard/SR users land in the new context; Esc closes it.
   const leftPaneRef = useRef(null);
   useEffect(() => {
     if (!leftPanel || !leftPaneRef.current) return;
-    const el = leftPaneRef.current.querySelector('.te-back, button, [tabindex]') || leftPaneRef.current;
+    const el = leftPaneRef.current.querySelector('.lp-back, button, [tabindex]') || leftPaneRef.current;
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
   }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
@@ -1081,8 +1079,6 @@ export default function TripStructureEdit() {
                 <DialogPrimitive.Overlay className="sheet-backdrop" />
                 <DialogPrimitive.Content
                   className="lp-sheet"
-                  ref={panelSwipe.elRef}
-                  {...panelSwipe.gripProps}
                   onOpenAutoFocus={(e) => e.preventDefault()}
                   aria-describedby={undefined}
                 >
@@ -1392,18 +1388,17 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
   const disabledFor = (id) => (id === 'start' && hasStart) || (id === 'end' && hasEnd);
   const meta = POINT_TYPES.find((p) => p.id === type);
   return (
-    <div className="te-panel">
-      <div className="te-panel__top">
-        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--brand)' }} />
-        <button className="te-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={16} /></button>
-        <span className="te-panel__icon" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}><Icon name="pin" size={16} /></span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="te-panel__title">{t('tse.add_point')}</div>
-          <div className="te-panel__sub">{t('tse.add_point_hint')}</div>
+    <div className="lp lp--wide" style={{ '--ev-soft': 'var(--brand-soft)', '--ev-ink': 'var(--brand)' }}>
+      <div className="lp-h lp-h--ev">
+        <button className="lp-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={14} /></button>
+        <span className="lp-ic" style={{ background: 'var(--brand)', color: '#fff' }}><Icon name="pin" size={17} /></span>
+        <div className="lp-ti">
+          <b>{t('tse.add_point')}</b>
+          <span>{t('tse.add_point_hint')}</span>
         </div>
       </div>
-      <div className="te-panel__body scrollbar-thin">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7, marginBottom: 10 }}>
+      <div className="lp-b scrollbar-thin">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 7 }}>
           {POINT_TYPES.map((pt) => {
             const dis = disabledFor(pt.id), active = type === pt.id;
             return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 11, cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
@@ -1411,8 +1406,11 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
             </button>;
           })}
         </div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginBottom: 10 }}>{meta ? t(meta.subKey) : ''}</div>
+        <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{meta ? t(meta.subKey) : ''}</div>
         <CitySearch onSelect={(c) => onPick(c, type)} />
+      </div>
+      <div className="lp-f lp-f--single">
+        <Btn variant="secondary" onClick={onBack}>{t('common.cancel')}</Btn>
       </div>
     </div>
   );

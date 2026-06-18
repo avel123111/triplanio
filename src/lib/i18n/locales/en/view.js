@@ -1,6 +1,7 @@
 export default {
   'fork.manual_sub_activity': 'Already booked? Add the activity manually.',
-  'fork.activities_title': 'Things to do on Viator',
+  'fork.activities_title': 'Things to do in {city}',
+  'fork.activities_title_generic': 'Things to do',
   'fork.activities_count': '{n} options',
   'fork.activities_error_title': "Couldn't load activities",
   'fork.activities_error_body': 'Something went wrong. Please try again.',
@@ -8,6 +9,7 @@ export default {
   'fork.activities_empty_title': 'No activities found',
   'fork.activities_empty_body': 'We have no tours or experiences for this city yet.',
   'fork.activities_reviews': '{n} reviews',
+  'fork.activities_reviews_source': 'Ratings collected by Viator and Tripadvisor',
   'fork.activities_free_cancel': 'Free cancellation',
   'fork.activities_from': 'from',
   'fork.activities_book': 'Book',

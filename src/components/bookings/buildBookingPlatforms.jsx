@@ -37,30 +37,66 @@ const tpLink = (campaignId, p, targetUrl) =>
 const dmyDot = (iso) => (iso ? DateTime.fromISO(iso).toFormat('dd.LL.yyyy') : '');
 const ddmm = (iso) => (iso ? DateTime.fromISO(iso).toFormat('ddLL') : '');
 
-// ACTIVITY: Viator + GetYourGuide. Placeholder affiliate links (city-targeted
-// search) — replace with proper attributed deep-links later. The live Viator
-// product list renders below these in ViatorActivityList (cities.viator_dest_id).
-export function activityPlatforms(visit, t) {
-  const cityEn = visit?.city_name_en || visit?.city_name || '';
+// ACTIVITY: Viator (referral deep-link by destinationId) + GetYourGuide; Tripster
+// and Sputnik8 are RU-only TravelPayouts partners (marker 654801, provider
+// travelpayouts). City name is passed in English (cities.name_en / city_name_en).
+// Each dynamic link falls back to the partner homepage (attribution preserved).
+export function activityPlatforms(visit, t, lang) {
+  const cityEn = visit?.city_name_en || visit?.cities?.name_en || visit?.city_name || '';
   const q = encodeURIComponent(cityEn);
-  return [
+  const viatorDest = visit?.cities?.viator_dest_id ?? visit?.viator_dest_id;
+  // Viator affiliate ids (public partner ids); destination deep-link host.
+  const VIATOR_REF = 'mcid=42383&pid=P00306202&medium=api&api_version=2.0';
+
+  const list = [
     {
       key: 'viator',
       label: findOn(t, 'Viator'),
       hint: cityEn,
-      logo: platformLogoUrl('viator'),
-      url: cityEn ? `https://www.viator.com/searchResults/all?text=${q}` : 'https://www.viator.com/',
+      logo: platformLogoUrl('viator', 'viator.com'),
+      url: viatorDest
+        ? `https://www.viator.com/x/d${viatorDest}-ttd?${VIATOR_REF}`
+        : `https://www.viator.com/?${VIATOR_REF}`,
       provider: 'viator',
     },
     {
       key: 'getyourguide',
       label: findOn(t, 'GetYourGuide'),
       hint: cityEn,
-      logo: platformLogoUrl('getyourguide'),
+      logo: platformLogoUrl('getyourguide', 'getyourguide.com'),
       url: cityEn ? `https://www.getyourguide.com/s/?q=${q}` : 'https://www.getyourguide.com/',
       provider: 'getyourguide',
     },
   ];
+
+  // RU-only activity partners (shown only when lang === 'ru').
+  if (lang === 'ru') {
+    list.push(
+      {
+        key: 'tripster',
+        label: findOn(t, 'Tripster'),
+        hint: cityEn,
+        logo: 'https://img.wway.io/travelpayouts/brands/icon/11@svg',
+        url: cityEn
+          ? tpLink(11, 652, `https://experience.tripster.ru/experience/${cityEn}/`)
+          : tpLink(11, 652, 'https://experience.tripster.ru/'),
+        provider: 'travelpayouts',
+      },
+      {
+        key: 'sputnik8',
+        label: findOn(t, 'Sputnik8'),
+        hint: cityEn,
+        logo: 'https://img.wway.io/travelpayouts/brands/icon/21@svg',
+        // '/ru/' is the partner's static segment; only the city slug is dynamic.
+        url: cityEn
+          ? tpLink(21, 656, `https://www.sputnik8.com/ru/${cityEn.toLowerCase()}`)
+          : tpLink(21, 656, 'https://www.sputnik8.com/ru/'),
+        provider: 'travelpayouts',
+      },
+    );
+  }
+
+  return list;
 }
 
 // HOTEL: Booking.com, Airbnb (+ Ostrovok, Yandex Travel for ru UI)
@@ -231,8 +267,10 @@ export function transferPlatforms(fromVisit, toVisit, t, lang) {
   // date (DDMM) + 1 pax. The transfer fork has no own date → use the arrival day
   // (toVisit.start_date), fall back to the departure city's last day. If either
   // IATA city code is missing, link to the Aviasales homepage instead.
-  const fromIata = fromVisit?.iata_city_code;
-  const toIata = toVisit?.iata_city_code;
+  // iata now lives on the cities dimension, embedded by getTripDetails; fall back
+  // to the legacy flat field for any cached payloads.
+  const fromIata = fromVisit?.cities?.iata_code ?? fromVisit?.iata_city_code;
+  const toIata = toVisit?.cities?.iata_code ?? toVisit?.iata_city_code;
   const flightDate = toVisit?.start_date || fromVisit?.end_date;
   const aviasalesUrl = (fromIata && toIata && flightDate)
     ? `https://www.aviasales.ru/search/${fromIata}${ddmm(flightDate)}${toIata}1`
