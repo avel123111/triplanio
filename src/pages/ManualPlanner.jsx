@@ -12,7 +12,7 @@ import { searchCities, countryFlag, reverseGeocode } from '@/lib/geo';
 import { tzFromCoords } from '@/lib/timezone';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Btn, EmptyState, Severity } from '../design/index';
+import { Btn, EmptyState, Severity, Toggle } from '../design/index';
 import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { getGradientById } from '@/lib/trip-gradients';
@@ -21,6 +21,10 @@ import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import StartCalendar from '@/components/create/StartCalendar';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Sheet } from '@/components/ui/Sheet';
+import { DateTime } from 'luxon';
 import '../design/app.css';
 
 // Whole days between two ISO date strings (b - a). 0 on bad input.
@@ -73,6 +77,13 @@ function shortDateLabel(iso, locale = 'ru') {
   } catch {
     return new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'short' }).format(d);
   }
+}
+
+// "d MMM, ccc" — identical to the editor's trip-start label (shared look).
+function fmtDW(iso, loc = 'ru') {
+  if (!iso) return '—';
+  const d = DateTime.fromISO(iso, { zone: 'utc' });
+  return d.isValid ? d.setLocale(loc).toFormat('d MMM, ccc') : '—';
 }
 
 // Default trip start = one month ahead of today (local), YYYY-MM-DD.
@@ -206,18 +217,21 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
 
 // ─── CityAnchorRow ────────────────────────────────────────────────────────────
 
+// Start / finish plate — the SAME element as the editor's GridEndpoint (.te-end:
+// flag/check node, eyebrow label, bold .te-cityname). One look across both screens.
 function CityAnchorRow({ label, city_name, country, kind }) {
   const t = useT();
+  const isStart = kind === 'home';
+  const accent = isStart ? 'var(--brand)' : 'var(--success-ink)';
+  const soft = isStart ? 'var(--brand-soft)' : 'var(--success-soft)';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 12 }}>
-      <div style={{ width: 32, height: 32, borderRadius: '50%', background: kind === 'home' ? 'var(--brand)' : 'var(--ink-2)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-        <Icon name={kind === 'home' ? 'flag' : 'check'} size={14} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="eyebrow" style={{ fontSize: 'var(--fs-micro)', marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>
-          {city_name || <span style={{ color: 'var(--muted)' }}>{t('planner.not_set')}</span>}
-          {country && <span className="muted" style={{ fontWeight: 500, marginLeft: 6 }}>{country}</span>}
+    <div className="te-end">
+      <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
+      <div className="te-citycell" style={{ flex: 1 }}>
+        <span className="te-endlabel" style={{ color: accent }}>{label}</span>
+        <div className="te-cityline">
+          <span className="te-cityname">{city_name || <span className="muted" style={{ fontWeight: 500 }}>{t('planner.not_set')}</span>}</span>
+          {country && <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{country}</span>}
         </div>
       </div>
     </div>
@@ -226,144 +240,70 @@ function CityAnchorRow({ label, city_name, country, kind }) {
 
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
-function CityRow({ idx, total, city, isDragging, isLast, finalPoint, onToggleFinalPoint, onArm, onChange, onRemove, onMoveUp, onMoveDown }) {
+// City row built from the EDITOR's primitives (.te-row / .te-grip / .te-row__num /
+// .te-citycell / .te-cityname / .te-dts / .te-stepper / .te-step) so the planner
+// route looks and behaves identically to the structural editor — same bold city
+// names, same nights stepper, same lift-on-drag. No bespoke steppers/fonts. The
+// final-point toggle lives once in StepCities (not per row).
+function CityRow({ idx, city, isDragging, isFinalAnchor, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
-  // When the last city is also the final point, the card switches to an
-  // "end-anchor" look - warm orange tones, flag icon, and the nights
-  // input disappears (the end visit is computed, not entered).
-  const isFinalAnchor = isLast && finalPoint;
-  const accentColor = isFinalAnchor ? 'var(--warm, #c9603a)' : 'var(--brand)';
-  const accentSoft = isFinalAnchor ? 'var(--warm-tint, color-mix(in oklab, var(--warm, #c9603a) 14%, transparent))' : 'var(--brand-soft)';
-  // A city is "invalid" once it has text but no resolved coordinates - i.e. it
-  // wasn't picked from the directory. We block the Next button on these.
   const invalid = !!city.city_name && city.latitude == null;
+  const nights = +city.nights || 1;
   const startLabel = city.startDate ? shortDateLabel(city.startDate, lang) : null;
   const endLabel = (city.startDate && city.nights) ? shortDateLabel(addDays(city.startDate, +city.nights), lang) : null;
-  // The WHOLE card is the drag target (exactly like the editor's .te-row) so the
-  // grab feels solid, not "дёрганый". Interactive controls call stopArm on
-  // pointerdown so pressing them never starts a drag; useRouteDnD owns the lift.
+  // Selected city renders as the editor's bold .te-cityname; click it to re-open
+  // the picker. Empty rows start in the picker.
+  const [editing, setEditing] = useState(!city.city_name);
   const stopArm = (e) => e.stopPropagation();
+  const pick = (picked) => {
+    if (picked) {
+      onChange({ city_name: picked.city_name, country: picked.country, country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
+      setEditing(false);
+    } else {
+      onChange({ city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
+    }
+  };
   return (
     <div
-      className={'planner-city-card' + (isDragging ? ' is-dragging' : '')}
+      className={'te-row te-row--plan' + (isDragging ? ' is-dragging' : '') + (isFinalAnchor ? ' te-row--fin' : '') + (invalid ? ' te-row--bad' : '')}
       onPointerDown={onArm}
-      style={{
-        background: isFinalAnchor ? accentSoft : 'var(--surface)',
-        border: '1px solid ' + (invalid ? 'var(--danger, #e74c3c)' : isFinalAnchor ? accentColor : 'var(--line)'),
-        borderRadius: 12,
-        overflow: 'hidden',
-        cursor: 'grab',
-      }}
+      onClick={() => { if (!editing && city.city_name) setEditing(true); }}
     >
-    <div className="planner-city-row" style={{ padding: '10px 12px' }}>
-      {/* Drag grip — purely visual (the whole card arms the drag). Keyboard
-          reorder still runs through the move buttons / useRouteDnD. */}
-      <div
-        className="planner-city-row__handle"
-        title={t('planner.drag')}
-        style={{ width: 22, height: 22, borderRadius: 5, display: 'grid', placeItems: 'center', color: 'var(--muted-2)', cursor: 'grab' }}
-      >
+      {/* Drag grip + keyboard reorder — identical to the editor's gripEl. The whole
+          row arms the pointer-drag; the grip just stops its own click. */}
+      <span className="te-grip" role="button" tabIndex={0} aria-label={t('planner.drag')} title={t('planner.drag')}
+        onClick={stopArm}
+        onKeyDown={(e) => { if (e.key === 'ArrowUp') { e.preventDefault(); onMove(-1); } else if (e.key === 'ArrowDown') { e.preventDefault(); onMove(1); } }}>
         <Icon name="drag" size={14} />
+      </span>
+
+      <span className={'te-row__num' + (invalid ? ' is-warn' : '')}>{isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}</span>
+
+      <div className="te-citycell" onPointerDown={stopArm}>
+        {editing ? (
+          <CityPicker value={city.city_name ? city : null} onChange={pick} placeholder={t('planner.city_ph')} autoFocus={!!city.city_name} />
+        ) : (
+          <>
+            <div className="te-cityline">
+              <span className="te-cityname">{city.city_name}</span>
+              {city.country && <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{city.country}</span>}
+            </div>
+            {!isFinalAnchor && startLabel && <div className="te-dts">{startLabel}{endLabel ? ` – ${endLabel}` : ''}</div>}
+            {isFinalAnchor && <div className="te-dts">{t('planner.final_point')}</div>}
+          </>
+        )}
       </div>
 
-      {/* Number badge - flag icon when this is the final anchor */}
-      <div className="planner-city-row__num" style={{ width: 28, height: 28, borderRadius: '50%', background: accentColor, color: 'white', display: 'grid', placeItems: 'center', fontSize: 'var(--fs-meta)', fontWeight: 700, flexShrink: 0 }}>
-        {isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}
-      </div>
-
-      {/* City search */}
-      <div className="planner-city-row__picker" onPointerDown={stopArm} style={{ minWidth: 0 }}>
-        <CityPicker
-          value={city.city_name ? city : null}
-          onChange={(picked) => {
-            if (picked) {
-              onChange({ city_name: picked.city_name, country: picked.country, country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
-            } else {
-              onChange({ city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
-            }
-          }}
-          placeholder={t('planner.city_ph')}
-          style={{ fontSize: 'var(--fs-base)' }}
-        />
-      </div>
-
-      {/* Derived date range - read-only. Dates are computed from the trip start
-          and each city's nights (city N starts where city N-1 ends), so they
-          can't be edited per-row and never drift the trip start. */}
-      {!isFinalAnchor && startLabel && (
-        <div className="planner-city-row__date num" style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', whiteSpace: 'nowrap', textAlign: 'right' }}>
-          {startLabel}{endLabel ? ` → ${endLabel}` : ''}
-        </div>
-      )}
-
-      {/* Nights stepper - hidden for the final anchor */}
       {!isFinalAnchor && (
-        <div className="planner-city-row__nights" onPointerDown={stopArm} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button type="button" title={t('planner.fewer_nights')} onClick={() => onChange({ nights: Math.max(1, (+city.nights || 1) - 1) })}
-            disabled={(+city.nights || 1) <= 1}
-            style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--surface)', cursor: (+city.nights || 1) <= 1 ? 'default' : 'pointer', opacity: (+city.nights || 1) <= 1 ? 0.4 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 'var(--fs-strong)', fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>−</button>
-          <span className="num" style={{ minWidth: 34, textAlign: 'center', fontSize: 'var(--fs-meta)', fontWeight: 600 }}>{city.nights || 1}<span className="muted" style={{ fontWeight: 400 }}>{t('planner.night_short')}</span></span>
-          <button type="button" title={t('planner.more_nights')} onClick={() => onChange({ nights: Math.min(30, (+city.nights || 1) + 1) })}
-            disabled={(+city.nights || 1) >= 30}
-            style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--surface)', cursor: (+city.nights || 1) >= 30 ? 'default' : 'pointer', opacity: (+city.nights || 1) >= 30 ? 0.4 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 'var(--fs-strong)', fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>+</button>
-        </div>
+        <span className="te-stepper" onPointerDown={stopArm} onClick={stopArm} title={t('tse.col_nights')}>
+          <button className="te-step" onClick={() => onChange({ nights: Math.max(1, nights - 1) })} disabled={nights <= 1} aria-label={t('planner.fewer_nights')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
+          <span className="num te-nights">{nights}<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
+          <button className="te-step" onClick={() => onChange({ nights: Math.min(30, nights + 1) })} disabled={nights >= 30} aria-label={t('planner.more_nights')}><Icon name="plus" size={10} /></button>
+        </span>
       )}
 
-      {/* Actions */}
-      <div className="planner-city-row__actions" onPointerDown={stopArm} style={{ display: 'flex', gap: 2 }}>
-        <button onClick={onMoveUp} disabled={idx === 0} title={t('planner.move_up')} style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: 'transparent', cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.3 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}>
-          <Icon name="chevU" size={12} />
-        </button>
-        <button onClick={onMoveDown} disabled={idx === total - 1} title={t('planner.move_down')} style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: 'transparent', cursor: idx === total - 1 ? 'default' : 'pointer', opacity: idx === total - 1 ? 0.3 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}>
-          <Icon name="chevD" size={12} />
-        </button>
-        <button onClick={onRemove} title={t('common.delete')} style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted)' }}
-          onMouseEnter={e => e.currentTarget.style.color = 'var(--danger, #e74c3c)'}
-          onMouseLeave={e => e.currentTarget.style.color = 'var(--muted)'}
-        >
-          <Icon name="trash" size={13} />
-        </button>
-      </div>
-    </div>
-    {isLast && (
-      <div onPointerDown={stopArm} style={{
-        borderTop: '1px dashed ' + (isFinalAnchor ? accentColor : 'var(--line-2)'),
-        padding: '12px 14px',
-        display: 'flex', alignItems: 'center', gap: 12,
-      }}>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={!!finalPoint}
-          onClick={() => onToggleFinalPoint?.(!finalPoint)}
-          style={{
-            width: 36, height: 20, borderRadius: 999,
-            border: 'none', cursor: 'pointer', padding: 2,
-            background: finalPoint ? accentColor : 'var(--line)',
-            transition: 'background .15s', flexShrink: 0,
-            display: 'inline-flex', alignItems: 'center',
-          }}
-        >
-          <span style={{
-            width: 16, height: 16, borderRadius: '50%',
-            background: 'white',
-            transform: `translateX(${finalPoint ? 16 : 0}px)`,
-            transition: 'transform .15s',
-            boxShadow: '0 1px 2px rgba(0,0,0,.15)',
-          }} />
-        </button>
-        <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
-          <span style={{ fontWeight: 600 }}>
-            <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: accentColor }} />
-            {t('planner.final_point')}
-          </span>
-          <span className="muted" style={{ marginLeft: 6 }}>
-            {t('planner.final_point_hint')}
-          </span>
-        </div>
-      </div>
-    )}
+      <button className="te-step te-step--del" onPointerDown={stopArm} onClick={(e) => { e.stopPropagation(); onRemove(); }} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
     </div>
   );
 }
@@ -497,6 +437,9 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
 function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalPoint, startDate, setStartDate }) {
   const t = useT();
+  const { lang } = useI18n();
+  const [calOpen, setCalOpen] = useState(false); // trip-start calendar popover/sheet
+  const isSheet = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
 
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
@@ -531,16 +474,30 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
         {t('planner.cities_desc_1')} <b style={{ color: 'var(--ink)' }}>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
       </div>
 
-      {/* Trip-start control - the single date anchor for the whole trip */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 12 }}>
-        <Icon name="calendar" size={15} style={{ color: 'var(--brand)' }} />
-        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{t('planner.trip_start')}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-          <button type="button" title={t('planner.day_earlier')} onClick={() => startDate && setStartDate(addDays(startDate, -1))}
-            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 'var(--fs-strong)', fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>‹</button>
-          <input className="input num" type="date" value={startDate || ''} onChange={(e) => setStartDate(e.target.value)} style={{ fontSize: 'var(--fs-base)', padding: '6px 8px', width: 150 }} />
-          <button type="button" title={t('planner.day_later')} onClick={() => startDate && setStartDate(addDays(startDate, 1))}
-            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 'var(--fs-strong)', fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>›</button>
+      {/* Trip-start control — the SAME .ts-startctl + shared StartCalendar as the
+          editor (one mini calendar, one stepper look across both screens). */}
+      <div style={{ display: 'flex', marginBottom: 12 }}>
+        <div className="ts-startctl" title={t('planner.trip_start')}>
+          <span className="ts-startctl__lbl">{t('ai_plan.start')}</span>
+          <button type="button" className="ts-step" onClick={() => startDate && setStartDate(addDays(startDate, -1))} title={t('planner.day_earlier')} aria-label={t('planner.day_earlier')}><Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} /></button>
+          {isSheet ? (
+            <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')} onClick={() => setCalOpen(true)}>{fmtDW(startDate, lang)}</button>
+          ) : (
+            <Popover open={calOpen} onOpenChange={setCalOpen}>
+              <PopoverTrigger asChild>
+                <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(startDate, lang)}</button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="ts-startcal-pop">
+                <StartCalendar value={startDate} lang={lang} onPick={(iso) => { setStartDate(iso); setCalOpen(false); }} />
+              </PopoverContent>
+            </Popover>
+          )}
+          <button type="button" className="ts-step" onClick={() => startDate && setStartDate(addDays(startDate, 1))} title={t('planner.day_later')} aria-label={t('planner.day_later')}><Icon name="chev" size={13} /></button>
+          {isSheet && (
+            <Sheet open={calOpen} onOpenChange={setCalOpen} title={t('planner.trip_start')}>
+              <StartCalendar value={startDate} lang={lang} onPick={(iso) => { setStartDate(iso); setCalOpen(false); }} />
+            </Sheet>
+          )}
         </div>
       </div>
 
@@ -566,17 +523,13 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
               <div key={c.id} ref={setRowRef(c.id)}>
                 <CityRow
                   idx={dIdx}
-                  total={cities.length}
                   city={c}
                   isDragging={dragIdx === dIdx}
-                  isLast={dIdx === cities.length - 1}
-                  finalPoint={finalPoint}
-                  onToggleFinalPoint={setFinalPoint}
+                  isFinalAnchor={dIdx === cities.length - 1 && finalPoint}
                   onArm={(e) => armDrag(e, dIdx, c.id)}
                   onChange={(patch) => update(c.id, patch)}
                   onRemove={() => remove(c.id)}
-                  onMoveUp={() => moveNodeById(c.id, -1)}
-                  onMoveDown={() => moveNodeById(c.id, 1)}
+                  onMove={(dir) => moveNodeById(c.id, dir)}
                 />
               </div>
             );
@@ -592,6 +545,21 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
           >
             <Icon name="plus" size={14} /> {t('planner.add_more_city')}
           </button>
+        </div>
+      )}
+
+      {/* Final-point toggle — one control for the whole route (the last city is the
+          finish, skipping the return). Uses the design-system Toggle. */}
+      {cities.length > 0 && (
+        <div className="planner-fin">
+          <Toggle on={finalPoint} onChange={setFinalPoint} label={t('planner.final_point')} />
+          <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 600 }}>
+              <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: 'var(--warm)' }} />
+              {t('planner.final_point')}
+            </span>
+            <span className="muted" style={{ marginLeft: 6 }}>{t('planner.final_point_hint')}</span>
+          </div>
         </div>
       )}
 
