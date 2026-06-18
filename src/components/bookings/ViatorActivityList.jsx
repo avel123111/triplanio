@@ -138,6 +138,10 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
               <button className="va-pg" disabled={(totalPages ? page >= totalPages : !meta.hasMore) || isFetching} onClick={() => setPage((p) => p + 1)} aria-label={t('fork.activities_next')}><ChevronRight size={16} /></button>
             </div>
           )}
+
+          {activities.some((a) => a.rating != null) && (
+            <p className="va-src">{t('fork.activities_reviews_source')}</p>
+          )}
         </>
       )}
 
@@ -182,6 +186,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         @media (hover: hover) and (pointer: fine) { .va-pg:not(:disabled):hover { border-color: var(--line-hover); } }
         .va-pg--on { background: var(--brand); border-color: var(--brand); color: #fff; }
         .va-gap { color: var(--muted-2); padding: 0 2px; }
+        .va-src { margin: 4px 0 0; text-align: center; font-size: var(--fs-nano); color: var(--muted-2); }
         @media (prefers-reduced-motion: reduce) { .va-card, .va-pg { transition: none; } .va-card:active { transform: none; } }
         @media (max-width: 560px) { .va-thumb { width: 84px; height: 84px; } }
       `}</style>

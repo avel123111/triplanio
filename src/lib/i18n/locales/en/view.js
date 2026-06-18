@@ -8,6 +8,7 @@ export default {
   'fork.activities_empty_title': 'No activities found',
   'fork.activities_empty_body': 'We have no tours or experiences for this city yet.',
   'fork.activities_reviews': '{n} reviews',
+  'fork.activities_reviews_source': 'Ratings collected by Viator and Tripadvisor',
   'fork.activities_free_cancel': 'Free cancellation',
   'fork.activities_from': 'from',
   'fork.activities_book': 'Book',

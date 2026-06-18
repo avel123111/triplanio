@@ -8,6 +8,7 @@ export default {
   'fork.activities_empty_title': 'Активности не найдены',
   'fork.activities_empty_body': 'Для этого города пока нет туров и экскурсий.',
   'fork.activities_reviews': 'Отзывов: {n}',
+  'fork.activities_reviews_source': 'Рейтинги собраны Viator и Tripadvisor',
   'fork.activities_free_cancel': 'Бесплатная отмена',
   'fork.activities_from': 'от',
   'fork.activities_book': 'Забронировать',
