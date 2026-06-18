@@ -56,14 +56,14 @@ export default {
   // eSIM view/edit dialog
   'service.esim_new': 'Add eSIM',
   'service.esim_edit': 'Edit eSIM',
-  'service.esim_eyebrow': '📶 eSIM · Mobile internet',
+  'service.esim_eyebrow': 'eSIM · Mobile internet',
   'service.esim_notes_ph': 'QR code, setup instructions…',
   'service.esim_cost_section': 'Cost',
   'service.esim_docs_section': 'Documents',
   // Insurance view/edit dialog
   'service.insurance_new': 'Add insurance',
   'service.insurance_edit': 'Edit insurance',
-  'service.insurance_eyebrow': '🛡 Insurance',
+  'service.insurance_eyebrow': 'Insurance',
   'service.insurance_section': 'Policy',
   'service.insurance_cost_section': 'Cost',
   'service.insurance_docs_section': 'Documents',

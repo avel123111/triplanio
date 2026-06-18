@@ -18,7 +18,6 @@ const TKIND = {
   bus: { icon: 'bus', labelKey: 'transfer.bus' }, car: { icon: 'car', labelKey: 'event.tk_car' },
   ferry: { icon: 'ferry', labelKey: 'transfer.ferry' }, taxi: { icon: 'car', labelKey: 'event.tk_car' },
 };
-const ACT_ICON = { food: 'cup', sight: 'cam', experience: 'spark', sport: 'walk' };
 const money = (p, c) => fmtPrice(p, c) || '';
 function rangeText(a, b) { const da = fmtDate(a), db = fmtDate(b); if (!da) return ''; return db && db !== da ? `${da} – ${db}` : da; }
 
@@ -153,13 +152,13 @@ export default function CityPanel({
           {t('budget.source_activity')}{acts.length > 0 ? ` · ${acts.length}` : ''}
         </SectionLabel>
         {acts.map((a) => (
-          <BookRow key={a.id} tone="activity" icon={ACT_ICON[a.category] || 'spark'}
+          <BookRow key={a.id} tone="activity" icon="ticket"
             title={a.title}
             sub={`${fmtDate(a.start_datetime)}${fmtTime(a.start_datetime) ? ' · ' + fmtTime(a.start_datetime) : ''}`}
             warn={isActWarn ? isActWarn(a) : false}
             onClick={() => onOpenActivity(a.id)} />
         ))}
-        <GhostAdd icon="spark" accent="var(--ev-activity)" label={t('activity.add')} onClick={onAddActivity} />
+        <GhostAdd icon="ticket" accent="var(--ev-activity)" label={t('activity.add')} onClick={onAddActivity} />
       </div>
       </div>
       <div className="lp-f lp-f--ratio">
