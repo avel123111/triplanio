@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { ExternalLink, Bed, Plane, Car, Wifi, ShieldCheck, Ticket, ArrowLeft, ChevronRight } from 'lucide-react';
+import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ArrowLeft, ChevronRight } from 'lucide-react';
+import { CardSim } from '@/design/icons';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Btn } from '@/design/index';
 import {
@@ -24,7 +25,7 @@ const TYPE_META = {
     titleKey: 'hotel.choice_title',
     manualKey: 'hotel.choice_manual',
     manualSubKey: 'fork.manual_sub_hotel',
-    Icon: Bed,
+    Icon: BedDouble,
     color: 'var(--ev-hotel)',
     colorSoft: 'var(--ev-hotel-soft)',
   },
@@ -48,7 +49,7 @@ const TYPE_META = {
     titleKey: 'service.esim_choice_title',
     manualKey: 'service.esim_choice_manual',
     manualSubKey: 'fork.manual_sub_esim',
-    Icon: Wifi,
+    Icon: CardSim,
     color: SERVICE_KINDS.esim.color,
     colorSoft: SERVICE_KINDS.esim.soft,
   },

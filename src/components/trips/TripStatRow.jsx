@@ -17,7 +17,7 @@ export default function TripStatRow({ visits = [], transfers = [], trip, ordered
     { key: 'transfers', icon: 'plane', value: s.transfers, label: t('overview.stat_transfers') },
     {
       key: 'distance',
-      icon: 'ruler',
+      icon: 'route',
       value: (
         <>
           {s.distanceKm.toLocaleString('ru-RU')}

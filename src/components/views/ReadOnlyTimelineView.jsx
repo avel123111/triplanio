@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DateTime } from 'luxon';
-import { MapPin, Camera, ExternalLink, Sparkles, Plane, Flag, LogIn, LogOut, ArrowRight, CalendarX, Send, Info, Car, Plus } from 'lucide-react';
+import { MapPin, Camera, ExternalLink, Sparkles, Plane, Flag, LogIn, LogOut, ArrowRight, CalendarX, Send, Info, Car, Plus, Ticket } from 'lucide-react';
 import { countryFlag } from '@/lib/geo';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/design/index';
@@ -702,7 +702,7 @@ function DayEventRow({ event, visitsById = {}, onClickTransfer, onClickActivity,
         onClick={() => onClickActivity?.(a)}
         className="block w-full text-left hover:opacity-90 transition"
       >
-        <EventShell time={time} tone="activity" icon={<Camera className="w-4 h-4" />}>
+        <EventShell time={time} tone="activity" icon={<Ticket className="w-4 h-4" />}>
           <RowContent
             title={a.title}
             subtitle={[

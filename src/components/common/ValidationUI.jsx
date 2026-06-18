@@ -5,7 +5,7 @@
 // Messages resolve via t('validation.' + code, values). Place a
 // data-vfield="<token>" attribute on each field wrapper so the panel can focus it.
 import React, { useMemo, useState, useCallback } from 'react';
-import { AlertTriangle, Bed, Plane, Sparkles, Car, MapPin, ChevronRight, ChevronDown } from 'lucide-react';
+import { AlertTriangle, BedDouble, Plane, Ticket, Car, MapPin, ChevronRight, ChevronDown } from 'lucide-react';
 import { validateEntity } from '@/lib/validation';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 
@@ -120,8 +120,8 @@ export function IssuesPanel({ issues = [], className = '', style = {} }) {
 // Entity-attributed rows: event-type icon in event color + entity name + rule.
 // Resolves which entity an issue belongs to so it's clear at a glance.
 const ENTITY_META = {
-  hotel: { Icon: Bed, color: 'var(--ev-hotel, #2f7d6b)', soft: 'var(--ev-hotel-soft, rgba(47,125,107,.14))' },
-  activity: { Icon: Sparkles, color: 'var(--ev-activity, #7a4ee2)', soft: 'var(--ev-activity-soft, rgba(122,78,226,.14))' },
+  hotel: { Icon: BedDouble, color: 'var(--ev-hotel, #2f7d6b)', soft: 'var(--ev-hotel-soft, rgba(47,125,107,.14))' },
+  activity: { Icon: Ticket, color: 'var(--ev-activity, #7a4ee2)', soft: 'var(--ev-activity-soft, rgba(122,78,226,.14))' },
   transfer: { Icon: Plane, color: 'var(--ev-transfer, #5b6cff)', soft: 'var(--ev-transfer-soft, rgba(91,108,255,.14))' },
   service: { Icon: Car, color: 'var(--ev-service, #c9603a)', soft: 'var(--ev-service-soft, rgba(201,96,58,.14))' },
   city: { Icon: MapPin, color: 'var(--brand, #3b5bdb)', soft: 'var(--brand-soft, rgba(59,91,219,.12))' },
