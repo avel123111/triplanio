@@ -677,7 +677,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
           {/* На одного */}
           <div className="card bgt-stat bgt-stat--ppl">
-            <div className="bgt-stat__ic"><Icon name="users" size={21} /></div>
+            <div className="bgt-stat__ic"><Icon name="user" size={21} /></div>
             <div className="bgt-stat__m">
               <div className="bgt-stat__l">{t('budget.per_person_label')}</div>
               <div className="bgt-stat__v">{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>

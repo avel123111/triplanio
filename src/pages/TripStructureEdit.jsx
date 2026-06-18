@@ -1090,12 +1090,12 @@ function ActCell({ count, warn, onClick }) {
   const t = useT();
   if (!count) return (
     <button className="te-cellbtn te-cellbtn--ghost" onClick={onClick} title={t('budget.source_activity')}>
-      <Icon name="spark" size={14} /> <Icon name="plus" size={12} />
+      <Icon name="ticket" size={14} /> <Icon name="plus" size={12} />
     </button>
   );
   return (
     <button className={'te-actchip' + (warn ? ' is-warn' : '')} onClick={onClick} title={count + ''}>
-      <Icon name="spark" size={13} style={{ color: warn ? 'var(--warning)' : 'var(--ev-activity)' }} />
+      <Icon name="ticket" size={13} style={{ color: warn ? 'var(--warning)' : 'var(--ev-activity)' }} />
       <span className="num" style={{ fontWeight: 700, fontSize: 'var(--fs-meta)' }}>{count}</span>
       {warn && <Icon name="warning" size={11} style={{ color: 'var(--warning)' }} />}
     </button>

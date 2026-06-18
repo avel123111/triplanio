@@ -11,7 +11,7 @@
 export const SERVICE_KINDS = {
   esim: {
     color: 'var(--ev-esim)', soft: 'var(--ev-esim-soft)', ink: 'var(--ev-esim-ink)',
-    icon: 'esim', labelKey: 'service.kind.esim', hintKey: 'service.hint.esim',
+    icon: 'card-sim', labelKey: 'service.kind.esim', hintKey: 'service.hint.esim',
   },
   car_rental: {
     color: 'var(--ev-car)', soft: 'var(--ev-car-soft)', ink: 'var(--ev-car-ink)',
@@ -19,7 +19,7 @@ export const SERVICE_KINDS = {
   },
   insurance: {
     color: 'var(--ev-insurance)', soft: 'var(--ev-insurance-soft)', ink: 'var(--ev-insurance-ink)',
-    icon: 'shield', labelKey: 'service.kind.insurance', hintKey: 'service.hint.insurance',
+    icon: 'shield-check', labelKey: 'service.kind.insurance', hintKey: 'service.hint.insurance',
   },
 };
 

@@ -36,7 +36,7 @@ export default function ServicesCard({ services = [], onAddService, onOpenServic
   return (
     <div className="wdg ov-wdg">
       <div className="wdg-h">
-        <span className="wi wi--primary"><Icon name="spark" size={17} /></span>
+        <span className="wi wi--primary"><Icon name="folder-bookmark" size={17} /></span>
         <h4>{t('trip.sidebar_services')}</h4>
       </div>
       <div className="wdg-b">
