@@ -1,4 +1,6 @@
 export default {
+  'activity.choice_title': 'Добавить активность',
+  'activity.choice_manual': 'Добавить вручную',
   'activity.add': 'Добавить активность',
   'activity.edit': 'Редактировать активность',
   'activity.title': 'Название',

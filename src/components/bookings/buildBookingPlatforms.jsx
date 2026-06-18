@@ -37,6 +37,32 @@ const tpLink = (campaignId, p, targetUrl) =>
 const dmyDot = (iso) => (iso ? DateTime.fromISO(iso).toFormat('dd.LL.yyyy') : '');
 const ddmm = (iso) => (iso ? DateTime.fromISO(iso).toFormat('ddLL') : '');
 
+// ACTIVITY: Viator + GetYourGuide. Placeholder affiliate links (city-targeted
+// search) — replace with proper attributed deep-links later. The live Viator
+// product list renders below these in ViatorActivityList (cities.viator_dest_id).
+export function activityPlatforms(visit, t) {
+  const cityEn = visit?.city_name_en || visit?.city_name || '';
+  const q = encodeURIComponent(cityEn);
+  return [
+    {
+      key: 'viator',
+      label: findOn(t, 'Viator'),
+      hint: cityEn,
+      logo: platformLogoUrl('viator'),
+      url: cityEn ? `https://www.viator.com/searchResults/all?text=${q}` : 'https://www.viator.com/',
+      provider: 'viator',
+    },
+    {
+      key: 'getyourguide',
+      label: findOn(t, 'GetYourGuide'),
+      hint: cityEn,
+      logo: platformLogoUrl('getyourguide'),
+      url: cityEn ? `https://www.getyourguide.com/s/?q=${q}` : 'https://www.getyourguide.com/',
+      provider: 'getyourguide',
+    },
+  ];
+}
+
 // HOTEL: Booking.com, Airbnb (+ Ostrovok, Yandex Travel for ru UI)
 export function hotelPlatforms(visit, t, lang) {
   const tz = visit?.timezone || 'UTC';

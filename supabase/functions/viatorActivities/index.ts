@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
 
     const payload: Record<string, unknown> = {
       filtering,
-      sorting: { sort: sort || 'DEFAULT', order: 'DESCENDING' },
+      sorting: { sort: sort || 'DEFAULT', order: 'ASCENDING' },
       pagination: { start, count: PAGE_SIZE },
       'campaign-value': CAMPAIGN,
     };

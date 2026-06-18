@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ExternalLink, Bed, Plane, Car, Wifi, ShieldCheck, ArrowLeft, ChevronRight } from 'lucide-react';
+import { ExternalLink, Bed, Plane, Car, Wifi, ShieldCheck, Ticket, ArrowLeft, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Btn } from '@/design/index';
 import {
@@ -8,11 +8,13 @@ import {
   carRentalPlatforms,
   esimPlatforms,
   insurancePlatforms,
+  activityPlatforms,
 } from '@/components/bookings/buildBookingPlatforms';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { SERVICE_KINDS } from '@/lib/serviceKinds';
 import Stay22HotelList from '@/components/bookings/Stay22HotelList';
+import ViatorActivityList from '@/components/bookings/ViatorActivityList';
 
 // Visual + copy metadata per fork type. Service colours (esim/car/insurance)
 // come from the shared SERVICE_KINDS source so the fork modal matches the
@@ -58,6 +60,14 @@ const TYPE_META = {
     color: SERVICE_KINDS.insurance.color,
     colorSoft: SERVICE_KINDS.insurance.soft,
   },
+  activity: {
+    titleKey: 'activity.choice_title',
+    manualKey: 'activity.choice_manual',
+    manualSubKey: 'fork.manual_sub_activity',
+    Icon: Ticket,
+    color: 'var(--ev-activity)',
+    colorSoft: 'var(--ev-activity-soft)',
+  },
 };
 
 // Map fork type → enum value stored in partner_clicks.type (note: 'carrental').
@@ -67,6 +77,7 @@ const CLICK_TYPE = {
   car_rental: 'carrental',
   esim: 'esim',
   insurance: 'insurance',
+  activity: 'activity',
 };
 
 // Brand display name per partner key (bold title in the new partner card).
@@ -75,6 +86,7 @@ const PARTNER_NAME = {
   rentalcars: 'Rentalcars', discovercars: 'DiscoverCars', airalo: 'Airalo', yesim: 'Yesim',
   safetywing: 'SafetyWing', ektatraveling: 'Ekta Traveling',
   aviasales: 'Aviasales', ostrovok: 'Островок', yandextravel: 'Яндекс Путешествия',
+  viator: 'Viator', getyourguide: 'GetYourGuide',
 };
 
 /**
@@ -107,6 +119,7 @@ export default function ForkPartnerModal({
     if (type === 'car_rental') return carRentalPlatforms(trip, t);
     if (type === 'esim') return esimPlatforms(visits, t);
     if (type === 'insurance') return insurancePlatforms(t);
+    if (type === 'activity') return activityPlatforms(visit, t);
     return [];
   }, [type, visit, fromVisit, toVisit, visits, trip, t, lang]);
 
@@ -177,6 +190,11 @@ export default function ForkPartnerModal({
       {/* Live Stay22 stays — hotel fork, panel only. Fetched on open, FE-only. */}
       {type === 'hotel' && variant === 'panel' && (
         <Stay22HotelList visit={visit} currency={tripCurrency} lang={lang} tripId={tripId} />
+      )}
+
+      {/* Live Viator activities — activity fork, panel only. Fetched on open, FE-only. */}
+      {type === 'activity' && variant === 'panel' && (
+        <ViatorActivityList visit={visit} currency={tripCurrency} lang={lang} tripId={tripId} />
       )}
     </>
   );
