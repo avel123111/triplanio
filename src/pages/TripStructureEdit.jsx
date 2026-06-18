@@ -577,11 +577,11 @@ export default function TripStructureEdit() {
   // panel navigation
   const openCity = (id) => { if (justDraggedRef.current) { justDraggedRef.current = false; return; } setLeftPanel({ type: 'city', id }); };
   const openEvent = (kind, id) => setLeftPanel({ type: 'event', kind, id, warning: (issues.find((i) => i[`${kind}Id`] === id)?.message) || null });
-  // hotel/transfer have partner offers → show the PickPanel ("Развилка") first;
-  // activities have none → straight to the form.
+  // hotel/transfer/activity have partner offers → show the PickPanel ("Развилка")
+  // first; others go straight to the form.
   // A hotel/activity can only attach to a city with a real uuid — block while the
   // city is still pending (tmp- id, add_city in flight) so the write can't hit an FK.
-  const createBooking = (kind, node) => { if (isTmpId(node?.id)) return; setLeftPanel(kind === 'hotel' ? { type: 'pick', kind, visit: node } : { type: 'create', kind, visit: node }); };
+  const createBooking = (kind, node) => { if (isTmpId(node?.id)) return; setLeftPanel(kind === 'hotel' || kind === 'activity' ? { type: 'pick', kind, visit: node } : { type: 'create', kind, visit: node }); };
   // Stay numbering (only nights-cities are numbered).
   const stayNumById = {};
   { let sc = 0; ordered.forEach((n) => { if (n.kind === 'transit') stayNumById[n.id] = ++sc; }); }

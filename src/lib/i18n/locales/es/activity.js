@@ -1,4 +1,6 @@
 export default {
+  'activity.choice_title': 'Añadir actividad',
+  'activity.choice_manual': 'Añadir manualmente',
   'activity.add': 'Añadir actividad',
   'activity.edit': 'Editar actividad',
   'activity.title': 'Título',

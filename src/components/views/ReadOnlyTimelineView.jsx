@@ -15,7 +15,6 @@ import CityNotesBlock from './CityNotesBlock';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { parseNaive, naiveDayKey, formatNaive, naiveMillis } from '@/lib/naive-time';
 import { formatDuration } from '@/lib/time';
-import { getWeather, weatherInfo } from '@/lib/weather';
 
 /**
  * Read-only timeline shown on the trip *view* page.
@@ -48,31 +47,6 @@ export default function ReadOnlyTimelineView({
   const containerRef = useRef(null);
   const dayRefs = useRef({});
   const ordered = useMemo(() => sortVisits(visits), [visits]);
-
-  // Weather: fetch per transit visit (future only - getWeather returns null for past)
-  // Result: { [dayKey]: { icon, temp_max, temp_min } }
-  const [weatherByDay, setWeatherByDay] = useState({});
-  useEffect(() => {
-    const transitVisits = visits.filter(v => v.kind !== 'start' && v.kind !== 'end' && v.latitude && v.longitude && v.start_date && v.end_date);
-    if (transitVisits.length === 0) return;
-    let cancelled = false;
-    (async () => {
-      const map = {};
-      for (const v of transitVisits) {
-        const startDay = naiveDayKey(v.start_date);
-        const endDay = naiveDayKey(v.end_date);
-        const result = await getWeather(v.latitude, v.longitude, startDay, endDay);
-        if (cancelled || !result?.daily) continue;
-        const { time, weather_code, temperature_2m_max, temperature_2m_min } = result.daily;
-        (time || []).forEach((d, i) => {
-          const info = weatherInfo(weather_code?.[i]);
-          map[d] = { icon: info.icon, temp_max: Math.round(temperature_2m_max?.[i] ?? 0), temp_min: Math.round(temperature_2m_min?.[i] ?? 0) };
-        });
-      }
-      if (!cancelled) setWeatherByDay(map);
-    })();
-    return () => { cancelled = true; };
-  }, [visits]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sequential #N index for transit visits only (start/end anchors excluded).
   const cityIndexById = useMemo(() => {
@@ -384,7 +358,7 @@ export default function ReadOnlyTimelineView({
     // Skip separator+placeholder for days outside trip range that have no events
     if (dayEvents.length === 0 && !tripRangeDaySet.has(dayKey)) continue;
 
-    out.push(<DaySeparator key={`sep-${dayKey}`} iso={firstIso} locale={locale} weather={weatherByDay[dayKey]} />);
+    out.push(<DaySeparator key={`sep-${dayKey}`} iso={firstIso} locale={locale} />);
 
     if (dayEvents.length === 0) {
       out.push(<EmptyDayCard key={`empty-${dayKey}`} />);
@@ -557,7 +531,7 @@ function EventRowWrapper({
  *   8 ИЮЛ  ср
  * Display-font day+month in bold, weekday in muted small text next to it.
  */
-function DaySeparator({ iso, locale, weather }) {
+function DaySeparator({ iso, locale }) {
   const { t } = useI18nFormat();
   const dt = parseNaive(iso);
   if (!dt) return null;
@@ -578,12 +552,6 @@ function DaySeparator({ iso, locale, weather }) {
       {isToday && (
         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-xs font-medium text-primary leading-none mb-px">
           {t('view.today')}
-        </span>
-      )}
-      {weather && (
-        <span className="ml-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-xs font-medium text-foreground/80 leading-none mb-px">
-          <span>{weather.icon}</span>
-          <span className="tabular-nums">{weather.temp_max}°</span>
         </span>
       )}
     </div>

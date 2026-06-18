@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getWeather, weatherInfo } from '@/lib/weather';
 
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
@@ -404,35 +403,8 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
 
 // ─── CityHero (with proper hotel warning) ────────────────────────────────────
 
-// Fetch daily weather for all transit visits → { [dayKey]: { icon, temp } }.
-// Open-Meteo returns up to ~16 days ahead; past days yield nothing.
-function useWeatherByDay(visits) {
-  const [weatherByDay, setWeatherByDay] = useState({});
-  useEffect(() => {
-    const transit = (visits || []).filter(v => v.kind !== 'start' && v.kind !== 'end' && v.latitude && v.longitude && v.start_date && v.end_date);
-    if (transit.length === 0) { setWeatherByDay({}); return; }
-    let cancelled = false;
-    (async () => {
-      const map = {};
-      for (const v of transit) {
-        const res = await getWeather(v.latitude, v.longitude, naiveDayKey(v.start_date), naiveDayKey(v.end_date)).catch(() => null);
-        if (cancelled || !res?.daily) continue;
-        const { time, weather_code, temperature_2m_max } = res.daily;
-        (time || []).forEach((d, i) => {
-          map[d] = { icon: weatherInfo(weather_code?.[i]).icon, temp: Math.round(temperature_2m_max?.[i] ?? 0) };
-        });
-      }
-      if (!cancelled) setWeatherByDay(map);
-    })();
-    return () => { cancelled = true; };
-  }, [visits]); // eslint-disable-line react-hooks/exhaustive-deps
-  return weatherByDay;
-}
-
-
 function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfer, onAddHotel, onAddActivityForDay, onEditVisitNotes, onOpenEvent, onDeleteCity, isViewer = false }) {
   const { t, lang } = useI18n();
-  const weatherByDay = useWeatherByDay(visits);  // hook must run before any early return
 
   // Auto-scroll to today's day when the timeline opens — but only if today falls
   // inside the rendered range (otherwise the #tlday element doesn't exist and
@@ -628,17 +600,14 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
     const _isToday = day === todayKey;
     rows.push(
       <div key={`day-${day}`} id={`tlday-${day}`} data-tlday={day} data-city={dayCity?.id || ''} className={`tl3-day${_isToday ? ' today' : ''}`}>
-        {/* Date header — datechip on the left; weekday + weather on the first
-            line, the day's real cities (waypoints excluded) tucked underneath. */}
+        {/* Date header — datechip on the left; weekday on the first line, the
+            day's real cities (waypoints excluded) tucked underneath. */}
         <div className="tl3-dh">
           <span className="datechip"><span className="d">{_dayNum}</span><span className="m">{_monAbbr}</span></span>
           <div className="tl3-dhx">
             <div className="tl3-dhrow">
               <span className="wd">{weekdayLong(day, lang)}</span>
               {_isToday && <span className="tl3-today">{t('view.today')}</span>}
-              {weatherByDay[day] && (
-                <span className="wthr"><span>{weatherByDay[day].icon}</span><span>{weatherByDay[day].temp}°</span></span>
-              )}
             </div>
             {dayCities.length > 0 && (
               <span className="daycity"><Icon name="pin" size={13} />{dayCities.map(c => c.city_name).join(' · ')}</span>

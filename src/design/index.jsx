@@ -264,27 +264,6 @@ export const RoleBadge = ({ role, size = "md", status }) => {
   );
 };
 
-// ----- WeatherChip -----
-export const WeatherChip = ({ temp, condition, hour, size = "sm" }) => {
-  const ICON = {
-    sun: "sun", clear: "sun", cloud: "cloud", partly: "cloud-sun", rain: "rain", storm: "rain"
-  };
-  const COLOR = {
-    sun: "#e0a64b", clear: "#e0a64b", cloud: "#8693a8", partly: "#5a8ff0", rain: "#3d8aa8", storm: "#6a3ee2"
-  };
-  return (
-    <span className="num" style={{
-      display: "inline-flex", alignItems: "center", gap: 4,
-      padding: size === "xs" ? "1px 6px" : "2px 8px",
-      borderRadius: 999, background: "var(--wash)", border: "1px solid var(--line-2)",
-      fontSize: size === "xs" ? 10.5 : 11.5, color: "var(--ink-2)", fontWeight: 500,
-    }}>
-      <Icon name={ICON[condition] || "sun"} size={size === "xs" ? 10 : 11} style={{ color: COLOR[condition] || "#e0a64b" }} />
-      {temp}°{hour && <span className="muted" style={{ fontWeight: 400 }}>· {hour}</span>}
-    </span>
-  );
-};
-
 // ----- City photo helper - uses gradient placeholder by city -----
 const CITY_PHOTO = {
   "Лиссабон":  { hue1: 195, hue2: 30,  emoji: "🌊", label: "Лиссабон · Альфама" },
