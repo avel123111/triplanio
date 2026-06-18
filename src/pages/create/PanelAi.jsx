@@ -51,34 +51,41 @@ export default function PanelAi({ ctx }) {
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: `1.5px solid color-mix(in srgb, ${AI} 22%, var(--line))`, borderRadius: 14, padding: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--ai-grad)', color: '#fff', display: 'grid', placeItems: 'center' }}><Icon name="sparkles" size={12} /></span>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--ai-ink)' }}>{t('ai_plan.assistant_label')}</div>
-          <span className="muted" style={{ fontSize: 'var(--fs-micro)', marginLeft: 'auto' }}>{t('ai_plan.assistant_hint')}</span>
+      {/* Canonical Lumo AI block (.ai-blk) — same design-system component as the
+          "Распознать бронь с ИИ" widget (EventAiBlock). No bespoke card/borders. */}
+      <div className="ai-blk">
+        <div className="ai-blk-hd">
+          <div className="ai-blk-ic"><Icon name="sparkles" size={15} /></div>
+          <div className="ai-blk-ti">
+            <b>{t('ai_plan.assistant_label')}</b>
+            <span>{t('ai_plan.assistant_hint')}</span>
+          </div>
         </div>
-        <textarea
-          className="textarea"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canPrompt) { e.preventDefault(); onGenerate(prompt.trim()); } }}
-          disabled={aiState === 'generating'}
-          placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
-          style={{ minHeight: 110, border: 'none', padding: 0, background: 'transparent', fontSize: 'var(--fs-strong)', lineHeight: 1.55, width: '100%', resize: 'none' }}
-        />
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, alignItems: 'center', gap: 8 }}>
-          <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('ai_plan.shortcut_hint')}</span>
-          {aiState === 'generating' ? (
-            <span className="ai-thinking" role="status" aria-live="polite">
-              <Icon name="sparkles" size={14} />
-              {t('ai_plan.thinking')}
-              <span className="ai-dots" style={{ marginLeft: 2 }}><span /><span /><span /></span>
-            </span>
-          ) : aiState === 'draft' ? (
-            <Btn variant="ai" size="sm" icon="refresh" disabled={!canPrompt} onClick={() => onGenerate(prompt.trim())}>{t('ai_plan.regenerate')}</Btn>
-          ) : (
-            <Btn variant="ai" size="sm" icon="sparkles" disabled={!canPrompt} onClick={() => canPrompt && onGenerate(prompt.trim())}>{t('ai_plan.generate_draft')}</Btn>
-          )}
+        <div className="ai-blk-body">
+          <div className="ai-input">
+            <textarea
+              className="textarea"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canPrompt) { e.preventDefault(); onGenerate(prompt.trim()); } }}
+              disabled={aiState === 'generating'}
+              placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
+              style={{ minHeight: 96 }}
+            />
+            <div className="ai-input-row">
+              <span className="ai-blk-hint">{t('ai_plan.shortcut_hint')}</span>
+              <div style={{ flex: 1 }} />
+              {aiState === 'generating' ? (
+                <Btn variant="ai" size="sm" style={{ cursor: 'default' }} onClick={() => {}}>
+                  <span className="ai-spin" style={{ marginRight: 6 }} />{t('ai_plan.thinking')}
+                </Btn>
+              ) : aiState === 'draft' ? (
+                <Btn variant="ai" size="sm" icon="refresh" disabled={!canPrompt} onClick={() => onGenerate(prompt.trim())}>{t('ai_plan.regenerate')}</Btn>
+              ) : (
+                <Btn variant="ai" size="sm" icon="sparkles" disabled={!canPrompt} onClick={() => canPrompt && onGenerate(prompt.trim())}>{t('ai_plan.generate_draft')}</Btn>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
