@@ -1,6 +1,7 @@
 export default {
   'fork.manual_sub_activity': 'Already booked? Add the activity manually.',
-  'fork.activities_title': 'Things to do on Viator',
+  'fork.activities_title': 'Things to do in {city}',
+  'fork.activities_title_generic': 'Things to do',
   'fork.activities_count': '{n} options',
   'fork.activities_error_title': "Couldn't load activities",
   'fork.activities_error_body': 'Something went wrong. Please try again.',

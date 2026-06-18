@@ -1,6 +1,7 @@
 export default {
   'fork.manual_sub_activity': 'Уже забронировал? Добавь активность вручную.',
-  'fork.activities_title': 'Чем заняться на Viator',
+  'fork.activities_title': 'Чем заняться в {city}',
+  'fork.activities_title_generic': 'Чем заняться',
   'fork.activities_count': 'Вариантов: {n}',
   'fork.activities_error_title': 'Не удалось загрузить активности',
   'fork.activities_error_body': 'Что-то пошло не так. Попробуй ещё раз.',

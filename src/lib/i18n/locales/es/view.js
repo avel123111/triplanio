@@ -1,6 +1,7 @@
 export default {
   'fork.manual_sub_activity': '¿Ya la reservaste? Añade la actividad manualmente.',
-  'fork.activities_title': 'Qué hacer en Viator',
+  'fork.activities_title': 'Qué hacer en {city}',
+  'fork.activities_title_generic': 'Qué hacer',
   'fork.activities_count': '{n} opciones',
   'fork.activities_error_title': 'No se pudieron cargar las actividades',
   'fork.activities_error_body': 'Algo salió mal. Inténtalo de nuevo.',
