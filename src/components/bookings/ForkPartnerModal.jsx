@@ -86,7 +86,7 @@ const PARTNER_NAME = {
   rentalcars: 'Rentalcars', discovercars: 'DiscoverCars', airalo: 'Airalo', yesim: 'Yesim',
   safetywing: 'SafetyWing', ektatraveling: 'Ekta Traveling',
   aviasales: 'Aviasales', ostrovok: 'Островок', yandextravel: 'Яндекс Путешествия',
-  viator: 'Viator', getyourguide: 'GetYourGuide',
+  viator: 'Viator', getyourguide: 'GetYourGuide', tripster: 'Tripster', sputnik8: 'Sputnik8',
 };
 
 /**
@@ -119,7 +119,7 @@ export default function ForkPartnerModal({
     if (type === 'car_rental') return carRentalPlatforms(trip, t);
     if (type === 'esim') return esimPlatforms(visits, t);
     if (type === 'insurance') return insurancePlatforms(t);
-    if (type === 'activity') return activityPlatforms(visit, t);
+    if (type === 'activity') return activityPlatforms(visit, t, lang);
     return [];
   }, [type, visit, fromVisit, toVisit, visits, trip, t, lang]);
 
