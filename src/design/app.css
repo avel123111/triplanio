@@ -1094,6 +1094,36 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .addsheet__tx b { font-size: var(--fs-base); font-weight: 700; color: var(--ink); }
 .addsheet__chev { color: var(--muted-2); flex: none; }
 
+/* Trip-creation choice card — ONE source, shared by the empty Trips screen and
+   the New-Trip dialog (V1 editorial layout). Bound to existing Lumo tokens. */
+.choice-card {
+  display: flex; align-items: center; gap: 16px; width: 100%; padding: 20px;
+  border: 1.5px solid var(--line); border-radius: var(--r-card);
+  background: var(--surface); cursor: pointer; text-align: left;
+  transition: border-color .2s, box-shadow .22s, transform .16s var(--ease-spring);
+}
+.choice-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--brand); }
+.choice-card:active { transform: translateY(0); }
+.choice-card--ai:hover { border-color: var(--ai); }
+.choice-card__ic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; flex: none; }
+.choice-card__ic--man { background: var(--primary-soft); color: var(--brand); }
+.choice-card__ic--ai  { background: var(--ai-grad); color: #fff; }
+.choice-card__tx { min-width: 0; }
+.choice-card__ttl { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h4); color: var(--ink); }
+.choice-card__sub { font-size: var(--fs-meta); color: var(--muted); font-weight: 600; line-height: 1.4; margin-top: 2px; }
+.choice-card__arr { margin-left: auto; flex: none; color: var(--muted-2); transition: color .2s, transform .2s; }
+.choice-card:hover .choice-card__arr { color: var(--brand); transform: translateX(3px); }
+.choice-card--ai:hover .choice-card__arr { color: var(--ai); }
+
+/* Empty Trips — editorial split (hero + stacked choices). Collapses at 880px. */
+.trips-empty { display: grid; grid-template-columns: 1.05fr .95fr; gap: 34px; align-items: center; align-content: center; min-height: calc(100dvh - 128px); padding: 32px 4px; }
+.trips-empty__hero h1 { letter-spacing: -.01em; max-width: 15ch; }
+.trips-empty__hero p { font-size: var(--fs-h4); color: var(--muted); font-weight: 500; max-width: 42ch; margin: 16px 0 0; }
+.trips-empty__choices { display: flex; flex-direction: column; gap: 14px; }
+@media (max-width: 880px) {
+  .trips-empty { grid-template-columns: 1fr; gap: 24px; padding: 16px 0; }
+}
+
 /* Tighter app-main padding on small screens */
 @media (max-width: 1100px) {
   .planner-2col { grid-template-columns: 1fr !important; }
@@ -1116,60 +1146,72 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 }
 
 /* ── Unified create-flow (manual + AI) ──────────────────────────────────────
-   Slim top bar (icon back + full-width progress) glued under the app header,
-   then a two-pane shell: a big full-bleed map that is the spatial anchor, and
-   a scrollable editing column beside it. Replaces the old small map-card. */
-.flow-screen {
+   Mirrors the trip-edit two-card layout: a framed full-bleed map (left) and a
+   framed white .lp panel (right) holding the progress header → scroll body →
+   sticky footer. Reuses .lp / .lp-b / .lp-f and the same 14px inset / 16px
+   radius framing as .ts-leftbox / .ts-map. */
+.flow-root {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg, var(--wash));
 }
-.flow-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 24px;
-  border-bottom: 1px solid var(--line-2);
-  background: var(--surface);
-}
-.flow-progress-wrap { flex: 1; min-width: 0; }
-.flow-shell {
+.flow-grid {
   flex: 1;
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /* Explicit full-height row — without it the implicit auto row collapses to the
+     card's content height, which left an empty strip below AND stopped .lp-b from
+     scrolling (the bug behind "пустая полоса" + "скроллы не работают"). */
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
 }
-.flow-shell__map {
-  position: relative;
-  min-height: 0;
-  border-right: 1px solid var(--line-2);
-  background: var(--wash);
+.flow-mapcol { position: relative; min-width: 0; min-height: 0; }
+.flow-mapbox {
+  position: absolute;
+  inset: 14px;
+  right: 7px;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--line);
 }
-.flow-edit {
-  min-width: 0;
-  overflow-y: auto;
-  padding: 32px 28px 48px;
-}
-.flow-standalone {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 32px 24px 48px;
-}
+.flow-editcol { position: relative; min-width: 0; min-height: 0; display: flex; }
+/* The .lp card is the single frame (its own border / radius / shadow); its
+   margins match the map box so the two read as equal cards. */
+.flow-editcol > .lp { flex: 1; min-width: 0; min-height: 0; margin: 14px 14px 14px 7px; }
+/* Progress header — bordered, non-scrolling top of the card. */
+.flow-lp-h { flex: none; padding: 12px 16px; border-bottom: 1px solid var(--line-2); background: var(--surface); }
+.flow-lp-b { padding: 20px; }
+
+/* Phones / tablets: the map is a normal block on top, everything scrolls with
+   the page, and the footer is pinned to the viewport bottom (the mobile
+   bottom-nav is already hidden on these routes). */
 @media (max-width: 960px) {
-  .flow-shell {
-    grid-template-columns: 1fr;
-    grid-template-rows: 300px minmax(0, 1fr);
-  }
-  .flow-shell__map { border-right: none; border-bottom: 1px solid var(--line-2); }
-  .flow-edit { padding: 24px 18px 40px; }
+  /* Map is a fixed-height block on top; the card fills the rest of the viewport
+     with its OWN scrolling body (.lp-b) and the footer stays in flow at the
+     bottom — no position:fixed, so it can't overlap the content. */
+  .flow-grid { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .flow-mapbox { position: relative; inset: auto; right: auto; height: 230px; margin: 12px 12px 0; border-radius: 14px; }
+  .flow-editcol > .lp { margin: 12px; }
+  .flow-lp-b { padding: 16px 14px; }
 }
 
 /* Manual planner CityRow.
    When the date and nights inputs are hidden (finalPoint), the row should
    collapse around the remaining slots — auto-flow columns handle that
    cleanly, and the picker still gets the flexible space via flex:1. */
+/* Colour/shadow transitions live in CSS (not inline) so useRouteDnD can own the
+   row's transform + its transition imperatively without React clobbering it. */
+.planner-city-card { transition: background .15s var(--ease-out), border-color .15s var(--ease-out), box-shadow .15s var(--ease-out); }
+.planner-city-card:hover { box-shadow: var(--sh-2); }
+/* Lift while dragging — mirrors the editor's .te-row.is-dragging (pop shadow,
+   raised stacking, surface fill), NOT a fade. The translate/scale is owned by
+   useRouteDnD imperatively on this same element. */
+.planner-city-card.is-dragging { position: relative; z-index: 30; background: var(--surface) !important; border-color: var(--line) !important; box-shadow: var(--shadow-pop); cursor: grabbing; }
+@media (prefers-reduced-motion: reduce) { .planner-city-card { transition: none; } }
 .planner-city-row {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
