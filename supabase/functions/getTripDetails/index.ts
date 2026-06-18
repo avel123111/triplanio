@@ -124,7 +124,12 @@ Deno.serve(async (req) => {
     // Assemble response
     const response: Record<string, unknown> = { trip };
 
-    if (wantShell)     response.cityVisits        = pick('cityVisits');
+    if (wantShell) {
+      const cv = (pick('cityVisits') as any[]) ?? [];
+      // iata_city_code is no longer a stored column — derive it from the embedded
+      // cities row so existing consumers (Aviasales flight deep-link) keep working.
+      response.cityVisits = cv.map((v) => ({ ...v, iata_city_code: v?.cities?.iata_code ?? null }));
+    }
     if (wantContent) {
                        response.hotels             = pick('hotels');
                        response.activities         = pick('activities');

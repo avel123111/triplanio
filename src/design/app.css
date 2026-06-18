@@ -1908,6 +1908,10 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .lp-f--ratio { justify-content: stretch; }
 .lp-f--ratio > .btn:first-child { flex: 2; }
 .lp-f--ratio > .btn:last-child  { flex: 8; }
+/* Event create/edit footer: a quiet icon-only Delete pinned left, Cancel
+   (secondary), and Save as the dominant CTA filling the remaining width. */
+.lp-f--edit .ev-del  { flex: none; padding-left: 14px; padding-right: 14px; }
+.lp-f--edit .ev-save { flex: 1; }
 @media (max-width: 640px) {
   .lp-f--ratio > .btn:first-child { flex: 0 0 auto; }
   .lp-f--single > .btn { width: 100%; }
