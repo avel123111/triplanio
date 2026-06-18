@@ -26,9 +26,10 @@ import { optimisticContentUpdate } from '@/lib/trip-data';
 import { BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
 import {
   Map as MapIcon, Calendar, FileText,
-  Bed, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Camera,
-  Wifi, ShieldCheck,
+  BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
+  ShieldCheck,
 } from 'lucide-react';
+import { CardSim } from '@/design/icons';
 
 export const TABLE_BY_KIND = {
   hotel: 'hotel_stays',
@@ -44,14 +45,14 @@ export const TRANSPORT_ICONS = {
 
 export function eventTheme(kind, entity) {
   if (kind === 'hotel') {
-    return { color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', ink: 'var(--ev-hotel-ink)', Icon: Bed, labelKey: 'budget.cat_accommodation' };
+    return { color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', ink: 'var(--ev-hotel-ink)', Icon: BedDouble, labelKey: 'budget.cat_accommodation' };
   }
   if (kind === 'activity') {
-    return { color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', ink: 'var(--ev-activity-ink)', Icon: Camera, labelKey: 'budget.source_activity' };
+    return { color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', ink: 'var(--ev-activity-ink)', Icon: Ticket, labelKey: 'budget.source_activity' };
   }
   if (kind === 'service') {
     if (entity?.kind === 'esim') {
-      return { color: 'var(--ev-esim)', soft: 'var(--ev-esim-soft)', ink: 'var(--ev-esim-ink)', Icon: Wifi, labelKey: 'service.kind.esim' };
+      return { color: 'var(--ev-esim)', soft: 'var(--ev-esim-soft)', ink: 'var(--ev-esim-ink)', Icon: CardSim, labelKey: 'service.kind.esim' };
     }
     if (entity?.kind === 'insurance') {
       return { color: 'var(--ev-insurance)', soft: 'var(--ev-insurance-soft)', ink: 'var(--ev-insurance-ink)', Icon: ShieldCheck, labelKey: 'service.kind.insurance' };

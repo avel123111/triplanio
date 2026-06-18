@@ -19,39 +19,28 @@ import { Btn } from '@/design/index';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import {
   Edit2, Trash2, ExternalLink, MapPin, X,
-  Plane, TrainFront, Bus, Car, Ship, Footprints, Hotel, Drama,
 } from 'lucide-react';
 import {
   useEventViewModel, useEntityDocs, EventViewSections,
 } from '@/components/common/EventViewBody';
 
-// ── Eyebrow (category line) per kind ─────────────────────────────────────────
-const TRANSPORT_ICON = {
-  plane: Plane, train: TrainFront, bus: Bus, car: Car, taxi: Car,
-  ferry: Ship, walk: Footprints, own_transport: Car, other: Car,
-};
-
-const EyeIcon = ({ as: As }) => (
-  As ? <As size={14} style={{ verticalAlign: '-2px', marginRight: 6, flex: '0 0 auto' }} /> : null
-);
-
+// ── Eyebrow (category line) per kind — текст без инлайн-иконки ────────────────
 function getEyebrowText(kind, entity, t, visit, fromVisit, toVisit, themeLabel) {
   if (kind === 'hotel') {
-    return <><EyeIcon as={Hotel} />{t('budget.cat_accommodation')}{visit?.city_name ? ' · ' + visit.city_name : ''}</>;
+    return `${t('budget.cat_accommodation')}${visit?.city_name ? ' · ' + visit.city_name : ''}`;
   }
   if (kind === 'transfer') {
-    const TIcon = TRANSPORT_ICON[entity?.transport_type] || Car;
     const route = (fromVisit?.city_name && toVisit?.city_name)
       ? ' · ' + fromVisit.city_name + ' → ' + toVisit.city_name : '';
-    return <><EyeIcon as={TIcon} />{themeLabel}{route}</>;
+    return `${themeLabel}${route}`;
   }
   if (kind === 'activity') {
-    return <><EyeIcon as={Drama} />{t('budget.source_activity')}{visit?.city_name ? ' · ' + visit.city_name : ''}</>;
+    return `${t('budget.source_activity')}${visit?.city_name ? ' · ' + visit.city_name : ''}`;
   }
   if (kind === 'service') {
     if (entity?.kind === 'esim') return t('service.esim_eyebrow');
     if (entity?.kind === 'insurance') return t('service.insurance_eyebrow');
-    return <><EyeIcon as={Car} />{t('service.car_kind_label')}</>;
+    return t('service.car_kind_label');
   }
   return themeLabel;
 }

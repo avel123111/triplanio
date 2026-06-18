@@ -42,11 +42,11 @@ import './BudgetLens.css';
 const SYS_ICON = {
   accommodation: 'bed',
   transport:     'plane',
-  activities:    'spark',
+  activities:    'ticket',
   services:      'esim',
   food:          'cup',
-  shopping:      'spark',
-  entertainment: 'spark',
+  shopping:      'ticket',
+  entertainment: 'ticket',
   souvenirs:     'gift',
   other:         'wallet',
 };
@@ -54,7 +54,7 @@ const SYS_ICON = {
 const SOURCE_ICON = {
   hotel:    'bed',
   transfer: 'plane',
-  activity: 'spark',
+  activity: 'ticket',
   service:  'esim',
   manual:   'edit',
 };
@@ -364,7 +364,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
 
 // Category palette = the Lumo --cat-1..8 tokens (single source: category-colors).
 const CAT_COLORS = CATEGORY_HEXES;
-const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'spark', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
+const CAT_ICONS_BUDGET = ['wallet', 'bed', 'plane', 'ticket', 'cup', 'cam', 'shield', 'gift', 'esim', 'card'];
 
 function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
   const isMobile = useIsMobile();
@@ -677,7 +677,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
           {/* На одного */}
           <div className="card bgt-stat bgt-stat--ppl">
-            <div className="bgt-stat__ic"><Icon name="users" size={21} /></div>
+            <div className="bgt-stat__ic"><Icon name="user" size={21} /></div>
             <div className="bgt-stat__m">
               <div className="bgt-stat__l">{t('budget.per_person_label')}</div>
               <div className="bgt-stat__v">{money(memberCount > 0 ? totalSpent / memberCount : totalSpent, mainCurrency)}</div>

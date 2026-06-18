@@ -6,6 +6,7 @@ import {
   Share2, Send, Search, Plane, Paperclip, Moon, List, LayoutGrid, Globe,
   GripVertical, Crown, ArrowRightLeft, Upload, TrainFront, Sun, Shield, RefreshCw,
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
+  Ticket, Route, ShieldCheck, Car,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,6 +58,29 @@ const BRAND = {
   ),
 };
 
+// ── lucide-иконки новее нашей версии 0.475 — инлайн-SVG из lucide 1.21 ────────
+// (folder-bookmark, card-sim). Тот же stroke-стиль, что у lucide.
+const strokeSvg = (size, style, className, color, strokeWidth) => ({
+  width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
+  stroke: color || 'currentColor', strokeWidth, strokeLinecap: 'round',
+  strokeLinejoin: 'round', className, style, 'aria-hidden': true,
+});
+const FolderBookmark = ({ size = 24, style, className, color, strokeWidth = 2 }) => (
+  <svg {...strokeSvg(size, style, className, color, strokeWidth)}>
+    <path d="M12 6v8l3-3 3 3V6" />
+    <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z" />
+  </svg>
+);
+const CardSim = ({ size = 24, style, className, color, strokeWidth = 2 }) => (
+  <svg {...strokeSvg(size, style, className, color, strokeWidth)}>
+    <path d="M12 14v4" />
+    <path d="M14.172 2a2 2 0 0 1 1.414.586l3.828 3.828A2 2 0 0 1 20 7.828V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+    <path d="M8 14h8" />
+    <rect x="8" y="10" width="8" height="8" rx="1" />
+  </svg>
+);
+export { FolderBookmark, CardSim };
+
 // ── Карта name → lucide ──────────────────────────────────────────────────────
 const LUCIDE = {
   plus: Plus, warning: TriangleAlert, close: X, chev: ChevronRight, back: ArrowLeft,
@@ -72,6 +96,9 @@ const LUCIDE = {
   menu: Menu,
   // имена из лендинга (фичи/списки)
   gift: Gift, devices: MonitorSmartphone, timeline: Waypoints, compass: Compass,
+  // правки иконок событий (2026-06-18)
+  ticket: Ticket, route: Route, 'shield-check': ShieldCheck, car: Car,
+  'folder-bookmark': FolderBookmark, 'card-sim': CardSim,
 };
 
 // ── Легаси-набор (fallback для имён вне LUCIDE/BRAND) ─────────────────────────

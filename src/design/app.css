@@ -1150,7 +1150,10 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    framed white .lp panel (right) holding the progress header → scroll body →
    sticky footer. Reuses .lp / .lp-b / .lp-f and the same 14px inset / 16px
    radius framing as .ts-leftbox / .ts-map. */
-.flow-root {
+/* NB: do NOT name this `.flow-root` — that collides with the global `.flow-root`
+   BFC utility (`display: flow-root`), which overrode `display:flex` here and
+   collapsed the whole grid (empty strip + dead scroll). */
+.flow-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -1199,49 +1202,50 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .flow-lp-b { padding: 16px 14px; }
 }
 
-/* Manual planner CityRow.
-   When the date and nights inputs are hidden (finalPoint), the row should
-   collapse around the remaining slots — auto-flow columns handle that
-   cleanly, and the picker still gets the flexible space via flex:1. */
-/* Colour/shadow transitions live in CSS (not inline) so useRouteDnD can own the
-   row's transform + its transition imperatively without React clobbering it. */
-.planner-city-card { transition: background .15s var(--ease-out), border-color .15s var(--ease-out), box-shadow .15s var(--ease-out); }
-.planner-city-card:hover { box-shadow: var(--sh-2); }
-/* Lift while dragging — mirrors the editor's .te-row.is-dragging (pop shadow,
-   raised stacking, surface fill), NOT a fade. The translate/scale is owned by
-   useRouteDnD imperatively on this same element. */
-.planner-city-card.is-dragging { position: relative; z-index: 30; background: var(--surface) !important; border-color: var(--line) !important; box-shadow: var(--shadow-pop); cursor: grabbing; }
-@media (prefers-reduced-motion: reduce) { .planner-city-card { transition: none; } }
-.planner-city-row {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
-  align-items: center;
-  gap: 10px;
-}
-.planner-city-row__date   { width: 140px; }
-.planner-city-row__nights { width: auto; }
-.planner-city-row__handle { grid-column: auto; }
-.planner-city-row__num    { grid-column: auto; }
-.planner-city-row__picker { grid-column: auto; }
-.planner-city-row__date   { grid-column: auto; }
-.planner-city-row__nights { grid-column: auto; }
-.planner-city-row__actions{ grid-column: auto; }
+/* Planner city row — reuses the editor's .te-row (resting/hover/.is-dragging lift)
+   and its inner primitives (.te-grip / .te-row__num / .te-cityname / .te-dts /
+   .te-stepper / .te-step), so the row is the SAME element family as the editor.
+   The --plan modifier just relays out as flex (the editor's 6-col grid and its
+   mobile overrides don't fit the planner's columns). The resting card look is set
+   here because the planner list isn't inside .te-table. */
+.te-row--plan { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 15px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--sh-1); cursor: default; }
+.te-row--plan .te-citycell { flex: 1; min-width: 0; }
+.te-row--plan.te-row--fin { background: var(--warm-tint, color-mix(in oklab, var(--warm) 14%, transparent)); border-color: var(--warm); }
+.te-row--plan.te-row--bad { border-color: var(--danger); }
+/* Delete stays visible (primary row action), unlike the hover-revealed steppers. */
+.te-row--plan .te-step--del { opacity: 1; color: var(--muted); }
+.te-row--plan .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
+/* Last-city card: the .te-row sits flush inside a bordered shell whose bottom
+   strip holds the final-point toggle, so the toggle reads as part of the last
+   city (the finish), not a stray control. */
+.pl-lastcard { border: 1px solid var(--line); border-radius: 15px; background: var(--surface); box-shadow: var(--sh-1); overflow: hidden; }
+.pl-lastcard.is-fin { border-color: var(--warm); }
+.pl-lastcard > .te-row--plan { border: none; border-radius: 0; box-shadow: none; }
+.pl-lastcard > .te-row--plan.is-dragging { box-shadow: none; }
+.pl-fin-sub { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px dashed var(--line-2); }
 
-@media (max-width: 640px) {
-  .planner-city-row {
-    grid-template-columns: auto 1fr auto;
-    grid-template-areas:
-      "handle picker actions"
-      "num    date    nights";
-    row-gap: 8px;
-  }
-  .planner-city-row__handle  { grid-area: handle; }
-  .planner-city-row__num     { grid-area: num; }
-  .planner-city-row__picker  { grid-area: picker; min-width: 0; }
-  .planner-city-row__date    { grid-area: date; }
-  .planner-city-row__nights  { grid-area: nights; justify-self: end; }
-  .planner-city-row__actions { grid-area: actions; }
-}
+/* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
+   planner. These lived only in TripStructureEdit's inline <style>, so the planner
+   rendered them UNSTYLED (the broken/cramped calendar). Now global → one source. */
+.ts-step { border: none; background: transparent; border-radius: 8px; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }
+.ts-step:hover { background: var(--wash); }
+.ts-step:active:not(:disabled) { transform: scale(0.9); }
+.ts-step:disabled { opacity: .3; cursor: default; }
+.ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
+.ts-startctl__lbl { font-size: var(--fs-meta); font-weight: 600; color: var(--muted); padding: 0 4px 0 6px; }
+.ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; font-size: var(--fs-meta); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.ts-startctl__date:hover { background: var(--wash); }
+.ts-cal { width: 248px; }
+.ts-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.ts-cal__title { font-weight: 600; font-size: var(--fs-base); color: var(--ink); text-transform: capitalize; }
+.ts-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.ts-cal__wd { margin-bottom: 4px; }
+.ts-cal__wdc { text-align: center; font-size: var(--fs-micro); font-weight: 700; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
+.ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-size: var(--fs-meta); font-weight: 600; color: var(--ink); display: grid; place-items: center; }
+.ts-cal__day:hover { background: var(--wash); }
+.ts-cal__day.on { background: var(--brand); color: #fff; }
+.sheet .ts-cal { width: 100%; max-width: 340px; margin: 0 auto; }
+@media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
 @media (max-width: 720px) {
   .app-main { padding: 12px 12px 100px; }
   .dlg-backdrop { padding: 12px; }

@@ -21,8 +21,10 @@ import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import AiField from '@/components/ui/AiField';
 import {
   Loader2, Sparkles, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft, X,
-  Bed, Plane, Camera, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, Wifi, ShieldCheck,
+  Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
+  BedDouble, Ticket,
 } from 'lucide-react';
+import { CardSim } from '@/design/icons';
 import { DateTime } from 'luxon';
 
 // ── Design-system form primitives ──────────────────────────────────────────
@@ -150,7 +152,7 @@ import ProUpsellModal from '@/components/common/ProUpsellModal';
 const TYPE_META = {
   hotel: {
     color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)', ink: 'var(--ev-hotel-ink)',
-    Icon: Bed, labelKey: 'event.type_hotel',
+    Icon: BedDouble, labelKey: 'event.type_hotel',
     titleNewKey: 'event.title_new_hotel', titleEditKey: 'event.title_edit_hotel',
   },
   transfer: {
@@ -160,7 +162,7 @@ const TYPE_META = {
   },
   activity: {
     color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)', ink: 'var(--ev-activity-ink)',
-    Icon: Camera, labelKey: 'event.type_activity',
+    Icon: Ticket, labelKey: 'event.type_activity',
     titleNewKey: 'event.title_new_activity', titleEditKey: 'event.title_edit_activity',
   },
   service: {
@@ -177,7 +179,7 @@ const TYPE_META = {
 const SERVICE_META = {
   esim: {
     color: 'var(--ev-esim)', soft: 'var(--ev-esim-soft)', ink: 'var(--ev-esim-ink)',
-    Icon: Wifi, labelKey: 'service.kind.esim',
+    Icon: CardSim, labelKey: 'service.kind.esim',
     titleNewKey: 'service.esim_new', titleEditKey: 'service.esim_edit',
   },
   insurance: {

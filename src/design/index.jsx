@@ -403,7 +403,7 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
       display: "flex", gap: 12, maxWidth: 360,
     }}>
       <div style={{ width: 48, height: 48, borderRadius: 8, background: p?.color || "var(--brand)", color: "white", display: "grid", placeItems: "center", flexShrink: 0, fontSize: 'var(--fs-h3)', fontWeight: 700 }}>
-        <Icon name={type === "hotel" ? "bed" : type === "flight" ? "plane" : type === "train" ? "train" : "spark"} size={20} />
+        <Icon name={type === "hotel" ? "bed" : type === "flight" ? "plane" : type === "train" ? "train" : "ticket"} size={20} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', marginBottom: 2 }}>{name}</div>
@@ -672,12 +672,12 @@ function _evMeta(e) {
     "car-return":     { c: "var(--ev-car)",      soft: "var(--ev-car-soft)",      icon: "car",     label: "Возврат авто", labelKey: "car.dropoff_event" },
     "activity": {
       c: "var(--ev-activity)", soft: "var(--ev-activity-soft)",
-      icon: e.category === "food" ? "cup" : e.category === "sight" ? "cam" : "spark",
+      icon: "ticket",
       label: e.category === "food" ? "Еда" : e.category === "sight" ? "Достопримечательность" : "Активность",
       labelKey: e.category === "food" ? "tl.cat_food" : e.category === "sight" ? "tl.cat_sight" : "event.type_activity",
     },
   };
-  return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "spark", label: "", labelKey: "" };
+  return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "ticket", label: "", labelKey: "" };
 }
 
 // ── Mobile transfer row - stacked with a vertical departure→arrival scale ──────

@@ -292,7 +292,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
           )}
           {cityActivities.length > 0 && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999, fontSize: 'var(--fs-meta)', fontWeight: 500 }}>
-              <Icon name="cam" size={12} style={{ color: 'var(--warm)' }} /> {cityActivities.length} {t('view.map_activities_short')}
+              <Icon name="ticket" size={12} style={{ color: 'var(--warm)' }} /> {cityActivities.length} {t('view.map_activities_short')}
             </span>
           )}
         </div>
@@ -352,7 +352,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
                   color: 'var(--ev-activity)',
                   display: 'grid', placeItems: 'center', flexShrink: 0,
                 }}>
-                  <Icon name="cam" size={11} />
+                  <Icon name="ticket" size={11} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
                   <div style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ink)', lineHeight: 1.35 }}>

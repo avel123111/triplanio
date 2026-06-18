@@ -28,7 +28,7 @@ const TKIND = {
 };
 export function kindIcon(kind, entity) {
   if (kind === 'transfer') return (TKIND[entity?.transport_type] || TKIND.plane).icon;
-  return kind === 'hotel' ? 'bed' : kind === 'activity' ? 'spark' : 'car';
+  return kind === 'hotel' ? 'bed' : kind === 'activity' ? 'ticket' : 'car';
 }
 function money(p, c) { return fmtPrice(p, c) || '—'; }
 function paymentLabel(t, status) {
