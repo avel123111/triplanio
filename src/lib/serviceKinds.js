@@ -7,7 +7,7 @@
 // modal (ForkPartnerModal). Change a colour here → it changes in every surface.
 //
 // `icon` is a design-system Icon name (used by the cards). The dialogs render
-// their own lucide icon of the same concept (Wifi / Car / ShieldCheck).
+// their own lucide icon of the same concept (CardSim / Car / ShieldCheck).
 export const SERVICE_KINDS = {
   esim: {
     color: 'var(--ev-esim)', soft: 'var(--ev-esim-soft)', ink: 'var(--ev-esim-ink)',

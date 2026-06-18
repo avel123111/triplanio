@@ -923,7 +923,7 @@ function AddDayButton({ dayKey, onAddCity, onAddActivity }) {
             onClick={() => { onAddActivity?.(dayKey); }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card text-sm font-medium hover:bg-secondary transition"
           >
-            <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
+            <Ticket className="w-3.5 h-3.5 text-muted-foreground" />
             {t('view.add_activity')}
           </button>
         </>

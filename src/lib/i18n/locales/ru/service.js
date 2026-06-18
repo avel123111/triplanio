@@ -62,14 +62,14 @@ export default {
   // eSIM view/edit dialog
   'service.esim_new': 'Добавить eSIM',
   'service.esim_edit': 'Редактировать eSIM',
-  'service.esim_eyebrow': '📶 eSIM · Мобильный интернет',
+  'service.esim_eyebrow': 'eSIM · Мобильный интернет',
   'service.esim_notes_ph': 'QR-код, инструкции по установке…',
   'service.esim_cost_section': 'Стоимость',
   'service.esim_docs_section': 'Документы',
   // Insurance view/edit dialog
   'service.insurance_new': 'Добавить страховку',
   'service.insurance_edit': 'Редактировать страховку',
-  'service.insurance_eyebrow': '🛡 Страховка',
+  'service.insurance_eyebrow': 'Страховка',
   'service.insurance_section': 'Полис',
   'service.insurance_cost_section': 'Стоимость',
   'service.insurance_docs_section': 'Документы',
