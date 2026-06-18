@@ -49,7 +49,7 @@ export async function buildTripData(tripId: string): Promise<TripData | null> {
     { data: services },
     { data: members },
   ] = await Promise.all([
-    supabaseAdmin.from('city_visits').select('*').eq('trip_id', tripId),
+    supabaseAdmin.from('city_visits').select('*, cities(*)').eq('trip_id', tripId),
     supabaseAdmin.from('hotel_stays').select('*').eq('trip_id', tripId),
     supabaseAdmin.from('activities').select('*').eq('trip_id', tripId),
     supabaseAdmin.from('transfers').select('*').eq('trip_id', tripId),
