@@ -245,15 +245,16 @@ function CityAnchorRow({ label, city_name, country, kind }) {
 // route looks and behaves identically to the structural editor — same bold city
 // names, same nights stepper, same lift-on-drag. No bespoke steppers/fonts. The
 // final-point toggle lives once in StepCities (not per row).
-function CityRow({ idx, city, isDragging, isFinalAnchor, onArm, onChange, onRemove, onMove }) {
+function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onToggleFinalPoint, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
   const invalid = !!city.city_name && city.latitude == null;
   const nights = +city.nights || 1;
   const startLabel = city.startDate ? shortDateLabel(city.startDate, lang) : null;
   const endLabel = (city.startDate && city.nights) ? shortDateLabel(addDays(city.startDate, +city.nights), lang) : null;
-  // Selected city renders as the editor's bold .te-cityname; click it to re-open
-  // the picker. Empty rows start in the picker.
+  // Empty rows open in the picker; once a city is chosen it shows as the editor's
+  // bold .te-cityname (read-only — change a city by deleting + re-adding, exactly
+  // like the editor, so it can NEVER get stuck as an input).
   const [editing, setEditing] = useState(!city.city_name);
   const stopArm = (e) => e.stopPropagation();
   const pick = (picked) => {
@@ -264,11 +265,10 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, onArm, onChange, onRemo
       onChange({ city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
     }
   };
-  return (
+  const row = (
     <div
       className={'te-row te-row--plan' + (isDragging ? ' is-dragging' : '') + (isFinalAnchor ? ' te-row--fin' : '') + (invalid ? ' te-row--bad' : '')}
       onPointerDown={onArm}
-      onClick={() => { if (!editing && city.city_name) setEditing(true); }}
     >
       {/* Drag grip + keyboard reorder — identical to the editor's gripEl. The whole
           row arms the pointer-drag; the grip just stops its own click. */}
@@ -304,6 +304,25 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, onArm, onChange, onRemo
       )}
 
       <button className="te-step te-step--del" onPointerDown={stopArm} onClick={(e) => { e.stopPropagation(); onRemove(); }} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
+    </div>
+  );
+
+  if (!isLast) return row;
+  // Last city — its card carries the final-point toggle (the "finish" applies to
+  // THIS city), so the control stays attached to the city it governs.
+  return (
+    <div className={'pl-lastcard' + (finalPoint ? ' is-fin' : '')}>
+      {row}
+      <div className="pl-fin-sub" onPointerDown={stopArm} onClick={stopArm}>
+        <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
+        <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
+          <span style={{ fontWeight: 600 }}>
+            <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: 'var(--warm)' }} />
+            {t('planner.final_point')}
+          </span>
+          <span className="muted" style={{ marginLeft: 6 }}>{t('planner.final_point_hint')}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -525,7 +544,10 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
                   idx={dIdx}
                   city={c}
                   isDragging={dragIdx === dIdx}
+                  isLast={dIdx === cities.length - 1}
                   isFinalAnchor={dIdx === cities.length - 1 && finalPoint}
+                  finalPoint={finalPoint}
+                  onToggleFinalPoint={setFinalPoint}
                   onArm={(e) => armDrag(e, dIdx, c.id)}
                   onChange={(patch) => update(c.id, patch)}
                   onRemove={() => remove(c.id)}
@@ -545,21 +567,6 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
           >
             <Icon name="plus" size={14} /> {t('planner.add_more_city')}
           </button>
-        </div>
-      )}
-
-      {/* Final-point toggle — one control for the whole route (the last city is the
-          finish, skipping the return). Uses the design-system Toggle. */}
-      {cities.length > 0 && (
-        <div className="planner-fin">
-          <Toggle on={finalPoint} onChange={setFinalPoint} label={t('planner.final_point')} />
-          <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
-            <span style={{ fontWeight: 600 }}>
-              <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: 'var(--warm)' }} />
-              {t('planner.final_point')}
-            </span>
-            <span className="muted" style={{ marginLeft: 6 }}>{t('planner.final_point_hint')}</span>
-          </div>
         </div>
       )}
 
