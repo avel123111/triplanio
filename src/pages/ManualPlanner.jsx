@@ -240,26 +240,29 @@ function CityRow({ idx, total, city, isDragging, isLast, finalPoint, onToggleFin
   const invalid = !!city.city_name && city.latitude == null;
   const startLabel = city.startDate ? shortDateLabel(city.startDate, lang) : null;
   const endLabel = (city.startDate && city.nights) ? shortDateLabel(addDays(city.startDate, +city.nights), lang) : null;
+  // The WHOLE card is the drag target (exactly like the editor's .te-row) so the
+  // grab feels solid, not "дёрганый". Interactive controls call stopArm on
+  // pointerdown so pressing them never starts a drag; useRouteDnD owns the lift.
+  const stopArm = (e) => e.stopPropagation();
   return (
     <div
-      className="planner-city-card"
+      className={'planner-city-card' + (isDragging ? ' is-dragging' : '')}
+      onPointerDown={onArm}
       style={{
         background: isFinalAnchor ? accentSoft : 'var(--surface)',
         border: '1px solid ' + (invalid ? 'var(--danger, #e74c3c)' : isFinalAnchor ? accentColor : 'var(--line)'),
         borderRadius: 12,
-        opacity: isDragging ? 0.4 : 1,
         overflow: 'hidden',
+        cursor: 'grab',
       }}
     >
     <div className="planner-city-row" style={{ padding: '10px 12px' }}>
-      {/* Drag handle — arms the shared useRouteDnD pointer-drag (mouse: immediate;
-          touch/pen: long-press). Inner controls live outside the handle, so they
-          never trigger a drag. */}
+      {/* Drag grip — purely visual (the whole card arms the drag). Keyboard
+          reorder still runs through the move buttons / useRouteDnD. */}
       <div
         className="planner-city-row__handle"
-        onPointerDown={onArm}
         title={t('planner.drag')}
-        style={{ width: 22, height: 22, borderRadius: 5, display: 'grid', placeItems: 'center', color: 'var(--muted-2)', cursor: 'grab', touchAction: 'none' }}
+        style={{ width: 22, height: 22, borderRadius: 5, display: 'grid', placeItems: 'center', color: 'var(--muted-2)', cursor: 'grab' }}
       >
         <Icon name="drag" size={14} />
       </div>
@@ -270,7 +273,7 @@ function CityRow({ idx, total, city, isDragging, isLast, finalPoint, onToggleFin
       </div>
 
       {/* City search */}
-      <div className="planner-city-row__picker" style={{ minWidth: 0 }}>
+      <div className="planner-city-row__picker" onPointerDown={stopArm} style={{ minWidth: 0 }}>
         <CityPicker
           value={city.city_name ? city : null}
           onChange={(picked) => {
@@ -296,7 +299,7 @@ function CityRow({ idx, total, city, isDragging, isLast, finalPoint, onToggleFin
 
       {/* Nights stepper - hidden for the final anchor */}
       {!isFinalAnchor && (
-        <div className="planner-city-row__nights" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="planner-city-row__nights" onPointerDown={stopArm} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button type="button" title={t('planner.fewer_nights')} onClick={() => onChange({ nights: Math.max(1, (+city.nights || 1) - 1) })}
             disabled={(+city.nights || 1) <= 1}
             style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--surface)', cursor: (+city.nights || 1) <= 1 ? 'default' : 'pointer', opacity: (+city.nights || 1) <= 1 ? 0.4 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 'var(--fs-strong)', fontWeight: 700, lineHeight: 1, paddingBottom: 2 }}>−</button>
@@ -308,7 +311,7 @@ function CityRow({ idx, total, city, isDragging, isLast, finalPoint, onToggleFin
       )}
 
       {/* Actions */}
-      <div className="planner-city-row__actions" style={{ display: 'flex', gap: 2 }}>
+      <div className="planner-city-row__actions" onPointerDown={stopArm} style={{ display: 'flex', gap: 2 }}>
         <button onClick={onMoveUp} disabled={idx === 0} title={t('planner.move_up')} style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: 'transparent', cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.3 : 1, display: 'grid', placeItems: 'center', color: 'var(--muted)' }}>
           <Icon name="chevU" size={12} />
         </button>
@@ -324,7 +327,7 @@ function CityRow({ idx, total, city, isDragging, isLast, finalPoint, onToggleFin
       </div>
     </div>
     {isLast && (
-      <div style={{
+      <div onPointerDown={stopArm} style={{
         borderTop: '1px dashed ' + (isFinalAnchor ? accentColor : 'var(--line-2)'),
         padding: '12px 14px',
         display: 'flex', alignItems: 'center', gap: 12,

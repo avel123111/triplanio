@@ -1116,7 +1116,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .choice-card--ai:hover .choice-card__arr { color: var(--ai); }
 
 /* Empty Trips — editorial split (hero + stacked choices). Collapses at 880px. */
-.trips-empty { display: grid; grid-template-columns: 1.05fr .95fr; gap: 34px; align-items: center; min-height: 100%; padding: 32px 4px; }
+.trips-empty { display: grid; grid-template-columns: 1.05fr .95fr; gap: 34px; align-items: center; align-content: center; min-height: calc(100dvh - 128px); padding: 32px 4px; }
 .trips-empty__hero h1 { letter-spacing: -.01em; max-width: 15ch; }
 .trips-empty__hero p { font-size: var(--fs-h4); color: var(--muted); font-weight: 500; max-width: 42ch; margin: 16px 0 0; }
 .trips-empty__choices { display: flex; flex-direction: column; gap: 14px; }
@@ -1154,6 +1154,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: var(--bg, var(--wash));
 }
@@ -1162,6 +1163,10 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /* Explicit full-height row — without it the implicit auto row collapses to the
+     card's content height, which left an empty strip below AND stopped .lp-b from
+     scrolling (the bug behind "пустая полоса" + "скроллы не работают"). */
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
 }
 .flow-mapcol { position: relative; min-width: 0; min-height: 0; }
@@ -1185,29 +1190,28 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    the page, and the footer is pinned to the viewport bottom (the mobile
    bottom-nav is already hidden on these routes). */
 @media (max-width: 960px) {
-  .flow-root { height: auto; min-height: 100vh; overflow: visible; }
-  .flow-grid { grid-template-columns: 1fr; overflow: visible; }
-  .flow-mapbox { position: relative; inset: auto; right: auto; height: 260px; margin: 12px 12px 0; border-radius: 14px; }
-  .flow-editcol { display: block; }
-  .flow-editcol > .lp { margin: 12px; overflow: visible; }
-  .flow-lp-b { overflow: visible; padding: 16px 14px 84px; }
-  .flow-foot {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 30;
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, .06);
-  }
+  /* Map is a fixed-height block on top; the card fills the rest of the viewport
+     with its OWN scrolling body (.lp-b) and the footer stays in flow at the
+     bottom — no position:fixed, so it can't overlap the content. */
+  .flow-grid { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .flow-mapbox { position: relative; inset: auto; right: auto; height: 230px; margin: 12px 12px 0; border-radius: 14px; }
+  .flow-editcol > .lp { margin: 12px; }
+  .flow-lp-b { padding: 16px 14px; }
 }
 
 /* Manual planner CityRow.
    When the date and nights inputs are hidden (finalPoint), the row should
    collapse around the remaining slots — auto-flow columns handle that
    cleanly, and the picker still gets the flexible space via flex:1. */
-/* Colour/opacity transitions live in CSS (not inline) so useRouteDnD can own the
+/* Colour/shadow transitions live in CSS (not inline) so useRouteDnD can own the
    row's transform + its transition imperatively without React clobbering it. */
-.planner-city-card { transition: background .15s var(--ease-out), border-color .15s var(--ease-out), opacity .15s var(--ease-out); }
+.planner-city-card { transition: background .15s var(--ease-out), border-color .15s var(--ease-out), box-shadow .15s var(--ease-out); }
+.planner-city-card:hover { box-shadow: var(--sh-2); }
+/* Lift while dragging — mirrors the editor's .te-row.is-dragging (pop shadow,
+   raised stacking, surface fill), NOT a fade. The translate/scale is owned by
+   useRouteDnD imperatively on this same element. */
+.planner-city-card.is-dragging { position: relative; z-index: 30; background: var(--surface) !important; border-color: var(--line) !important; box-shadow: var(--shadow-pop); cursor: grabbing; }
+@media (prefers-reduced-motion: reduce) { .planner-city-card { transition: none; } }
 .planner-city-row {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;

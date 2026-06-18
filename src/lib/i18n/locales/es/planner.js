@@ -42,7 +42,7 @@ export default {
   'planner.day_later': 'Un día después',
   'planner.where_to': '¿A dónde vamos?',
   'planner.add_first_city': 'Añade la primera ciudad de la ruta',
-  'planner.add_city': '+ Añadir ciudad',
+  'planner.add_city': 'Añadir ciudad',
   'planner.add_more_city': 'Añadir otra ciudad',
   'planner.err_no_cities': 'Añade al menos una ciudad a la ruta',
   'planner.err_unrecognized': 'Elige cada ciudad de las sugerencias: las ciudades no reconocidas están en rojo',

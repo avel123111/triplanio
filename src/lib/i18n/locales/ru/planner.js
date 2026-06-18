@@ -42,7 +42,7 @@ export default {
   'planner.day_later': 'На день позже',
   'planner.where_to': 'Куда поедем?',
   'planner.add_first_city': 'Добавь первый город маршрута',
-  'planner.add_city': '+ Добавить город',
+  'planner.add_city': 'Добавить город',
   'planner.add_more_city': 'Добавить ещё город',
   'planner.err_no_cities': 'Добавь хотя бы один город маршрута',
   'planner.err_unrecognized': 'Выбери каждый город из списка подсказок: нераспознанные выделены красным',

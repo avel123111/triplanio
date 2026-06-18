@@ -42,7 +42,7 @@ export default {
   'planner.day_later': 'One day later',
   'planner.where_to': 'Where to?',
   'planner.add_first_city': 'Add the first city of the route',
-  'planner.add_city': '+ Add city',
+  'planner.add_city': 'Add city',
   'planner.add_more_city': 'Add another city',
   'planner.err_no_cities': 'Add at least one city to the route',
   'planner.err_unrecognized': 'Pick each city from the suggestions: unrecognized cities are marked red',

@@ -5,14 +5,6 @@ import { useT } from '@/lib/i18n/I18nContext';
 
 const AI = 'var(--ai)';
 
-function aiBtnStyle() {
-  return {
-    display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 11, border: 'none',
-    background: 'var(--ai-grad)', color: '#fff', fontSize: 'var(--fs-base)', fontWeight: 600, cursor: 'pointer',
-    boxShadow: `0 8px 20px -10px color-mix(in srgb, ${AI} 75%, transparent)`,
-  };
-}
-
 // Start/finish marker in the draft list - a flag-badged row with no nights
 // (start/end cities are pure route anchors, the AI returns them without dates).
 function AnchorMini({ label, city }) {
@@ -77,15 +69,13 @@ export default function PanelAi({ ctx }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, alignItems: 'center', gap: 8 }}>
           <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('ai_plan.shortcut_hint')}</span>
           {aiState === 'generating' ? (
-            <button disabled style={{ ...aiBtnStyle(), opacity: 0.8, cursor: 'default' }}>
+            <Btn variant="ai" size="sm" disabled>
               {t('ai_plan.thinking')} <span className="ai-dots" style={{ marginLeft: 4 }}><span /><span /><span /></span>
-            </button>
+            </Btn>
           ) : aiState === 'draft' ? (
             <Btn variant="ai" size="sm" icon="refresh" disabled={!canPrompt} onClick={() => onGenerate(prompt.trim())}>{t('ai_plan.regenerate')}</Btn>
           ) : (
-            <button onClick={() => canPrompt && onGenerate(prompt.trim())} disabled={!canPrompt} style={{ ...aiBtnStyle(), opacity: canPrompt ? 1 : 0.5, cursor: canPrompt ? 'pointer' : 'not-allowed' }}>
-              <Icon name="sparkles" size={15} /> {t('ai_plan.generate_draft')}
-            </button>
+            <Btn variant="ai" size="sm" icon="sparkles" disabled={!canPrompt} onClick={() => canPrompt && onGenerate(prompt.trim())}>{t('ai_plan.generate_draft')}</Btn>
           )}
         </div>
       </div>
