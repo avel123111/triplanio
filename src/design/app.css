@@ -1188,6 +1188,14 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Progress header — bordered, non-scrolling top of the card. */
 .flow-lp-h { flex: none; padding: 12px 16px; border-bottom: 1px solid var(--line-2); background: var(--surface); }
 .flow-lp-b { padding: 20px; }
+/* Step footer reuses .lp-f; on phones it stacks to full-width buttons so long
+   labels (e.g. "Сохранить путешествие") never overflow the row. The bare spacer
+   collapses on mobile. */
+.flow-foot { flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .flow-foot__spacer { display: none; }
+  .flow-foot > .btn { flex: 1 1 auto; min-width: 0; justify-content: center; }
+}
 
 /* Phones / tablets: the map is a normal block on top, everything scrolls with
    the page, and the footer is pinned to the viewport bottom (the mobile
@@ -1215,6 +1223,14 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Delete stays visible (primary row action), unlike the hover-revealed steppers. */
 .te-row--plan .te-step--del { opacity: 1; color: var(--muted); }
 .te-row--plan .te-step--del:hover { color: var(--danger-ink); background: var(--danger-soft); }
+/* Planner readability (scoped — does NOT touch the editor's shared .te-* sizes):
+   give the create-flow row a real type hierarchy instead of the cramped editor
+   density. City name is the row anchor; dates/nights step up off the 10.5/11.5px
+   floor onto the Lumo scale. */
+.te-row--plan .te-cityname { font-size: 16px; }
+.te-row--plan .te-dts { font-size: var(--fs-meta); }
+.te-row--plan .te-nights { font-size: 13px; }
+.te-row--plan { padding: 14px 16px; }
 /* Last-city card: the .te-row sits flush inside a bordered shell whose bottom
    strip holds the final-point toggle, so the toggle reads as part of the last
    city (the finish), not a stray control. */
@@ -1391,6 +1407,11 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .ai-dots span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--ai); margin: 0 1px; animation: blinkdot 1.2s infinite ease-in-out; }
 .ai-dots span:nth-child(2) { animation-delay: .15s; }
 .ai-dots span:nth-child(3) { animation-delay: .3s; }
+/* AI "thinking" indicator — Lumo aiblock treatment (vivid ai-ink on ai-soft,
+   animated dots), NOT a disabled/greyed gradient button. Used while the planner
+   generates a draft. */
+.ai-thinking { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: var(--r-btn); background: var(--ai-soft); color: var(--ai-ink); font-family: var(--font-display); font-weight: 700; font-size: 13px; line-height: 1; }
+.ai-thinking svg { color: var(--ai); }
 .dlg {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -2322,16 +2343,20 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .ts-screen .app-side--rail { display: none; }
   .ts-screen .ts-railwrap { display: none; }
   /* drop the table header row */
-  .te-thead { display: none !important; }
-  /* drop the drag grip — on touch the whole row drags via long-press */
-  .te-grip { display: none !important; }
+  .ts-screen .te-thead { display: none !important; }
+  /* drop the drag grip — on touch the whole row drags via long-press.
+     Scoped to .ts-screen so it does NOT leak onto the planner's .te-row--plan
+     (the create flow keeps its grip affordance on touch). */
+  .ts-screen .te-grip { display: none !important; }
   /* empty hotel/activity placeholders take no space on mobile */
-  .te-cellbtn--ghost { display: none !important; }
-  /* compact row: number + name(+dates) + nights (hotel/activity icons hidden) */
-  .te-row, .te-seamrow { grid-template-columns: 28px minmax(0, 1fr) auto !important; column-gap: 8px !important; padding: 13px 12px !important; }
-  .te-row { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); margin: 7px 0; }
+  .ts-screen .te-cellbtn--ghost { display: none !important; }
+  /* compact row: number + name(+dates) + nights (hotel/activity icons hidden).
+     Scoped to the editor so the planner's flex .te-row--plan is untouched (no
+     leaked grid-template / margins). */
+  .ts-screen .te-row, .ts-screen .te-seamrow { grid-template-columns: 28px minmax(0, 1fr) auto !important; column-gap: 8px !important; padding: 13px 12px !important; }
+  .ts-screen .te-row { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh-1); margin: 7px 0; }
   /* hide hotel/activity presence icons in city rows on mobile */
-  .te-cell--hotel, .te-cell--act { display: none !important; }
+  .ts-screen .te-cell--hotel, .ts-screen .te-cell--act { display: none !important; }
   /* editor sidebar drawer (reuses app-side drawer pattern) */
   .ts-screen .ts-drawer { position: fixed; inset: 0; z-index: 200; pointer-events: none; }
   .ts-screen .ts-drawer.is-open { pointer-events: auto; }

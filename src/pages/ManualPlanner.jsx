@@ -358,7 +358,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.home_title')}</h1>
-      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 22, maxWidth: 540 }}>
+      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
         {t('planner.home_desc')}
       </div>
 
@@ -489,7 +489,7 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.step_cities')}</h1>
-      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 18, maxWidth: 620 }}>
+      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 18, maxWidth: 620 }}>
         {t('planner.cities_desc_1')} <b style={{ color: 'var(--ink)' }}>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
       </div>
 
@@ -593,7 +593,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
       <h1 style={{ marginBottom: 10 }}>
         {t('planner.return_title_pre')} <span style={{ color: 'var(--brand)' }}>{lastCityName}</span>?
       </h1>
-      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 22, maxWidth: 540 }}>
+      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
         {t('planner.return_desc')}
       </div>
 
@@ -612,7 +612,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 
         <button onClick={() => setReturnMode('other')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'other' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'other' ? 'var(--brand)' : 'var(--line)'), borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--warm, #e67e22)', color: 'white', display: 'grid', placeItems: 'center' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--warm)', color: 'white', display: 'grid', placeItems: 'center' }}>
               <Icon name="globe" size={16} />
             </div>
             <div style={{ fontWeight: 600 }}>{t('planner.return_other')}</div>
@@ -691,7 +691,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
   if (savedOk) {
     return (
       <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-        <div style={{ width: 72, height: 72, margin: '0 auto 18px', borderRadius: 18, background: 'var(--success-soft, #d4edda)', color: 'var(--success, #27ae60)', display: 'grid', placeItems: 'center' }}>
+        <div style={{ width: 72, height: 72, margin: '0 auto 18px', borderRadius: 18, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center' }}>
           <Icon name="check" size={36} />
         </div>
         <h1 style={{ marginBottom: 8 }}>{t('planner.created_title')}</h1>
@@ -709,7 +709,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.step_review')}</h1>
-      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 22, maxWidth: 620 }}>
+      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 22, maxWidth: 620 }}>
         {t('planner.review_desc')}
       </div>
 
@@ -740,7 +740,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
               <ReviewRow key={c.id} num={i + 1} name={c.city_name} sub={`${c.country || '-'} · ${c.nights} ${c.nights == 1 ? t('view.nights_one') : c.nights < 5 ? t('view.nights_few') : t('view.nights_many')}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${c.startDate}` : ''}`} />
             ))}
             {returnCity?.city_name && (
-              <ReviewRow icon={returnCity.city_name === home?.city_name ? 'flag' : 'globe'} iconColor={returnCity.city_name === home?.city_name ? 'var(--brand)' : 'var(--warm, #e67e22)'} name={returnCity.city_name} sub={`${returnCity.country || ''} · ${t('planner.sub_return')}`} muted />
+              <ReviewRow icon={returnCity.city_name === home?.city_name ? 'flag' : 'globe'} iconColor={returnCity.city_name === home?.city_name ? 'var(--brand)' : 'var(--warm)'} name={returnCity.city_name} sub={`${returnCity.country || ''} · ${t('planner.sub_return')}`} muted />
             )}
           </div>
 
@@ -756,7 +756,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
                 style={{ fontSize: 'var(--fs-base)', padding: '5px 8px', minWidth: 130 }}
               />
               {!cities[0]?.startDate && (
-                <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--warning, #e6a817)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
+                <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
               )}
             </div>
             <Stat label={t('planner.duration')} value={`${totalNights} ${t('ai_plan.unit_nights_short')}`} />
@@ -1238,7 +1238,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ maxWidth: 480, textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--warning-soft, #fff3cd)', color: 'var(--warning, #e6a817)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
               <Icon name="lock" size={28} />
             </div>
             <h2 style={{ margin: '0 0 8px', fontSize: 'var(--fs-h2)', fontWeight: 700 }}>{t('planner.limit_title')}</h2>
@@ -1380,7 +1380,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               <div className="lp-f flow-foot">
                 {!isFirstStep && <Btn variant="ghost" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
                 {!isFirstStep && <Btn variant="ghost" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
-                <div style={{ flex: 1 }} />
+                <div className="flow-foot__spacer" style={{ flex: 1 }} />
                 <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
               </div>
             )}

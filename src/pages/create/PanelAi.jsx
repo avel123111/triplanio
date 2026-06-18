@@ -47,7 +47,7 @@ export default function PanelAi({ ctx }) {
         </div>
         <div>
           <h1 style={{ marginBottom: 6, letterSpacing: '-0.025em' }}>{t('ai_plan.title')}</h1>
-          <div className="muted" style={{ fontSize: 'var(--fs-strong)', lineHeight: 1.5 }}>{t('ai_plan.page_subtitle')}</div>
+          <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', lineHeight: 1.5 }}>{t('ai_plan.page_subtitle')}</div>
         </div>
       </div>
 
@@ -69,9 +69,11 @@ export default function PanelAi({ ctx }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, alignItems: 'center', gap: 8 }}>
           <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('ai_plan.shortcut_hint')}</span>
           {aiState === 'generating' ? (
-            <Btn variant="ai" size="sm" disabled>
-              {t('ai_plan.thinking')} <span className="ai-dots" style={{ marginLeft: 4 }}><span /><span /><span /></span>
-            </Btn>
+            <span className="ai-thinking" role="status" aria-live="polite">
+              <Icon name="sparkles" size={14} />
+              {t('ai_plan.thinking')}
+              <span className="ai-dots" style={{ marginLeft: 2 }}><span /><span /><span /></span>
+            </span>
           ) : aiState === 'draft' ? (
             <Btn variant="ai" size="sm" icon="refresh" disabled={!canPrompt} onClick={() => onGenerate(prompt.trim())}>{t('ai_plan.regenerate')}</Btn>
           ) : (
