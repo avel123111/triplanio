@@ -54,7 +54,7 @@ export default function PanelAi({ ctx }) {
       <div style={{ background: 'var(--surface)', border: `1.5px solid color-mix(in srgb, ${AI} 22%, var(--line))`, borderRadius: 14, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--ai-grad)', color: '#fff', display: 'grid', placeItems: 'center' }}><Icon name="sparkles" size={12} /></span>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: AI }}>{t('ai_plan.assistant_label')}</div>
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--ai-ink)' }}>{t('ai_plan.assistant_label')}</div>
           <span className="muted" style={{ fontSize: 'var(--fs-micro)', marginLeft: 'auto' }}>{t('ai_plan.assistant_hint')}</span>
         </div>
         <textarea
@@ -84,7 +84,7 @@ export default function PanelAi({ ctx }) {
       <div style={{ marginTop: 14, padding: 14, background: `color-mix(in srgb, ${AI} 7%, transparent)`, borderRadius: 12, fontSize: 'var(--fs-base)', lineHeight: 1.55, color: 'var(--ink-2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--ai-grad)', color: '#fff', display: 'grid', placeItems: 'center' }}><Icon name="sparkles" size={11} /></span>
-          <b style={{ color: AI, fontSize: 'var(--fs-meta)' }}>{t('ai_plan.assistant_label')}</b>
+          <b style={{ color: 'var(--ai-ink)', fontSize: 'var(--fs-meta)' }}>{t('ai_plan.assistant_label')}</b>
           {aiState === 'generating' && <span className="ai-dots" style={{ color: AI, marginLeft: 'auto' }}><span /><span /><span /></span>}
         </div>
         <span style={{ whiteSpace: 'pre-wrap' }}>{statusText}</span>

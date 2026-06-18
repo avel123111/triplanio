@@ -1283,6 +1283,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   let primaryAction = goNext;
   let primaryDisabled = false;
   let showFooter = true;
+  // On the AI entry step the primary CTA is the AI gradient button (design A6),
+  // not the brand primary — keeps the whole AI screen on the --ai layer.
+  let primaryVariant = (step === 'home' && isAi) ? 'ai' : 'primary';
   if (step === 'home') {
     primaryDisabled = isAi ? aiState !== 'draft' : (!home?.city_name || !startDate);
   } else if (step === 'cities') {
@@ -1378,7 +1381,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                 {!isFirstStep && <Btn variant="ghost" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
                 {!isFirstStep && <Btn variant="ghost" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
                 <div style={{ flex: 1 }} />
-                <Btn variant="primary" onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
+                <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
               </div>
             )}
           </div>
