@@ -118,15 +118,15 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
       title={title}
       sub={sub}
       onBack={onClose}
+      footClass={confirmDel ? '' : 'lp-f--ratio'}
       foot={confirmDel ? (
         <>
-          <Btn variant="ghost" onClick={() => setConfirmDel(false)} disabled={deleting}>{t('common.cancel')}</Btn>
+          <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleting}>{t('common.cancel')}</Btn>
           <Btn variant="danger-solid" icon="trash" onClick={doDelete} disabled={deleting}>{deleting ? t('event.deleting') : t('common.delete')}</Btn>
         </>
       ) : (
         <>
-          {canEdit && <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)}>{t('common.delete')}</Btn>}
-          <span style={{ flex: 1 }} />
+          {canEdit && <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} ariaLabel={t('common.delete')}><span className="btn-label-collapse">{t('common.delete')}</span></Btn>}
           {canEdit && <Btn variant="primary" icon="edit" onClick={() => setEditMode(true)}>{t('trip.edit_trip')}</Btn>}
         </>
       )}

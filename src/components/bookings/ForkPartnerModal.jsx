@@ -238,7 +238,7 @@ export default function ForkPartnerModal({
           <div className="lp-ti"><b>{t(meta.titleKey)}</b></div>
         </div>
         <div className="lp-b scrollbar-thin">{body}</div>
-        <div className="lp-f"><Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn></div>
+        <div className="lp-f lp-f--single"><Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn></div>
         {styleTag}
       </div>
     );
@@ -255,7 +255,7 @@ export default function ForkPartnerModal({
         </div>
         <div className="dlg__body">{body}</div>
         <div className="dlg__foot">
-          <Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn>
+          <Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn>
         </div>
         {styleTag}
       </DialogContent>

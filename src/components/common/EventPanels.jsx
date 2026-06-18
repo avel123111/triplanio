@@ -47,7 +47,7 @@ function PaymentBadge({ t, status }) {
 }
 
 // ── shared primitives (Lumo .lp panel, design-faithful) ──────────────────────
-export function PanelShell({ kind = 'hotel', icon, title, sub, onBack, foot, children }) {
+export function PanelShell({ kind = 'hotel', icon, title, sub, onBack, foot, footClass = '', children }) {
   const { t } = useI18n();
   const ev = EV[kind] || EV.hotel;
   return (
@@ -61,7 +61,7 @@ export function PanelShell({ kind = 'hotel', icon, title, sub, onBack, foot, chi
         </div>
       </div>
       <div className="lp-b scrollbar-thin">{children}</div>
-      {foot && <div className="lp-f">{foot}</div>}
+      {foot && <div className={'lp-f' + (footClass ? ' ' + footClass : '')}>{foot}</div>}
     </div>
   );
 }

@@ -1167,7 +1167,7 @@ export default function EventEditDialog({
             {confirmDel ? (
               <>
                 <div style={{ flex: 1 }} />
-                <button className="btn btn--ghost btn--sm" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>
+                <button className="btn btn--secondary btn--sm" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>
                   {t('common.cancel')}
                 </button>
                 <button
@@ -1186,12 +1186,13 @@ export default function EventEditDialog({
                     className="btn btn--danger btn--sm"
                     onClick={() => setConfirmDel(true)}
                     disabled={deleteMut.isPending}
+                    aria-label={t('common.delete')}
                   >
-                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />{t('common.delete')}
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" /><span className="btn-label-collapse">{t('common.delete')}</span>
                   </button>
                 )}
                 <div style={{ flex: 1 }} />
-                <button className="btn btn--ghost btn--sm" onClick={() => onOpenChange(false)}>{t('common.cancel')}</button>
+                <button className="btn btn--secondary btn--sm" onClick={() => onOpenChange(false)}>{t('common.cancel')}</button>
                 <button
                   className="btn btn--primary btn--sm"
                   onClick={handleSaveClick}
