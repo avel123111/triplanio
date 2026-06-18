@@ -7,6 +7,8 @@ export default {
   'planner.back': 'Atrás',
   'planner.next': 'Siguiente',
   'planner.reset': 'Restablecer',
+  'planner.reset_confirm_title': '¿Restablecer el borrador?',
+  'planner.reset_confirm_desc': 'Se borrarán todas las ciudades y los ajustes que indicaste; la planificación empieza de nuevo.',
   'planner.city_search_ph': 'Buscar una ciudad…',
   'planner.city_ph': 'Ciudad',
   'planner.not_set': 'sin indicar',

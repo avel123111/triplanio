@@ -7,6 +7,8 @@ export default {
   'planner.back': 'Назад',
   'planner.next': 'Дальше',
   'planner.reset': 'Сбросить',
+  'planner.reset_confirm_title': 'Сбросить черновик?',
+  'planner.reset_confirm_desc': 'Все введённые города и настройки будут удалены — планирование начнётся заново.',
   'planner.city_search_ph': 'Поиск города…',
   'planner.city_ph': 'Город',
   'planner.not_set': 'не указан',

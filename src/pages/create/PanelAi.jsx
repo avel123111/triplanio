@@ -33,13 +33,13 @@ function AnchorMini({ label, city }) {
 // AI ENTRY PANEL - the method-specific entry for the unified create flow.
 // Prompt → generating → draft. Once a draft is accepted, the remaining
 // steps (skeleton / return / review) are the shared manual-planner ones.
-//   ctx: { aiState, prompt, setPrompt, aiComment, cities, hasDraft,
-//          onGenerate(promptText), goNext }
+// The Next button lives in the shared flow footer (ManualPlanner), not here.
+//   ctx: { aiState, prompt, setPrompt, aiComment, home, returnCity, cities,
+//          onGenerate(promptText) }
 // =====================================================================
 export default function PanelAi({ ctx }) {
   const t = useT();
-  const { aiState, prompt, setPrompt, aiComment, home, returnCity, cities = [], onGenerate, goNext } = ctx;
-  const totalNights = cities.reduce((s, c) => s + (+c.nights || 0), 0);
+  const { aiState, prompt, setPrompt, aiComment, home, returnCity, cities = [], onGenerate } = ctx;
   const canPrompt = prompt.trim().length > 0 && aiState !== 'generating';
 
   let statusText;
@@ -129,18 +129,6 @@ export default function PanelAi({ ctx }) {
         </div>
       )}
 
-      {/* footer - proceed to skeleton once a draft exists */}
-      <div style={{ marginTop: 28, paddingTop: 18, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div style={{ flex: 1 }} />
-        <button onClick={goNext} disabled={aiState !== 'draft'} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 11, border: 'none',
-          background: aiState !== 'draft' ? 'var(--line)' : AI, color: aiState !== 'draft' ? 'var(--muted-2)' : '#fff',
-          fontSize: 'var(--fs-base)', fontWeight: 600, cursor: aiState !== 'draft' ? 'not-allowed' : 'pointer',
-        }}>
-          {t('planner.next_label')} <Icon name="arrowR" size={15} />
-          <span className="num" style={{ marginLeft: 4, opacity: 0.85 }}>{cities.length ? `· ${cities.length} / ${totalNights}${t('planner.night_short')}` : ''}</span>
-        </button>
-      </div>
     </div>
   );
 }

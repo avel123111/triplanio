@@ -19,6 +19,8 @@ import { getGradientById } from '@/lib/trip-gradients';
 import FlowProgress from '@/pages/create/FlowProgress';
 import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
+import { useRouteDnD } from '@/lib/useRouteDnD';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import '../design/app.css';
 
 // Whole days between two ISO date strings (b - a). 0 on bad input.
@@ -202,16 +204,6 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
   );
 }
 
-// ─── FooterNav ────────────────────────────────────────────────────────────────
-
-function FooterNav({ children }) {
-  return (
-    <div style={{ marginTop: 28, paddingTop: 18, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-      {children}
-    </div>
-  );
-}
-
 // ─── CityAnchorRow ────────────────────────────────────────────────────────────
 
 function CityAnchorRow({ label, city_name, country, kind }) {
@@ -234,7 +226,7 @@ function CityAnchorRow({ label, city_name, country, kind }) {
 
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
-function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, finalPoint, onToggleFinalPoint, onDragStart, onDragEnd, onChange, onRemove, onMoveUp, onMoveDown }) {
+function CityRow({ idx, total, city, isDragging, isLast, finalPoint, onToggleFinalPoint, onArm, onChange, onRemove, onMoveUp, onMoveDown }) {
   const t = useT();
   const { lang } = useI18n();
   // When the last city is also the final point, the card switches to an
@@ -250,25 +242,24 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
   const endLabel = (city.startDate && city.nights) ? shortDateLabel(addDays(city.startDate, +city.nights), lang) : null;
   return (
     <div
+      className="planner-city-card"
       style={{
         background: isFinalAnchor ? accentSoft : 'var(--surface)',
         border: '1px solid ' + (invalid ? 'var(--danger, #e74c3c)' : isFinalAnchor ? accentColor : 'var(--line)'),
         borderRadius: 12,
         opacity: isDragging ? 0.4 : 1,
-        boxShadow: dropTop ? 'inset 0 3px 0 0 var(--brand)' : dropBottom ? 'inset 0 -3px 0 0 var(--brand)' : 'none',
-        transition: 'background .15s, border-color .15s, opacity .15s, box-shadow .12s',
         overflow: 'hidden',
       }}
     >
     <div className="planner-city-row" style={{ padding: '10px 12px' }}>
-      {/* Drag handle */}
+      {/* Drag handle — arms the shared useRouteDnD pointer-drag (mouse: immediate;
+          touch/pen: long-press). Inner controls live outside the handle, so they
+          never trigger a drag. */}
       <div
         className="planner-city-row__handle"
-        draggable
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
+        onPointerDown={onArm}
         title={t('planner.drag')}
-        style={{ width: 22, height: 22, borderRadius: 5, display: 'grid', placeItems: 'center', color: 'var(--muted-2)', cursor: 'grab' }}
+        style={{ width: 22, height: 22, borderRadius: 5, display: 'grid', placeItems: 'center', color: 'var(--muted-2)', cursor: 'grab', touchAction: 'none' }}
       >
         <Icon name="drag" size={14} />
       </div>
@@ -376,7 +367,7 @@ function CityRow({ idx, total, city, isDragging, dropTop, dropBottom, isLast, fi
 
 // ─── Step 1: Home ─────────────────────────────────────────────────────────────
 
-function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
+function StepHome({ home, setHome, startDate, setStartDate }) {
   const t = useT();
   const { lang } = useI18n();
   const [geoState, setGeoState] = useState('ask'); // ask | loading | allowed | denied
@@ -495,21 +486,14 @@ function StepHome({ home, setHome, startDate, setStartDate, goNext }) {
         </div>
       )}
 
-      <FooterNav>
-        <div style={{ flex: 1 }} />
-        <Btn variant="primary" onClick={goNext} disabled={!home?.city_name || !startDate}>{t('planner.next')}</Btn>
-      </FooterNav>
     </div>
   );
 }
 
 // ─── Step 2: Cities ───────────────────────────────────────────────────────────
 
-function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalPoint, startDate, setStartDate, goPrev, goNext, onReset }) {
+function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalPoint, startDate, setStartDate }) {
   const t = useT();
-  const [hasError, setHasError] = useState(false);
-  const [dragIdx, setDragIdx] = useState(null);
-  const [overIdx, setOverIdx] = useState(null); // insertion index 0..len
 
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
@@ -523,29 +507,19 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
   // itself never moves (only the top date control changes it).
   const update = (id, patch) => setCities(cs => recomputeDates(cs.map(c => c.id === id ? { ...c, ...patch } : c)));
 
-  const endDrag = () => { setDragIdx(null); setOverIdx(null); };
-  // Reorder via splice (no DOM insertion during drag - that breaks native DnD).
-  const dropAt = (insertIdx) => {
-    setCities(cs => {
-      if (dragIdx == null || insertIdx == null) return cs;
-      const ns = [...cs];
-      const [moved] = ns.splice(dragIdx, 1);
-      let target = dragIdx < insertIdx ? insertIdx - 1 : insertIdx;
-      target = Math.max(0, Math.min(ns.length, target));
-      ns.splice(target, 0, moved);
-      return recomputeDates(ns);
-    });
-    endDrag();
-  };
-  const moveBy = (i, delta) => setCities(cs => {
-    const j = i + delta;
-    if (j < 0 || j >= cs.length) return cs;
-    const ns = [...cs];
-    [ns[i], ns[j]] = [ns[j], ns[i]];
-    return recomputeDates(ns);
+  // Reorder via the SAME engine as the structural editor (useRouteDnD): pointer
+  // drag (mouse-immediate / touch-long-press), FLIP slide, keyboard a11y — one
+  // implementation, no second copy to drift. Creation cities have no pinned ends,
+  // so every row is movable (isAnchor → false); a commit just reorders the list
+  // by id and re-cascades the dates through the shared layout engine.
+  const { dragIdx, displayNodes, setRowRef, armDrag, moveNodeById } = useRouteDnD({
+    ordered: cities,
+    isAnchor: () => false,
+    onCommitOrder: (ids) => setCities(cs => {
+      const byId = new Map(cs.map(c => [c.id, c]));
+      return recomputeDates(ids.map(id => byId.get(id)).filter(Boolean));
+    }),
   });
-
-  const allValid = cities.length > 0 && cities.every(c => c.city_name && c.latitude != null);
 
   return (
     <div>
@@ -579,34 +553,31 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
           />
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => { e.preventDefault(); dropAt(overIdx); }}>
-          {cities.map((c, i) => (
-            <div
-              key={c.id}
-              onDragOver={(e) => { e.preventDefault(); if (dragIdx == null) return; const r = e.currentTarget.getBoundingClientRect(); setOverIdx((e.clientY - r.top) > r.height / 2 ? i + 1 : i); }}
-              onDrop={(e) => { e.preventDefault(); e.stopPropagation(); dropAt(overIdx); }}
-            >
-              <CityRow
-                idx={i}
-                total={cities.length}
-                city={c}
-                isDragging={dragIdx === i}
-                dropTop={dragIdx != null && dragIdx !== i && overIdx === i}
-                dropBottom={dragIdx != null && overIdx === cities.length && i === cities.length - 1}
-                isLast={i === cities.length - 1}
-                finalPoint={finalPoint}
-                onToggleFinalPoint={setFinalPoint}
-                onDragStart={(e) => { setDragIdx(i); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(i)); } catch { /* ignore */ } }}
-                onDragEnd={endDrag}
-                onChange={(patch) => update(c.id, patch)}
-                onRemove={() => remove(c.id)}
-                onMoveUp={() => moveBy(i, -1)}
-                onMoveDown={() => moveBy(i, 1)}
-              />
-            </div>
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+          {displayNodes.map((c) => {
+            // dIdx = the row's index in the committed order (stable while the
+            // preview reorders), used for numbering / isLast; the hook owns the
+            // FLIP shuffle and commit.
+            const dIdx = cities.indexOf(c);
+            return (
+              <div key={c.id} ref={setRowRef(c.id)}>
+                <CityRow
+                  idx={dIdx}
+                  total={cities.length}
+                  city={c}
+                  isDragging={dragIdx === dIdx}
+                  isLast={dIdx === cities.length - 1}
+                  finalPoint={finalPoint}
+                  onToggleFinalPoint={setFinalPoint}
+                  onArm={(e) => armDrag(e, dIdx, c.id)}
+                  onChange={(patch) => update(c.id, patch)}
+                  onRemove={() => remove(c.id)}
+                  onMoveUp={() => moveNodeById(c.id, -1)}
+                  onMoveDown={() => moveNodeById(c.id, 1)}
+                />
+              </div>
+            );
+          })}
           <button onClick={() => addCity()} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '12px 16px', background: 'transparent',
@@ -631,25 +602,13 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
         </div>
       )}
 
-      {hasError && !allValid && (
-        <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--warning-soft, #fff3cd)', border: '1px solid var(--warning, #e6a817)', borderRadius: 10, fontSize: 'var(--fs-base)', color: 'var(--ink)' }}>
-          ⚠️ {cities.length === 0 ? t('planner.err_no_cities') : t('planner.err_unrecognized')}
-        </div>
-      )}
-
-      <FooterNav>
-        <Btn variant="ghost" onClick={goPrev}>{t('planner.back')}</Btn>
-        <Btn variant="ghost" icon="refresh" onClick={onReset}>{t('planner.reset')}</Btn>
-        <div style={{ flex: 1 }} />
-        <Btn variant="primary" disabled={!allValid} onClick={() => { if (!allValid) { setHasError(true); return; } goNext(); }}>{t('planner.next')}</Btn>
-      </FooterNav>
     </div>
   );
 }
 
 // ─── Step 3: Return ───────────────────────────────────────────────────────────
 
-function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity, goPrev, goNext, onReset }) {
+function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity }) {
   const t = useT();
   return (
     <div>
@@ -705,12 +664,6 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         </div>
       </div>
 
-      <FooterNav>
-        <Btn variant="ghost" onClick={goPrev}>{t('planner.back')}</Btn>
-        <Btn variant="ghost" icon="refresh" onClick={onReset}>{t('planner.reset')}</Btn>
-        <div style={{ flex: 1 }} />
-        <Btn variant="primary" onClick={goNext}>{t('planner.next')}</Btn>
-      </FooterNav>
     </div>
   );
 }
@@ -741,7 +694,7 @@ function Stat({ label, value, hint }) {
   );
 }
 
-function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setTripTitle, onStartDateChange, saving, savedOk, savedTripId, goPrev, onReset, onSave, error }) {
+function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setTripTitle, onStartDateChange, saving, savedOk, savedTripId, error }) {
   const nav = useNavigate();
   const t = useT();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
@@ -867,16 +820,6 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
         </div>
       )}
 
-      <FooterNav>
-        <Btn variant="ghost" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>
-        <Btn variant="ghost" icon="refresh" onClick={onReset} disabled={saving}>{t('planner.reset')}</Btn>
-        <div style={{ flex: 1 }} />
-        {saving ? (
-          <Btn variant="primary" disabled>{t('planner.saving_btn')}</Btn>
-        ) : (
-          <Btn variant="primary" onClick={onSave}>{t('planner.save_trip')}</Btn>
-        )}
-      </FooterNav>
     </div>
   );
 }
@@ -890,6 +833,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const { lang } = useI18n();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const confirm = useConfirm();
 
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -1333,9 +1277,48 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     );
   }
 
+  // ── Footer (single, lifted out of the steps) ───────────────────────────────
+  // One Back / Reset / Next|Save bar pinned to the bottom of the right card,
+  // driven by a per-step descriptor. The step bodies no longer carry their own
+  // footer; the gating (Next disabled, Save spinner) lives here and stays
+  // identical to the old per-step logic.
+  const stepIdx = Math.max(0, visibleSteps.findIndex((s) => s.id === step));
+  const isFirstStep = stepIdx === 0;
+  const citiesValid = cities.length > 0 && cities.every((c) => c.city_name && c.latitude != null);
+  const hasDraftData = !!home?.city_name || cities.length > 0 || !!returnCity?.city_name;
+
+  // Reset asks for confirmation only when there's something to lose.
+  const requestReset = async () => {
+    if (hasDraftData) {
+      const ok = await confirm({
+        title: t('planner.reset_confirm_title'),
+        description: t('planner.reset_confirm_desc'),
+        confirmLabel: t('planner.reset'),
+        variant: 'destructive',
+      });
+      if (!ok) return;
+    }
+    resetToStart();
+  };
+
+  let primaryLabel = t('planner.next');
+  let primaryAction = goNext;
+  let primaryDisabled = false;
+  let showFooter = true;
+  if (step === 'home') {
+    primaryDisabled = isAi ? aiState !== 'draft' : (!home?.city_name || !startDate);
+  } else if (step === 'cities') {
+    primaryDisabled = !citiesValid;
+  } else if (step === 'review') {
+    primaryLabel = saving ? t('planner.saving_btn') : t('planner.save_trip');
+    primaryAction = handleSave;
+    primaryDisabled = saving;
+    if (savedOk) showFooter = false; // the success screen owns its own actions
+  }
+
   // ── Main render ───────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg, var(--wash))' }}>
+    <div className="flow-root">
       {/* Header */}
       <AppHeader
         user={user}
@@ -1347,73 +1330,80 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         title={isAi ? t('planner.step_home_ai') : t('trips.new')}
       />
 
-      {/* Slim top bar: progress glued under the header */}
-      <div className="flow-top">
-        <div className="flow-progress-wrap">
-          <FlowProgress
-            steps={visibleSteps}
-            current={Math.max(0, visibleSteps.findIndex(s => s.id === step))}
-            accent="var(--brand)"
-            onJump={(i) => setStep(visibleSteps[i].id)}
-          />
-        </div>
-      </div>
-
-      {/* Two-pane shell: big full-bleed map + scrollable editing column */}
-      <div className="flow-shell">
-        <div className="flow-shell__map">
-          <FlowMap
-            home={home}
-            cities={cities}
-            returnCity={effectiveReturn}
-            finalPoint={finalPoint}
-            badge={isAi
-              ? { label: t('planner.badge_ai'), icon: 'sparkles', color: 'var(--ai)' }
-              : { label: t('planner.badge_mine'), icon: 'map', color: 'var(--brand)' }}
-          />
-        </div>
-
-        <div className="flow-edit scrollbar-thin">
-          {step === 'home' && (isAi ? (
-            <PanelAi ctx={{ aiState, prompt, setPrompt, aiComment, home, returnCity: effectiveReturn, cities, onGenerate, goNext }} />
-          ) : (
-            <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} goNext={goNext} />
-          ))}
-          {step === 'cities' && (
-            <StepCities cities={cities} setCities={setCities} home={home} returnCity={effectiveReturn} startDate={startDate} setStartDate={setStartDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} goPrev={goPrev} goNext={goNext} onReset={resetToStart} />
-          )}
-          {step === 'return' && (
-            <StepReturn
-              home={home}
-              lastCityName={cities[cities.length - 1]?.city_name || t('planner.last_city_fallback')}
-              returnMode={returnMode}
-              setReturnMode={setReturnMode}
-              returnCity={returnCity}
-              setReturnCity={setReturnCity}
-              goPrev={goPrev}
-              goNext={goNext}
-              onReset={resetToStart}
-            />
-          )}
-          {step === 'review' && (
-            <StepReview
+      {/* Two framed cards (trip-edit layout): the full-bleed map and the white
+          .lp panel (progress header → scroll body → sticky footer). */}
+      <div className="flow-grid">
+        <div className="flow-mapcol">
+          <div className="flow-mapbox">
+            <FlowMap
               home={home}
               cities={cities}
               returnCity={effectiveReturn}
-              cover={cover}
-              setCover={setCover}
-              tripTitle={tripTitle}
-              setTripTitle={setTripTitle}
-              onStartDateChange={setStartDate}
-              saving={saving}
-              savedOk={savedOk}
-              savedTripId={savedTripId}
-              goPrev={goPrev}
-              onReset={resetToStart}
-              onSave={handleSave}
-              error={error}
+              finalPoint={finalPoint}
+              badge={isAi
+                ? { label: t('planner.badge_ai'), icon: 'sparkles', color: 'var(--ai)' }
+                : { label: t('planner.badge_mine'), icon: 'map', color: 'var(--brand)' }}
             />
-          )}
+          </div>
+        </div>
+
+        <div className="flow-editcol">
+          <div className="lp">
+            <div className="flow-lp-h">
+              <FlowProgress
+                steps={visibleSteps}
+                current={stepIdx}
+                accent={isAi ? 'var(--ai)' : 'var(--brand)'}
+                onJump={(i) => setStep(visibleSteps[i].id)}
+              />
+            </div>
+
+            <div className="lp-b scrollbar-thin flow-lp-b">
+              {step === 'home' && (isAi ? (
+                <PanelAi ctx={{ aiState, prompt, setPrompt, aiComment, home, returnCity: effectiveReturn, cities, onGenerate }} />
+              ) : (
+                <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
+              ))}
+              {step === 'cities' && (
+                <StepCities cities={cities} setCities={setCities} home={home} returnCity={effectiveReturn} startDate={startDate} setStartDate={setStartDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} />
+              )}
+              {step === 'return' && (
+                <StepReturn
+                  home={home}
+                  lastCityName={cities[cities.length - 1]?.city_name || t('planner.last_city_fallback')}
+                  returnMode={returnMode}
+                  setReturnMode={setReturnMode}
+                  returnCity={returnCity}
+                  setReturnCity={setReturnCity}
+                />
+              )}
+              {step === 'review' && (
+                <StepReview
+                  home={home}
+                  cities={cities}
+                  returnCity={effectiveReturn}
+                  cover={cover}
+                  setCover={setCover}
+                  tripTitle={tripTitle}
+                  setTripTitle={setTripTitle}
+                  onStartDateChange={setStartDate}
+                  saving={saving}
+                  savedOk={savedOk}
+                  savedTripId={savedTripId}
+                  error={error}
+                />
+              )}
+            </div>
+
+            {showFooter && (
+              <div className="lp-f flow-foot">
+                {!isFirstStep && <Btn variant="ghost" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
+                {!isFirstStep && <Btn variant="ghost" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
+                <div style={{ flex: 1 }} />
+                <Btn variant="primary" onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

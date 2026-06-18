@@ -7,6 +7,8 @@ export default {
   'planner.back': 'Back',
   'planner.next': 'Next',
   'planner.reset': 'Reset',
+  'planner.reset_confirm_title': 'Reset the draft?',
+  'planner.reset_confirm_desc': 'All the cities and settings you entered will be cleared — planning starts over.',
   'planner.city_search_ph': 'Search for a city…',
   'planner.city_ph': 'City',
   'planner.not_set': 'not set',
