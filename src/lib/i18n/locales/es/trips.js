@@ -55,6 +55,7 @@ export default {
   'trips.add_trip': 'Añadir viaje',
   'trips.add_trip_sub': 'Crea a mano o empieza con IA',
   'trips.go_pro': 'Ir a Pro',
+  'trips.empty_eyebrow': 'Tu primer viaje',
   'trips.empty_heading': 'Planea tu primer viaje',
   'trips.manual_desc_full': 'Tú eliges ciudades, fechas, hoteles y actividades. Control total.',
   'trips.ai_desc_full': 'Descríbelo en palabras: obtén un borrador y perfecciónalo con el asistente',

@@ -107,7 +107,6 @@ const IconPin   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 const IconUsers = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0M16 6a3 3 0 010 6M21 20a6 6 0 00-4-5.6"/></svg>;
 const IconChev  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6l6 6-6 6"/></svg>;
 const IconCrown = () => <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>;
-const IconGlobe = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3c-2 3-3 5.5-3 9s1 6 3 9M12 3c2 3 3 5.5 3 9s-1 6-3 9M3 12h18"/></svg>;
 
 // ─── Trip card (grid / poster view) ─────────────────────────────────────────
 const TripCard = ({ trip, onClick }) => {
@@ -231,6 +230,27 @@ const TripRow = ({ trip, onClick }) => {
   );
 };
 
+// ─── Trip-creation choice card (shared: empty screen + new-trip dialog) ───────
+function ChoiceCard({ variant = 'man', icon, title, sub, onClick }) {
+  const isAi = variant === 'ai';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`choice-card${isAi ? ' choice-card--ai' : ''}`}
+    >
+      <div className={`choice-card__ic choice-card__ic--${isAi ? 'ai' : 'man'}`}>
+        <Icon name={icon} size={23} />
+      </div>
+      <div className="choice-card__tx">
+        <div className="choice-card__ttl">{title}</div>
+        <div className="choice-card__sub">{sub}</div>
+      </div>
+      <span className="choice-card__arr"><Icon name="arrowR" size={20} /></span>
+    </button>
+  );
+}
+
 // ─── New Trip Dialog ─────────────────────────────────────────────────────────
 function NewTripDialog({ onClose, onManual, onAi }) {
   const { t } = useI18n();
@@ -241,38 +261,10 @@ function NewTripDialog({ onClose, onManual, onAi }) {
       size="sm"
       open={true}
       onOpenChange={(o) => { if (!o) onClose(); }}
-      foot={<>
-        <div style={{ flex: 1 }} />
-        <Btn variant="ghost" onClick={onClose}>{t('common.cancel')}</Btn>
-      </>}
     >
-      <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-base)', marginBottom: 18 }}>
-        {t('trips.choice_subtitle')}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <button
-          onClick={onManual}
-          style={{ padding: 18, background: 'var(--surface)', border: '1.5px solid var(--line)', borderRadius: 14, cursor: 'pointer', textAlign: 'left', transition: 'border-color .15s' }}
-          onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand)'}
-          onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--line)'}
-        >
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
-            <Icon name="edit" size={19} />
-          </div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('trips.start_manual')}</div>
-          <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.manual_desc_short')}</div>
-        </button>
-        <button
-          onClick={onAi}
-          className="ai-card"
-          style={{ padding: 18, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}
-        >
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
-            <Icon name="sparkles" size={19} />
-          </div>
-          <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--ai)' }}>{t('trips.start_with_ai')}</div>
-          <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.ai_desc_short')}</div>
-        </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
+        <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
       </div>
     </Dialog>
   );
@@ -282,29 +274,15 @@ function NewTripDialog({ onClose, onManual, onAi }) {
 function CollectionEmpty({ onManual, onAi }) {
   const { t } = useI18n();
   return (
-    <div style={{ maxWidth: 720, margin: '60px auto', textAlign: 'center' }}>
-      <div style={{ width: 96, height: 96, margin: '0 auto 22px', borderRadius: 24, background: 'linear-gradient(135deg, var(--brand-soft), var(--ai-soft))', display: 'grid', placeItems: 'center' }}>
-        <span style={{ color: 'var(--brand)', display: 'contents' }}><IconGlobe /></span>
+    <div className="trips-empty">
+      <div className="trips-empty__hero">
+        <Badge variant="brand" icon="sparkles">{t('trips.empty_eyebrow')}</Badge>
+        <h1 style={{ marginTop: 14 }}>{t('trips.empty_heading')}</h1>
+        <p>{t('trips.empty_desc')}</p>
       </div>
-      <h1 style={{ marginBottom: 10 }}>{t('trips.empty_heading')}</h1>
-      <div className="muted" style={{ fontSize: 'var(--fs-h4)', marginBottom: 28, maxWidth: 480, margin: '0 auto 28px' }}>
-        {t('trips.empty_desc')}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, maxWidth: 600, margin: '0 auto' }}>
-        <button onClick={onManual} style={{ padding: 22, background: 'var(--surface)', border: '1.5px solid var(--brand-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 14 }}>
-            <Icon name="edit" size={19} />
-          </div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('trips.start_manual')}</div>
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.manual_desc_full')}</div>
-        </button>
-        <button onClick={onAi} className="ai-card" style={{ padding: 22, background: 'linear-gradient(135deg, var(--ai-soft) 0%, rgba(240,164,90,.05) 100%)', border: '1.5px solid var(--ai-soft-12)', borderRadius: 14, cursor: 'pointer', textAlign: 'left' }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--ai-grad)', color: 'white', display: 'grid', placeItems: 'center', marginBottom: 14 }}>
-            <Icon name="sparkles" size={19} />
-          </div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }} className="ai-text">{t('trips.start_with_ai')} <Badge variant="pro" icon="pro" style={{ marginLeft: 4 }}>Pro</Badge></div>
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('trips.ai_desc_full')}</div>
-        </button>
+      <div className="trips-empty__choices">
+        <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_full')} onClick={onManual} />
+        <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_full')} onClick={onAi} />
       </div>
     </div>
   );

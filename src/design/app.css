@@ -1094,6 +1094,36 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .addsheet__tx b { font-size: var(--fs-base); font-weight: 700; color: var(--ink); }
 .addsheet__chev { color: var(--muted-2); flex: none; }
 
+/* Trip-creation choice card — ONE source, shared by the empty Trips screen and
+   the New-Trip dialog (V1 editorial layout). Bound to existing Lumo tokens. */
+.choice-card {
+  display: flex; align-items: center; gap: 16px; width: 100%; padding: 20px;
+  border: 1.5px solid var(--line); border-radius: var(--r-card);
+  background: var(--surface); cursor: pointer; text-align: left;
+  transition: border-color .2s, box-shadow .22s, transform .16s var(--ease-spring);
+}
+.choice-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--brand); }
+.choice-card:active { transform: translateY(0); }
+.choice-card--ai:hover { border-color: var(--ai); }
+.choice-card__ic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; flex: none; }
+.choice-card__ic--man { background: var(--primary-soft); color: var(--brand); }
+.choice-card__ic--ai  { background: var(--ai-grad); color: #fff; }
+.choice-card__tx { min-width: 0; }
+.choice-card__ttl { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h4); color: var(--ink); }
+.choice-card__sub { font-size: var(--fs-meta); color: var(--muted); font-weight: 600; line-height: 1.4; margin-top: 2px; }
+.choice-card__arr { margin-left: auto; flex: none; color: var(--muted-2); transition: color .2s, transform .2s; }
+.choice-card:hover .choice-card__arr { color: var(--brand); transform: translateX(3px); }
+.choice-card--ai:hover .choice-card__arr { color: var(--ai); }
+
+/* Empty Trips — editorial split (hero + stacked choices). Collapses at 880px. */
+.trips-empty { display: grid; grid-template-columns: 1.05fr .95fr; gap: 34px; align-items: center; padding: 32px 4px; }
+.trips-empty__hero h1 { letter-spacing: -.01em; max-width: 15ch; }
+.trips-empty__hero p { font-size: var(--fs-h4); color: var(--muted); font-weight: 500; max-width: 42ch; margin: 16px 0 0; }
+.trips-empty__choices { display: flex; flex-direction: column; gap: 14px; }
+@media (max-width: 880px) {
+  .trips-empty { grid-template-columns: 1fr; gap: 24px; padding: 16px 0; }
+}
+
 /* Tighter app-main padding on small screens */
 @media (max-width: 1100px) {
   .planner-2col { grid-template-columns: 1fr !important; }

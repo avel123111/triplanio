@@ -55,6 +55,7 @@ export default {
   'trips.add_trip': 'Add trip',
   'trips.add_trip_sub': 'Build manually or start with AI',
   'trips.go_pro': 'Go to Pro',
+  'trips.empty_eyebrow': 'Your first trip',
   'trips.empty_heading': 'Plan your first trip',
   'trips.manual_desc_full': 'You pick cities, dates, hotels and activities. Full control.',
   'trips.ai_desc_full': 'Describe it in words, get a draft and refine it with the assistant',
