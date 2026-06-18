@@ -1321,7 +1321,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // ── Main render ───────────────────────────────────────────────────────────
   return (
-    <div className="flow-root">
+    <div className="flow-page">
       {/* Header */}
       <AppHeader
         user={user}

@@ -1150,7 +1150,10 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    framed white .lp panel (right) holding the progress header → scroll body →
    sticky footer. Reuses .lp / .lp-b / .lp-f and the same 14px inset / 16px
    radius framing as .ts-leftbox / .ts-map. */
-.flow-root {
+/* NB: do NOT name this `.flow-root` — that collides with the global `.flow-root`
+   BFC utility (`display: flow-root`), which overrode `display:flex` here and
+   collapsed the whole grid (empty strip + dead scroll). */
+.flow-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
