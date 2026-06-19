@@ -384,6 +384,7 @@
 }
 .auth-error__icon { flex: 0 0 auto; margin-top: 1px; line-height: 0; }
 .auth-error__icon svg { display: block; }
+.auth__resend-wait { opacity: .55; }
 
 /* Confirm (reset-sent) */
 .confirm { text-align: center; }

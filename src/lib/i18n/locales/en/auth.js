@@ -49,6 +49,7 @@ export default {
   'auth.to_login': 'To sign in',
   'auth.no_email': 'Didn\'t get the email?',
   'auth.resend': 'Send again',
+  'auth.resend_in': 'Send again in {s}s',
   'auth.new_password': 'New password',
   'auth.newpw_title': 'Set a new password',
   'auth.newpw_lede': 'Enter your new password twice. It\'ll replace the old one for signing in.',

@@ -29,6 +29,15 @@ const MAX_PER_WINDOW = 5;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FALLBACK_REDIRECT = 'https://www.triplanio.com/reset-password';
 
+// Supabase's built-in throttles (min interval between emails / hourly cap) come
+// back as 429 or a rate/frequency message — treat those as our "try later".
+function isThrottle(err: any): boolean {
+  const status = err?.status ?? err?.code;
+  if (status === 429) return true;
+  const m = String(err?.message ?? '').toLowerCase();
+  return /rate|frequenc|seconds|too many|limit/.test(m);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -47,7 +56,7 @@ Deno.serve(async (req) => {
       return Response.json({ code: 'account_not_found' }, { headers: corsHeaders });
     }
 
-    // 2) Rate limit — count this email's attempts in the rolling window.
+    // 2) Our cap: 5 SUCCESSFUL sends per rolling hour, per email.
     const sinceIso = new Date(Date.now() - WINDOW_MS).toISOString();
     const { count, error: cntErr } = await supabaseAdmin
       .from('password_reset_attempts')
@@ -59,20 +68,25 @@ Deno.serve(async (req) => {
       return Response.json({ code: 'rate_limited' }, { headers: corsHeaders });
     }
 
-    // Record the attempt before sending so every dispatched email is counted.
-    const { error: insErr } = await supabaseAdmin
-      .from('password_reset_attempts')
-      .insert({ email: norm });
-    if (insErr) throw insErr;
-
     // 3) Send via Supabase Auth SMTP (existing recovery template), like the client did.
     const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
     const redirect = safeRedirect(redirectTo) ? (redirectTo as string) : FALLBACK_REDIRECT;
     const { error: sendErr } = await anon.auth.resetPasswordForEmail(norm, { redirectTo: redirect });
     if (sendErr) {
-      console.error('resetPasswordForEmail failed', sendErr.message);
+      console.error('resetPasswordForEmail failed', sendErr.status, sendErr.message);
+      // Supabase's own min-interval / hourly throttle → show the limit message,
+      // and do NOT count it against our quota.
+      if (isThrottle(sendErr)) {
+        return Response.json({ code: 'rate_limited' }, { headers: corsHeaders });
+      }
       return Response.json({ code: 'send_failed' }, { headers: corsHeaders });
     }
+
+    // Count only delivered emails toward the 5/hour cap.
+    const { error: insErr } = await supabaseAdmin
+      .from('password_reset_attempts')
+      .insert({ email: norm });
+    if (insErr) throw insErr;
 
     return Response.json({ code: 'reset_sent' }, { headers: corsHeaders });
   } catch (err) {
