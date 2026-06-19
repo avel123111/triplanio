@@ -117,7 +117,7 @@ function makeSegment(defCur = 'EUR') {
 }
 
 import { supabase } from '@/api/supabaseClient';
-import { searchCities } from '@/lib/geo';
+import { searchCities, resolveCities, geocodeAddress } from '@/lib/geo';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
@@ -858,7 +858,7 @@ export default function EventEditDialog({
   });
 
   // ── AI extract handlers ────────────────────────────────────────────────
-  const handleHotelExtract = (data, fileUrl, fileName) => {
+  const handleHotelExtract = async (data, fileUrl, fileName) => {
     const filled = new Set();
     const upd = { ...form };
     const setIf = (k, v) => { if (v != null && v !== '') { upd[k] = v; filled.add(k); } };
@@ -899,6 +899,13 @@ export default function EventEditDialog({
     } else if (fileUrl) {
       upd.documents = [...(upd.documents || []), { file_url: fileUrl, file_name: fileName || '' }];
       filled.add('documents');
+    }
+    // Geocode the hotel address → coords, ONLY on a house-level match; otherwise
+    // leave coords null and keep the address as text (no map point, never the
+    // city center). TRIP-145.
+    if (data.address) {
+      const geo = await geocodeAddress(data.address, lang);
+      if (geo) { upd.latitude = geo.latitude; upd.longitude = geo.longitude; }
     }
     setForm(upd);
     setAiFields(filled);
@@ -948,21 +955,38 @@ export default function EventEditDialog({
         toCity: null,
       }));
       // Resolve the intermediate layover cities (to_city of all but the last leg)
-      // to full city objects (coords + tz) so saveLayoverChain can create waypoints.
+      // to full city objects (coords + tz) so saveLayoverChain can create
+      // waypoints. ONE batch call (TRIP-145 P2): dedup + shared cache + token-
+      // bucket safe. Names that don't resolve surface as an advisory instead of a
+      // silent null — the user then picks the layover city manually.
+      const lvIdx = [];
+      const lvQ = [];
       for (let i = 0; i < formSegs.length - 1; i++) {
         // Prefer the explicit waypoints[] entry; fall back to the leg's to_city.
         const name = wps[i]?.city || segs[i].to_city;
-        const code = wps[i]?.country_code || segs[i].to_country_code;
         if (!name) continue;
-        try {
-          const cc = code ? ', ' + code : '';
-          const r = await searchCities(`${name}${cc}`, lang);
-          const best = r?.[0];
+        const code = wps[i]?.country_code || segs[i].to_country_code;
+        lvIdx.push(i);
+        lvQ.push(`${name}${code ? ', ' + code : ''}`);
+      }
+      if (lvQ.length) {
+        const lvLists = await resolveCities(lvQ, lang);
+        const unresolved = [];
+        lvIdx.forEach((segIdx, k) => {
+          const best = lvLists[k]?.[0];
           if (best?.latitude) {
             const tz = tzFromCoords(best.latitude, best.longitude);
-            formSegs[i].toCity = { city_name: best.city_name, country: best.country, country_code: best.country_code, latitude: best.latitude, longitude: best.longitude, timezone: tz, external_city_id: best.external_city_id };
+            formSegs[segIdx].toCity = { city_name: best.city_name, country: best.country, country_code: best.country_code, latitude: best.latitude, longitude: best.longitude, timezone: tz, external_city_id: best.external_city_id };
+          } else {
+            unresolved.push(lvQ[k]);
           }
-        } catch { /* leave null - user picks the layover city manually */ }
+        });
+        if (unresolved.length) {
+          setAiAdvisories((prev) => [
+            ...(prev || []),
+            { level: 'warning', code: 'AI_LAYOVER_UNRESOLVED', scope: 'entity', values: { cities: unresolved.join(', ') } },
+          ]);
+        }
       }
       // Endpoints stay the trip's fromVisit/toVisit. Mismatches (wrong dates /
       // cities) are NOT soft-warned here anymore - the parsed chain is a normal
@@ -1021,6 +1045,17 @@ export default function EventEditDialog({
     if (first.transport_type && TRANSPORT_KINDS.some((k) => k.id === first.transport_type)) {
       upd.transport_type = first.transport_type;
       filled.add('transport_type');
+    }
+    // Geocode single-leg transfer endpoints → coords, ONLY on a house-level
+    // match; otherwise keep the address as text with no coords (no map point,
+    // never the city center). TRIP-145.
+    if (first.from_address) {
+      const g = await geocodeAddress(first.from_address, lang);
+      if (g) { upd.from_latitude = g.latitude; upd.from_longitude = g.longitude; }
+    }
+    if (first.to_address) {
+      const g = await geocodeAddress(first.to_address, lang);
+      if (g) { upd.to_latitude = g.latitude; upd.to_longitude = g.longitude; }
     }
     setForm(upd);
     setAiFields(filled);

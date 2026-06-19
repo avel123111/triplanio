@@ -29,6 +29,53 @@ async function liq(action, body) {
   return [];
 }
 
+const POPULATED = new Set([
+  'city', 'town', 'village', 'hamlet', 'suburb', 'neighbourhood',
+  'municipality', 'locality', 'administrative', 'island', 'islet',
+  'state', 'county', 'region', 'province',
+]);
+
+// Map one raw LocationIQ/Nominatim row → the app's city shape.
+function mapCity(d) {
+  const a = d.address || {};
+  const name =
+    a.city || a.town || a.village || a.hamlet || a.suburb ||
+    a.neighbourhood || a.municipality || a.locality || a.county ||
+    a.state || d.name || d.display_name.split(',')[0];
+  const nd = d.namedetails || {};
+  return {
+    external_city_id: String(d.place_id),
+    city_name: name,
+    // Canonical English name from namedetails: explicit name:en, else the
+    // international name, else the default OSM name (Latin for many cities).
+    city_name_en: nd['name:en'] || nd['int_name'] || nd['name'] || '',
+    country: a.country || '',
+    country_code: (a.country_code || '').toUpperCase(),
+    latitude: parseFloat(d.lat),
+    longitude: parseFloat(d.lon),
+    display_name: d.display_name,
+    _importance: d.importance || 0,
+  };
+}
+
+// Filter a raw LocationIQ array to populated places, dedup, sort by importance,
+// cap at 12. Shared by searchCities (single) and resolveCities (batch) so the
+// "pick the right city" logic lives in ONE place.
+function refineCities(data) {
+  const seen = new Set();
+  return (data || [])
+    .filter(d => POPULATED.has(d.type) || d.class === 'place' || d.class === 'boundary')
+    .map(mapCity)
+    .filter(c => {
+      const key = `${c.city_name}|${c.country_code}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => b._importance - a._importance)
+    .slice(0, 12);
+}
+
 export async function searchCities(query, lang) {
   if (!query || query.length < 2) return [];
   // Caller passes the app language so city/country names come back localized.
@@ -39,45 +86,26 @@ export async function searchCities(query, lang) {
   // misses resort towns / villages / suburbs (e.g. Maspalomas). We request more
   // results and filter to populated places client-side.
   const data = await liq('search', { q: query, lang: acceptLang, limit: 20 });
+  return refineCities(data);
+}
 
-  const POPULATED = new Set([
-    'city', 'town', 'village', 'hamlet', 'suburb', 'neighbourhood',
-    'municipality', 'locality', 'administrative', 'island', 'islet',
-    'state', 'county', 'region', 'province',
-  ]);
-
-  const seen = new Set();
-  return data
-    .filter(d => POPULATED.has(d.type) || d.class === 'place' || d.class === 'boundary')
-    .map(d => {
-      const a = d.address || {};
-      const name =
-        a.city || a.town || a.village || a.hamlet || a.suburb ||
-        a.neighbourhood || a.municipality || a.locality || a.county ||
-        a.state || d.name || d.display_name.split(',')[0];
-      const nd = d.namedetails || {};
-      return {
-        external_city_id: String(d.place_id),
-        city_name: name,
-        // Canonical English name from namedetails: explicit name:en, else the
-        // international name, else the default OSM name (Latin for many cities).
-        city_name_en: nd['name:en'] || nd['int_name'] || nd['name'] || '',
-        country: a.country || '',
-        country_code: (a.country_code || '').toUpperCase(),
-        latitude: parseFloat(d.lat),
-        longitude: parseFloat(d.lon),
-        display_name: d.display_name,
-        _importance: d.importance || 0,
-      };
-    })
-    .filter(c => {
-      const key = `${c.city_name}|${c.country_code}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((a, b) => b._importance - a._importance)
-    .slice(0, 12);
+// Batch-resolve many city names in ONE edge call (TRIP-145 P2). The edge dedups
+// identical queries and shares the 'search' cache; we get back an array aligned
+// to `queries`, each element refined exactly like searchCities (best = [0]) so
+// callers pick result[0] as before. Background priority (yields to interactive
+// autocomplete/manual search under the rate limit).
+export async function resolveCities(queries, lang) {
+  if (!Array.isArray(queries) || queries.length === 0) return [];
+  const acceptLang = lang
+    || (typeof navigator !== 'undefined' && navigator.language)
+    || 'en';
+  const cities = queries.map((qx) => ({ q: qx, lang: acceptLang }));
+  const { data, error } = await supabase.functions.invoke('geoLocationiq', {
+    body: { action: 'resolveCities', cities },
+  });
+  if (error) return queries.map(() => []);
+  const raw = data?.results || [];
+  return queries.map((_, i) => refineCities(raw[i] || []));
 }
 
 // Reverse geocode lat/lon → city object.
@@ -102,6 +130,33 @@ export async function reverseGeocode(lat, lon, lang) {
     longitude: parseFloat(d.lon),
     display_name: d.display_name,
   };
+}
+
+// Forward-geocode a full street address (booking parsing, TRIP-145). NOT cached
+// server-side (addresses are high-cardinality, ~zero cross-user reuse). Returns
+// { latitude, longitude } ONLY when the match is house/building level; otherwise
+// null — the caller keeps the original address as text with NO map point and
+// never falls back to the city center. Background priority on the edge.
+function isHouseLevel(d) {
+  const a = d.address || {};
+  return Boolean(a.house_number) || d.type === 'house' || d.type === 'building' || d.class === 'building';
+}
+
+export async function geocodeAddress(address, lang) {
+  if (!address || !String(address).trim()) return null;
+  const acceptLang = lang
+    || (typeof navigator !== 'undefined' && navigator.language)
+    || 'en';
+  const { data, error } = await supabase.functions.invoke('geoLocationiq', {
+    body: { action: 'geocodeAddress', q: String(address), lang: acceptLang, limit: 1 },
+  });
+  if (error) return null;
+  const d = (data?.results || [])[0];
+  if (!d || !isHouseLevel(d)) return null;
+  const latitude = parseFloat(d.lat);
+  const longitude = parseFloat(d.lon);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  return { latitude, longitude };
 }
 
 // Resolve the canonical English city name by forward-searching the (possibly

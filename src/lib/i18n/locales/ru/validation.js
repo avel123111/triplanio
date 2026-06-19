@@ -62,6 +62,7 @@ export default {
   'validation.AI_CITY_MISMATCH_FROM': 'В брони город отправления «{booking}», в путешествии «{trip}». Сверь, та ли это бронь',
   'validation.AI_CITY_MISMATCH_TO': 'В брони город прибытия «{booking}», в путешествии «{trip}». Сверь, та ли это бронь',
   'validation.AI_LAYOVER_CITY_MISMATCH': 'Город пересадки не сходится: прилёт «{a}», вылет «{b}»',
+  'validation.AI_LAYOVER_UNRESOLVED': 'Не удалось определить город пересадки: {cities}. Выбери вручную',
   // Budget / docs / members / chat / share / pro
   'validation.EXP_TITLE_REQUIRED': 'Укажи описание',
   'validation.EXP_AMOUNT_REQUIRED': 'Укажи сумму больше 0',

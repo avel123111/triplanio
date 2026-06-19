@@ -61,6 +61,7 @@ export default {
   'validation.AI_CITY_MISMATCH_FROM': 'Booking departs from "{booking}", the trip says "{trip}". Check this is the right booking',
   'validation.AI_CITY_MISMATCH_TO': 'Booking arrives in "{booking}", the trip says "{trip}". Check this is the right booking',
   'validation.AI_LAYOVER_CITY_MISMATCH': 'Layover city does not match: arrival "{a}", departure "{b}"',
+  'validation.AI_LAYOVER_UNRESOLVED': 'Couldn\'t locate the layover city: {cities}. Pick it manually.',
   // Budget / docs / members / chat / share / pro
   'validation.EXP_TITLE_REQUIRED': 'Enter a description',
   'validation.EXP_AMOUNT_REQUIRED': 'Enter an amount greater than 0',

@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { isTripInPast } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
-import { searchCities, countryFlag, reverseGeocode } from '@/lib/geo';
+import { searchCities, resolveCities, countryFlag, reverseGeocode } from '@/lib/geo';
 import { tzFromCoords } from '@/lib/timezone';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
@@ -910,21 +910,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // Resolve one AI city into the planner shape (coords + timezone). Shared by
   // start / transit / end so the directory lookup lives in one place.
-  const resolveAiCity = async (c, idx) => {
-    const q = `${c.city_name}${c.country ? ', ' + c.country : ''}`;
-    let best = null;
-    let tz = null;
-    // Retry once on an empty/failed lookup: AI gives real place names, so an
-    // empty result is almost always a transient geocoder hiccup (rate-limit),
-    // not a genuine no-match. Without this, cities land unresolved → red.
-    for (let attempt = 0; attempt < 2 && !best; attempt++) {
-      if (attempt) await new Promise((r) => setTimeout(r, 400));
-      try {
-        const r = await searchCities(q, lang || 'ru');
-        best = r?.[0] || null;
-      } catch { /* ignore, retry */ }
-    }
-    if (best?.latitude) { tz = tzFromCoords(best.latitude, best.longitude); }
+  // Shape one AI city into the planner shape (coords + timezone) from an already
+  // resolved `best` (or null). Geocoding is now batched in applyAiDraft via
+  // resolveCities (TRIP-145 P2), so this is pure shaping — no network here.
+  const shapeAiCity = (c, idx, best) => {
+    const tz = best?.latitude ? tzFromCoords(best.latitude, best.longitude) : null;
     return {
       id: Date.now() + idx,
       external_city_id: best?.external_city_id || null,
@@ -945,18 +935,26 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     const endSrc = [...dc].reverse().find((c) => c?.kind === 'end') || null;
     const transitSrc = dc.filter((c) => c && c.kind !== 'start' && c.kind !== 'end');
 
-    // Resolve geocoding SEQUENTIALLY, not as a parallel burst. The geocoder
-    // (LocationIQ via geoLocationiq) rate-limits concurrent requests, and liq()
-    // swallows failures into [] → cities silently landed unresolved (red, off
-    // the map). Serializing keeps every lookup under the limit; the AI draft is
-    // a one-time apply already gated behind the "thinking" step, so the small
-    // added latency is acceptable.
-    const startCity = startSrc ? await resolveAiCity(startSrc, 0) : null;
-    const endCity = endSrc ? await resolveAiCity(endSrc, 1) : null;
+    // Resolve ALL cities in ONE batch edge call (TRIP-145 P2): the edge dedups
+    // identical queries and shares the 'search' cache, replacing the old N
+    // sequential lookups (faster apply, fewer invocations, no per-city burst).
+    // Order: [start?, end?, ...transit]. Background priority yields to
+    // interactive geocoding under the rate limit.
+    const order = [];
+    if (startSrc) order.push(startSrc);
+    if (endSrc) order.push(endSrc);
+    transitSrc.forEach((c) => order.push(c));
+    const lists = await resolveCities(
+      order.map((c) => `${c.city_name}${c.country ? ', ' + c.country : ''}`),
+      lang || 'ru',
+    );
+    let oi = 0;
+    const startCity = startSrc ? shapeAiCity(startSrc, 0, lists[oi++]?.[0] || null) : null;
+    const endCity = endSrc ? shapeAiCity(endSrc, 1, lists[oi++]?.[0] || null) : null;
     const transitResolved = [];
     for (let i = 0; i < transitSrc.length; i++) {
       const c = transitSrc[i];
-      const base = await resolveAiCity(c, i + 2);
+      const base = shapeAiCity(c, i + 2, lists[oi++]?.[0] || null);
       const nights = c.start_date && c.end_date ? daysBetweenISO(c.start_date, c.end_date) : 1;
       transitResolved.push({ ...base, startDate: c.start_date || '', nights: Math.max(1, +nights || 1) });
     }
