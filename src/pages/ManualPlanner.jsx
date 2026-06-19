@@ -489,9 +489,6 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalPoint, startDate, setStartDate }) {
   const t = useT();
   const { lang } = useI18n();
-  const [calOpen, setCalOpen] = useState(false); // trip-start calendar popover/sheet
-  const isSheet = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
-
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
     setCities(cs => recomputeDates([...cs, { id: Date.now(), ...base, startDate: cs[0]?.startDate || startDate || '', nights: preset?.nights || 3 }]));
@@ -525,31 +522,9 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
         {t('planner.cities_desc_1')} <b style={{ color: 'var(--ink)' }}>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
       </div>
 
-      {/* Trip-start control — the SAME .ts-startctl + shared StartCalendar as the
-          editor (one mini calendar, one stepper look across both screens). */}
+      {/* Trip-start control — shared TripStartControl (one control on Home / Cities / Review). */}
       <div style={{ display: 'flex', marginBottom: 12 }}>
-        <div className="ts-startctl" title={t('planner.trip_start')}>
-          <span className="ts-startctl__lbl">{t('ai_plan.start')}</span>
-          <button type="button" className="ts-step" onClick={() => startDate && setStartDate(addDays(startDate, -1))} title={t('planner.day_earlier')} aria-label={t('planner.day_earlier')}><Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} /></button>
-          {isSheet ? (
-            <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')} onClick={() => setCalOpen(true)}>{fmtDW(startDate, lang)}</button>
-          ) : (
-            <Popover open={calOpen} onOpenChange={setCalOpen}>
-              <PopoverTrigger asChild>
-                <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(startDate, lang)}</button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="ts-startcal-pop">
-                <StartCalendar value={startDate} lang={lang} onPick={(iso) => { setStartDate(iso); setCalOpen(false); }} />
-              </PopoverContent>
-            </Popover>
-          )}
-          <button type="button" className="ts-step" onClick={() => startDate && setStartDate(addDays(startDate, 1))} title={t('planner.day_later')} aria-label={t('planner.day_later')}><Icon name="chev" size={13} /></button>
-          {isSheet && (
-            <Sheet open={calOpen} onOpenChange={setCalOpen} title={t('planner.trip_start')}>
-              <StartCalendar value={startDate} lang={lang} onPick={(iso) => { setStartDate(iso); setCalOpen(false); }} />
-            </Sheet>
-          )}
-        </div>
+        <TripStartControl startDate={startDate} setStartDate={setStartDate} lang={lang} t={t} label={t('ai_plan.start')} />
       </div>
 
       <CityAnchorRow label={t('ai_plan.start')} city_name={home?.city_name} country={home?.country} kind="home" />
