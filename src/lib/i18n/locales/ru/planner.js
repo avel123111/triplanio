@@ -1,6 +1,7 @@
 export default {
   'planner.step_home': 'Откуда',
   'planner.step_cities': 'Маршрут',
+  'planner.cities_heading': 'Города',
   'planner.step_return': 'Возврат',
   'planner.step_review': 'Проверка',
   'planner.step_home_ai': 'Планирование с ИИ',

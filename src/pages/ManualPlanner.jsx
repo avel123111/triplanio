@@ -313,12 +313,10 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onT
       {row}
       <div className="pl-fin-sub" onPointerDown={stopArm} onClick={stopArm}>
         <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
+        <Icon name="flag" size={13} style={{ color: 'var(--muted)', flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
-          <span style={{ fontWeight: 600 }}>
-            <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: 'var(--muted)' }} />
-            {t('planner.final_point')}
-          </span>
-          <span className="muted" style={{ marginLeft: 6 }}>{t('planner.final_point_hint')}</span>
+          <span style={{ fontWeight: 600 }}>{t('planner.final_point')}</span>{' '}
+          <span className="muted">{t('planner.final_point_hint')}</span>
         </div>
       </div>
     </div>
@@ -364,7 +362,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       </div>
 
       <h2 className="section-sub">{t('ai_plan.start')}</h2>
-      <div className="field-row cols-2" style={{ alignItems: 'start' }}>
+      <div className="field-row cols-2" style={{ alignItems: 'end', gridTemplateColumns: '7fr 3fr' }}>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="field__label">{t('planner.start_city')}</label>
           <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} autoFocus />
@@ -401,9 +399,9 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       )}
 
       {geoState === 'allowed' && nearbyCity && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+        <div>
           <button onClick={() => setHome(nearbyCity)} style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+            display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 14px',
             background: home?.city_name === nearbyCity.city_name ? 'var(--brand-soft)' : 'var(--surface)',
             border: '1.5px solid ' + (home?.city_name === nearbyCity.city_name ? 'var(--brand)' : 'var(--line)'),
             borderRadius: 11, cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
@@ -415,7 +413,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
               <Icon name="plane" size={14} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{nearbyCity.city_name}</div>
+              <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 700 }}>{nearbyCity.city_name}</div>
               <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{countryFlag(nearbyCity.country_code)} {nearbyCity.country} · {t('planner.your_city')}</div>
             </div>
             {home?.city_name === nearbyCity.city_name && (
@@ -448,7 +446,6 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
 function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalPoint, startDate, setStartDate }) {
   const t = useT();
-  const { lang } = useI18n();
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
     setCities(cs => recomputeDates([...cs, { id: Date.now(), ...base, startDate: cs[0]?.startDate || startDate || '', nights: preset?.nights || 3 }]));
@@ -482,8 +479,10 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
         {t('planner.cities_desc_1')} <b style={{ color: 'var(--ink)' }}>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
       </div>
 
-      {/* Trip-start control — shared TripStartControl (one control on Home / Cities / Review). */}
-      <div style={{ display: 'flex', marginBottom: 12 }}>
+      {/* "Города" header — section sub-heading + the shared start control on the
+          right in one row (mirrors the editor's .ts-routehead: title + control). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <h2 className="section-sub" style={{ margin: 0, flex: 1 }}>{t('planner.cities_heading')}</h2>
         <TripStartControl date={startDate} onStep={(d) => startDate && setStartDate(addDays(startDate, d))} onPickDate={setStartDate} label={t('ai_plan.start')} />
       </div>
 
@@ -633,7 +632,7 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
 function Stat({ label, value, hint }) {
   return (
     <div>
-      <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)' }}>{label}</div>
+      <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)', color: 'var(--ink-2)' }}>{label}</div>
       <div style={{ fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{value}</div>
       {hint && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{hint}</div>}
     </div>
@@ -715,7 +714,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
 
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
-              <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)' }}>{t('event.start')}</div>
+              <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)', color: 'var(--ink-2)' }}>{t('event.start')}</div>
               <div style={{ fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}</div>
               {!cities[0]?.startDate && (
                 <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
@@ -728,16 +727,17 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
       </div>
 
       <div className="field">
-        <label className="field__label">{t('planner.cover')}</label>
+        <label className="field__label" style={{ fontSize: 'var(--fs-h4)' }}>{t('planner.cover')}</label>
         <TripCoverPicker
           coverImageUrl={cover?.cover_image_url || ''}
           coverGradient={cover?.cover_gradient || ''}
           onChange={setCover}
+          showPreview={false}
         />
       </div>
 
       <div className="field">
-        <label className="field__label">{t('planner.title_label')}</label>
+        <label className="field__label" style={{ fontSize: 'var(--fs-h4)' }}>{t('planner.title_label')}</label>
         <input
           className="input"
           value={tripTitle}

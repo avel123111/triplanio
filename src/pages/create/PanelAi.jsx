@@ -61,13 +61,11 @@ export default function PanelAi({ ctx }) {
           className="textarea"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canPrompt) { e.preventDefault(); onGenerate(prompt.trim()); } }}
           disabled={aiState === 'generating'}
           placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
           style={{ minHeight: 110, border: 'none', padding: 0, background: 'transparent', fontSize: 'var(--fs-strong)', lineHeight: 1.55, width: '100%', resize: 'none' }}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, alignItems: 'center', gap: 8 }}>
-          <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('ai_plan.shortcut_hint')}</span>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12, alignItems: 'center', gap: 8 }}>
           {aiState === 'generating' ? (
             <Btn variant="ai" size="sm" disabled>
               {t('ai_plan.thinking')} <span className="ai-dots" style={{ marginLeft: 4 }}><span /><span /><span /></span>

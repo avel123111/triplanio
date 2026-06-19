@@ -1,6 +1,7 @@
 export default {
   'planner.step_home': 'From where',
   'planner.step_cities': 'Route',
+  'planner.cities_heading': 'Cities',
   'planner.step_return': 'Return',
   'planner.step_review': 'Review',
   'planner.step_home_ai': 'Planning with AI',

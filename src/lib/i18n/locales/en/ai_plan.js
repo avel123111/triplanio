@@ -14,7 +14,6 @@ export default {
   'ai_plan.prompt_label_refine': 'Refine or add details',
   'ai_plan.prompt_placeholder_initial': 'E.g., 5 days in Rome with Vatican, Colosseum, and best pasta restaurants…',
   'ai_plan.prompt_placeholder_refine': 'E.g., Add a day trip to Tivoli, change hotels to city center…',
-  'ai_plan.shortcut_hint': 'Press ⌘+Enter or Ctrl+Enter to send',
   
   // Actions
   'ai_plan.plan': 'Plan trip',
@@ -40,7 +39,7 @@ export default {
 
   // L3 redesign - new layout
   'ai_plan.assistant_label': 'AI assistant',
-  'ai_plan.assistant_hint': 'describe the trip in a paragraph',
+  'ai_plan.assistant_hint': 'Describe your trip',
   'ai_plan.generate_draft': 'Generate draft',
   'ai_plan.regenerate': 'Regenerate',
   'ai_plan.status_waiting': 'Waiting for a prompt. Describe your trip in a paragraph, I\'ll draft an itinerary and we can refine it here.',

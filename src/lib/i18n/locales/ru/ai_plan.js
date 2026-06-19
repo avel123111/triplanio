@@ -14,7 +14,6 @@ export default {
   'ai_plan.prompt_label_refine': 'Уточнить или добавить детали',
   'ai_plan.prompt_placeholder_initial': 'Например, 5 дней в Риме с Ватиканом, Колизеем и лучшими ресторанами пасты…',
   'ai_plan.prompt_placeholder_refine': 'Например, добавь однодневную поездку в Тиволи, измени отели на центр города…',
-  'ai_plan.shortcut_hint': 'Нажми ⌘+Enter или Ctrl+Enter для отправки',
   
   // Actions
   'ai_plan.plan': 'Спланировать',
@@ -40,7 +39,7 @@ export default {
 
   // L3 redesign - new layout
   'ai_plan.assistant_label': 'ИИ-помощник',
-  'ai_plan.assistant_hint': 'опиши путешествие одним абзацем',
+  'ai_plan.assistant_hint': 'Опиши своё путешествие',
   'ai_plan.generate_draft': 'Собрать маршрут',
   'ai_plan.regenerate': 'Перегенерировать',
   'ai_plan.status_waiting': 'Жду промпт. Опиши путешествие одним абзацем, и я соберу черновик. Детали обсудим в этом чате.',
