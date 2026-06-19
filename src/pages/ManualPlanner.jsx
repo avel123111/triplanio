@@ -369,6 +369,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
         {t('planner.home_desc')}
       </div>
 
+      <h2 className="section-sub">{t('ai_plan.start')}</h2>
       <div className="field-row cols-2" style={{ alignItems: 'start' }}>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="field__label">{t('planner.start_city')}</label>
