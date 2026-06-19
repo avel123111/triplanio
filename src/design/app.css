@@ -1231,11 +1231,13 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .flow-editcol { display: block; }
   .flow-editcol > .lp { display: flex; flex-direction: column; margin: 12px; min-height: 0; overflow: visible; }
   .flow-editcol .flow-lp-b { overflow: visible; }
-  .flow-lp-b { padding: 16px 14px; }
-  /* Footer stays PINNED to the viewport bottom (sticky) while the page — map +
-     body — scrolls; with interactive-widget=resizes-content (index.html) it sits
-     above the on-screen keyboard instead of being thrown up the screen. */
-  .flow-foot { position: sticky; bottom: 0; z-index: 5; }
+  /* Bottom clearance so the last content isn't hidden behind the fixed action bar. */
+  .flow-lp-b { padding: 16px 14px calc(84px + env(safe-area-inset-bottom)); }
+  /* Fixed bottom action bar — STATIC, glued to the screen bottom while the page
+     (map + content) scrolls. --kb-inset (set from visualViewport in ManualPlanner)
+     lifts it above the on-screen keyboard on iOS; on Chrome the resized viewport
+     already keeps it at the bottom. */
+  .flow-foot { position: fixed; left: 0; right: 0; bottom: var(--kb-inset, 0px); z-index: 20; padding-bottom: calc(11px + env(safe-area-inset-bottom)); transition: bottom .18s ease; }
 }
 
 /* Planner route row — REUSES the editor's .te-row grid + primitives (.te-grip /
