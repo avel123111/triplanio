@@ -61,6 +61,7 @@ export default {
   'validation.AI_CITY_MISMATCH_FROM': 'La reserva sale de «{booking}», el viaje indica «{trip}». Comprueba que sea la reserva correcta',
   'validation.AI_CITY_MISMATCH_TO': 'La reserva llega a «{booking}», el viaje indica «{trip}». Comprueba que sea la reserva correcta',
   'validation.AI_LAYOVER_CITY_MISMATCH': 'La ciudad de escala no coincide: llegada «{a}», salida «{b}»',
+  'validation.AI_LAYOVER_UNRESOLVED': 'No se pudo localizar la ciudad de escala: {cities}. Selecciónala manualmente',
   // Budget / docs / members / chat / share / pro
   'validation.EXP_TITLE_REQUIRED': 'Indica una descripción',
   'validation.EXP_AMOUNT_REQUIRED': 'Indica un importe mayor que 0',

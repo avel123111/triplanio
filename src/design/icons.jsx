@@ -6,7 +6,7 @@ import {
   Share2, Send, Search, Plane, Paperclip, Moon, List, LayoutGrid, Globe,
   GripVertical, Crown, ArrowRightLeft, Upload, TrainFront, Sun, Shield, RefreshCw,
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
-  Ticket, Route, ShieldCheck, Car,
+  Ticket, Route, ShieldCheck, Car, Minus,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ export { FolderBookmark, CardSim };
 
 // ── Карта name → lucide ──────────────────────────────────────────────────────
 const LUCIDE = {
-  plus: Plus, warning: TriangleAlert, close: X, chev: ChevronRight, back: ArrowLeft,
+  plus: Plus, minus: Minus, warning: TriangleAlert, close: X, chev: ChevronRight, back: ArrowLeft,
   pin: MapPin, file: FileText, check: Check, info: Info, sparkles: Sparkles, lock: Lock,
   cam: Camera, wallet: Wallet, trash: Trash2, external: ExternalLink, calendar: Calendar,
   bed: BedDouble, users: Users, edit: Pencil, arrowR: ArrowRight, spark: Sparkle,

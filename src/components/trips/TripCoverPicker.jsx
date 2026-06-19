@@ -18,6 +18,7 @@ export default function TripCoverPicker({
   coverGradient = '',
   tripId,
   onChange,
+  showPreview = true,
 }) {
   const t = useT();
   const fileRef = useRef(null);
@@ -65,18 +66,20 @@ export default function TripCoverPicker({
 
   return (
     <div className="space-y-3">
-      <div
-        className="relative w-full h-[120px] rounded-lg overflow-hidden border bg-muted"
-        style={previewStyle}
-      >
-        {coverImageUrl ? (
-          <img src={coverImageUrl} alt="" className="w-full h-full object-cover" />
-        ) : !gradient ? (
-          <div className="w-full h-full flex items-center justify-center text-3xl opacity-30">
-            🌍
-          </div>
-        ) : null}
-      </div>
+      {showPreview && (
+        <div
+          className="relative w-full h-[120px] rounded-lg overflow-hidden border bg-muted"
+          style={previewStyle}
+        >
+          {coverImageUrl ? (
+            <img src={coverImageUrl} alt="" className="w-full h-full object-cover" />
+          ) : !gradient ? (
+            <div className="w-full h-full flex items-center justify-center text-3xl opacity-30">
+              🌍
+            </div>
+          ) : null}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         {TRIP_GRADIENTS.map((g) => {

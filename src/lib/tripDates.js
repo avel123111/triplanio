@@ -4,11 +4,16 @@
 //   • the trip editor (TripStructureEdit) as optimistic reorder layout, and
 //   • the pre-creation planner (ManualPlanner, manual + AI), which has no trip id
 //     yet and no transfers (so gap is always 0).
-// Keep this in sync with recompute_trip via a shared set of golden cases.
+// Keep this in sync with recompute_trip (now migration 0043) via a shared set of
+// golden cases.
 //
 // Formula (no special cases):
 //   start = previousEnd + gap;  end = start + nights;  cursor = end
-//   • the first non-anchor node anchors the chain (its gap is forced to 0)
+//   • baseISO is the chain anchor = the DEPARTURE day (UTC) of the first leg leaving
+//     the `start` city (mirrors server _trip_anchor_date); callers pass it in. A
+//     stable external anchor — so applying a gap to the first city stays idempotent.
+//   • EVERY non-anchor (the first one too) uses its own gap: an overnight start->first
+//     leg pushes the first city +1 (arrival day). No special-casing of the first node.
 //   • a 'waypoint' is a single-date transit point (consumes no nights)
 //   • 'start'/'end' anchors carry no dates, only a position
 // Pure calendar-day math (UTC) → idempotent: with unchanged (nights, gap) it
@@ -25,12 +30,13 @@ export function layoutDates(nodes, baseISO) {
   const firstTransit = nodes.find((n) => !isAnchor(n));
   let cursor = (baseISO ? toDT(baseISO) : toDT(firstTransit?.start_date)) || DateTime.utc();
   cursor = cursor.startOf('day');
-  let seen = false; // the first non-anchor node anchors the trip start (gap forced 0)
   return nodes.map((n, i) => {
     if (isAnchor(n)) return { ...n, position: i };
-    const gap = seen && Number.isFinite(n.gap) ? n.gap : 0;
+    // No first-node special case: the first non-anchor's gap applies too, so an
+    // overnight start->first leg lands the city on its arrival day. baseISO already
+    // points at the start-leg departure day, so this stays idempotent.
+    const gap = Number.isFinite(n.gap) ? n.gap : 0;
     const startDay = cursor.plus({ days: gap });
-    seen = true;
     if (n.kind === 'waypoint') { // single-date transit point - consumes no nights
       const d = startDay.toISODate();
       cursor = startDay;

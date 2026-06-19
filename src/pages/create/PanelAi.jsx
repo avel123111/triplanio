@@ -15,17 +15,18 @@ function AnchorMini({ label, city }) {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="eyebrow" style={{ fontSize: 'var(--fs-micro)', marginBottom: 1 }}>{label}</div>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{city.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{city.country}</span></div>
+        <div className="te-cityname">{city.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{city.country}</span></div>
       </div>
     </div>
   );
 }
 
 // =====================================================================
-// AI ENTRY PANEL - the method-specific entry for the unified create flow.
-// Prompt → generating → draft. Once a draft is accepted, the remaining
-// steps (skeleton / return / review) are the shared manual-planner ones.
-// The Next button lives in the shared flow footer (ManualPlanner), not here.
+// AI ENTRY PANEL — design-system A6 (AI Planner / PanelAi). White card with an
+// ai-tinted border (NOT the .ai-blk booking-parser block). 3 states: prompt →
+// generating → draft. The "generating" CTA is the canonical disabled .btn--ai
+// with white .ai-dots ("Думаю …"). The Next button lives in the shared flow
+// footer (ManualPlanner), not here.
 //   ctx: { aiState, prompt, setPrompt, aiComment, home, returnCity, cities,
 //          onGenerate(promptText) }
 // =====================================================================
@@ -54,20 +55,17 @@ export default function PanelAi({ ctx }) {
       <div style={{ background: 'var(--surface)', border: `1.5px solid color-mix(in srgb, ${AI} 22%, var(--line))`, borderRadius: 14, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--ai-grad)', color: '#fff', display: 'grid', placeItems: 'center' }}><Icon name="sparkles" size={12} /></span>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--ai-ink)' }}>{t('ai_plan.assistant_label')}</div>
-          <span className="muted" style={{ fontSize: 'var(--fs-micro)', marginLeft: 'auto' }}>{t('ai_plan.assistant_hint')}</span>
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--ai-ink)' }}>{t('ai_plan.assistant_hint')}</div>
         </div>
         <textarea
           className="textarea"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canPrompt) { e.preventDefault(); onGenerate(prompt.trim()); } }}
           disabled={aiState === 'generating'}
           placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
           style={{ minHeight: 110, border: 'none', padding: 0, background: 'transparent', fontSize: 'var(--fs-strong)', lineHeight: 1.55, width: '100%', resize: 'none' }}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, alignItems: 'center', gap: 8 }}>
-          <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('ai_plan.shortcut_hint')}</span>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12, alignItems: 'center', gap: 8 }}>
           {aiState === 'generating' ? (
             <Btn variant="ai" size="sm" disabled>
               {t('ai_plan.thinking')} <span className="ai-dots" style={{ marginLeft: 4 }}><span /><span /><span /></span>
@@ -100,7 +98,7 @@ export default function PanelAi({ ctx }) {
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11 }}>
               <div style={{ width: 24, height: 24, borderRadius: '50%', background: AI, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 'var(--fs-micro)', fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{c.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{c.country}</span></div>
+                <div className="te-cityname">{c.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{c.country}</span></div>
               </div>
               <span className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{c.nights} {t('ai_plan.unit_nights_short')}</span>
             </div>

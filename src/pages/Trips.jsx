@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
-import { isTripInPast, formatTripRange } from '@/lib/trip-dates';
+import { isTripInPast, formatTripRange, computeTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -11,6 +11,12 @@ import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, EmptyState, Skeleton } from '../design/index';
 import { getGradientById } from '@/lib/trip-gradients';
 import { uniqueTransitCities } from '@/lib/trip-cities';
+import { homeStats, worldExplored } from '@/lib/travel-stats';
+import StatsMap from '@/components/views/StatsMap';
+import {
+  Greeting, StatBar, WorldMini, AllStatsCta,
+  IconGlobe, IconBuildings, IconSuitcase, IconTransfer,
+} from '@/components/stats/widgets';
 import '../design/app.css';
 
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
@@ -102,11 +108,86 @@ function roleLabel(t, role) {
   return t('trips.role_admin'); // safe fallback — 'member' role doesn't exist in schema
 }
 
-// ─── SVG icons (inline, matches design spec) ────────────────────────────────
-const IconPin   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.7-7-11a7 7 0 0114 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>;
-const IconUsers = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0M16 6a3 3 0 010 6M21 20a6 6 0 00-4-5.6"/></svg>;
-const IconChev  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6l6 6-6 6"/></svg>;
-const IconCrown = () => <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>;
+// ─── SVG icons (inline, card/rail-specific; stat-bar icons come from widgets) ─
+const IconPin    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.7-7-11a7 7 0 0114 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>;
+const IconUsers  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0M16 6a3 3 0 010 6M21 20a6 6 0 00-4-5.6"/></svg>;
+const IconChev   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6l6 6-6 6"/></svg>;
+const IconCrown  = () => <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>;
+const IconShield = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"/></svg>;
+const IconCal    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>;
+
+// ─── Next-trip rail card / empty states ────────────────────────────────────────
+function NextTripCard({ trip, onClick, t }) {
+  const bg = coverBg(trip);
+  const cd = trip.countdown;
+  return (
+    <button type="button" className="nextcard" onClick={onClick}>
+      <span className="nextcard__cover" style={{ background: bg || undefined }}>
+        {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
+        <IconShield />
+      </span>
+      <span className="nextcard__tx">
+        <span className="nextcard__tag"><IconShield />{t('stats.next_start_in')}</span>
+        <b>{trip.title}</b>
+        <span className="rt">{trip.scope}</span>
+        <span className="nextcard__cd">
+          <span className="cdu"><b>{cd.d}</b><span>{t('stats.cd_days')}</span></span>
+          <span className="cdu"><b>{cd.h}</b><span>{t('stats.cd_hours')}</span></span>
+          <span className="cdu"><b>{cd.m}</b><span>{t('stats.cd_min')}</span></span>
+        </span>
+      </span>
+      <span className="nextcard__chev"><IconChev /></span>
+    </button>
+  );
+}
+
+function NoNextCard({ variant, onPlan, t }) {
+  const isEmpty = variant === 'empty';
+  return (
+    <div className="nonext">
+      <span className="ic"><IconCal /></span>
+      <div>
+        <b>{t('stats.next_trip')}</b>
+        <p>{isEmpty ? t('stats.next_empty_sub') : t('stats.no_planned_sub')}</p>
+      </div>
+      {!isEmpty && (
+        <Btn variant="primary" size="sm" icon="plus" onClick={onPlan}>{t('stats.plan_trip')}</Btn>
+      )}
+    </div>
+  );
+}
+
+// ─── Map hero + rail (shared by filled + empty screens) ────────────────────────
+function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, onPlan, onOpenNext, t }) {
+  const items = [
+    { key: 'countries', value: home.countries, label: t('stats.sb_countries'), icon: <IconGlobe /> },
+    { key: 'cities',    value: home.cities,    label: t('stats.sb_cities'),     tone: 'city',     icon: <IconBuildings /> },
+    { key: 'trips',     value: home.trips,     label: t('stats.sb_trips'),      tone: 'trip',     icon: <IconSuitcase /> },
+    { key: 'transfers', value: home.transfers, label: t('stats.sb_transfers'),  tone: 'transfer', icon: <IconTransfer /> },
+  ];
+  return (
+    <>
+      <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} />
+      <div className="dash-hero">
+        <div className="mapwrap">
+          {showMap
+            ? <StatsMap points={points} colorScheme={scheme} />
+            : <div className="map-skel"><IconGlobe /><div>{t('stats.map_loading')}</div></div>}
+        </div>
+        <div className="rail">
+          {nextTrip
+            ? <NextTripCard trip={nextTrip} onClick={onOpenNext} t={t} />
+            : <NoNextCard variant={home.trips > 0 ? 'no-planned' : 'empty'} onPlan={onPlan} t={t} />}
+          <WorldMini
+            world={world}
+            title={t('stats.world_explored')}
+            caption={t('stats.world_of', { visited: world.visited, total: world.total })}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
 
 // ─── Trip card (grid / poster view) ─────────────────────────────────────────
 const TripCard = ({ trip, onClick }) => {
@@ -270,20 +351,13 @@ function NewTripDialog({ onClose, onManual, onAi }) {
   );
 }
 
-// ─── Empty state ─────────────────────────────────────────────────────────────
-function CollectionEmpty({ onManual, onAi }) {
+// ─── Create choices (empty collection) ─────────────────────────────────────────
+function CreateChoices({ onManual, onAi }) {
   const { t } = useI18n();
   return (
-    <div className="trips-empty">
-      <div className="trips-empty__hero">
-        <Badge variant="brand" icon="sparkles">{t('trips.empty_eyebrow')}</Badge>
-        <h1 style={{ marginTop: 14 }}>{t('trips.empty_heading')}</h1>
-        <p>{t('trips.empty_desc')}</p>
-      </div>
-      <div className="trips-empty__choices">
-        <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_full')} onClick={onManual} />
-        <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_full')} onClick={onAi} />
-      </div>
+    <div className="trips-empty__choices">
+      <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_full')} onClick={onManual} />
+      <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_full')} onClick={onAi} />
     </div>
   );
 }
@@ -299,11 +373,7 @@ function TripsHeaderSkeleton() {
         </div>
         <Skeleton w={150} h={44} r={10} />
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-        <Skeleton w={240} h={36} r={10} />
-        <div style={{ flex: 1 }} />
-        <Skeleton w={72} h={36} r={10} />
-      </div>
+      <Skeleton w="100%" h={86} r={20} style={{ marginBottom: 18 }} />
     </>
   );
 }
@@ -351,6 +421,13 @@ export default function Trips() {
   const [search,      setSearch]      = useState('');
   const [showNewTrip, setShowNewTrip] = useState(false);
   const [showLimit,   setShowLimit]   = useState(false);
+  // Lazy-mount the map hero after the first paint so the heavy Mapbox surface
+  // doesn't block initial render of the content above the fold.
+  const [showMap, setShowMap] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShowMap(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
   // The mobile bottom-nav "+" (off-trip) routes here with ?new=1 → open the same
   // create-trip dialog (keeps the existing Pro trip-limit check). Then drop the param.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -370,6 +447,8 @@ export default function Trips() {
   }, [viewMode]);
 
   const isPro = isProActive(user);
+  const scheme = isDark ? 'DARK' : 'LIGHT';
+  const displayName = user?.full_name || user?.email?.split('@')[0] || '';
 
   // ── Fetch trips ─────────────────────────────────────────────────────────────
   const { data: allTrips = [], isLoading } = useQuery({
@@ -394,6 +473,24 @@ export default function Trips() {
     },
     enabled: hasTrips,
   });
+
+  // ── Travel-stats RPC: compact point set + transfers total for the hero ──────
+  // Powers the stat-bar, the map fill/pins and the "world explored" widget. One
+  // call; year filtering / aggregates happen client-side (here it's unfiltered).
+  const { data: travelStats } = useQuery({
+    queryKey: ['travel-stats', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_user_travel_stats');
+      if (error) throw error;
+      return data || { points: [], trips: {}, transfers_total: 0 };
+    },
+    enabled: !!user?.id,
+    staleTime: 30_000,
+  });
+  const statsPoints    = travelStats?.points || [];
+  const transfersTotal = travelStats?.transfers_total || 0;
+  const home  = useMemo(() => homeStats(statsPoints, transfersTotal), [statsPoints, transfersTotal]);
+  const world = useMemo(() => worldExplored(statsPoints), [statsPoints]);
 
   // ── Single RPC: all participants (owner + active members) with avatar_url ──
   const { data: allParticipants = [] } = useQuery({
@@ -452,6 +549,33 @@ export default function Trips() {
     normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [])
   );
 
+  // ── Next upcoming trip (nearest future start) for the rail card ──────────────
+  const nextTrip = useMemo(() => {
+    const now = Date.now();
+    let best = null;
+    for (const tr of allTrips) {
+      const visits = visitsByTrip[tr.id] || [];
+      const { start } = computeTripRange(visits);
+      if (!start) continue;
+      const startMs = new Date(start).getTime();
+      if (startMs <= now) continue;
+      if (!best || startMs < best.startMs) best = { tr, visits, startMs };
+    }
+    if (!best) return null;
+    const diff = best.startMs - now;
+    return {
+      ...best.tr,
+      coverHue:  strHue(best.tr.id),
+      accentHue: strHue(best.tr.title || ''),
+      scope:     scopeLabel(t, best.visits),
+      countdown: {
+        d: Math.floor(diff / 864e5),
+        h: Math.floor((diff % 864e5) / 36e5),
+        m: Math.floor((diff % 36e5) / 6e4),
+      },
+    };
+  }, [allTrips, visitsByTrip, t]);
+
   // ── Create flow ───────────────────────────────────────────────────────────────
   const checkLimit = (pick) => {
     if (!isPro && ownedActiveTrips.length >= 1) {
@@ -467,6 +591,9 @@ export default function Trips() {
   };
 
   const isLoadingData = isLoading || (hasTrips && loadingVisits);
+  const subText = hasTrips
+    ? t('stats.home_sub', { trips: home.trips, countries: home.countries })
+    : t('stats.home_sub_empty');
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -486,18 +613,43 @@ export default function Trips() {
           </>
         )}
 
-        {/* Empty collection */}
+        {/* Greeting + stats hero — shown for both empty and filled (not while the
+            first-load skeleton is up). */}
+        {!(isLoadingData && allTrips.length === 0) && (
+          <>
+            <Greeting greeting={t('stats.greeting', { name: displayName })} name={displayName} photo={user?.avatar_url} sub={subText} />
+            <StatHero
+              points={statsPoints}
+              home={home}
+              world={world}
+              showMap={showMap}
+              scheme={scheme}
+              nextTrip={nextTrip}
+              onAllStats={() => nav('/stats')}
+              onPlan={() => setShowNewTrip(true)}
+              onOpenNext={() => nextTrip && nav(`/trip/${nextTrip.id}`)}
+              t={t}
+            />
+          </>
+        )}
+
+        {/* Empty collection — create choices below the hero (skeleton-with-zeros) */}
         {!isLoadingData && allTrips.length === 0 && (
-          <CollectionEmpty onManual={() => checkLimit('manual')} onAi={() => checkLimit('ai')} />
+          <div className="trips-empty" style={{ marginTop: 28 }}>
+            <div className="sec-head">
+              <h2 style={{ fontSize: 'var(--fs-h3)' }}>{t('trips.empty_heading')}</h2>
+            </div>
+            <CreateChoices onManual={() => checkLimit('manual')} onAi={() => checkLimit('ai')} />
+          </div>
         )}
 
         {/* Normal view */}
         {allTrips.length > 0 && (
           <>
-            {/* Header row */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+            {/* Section header row */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <h1 style={{ marginBottom: 6 }}>{t('trips.page_title')}</h1>
+                <h2>{t('trips.page_title')}</h2>
                 <div className="muted" style={{ fontSize: 'var(--fs-strong)' }}>
                   {t('trips.count_summary', { active: activeTrips.length, past: pastTrips.length })}
                 </div>
@@ -558,8 +710,9 @@ export default function Trips() {
               </div>
             )}
 
-            {/* Free-limit banner — Pro style, not AI style */}
-            {!isPro && filterMode === 'active' && (
+            {/* Free-limit banner — Pro style, not AI style.
+                Shown only when owned active trips reach/exceed the free cap (1). */}
+            {!isPro && filterMode === 'active' && ownedActiveTrips.length >= 1 && (
               <div className="limitcard">
                 <div className="limitcard__ic">
                   <Icon name="pro" size={22} />

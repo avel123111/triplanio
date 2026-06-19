@@ -97,7 +97,10 @@
 .auth__foot-links { display: inline-flex; gap: 18px; }
 
 /* ── Form elements ── */
-.eyebrow {
+/* Scoped to .auth — these used to be a BARE global `.eyebrow` and leaked the
+   orange dot (::before) onto every .eyebrow in the app (planner "РЯДОМ", Review
+   stats, etc.). The app's own `.eyebrow` lives in design/app.css. */
+.auth .eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: var(--fs-meta);
   letter-spacing: .14em;
@@ -106,7 +109,7 @@
   font-weight: 600;
   margin-bottom: 18px;
 }
-.eyebrow::before {
+.auth .eyebrow::before {
   content: "";
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--warm);
@@ -372,6 +375,9 @@
 .field__match.is-bad::before { content: "\2715\00a0"; font-weight: 700; }
 
 .auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   font-size: var(--fs-base);
   color: var(--danger);
   background: var(--danger-soft);
@@ -379,6 +385,9 @@
   padding: 10px 14px;
   margin-bottom: 14px;
 }
+.auth-error__icon { flex: 0 0 auto; margin-top: 1px; line-height: 0; }
+.auth-error__icon svg { display: block; }
+.auth__resend-wait { opacity: .55; }
 
 /* Confirm (reset-sent) */
 .confirm { text-align: center; }

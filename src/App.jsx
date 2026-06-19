@@ -9,6 +9,7 @@ import { ThemeProvider } from '@/lib/ThemeContext';
 import { I18nProvider } from '@/lib/i18n/I18nContext';
 import Layout from '@/components/Layout';
 import Trips from '@/pages/Trips';
+import Statistics from '@/pages/Statistics';
 import TripView from '@/pages/TripView';
 import TripStructureEdit from '@/pages/TripStructureEdit';
 import ScreenAccount from '@/pages/ScreenAccount';
@@ -102,6 +103,7 @@ const AuthenticatedApp = () => {
           the landing's CTA takes them into the app. */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/trips" element={<Trips />} />
+      <Route path="/stats" element={<Statistics />} />
       <Route path="/new-trip" element={<ManualPlanner />} />
       <Route path="/trip/:tripId" element={<TripView />} />
       <Route path="/trip/:tripId/edit" element={<TripStructureEdit />} />

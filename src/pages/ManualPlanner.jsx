@@ -8,11 +8,14 @@ import { useToast } from '@/components/ui/use-toast';
 import { isTripInPast } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
-import { searchCities, countryFlag, reverseGeocode } from '@/lib/geo';
+import { searchCities, resolveCities, countryFlag, reverseGeocode } from '@/lib/geo';
 import { tzFromCoords } from '@/lib/timezone';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
 import { Btn, EmptyState, Severity, Toggle } from '../design/index';
+import CityRowBase from '@/components/trip/CityRow';
+import NightsStepper from '@/components/trip/NightsStepper';
+import TripStartControl from '@/components/trip/TripStartControl';
 import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { getGradientById } from '@/lib/trip-gradients';
@@ -21,10 +24,7 @@ import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import StartCalendar from '@/components/create/StartCalendar';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Sheet } from '@/components/ui/Sheet';
-import { DateTime } from 'luxon';
+// StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 import '../design/app.css';
 
 // Whole days between two ISO date strings (b - a). 0 on bad input.
@@ -77,13 +77,6 @@ function shortDateLabel(iso, locale = 'ru') {
   } catch {
     return new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'short' }).format(d);
   }
-}
-
-// "d MMM, ccc" — identical to the editor's trip-start label (shared look).
-function fmtDW(iso, loc = 'ru') {
-  if (!iso) return '—';
-  const d = DateTime.fromISO(iso, { zone: 'utc' });
-  return d.isValid ? d.setLocale(loc).toFormat('d MMM, ccc') : '—';
 }
 
 // Default trip start = one month ahead of today (local), YYYY-MM-DD.
@@ -204,7 +197,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
             >
               <span style={{ fontSize: 'var(--fs-h3)', flexShrink: 0 }}>{countryFlag(c.country_code)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{c.city_name}</div>
+                <div className="te-cityname">{c.city_name}</div>
                 <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name}</div>
               </div>
             </button>
@@ -245,6 +238,11 @@ function CityAnchorRow({ label, city_name, country, kind }) {
 // route looks and behaves identically to the structural editor — same bold city
 // names, same nights stepper, same lift-on-drag. No bespoke steppers/fonts. The
 // final-point toggle lives once in StepCities (not per row).
+// Planner route row. Owns its editing state + pick/remove/nights handlers, then
+// delegates LAYOUT to the shared <CityRowBase> (variant="planner") so the planner
+// list and the structural editor render the SAME row skeleton — one component,
+// two variants. The trailing actions (nights stepper + delete) are the only
+// per-screen difference; the final-point toggle still lives on the last card.
 function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onToggleFinalPoint, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
@@ -252,9 +250,8 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onT
   const nights = +city.nights || 1;
   const startLabel = city.startDate ? shortDateLabel(city.startDate, lang) : null;
   const endLabel = (city.startDate && city.nights) ? shortDateLabel(addDays(city.startDate, +city.nights), lang) : null;
-  // Empty rows open in the picker; once a city is chosen it shows as the editor's
-  // bold .te-cityname (read-only — change a city by deleting + re-adding, exactly
-  // like the editor, so it can NEVER get stuck as an input).
+  // Empty rows open in the picker; once a city is chosen it shows read-only
+  // (change a city by deleting + re-adding) so it can never get stuck as an input.
   const [editing, setEditing] = useState(!city.city_name);
   const stopArm = (e) => e.stopPropagation();
   const pick = (picked) => {
@@ -265,46 +262,47 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onT
       onChange({ city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
     }
   };
+
+  const grip = (
+    <span className="te-grip" role="button" tabIndex={0} aria-label={t('planner.drag')} title={t('planner.drag')}
+      onClick={stopArm}
+      onKeyDown={(e) => { if (e.key === 'ArrowUp') { e.preventDefault(); onMove(-1); } else if (e.key === 'ArrowDown') { e.preventDefault(); onMove(1); } }}>
+      <Icon name="drag" size={14} />
+    </span>
+  );
+  const lead = <span className={'te-row__num' + (invalid ? ' is-warn' : '')}>{isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}</span>;
+  const dates = isFinalAnchor
+    ? t('planner.final_point')
+    : (startLabel ? `${startLabel}${endLabel ? ` – ${endLabel}` : ''}` : null);
+
   const row = (
-    <div
-      className={'te-row te-row--plan' + (isDragging ? ' is-dragging' : '') + (isFinalAnchor ? ' te-row--fin' : '') + (invalid ? ' te-row--bad' : '')}
-      onPointerDown={onArm}
+    <CityRowBase
+      variant="planner"
+      className={isFinalAnchor ? 'te-row--fin' : ''}
+      dragging={isDragging}
+      invalid={invalid}
+      onArm={onArm}
+      stopCellPointer={editing}
+      grip={grip}
+      lead={lead}
+      name={editing ? undefined : city.city_name}
+      country={editing ? undefined : city.country}
+      dates={editing ? undefined : dates}
+      editingSlot={editing
+        ? <CityPicker value={city.city_name ? city : null} onChange={pick} placeholder={t('planner.city_ph')} autoFocus={!!city.city_name} />
+        : undefined}
     >
-      {/* Drag grip + keyboard reorder — identical to the editor's gripEl. The whole
-          row arms the pointer-drag; the grip just stops its own click. */}
-      <span className="te-grip" role="button" tabIndex={0} aria-label={t('planner.drag')} title={t('planner.drag')}
-        onClick={stopArm}
-        onKeyDown={(e) => { if (e.key === 'ArrowUp') { e.preventDefault(); onMove(-1); } else if (e.key === 'ArrowDown') { e.preventDefault(); onMove(1); } }}>
-        <Icon name="drag" size={14} />
-      </span>
-
-      <span className={'te-row__num' + (invalid ? ' is-warn' : '')}>{isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}</span>
-
-      <div className="te-citycell" onPointerDown={stopArm}>
-        {editing ? (
-          <CityPicker value={city.city_name ? city : null} onChange={pick} placeholder={t('planner.city_ph')} autoFocus={!!city.city_name} />
-        ) : (
-          <>
-            <div className="te-cityline">
-              <span className="te-cityname">{city.city_name}</span>
-              {city.country && <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{city.country}</span>}
-            </div>
-            {!isFinalAnchor && startLabel && <div className="te-dts">{startLabel}{endLabel ? ` – ${endLabel}` : ''}</div>}
-            {isFinalAnchor && <div className="te-dts">{t('planner.final_point')}</div>}
-          </>
-        )}
-      </div>
-
       {!isFinalAnchor && (
-        <span className="te-stepper" onPointerDown={stopArm} onClick={stopArm} title={t('tse.col_nights')}>
-          <button className="te-step" onClick={() => onChange({ nights: Math.max(1, nights - 1) })} disabled={nights <= 1} aria-label={t('planner.fewer_nights')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
-          <span className="num te-nights">{nights}<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
-          <button className="te-step" onClick={() => onChange({ nights: Math.min(30, nights + 1) })} disabled={nights >= 30} aria-label={t('planner.more_nights')}><Icon name="plus" size={10} /></button>
-        </span>
+        <NightsStepper
+          value={nights}
+          onMinus={() => onChange({ nights: Math.max(1, nights - 1) })}
+          onPlus={() => onChange({ nights: Math.min(30, nights + 1) })}
+          minusDisabled={nights <= 1}
+          plusDisabled={nights >= 30}
+        />
       )}
-
       <button className="te-step te-step--del" onPointerDown={stopArm} onClick={(e) => { e.stopPropagation(); onRemove(); }} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
-    </div>
+    </CityRowBase>
   );
 
   if (!isLast) return row;
@@ -315,17 +313,18 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onT
       {row}
       <div className="pl-fin-sub" onPointerDown={stopArm} onClick={stopArm}>
         <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
+        <Icon name="flag" size={13} style={{ color: 'var(--muted)', flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
-          <span style={{ fontWeight: 600 }}>
-            <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: 'var(--warm)' }} />
-            {t('planner.final_point')}
-          </span>
-          <span className="muted" style={{ marginLeft: 6 }}>{t('planner.final_point_hint')}</span>
+          <span style={{ fontWeight: 600 }}>{t('planner.final_point')}</span>{' '}
+          <span className="muted">{t('planner.final_point_hint')}</span>
         </div>
       </div>
     </div>
   );
 }
+
+// TripStartControl extracted to a shared component: src/components/trip/TripStartControl.jsx
+// (used by both the create-flow planner and the structural editor — one element).
 
 // ─── Step 1: Home ─────────────────────────────────────────────────────────────
 
@@ -358,28 +357,19 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.home_title')}</h1>
-      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 22, maxWidth: 540 }}>
+      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
         {t('planner.home_desc')}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 200px)', gap: 14, alignItems: 'start' }}>
+      <h2 className="section-sub">{t('ai_plan.start')}</h2>
+      <div className="field-row cols-2" style={{ alignItems: 'end', gridTemplateColumns: '7fr 3fr' }}>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="field__label">{t('planner.start_city')}</label>
           <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} autoFocus />
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="field__label">{t('planner.departure_date')}</label>
-          <div style={{ position: 'relative' }}>
-            <Icon name="calendar" size={15}
-              style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: startDate ? 'var(--brand)' : 'var(--muted-2)', pointerEvents: 'none' }} />
-            <input
-              className="input num"
-              type="date"
-              value={startDate || ''}
-              onChange={e => setStartDate?.(e.target.value)}
-              style={{ paddingLeft: 36, fontSize: 'var(--fs-strong)', width: '100%' }}
-            />
-          </div>
+          <TripStartControl date={startDate} onStep={(d) => startDate && setStartDate(addDays(startDate, d))} onPickDate={setStartDate} block />
         </div>
       </div>
 
@@ -389,7 +379,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       </div>
 
       {geoState === 'ask' && (
-        <div style={{ padding: 18, borderRadius: 12, border: '1.5px dashed var(--line)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className="geo-prompt" style={{ border: '1.5px dashed var(--line)', background: 'var(--surface)' }}>
           <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="pin" size={20} />
           </div>
@@ -402,16 +392,16 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       )}
 
       {geoState === 'loading' && (
-        <div style={{ padding: 18, borderRadius: 12, border: '1.5px dashed var(--line)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className="geo-prompt" style={{ border: '1.5px dashed var(--line)', background: 'var(--surface)' }}>
           <div style={{ width: 20, height: 20, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
           <span style={{ fontSize: 'var(--fs-base)', color: 'var(--muted)' }}>{t('planner.detecting')}</span>
         </div>
       )}
 
       {geoState === 'allowed' && nearbyCity && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+        <div>
           <button onClick={() => setHome(nearbyCity)} style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+            display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 14px',
             background: home?.city_name === nearbyCity.city_name ? 'var(--brand-soft)' : 'var(--surface)',
             border: '1.5px solid ' + (home?.city_name === nearbyCity.city_name ? 'var(--brand)' : 'var(--line)'),
             borderRadius: 11, cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
@@ -423,7 +413,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
               <Icon name="plane" size={14} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{nearbyCity.city_name}</div>
+              <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 700 }}>{nearbyCity.city_name}</div>
               <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{countryFlag(nearbyCity.country_code)} {nearbyCity.country} · {t('planner.your_city')}</div>
             </div>
             {home?.city_name === nearbyCity.city_name && (
@@ -436,7 +426,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       )}
 
       {geoState === 'denied' && (
-        <div style={{ padding: 18, borderRadius: 12, background: 'var(--wash)', border: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className="geo-prompt" style={{ background: 'var(--wash)', border: '1px solid var(--line-2)' }}>
           <div style={{ width: 44, height: 44, borderRadius: 11, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <Icon name="lock" size={20} />
           </div>
@@ -456,10 +446,6 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
 function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalPoint, startDate, setStartDate }) {
   const t = useT();
-  const { lang } = useI18n();
-  const [calOpen, setCalOpen] = useState(false); // trip-start calendar popover/sheet
-  const isSheet = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
-
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
     setCities(cs => recomputeDates([...cs, { id: Date.now(), ...base, startDate: cs[0]?.startDate || startDate || '', nights: preset?.nights || 3 }]));
@@ -489,35 +475,15 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.step_cities')}</h1>
-      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 18, maxWidth: 620 }}>
+      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 18, maxWidth: 620 }}>
         {t('planner.cities_desc_1')} <b style={{ color: 'var(--ink)' }}>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
       </div>
 
-      {/* Trip-start control — the SAME .ts-startctl + shared StartCalendar as the
-          editor (one mini calendar, one stepper look across both screens). */}
-      <div style={{ display: 'flex', marginBottom: 12 }}>
-        <div className="ts-startctl" title={t('planner.trip_start')}>
-          <span className="ts-startctl__lbl">{t('ai_plan.start')}</span>
-          <button type="button" className="ts-step" onClick={() => startDate && setStartDate(addDays(startDate, -1))} title={t('planner.day_earlier')} aria-label={t('planner.day_earlier')}><Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} /></button>
-          {isSheet ? (
-            <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')} onClick={() => setCalOpen(true)}>{fmtDW(startDate, lang)}</button>
-          ) : (
-            <Popover open={calOpen} onOpenChange={setCalOpen}>
-              <PopoverTrigger asChild>
-                <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(startDate, lang)}</button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="ts-startcal-pop">
-                <StartCalendar value={startDate} lang={lang} onPick={(iso) => { setStartDate(iso); setCalOpen(false); }} />
-              </PopoverContent>
-            </Popover>
-          )}
-          <button type="button" className="ts-step" onClick={() => startDate && setStartDate(addDays(startDate, 1))} title={t('planner.day_later')} aria-label={t('planner.day_later')}><Icon name="chev" size={13} /></button>
-          {isSheet && (
-            <Sheet open={calOpen} onOpenChange={setCalOpen} title={t('planner.trip_start')}>
-              <StartCalendar value={startDate} lang={lang} onPick={(iso) => { setStartDate(iso); setCalOpen(false); }} />
-            </Sheet>
-          )}
-        </div>
+      {/* "Города" header — section sub-heading + the shared start control on the
+          right in one row (mirrors the editor's .ts-routehead: title + control). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <h2 className="section-sub" style={{ margin: 0, flex: 1 }}>{t('planner.cities_heading')}</h2>
+        <TripStartControl date={startDate} onStep={(d) => startDate && setStartDate(addDays(startDate, d))} onPickDate={setStartDate} label={t('ai_plan.start')} />
       </div>
 
       <CityAnchorRow label={t('ai_plan.start')} city_name={home?.city_name} country={home?.country} kind="home" />
@@ -593,17 +559,18 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
       <h1 style={{ marginBottom: 10 }}>
         {t('planner.return_title_pre')} <span style={{ color: 'var(--brand)' }}>{lastCityName}</span>?
       </h1>
-      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 22, maxWidth: 540 }}>
+      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
         {t('planner.return_desc')}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+      <h2 className="section-sub">{t('planner.step_return')}</h2>
+      <div className="field-row cols-2" style={{ marginBottom: 14 }}>
         <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
               <Icon name="flag" size={16} />
             </div>
-            <div style={{ fontWeight: 600 }}>{t('planner.return_home', { city: home?.city_name || '…' })}</div>
+            <div style={{ fontWeight: 700 }}>{t('planner.return_home', { city: home?.city_name || '…' })}</div>
           </div>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
             {t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}
@@ -612,10 +579,10 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 
         <button onClick={() => setReturnMode('other')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'other' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'other' ? 'var(--brand)' : 'var(--line)'), borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--warm, #e67e22)', color: 'white', display: 'grid', placeItems: 'center' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--warm)', color: 'white', display: 'grid', placeItems: 'center' }}>
               <Icon name="globe" size={16} />
             </div>
-            <div style={{ fontWeight: 600 }}>{t('planner.return_other')}</div>
+            <div style={{ fontWeight: 700 }}>{t('planner.return_other')}</div>
           </div>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
             {t('planner.return_other_desc')}
@@ -655,7 +622,7 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
         {icon ? <Icon name={icon} size={12} /> : num}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
+        <div className="te-cityname" style={{ color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
         <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{sub}</div>
       </div>
     </div>
@@ -665,16 +632,17 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
 function Stat({ label, value, hint }) {
   return (
     <div>
-      <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)' }}>{label}</div>
-      <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 600 }}>{value}</div>
+      <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)', color: 'var(--ink-2)' }}>{label}</div>
+      <div style={{ fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{value}</div>
       {hint && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{hint}</div>}
     </div>
   );
 }
 
-function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setTripTitle, onStartDateChange, saving, savedOk, savedTripId, error }) {
+function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error }) {
   const nav = useNavigate();
   const t = useT();
+  const { lang } = useI18n();
   const totalNights = cities.reduce((n, c) => n + (Number(c.nights) || 0), 0);
   const autoTitle = computeAutoTitle(home, cities, t);
   const displayTitle = tripTitle || autoTitle;
@@ -691,7 +659,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
   if (savedOk) {
     return (
       <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-        <div style={{ width: 72, height: 72, margin: '0 auto 18px', borderRadius: 18, background: 'var(--success-soft, #d4edda)', color: 'var(--success, #27ae60)', display: 'grid', placeItems: 'center' }}>
+        <div style={{ width: 72, height: 72, margin: '0 auto 18px', borderRadius: 18, background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center' }}>
           <Icon name="check" size={36} />
         </div>
         <h1 style={{ marginBottom: 8 }}>{t('planner.created_title')}</h1>
@@ -709,7 +677,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.step_review')}</h1>
-      <div className="muted" style={{ fontSize: 'var(--fs-strong)', marginBottom: 22, maxWidth: 620 }}>
+      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 22, maxWidth: 620 }}>
         {t('planner.review_desc')}
       </div>
 
@@ -740,42 +708,36 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
               <ReviewRow key={c.id} num={i + 1} name={c.city_name} sub={`${c.country || '-'} · ${c.nights} ${c.nights == 1 ? t('view.nights_one') : c.nights < 5 ? t('view.nights_few') : t('view.nights_many')}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${c.startDate}` : ''}`} />
             ))}
             {returnCity?.city_name && (
-              <ReviewRow icon={returnCity.city_name === home?.city_name ? 'flag' : 'globe'} iconColor={returnCity.city_name === home?.city_name ? 'var(--brand)' : 'var(--warm, #e67e22)'} name={returnCity.city_name} sub={`${returnCity.country || ''} · ${t('planner.sub_return')}`} muted />
+              <ReviewRow icon={returnCity.city_name === home?.city_name ? 'flag' : 'globe'} iconColor={returnCity.city_name === home?.city_name ? 'var(--brand)' : 'var(--warm)'} name={returnCity.city_name} sub={`${returnCity.country || ''} · ${t('planner.sub_return')}`} muted />
             )}
           </div>
 
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
-              <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)' }}>{t('event.start')}</div>
-              <input
-                className="input num"
-                type="date"
-                value={cities[0]?.startDate || ''}
-                onChange={e => onStartDateChange && onStartDateChange(e.target.value)}
-                disabled={saving}
-                style={{ fontSize: 'var(--fs-base)', padding: '5px 8px', minWidth: 130 }}
-              />
+              <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)', color: 'var(--ink-2)' }}>{t('event.start')}</div>
+              <div style={{ fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}</div>
               {!cities[0]?.startDate && (
-                <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--warning, #e6a817)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
+                <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
               )}
             </div>
-            <Stat label={t('planner.duration')} value={`${totalNights} ${t('ai_plan.unit_nights_short')}`} />
+            <Stat label={t('planner.duration')} value={`${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`} />
             <Stat label={t('planner.cities_stat')} value={cities.length} />
           </div>
         </div>
       </div>
 
       <div className="field">
-        <label className="field__label">{t('planner.cover')}</label>
+        <label className="field__label" style={{ fontSize: 'var(--fs-h4)' }}>{t('planner.cover')}</label>
         <TripCoverPicker
           coverImageUrl={cover?.cover_image_url || ''}
           coverGradient={cover?.cover_gradient || ''}
           onChange={setCover}
+          showPreview={false}
         />
       </div>
 
       <div className="field">
-        <label className="field__label">{t('planner.title_label')}</label>
+        <label className="field__label" style={{ fontSize: 'var(--fs-h4)' }}>{t('planner.title_label')}</label>
         <input
           className="input"
           value={tripTitle}
@@ -905,6 +867,27 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     } catch {}
   }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, restored, user?.id]);
 
+  // Keep the fixed bottom action bar above the on-screen keyboard. visualViewport
+  // shrinks when the keyboard opens (esp. iOS Safari, which ignores the viewport
+  // interactive-widget hint); expose the keyboard height as --kb-inset so the
+  // fixed .flow-foot rides above it instead of being hidden/thrown around.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return undefined;
+    const sync = () => {
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty('--kb-inset', `${kb}px`);
+    };
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => {
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+      document.documentElement.style.removeProperty('--kb-inset');
+    };
+  }, []);
+
   // setStartDate cascades to cities (first city anchors all subsequent dates).
   // Empty/invalid values are IGNORED - the trip start is required and can't be
   // cleared from any date control (step 1, step 2 or review).
@@ -927,21 +910,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // Resolve one AI city into the planner shape (coords + timezone). Shared by
   // start / transit / end so the directory lookup lives in one place.
-  const resolveAiCity = async (c, idx) => {
-    const q = `${c.city_name}${c.country ? ', ' + c.country : ''}`;
-    let best = null;
-    let tz = null;
-    // Retry once on an empty/failed lookup: AI gives real place names, so an
-    // empty result is almost always a transient geocoder hiccup (rate-limit),
-    // not a genuine no-match. Without this, cities land unresolved → red.
-    for (let attempt = 0; attempt < 2 && !best; attempt++) {
-      if (attempt) await new Promise((r) => setTimeout(r, 400));
-      try {
-        const r = await searchCities(q, lang || 'ru');
-        best = r?.[0] || null;
-      } catch { /* ignore, retry */ }
-    }
-    if (best?.latitude) { tz = tzFromCoords(best.latitude, best.longitude); }
+  // Shape one AI city into the planner shape (coords + timezone) from an already
+  // resolved `best` (or null). Geocoding is now batched in applyAiDraft via
+  // resolveCities (TRIP-145 P2), so this is pure shaping — no network here.
+  const shapeAiCity = (c, idx, best) => {
+    const tz = best?.latitude ? tzFromCoords(best.latitude, best.longitude) : null;
     return {
       id: Date.now() + idx,
       external_city_id: best?.external_city_id || null,
@@ -962,18 +935,26 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     const endSrc = [...dc].reverse().find((c) => c?.kind === 'end') || null;
     const transitSrc = dc.filter((c) => c && c.kind !== 'start' && c.kind !== 'end');
 
-    // Resolve geocoding SEQUENTIALLY, not as a parallel burst. The geocoder
-    // (LocationIQ via geoLocationiq) rate-limits concurrent requests, and liq()
-    // swallows failures into [] → cities silently landed unresolved (red, off
-    // the map). Serializing keeps every lookup under the limit; the AI draft is
-    // a one-time apply already gated behind the "thinking" step, so the small
-    // added latency is acceptable.
-    const startCity = startSrc ? await resolveAiCity(startSrc, 0) : null;
-    const endCity = endSrc ? await resolveAiCity(endSrc, 1) : null;
+    // Resolve ALL cities in ONE batch edge call (TRIP-145 P2): the edge dedups
+    // identical queries and shares the 'search' cache, replacing the old N
+    // sequential lookups (faster apply, fewer invocations, no per-city burst).
+    // Order: [start?, end?, ...transit]. Background priority yields to
+    // interactive geocoding under the rate limit.
+    const order = [];
+    if (startSrc) order.push(startSrc);
+    if (endSrc) order.push(endSrc);
+    transitSrc.forEach((c) => order.push(c));
+    const lists = await resolveCities(
+      order.map((c) => `${c.city_name}${c.country ? ', ' + c.country : ''}`),
+      lang || 'ru',
+    );
+    let oi = 0;
+    const startCity = startSrc ? shapeAiCity(startSrc, 0, lists[oi++]?.[0] || null) : null;
+    const endCity = endSrc ? shapeAiCity(endSrc, 1, lists[oi++]?.[0] || null) : null;
     const transitResolved = [];
     for (let i = 0; i < transitSrc.length; i++) {
       const c = transitSrc[i];
-      const base = await resolveAiCity(c, i + 2);
+      const base = shapeAiCity(c, i + 2, lists[oi++]?.[0] || null);
       const nights = c.start_date && c.end_date ? daysBetweenISO(c.start_date, c.end_date) : 1;
       transitResolved.push({ ...base, startDate: c.start_date || '', nights: Math.max(1, +nights || 1) });
     }
@@ -1238,7 +1219,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ maxWidth: 480, textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--warning-soft, #fff3cd)', color: 'var(--warning, #e6a817)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
               <Icon name="lock" size={28} />
             </div>
             <h2 style={{ margin: '0 0 8px', fontSize: 'var(--fs-h2)', fontWeight: 700 }}>{t('planner.limit_title')}</h2>
@@ -1367,7 +1348,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                   setCover={setCover}
                   tripTitle={tripTitle}
                   setTripTitle={setTripTitle}
-                  onStartDateChange={setStartDate}
                   saving={saving}
                   savedOk={savedOk}
                   savedTripId={savedTripId}
@@ -1380,7 +1360,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               <div className="lp-f flow-foot">
                 {!isFirstStep && <Btn variant="ghost" onClick={goPrev} disabled={saving}>{t('planner.back')}</Btn>}
                 {!isFirstStep && <Btn variant="ghost" icon="refresh" onClick={requestReset} disabled={saving}>{t('planner.reset')}</Btn>}
-                <div style={{ flex: 1 }} />
+                <div className="flow-foot__spacer" style={{ flex: 1 }} />
                 <Btn variant={primaryVariant} onClick={primaryAction} disabled={primaryDisabled}>{primaryLabel}</Btn>
               </div>
             )}

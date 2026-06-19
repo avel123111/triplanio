@@ -7,6 +7,8 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
 import { useRouteDnD } from '@/lib/useRouteDnD';
+import CityRow from '@/components/trip/CityRow';
+import NightsStepper from '@/components/trip/NightsStepper';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount } from '@/lib/trip-cities';
 import { formatTripRange } from '@/lib/trip-dates';
@@ -30,10 +32,8 @@ import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import TripSidebar from '@/components/trips/TripSidebar';
 import ShareDialog from '@/components/trips/ShareDialog';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Sheet } from '@/components/ui/Sheet';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from '@/components/ui/alert-dialog';
-import StartCalendar from '@/components/create/StartCalendar';
+import TripStartControl from '@/components/trip/TripStartControl';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
@@ -44,7 +44,6 @@ const TKIND = { plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { ico
 const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9'];
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM') : '-'; };
-const fmtDW = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM, ccc') : '-'; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
 // Calendar-day helpers. nights/gap are counted by DATE (not by the raw timestamp),
 // so a checkout stored at 23:59 isn't rounded up to an extra night. This is what
@@ -73,7 +72,8 @@ const recompute = layoutDates;
 // transfer that merely points at this city. A baked gap goes stale after a reorder
 // (the overnight transfer is no longer adjacent) and would drift +1 vs the server,
 // so it must be re-derived on every (re)layout. ManualPlanner passes no transfers
-// → all gap 0. The first non-anchor's gap is forced 0 in layoutDates regardless.
+// → all gap 0. The first non-anchor's gap now applies too (0043): an overnight
+// start->first leg counts, anchored at the start-leg departure day.
 function applyAdjacencyGaps(nodes, transfers = []) {
   let prevId = null;
   return nodes.map((n) => {
@@ -95,7 +95,8 @@ function buildDraft(shell, transfers = []) {
   // gap is adjacency-driven (mirror server recompute_trip [R1]): a city's gap is 1
   // only if the transfer between it and the PREVIOUS node has day_change, NOT any
   // transfer that merely points at this city (which would survive a reorder and
-  // drift +1 vs the server). First non-anchor's gap is forced 0 in layoutDates.
+  // drift +1 vs the server). The first non-anchor's gap applies too (mirror 0043):
+  // an overnight start->first leg is the adjacency from the `start` anchor.
   const trBetween = (a, b) => (transfers || []).find((t) => t.from_city_visit_id === a && t.to_city_visit_id === b);
   let prevId = null;
   const nodes = visits.map((v, i) => {
@@ -111,8 +112,14 @@ function buildDraft(shell, transfers = []) {
   });
   // Draft holds ONLY structure (nodes + removed cities + a FIXED trip start date).
   // Bookings are read LIVE from `content` (edits/adds via real dialogs → DB → refetch).
+  // Chain anchor = the DEPARTURE day (UTC) of the first leg leaving the `start` city,
+  // so an overnight start->first leg lays the first city on its arrival day and stays
+  // idempotent (mirrors server _trip_anchor_date / 0043). Fallback: first city's start.
   const firstTransit = nodes.find((n) => !isAnchor(n));
-  const startDate = firstTransit?.start_date || (shell?.trip?.start_date || null);
+  const startAnchor = visits.find((v) => v.kind === 'start');
+  const startLeg = startAnchor ? (transfers || []).find((t) => t.from_city_visit_id === startAnchor.id) : null;
+  const anchorDate = startLeg?.start_datetime ? (dayOf(startLeg.start_datetime)?.toISODate() || null) : null;
+  const startDate = anchorDate || firstTransit?.start_date || (shell?.trip?.start_date || null);
   return { nodes, startDate };
 }
 
@@ -154,7 +161,6 @@ export default function TripStructureEdit() {
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
   }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
-  const [startCalOpen, setStartCalOpen] = useState(false); // trip-start calendar popover
   const [copyingTrip, setCopyingTrip] = useState(false); // header "…" → Copy trip
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
@@ -655,35 +661,14 @@ export default function TripStructureEdit() {
   // the whole itinerary by ±1 day; tapping the date opens a calendar to jump to
   // any start (translated into a single delta shift, reusing shiftStart).
   const pickStart = (iso) => {
-    if (!iso || !startDate) { setStartCalOpen(false); return; }
-    const delta = Math.round(toDT(iso).startOf('day').diff(toDT(startDate).startOf('day'), 'days').days);
+    if (!iso || !draft?.startDate) return;
+    const delta = Math.round(toDT(iso).startOf('day').diff(toDT(draft.startDate).startOf('day'), 'days').days);
     if (delta !== 0) shiftStart(delta);
-    setStartCalOpen(false);
   };
+  // Shared trip-start control (one element with the planner). The editor steps
+  // by ±1 day via shiftStart and jumps via pickStart (delta → shiftStart).
   const startDateControl = draft ? (
-    <div className="ts-startctl" title={t('planner.trip_start')}>
-      <span className="ts-startctl__lbl">{t('ai_plan.start')}</span>
-      <button type="button" className="ts-step" onClick={() => shiftStart(-1)} title={t('tse.start_earlier')} aria-label={t('tse.start_earlier')}><Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} /></button>
-      {isSheet ? (
-        // Phones: open the calendar in the canonical bottom-sheet (Sheet), not a popover.
-        <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')} onClick={() => setStartCalOpen(true)}>{fmtDW(startDate, lang)}</button>
-      ) : (
-        <Popover open={startCalOpen} onOpenChange={setStartCalOpen}>
-          <PopoverTrigger asChild>
-            <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(startDate, lang)}</button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="ts-startcal-pop">
-            <StartCalendar value={startDate} lang={lang} onPick={pickStart} />
-          </PopoverContent>
-        </Popover>
-      )}
-      <button type="button" className="ts-step" onClick={() => shiftStart(1)} title={t('tse.start_later')} aria-label={t('tse.start_later')}><Icon name="chev" size={13} /></button>
-      {isSheet && (
-        <Sheet open={startCalOpen} onOpenChange={setStartCalOpen} title={t('planner.trip_start')}>
-          <StartCalendar value={startDate} lang={lang} onPick={pickStart} />
-        </Sheet>
-      )}
-    </div>
+    <TripStartControl date={draft.startDate} onStep={(d) => shiftStart(d)} onPickDate={pickStart} label={t('ai_plan.start')} popoverAlign="end" />
   ) : null;
 
   // Copy trip — same action as the other trip screens. The new trip is owned by
@@ -827,7 +812,7 @@ export default function TripStructureEdit() {
               };
               let body;
               if (isAnchor(n)) {
-                body = <GridEndpoint node={n} date={n.kind === 'start' ? startDate : finishDate} onRemove={() => removeEndpoint(n.id)} />;
+                body = <GridEndpoint node={n} date={n.kind === 'start' ? draft.startDate : finishDate} onRemove={() => removeEndpoint(n.id)} />;
               } else if (n.kind === 'waypoint') {
                 const aa = actsFor(n.id);
                 body = <GridNode seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
@@ -1086,45 +1071,29 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
   );
   if (seg.kind === 'waypoint') {
     return (
-      <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onPointerDown={drag.onArm} onClick={onOpenCity}>
-        {gripEl}
-        <span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>
-        <div className="te-citycell">
-          <div className="te-cityline">
-            <span className="te-cityname">{seg.city_name}</span>
-            <Conf n={cityConf} />
-          </div>
-          <div className="te-dts"><span className="te-wptag">{t('tse.layover')}</span>{fmtD(seg.start_date, lang)}</div>
-        </div>
-        <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
-          <button className="te-step" onClick={onNightsMinus} disabled aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
-          <span className="num te-nights">0<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
-          <button className="te-step" onClick={onNightsPlus} title={t('planner.more_nights')} aria-label={t('tse.nights_add')}><Icon name="plus" size={10} /></button>
-        </span>
+      <CityRow variant="editor" dragging={drag.dragging} onArm={drag.onArm} onClick={onOpenCity}
+        grip={gripEl}
+        lead={<span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>}
+        name={seg.city_name}
+        conf={<Conf n={cityConf} />}
+        dates={<><span className="te-wptag">{t('tse.layover')}</span>{fmtD(seg.start_date, lang)}</>}>
+        <NightsStepper value={0} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled />
         <div className="te-cell te-cell--hotel" />
         <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
-      </div>
+      </CityRow>
     );
   }
   return (
-    <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onPointerDown={drag.onArm} onClick={onOpenCity}>
-      {gripEl}
-      <span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>
-      <div className="te-citycell">
-        <div className="te-cityline">
-          <span className="te-cityname">{seg.city_name}</span>
-          <Conf n={cityConf} />
-        </div>
-        <div className="te-dts">{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
-      </div>
-      <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
-        <button className="te-step" onClick={onNightsMinus} disabled={(seg.nights || 0) <= 0} aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
-        <span className="num te-nights">{seg.nights}<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
-        <button className="te-step" onClick={onNightsPlus} aria-label={t('tse.nights_add')}><Icon name="plus" size={10} /></button>
-      </span>
+    <CityRow variant="editor" dragging={drag.dragging} onArm={drag.onArm} onClick={onOpenCity}
+      grip={gripEl}
+      lead={<span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>}
+      name={seg.city_name}
+      conf={<Conf n={cityConf} />}
+      dates={<>{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</>}>
+      <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} />
       <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
       <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
-    </div>
+    </CityRow>
   );
 }
 

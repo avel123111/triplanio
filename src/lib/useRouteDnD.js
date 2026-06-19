@@ -41,6 +41,10 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
   const dragHandlersRef = useRef({ move: () => {}, end: () => {} });
   const stableMove = useRef((e) => dragHandlersRef.current.move(e)).current;
   const stableEnd = useRef((e) => dragHandlersRef.current.end(e)).current;
+  // Non-passive touchmove blocker — preventDefault is the only thing that stops
+  // iOS Safari from scrolling the page during a drag (iOS ignores a mid-gesture
+  // touch-action change, so the row press wouldn't move without this).
+  const blockTouchScroll = useRef((e) => { try { e.preventDefault(); } catch { /* passive */ } }).current;
 
   // FLIP: after the preview order changes, slide each row from where it WAS to
   // where it is now — the list rearranges smoothly. The lifted (dragged) row is
@@ -107,6 +111,16 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
     const begin = () => {
       const rect = rowEl.getBoundingClientRect();
       dragInfoRef.current = { id: nodeId, dIdx, startX: cx, startY: cy, grabOffset: cy - rect.top, ty: 0, activated: false, lastTarget: null };
+      // Touch/pen: once the long-press has armed the drag, take the gesture off the
+      // browser's scroll handler (touch-action:none) and capture the pointer so the
+      // following moves drag the row instead of scrolling the page. Without this the
+      // browser treats the move as a scroll, fires pointercancel, and the drag dies
+      // immediately — that's why mobile DnD "не работает вообще".
+      if (e.pointerType !== 'mouse') {
+        rowEl.style.touchAction = 'none';
+        try { rowEl.setPointerCapture(e.pointerId); } catch { /* capture not supported */ }
+        window.addEventListener('touchmove', blockTouchScroll, { passive: false });
+      }
       window.addEventListener('pointermove', stableMove);
       window.addEventListener('pointerup', stableEnd, { once: true });
       window.addEventListener('pointercancel', stableEnd, { once: true });
@@ -165,8 +179,12 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
   };
   dragHandlersRef.current.end = () => {
     window.removeEventListener('pointermove', stableMove);
+    window.removeEventListener('touchmove', blockTouchScroll);
     document.body.style.userSelect = '';
     const info = dragInfoRef.current;
+    // Restore the row's normal touch behaviour (scroll) after a touch drag/arm.
+    const armedEl = info && rowElRefs.current.get(info.id);
+    if (armedEl) armedEl.style.touchAction = '';
     if (!info || !info.activated) { // a tap, not a drag → let the row click open the row
       dragInfoRef.current = null;
       return;
