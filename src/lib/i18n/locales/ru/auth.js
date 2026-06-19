@@ -49,6 +49,7 @@ export default {
   'auth.to_login': 'К входу',
   'auth.no_email': 'Не получил письмо?',
   'auth.resend': 'Отправить ещё раз',
+  'auth.resend_in': 'Отправить снова через {s} с',
   'auth.new_password': 'Новый пароль',
   'auth.newpw_title': 'Придумай новый пароль',
   'auth.newpw_lede': 'Введи новый пароль дважды, он заменит старый для входа в аккаунт',

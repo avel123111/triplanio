@@ -7,8 +7,7 @@
  * explicit, localized message instead of Supabase's anti-enumeration silent
  * "success". Returns one of:
  *   { code: 'ok' }                   — no account with this email; safe to sign up
- *   { code: 'email_exists' }         — confirmed email/password account already exists
- *   { code: 'oauth_only' }           — confirmed account exists but only via Google/Apple
+ *   { code: 'email_exists' }         — any confirmed account already exists (email/pw OR Google/Apple)
  *   { code: 'confirmation_resent' }  — account exists but unconfirmed → confirmation re-sent
  *
  * verify_jwt = false: called by anonymous (logged-out) users.
@@ -54,12 +53,8 @@ Deno.serve(async (req) => {
       return Response.json({ code: 'confirmation_resent' }, { headers: corsHeaders });
     }
 
-    // Confirmed account that can only sign in via Google/Apple → guide to social.
-    if (st.has_oauth && !st.has_password) {
-      return Response.json({ code: 'oauth_only' }, { headers: corsHeaders });
-    }
-
-    // Confirmed email/password account already exists.
+    // Any confirmed account (email/password OR Google/Apple-only) → one unified
+    // "already registered, sign in" message (product decision: same text always).
     return Response.json({ code: 'email_exists' }, { headers: corsHeaders });
   } catch (err) {
     console.error('signupPrecheck error', err);

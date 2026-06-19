@@ -49,6 +49,7 @@ export default {
   'auth.to_login': 'Ir a iniciar sesión',
   'auth.no_email': '¿No recibiste el correo?',
   'auth.resend': 'Enviar de nuevo',
+  'auth.resend_in': 'Reenviar en {s} s',
   'auth.new_password': 'Nueva contraseña',
   'auth.newpw_title': 'Crea una nueva contraseña',
   'auth.newpw_lede': 'Escribe la nueva contraseña dos veces; reemplazará la anterior para iniciar sesión',
