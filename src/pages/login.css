@@ -97,7 +97,10 @@
 .auth__foot-links { display: inline-flex; gap: 18px; }
 
 /* ── Form elements ── */
-.eyebrow {
+/* Scoped to .auth — these used to be a BARE global `.eyebrow` and leaked the
+   orange dot (::before) onto every .eyebrow in the app (planner "РЯДОМ", Review
+   stats, etc.). The app's own `.eyebrow` lives in design/app.css. */
+.auth .eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: var(--fs-meta);
   letter-spacing: .14em;
@@ -106,7 +109,7 @@
   font-weight: 600;
   margin-bottom: 18px;
 }
-.eyebrow::before {
+.auth .eyebrow::before {
   content: "";
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--warm);

@@ -324,7 +324,7 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onT
         <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
         <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
           <span style={{ fontWeight: 600 }}>
-            <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: 'var(--warm)' }} />
+            <Icon name="flag" size={12} style={{ verticalAlign: -1, marginRight: 4, color: 'var(--muted)' }} />
             {t('planner.final_point')}
           </span>
           <span className="muted" style={{ marginLeft: 6 }}>{t('planner.final_point_hint')}</span>
@@ -785,7 +785,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
                 <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
               )}
             </div>
-            <Stat label={t('planner.duration')} value={`${totalNights} ${t('ai_plan.unit_nights_short')}`} />
+            <Stat label={t('planner.duration')} value={`${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`} />
             <Stat label={t('planner.cities_stat')} value={cities.length} />
           </div>
         </div>
