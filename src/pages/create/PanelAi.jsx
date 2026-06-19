@@ -55,8 +55,7 @@ export default function PanelAi({ ctx }) {
       <div style={{ background: 'var(--surface)', border: `1.5px solid color-mix(in srgb, ${AI} 22%, var(--line))`, borderRadius: 14, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--ai-grad)', color: '#fff', display: 'grid', placeItems: 'center' }}><Icon name="sparkles" size={12} /></span>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--ai-ink)' }}>{t('ai_plan.assistant_label')}</div>
-          <span className="muted" style={{ fontSize: 'var(--fs-micro)', marginLeft: 'auto' }}>{t('ai_plan.assistant_hint')}</span>
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--ai-ink)' }}>{t('ai_plan.assistant_hint')}</div>
         </div>
         <textarea
           className="textarea"

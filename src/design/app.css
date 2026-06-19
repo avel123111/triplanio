@@ -1200,7 +1200,16 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    labels (e.g. "Сохранить путешествие") never overflow the row. The bare spacer
    collapses on mobile. */
 .flow-foot { flex-wrap: wrap; }
-@media (max-width: 640px) {
+/* Clear disabled state for the footer CTA — the brand-tinted disabled "Дальше"
+   read as a broken button; mute it to a neutral surface. The AI variant keeps
+   its vivid gradient (design A6), so exclude it. */
+.flow-foot .btn[disabled]:not(.btn--ai),
+.flow-foot .btn.is-disabled:not(.btn--ai) {
+  background: var(--surface-2); color: var(--muted-2); border-color: var(--line); box-shadow: none;
+}
+/* Stack footer buttons full-width earlier (≤768) so the long "Сохранить
+   путешествие" never cramps/overflows the row on small tablets/phones. */
+@media (max-width: 768px) {
   .flow-foot__spacer { display: none; }
   .flow-foot > .btn { flex: 1 1 auto; min-width: 0; justify-content: center; }
 }
