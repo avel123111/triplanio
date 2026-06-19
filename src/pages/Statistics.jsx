@@ -13,6 +13,7 @@ import {
 } from '@/lib/travel-stats';
 import StatsMap from '@/components/views/StatsMap';
 import VisitPanel from '@/components/stats/VisitPanel';
+import AddPlaceDialog from '@/components/stats/AddPlaceDialog';
 import {
   SummaryTiles, WorldRing, ContinentBars, Records, YearChart, VisitList,
   IconGlobe, IconBuildings, IconContinent, IconSuitcase, IconTransfer,
@@ -109,6 +110,12 @@ export default function Statistics() {
   // ── list + panel state ────────────────────────────────────────────────────────
   const [listMode, setListMode] = useState('countries');
   const [panel, setPanel] = useState(null); // { kind, key }
+
+  // ── add / edit manual place ─────────────────────────────────────────────────
+  const [addOpen, setAddOpen] = useState(false);
+  const [editingPoint, setEditingPoint] = useState(null);
+  const openAdd = useCallback(() => { setEditingPoint(null); setAddOpen(true); }, []);
+  const openEditManual = useCallback((p) => { setPanel(null); setEditingPoint(p); setAddOpen(true); }, []);
 
   // tone (dominant visit type) per country / city — colours list badges + legend.
   const { countryTone, cityTone } = useMemo(() => {
@@ -255,14 +262,17 @@ export default function Statistics() {
               <h1>{t('stats.page_title')}</h1>
               <div className="sub">{headSub}</div>
             </div>
-            {years.length > 0 && (
-              <div className="seg" role="group" aria-label={t('stats.period')}>
-                <button aria-pressed={year === 'all'} onClick={() => { setYear('all'); setPanel(null); }}>{t('stats.year_all')}</button>
-                {years.map((y) => (
-                  <button key={y} aria-pressed={year === y} onClick={() => { setYear(y); setPanel(null); }}>{y}</button>
-                ))}
-              </div>
-            )}
+            <div className="sec-actions">
+              {years.length > 0 && (
+                <div className="seg" role="group" aria-label={t('stats.period')}>
+                  <button aria-pressed={year === 'all'} onClick={() => { setYear('all'); setPanel(null); }}>{t('stats.year_all')}</button>
+                  {years.map((y) => (
+                    <button key={y} aria-pressed={year === y} onClick={() => { setYear(y); setPanel(null); }}>{y}</button>
+                  ))}
+                </div>
+              )}
+              <Btn variant="soft" size="sm" icon="plus" onClick={openAdd}>{t('stats.add_place')}</Btn>
+            </div>
           </div>
         </div>
 
@@ -274,7 +284,7 @@ export default function Statistics() {
               <b>{t('stats.empty_title')}</b>
               <span>{t('stats.empty_sub')}</span>
             </span>
-            <Btn variant="primary" size="sm" icon="plus" onClick={() => nav('/?new=1')}>{t('stats.empty_cta')}</Btn>
+            <Btn variant="primary" size="sm" icon="plus" onClick={openAdd}>{t('stats.empty_cta')}</Btn>
           </div>
         )}
 
@@ -359,6 +369,14 @@ export default function Statistics() {
         t={t}
         lang={locale}
         onOpenTrip={(id) => nav(`/trip/${id}`)}
+        onEditManual={openEditManual}
+      />
+
+      <AddPlaceDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        editing={editingPoint}
+        onSaved={() => setEditingPoint(null)}
       />
     </div>
   );

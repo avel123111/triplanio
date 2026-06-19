@@ -33,6 +33,9 @@ const IconX = () => (
 const IconArrow = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
 );
+const IconEdit = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+);
 
 function monthShort(dateStr, lang) {
   const d = new Date(dateStr);
@@ -50,7 +53,7 @@ function dateRange(a, b, lang) {
   return `${fmtDM(A)} – ${fmtDM(B)} ${B.getFullYear()}`;
 }
 
-function VisitRow({ v, trips, t, lang, onOpenTrip }) {
+function VisitRow({ v, trips, t, lang, onOpenTrip, onEditManual }) {
   const type = pointType(v);
   const color = TYPE_COLOR[type] || TYPE_COLOR.trip;
   const yr = new Date(v.start_date || v.end_date).getFullYear();
@@ -76,7 +79,13 @@ function VisitRow({ v, trips, t, lang, onOpenTrip }) {
               <IconArrow />
             </button>
           ) : v.kind === 'custom' ? (
-            <span className="vmanual">{t('stats.added_manually')}</span>
+            onEditManual ? (
+              <button type="button" className="triplink" onClick={() => onEditManual(v)}>
+                <IconEdit />{t('stats.edit_place')}
+              </button>
+            ) : (
+              <span className="vmanual">{t('stats.added_manually')}</span>
+            )
           ) : null}
         </div>
       </div>
@@ -85,7 +94,7 @@ function VisitRow({ v, trips, t, lang, onOpenTrip }) {
 }
 
 export default function VisitPanel({
-  open, onOpenChange, kind = 'country', name, sub, visits = [], trips = {}, t, lang, onOpenTrip,
+  open, onOpenChange, kind = 'country', name, sub, visits = [], trips = {}, t, lang, onOpenTrip, onEditManual,
 }) {
   const isCity = kind === 'city';
   return (
@@ -110,7 +119,7 @@ export default function VisitPanel({
           </div>
           <div className="vp-b">
             {visits.map((v, i) => (
-              <VisitRow key={`${v.city_name}-${v.start_date}-${i}`} v={v} trips={trips} t={t} lang={lang} onOpenTrip={onOpenTrip} />
+              <VisitRow key={`${v.city_name}-${v.start_date}-${i}`} v={v} trips={trips} t={t} lang={lang} onOpenTrip={onOpenTrip} onEditManual={onEditManual} />
             ))}
           </div>
         </Dialog.Content>
