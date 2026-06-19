@@ -72,7 +72,8 @@ const recompute = layoutDates;
 // transfer that merely points at this city. A baked gap goes stale after a reorder
 // (the overnight transfer is no longer adjacent) and would drift +1 vs the server,
 // so it must be re-derived on every (re)layout. ManualPlanner passes no transfers
-// → all gap 0. The first non-anchor's gap is forced 0 in layoutDates regardless.
+// → all gap 0. The first non-anchor's gap now applies too (0043): an overnight
+// start->first leg counts, anchored at the start-leg departure day.
 function applyAdjacencyGaps(nodes, transfers = []) {
   let prevId = null;
   return nodes.map((n) => {
@@ -94,7 +95,8 @@ function buildDraft(shell, transfers = []) {
   // gap is adjacency-driven (mirror server recompute_trip [R1]): a city's gap is 1
   // only if the transfer between it and the PREVIOUS node has day_change, NOT any
   // transfer that merely points at this city (which would survive a reorder and
-  // drift +1 vs the server). First non-anchor's gap is forced 0 in layoutDates.
+  // drift +1 vs the server). The first non-anchor's gap applies too (mirror 0043):
+  // an overnight start->first leg is the adjacency from the `start` anchor.
   const trBetween = (a, b) => (transfers || []).find((t) => t.from_city_visit_id === a && t.to_city_visit_id === b);
   let prevId = null;
   const nodes = visits.map((v, i) => {
@@ -110,8 +112,14 @@ function buildDraft(shell, transfers = []) {
   });
   // Draft holds ONLY structure (nodes + removed cities + a FIXED trip start date).
   // Bookings are read LIVE from `content` (edits/adds via real dialogs → DB → refetch).
+  // Chain anchor = the DEPARTURE day (UTC) of the first leg leaving the `start` city,
+  // so an overnight start->first leg lays the first city on its arrival day and stays
+  // idempotent (mirrors server _trip_anchor_date / 0043). Fallback: first city's start.
   const firstTransit = nodes.find((n) => !isAnchor(n));
-  const startDate = firstTransit?.start_date || (shell?.trip?.start_date || null);
+  const startAnchor = visits.find((v) => v.kind === 'start');
+  const startLeg = startAnchor ? (transfers || []).find((t) => t.from_city_visit_id === startAnchor.id) : null;
+  const anchorDate = startLeg?.start_datetime ? (dayOf(startLeg.start_datetime)?.toISODate() || null) : null;
+  const startDate = anchorDate || firstTransit?.start_date || (shell?.trip?.start_date || null);
   return { nodes, startDate };
 }
 
