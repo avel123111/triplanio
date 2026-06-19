@@ -558,8 +558,9 @@ export default function Trips() {
               </div>
             )}
 
-            {/* Free-limit banner — Pro style, not AI style */}
-            {!isPro && filterMode === 'active' && (
+            {/* Free-limit banner — Pro style, not AI style.
+                Shown only when owned active trips reach/exceed the free cap (1). */}
+            {!isPro && filterMode === 'active' && ownedActiveTrips.length >= 1 && (
               <div className="limitcard">
                 <div className="limitcard__ic">
                   <Icon name="pro" size={22} />
