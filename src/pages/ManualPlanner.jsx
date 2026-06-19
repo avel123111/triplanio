@@ -15,6 +15,7 @@ import { Icon } from '../design/icons';
 import { Btn, EmptyState, Severity, Toggle } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
+import TripStartControl from '@/components/trip/TripStartControl';
 import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { getGradientById } from '@/lib/trip-gradients';
@@ -23,10 +24,7 @@ import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import StartCalendar from '@/components/create/StartCalendar';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Sheet } from '@/components/ui/Sheet';
-import { DateTime } from 'luxon';
+// StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 import '../design/app.css';
 
 // Whole days between two ISO date strings (b - a). 0 on bad input.
@@ -79,13 +77,6 @@ function shortDateLabel(iso, locale = 'ru') {
   } catch {
     return new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'short' }).format(d);
   }
-}
-
-// "d MMM, ccc" — identical to the editor's trip-start label (shared look).
-function fmtDW(iso, loc = 'ru') {
-  if (!iso) return '—';
-  const d = DateTime.fromISO(iso, { zone: 'utc' });
-  return d.isValid ? d.setLocale(loc).toFormat('d MMM, ccc') : '—';
 }
 
 // Default trip start = one month ahead of today (local), YYYY-MM-DD.
@@ -291,7 +282,7 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onT
       dragging={isDragging}
       invalid={invalid}
       onArm={onArm}
-      stopCellPointer
+      stopCellPointer={editing}
       grip={grip}
       lead={lead}
       name={editing ? undefined : city.city_name}
@@ -334,39 +325,8 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onT
   );
 }
 
-// ─── TripStartControl ─────────────────────────────────────────────────────────
-// Unified trip-start control: the .ts-startctl stepper + shared StartCalendar
-// (Popover on desktop, Sheet on mobile). One control used on Home / Cities /
-// Review so the start date looks and behaves identically everywhere — replaces
-// the native <input type=date> (and its duplicate calendar glyph) on Home/Review.
-function TripStartControl({ startDate, setStartDate, lang = 'ru', t, label }) {
-  const [calOpen, setCalOpen] = useState(false);
-  const isSheet = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
-  return (
-    <div className="ts-startctl" title={t('planner.trip_start')}>
-      {label ? <span className="ts-startctl__lbl">{label}</span> : null}
-      <button type="button" className="ts-step" onClick={() => startDate && setStartDate(addDays(startDate, -1))} title={t('planner.day_earlier')} aria-label={t('planner.day_earlier')}><Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} /></button>
-      {isSheet ? (
-        <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')} onClick={() => setCalOpen(true)}>{fmtDW(startDate, lang)}</button>
-      ) : (
-        <Popover open={calOpen} onOpenChange={setCalOpen}>
-          <PopoverTrigger asChild>
-            <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(startDate, lang)}</button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="ts-startcal-pop">
-            <StartCalendar value={startDate} lang={lang} onPick={(iso) => { setStartDate(iso); setCalOpen(false); }} />
-          </PopoverContent>
-        </Popover>
-      )}
-      <button type="button" className="ts-step" onClick={() => startDate && setStartDate(addDays(startDate, 1))} title={t('planner.day_later')} aria-label={t('planner.day_later')}><Icon name="chev" size={13} /></button>
-      {isSheet && (
-        <Sheet open={calOpen} onOpenChange={setCalOpen} title={t('planner.trip_start')}>
-          <StartCalendar value={startDate} lang={lang} onPick={(iso) => { setStartDate(iso); setCalOpen(false); }} />
-        </Sheet>
-      )}
-    </div>
-  );
-}
+// TripStartControl extracted to a shared component: src/components/trip/TripStartControl.jsx
+// (used by both the create-flow planner and the structural editor — one element).
 
 // ─── Step 1: Home ─────────────────────────────────────────────────────────────
 
@@ -411,7 +371,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="field__label">{t('planner.departure_date')}</label>
-          <div><TripStartControl startDate={startDate} setStartDate={setStartDate} lang={lang} t={t} /></div>
+          <TripStartControl date={startDate} onStep={(d) => startDate && setStartDate(addDays(startDate, d))} onPickDate={setStartDate} block />
         </div>
       </div>
 
@@ -524,7 +484,7 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
 
       {/* Trip-start control — shared TripStartControl (one control on Home / Cities / Review). */}
       <div style={{ display: 'flex', marginBottom: 12 }}>
-        <TripStartControl startDate={startDate} setStartDate={setStartDate} lang={lang} t={t} label={t('ai_plan.start')} />
+        <TripStartControl date={startDate} onStep={(d) => startDate && setStartDate(addDays(startDate, d))} onPickDate={setStartDate} label={t('ai_plan.start')} />
       </div>
 
       <CityAnchorRow label={t('ai_plan.start')} city_name={home?.city_name} country={home?.country} kind="home" />
@@ -604,13 +564,14 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
         {t('planner.return_desc')}
       </div>
 
+      <h2 className="section-sub">{t('planner.step_return')}</h2>
       <div className="field-row cols-2" style={{ marginBottom: 14 }}>
         <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
               <Icon name="flag" size={16} />
             </div>
-            <div style={{ fontWeight: 600 }}>{t('planner.return_home', { city: home?.city_name || '…' })}</div>
+            <div style={{ fontWeight: 700 }}>{t('planner.return_home', { city: home?.city_name || '…' })}</div>
           </div>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
             {t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}
@@ -622,7 +583,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--warm)', color: 'white', display: 'grid', placeItems: 'center' }}>
               <Icon name="globe" size={16} />
             </div>
-            <div style={{ fontWeight: 600 }}>{t('planner.return_other')}</div>
+            <div style={{ fontWeight: 700 }}>{t('planner.return_other')}</div>
           </div>
           <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
             {t('planner.return_other_desc')}
@@ -679,7 +640,7 @@ function Stat({ label, value, hint }) {
   );
 }
 
-function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setTripTitle, onStartDateChange, saving, savedOk, savedTripId, error }) {
+function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error }) {
   const nav = useNavigate();
   const t = useT();
   const { lang } = useI18n();
@@ -755,7 +716,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
               <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)' }}>{t('event.start')}</div>
-              <TripStartControl startDate={cities[0]?.startDate} setStartDate={(iso) => onStartDateChange && onStartDateChange(iso)} lang={lang} t={t} />
+              <div style={{ fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}</div>
               {!cities[0]?.startDate && (
                 <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
               )}
@@ -1368,7 +1329,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                   setCover={setCover}
                   tripTitle={tripTitle}
                   setTripTitle={setTripTitle}
-                  onStartDateChange={setStartDate}
                   saving={saving}
                   savedOk={savedOk}
                   savedTripId={savedTripId}

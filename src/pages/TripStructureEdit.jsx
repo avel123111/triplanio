@@ -32,10 +32,8 @@ import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import TripSidebar from '@/components/trips/TripSidebar';
 import ShareDialog from '@/components/trips/ShareDialog';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Sheet } from '@/components/ui/Sheet';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from '@/components/ui/alert-dialog';
-import StartCalendar from '@/components/create/StartCalendar';
+import TripStartControl from '@/components/trip/TripStartControl';
 
 // =====================================================================
 // TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
@@ -46,7 +44,6 @@ const TKIND = { plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { ico
 const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9'];
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM') : '-'; };
-const fmtDW = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM, ccc') : '-'; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
 // Calendar-day helpers. nights/gap are counted by DATE (not by the raw timestamp),
 // so a checkout stored at 23:59 isn't rounded up to an extra night. This is what
@@ -156,7 +153,6 @@ export default function TripStructureEdit() {
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
   }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
-  const [startCalOpen, setStartCalOpen] = useState(false); // trip-start calendar popover
   const [copyingTrip, setCopyingTrip] = useState(false); // header "…" → Copy trip
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
@@ -657,35 +653,14 @@ export default function TripStructureEdit() {
   // the whole itinerary by ±1 day; tapping the date opens a calendar to jump to
   // any start (translated into a single delta shift, reusing shiftStart).
   const pickStart = (iso) => {
-    if (!iso || !startDate) { setStartCalOpen(false); return; }
+    if (!iso || !startDate) return;
     const delta = Math.round(toDT(iso).startOf('day').diff(toDT(startDate).startOf('day'), 'days').days);
     if (delta !== 0) shiftStart(delta);
-    setStartCalOpen(false);
   };
+  // Shared trip-start control (one element with the planner). The editor steps
+  // by ±1 day via shiftStart and jumps via pickStart (delta → shiftStart).
   const startDateControl = draft ? (
-    <div className="ts-startctl" title={t('planner.trip_start')}>
-      <span className="ts-startctl__lbl">{t('ai_plan.start')}</span>
-      <button type="button" className="ts-step" onClick={() => shiftStart(-1)} title={t('tse.start_earlier')} aria-label={t('tse.start_earlier')}><Icon name="chev" size={13} style={{ transform: 'rotate(180deg)' }} /></button>
-      {isSheet ? (
-        // Phones: open the calendar in the canonical bottom-sheet (Sheet), not a popover.
-        <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')} onClick={() => setStartCalOpen(true)}>{fmtDW(startDate, lang)}</button>
-      ) : (
-        <Popover open={startCalOpen} onOpenChange={setStartCalOpen}>
-          <PopoverTrigger asChild>
-            <button type="button" className="ts-startctl__date" aria-label={t('planner.trip_start')}>{fmtDW(startDate, lang)}</button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="ts-startcal-pop">
-            <StartCalendar value={startDate} lang={lang} onPick={pickStart} />
-          </PopoverContent>
-        </Popover>
-      )}
-      <button type="button" className="ts-step" onClick={() => shiftStart(1)} title={t('tse.start_later')} aria-label={t('tse.start_later')}><Icon name="chev" size={13} /></button>
-      {isSheet && (
-        <Sheet open={startCalOpen} onOpenChange={setStartCalOpen} title={t('planner.trip_start')}>
-          <StartCalendar value={startDate} lang={lang} onPick={pickStart} />
-        </Sheet>
-      )}
-    </div>
+    <TripStartControl date={startDate} onStep={(d) => shiftStart(d)} onPickDate={pickStart} label={t('ai_plan.start')} popoverAlign="end" />
   ) : null;
 
   // Copy trip — same action as the other trip screens. The new trip is owned by
