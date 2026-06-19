@@ -661,14 +661,14 @@ export default function TripStructureEdit() {
   // the whole itinerary by ±1 day; tapping the date opens a calendar to jump to
   // any start (translated into a single delta shift, reusing shiftStart).
   const pickStart = (iso) => {
-    if (!iso || !startDate) return;
-    const delta = Math.round(toDT(iso).startOf('day').diff(toDT(startDate).startOf('day'), 'days').days);
+    if (!iso || !draft?.startDate) return;
+    const delta = Math.round(toDT(iso).startOf('day').diff(toDT(draft.startDate).startOf('day'), 'days').days);
     if (delta !== 0) shiftStart(delta);
   };
   // Shared trip-start control (one element with the planner). The editor steps
   // by ±1 day via shiftStart and jumps via pickStart (delta → shiftStart).
   const startDateControl = draft ? (
-    <TripStartControl date={startDate} onStep={(d) => shiftStart(d)} onPickDate={pickStart} label={t('ai_plan.start')} popoverAlign="end" />
+    <TripStartControl date={draft.startDate} onStep={(d) => shiftStart(d)} onPickDate={pickStart} label={t('ai_plan.start')} popoverAlign="end" />
   ) : null;
 
   // Copy trip — same action as the other trip screens. The new trip is owned by
@@ -812,7 +812,7 @@ export default function TripStructureEdit() {
               };
               let body;
               if (isAnchor(n)) {
-                body = <GridEndpoint node={n} date={n.kind === 'start' ? startDate : finishDate} onRemove={() => removeEndpoint(n.id)} />;
+                body = <GridEndpoint node={n} date={n.kind === 'start' ? draft.startDate : finishDate} onRemove={() => removeEndpoint(n.id)} />;
               } else if (n.kind === 'waypoint') {
                 const aa = actsFor(n.id);
                 body = <GridNode seg={n} cityConf={cityConflicts(n.id)} acts={aa} actWarn={aa.some((a) => actWarnId(a.id))}
