@@ -26,6 +26,9 @@ const FILL_ID = 'tp-country-fill';
 const SOURCE_LAYER = 'country_boundaries';
 const VECTOR_URL = 'mapbox://mapbox.country-boundaries-v1';
 
+// Exposed so the stats map can wire a click on the fill layer (country → panel).
+export const COUNTRY_FILL_LAYER = FILL_ID;
+
 const VISITED_OPACITY = 0.45;
 
 // Create the source + fill layer once on the shared instance. Idempotent: on a

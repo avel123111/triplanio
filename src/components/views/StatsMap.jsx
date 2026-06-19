@@ -2,9 +2,24 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { createMarkerEl, groupByLocation } from '@/lib/map/markers';
+import { pointType } from '@/lib/travel-stats';
 import {
   ensureCountryFill, setVisitedCountries, setCountryFillVisible, repaintCountryFill,
+  COUNTRY_FILL_LAYER,
 } from '@/lib/map/countryFill';
+
+// Dominant visit type for a grouped pin: the "most real" wins (trip > manual >
+// future), mirroring the mockup's ranking, so a city visited on a trip never
+// looks merely "planned".
+const TONE_RANK = { trip: 0, manual: 1, future: 2 };
+function dominantTone(points = []) {
+  let best = null;
+  for (const p of points) {
+    const tone = pointType(p);
+    if (best == null || TONE_RANK[tone] < TONE_RANK[best]) best = tone;
+  }
+  return best || 'trip';
+}
 
 // Travel-stats map surface (Trips home + "My statistics"). Renders on the SAME
 // app-wide singleton Mapbox map as the trip lenses (one map per session) via
@@ -23,8 +38,11 @@ export default function StatsMap({
   points = [],
   visitedCountries = null,
   colorScheme = 'LIGHT',
+  projection = 'mercator',
   active = true,
   onPointClick = null,
+  onCountryClick = null,
+  sizeSignal = null,
   children,
 }) {
   const containerRef = useRef(null);
@@ -32,14 +50,16 @@ export default function StatsMap({
   const fittedSigRef = useRef('');
 
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, resize,
-  // marker cleanup on unmount). mercator only — the stats map is a flat world.
+  // marker cleanup on unmount). projection follows the map/globe toggle.
   const { mapRef, ready, error } = useMapSurface(containerRef, {
-    markersRef, scheme: colorScheme, projection: 'mercator', active,
+    markersRef, scheme: colorScheme, projection, active,
   });
 
-  // Keep latest click handler without forcing the draw effect to re-run.
+  // Keep latest click handlers without forcing the draw effect to re-run.
   const onPointClickRef = useRef(onPointClick);
   useEffect(() => { onPointClickRef.current = onPointClick; }, [onPointClick]);
+  const onCountryClickRef = useRef(onCountryClick);
+  useEffect(() => { onCountryClickRef.current = onCountryClick; }, [onCountryClick]);
 
   // Force a re-fit on (re)mount so the first draw frames all points.
   useEffect(() => { fittedSigRef.current = ''; }, []);
@@ -99,6 +119,7 @@ export default function StatsMap({
       const title = g.data.map((p) => p.city_name).filter(Boolean).join(' • ');
       const el = createMarkerEl(null, {
         title,
+        tone: dominantTone(g.data),
         onClick: onPointClickRef.current ? () => { const cb = onPointClickRef.current; if (cb) cb(g.data); } : undefined,
       });
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
@@ -111,6 +132,42 @@ export default function StatsMap({
     }
     return undefined;
   }, [ready, drawable, pointsSig]);
+
+  // Country fill click → onCountryClick(isoAlpha2). The fill layer covers every
+  // country (visited or not); the consumer decides whether the clicked code is in
+  // its data. Cursor turns into a pointer over the layer. Wired once when ready.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return undefined;
+    const onClick = (e) => {
+      const f = e.features && e.features[0];
+      const iso = f && f.id;
+      const cb = onCountryClickRef.current;
+      if (iso && cb) cb(String(iso).toUpperCase());
+    };
+    const enter = () => { map.getCanvas().style.cursor = 'pointer'; };
+    const leave = () => { map.getCanvas().style.cursor = ''; };
+    try {
+      map.on('click', COUNTRY_FILL_LAYER, onClick);
+      map.on('mouseenter', COUNTRY_FILL_LAYER, enter);
+      map.on('mouseleave', COUNTRY_FILL_LAYER, leave);
+    } catch { /* layer not present yet — ignore */ }
+    return () => {
+      try {
+        map.off('click', COUNTRY_FILL_LAYER, onClick);
+        map.off('mouseenter', COUNTRY_FILL_LAYER, enter);
+        map.off('mouseleave', COUNTRY_FILL_LAYER, leave);
+      } catch { /* ignore */ }
+    };
+  }, [ready]);
+
+  // Resize when the container changes size out-of-band (e.g. fullscreen toggle):
+  // Mapbox can't observe a CSS-driven resize, so the consumer bumps `sizeSignal`.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    requestAnimationFrame(() => { try { map.resize(); } catch { /* ignore */ } });
+  }, [sizeSignal, ready]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
