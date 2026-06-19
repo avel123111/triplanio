@@ -89,6 +89,26 @@ function IconApple() {
   );
 }
 
+function IconShieldAlert() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
+    </svg>
+  );
+}
+
+// Inline alert row used for all auth errors (shield-alert icon + message).
+function AuthError({ children }) {
+  return (
+    <div className="auth-error" role="alert">
+      <span className="auth-error__icon"><IconShieldAlert /></span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
 // ── Brand SVG mark (matches the landing-page logo exactly) ─────────────────────
 const TRIPLANIO_PATH = "M33.9515 -0.266535C40.7142 -0.445139 48.1271 -0.302259 54.9281 -0.303644L94.514 -0.309503L214.845 -0.305597L278.868 -0.306574L298.193 -0.318292C310.201 -0.32163 319.364 -0.684415 329.217 7.74225C343.125 19.635 341.19 34.942 341.176 51.3067L341.157 86.3829L341.184 195.125L341.181 272.228L341.212 295.303C341.226 308.706 342.006 318.931 332.398 329.72C326.281 336.547 317.675 340.628 308.52 341.05C298.456 341.533 284.325 341.086 274.023 341.083L205.381 341.092L162.115 341.117C141.323 341.131 123.861 343.106 107.208 327.72C102.838 323.62 99.3189 318.699 96.8548 313.236C94.3907 307.774 93.0296 301.878 92.849 295.889C92.529 287.072 93.8616 280.992 96.6224 272.786C101.665 257.797 109.31 248.589 119.725 237.345C125.95 245.136 131.667 253.986 137.971 261.606C140.39 264.528 150.129 252.175 148.683 246.961C146.168 237.892 141.381 229.908 138.15 221.158C142.842 216.992 148.474 212.5 153.326 208.398C163.06 200.169 172.732 191.869 182.345 183.5C189.212 190.011 196.381 197.442 203.098 204.167L248.907 249.981C253.187 244.922 256.537 238.164 256.598 231.434C256.623 228.623 256.007 225.923 254.626 223.456C251.646 218.12 237.029 204.664 231.868 199.467C223.676 191.542 215.284 182.914 207.203 174.842L155.649 123.287L134.288 101.945C132.743 100.406 131.158 98.7783 129.626 97.3106C123.616 91.552 120.034 86.1564 110.778 87.3673C103.826 88.2767 99.8349 91.3194 94.4329 95.3995C110.556 111.824 126.807 128.124 143.183 144.297C148.913 150.046 155.228 156.051 160.75 161.915C157.391 166.37 151.717 172.659 147.998 177.059C139.745 186.812 131.56 196.623 123.442 206.489C118.102 204.22 112.747 201.983 107.379 199.78C101.261 197.23 96.1995 193.797 89.9368 198.428C79.7224 205.983 80.7549 205.52 89.9857 212.164C94.9362 215.725 102.289 220.689 106.734 224.759C102.849 229.003 98.6343 233.317 95.2406 237.848C77.4842 261.564 66.952 294.342 80.972 322.417C84.8667 330.214 88.4217 334.775 94.4671 341.075C74.9177 341.309 55.209 340.956 35.6429 341.125C25.3518 341.214 16.7477 338.183 9.43489 330.636C5.11961 326.154 2.09948 320.587 0.695637 314.525C-0.740455 308.276 -0.261685 293.256 -0.261394 286.203C-0.338339 274.2 -0.331163 262.2 -0.240887 250.2C4.18863 255.291 9.4218 259.623 15.2513 263.023C32.4055 272.939 50.165 274.236 69.1761 269.211C69.6238 268.23 70.0656 266.844 70.4095 265.786C72.6759 258.811 75.6942 252.497 79.2786 246.108C67.5692 251.37 57.4925 254.32 44.432 253.45C20.0121 252.083 0.660326 229.606 -0.104168 205.7C-0.510832 192.989 -0.272964 179.798 -0.270183 166.97L-0.275066 95.5186L-0.277019 53.2891C-0.286758 47.0065 -0.647595 34.579 0.182942 28.8214C1.1558 22.1467 4.06527 15.9035 8.55013 10.8653C15.5012 3.17884 23.8502 0.199571 33.9515 -0.266535ZM137.352 52.7081C134.062 49.9494 128.015 49.4695 123.791 49.9737C116.528 51.2496 110.458 54.6421 104.987 59.5674L279.767 234.294L284.439 238.919C289.858 231.455 294.445 222.683 293.148 213.136C292.014 204.797 284.255 198.958 278.489 193.235L260.278 175.103L196.142 110.966L155.937 70.7413C150.064 64.881 143.662 58.0002 137.352 52.7081ZM256.192 105.029C259.319 96.1169 261.478 84.3761 247.586 85.7911C231.37 88.8299 220.289 99.6272 209.231 111.022L227.431 129.133L233.775 135.479C242.589 125.851 251.686 117.855 256.192 105.029Z";
 function BrandMark({ size = 28 }) {
@@ -293,6 +313,22 @@ export default function Login() {
     e.preventDefault(); setError(null);
     if (!meetsPasswordPolicy(password)) { setError(t('auth.pw_policy')); return; }
     setIsLoading(true);
+
+    // Preflight: Supabase hides whether an email already exists, so ask the
+    // server (signupPrecheck) before creating the account. This lets us show an
+    // explicit message instead of a silent "check your email".
+    const { data: pre, error: preErr } = await supabase.functions.invoke('signupPrecheck', {
+      body: { email, redirectTo: window.location.origin + postLoginPath() },
+    });
+    if (preErr) { setError(t('auth.err_generic')); setIsLoading(false); return; }
+    if (pre?.code === 'email_exists') { setError(t('auth.err_email_exists')); setIsLoading(false); return; }
+    if (pre?.code === 'oauth_only') { setError(t('auth.err_oauth_only')); setIsLoading(false); return; }
+    if (pre?.code === 'confirmation_resent') {
+      // Account exists but was never confirmed — the server re-sent the link.
+      setSentEmail(email); goto('reset-sent'); setIsLoading(false); return;
+    }
+
+    // code === 'ok' → no such account yet, proceed with the real signup.
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -334,11 +370,18 @@ export default function Login() {
 
   const handleReset = async (e) => {
     e.preventDefault(); setIsLoading(true); setError(null);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '/reset-password',
+    // Routed through requestPasswordReset so the server can reveal an unknown
+    // email and enforce the 5/hour-per-email limit. The email itself is still
+    // sent by Supabase Auth (same template) from inside that function.
+    const { data, error: invErr } = await supabase.functions.invoke('requestPasswordReset', {
+      body: { email, redirectTo: window.location.origin + '/reset-password' },
     });
-    if (error) { setError(error.message); setIsLoading(false); }
-    else { setSentEmail(email); goto('reset-sent'); setIsLoading(false); }
+    if (invErr) { setError(t('auth.err_generic')); setIsLoading(false); return; }
+    if (data?.code === 'account_not_found') { setError(t('auth.err_account_not_found')); setIsLoading(false); return; }
+    if (data?.code === 'rate_limited') { setError(t('auth.err_reset_rate_limited')); setIsLoading(false); return; }
+    if (data?.code === 'reset_sent') { setSentEmail(email); goto('reset-sent'); setIsLoading(false); return; }
+    // send_failed or any unexpected code → generic retry.
+    setError(t('auth.err_generic')); setIsLoading(false);
   };
 
   return (
@@ -371,7 +414,7 @@ export default function Login() {
 
                 <div className="divider"><span>{t('auth.or_email')}</span></div>
 
-                {error && <div className="auth-error" role="alert">{error}</div>}
+                {error && <AuthError>{error}</AuthError>}
 
                 <form className="auth__inputs" onSubmit={handleLogin}>
                   <div className="field">
@@ -440,7 +483,7 @@ export default function Login() {
 
                 <div className="divider"><span>{t('auth.or_email')}</span></div>
 
-                {error && <div className="auth-error" role="alert">{error}</div>}
+                {error && <AuthError>{error}</AuthError>}
 
                 <form className="auth__inputs" onSubmit={handleSignup}>
                   <div className="field">
@@ -505,7 +548,7 @@ export default function Login() {
                 <h1 className="auth__h1">{t('auth.reset_title')}</h1>
                 <p className="lede">{t('auth.reset_lede')}</p>
 
-                {error && <div className="auth-error" role="alert">{error}</div>}
+                {error && <AuthError>{error}</AuthError>}
 
                 <form className="auth__inputs" onSubmit={handleReset} style={{ marginTop: 28 }}>
                   <div className="field">
@@ -564,7 +607,7 @@ export default function Login() {
                 <h1 className="auth__h1">{t('auth.newpw_title')}</h1>
                 <p className="lede">{t('auth.newpw_lede')}</p>
 
-                {error && <div className="auth-error" role="alert">{error}</div>}
+                {error && <AuthError>{error}</AuthError>}
 
                 <form className="auth__inputs" onSubmit={handleNewPassword} style={{ marginTop: 26 }}>
                   <div className="field">
