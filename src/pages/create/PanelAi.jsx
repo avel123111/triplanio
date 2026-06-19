@@ -15,7 +15,7 @@ function AnchorMini({ label, city }) {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="eyebrow" style={{ fontSize: 'var(--fs-micro)', marginBottom: 1 }}>{label}</div>
-        <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 700 }}>{city.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{city.country}</span></div>
+        <div className="te-cityname">{city.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{city.country}</span></div>
       </div>
     </div>
   );
@@ -98,7 +98,7 @@ export default function PanelAi({ ctx }) {
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 11 }}>
               <div style={{ width: 24, height: 24, borderRadius: '50%', background: AI, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 'var(--fs-micro)', fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 700 }}>{c.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{c.country}</span></div>
+                <div className="te-cityname">{c.city_name} <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{c.country}</span></div>
               </div>
               <span className="muted num" style={{ fontSize: 'var(--fs-meta)' }}>{c.nights} {t('ai_plan.unit_nights_short')}</span>
             </div>

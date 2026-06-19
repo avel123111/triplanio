@@ -107,6 +107,15 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
     const begin = () => {
       const rect = rowEl.getBoundingClientRect();
       dragInfoRef.current = { id: nodeId, dIdx, startX: cx, startY: cy, grabOffset: cy - rect.top, ty: 0, activated: false, lastTarget: null };
+      // Touch/pen: once the long-press has armed the drag, take the gesture off the
+      // browser's scroll handler (touch-action:none) and capture the pointer so the
+      // following moves drag the row instead of scrolling the page. Without this the
+      // browser treats the move as a scroll, fires pointercancel, and the drag dies
+      // immediately — that's why mobile DnD "не работает вообще".
+      if (e.pointerType !== 'mouse') {
+        rowEl.style.touchAction = 'none';
+        try { rowEl.setPointerCapture(e.pointerId); } catch { /* capture not supported */ }
+      }
       window.addEventListener('pointermove', stableMove);
       window.addEventListener('pointerup', stableEnd, { once: true });
       window.addEventListener('pointercancel', stableEnd, { once: true });
@@ -167,6 +176,9 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
     window.removeEventListener('pointermove', stableMove);
     document.body.style.userSelect = '';
     const info = dragInfoRef.current;
+    // Restore the row's normal touch behaviour (scroll) after a touch drag/arm.
+    const armedEl = info && rowElRefs.current.get(info.id);
+    if (armedEl) armedEl.style.touchAction = '';
     if (!info || !info.activated) { // a tap, not a drag → let the row click open the row
       dragInfoRef.current = null;
       return;

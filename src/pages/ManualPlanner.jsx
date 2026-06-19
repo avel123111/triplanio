@@ -197,7 +197,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
             >
               <span style={{ fontSize: 'var(--fs-h3)', flexShrink: 0 }}>{countryFlag(c.country_code)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{c.city_name}</div>
+                <div className="te-cityname">{c.city_name}</div>
                 <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name}</div>
               </div>
             </button>
@@ -622,7 +622,7 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
         {icon ? <Icon name={icon} size={12} /> : num}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 700, color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
+        <div className="te-cityname" style={{ color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
         <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{sub}</div>
       </div>
     </div>
