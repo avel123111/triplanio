@@ -1,36 +1,76 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { statisticsBundle } from '@/lib/travel-stats';
-import StatsMap from '@/components/views/StatsMap';
+import { isProActive } from '@/lib/subscription';
+import { cityKey } from '@/lib/trip-cities';
+import { continentOf } from '@/lib/continents';
 import {
-  Greeting, StatBar, WorldMini,
-  IconGlobe, IconBuildings, IconContinent, IconSuitcase,
+  statisticsBundle, availableYears, filterByYear, pointType,
+} from '@/lib/travel-stats';
+import StatsMap from '@/components/views/StatsMap';
+import VisitPanel from '@/components/stats/VisitPanel';
+import {
+  SummaryTiles, WorldRing, ContinentBars, Records, YearChart, VisitList,
+  IconGlobe, IconBuildings, IconContinent, IconSuitcase, IconTransfer,
+  IconFlight, IconCalendar, IconHeart, IconStar, IconPin,
 } from '@/components/stats/widgets';
+import { Btn } from '@/design/index';
 import AppHeader from '@/components/AppHeader';
 import '../design/app.css';
 
-// "My statistics" screen (Ф4 lean version). Reuses the shared stats widgets +
-// the singleton StatsMap; numbers come from travel-stats.statisticsBundle over
-// the same get_user_travel_stats RPC the home screen uses. The full Ф5 layer
-// (year filter, country/city side-panel, manual-add, continents, country/city
-// lists, records, trips-per-year chart, fullscreen) is layered on top later.
+// "Моя статистика" — full Ф5 screen. Reads the same get_user_travel_stats RPC the
+// home screen uses, year-filters + aggregates entirely on the client via
+// travel-stats, and lays the result out with the shared stats widgets + the
+// singleton StatsMap. Read-only: visited places come from trips and any existing
+// manual visits; ADDING manual places ("Добавить место") lands in a later PR.
+
+// Continent display order + colours (existing event tokens — no new tokens).
+const CONT_ORDER = ['EU', 'AS', 'NA', 'AF', 'SA', 'OC', 'AN'];
+const CONT_COLOR = {
+  EU: 'var(--primary)', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
+  AF: 'var(--warm)', SA: 'var(--ev-transfer)', OC: 'var(--ai)', AN: 'var(--muted)',
+};
+const TONE_COLOR = { trip: 'var(--primary)', manual: 'var(--ev-car)', future: 'var(--ai)' };
+const TONE_RANK = { trip: 0, manual: 1, future: 2 };
+
+function dominantTone(points = []) {
+  let best = null;
+  for (const p of points) {
+    const tn = pointType(p);
+    if (best == null || TONE_RANK[tn] < TONE_RANK[best]) best = tn;
+  }
+  return best || 'trip';
+}
+
+const IconGlobeLine = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>;
+const IconExpand = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H3v5M16 3h5v5M16 21h5v-5M8 21H3v-5" /></svg>;
+const IconClose = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>;
+const IconCrosshair = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 11a3 3 0 1 0 6 0 3 3 0 0 0-6 0z" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>;
+
 export default function Statistics() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { user } = useAuth();
   const { isDark, toggle: toggleTheme } = useTheme();
-  const isPro = !!(user && user.is_pro);
+  const nav = useNavigate();
+  const isPro = isProActive(user);
   const scheme = isDark ? 'DARK' : 'LIGHT';
 
-  const [showMap, setShowMap] = useState(false);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setShowMap(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
+  // Localised country names from ISO-3166-1 alpha-2 (no country-name data table).
+  const regionName = useMemo(() => {
+    let dn = null;
+    try { dn = new Intl.DisplayNames([locale || 'en'], { type: 'region' }); } catch { dn = null; }
+    return (cc) => {
+      if (!cc) return '';
+      try { return (dn && dn.of(String(cc).toUpperCase())) || String(cc).toUpperCase(); }
+      catch { return String(cc).toUpperCase(); }
+    };
+  }, [locale]);
 
+  // ── data ────────────────────────────────────────────────────────────────────
   const { data: travelStats } = useQuery({
     queryKey: ['travel-stats', user?.id],
     queryFn: async () => {
@@ -41,37 +81,285 @@ export default function Statistics() {
     enabled: !!user?.id,
     staleTime: 30_000,
   });
-  const points = travelStats?.points || [];
-  const trips  = travelStats?.trips || {};
+  const allPoints = travelStats?.points || [];
+  const trips = travelStats?.trips || {};
+  const isEmpty = allPoints.length === 0;
+
+  // ── year filter (client-side; no network on switch) ──────────────────────────
+  const [year, setYear] = useState('all');
+  const years = useMemo(() => availableYears(allPoints), [allPoints]);
+  const points = useMemo(() => filterByYear(allPoints, year), [allPoints, year]);
   const bundle = useMemo(() => statisticsBundle(points, trips), [points, trips]);
 
-  const items = [
-    { key: 'countries',  value: bundle.countries,  label: t('stats.sb_countries'),  icon: <IconGlobe /> },
-    { key: 'cities',     value: bundle.cities,     label: t('stats.sb_cities'),     tone: 'city', icon: <IconBuildings /> },
-    { key: 'continents', value: bundle.continents, label: t('stats.sb_continents'), icon: <IconContinent /> },
-    { key: 'trips',      value: bundle.trips,      label: t('stats.sb_trips'),      tone: 'trip', icon: <IconSuitcase /> },
-  ];
-  const sub = `${bundle.countries} ${t('stats.sb_countries')} · ${bundle.cities} ${t('stats.sb_cities')} · ${bundle.continents} ${t('stats.sb_continents')}`;
+  // ── map UI state ──────────────────────────────────────────────────────────────
+  const [showMap, setShowMap] = useState(false);
+  const [globe, setGlobe] = useState(false);
+  const [fs, setFs] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShowMap(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  useEffect(() => {
+    if (!fs) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setFs(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fs]);
 
+  // ── list + panel state ────────────────────────────────────────────────────────
+  const [listMode, setListMode] = useState('countries');
+  const [panel, setPanel] = useState(null); // { kind, key }
+
+  // tone (dominant visit type) per country / city — colours list badges + legend.
+  const { countryTone, cityTone } = useMemo(() => {
+    const byCountry = new Map();
+    const byCity = new Map();
+    for (const p of points) {
+      const cc = p?.country_code ? String(p.country_code).toUpperCase() : '';
+      if (cc) { let a = byCountry.get(cc); if (!a) { a = []; byCountry.set(cc, a); } a.push(p); }
+      const ck = cityKey(p);
+      if (ck) { let a = byCity.get(ck); if (!a) { a = []; byCity.set(ck, a); } a.push(p); }
+    }
+    const cT = {}; for (const [cc, ps] of byCountry) cT[cc] = dominantTone(ps);
+    const ciT = {}; for (const [ck, ps] of byCity) ciT[ck] = dominantTone(ps);
+    return { countryTone: cT, cityTone: ciT };
+  }, [points]);
+
+  // distinct cities per country (list sub-label)
+  const citiesPerCountry = useMemo(() => {
+    const m = new Map();
+    for (const p of points) {
+      const cc = p?.country_code ? String(p.country_code).toUpperCase() : '';
+      const ck = cityKey(p);
+      if (!cc || !ck) continue;
+      let s = m.get(cc); if (!s) { s = new Set(); m.set(cc, s); }
+      s.add(ck);
+    }
+    return m;
+  }, [points]);
+
+  // ── derived view models ─────────────────────────────────────────────────────
+  const summaryItems = [
+    { key: 'countries', value: bundle.countries, label: t('stats.sb_countries'), icon: <IconGlobe /> },
+    { key: 'cities', value: bundle.cities, tone: 'city', label: t('stats.sb_cities'), icon: <IconBuildings /> },
+    { key: 'continents', value: bundle.continents, tone: 'cont', label: t('stats.sb_continents'), icon: <IconContinent /> },
+    { key: 'trips', value: bundle.trips, tone: 'trip', label: t('stats.sb_trips'), icon: <IconSuitcase /> },
+    { key: 'flights', value: '—', soon: true, tone: 'flight', label: t('stats.sb_flights'), icon: <IconFlight /> },
+    { key: 'ground', value: '—', soon: true, tone: 'transfer', label: t('stats.sb_ground'), icon: <IconTransfer /> },
+  ];
+
+  const contRows = useMemo(() => {
+    const bd = bundle.continentsBreakdown || {};
+    const present = CONT_ORDER.filter((c) => bd[c]);
+    const max = Math.max(1, ...present.map((c) => bd[c]));
+    return present.map((c) => ({
+      key: c, label: t(`stats.cont_${c}`), count: bd[c], color: CONT_COLOR[c],
+      pct: Math.round((bd[c] / max) * 100), countLabel: t('stats.cont_countries'),
+    }));
+  }, [bundle.continentsBreakdown, t]);
+
+  const listRows = useMemo(() => {
+    if (listMode === 'countries') {
+      return bundle.countriesList.map((c) => {
+        const nCities = citiesPerCountry.get(c.code)?.size || 0;
+        const cont = continentOf(c.code);
+        return {
+          type: 'country', key: c.code, badge: c.code, name: regionName(c.code),
+          sub: `${cont ? t(`stats.cont_${cont}`) : ''}${cont ? ' · ' : ''}${t('stats.n_cities', { n: nCities })}`,
+          count: c.count, tone: TONE_COLOR[countryTone[c.code]] || TONE_COLOR.trip,
+          selected: panel?.kind === 'country' && panel.key === c.code,
+        };
+      });
+    }
+    return bundle.citiesList.map((c) => ({
+      type: 'city', key: c.key, badge: <IconBuildings />, name: c.city_name,
+      sub: regionName(c.country_code), count: c.count,
+      tone: TONE_COLOR[cityTone[c.key]] || TONE_COLOR.trip,
+      selected: panel?.kind === 'city' && panel.key === c.key,
+    }));
+  }, [listMode, bundle.countriesList, bundle.citiesList, citiesPerCountry, countryTone, cityTone, panel, regionName, t]);
+
+  const recordItems = useMemo(() => {
+    const r = bundle.records;
+    const soon = t('stats.rec_soon');
+    return [
+      { key: 'days', iconClass: 'r-days', icon: <IconCalendar />, label: t('stats.rec_days'), value: r.days ? r.days.toLocaleString(locale) : '—', sub: r.days ? t('stats.rec_days_sub') : soon },
+      { key: 'favcity', iconClass: 'r-fav', icon: <IconHeart />, label: t('stats.rec_fav_city'), value: r.favoriteCity?.city_name || '—', sub: r.favoriteCity ? `${t('stats.visits_count')}: ${r.favoriteCity.count}` : soon },
+      { key: 'favcountry', iconClass: 'r-star', icon: <IconStar />, label: t('stats.rec_fav_country'), value: r.favoriteCountry ? regionName(r.favoriteCountry.code) : '—', sub: r.favoriteCountry ? `${t('stats.visits_count')}: ${r.favoriteCountry.count}` : soon },
+      { key: 'longest', iconClass: 'r-route', icon: <IconPin />, label: t('stats.rec_longest'), value: r.longestTrip?.title || '—', sub: r.longestTrip ? `${t('stats.rec_cities')}: ${r.longestTrip.cities}` : soon },
+    ];
+  }, [bundle.records, regionName, locale, t]);
+
+  const yearBars = useMemo(() => {
+    const by = bundle.byYear || {};
+    const ys = Object.keys(by).map(Number).sort((a, b) => a - b);
+    if (ys.length === 0) return { bars: [], caption: t('stats.chart_empty') };
+    const max = Math.max(1, ...ys.map((y) => by[y]));
+    let best = ys[0]; ys.forEach((y) => { if (by[y] > by[best]) best = y; });
+    const bars = ys.map((y) => ({ year: y, value: by[y], height: Math.max(10, (by[y] / max) * 128), on: y === best }));
+    return { bars, caption: t('stats.chart_active', { year: best, count: by[best] }) };
+  }, [bundle.byYear, t]);
+
+  // map type legend (countries by dominant tone)
+  const legendRows = useMemo(() => {
+    const tally = { trip: 0, manual: 0, future: 0 };
+    Object.values(countryTone).forEach((tn) => { tally[tn] = (tally[tn] || 0) + 1; });
+    return ['trip', 'manual', 'future'].map((tn) => ({ tone: tn, color: TONE_COLOR[tn], label: t(`stats.type_${tn}`), count: tally[tn] }));
+  }, [countryTone, t]);
+
+  // ── panel open/close ──────────────────────────────────────────────────────────
+  const openCountry = useCallback((code) => {
+    const cc = String(code).toUpperCase();
+    if (!points.some((p) => String(p.country_code).toUpperCase() === cc)) return;
+    setPanel({ kind: 'country', key: cc });
+  }, [points]);
+  const openCityGroup = useCallback((group) => {
+    const first = Array.isArray(group) ? group[0] : group;
+    const ck = cityKey(first);
+    if (ck) setPanel({ kind: 'city', key: ck });
+  }, []);
+  const onListSelect = useCallback((row) => {
+    setPanel({ kind: row.type, key: row.key });
+  }, []);
+
+  const panelData = useMemo(() => {
+    if (!panel) return null;
+    let visits; let name; let sub;
+    if (panel.kind === 'country') {
+      visits = points.filter((p) => String(p.country_code).toUpperCase() === panel.key);
+      const nCities = new Set(visits.map((p) => cityKey(p)).filter(Boolean)).size;
+      name = regionName(panel.key);
+      sub = `${t('stats.n_cities', { n: nCities })} · ${t('stats.visits_count')}: ${visits.length}`;
+    } else {
+      visits = points.filter((p) => cityKey(p) === panel.key);
+      name = visits[0]?.city_name || '';
+      sub = `${regionName(visits[0]?.country_code)} · ${t('stats.visits_count')}: ${visits.length}`;
+    }
+    visits = visits.slice().sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
+    return { kind: panel.kind, name, sub, visits };
+  }, [panel, points, regionName, t]);
+
+  const headSub = t('stats.stats_sub', { countries: bundle.countries, cities: bundle.cities, continents: bundle.continents });
+
+  // ── render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
+    <div className={`app-shell${isEmpty ? ' stats-ghost' : ''}`} style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
       <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-        <Greeting greeting={t('stats.page_title')} name="" photo={null} sub={sub} />
-        <StatBar items={items} />
-        <div className="mapwrap" style={{ minHeight: 420, marginTop: 18 }}>
+
+        {/* head: title + sub + year filter */}
+        <div className="head">
+          <div className="blob b1" /><div className="blob b2" />
+          <div className="head__row" style={{ position: 'relative', zIndex: 1 }}>
+            <div className="grow">
+              <h1>{t('stats.page_title')}</h1>
+              <div className="sub">{headSub}</div>
+            </div>
+            {years.length > 0 && (
+              <div className="seg" role="group" aria-label={t('stats.period')}>
+                <button aria-pressed={year === 'all'} onClick={() => { setYear('all'); setPanel(null); }}>{t('stats.year_all')}</button>
+                {years.map((y) => (
+                  <button key={y} aria-pressed={year === y} onClick={() => { setYear(y); setPanel(null); }}>{y}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* empty-state note */}
+        {isEmpty && (
+          <div className="empty-note" style={{ marginTop: 18 }}>
+            <span className="en-ic"><IconGlobe /></span>
+            <span className="en-tx">
+              <b>{t('stats.empty_title')}</b>
+              <span>{t('stats.empty_sub')}</span>
+            </span>
+            <Btn variant="primary" size="sm" icon="plus" onClick={() => nav('/?new=1')}>{t('stats.empty_cta')}</Btn>
+          </div>
+        )}
+
+        {/* map hero */}
+        <div className={`mapwrap${fs ? ' is-fs' : ''}${isEmpty ? ' is-ghost' : ''}`} style={{ minHeight: 420, marginTop: 18 }}>
           {showMap
-            ? <StatsMap points={points} colorScheme={scheme} />
+            ? (
+              <StatsMap
+                points={points}
+                colorScheme={scheme}
+                projection={globe ? 'globe' : 'mercator'}
+                onPointClick={openCityGroup}
+                onCountryClick={openCountry}
+                sizeSignal={fs ? 'fs' : 'win'}
+              >
+                <div className="map-ctl">
+                  <button className={globe ? 'on' : ''} onClick={() => setGlobe((g) => !g)} aria-label={t('stats.map_globe')}><IconGlobeLine /></button>
+                  <button onClick={() => setFs((v) => !v)} aria-label={t('stats.map_fullscreen')}><IconExpand /></button>
+                </div>
+                {fs && <button className="mapfs-close" onClick={() => setFs(false)} aria-label={t('common.close') || 'Close'}><IconClose /></button>}
+                {!isEmpty && (
+                  <span className="map-hint"><IconCrosshair /><span>{t('stats.map_hint')}</span></span>
+                )}
+                <div className="map-legend">
+                  {legendRows.map((r) => (
+                    <span className="c" key={r.tone}><i className="d" style={{ background: r.color }} />{r.label}{r.count ? ` · ${r.count}` : ''}</span>
+                  ))}
+                </div>
+              </StatsMap>
+            )
             : <div className="map-skel"><IconGlobe /><div>{t('stats.map_loading')}</div></div>}
         </div>
-        <div style={{ marginTop: 18, maxWidth: 420 }}>
-          <WorldMini
+
+        {/* summary */}
+        <SummaryTiles items={summaryItems} />
+
+        {/* world ring + continents */}
+        <div className="panel world">
+          <div className="blob b1" />
+          <WorldRing
             world={bundle.world}
-            title={t('stats.world_explored')}
-            caption={t('stats.world_of', { visited: bundle.world.visited, total: bundle.world.total })}
+            label={t('stats.world_label')}
+            caption={<><b>{bundle.world.visited}</b> {t('stats.world_cap', { total: bundle.world.total })}</>}
+          />
+          <ContinentBars title={t('stats.continents_title')} rows={contRows} />
+        </div>
+
+        {/* country / city lists */}
+        <div className="sec-head">
+          <h2 style={{ fontSize: 'var(--fs-h3)' }}>{t('stats.places_title')}</h2>
+          <div className="grow" />
+          <div className="seg" role="group" aria-label={t('stats.places_title')}>
+            <button aria-pressed={listMode === 'countries'} onClick={() => setListMode('countries')}>{t('stats.tab_countries')} · {bundle.countries}</button>
+            <button aria-pressed={listMode === 'cities'} onClick={() => setListMode('cities')}>{t('stats.tab_cities')} · {bundle.cities}</button>
+          </div>
+        </div>
+        <div className="panel" style={{ padding: '16px 18px' }}>
+          <VisitList
+            rows={listRows}
+            emptyText={listMode === 'countries' ? t('stats.list_empty_countries') : t('stats.list_empty_cities')}
+            onSelect={onListSelect}
           />
         </div>
+
+        {/* records */}
+        <div className="sec-head"><h2 style={{ fontSize: 'var(--fs-h3)' }}>{t('stats.records_title')}</h2></div>
+        <Records items={recordItems} />
+
+        {/* trips per year */}
+        <div className="sec-head"><h2 style={{ fontSize: 'var(--fs-h3)' }}>{t('stats.byyear_title')}</h2></div>
+        <YearChart bars={yearBars.bars} caption={yearBars.caption} />
       </main>
+
+      <VisitPanel
+        open={!!panelData}
+        onOpenChange={(o) => { if (!o) setPanel(null); }}
+        kind={panelData?.kind || 'country'}
+        name={panelData?.name}
+        sub={panelData?.sub}
+        visits={panelData?.visits || []}
+        trips={trips}
+        t={t}
+        lang={locale}
+        onOpenTrip={(id) => nav(`/trip/${id}`)}
+      />
     </div>
   );
 }

@@ -92,3 +92,128 @@ export function WorldMini({ world, title, caption }) {
 export function AllStatsCta({ label, onClick }) {
   return <Btn variant="soft" onClick={onClick}>{label}<IconArrowR /></Btn>;
 }
+
+// ─── Ф5 widgets (My-statistics screen) ───────────────────────────────────────
+// All pure / props-driven, same as the Ф4 set above. Statistics.jsx derives the
+// data from travel-stats.statisticsBundle (year-filtered) and feeds these.
+
+export const IconFlight   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>;
+export const IconCalendar = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>;
+export const IconHeart    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.7-7-11a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 6.3-7 11-7 11z"/></svg>;
+export const IconStar     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.4 2.3 7.2L12 16.6 5.7 21l2.3-7.2-6-4.4h7.6z"/></svg>;
+export const IconPin      = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-5.7-7-11a7 7 0 0 1 14 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>;
+
+// Summary tiles. items = [{ key, value, label, tone, icon, soon }]. `tone` maps
+// to .c-* (city/cont/trip/flight/transfer); `soon` greys a not-yet-computed value.
+export function SummaryTiles({ items = [] }) {
+  return (
+    <div className="summary">
+      {items.map((it) => (
+        <div key={it.key} className={`sfig${it.tone ? ` c-${it.tone}` : ''}${it.soon ? ' is-soon' : ''}`}>
+          <span className="ic">{it.icon}</span>
+          <div className="v">{it.value}</div>
+          <div className="k">{it.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Big "world explored" ring (148px) + caption. world = { visited, total, pct }.
+export function WorldRing({ world, label, caption }) {
+  const R = 61;
+  const C = 2 * Math.PI * R;
+  const frac = world.total ? Math.min(1, world.visited / world.total) : 0;
+  return (
+    <div className="world__ring">
+      <div className="ring" style={{ width: 148, height: 148 }}>
+        <svg viewBox="0 0 148 148" width="148" height="148">
+          <circle className="ring__track" cx="74" cy="74" r={R} strokeWidth="12" />
+          <circle className="ring__fg" cx="74" cy="74" r={R} strokeWidth="12" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }} />
+        </svg>
+        <div className="ring__c" style={{ flexDirection: 'column' }}>
+          <span style={{ fontSize: 'var(--fs-h1)' }}>{world.pct}%</span>
+          <span className="l">{label}</span>
+        </div>
+      </div>
+      {caption && <div className="cap">{caption}</div>}
+    </div>
+  );
+}
+
+// Continent bars. rows = [{ key, label, count, color, pct, countLabel }].
+export function ContinentBars({ title, rows = [] }) {
+  return (
+    <div className="world__cont">
+      <div className="ttl">{title}</div>
+      {rows.map((r) => (
+        <div key={r.key} className="crow">
+          <span className="nm">{r.label}</span>
+          <span className="bar"><i style={{ width: `${r.pct}%`, background: r.color }} /></span>
+          <span className="c">{r.count} <small>{r.countLabel}</small></span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Records grid. items = [{ key, iconClass, icon, label, value, sub }].
+export function Records({ items = [] }) {
+  return (
+    <div className="records">
+      {items.map((it) => (
+        <div key={it.key} className="rec">
+          <span className={`ic ${it.iconClass}`}>{it.icon}</span>
+          <div className="k">{it.label}</div>
+          <div className="v">{it.value}</div>
+          <div className="s">{it.sub}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Trips-per-year bar chart. bars = [{ year, value, height, on }]; caption string.
+export function YearChart({ bars = [], caption }) {
+  return (
+    <div className="panel chart">
+      <div className="chart__bars">
+        {bars.map((b) => (
+          <div key={b.year} className={`cbar${b.on ? ' on' : ''}`}>
+            <span className="val">{b.value}</span>
+            <span className="col" style={{ height: `${b.height}px` }} />
+            <span className="yr">{b.year}</span>
+          </div>
+        ))}
+      </div>
+      {caption && <div className="chart__cap">{caption}</div>}
+    </div>
+  );
+}
+
+// Country / city list. rows = [{ type, key, badge, name, sub, count, tone, selected }].
+// `tone` colours the leading badge via inline soft-mix (existing event tokens).
+export function VisitList({ rows = [], emptyText, onSelect }) {
+  if (rows.length === 0) {
+    return <div className="vlist"><div className="list-empty">{emptyText}</div></div>;
+  }
+  return (
+    <div className="vlist">
+      {rows.map((r) => (
+        <button
+          key={r.key}
+          type="button"
+          className={`vrow${r.selected ? ' sel' : ''}`}
+          onClick={() => onSelect?.(r)}
+        >
+          <span className="fl" style={{ background: `color-mix(in srgb, ${r.tone} 13%, transparent)`, color: r.tone }}>{r.badge}</span>
+          <span>
+            <span className="nm">{r.name}</span>
+            {r.sub && <span className="s">{r.sub}</span>}
+          </span>
+          <span className="c">{r.count}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
