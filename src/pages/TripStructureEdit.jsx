@@ -7,6 +7,8 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
 import { useRouteDnD } from '@/lib/useRouteDnD';
+import CityRow from '@/components/trip/CityRow';
+import NightsStepper from '@/components/trip/NightsStepper';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount } from '@/lib/trip-cities';
 import { formatTripRange } from '@/lib/trip-dates';
@@ -1086,45 +1088,29 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
   );
   if (seg.kind === 'waypoint') {
     return (
-      <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onPointerDown={drag.onArm} onClick={onOpenCity}>
-        {gripEl}
-        <span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>
-        <div className="te-citycell">
-          <div className="te-cityline">
-            <span className="te-cityname">{seg.city_name}</span>
-            <Conf n={cityConf} />
-          </div>
-          <div className="te-dts"><span className="te-wptag">{t('tse.layover')}</span>{fmtD(seg.start_date, lang)}</div>
-        </div>
-        <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
-          <button className="te-step" onClick={onNightsMinus} disabled aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
-          <span className="num te-nights">0<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
-          <button className="te-step" onClick={onNightsPlus} title={t('planner.more_nights')} aria-label={t('tse.nights_add')}><Icon name="plus" size={10} /></button>
-        </span>
+      <CityRow variant="editor" dragging={drag.dragging} onArm={drag.onArm} onClick={onOpenCity}
+        grip={gripEl}
+        lead={<span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>}
+        name={seg.city_name}
+        conf={<Conf n={cityConf} />}
+        dates={<><span className="te-wptag">{t('tse.layover')}</span>{fmtD(seg.start_date, lang)}</>}>
+        <NightsStepper value={0} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled />
         <div className="te-cell te-cell--hotel" />
         <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
-      </div>
+      </CityRow>
     );
   }
   return (
-    <div className={'te-row' + (drag.dragging ? ' is-dragging' : '')} onPointerDown={drag.onArm} onClick={onOpenCity}>
-      {gripEl}
-      <span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>
-      <div className="te-citycell">
-        <div className="te-cityline">
-          <span className="te-cityname">{seg.city_name}</span>
-          <Conf n={cityConf} />
-        </div>
-        <div className="te-dts">{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</div>
-      </div>
-      <span className="te-stepper" onClick={stop} title={t('tse.col_nights')}>
-        <button className="te-step" onClick={onNightsMinus} disabled={(seg.nights || 0) <= 0} aria-label={t('tse.nights_remove')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
-        <span className="num te-nights">{seg.nights}<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
-        <button className="te-step" onClick={onNightsPlus} aria-label={t('tse.nights_add')}><Icon name="plus" size={10} /></button>
-      </span>
+    <CityRow variant="editor" dragging={drag.dragging} onArm={drag.onArm} onClick={onOpenCity}
+      grip={gripEl}
+      lead={<span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>}
+      name={seg.city_name}
+      conf={<Conf n={cityConf} />}
+      dates={<>{fmtD(seg.start_date, lang)} – {fmtD(seg.end_date, lang)}</>}>
+      <NightsStepper value={seg.nights} onMinus={onNightsMinus} onPlus={onNightsPlus} minusDisabled={(seg.nights || 0) <= 0} />
       <div className="te-cell te-cell--hotel" onClick={stop}><HotelCell hotel={hotel} warn={hotelWarn} onClick={onHotel} /></div>
       <div className="te-cell te-cell--act" onClick={stop}><ActCell count={acts.length} warn={actWarn} onClick={onAct} /></div>
-    </div>
+    </CityRow>
   );
 }
 

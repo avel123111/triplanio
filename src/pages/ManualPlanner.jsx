@@ -13,6 +13,8 @@ import { tzFromCoords } from '@/lib/timezone';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
 import { Btn, EmptyState, Severity, Toggle } from '../design/index';
+import CityRowBase from '@/components/trip/CityRow';
+import NightsStepper from '@/components/trip/NightsStepper';
 import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { getGradientById } from '@/lib/trip-gradients';
@@ -245,6 +247,11 @@ function CityAnchorRow({ label, city_name, country, kind }) {
 // route looks and behaves identically to the structural editor — same bold city
 // names, same nights stepper, same lift-on-drag. No bespoke steppers/fonts. The
 // final-point toggle lives once in StepCities (not per row).
+// Planner route row. Owns its editing state + pick/remove/nights handlers, then
+// delegates LAYOUT to the shared <CityRowBase> (variant="planner") so the planner
+// list and the structural editor render the SAME row skeleton — one component,
+// two variants. The trailing actions (nights stepper + delete) are the only
+// per-screen difference; the final-point toggle still lives on the last card.
 function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onToggleFinalPoint, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
@@ -252,9 +259,8 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onT
   const nights = +city.nights || 1;
   const startLabel = city.startDate ? shortDateLabel(city.startDate, lang) : null;
   const endLabel = (city.startDate && city.nights) ? shortDateLabel(addDays(city.startDate, +city.nights), lang) : null;
-  // Empty rows open in the picker; once a city is chosen it shows as the editor's
-  // bold .te-cityname (read-only — change a city by deleting + re-adding, exactly
-  // like the editor, so it can NEVER get stuck as an input).
+  // Empty rows open in the picker; once a city is chosen it shows read-only
+  // (change a city by deleting + re-adding) so it can never get stuck as an input.
   const [editing, setEditing] = useState(!city.city_name);
   const stopArm = (e) => e.stopPropagation();
   const pick = (picked) => {
@@ -265,46 +271,47 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onT
       onChange({ city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
     }
   };
+
+  const grip = (
+    <span className="te-grip" role="button" tabIndex={0} aria-label={t('planner.drag')} title={t('planner.drag')}
+      onClick={stopArm}
+      onKeyDown={(e) => { if (e.key === 'ArrowUp') { e.preventDefault(); onMove(-1); } else if (e.key === 'ArrowDown') { e.preventDefault(); onMove(1); } }}>
+      <Icon name="drag" size={14} />
+    </span>
+  );
+  const lead = <span className={'te-row__num' + (invalid ? ' is-warn' : '')}>{isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}</span>;
+  const dates = isFinalAnchor
+    ? t('planner.final_point')
+    : (startLabel ? `${startLabel}${endLabel ? ` – ${endLabel}` : ''}` : null);
+
   const row = (
-    <div
-      className={'te-row te-row--plan' + (isDragging ? ' is-dragging' : '') + (isFinalAnchor ? ' te-row--fin' : '') + (invalid ? ' te-row--bad' : '')}
-      onPointerDown={onArm}
+    <CityRowBase
+      variant="planner"
+      className={isFinalAnchor ? 'te-row--fin' : ''}
+      dragging={isDragging}
+      invalid={invalid}
+      onArm={onArm}
+      stopCellPointer
+      grip={grip}
+      lead={lead}
+      name={editing ? undefined : city.city_name}
+      country={editing ? undefined : city.country}
+      dates={editing ? undefined : dates}
+      editingSlot={editing
+        ? <CityPicker value={city.city_name ? city : null} onChange={pick} placeholder={t('planner.city_ph')} autoFocus={!!city.city_name} />
+        : undefined}
     >
-      {/* Drag grip + keyboard reorder — identical to the editor's gripEl. The whole
-          row arms the pointer-drag; the grip just stops its own click. */}
-      <span className="te-grip" role="button" tabIndex={0} aria-label={t('planner.drag')} title={t('planner.drag')}
-        onClick={stopArm}
-        onKeyDown={(e) => { if (e.key === 'ArrowUp') { e.preventDefault(); onMove(-1); } else if (e.key === 'ArrowDown') { e.preventDefault(); onMove(1); } }}>
-        <Icon name="drag" size={14} />
-      </span>
-
-      <span className={'te-row__num' + (invalid ? ' is-warn' : '')}>{isFinalAnchor ? <Icon name="flag" size={13} /> : (idx + 1)}</span>
-
-      <div className="te-citycell" onPointerDown={stopArm}>
-        {editing ? (
-          <CityPicker value={city.city_name ? city : null} onChange={pick} placeholder={t('planner.city_ph')} autoFocus={!!city.city_name} />
-        ) : (
-          <>
-            <div className="te-cityline">
-              <span className="te-cityname">{city.city_name}</span>
-              {city.country && <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{city.country}</span>}
-            </div>
-            {!isFinalAnchor && startLabel && <div className="te-dts">{startLabel}{endLabel ? ` – ${endLabel}` : ''}</div>}
-            {isFinalAnchor && <div className="te-dts">{t('planner.final_point')}</div>}
-          </>
-        )}
-      </div>
-
       {!isFinalAnchor && (
-        <span className="te-stepper" onPointerDown={stopArm} onClick={stopArm} title={t('tse.col_nights')}>
-          <button className="te-step" onClick={() => onChange({ nights: Math.max(1, nights - 1) })} disabled={nights <= 1} aria-label={t('planner.fewer_nights')}><Icon name="close" size={10} style={{ transform: 'rotate(45deg)' }} /></button>
-          <span className="num te-nights">{nights}<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
-          <button className="te-step" onClick={() => onChange({ nights: Math.min(30, nights + 1) })} disabled={nights >= 30} aria-label={t('planner.more_nights')}><Icon name="plus" size={10} /></button>
-        </span>
+        <NightsStepper
+          value={nights}
+          onMinus={() => onChange({ nights: Math.max(1, nights - 1) })}
+          onPlus={() => onChange({ nights: Math.min(30, nights + 1) })}
+          minusDisabled={nights <= 1}
+          plusDisabled={nights >= 30}
+        />
       )}
-
       <button className="te-step te-step--del" onPointerDown={stopArm} onClick={(e) => { e.stopPropagation(); onRemove(); }} title={t('common.delete')} aria-label={t('common.delete')}><Icon name="trash" size={13} /></button>
-    </div>
+    </CityRowBase>
   );
 
   if (!isLast) return row;

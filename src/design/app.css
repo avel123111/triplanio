@@ -1230,12 +1230,21 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .te-row--plan .te-cityname { font-size: var(--fs-h4); font-weight: 700; }
 .te-row--plan .te-dts { font-size: var(--fs-meta); white-space: nowrap; }
 .te-row--plan .te-nights { font-size: var(--fs-meta); }
-/* Mobile route row: keep name + dates legible, dates on one line (no char-wrap),
-   nights/delete compact on the right. */
+/* Planner row actions (nights stepper + delete) wrapped in one flex cluster so
+   the mobile grid can place them as a single trailing column. */
+.te-row--plan .te-row__pacts { display: inline-flex; align-items: center; gap: 8px; }
+/* Planner dates are UI-font (not the editor's mono) for readability. */
+.te-row--plan .te-dts { font-family: var(--font-ui); }
+/* Mobile route row: switch the flex row to a 3-col grid so the city name + dates
+   never get squeezed (was clipping to "España / 1 j"). Grip hidden (long-press on
+   the row still reorders); dates wrap on their own line under the name. */
 @media (max-width: 640px) {
-  .te-row--plan { gap: 10px; padding: 12px 12px; }
-  .te-row--plan .te-citycell { flex: 1 1 auto; }
-  .te-row--plan .te-dts { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .te-row--plan { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; column-gap: 10px; row-gap: 2px; padding: 12px; align-items: center; }
+  .te-row--plan .te-grip { display: none; }
+  .te-row--plan .te-row__num { grid-column: 1; }
+  .te-row--plan .te-citycell { grid-column: 2; min-width: 0; }
+  .te-row--plan .te-row__pacts { grid-column: 3; }
+  .te-row--plan .te-dts { white-space: normal; }
 }
 /* Last-city card: the .te-row sits flush inside a bordered shell whose bottom
    strip holds the final-point toggle, so the toggle reads as part of the last
