@@ -15,16 +15,9 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { isTestStripeKey, productsForEnv } from '../_shared/stripeCatalog.ts';
 
 const VALID = ['pro_monthly', 'pro_yearly'];
-const LIVE_PRODUCTS: Record<string, string> = {
-  pro_monthly: 'prod_UYfZf8WvFNE3cI',
-  pro_yearly: 'prod_UYfZBYzOWrKiLu',
-};
-const TEST_PRODUCTS: Record<string, string> = {
-  pro_monthly: 'prod_UZnBPOlJL0xmue',
-  pro_yearly: 'prod_UZnBUDGL1PuyEN',
-};
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -40,7 +33,7 @@ Deno.serve(async (req) => {
 
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!stripeKey) return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
-    const isTestEnv = stripeKey.includes('_test_');
+    const isTestEnv = isTestStripeKey(stripeKey);
 
     // Caller's latest active recurring subscription with a Stripe id.
     const { data: subs } = await supabaseAdmin
@@ -64,7 +57,7 @@ Deno.serve(async (req) => {
     const stripe = new Stripe(stripeKey);
 
     // Resolve the target price via product.default_price (fallback: first active).
-    const productId = (isTestEnv ? TEST_PRODUCTS : LIVE_PRODUCTS)[targetPlan];
+    const productId = productsForEnv(isTestEnv)[targetPlan as 'pro_monthly' | 'pro_yearly'];
     const product = await stripe.products.retrieve(productId, { expand: ['default_price'] });
     let price = product.default_price;
     if (!price || typeof price === 'string') {

@@ -17,20 +17,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
-
-const VALID_PLANS = ['pro_trip', 'pro_monthly', 'pro_yearly'] as const;
-type PlanType = typeof VALID_PLANS[number];
-
-const LIVE_PRODUCTS: Record<PlanType, string> = {
-  pro_trip: 'prod_UYfZZsZnknkxDj',
-  pro_monthly: 'prod_UYfZf8WvFNE3cI',
-  pro_yearly: 'prod_UYfZBYzOWrKiLu',
-};
-const TEST_PRODUCTS: Record<PlanType, string> = {
-  pro_trip: 'prod_UZnCx7GA3YlLJd',
-  pro_monthly: 'prod_UZnBPOlJL0xmue',
-  pro_yearly: 'prod_UZnBUDGL1PuyEN',
-};
+import { VALID_PLANS, type PlanType, isTestStripeKey, productsForEnv } from '../_shared/stripeCatalog.ts';
 
 const SUPPORTED_LOCALES = new Set([
   'auto','bg','cs','da','de','el','en','en-GB','es','es-419','et','fi','fil',
@@ -70,7 +57,7 @@ Deno.serve(async (req) => {
       console.error('STRIPE_SECRET_KEY missing');
       return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
     }
-    const isTestEnv = stripeKey.includes('_test_');
+    const isTestEnv = isTestStripeKey(stripeKey);
     console.log('Stripe checkout mode:', isTestEnv ? 'TEST' : 'LIVE', 'origin:', reqOrigin);
 
     // ---------- Per-trip Pro: validate trip ownership ----------
@@ -145,8 +132,7 @@ Deno.serve(async (req) => {
     }
 
     // Resolve active price via product.default_price
-    const productMap = isTestEnv ? TEST_PRODUCTS : LIVE_PRODUCTS;
-    const productId = productMap[planType as PlanType];
+    const productId = productsForEnv(isTestEnv)[planType as PlanType];
     const product = await stripe.products.retrieve(productId, { expand: ['default_price'] });
     let price = product.default_price;
     if (!price || typeof price === 'string') {
