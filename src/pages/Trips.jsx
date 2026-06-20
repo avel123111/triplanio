@@ -107,14 +107,6 @@ function roleLabel(t, role) {
   return t('trips.role_admin'); // safe fallback — 'member' role doesn't exist in schema
 }
 
-// ─── SVG icons (inline, card/rail-specific; stat-bar icons come from widgets) ─
-const IconPin    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.7-7-11a7 7 0 0114 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>;
-const IconUsers  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0M16 6a3 3 0 010 6M21 20a6 6 0 00-4-5.6"/></svg>;
-const IconChev   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6l6 6-6 6"/></svg>;
-const IconCrown  = () => <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>;
-const IconShield = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"/></svg>;
-const IconCal    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>;
-
 // ─── Next-trip rail card / empty states ────────────────────────────────────────
 function NextTripCard({ trip, onClick, t }) {
   const bg = coverBg(trip);
@@ -123,10 +115,10 @@ function NextTripCard({ trip, onClick, t }) {
     <button type="button" className="nextcard" onClick={onClick}>
       <span className="nextcard__cover" style={{ background: bg || undefined }}>
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
-        <IconShield />
+        <Icon name="shield" />
       </span>
       <span className="nextcard__tx">
-        <span className="nextcard__tag"><IconShield />{t('stats.next_start_in')}</span>
+        <span className="nextcard__tag"><Icon name="shield" />{t('stats.next_start_in')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
         <span className="nextcard__cd">
@@ -135,7 +127,7 @@ function NextTripCard({ trip, onClick, t }) {
           <span className="cdu"><b>{cd.m}</b><span>{t('stats.cd_min')}</span></span>
         </span>
       </span>
-      <span className="nextcard__chev"><IconChev /></span>
+      <span className="nextcard__chev"><Icon name="chev" /></span>
     </button>
   );
 }
@@ -144,7 +136,7 @@ function NoNextCard({ variant, onPlan, t }) {
   const isEmpty = variant === 'empty';
   return (
     <div className="nonext">
-      <span className="ic"><IconCal /></span>
+      <span className="ic"><Icon name="calendar" /></span>
       <div>
         <b>{t('stats.next_trip')}</b>
         <p>{isEmpty ? t('stats.next_empty_sub') : t('stats.no_planned_sub')}</p>
@@ -219,7 +211,7 @@ const TripCard = ({ trip, onClick }) => {
         <div className="tc__tags">
           {trip.pro && (
             <span className="badge badge--pro">
-              <IconCrown /> Pro
+              <Icon name="crown" /> Pro
             </span>
           )}
         </div>
@@ -230,7 +222,7 @@ const TripCard = ({ trip, onClick }) => {
         <div className="tc__title">{trip.title}</div>
         <div className="tc__dates tab">{trip.days}</div>
         <div className="tc__scope">
-          <IconPin />
+          <Icon name="pin" />
           <span>{trip.scope}</span>
         </div>
 
@@ -238,7 +230,7 @@ const TripCard = ({ trip, onClick }) => {
         {trip.isShared && (
           <div className="tc__foot">
             <span className="tc__glass">
-              <IconUsers /> {t('trips.shared_badge')}
+              <Icon name="users" /> {t('trips.shared_badge')}
             </span>
             <span className="tc__glass">
               {roleLabel(t, trip.role)}
@@ -268,7 +260,7 @@ const TripRow = ({ trip, onClick }) => {
         )}
         <div className="tc__blob" style={{ width: 54, height: 54, top: -18, right: -14 }} />
         {trip.isShared && (
-          <span className="tr__shared"><IconUsers /></span>
+          <span className="tr__shared"><Icon name="users" /></span>
         )}
       </div>
 
@@ -276,7 +268,7 @@ const TripRow = ({ trip, onClick }) => {
       <div className="tr__main">
         <div className="tr__title">{trip.title}</div>
         <div className="tr__sub">
-          <IconPin />
+          <Icon name="pin" />
           <span>{trip.scope}</span>
         </div>
       </div>
@@ -304,7 +296,7 @@ const TripRow = ({ trip, onClick }) => {
             <Badge variant="pro" icon="pro">Pro</Badge>
           </span>
         )}
-        <span className="tr__chev"><IconChev /></span>
+        <span className="tr__chev"><Icon name="chev" /></span>
       </div>
     </button>
   );
