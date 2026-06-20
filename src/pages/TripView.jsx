@@ -23,6 +23,7 @@ import { SystemStub } from '@/lib/PageNotFound';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { useToast } from '@/components/ui/use-toast';
 import { ActionMenu } from '@/components/ui/ActionMenu';
+import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
@@ -789,7 +790,7 @@ export default function TripView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [copyingTrip, setCopyingTrip] = useState(false);
+  const { startCopy, copying } = useCreateTrip();
   const lens = searchParams.get('lens') || 'overview';
 
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -987,29 +988,10 @@ export default function TripView() {
       )}
     </>
   );
-  // Copy trip — available to every participant. The new trip is owned by the
+  // Copy trip — available to every participant. Delegated to CreateTripProvider
+  // (startCopy) so it runs the SAME free-tier gate as creating a new trip: at the
+  // cap → the Pro upsell modal; under the cap → copy. The new trip is owned by the
   // caller; copyTrip strips Pro status + Pro-only addons server-side.
-  const handleCopyTrip = async () => {
-    if (copyingTrip) return;
-    setCopyingTrip(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('copyTrip', { body: { tripId: trip.id } });
-      // Non-2xx → supabase-js puts the response in error.context; pull the real
-      // server message out of it so failures aren't masked by a generic toast.
-      let serverMsg = data?.error || null;
-      if (!serverMsg && error?.context && typeof error.context.json === 'function') {
-        try { serverMsg = (await error.context.json())?.error || null; } catch { /* ignore */ }
-      }
-      if (error || data?.error) throw new Error(serverMsg || error?.message || 'copy failed');
-      qc.invalidateQueries({ queryKey: ['trips', user?.id] });
-      toast({ description: t('trip.copy_done'), variant: 'success' });
-      if (data?.tripId) nav(`/trip/${data.tripId}`);
-    } catch (e) {
-      toast({ description: e?.message || t('trip.copy_error'), variant: 'destructive' });
-    } finally {
-      setCopyingTrip(false);
-    }
-  };
 
   const heroActions = (
     <>
@@ -1033,7 +1015,7 @@ export default function TripView() {
           { icon: 'settings', label: t('trip.settings_title'), onSelect: () => window.__navigate?.('settings') },
           myRole !== 'viewer' && { icon: 'users', label: t('trip.sidebar_members'), onSelect: () => window.__navigate?.('members') },
           { separator: true },
-          { icon: 'copy', label: t('trip.copy'), disabled: copyingTrip, onSelect: handleCopyTrip },
+          { icon: 'copy', label: t('trip.copy'), disabled: copying, onSelect: () => startCopy(trip.id) },
           { icon: 'download', label: t('trip.export'), onSelect: () => window.print() },
         ]}
       />

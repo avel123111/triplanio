@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
-import { isTripInPast } from '@/lib/trip-dates';
+import { useActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { searchCities, resolveCities, countryFlag, reverseGeocode } from '@/lib/geo';
@@ -783,37 +783,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const method = initialMethod;
   const isAi = method === 'ai';
 
-  // ── Free-plan limit check ─────────────────────────────────────────────────
-  const { data: allTrips = [], isLoading: checkingLimit } = useQuery({
-    queryKey: ['trips-limit-check', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('trips').select('id').eq('created_by', user.id);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.id && !isPro,
-  });
-
-  const { data: allVisits = [] } = useQuery({
-    queryKey: ['visits-limit-check', allTrips.map(t => t.id).join(',')],
-    queryFn: async () => {
-      const ids = allTrips.map(t => t.id);
-      if (ids.length === 0) return [];
-      const { data, error } = await supabase.from('city_visits').select('*').in('trip_id', ids);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !isPro && allTrips.length > 0,
-  });
-
-  const visitsByTrip = React.useMemo(() => {
-    const m = {};
-    allVisits.forEach(v => { (m[v.trip_id] ||= []).push(v); });
-    return m;
-  }, [allVisits]);
-
-  const activeTrips = allTrips.filter(t => !isTripInPast(visitsByTrip[t.id] || []));
-  const isOverLimit = !isPro && !checkingLimit && activeTrips.length >= 1;
+  // ── Free-plan limit check — single source: getActiveTrips → active_owned_trips() ──
+  // Pro users skip the fetch; the server is the one definition of "active owned trip".
+  const { isBlocked, isLoading: checkingLimit } = useActiveTripsLimit(isPro ? undefined : user?.id);
+  const isOverLimit = isBlocked;
 
   // ── Wizard state ─────────────────────────────────────────────────────────
   const [step, setStep]             = useState('home');

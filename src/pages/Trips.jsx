@@ -19,6 +19,7 @@ import {
 import '../design/app.css';
 
 import { useCreateTrip, ChoiceCard } from '@/components/create/CreateTripProvider';
+import { useActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import AppHeader from '@/components/AppHeader';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -427,6 +428,8 @@ export default function Trips() {
   }, [viewMode]);
 
   const isPro = isProActive(user);
+  // Single source for the free-limit banner — same getActiveTrips → active_owned_trips() as the create/copy gate.
+  const { activeCount: srvActiveCount, isBlocked: limitReached } = useActiveTripsLimit(user?.id);
   const scheme = isDark ? 'DARK' : 'LIGHT';
   const displayName = user?.full_name || user?.email?.split('@')[0] || '';
 
@@ -558,10 +561,6 @@ export default function Trips() {
     .sort((a, b) => new Date(rangeOf(b).end) - new Date(rangeOf(a).end));
 
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
-
-  // Free-limit is owner-scoped: only trips the user owns count toward the 1-trip cap.
-  // Invited trips (admin/viewer) are excluded — matches backend getActiveTrips (created_by).
-  const ownedActiveTrips = activeTrips.filter(tr => getRoleFor(tr) === 'owner');
 
   const shownNorm = shown.map(tr =>
     normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [])
@@ -739,7 +738,7 @@ export default function Trips() {
 
             {/* Free-limit banner — Pro style, not AI style.
                 Shown only when owned active trips reach/exceed the free cap (1). */}
-            {!isPro && filterMode === 'active' && ownedActiveTrips.length >= 1 && (
+            {filterMode === 'active' && limitReached && (
               <div className="limitcard">
                 <div className="limitcard__ic">
                   <Icon name="pro" size={22} />
@@ -748,7 +747,7 @@ export default function Trips() {
                   <div className="limitcard__top">
                     <b>{t('trips.free_limit_title')}</b>
                     <span className="limitcard__count num">
-                      {ownedActiveTrips.length} / 1
+                      {srvActiveCount} / 1
                     </span>
                   </div>
                   <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>
