@@ -19,6 +19,7 @@ import {
 import '../design/app.css';
 
 import { useCreateTrip, ChoiceCard } from '@/components/create/CreateTripProvider';
+import { useActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import AppHeader from '@/components/AppHeader';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -302,13 +303,33 @@ const TripRow = ({ trip, onClick }) => {
   );
 };
 
-// ─── Create choices (empty collection) ─────────────────────────────────────────
-function CreateChoices({ onManual, onAi }) {
+// ─── Empty collection · "Маршрут" — itinerary-rail hero + manual/AI choices ─────
+// Decorative orbs are inline-styled (no shared `.blob` class in this stylesheet);
+// the rail illustration + copy + choice pair sit above them (z-index 1).
+const _ORB = { position: 'absolute', borderRadius: '50%', filter: 'blur(12px)', pointerEvents: 'none', zIndex: 0 };
+function EmptyRoute({ onManual, onAi }) {
   const { t } = useI18n();
   return (
-    <div className="trips-empty__choices">
-      <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_full')} onClick={onManual} />
-      <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_full')} onClick={onAi} />
+    <div className="eroute" style={{ marginTop: 28 }}>
+      <span style={{ ..._ORB, width: 300, height: 300, background: 'var(--brand-grad)', top: -150, right: -60, opacity: 0.12 }} />
+      <span style={{ ..._ORB, width: 170, height: 170, background: 'var(--ai-gradient)', top: -30, right: '26%', opacity: 0.10 }} />
+      <div className="eroute__rail">
+        <svg viewBox="0 0 560 64" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <path className="rl" d="M30 36 H330" />
+          <path className="rl-dash" d="M330 36 H512" />
+          <circle className="rnode" cx="30" cy="36" r="7" /><circle className="rfill" cx="30" cy="36" r="2.6" />
+          <circle className="rnode" cx="180" cy="36" r="7" /><circle className="rfill" cx="180" cy="36" r="2.6" />
+          <circle className="rnode" cx="330" cy="36" r="7" /><circle className="rfill" cx="330" cy="36" r="2.6" />
+          <path className="rplane" d="M249 30 l16 6 -16 6 4 -6 z" />
+          <circle className="radd" cx="512" cy="36" r="10" /><path className="radd-plus" d="M512 31 v10 M507 36 h10" />
+        </svg>
+      </div>
+      <h3>{t('trips.empty_heading')}</h3>
+      <p>{t('trips.empty_route_sub')}</p>
+      <div className="eroute__create">
+        <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
+        <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
+      </div>
     </div>
   );
 }
@@ -407,6 +428,8 @@ export default function Trips() {
   }, [viewMode]);
 
   const isPro = isProActive(user);
+  // Single source for the free-limit banner — same getActiveTrips → active_owned_trips() as the create/copy gate.
+  const { activeCount: srvActiveCount, isBlocked: limitReached } = useActiveTripsLimit(user?.id);
   const scheme = isDark ? 'DARK' : 'LIGHT';
   const displayName = user?.full_name || user?.email?.split('@')[0] || '';
 
@@ -514,13 +537,30 @@ export default function Trips() {
     return !q || tr.title?.toLowerCase().includes(q) || tr.description?.toLowerCase().includes(q);
   };
 
-  const activeTrips = allTrips.filter(tr => !isTripInPast(visitsByTrip[tr.id] || []) && matches(tr));
-  const pastTrips   = allTrips.filter(tr =>  isTripInPast(visitsByTrip[tr.id] || []) && matches(tr));
-  const shown       = filterMode === 'active' ? activeTrips : pastTrips;
+  // Trip date range comes from the same computeTripRange used everywhere else:
+  // .start = earliest city start_date, .end = latest city end_date.
+  const rangeOf = (tr) => computeTripRange(visitsByTrip[tr.id] || []);
 
-  // Free-limit is owner-scoped: only trips the user owns count toward the 1-trip cap.
-  // Invited trips (admin/viewer) are excluded — matches backend getActiveTrips (created_by).
-  const ownedActiveTrips = activeTrips.filter(tr => getRoleFor(tr) === 'owner');
+  // Active → earliest start first (asc). Undated trips (no start; treated as
+  // active) sink to the bottom, tie-broken by created_at desc (allTrips is
+  // already created_at-desc, so a stable 0 keeps that order).
+  const activeTrips = allTrips
+    .filter(tr => !isTripInPast(visitsByTrip[tr.id] || []) && matches(tr))
+    .sort((a, b) => {
+      const sa = rangeOf(a).start, sb = rangeOf(b).start;
+      if (!sa && !sb) return 0;
+      if (!sa) return 1;
+      if (!sb) return -1;
+      return new Date(sa) - new Date(sb);
+    });
+
+  // Past → most recently finished first (end desc). Past trips always have an
+  // end date (isTripInPast requires it), so no null guard is needed.
+  const pastTrips = allTrips
+    .filter(tr => isTripInPast(visitsByTrip[tr.id] || []) && matches(tr))
+    .sort((a, b) => new Date(rangeOf(b).end) - new Date(rangeOf(a).end));
+
+  const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
   const shownNorm = shown.map(tr =>
     normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [])
@@ -596,14 +636,9 @@ export default function Trips() {
           </>
         )}
 
-        {/* Empty collection — create choices below the hero (skeleton-with-zeros) */}
+        {/* Empty collection — "Маршрут" itinerary-rail hero below the ghost stats */}
         {!isLoadingData && allTrips.length === 0 && (
-          <div className="trips-empty" style={{ marginTop: 28 }}>
-            <div className="sec-head">
-              <h2 style={{ fontSize: 'var(--fs-h3)' }}>{t('trips.empty_heading')}</h2>
-            </div>
-            <CreateChoices onManual={() => startCreate('manual')} onAi={() => startCreate('ai')} />
-          </div>
+          <EmptyRoute onManual={() => startCreate('manual')} onAi={() => startCreate('ai')} />
         )}
 
         {/* Normal view */}
@@ -648,11 +683,27 @@ export default function Trips() {
             {isLoadingData ? (
               <TripSkeleton viewMode={viewMode} />
             ) : shownNorm.length === 0 ? (
-              <EmptyState
-                icon={filterMode === 'past' ? 'calendar' : 'search'}
-                title={filterMode === 'past' ? t('trips.empty_archive_title') : t('trips.empty_search_title')}
-                body={filterMode === 'past' ? t('trips.empty_archive_body') : t('trips.empty_search_body')}
-              />
+              // Active tab with no upcoming/active trips (past ones exist) → invite,
+              // not a generic empty. A real search miss still shows empty_search.
+              (filterMode === 'active' && !search.trim()) ? (
+                <div className="invite">
+                  <span className="invite__ic"><Icon name="sparkles" size={28} /></span>
+                  <div className="invite__tx">
+                    <h3>{t('trips.invite_title')}</h3>
+                    <p>{t('trips.invite_desc')}</p>
+                  </div>
+                  <div className="invite__act">
+                    <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
+                    <Btn variant="ghost" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={filterMode === 'past' ? 'calendar' : 'search'}
+                  title={filterMode === 'past' ? t('trips.empty_archive_title') : t('trips.empty_search_title')}
+                  body={filterMode === 'past' ? t('trips.empty_archive_body') : t('trips.empty_search_body')}
+                />
+              )
             ) : viewMode === 'grid' ? (
               <div className="tc-grid">
                 {shownNorm.map(tr => (
@@ -687,7 +738,7 @@ export default function Trips() {
 
             {/* Free-limit banner — Pro style, not AI style.
                 Shown only when owned active trips reach/exceed the free cap (1). */}
-            {!isPro && filterMode === 'active' && ownedActiveTrips.length >= 1 && (
+            {filterMode === 'active' && limitReached && (
               <div className="limitcard">
                 <div className="limitcard__ic">
                   <Icon name="pro" size={22} />
@@ -696,7 +747,7 @@ export default function Trips() {
                   <div className="limitcard__top">
                     <b>{t('trips.free_limit_title')}</b>
                     <span className="limitcard__count num">
-                      {ownedActiveTrips.length} / 1
+                      {srvActiveCount} / 1
                     </span>
                   </div>
                   <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>

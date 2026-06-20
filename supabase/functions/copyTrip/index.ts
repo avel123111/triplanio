@@ -11,7 +11,8 @@
  *   - transfers
  *   - trip_services
  *
- * Free users: max 3 owned trips. Pro users: unlimited.
+ * Free users: max 1 ACTIVE owned trip — exactly the same rule as create_trip,
+ * via the shared count_active_owned_trips() helper (migration 0045). Pro: unlimited.
  * New trip is owned by the caller (created_by = user.id).
  * All child records are re-created with new IDs and caller as created_by.
  */
@@ -19,8 +20,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
-
-const FREE_TRIP_LIMIT = 3;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -55,12 +54,19 @@ Deno.serve(async (req) => {
       new Date(profile.subscription_end_date) > now;
 
     if (!isPro) {
-      const { count } = await supabaseAdmin
-        .from('trips')
-        .select('id', { count: 'exact', head: true })
-        .eq('created_by', user.id);
+      // Same single-source rule as create_trip: at most 1 ACTIVE owned trip.
+      const { data: activeCount, error: limitErr } = await supabaseAdmin
+        .rpc('count_active_owned_trips', { p_uid: user.id });
 
-      if ((count ?? 0) >= FREE_TRIP_LIMIT) {
+      if (limitErr) {
+        // Copy is a write action and this IS its enforcement, so fail closed.
+        console.error('copyTrip limit check error:', limitErr);
+        return Response.json(
+          { error: 'Could not verify trip limit. Please try again.' },
+          { status: 500, headers: corsHeaders },
+        );
+      }
+      if ((activeCount ?? 0) >= 1) {
         return Response.json(
           { error: 'Trip limit reached. Upgrade to Pro to create more trips.' },
           { status: 403, headers: corsHeaders },

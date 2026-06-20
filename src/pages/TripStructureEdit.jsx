@@ -26,6 +26,7 @@ import { ConflictsPanel } from '@/components/common/ValidationUI';
 import { useToast } from '@/components/ui/use-toast';
 import AppHeader from '@/components/AppHeader';
 import { ActionMenu } from '@/components/ui/ActionMenu';
+import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
@@ -161,7 +162,7 @@ export default function TripStructureEdit() {
     requestAnimationFrame(() => el?.focus?.({ preventScroll: true }));
   }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
-  const [copyingTrip, setCopyingTrip] = useState(false); // header "…" → Copy trip
+  const { startCopy, copying } = useCreateTrip(); // header "…" → Copy trip
   const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [sideOpen, setSideOpen] = useState(false); // mobile menu drawer
@@ -671,27 +672,9 @@ export default function TripStructureEdit() {
     <TripStartControl date={draft.startDate} onStep={(d) => shiftStart(d)} onPickDate={pickStart} label={t('ai_plan.start')} popoverAlign="end" />
   ) : null;
 
-  // Copy trip — same action as the other trip screens. The new trip is owned by
-  // the caller; copyTrip strips Pro status + Pro-only addons server-side.
-  const handleCopyTrip = async () => {
-    if (copyingTrip) return;
-    setCopyingTrip(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('copyTrip', { body: { tripId: trip.id } });
-      let serverMsg = data?.error || null;
-      if (!serverMsg && error?.context && typeof error.context.json === 'function') {
-        try { serverMsg = (await error.context.json())?.error || null; } catch { /* ignore */ }
-      }
-      if (error || data?.error) throw new Error(serverMsg || error?.message || 'copy failed');
-      qc.invalidateQueries({ queryKey: ['trips', user?.id] });
-      toast({ description: t('trip.copy_done'), variant: 'success' });
-      if (data?.tripId) nav(`/trip/${data.tripId}`);
-    } catch (e) {
-      toast({ description: e?.message || t('trip.copy_error'), variant: 'destructive' });
-    } finally {
-      setCopyingTrip(false);
-    }
-  };
+  // Copy trip — delegated to CreateTripProvider (startCopy) so it runs the SAME
+  // free-tier gate as creating a new trip. The new trip is owned by the caller;
+  // copyTrip strips Pro status + Pro-only addons server-side.
 
   // Editor header trip-actions — same set as the other trip screens, but the
   // "Edit" button is disabled (we are already in the editor). Menu items that
@@ -714,7 +697,7 @@ export default function TripStructureEdit() {
           { icon: 'settings', label: t('trip.settings_title'), onSelect: () => leaveNow(`/trip/${tripId}?lens=settings`) },
           myRole !== 'viewer' && { icon: 'users', label: t('trip.sidebar_members'), onSelect: () => leaveNow(`/trip/${tripId}?lens=members`) },
           { separator: true },
-          { icon: 'copy', label: t('trip.copy'), disabled: copyingTrip, onSelect: handleCopyTrip },
+          { icon: 'copy', label: t('trip.copy'), disabled: copying, onSelect: () => startCopy(trip.id) },
           { icon: 'download', label: t('trip.export'), onSelect: () => window.print() },
         ]}
       />

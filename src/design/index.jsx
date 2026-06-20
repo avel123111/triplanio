@@ -295,18 +295,27 @@ export const CityPhoto = ({ city, h = 80, w = "100%", radius = 10 }) => {
 //      modal engine (@/components/ui/dialog → Radix). The legacy ModalHost +
 //      window.__openModal stack has been removed; every modal in the app now
 //      runs on the same `ui/dialog` Dialog/DialogContent. ----
-export const Dialog = ({ title, icon, onClose, size, children, foot, open, onOpenChange }) => {
+// iconTone swaps the header-icon tint to an existing Lumo event token set
+// (default = brand). Add tones here as needed — no new tokens introduced.
+const DLG_ICON_TONES = {
+  activity: { bg: 'var(--ev-activity-soft)', fg: 'var(--ev-activity-ink)' },
+};
+export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, children, foot, open, onOpenChange }) => {
   const handleClose = () => { onClose?.(); onOpenChange?.(false); };
+  const tone = DLG_ICON_TONES[iconTone] || { bg: 'var(--brand-soft)', fg: 'var(--brand)' };
   return (
     <UIDialog open={open === undefined ? true : open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       <DialogContent className={size ? `dlg--${size}` : ''}>
         <div className="dlg__head">
           {icon && (
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'var(--brand-soft)', color: 'var(--brand)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: tone.bg, color: tone.fg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <Icon name={icon} size={17} />
             </div>
           )}
-          <h2>{title}</h2>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2>{title}</h2>
+            {subtitle && <div className="muted" style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginTop: 2 }}>{subtitle}</div>}
+          </div>
           <button className="icon-btn" onClick={handleClose}>
             <Icon name="close" size={16} />
           </button>
