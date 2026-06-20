@@ -1,6 +1,6 @@
 export default {
   'stats.greeting': 'Hi, {name}',
-  'stats.home_sub': '{trips} trips · {countries} countries on the map',
+  'stats.home_sub': '{trips} trips · {countries} countries · {cities} cities',
   'stats.home_sub_empty': 'No trips yet — your first journey awaits',
   'stats.page_title': 'My statistics',
   'stats.all_stats': 'All statistics',

@@ -53,7 +53,7 @@ export function pointType(p, today = new Date()) {
 // visit panel). Binds to EXISTING design tokens — no new tokens. Previously this
 // map + dominantTone() were copy-pasted in Statistics.jsx / StatsMap.jsx /
 // VisitPanel.jsx; they import these now so the colour can never drift.
-export const TONE = { trip: 'var(--primary)', manual: 'var(--ev-car)', future: 'var(--ai)' };
+export const TONE = { trip: 'hsl(var(--primary))', manual: 'var(--ev-car)', future: 'var(--ai)' };
 // "Most real" wins (trip > manual > future) so a city visited on a trip never
 // looks merely "planned" when several visit types share a pin/place.
 export const TONE_RANK = { trip: 0, manual: 1, future: 2 };

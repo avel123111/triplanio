@@ -1,5 +1,5 @@
 import React from 'react';
-import { Btn } from '@/design/index';
+import { Btn, Avatar } from '@/design/index';
 import { Icon } from '@/design/icons';
 
 // Shared presentational widgets for the travel-stats screens (Trips home +
@@ -16,7 +16,7 @@ export function initialsOf(name = '') {
 
 // Greeting hero — highlights the name inside the localized greeting string
 // (every locale places {name} last, so we slice before its last occurrence).
-export function Greeting({ greeting, name, photo, sub }) {
+export function Greeting({ greeting, name, avatarName, photo, sub }) {
   const at = name ? greeting.lastIndexOf(name) : -1;
   const prefix = at >= 0 ? greeting.slice(0, at) : greeting;
   return (
@@ -24,11 +24,7 @@ export function Greeting({ greeting, name, photo, sub }) {
       <div className="blob b1" />
       <div className="blob b2" />
       <div className="head__row">
-        <span className="head__av">
-          {photo
-            ? <img src={photo} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            : <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'hsl(var(--primary-foreground))', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h3)' }}>{initialsOf(name)}</span>}
-        </span>
+        <Avatar name={avatarName || name || '?'} photo={photo} className="head__av" />
         <div className="grow">
           <h1>{prefix}{name && <span className="nm">{name}</span>}</h1>
           {sub && <div className="sub">{sub}</div>}
@@ -64,7 +60,7 @@ export function WorldMini({ world, title, caption }) {
     <div className="wmini">
       <div className="blob b1" style={{ width: 160, height: 160, background: 'var(--brand-grad)', top: -90, right: -40, opacity: 0.1 }} />
       <div className="top">
-        <div className="ring" style={{ width: 72, height: 72 }}>
+        <div className="wring" style={{ width: 72, height: 72 }}>
           <svg viewBox="0 0 72 72" width="72" height="72">
             <circle className="ring__track" cx="36" cy="36" r={R} strokeWidth="9" />
             <circle className="ring__fg" cx="36" cy="36" r={R} strokeWidth="9" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }} />
@@ -113,7 +109,7 @@ export function WorldRing({ world, label, caption }) {
   const frac = world.total ? Math.min(1, world.visited / world.total) : 0;
   return (
     <div className="world__ring">
-      <div className="ring" style={{ width: 148, height: 148 }}>
+      <div className="wring" style={{ width: 148, height: 148 }}>
         <svg viewBox="0 0 148 148" width="148" height="148">
           <circle className="ring__track" cx="74" cy="74" r={R} strokeWidth="12" />
           <circle className="ring__fg" cx="74" cy="74" r={R} strokeWidth="12" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }} />

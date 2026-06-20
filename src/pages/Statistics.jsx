@@ -31,7 +31,7 @@ import '../design/app.css';
 // Continent display order + colours (existing event tokens — no new tokens).
 const CONT_ORDER = ['EU', 'AS', 'NA', 'AF', 'SA', 'OC', 'AN'];
 const CONT_COLOR = {
-  EU: 'var(--primary)', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
+  EU: 'hsl(var(--primary))', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
   AF: 'var(--warm)', SA: 'var(--ev-transfer)', OC: 'var(--ai)', AN: 'var(--muted)',
 };
 export default function Statistics() {
@@ -139,11 +139,11 @@ export default function Statistics() {
 
   const contRows = useMemo(() => {
     const bd = bundle.continentsBreakdown || {};
-    const present = CONT_ORDER.filter((c) => bd[c]);
-    const max = Math.max(1, ...present.map((c) => bd[c]));
-    return present.map((c) => ({
-      key: c, label: t(`stats.cont_${c}`), count: bd[c], color: CONT_COLOR[c],
-      pct: Math.round((bd[c] / max) * 100), countLabel: t('stats.cont_countries'),
+    // Show ALL continents (each with its own bar) — unvisited ones read 0.
+    const max = Math.max(1, ...CONT_ORDER.map((c) => bd[c] || 0));
+    return CONT_ORDER.map((c) => ({
+      key: c, label: t(`stats.cont_${c}`), count: bd[c] || 0, color: CONT_COLOR[c],
+      pct: Math.round(((bd[c] || 0) / max) * 100), countLabel: t('stats.cont_countries'),
     }));
   }, [bundle.continentsBreakdown, t]);
 
@@ -233,7 +233,7 @@ export default function Statistics() {
   // ── render ──────────────────────────────────────────────────────────────────
   return (
     <div className={`app-shell${isEmpty ? ' stats-ghost' : ''}`} style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
-      <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
+      <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} onBack={() => nav('/')} backTitle={t('telegram.go_to_trips')} />
       <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
         {/* head: title + sub + year filter */}
@@ -287,9 +287,6 @@ export default function Statistics() {
                   <button onClick={() => setFs((v) => !v)} aria-label={t('stats.map_fullscreen')}><Icon name="expand" /></button>
                 </div>
                 {fs && <button className="mapfs-close" onClick={() => setFs(false)} aria-label={t('common.close') || 'Close'}><Icon name="close" /></button>}
-                {!isEmpty && (
-                  <span className="map-hint"><Icon name="crosshair" /><span>{t('stats.map_hint')}</span></span>
-                )}
                 <div className="map-legend">
                   {legendRows.map((r) => (
                     <span className="c" key={r.tone}><i className="d" style={{ background: r.color }} />{r.label}{r.count ? ` · ${r.count}` : ''}</span>
