@@ -534,8 +534,29 @@ export default function Trips() {
     return !q || tr.title?.toLowerCase().includes(q) || tr.description?.toLowerCase().includes(q);
   };
 
-  const activeTrips = allTrips.filter(tr => !isTripInPast(visitsByTrip[tr.id] || []) && matches(tr));
-  const pastTrips   = allTrips.filter(tr =>  isTripInPast(visitsByTrip[tr.id] || []) && matches(tr));
+  // Trip date range comes from the same computeTripRange used everywhere else:
+  // .start = earliest city start_date, .end = latest city end_date.
+  const rangeOf = (tr) => computeTripRange(visitsByTrip[tr.id] || []);
+
+  // Active → earliest start first (asc). Undated trips (no start; treated as
+  // active) sink to the bottom, tie-broken by created_at desc (allTrips is
+  // already created_at-desc, so a stable 0 keeps that order).
+  const activeTrips = allTrips
+    .filter(tr => !isTripInPast(visitsByTrip[tr.id] || []) && matches(tr))
+    .sort((a, b) => {
+      const sa = rangeOf(a).start, sb = rangeOf(b).start;
+      if (!sa && !sb) return 0;
+      if (!sa) return 1;
+      if (!sb) return -1;
+      return new Date(sa) - new Date(sb);
+    });
+
+  // Past → most recently finished first (end desc). Past trips always have an
+  // end date (isTripInPast requires it), so no null guard is needed.
+  const pastTrips = allTrips
+    .filter(tr => isTripInPast(visitsByTrip[tr.id] || []) && matches(tr))
+    .sort((a, b) => new Date(rangeOf(b).end) - new Date(rangeOf(a).end));
+
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
   // Free-limit is owner-scoped: only trips the user owns count toward the 1-trip cap.
