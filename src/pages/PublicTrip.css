@@ -36,7 +36,9 @@
    with the header/footer chrome) — no page-specific button styles. */
 
 /* ── masthead ── */
-.pt-mast{padding:54px 0 40px}
+/* The shared marketing header (/landing.css) is fixed; clear it with the
+   landing's own --hero-top offset so the kick isn't tucked under the bar. */
+.pt-mast{padding:var(--hero-top,96px) 0 40px}
 .pt-mast__kick{display:inline-flex;align-items:center;gap:10px;font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--brand)}
 .pt-mast__kick::before{content:"";width:28px;height:2px;background:var(--brand);border-radius:2px}
 .pt-mast h1{font-size:clamp(40px,8vw,84px);font-weight:800;line-height:.98;letter-spacing:-.035em;margin:20px 0 0}
@@ -55,7 +57,8 @@
 .pt-rsep{display:inline-flex;color:var(--muted-2);flex:none}
 .pt-rsep svg{width:15px;height:15px;display:block}
 
-.pt-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:24px 26px;margin-top:30px;max-width:820px}
+.pt-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:24px 26px;margin-top:30px;max-width:860px}
+.pt-mm .n{overflow:hidden;text-overflow:ellipsis}
 .pt-mm{display:flex;flex-direction:column;gap:5px;position:relative;padding-left:18px}
 .pt-mm::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:3px;border-radius:3px;background:color-mix(in srgb,var(--brand) 35%,transparent)}
 .pt-mm .n{font-family:var(--font-display);font-weight:800;font-size:26px;letter-spacing:-.02em;color:var(--brand);line-height:1;white-space:nowrap}
@@ -134,7 +137,7 @@
   .pt-mapbox{height:300px}
 }
 @media(max-width:600px){
-  .pt-mast{padding:34px 0 26px}
+  .pt-mast{padding:var(--hero-top,120px) 0 26px}
   .pt-wide{padding:0 18px}
   .pt-scta{display:flex}
   .ptrip{padding-bottom:70px}

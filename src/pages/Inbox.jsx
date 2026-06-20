@@ -122,7 +122,7 @@ export default function Inbox() {
         title={t('notif.inbox_title')}
       />
 
-      <main className="ov-anim" style={{ flex: 1, padding: '32px 24px', maxWidth: 'var(--content-max)', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <main className="ov-anim" style={{ flex: 1, padding: '32px 28px', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
           <h1 style={{ flex: 1, marginBottom: 0 }}>{t('notif.inbox_title')}</h1>
           {notifications.length > 0 && unreadCount > 0 && (

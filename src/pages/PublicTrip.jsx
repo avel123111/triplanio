@@ -160,7 +160,15 @@ export default function PublicTrip() {
   }
   if (error || !trip) return <NotFound message={t('public.not_found')} t={t} />;
 
-  const dateRange = spanStart && spanEnd ? `${fmt(spanStart)} – ${fmt(spanEnd)}` : '';
+  // Collapse a same-month span to "4 – 16 Jul" (matches the mockup); keep the
+  // full "28 Jun – 4 Jul" form across months.
+  const dateRange = (() => {
+    if (!spanStart || !spanEnd) return '';
+    const a = new Date(spanStart);
+    const b = new Date(spanEnd);
+    const sameMonth = a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth();
+    return sameMonth ? `${a.getUTCDate()} – ${fmt(spanEnd)}` : `${fmt(spanStart)} – ${fmt(spanEnd)}`;
+  })();
   const ownerName = owner?.display_name || '';
 
   return (
@@ -274,6 +282,7 @@ export default function PublicTrip() {
               colorScheme="LIGHT"
               basemapTheme="monochrome"
               focus={focusPts}
+              focusDuration={2100}
             />
           </div>
         </div>
@@ -305,10 +314,6 @@ export default function PublicTrip() {
           <h2>{t('public.cta_title')}</h2>
           <p>{t('public.cta_sub')}</p>
           <div className="pt-cta__act">
-            <a className="btn btn--white btn--lg" href={SITE}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
-              {t('public.cta_copy')}
-            </a>
             <a className="btn btn--white btn--lg" href={SITE}>{t('public.cta_plan')}</a>
           </div>
         </div>
