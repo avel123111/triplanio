@@ -3575,6 +3575,11 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .sfig.is-soon .v { color: var(--muted-2); }
 .sfig .k { font-size: var(--fs-micro); font-weight: 700; color: var(--muted); }
 
+/* Base white card container (V4). Was missing — so .panel / .panel.world /
+   .panel.chart rendered with no background, leaving continents, the country/city
+   list and the year chart sitting bare on the page. Used only by the stats blocks. */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); }
+
 /* — world ring + continents — */
 .world { display: grid; grid-template-columns: 230px 1fr; gap: 24px; padding: 24px; position: relative; overflow: hidden; align-items: center; margin-top: 18px; }
 @media (max-width: 640px) { .world { grid-template-columns: 1fr; gap: 18px; padding: 20px; } }
