@@ -272,8 +272,8 @@ export default function Statistics() {
   // ── render ──────────────────────────────────────────────────────────────────
   return (
     <div className={`app-shell${isEmpty ? ' stats-ghost' : ''}`} style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
-      <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} onBack={() => nav('/trips')} backTitle={t('telegram.go_to_trips')} />
-      <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} onBack={() => nav('/trips')} backTitle={t('telegram.go_to_trips')} title={t('stats.page_title')} />
+      <main style={{ flex: 1, padding: '32px 28px', maxWidth: 'var(--content-max)', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         {showSkeleton ? <StatsScreenSkeleton /> : (<>
 
         {/* head: title + sub + year filter */}
@@ -311,7 +311,7 @@ export default function Statistics() {
         )}
 
         {/* map hero */}
-        <div className={`mapwrap${fs ? ' is-fs' : ''}${isEmpty ? ' is-ghost' : ''}`} style={{ minHeight: 420, marginTop: 18 }}>
+        <div className={`mapwrap${fs ? ' is-fs' : ''}${isEmpty ? ' is-ghost' : ''}`} style={{ minHeight: fs ? 0 : 420, marginTop: fs ? 0 : 18 }}>
           {showMap
             ? (
               <StatsMap

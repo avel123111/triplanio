@@ -121,6 +121,11 @@
   /* Category / chart palette */
   --cat-1:#5470E6; --cat-2:#15A2B0; --cat-3:#E0568F; --cat-4:#2FA866; --cat-5:#E6A21E; --cat-6:#8A6BF0; --cat-7:#E07A4E; --cat-8:#9AA1AD;
 
+  /* Standalone-screen content width — single source for the centered page
+     column shared by Trips / Statistics / Inbox / Account (was scattered
+     magic numbers 1240 / 1120 / 760). */
+  --content-max: 1120px;
+
   /* Radii (Lumo names + legacy aliases) */
   --r-card:24px; --r-md:16px; --r-btn:14px; --r-sm:11px; --r-pill:999px;
   --radius-card: var(--r-card);
@@ -2473,7 +2478,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* minmax(0,1fr): the content track is sized by the viewport, NOT by its widest
    child — without this the wide subscription "plan face" widens the column once
    it loads, causing a load-time reflow (content jumps from narrow to wide). */
-.acct-shell { max-width: 1120px; margin: 0 auto; padding: 26px 24px 80px; display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 30px; align-items: start; }
+.acct-shell { max-width: var(--content-max); margin: 0 auto; padding: 26px 24px 80px; display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 30px; align-items: start; }
 /* Base text matches the Lumo body exactly so nothing inherits a lighter/smaller
    default (15px / 500 / display-headings). */
 .acct-content { font-size: var(--fs-strong); font-weight: 500; line-height: 1.6; }
@@ -2848,6 +2853,48 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 
 /* hide secondary meta on small screens */
 @media (max-width: 600px) { .tr-hideS { display: none !important; } }
+
+/* List-view "add trip" placeholder — mirrors the grid .tc-add language but as a
+   row, reusing .tr / .tr__main. Placed after .tr so it wins on equal specificity. */
+.tr--add {
+  border: 1.5px dashed var(--line-strong);
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+}
+.tr--add:hover {
+  border-color: var(--brand); color: var(--brand);
+  background: var(--primary-soft);
+  transform: translateY(-2px); box-shadow: none;
+}
+.tr--add:active { transform: translateY(0) scale(.995); }
+.tr__addic {
+  width: 46px; height: 46px; border-radius: 12px; flex: none;
+  background: var(--primary-soft); color: var(--primary);
+  display: grid; place-items: center;
+  transition: background .2s;
+}
+.tr--add:hover .tr__addic { background: var(--primary-soft-2); }
+.tr--add b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); color: inherit; display: block; }
+.tr--add small { font-size: var(--fs-meta); color: var(--muted); font-weight: 600; }
+
+/* ── Trips toolbar (filters row) — adaptive on mobile ───────────────────────
+   Desktop: [Active/Past seg] [search (flex)] [spacer] [grid/list seg].
+   ≤640px:  row1 = [Active/Past seg (grows)] [grid/list seg]; row2 = search full. */
+.trips-toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+.trips-toolbar__search { position: relative; flex: 1; min-width: 180px; max-width: 340px; }
+.trips-toolbar__spacer { flex: 1; }
+@media (max-width: 640px) {
+  .trips-toolbar { gap: 10px; }
+  .trips-toolbar .seg--filter { order: 1; flex: 1; }
+  .trips-toolbar .seg--filter button { flex: 1; justify-content: center; }
+  .trips-toolbar .seg--view { order: 2; flex: none; }
+  .trips-toolbar__search { order: 3; flex: 1 1 100%; max-width: none; min-width: 0; }
+  .trips-toolbar__spacer { display: none; }
+  /* The header "Новое путешествие" button is redundant on mobile — the
+     bottom-nav FAB already creates a trip. */
+  .trips-newbtn { display: none !important; }
+}
 
 /* ── Баннер лимита Free-тарифа ─────────────────────────────── */
 .limitcard {
@@ -3679,13 +3726,20 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .smk--manual .smk__dot { background: var(--surface); box-shadow: 0 0 0 2.5px hsl(var(--primary)), 0 1px 5px rgba(0, 0, 0, .28); }
 /* fullscreen: expand the existing singleton-map slot to a fixed overlay (no
    reparent — the same map element just fills the viewport; consumer calls resize) */
-.mapwrap.is-fs { position: fixed; inset: 0; z-index: 90; border-radius: 0; min-height: 0; }
+.mapwrap.is-fs { position: fixed; inset: 0; z-index: 100; border-radius: 0; min-height: 0; }
 .mapfs-close { position: absolute; right: 14px; top: 13px; z-index: 4; width: 38px; height: 38px; border-radius: var(--r-pill); border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(8px); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
 .mapfs-close svg { width: 18px; height: 18px; }
+/* Fullscreen sits above the app header (z-index 100 > 50). On mobile, push the
+   controls below the header band (54px) + notch so the close + mode buttons are
+   never hidden under the top bar — robust regardless of any stacking context. */
+.mapwrap.is-fs .map-ctl, .mapwrap.is-fs .mapfs-close { top: max(13px, calc(env(safe-area-inset-top) + 10px)); }
+@media (max-width: 640px) {
+  .mapwrap.is-fs .map-ctl, .mapwrap.is-fs .mapfs-close { top: calc(54px + max(12px, env(safe-area-inset-top))); }
+}
 
 /* — visit panel (desktop right slide-over / mobile bottom sheet) over the app — */
-.vscrim { position: fixed; inset: 0; background: var(--scrim); z-index: 60; }
-.vpanel { position: fixed; z-index: 70; background: var(--surface); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }
+.vscrim { position: fixed; inset: 0; background: var(--scrim); z-index: 110; }
+.vpanel { position: fixed; z-index: 120; background: var(--surface); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }
 @keyframes vpanelIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
 @media (max-width: 640px) { .vpanel { top: auto; left: 0; right: 0; bottom: 0; height: auto; width: 100%; max-height: 84%; border-left: 0; border-radius: 26px 26px 0 0; animation: vpanelInM .34s var(--ease-out); } @keyframes vpanelInM { from { transform: translateY(102%); } to { transform: translateY(0); } } }
 .vp-grip { display: none; }
@@ -3719,8 +3773,3 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .triplink svg { width: 14px; height: 14px; color: var(--muted); }
 @media (hover: hover) { .triplink:hover { background: var(--primary-soft); color: var(--primary); } .triplink:hover svg { color: var(--primary); } }
 .vmanual { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-meta); font-weight: 700; color: var(--muted); }
-
-/* — stats map pins: per-visit-type ring colour via the existing --tmk hook — */
-.tmk--t-trip { --tmk: var(--primary); }
-.tmk--t-manual { --tmk: var(--ev-car); }
-.tmk--t-future { --tmk: var(--ai); }

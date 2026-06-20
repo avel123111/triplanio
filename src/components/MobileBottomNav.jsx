@@ -20,6 +20,7 @@ import { Icon } from '@/design/icons';
 import { Avatar } from '@/design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useT } from '@/lib/i18n/I18nContext';
+import { useCreateTrip } from '@/components/create/CreateTripProvider';
 
 // ─── Context bridge ──────────────────────────────────────────────────────────
 // TripView registers { openMenu, openAdd } while mounted; the global nav reads
@@ -58,6 +59,7 @@ export default function MobileBottomNav() {
   const [sp] = useSearchParams();
   const { user } = useAuth();
   const { tripCtx } = useMobileNav();
+  const { openChoice } = useCreateTrip();
   const path = loc.pathname;
 
   // Routes that own their navigation / aren't app screens → no bottom nav.
@@ -103,7 +105,7 @@ export default function MobileBottomNav() {
       <div className="mbnav__dock mbnav__dock--app">
         <NavItem icon="grid" label={t('nav.trips')} active={path.startsWith('/trips')} onClick={() => nav('/trips')} />
         <span className="mbnav__center">
-          <button type="button" className="mbnav__fab" aria-label={t('trips.new')} onClick={() => nav('/trips?new=1')}>
+          <button type="button" className="mbnav__fab" aria-label={t('trips.new')} onClick={() => openChoice()}>
             <Icon name="plus" size={26} />
           </button>
         </span>

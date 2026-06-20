@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { pointType, TONE } from '@/lib/travel-stats';
 import { getGradientById } from '@/lib/trip-gradients';
+import { useSheetSwipe } from '@/lib/useSheetSwipe';
 import { Icon } from '@/design/icons';
 
 // Visit panel for the "My statistics" screen — opens when a country/city/pin is
@@ -144,16 +145,21 @@ export default function VisitPanel({
 }) {
   const isCity = kind === 'city';
   const rows = groupVisits(visits);
+  // Same drag-to-dismiss hook the canonical Sheet uses — attach elRef to the
+  // surface and gripProps to the grip ("бровь"); only fires on the mobile grip
+  // (hidden on desktop), so the desktop right-drawer is unaffected.
+  const { elRef, gripProps } = useSheetSwipe(() => onOpenChange?.(false));
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="vscrim" />
         <Dialog.Content
+          ref={elRef}
           className="vpanel"
           aria-describedby={undefined}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <div className="vp-grip" />
+          <div className="vp-grip" {...gripProps} />
           <div className={`vp-h${isCity ? ' city' : ''}`}>
             <div className="ic" style={cc ? { background: 'transparent', borderRadius: '50%' } : undefined}><PanelFlag cc={cc} isCity={isCity} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>

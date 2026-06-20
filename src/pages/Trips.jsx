@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
@@ -8,7 +8,7 @@ import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, EmptyState, Skeleton } from '../design/index';
+import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import { getGradientById } from '@/lib/trip-gradients';
 import { uniqueTransitCities } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
@@ -18,7 +18,7 @@ import {
 } from '@/components/stats/widgets';
 import '../design/app.css';
 
-import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
+import { useCreateTrip, ChoiceCard } from '@/components/create/CreateTripProvider';
 import AppHeader from '@/components/AppHeader';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -302,46 +302,6 @@ const TripRow = ({ trip, onClick }) => {
   );
 };
 
-// ─── Trip-creation choice card (shared: empty screen + new-trip dialog) ───────
-function ChoiceCard({ variant = 'man', icon, title, sub, onClick }) {
-  const isAi = variant === 'ai';
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`choice-card${isAi ? ' choice-card--ai' : ''}`}
-    >
-      <div className={`choice-card__ic choice-card__ic--${isAi ? 'ai' : 'man'}`}>
-        <Icon name={icon} size={23} />
-      </div>
-      <div className="choice-card__tx">
-        <div className="choice-card__ttl">{title}</div>
-        <div className="choice-card__sub">{sub}</div>
-      </div>
-      <span className="choice-card__arr"><Icon name="arrowR" size={20} /></span>
-    </button>
-  );
-}
-
-// ─── New Trip Dialog ─────────────────────────────────────────────────────────
-function NewTripDialog({ onClose, onManual, onAi }) {
-  const { t } = useI18n();
-  return (
-    <Dialog
-      title={t('trips.new')}
-      icon="plus"
-      size="sm"
-      open={true}
-      onOpenChange={(o) => { if (!o) onClose(); }}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
-        <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
-      </div>
-    </Dialog>
-  );
-}
-
 // ─── Create choices (empty collection) ─────────────────────────────────────────
 function CreateChoices({ onManual, onAi }) {
   const { t } = useI18n();
@@ -430,8 +390,9 @@ export default function Trips() {
   });
   const [filterMode,  setFilterMode]  = useState('active');
   const [search,      setSearch]      = useState('');
-  const [showNewTrip, setShowNewTrip] = useState(false);
-  const [showLimit,   setShowLimit]   = useState(false);
+  // Create-trip flow lives in the global CreateTripProvider so the same sheet is
+  // reachable from every screen (and the bottom-nav "+"); no more ?new=1 routing.
+  const { openChoice, startCreate } = useCreateTrip();
   // Lazy-mount the map hero after the first paint so the heavy Mapbox surface
   // doesn't block initial render of the content above the fold.
   const [showMap, setShowMap] = useState(false);
@@ -439,19 +400,7 @@ export default function Trips() {
     const id = requestAnimationFrame(() => setShowMap(true));
     return () => cancelAnimationFrame(id);
   }, []);
-  // The mobile bottom-nav "+" (off-trip) routes here with ?new=1 → open the same
-  // create-trip dialog (keeps the existing Pro trip-limit check). Then drop the param.
-  const [searchParams, setSearchParams] = useSearchParams();
-  useEffect(() => {
-    if (searchParams.get('new') === '1') {
-      setShowNewTrip(true);
-      const sp = new URLSearchParams(searchParams);
-      sp.delete('new');
-      setSearchParams(sp, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
   const openUpgrade = () => nav('/pro?hidePerTrip=1');
-  const [pendingPick, setPendingPick] = useState(null);
 
   React.useEffect(() => {
     try { localStorage.setItem('trips:viewMode', viewMode); } catch { /* ignore */ }
@@ -604,19 +553,6 @@ export default function Trips() {
     };
   }, [allTrips, visitsByTrip, t]);
 
-  // ── Create flow ───────────────────────────────────────────────────────────────
-  const checkLimit = (pick) => {
-    if (!isPro && ownedActiveTrips.length >= 1) {
-      setPendingPick(pick); setShowLimit(true);
-    } else {
-      nav(pick === 'ai' ? '/plan-trip-ai' : '/new-trip');
-    }
-  };
-  const handleProceed = () => {
-    setShowLimit(false);
-    nav(pendingPick === 'ai' ? '/plan-trip-ai' : '/new-trip');
-    setPendingPick(null);
-  };
 
   // Visits come from the RPC (ready once stats load) or the fallback query.
   const isLoadingData = isLoading || (hasTrips && !rpcTripVisits && (!statsLoaded || loadingVisits));
@@ -632,7 +568,7 @@ export default function Trips() {
       <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
 
       {/* PAGE CONTENT */}
-      <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <main style={{ flex: 1, padding: '32px 28px', maxWidth: 'var(--content-max)', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
         {/* Loading skeleton */}
         {isLoadingData && allTrips.length === 0 && (
@@ -652,7 +588,7 @@ export default function Trips() {
               scheme={scheme}
               nextTrip={nextTrip}
               onAllStats={() => nav('/stats')}
-              onPlan={() => setShowNewTrip(true)}
+              onPlan={() => openChoice()}
               onOpenNext={() => nextTrip && nav(`/trip/${nextTrip.id}`)}
               t={t}
               ghost={!isLoadingData && allTrips.length === 0}
@@ -666,7 +602,7 @@ export default function Trips() {
             <div className="sec-head">
               <h2 style={{ fontSize: 'var(--fs-h3)' }}>{t('trips.empty_heading')}</h2>
             </div>
-            <CreateChoices onManual={() => checkLimit('manual')} onAi={() => checkLimit('ai')} />
+            <CreateChoices onManual={() => startCreate('manual')} onAi={() => startCreate('ai')} />
           </div>
         )}
 
@@ -681,12 +617,15 @@ export default function Trips() {
                   {t('trips.count_summary', { active: activeTrips.length, past: pastTrips.length })}
                 </div>
               </div>
-              <Btn variant="primary" size="lg" icon="plus" onClick={() => setShowNewTrip(true)}>{t('trips.new')}</Btn>
+              <span className="trips-newbtn">
+                <Btn variant="primary" size="lg" icon="plus" onClick={() => openChoice()}>{t('trips.new')}</Btn>
+              </span>
             </div>
 
-            {/* Filters row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18, flexWrap: 'wrap' }}>
-              <div className="seg" role="group" aria-label={t('trips.tab_active')}>
+            {/* Filters row — adaptive (.trips-toolbar): wraps the search to its own
+                full-width line on phones, segments share the first line. */}
+            <div className="trips-toolbar">
+              <div className="seg seg--filter" role="group" aria-label={t('trips.tab_active')}>
                 <button aria-pressed={filterMode === 'active'} onClick={() => setFilterMode('active')}>
                   {t('trips.tab_active')} · <span className="num">{activeTrips.length}</span>
                 </button>
@@ -694,12 +633,12 @@ export default function Trips() {
                   {t('trips.tab_past')} · <span className="num">{pastTrips.length}</span>
                 </button>
               </div>
-              <div style={{ position: 'relative', flex: 1, minWidth: 180, maxWidth: 340 }}>
+              <div className="trips-toolbar__search">
                 <Icon name="search" size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-2)' }} />
                 <input className="input" placeholder={t('trips.search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 34 }} />
               </div>
-              <div style={{ flex: 1 }} />
-              <div className="seg" role="group" title={t('trips.view')}>
+              <div className="trips-toolbar__spacer" />
+              <div className="seg seg--view" role="group" title={t('trips.view')}>
                 <button aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}><Icon name="grid" size={13} /></button>
                 <button aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}><Icon name="list" size={13} /></button>
               </div>
@@ -720,7 +659,7 @@ export default function Trips() {
                   <TripCard key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
                 {filterMode === 'active' && (
-                  <button className="tc-add" onClick={() => setShowNewTrip(true)}>
+                  <button className="tc-add" onClick={() => openChoice()}>
                     <div className="tc-add__ic">
                       <Icon name="plus" size={24} />
                     </div>
@@ -734,6 +673,15 @@ export default function Trips() {
                 {shownNorm.map(tr => (
                   <TripRow key={tr.id} trip={tr} onClick={() => nav(`/trip/${tr.id}`)} />
                 ))}
+                {filterMode === 'active' && (
+                  <button className="tr tr--add" onClick={() => openChoice()}>
+                    <span className="tr__addic"><Icon name="plus" size={20} /></span>
+                    <span className="tr__main">
+                      <b>{t('trips.add_trip')}</b>
+                      <small>{t('trips.add_trip_sub')}</small>
+                    </span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -759,22 +707,6 @@ export default function Trips() {
           </>
         )}
       </main>
-
-      {/* Dialogs */}
-      {showNewTrip && (
-        <NewTripDialog
-          onClose={() => setShowNewTrip(false)}
-          onManual={() => { setShowNewTrip(false); checkLimit('manual'); }}
-          onAi={() => { setShowNewTrip(false); checkLimit('ai'); }}
-        />
-      )}
-      <TripLimitDialog
-        open={showLimit}
-        onOpenChange={setShowLimit}
-        onProceed={handleProceed}
-        activeCount={ownedActiveTrips.length}
-        isPro={isPro}
-      />
     </div>
   );
 }
