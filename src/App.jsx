@@ -24,6 +24,7 @@ import StripeReturnModals from '@/components/common/StripeReturnModals';
 import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
 import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav';
+import { CreateTripProvider } from '@/components/create/CreateTripProvider';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
@@ -94,6 +95,7 @@ const AuthenticatedApp = () => {
 
   return (
     <MobileNavProvider>
+     <CreateTripProvider>
       {/* One global Stripe-return handler for the whole logged-in app - shows the
           success/fail modal regardless of which screen Stripe came back to. */}
       <StripeReturnModals />
@@ -118,6 +120,7 @@ const AuthenticatedApp = () => {
       {/* Custom mobile bottom nav (≤640px); hides itself on planner / create /
           landing / login routes. */}
       <MobileBottomNav />
+     </CreateTripProvider>
     </MobileNavProvider>
   );
 };
