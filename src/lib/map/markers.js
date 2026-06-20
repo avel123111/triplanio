@@ -116,6 +116,10 @@ export function createMiniMarkerEl(tone = 'trip', { onClick, title } = {}) {
   el.className = `smk smk--${tone}`;
   if (onClick) el.classList.add('is-clickable');
   if (title) el.title = title;
+  // The visual dot is an INNER element: Mapbox owns the root's inline transform
+  // (positioning), so hover/selected scale .smk__dot — scaling the root would be
+  // clobbered by Mapbox's translate and silently do nothing.
+  el.innerHTML = '<span class="smk__dot"></span>';
   if (onClick) el.addEventListener('click', onClick);
   return el;
 }
