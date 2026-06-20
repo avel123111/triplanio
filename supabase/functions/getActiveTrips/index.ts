@@ -1,9 +1,12 @@
 // getActiveTrips
 // Returns the count of the caller's active trips + whether they are Pro.
-// Active = trip has no dated visits yet, OR latest city_visits.end_date >= today (UTC).
+// Routes through the single-source active_owned_trips() helper (migration 0045)
+// so the "active owned trip" rule lives in exactly ONE place and is shared with
+// create_trip and copyTrip.
+//
 // NOTE: the real free-tier enforcement lives in the create_trip RPC. This endpoint
-// only drives the upsell dialog, so on ANY data error we fail OPEN (activeCount 0)
-// instead of letting a failed query read as "all trips active" and falsely blocking.
+// only drives the upsell dialog, so on ANY error we fail OPEN (activeCount 0)
+// rather than falsely blocking the user.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -40,48 +43,22 @@ Deno.serve(async (req) => {
       && !!me.subscription_end_date
       && new Date(me.subscription_end_date) > now;
 
-    const { data: trips, error: tErr } = await admin
-      .from('trips').select('id, title').eq('created_by', user.id);
+    // Single source of truth (migration 0045): active = owned trip with no dated
+    // visits yet OR max(city_visits.end_date) >= today.
+    const { data: activeTrips, error } = await admin
+      .rpc('active_owned_trips', { p_uid: user.id });
 
-    if (tErr) {
-      console.error('getActiveTrips trips query error:', tErr);
+    if (error) {
+      console.error('getActiveTrips active_owned_trips error:', error);
       // Fail open: create_trip is the real enforcement; never falsely block.
       return Response.json({ isPro, activeCount: 0, activeTrips: [] }, { headers: corsHeaders });
     }
-    if (!trips || trips.length === 0) {
-      return Response.json({ isPro, activeCount: 0, activeTrips: [] }, { headers: corsHeaders });
-    }
 
-    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-    const tripIds = trips.map((t) => t.id);
-
-    const { data: visits, error: vErr } = await admin
-      .from('city_visits').select('trip_id, end_date').in('trip_id', tripIds);
-
-    if (vErr) {
-      console.error('getActiveTrips visits query error:', vErr);
-      // Fail open (see above): a failed visits read must NOT be treated as "all trips active".
-      return Response.json({ isPro, activeCount: 0, activeTrips: [] }, { headers: corsHeaders });
-    }
-
-    const maxEndByTrip = new Map<string, number>();
-    for (const v of visits ?? []) {
-      if (!v.end_date) continue;
-      const e = new Date(v.end_date).getTime();
-      if (Number.isNaN(e)) continue;
-      const cur = maxEndByTrip.get(v.trip_id);
-      if (cur === undefined || e > cur) maxEndByTrip.set(v.trip_id, e);
-    }
-
-    const activeTrips = trips.filter((t) => {
-      const maxEnd = maxEndByTrip.get(t.id);
-      return maxEnd === undefined || maxEnd >= today;
-    });
-
+    const list = activeTrips ?? [];
     return Response.json({
       isPro,
-      activeCount: activeTrips.length,
-      activeTrips: activeTrips.map((t) => ({ id: t.id, title: t.title })),
+      activeCount: list.length,
+      activeTrips: list.map((t: { id: string; title: string }) => ({ id: t.id, title: t.title })),
     }, { headers: corsHeaders });
   } catch (error) {
     console.error('getActiveTrips error:', error);
