@@ -30,3 +30,10 @@ export function routeColor() {
 export function routeRingColor() {
   return cssToken('--map-route-ring', FALLBACK_RING);
 }
+
+// Rose accent for the "planned" (future) country fill + city markers — read live
+// from the existing --ev-activity token so it follows day/night with a repaint.
+// trip + manual fills reuse the brand routeColor() above (distinguished by opacity).
+export function futureFillColor() {
+  return cssToken('--ev-activity', '#E8639B');
+}

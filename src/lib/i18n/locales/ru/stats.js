@@ -15,6 +15,7 @@ export default {
   'stats.map_loading': 'Загружаю карту…',
   'stats.map_unavailable': 'Карта недоступна',
   'stats.next_trip': 'Ближайшая поездка',
+  'stats.next_trip_title': 'Следующее путешествие',
   'stats.next_start_in': 'Старт через',
   'stats.cd_days': 'дней',
   'stats.cd_hours': 'часов',

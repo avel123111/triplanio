@@ -52,6 +52,14 @@ const C = {
 // travel "continents visited" count we pick one canonical continent per code so
 // the number is deterministic.
 
+// Total ISO codes mapped to each continent — the denominator for the per-continent
+// "coverage" progress bar (visited / total). Derived from the lookup above so it
+// stays the single source of truth (no hard-coded counts to drift).
+export const COUNTRIES_PER_CONTINENT = Object.values(C).reduce((acc, cont) => {
+  acc[cont] = (acc[cont] || 0) + 1;
+  return acc;
+}, {});
+
 /** Continent code for an ISO-3166-1 alpha-2 country code, or null if unknown. */
 export function continentOf(countryCode) {
   if (!countryCode) return null;

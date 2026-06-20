@@ -145,6 +145,25 @@ export function clearRouteHighlight(map) {
   removeHighlightLayers(map);
 }
 
+// Wipe every base route line + highlight from the shared instance. The trip
+// lenses deliberately LEAVE their line layers on the singleton between opens (so
+// reopening a route doesn't rebuild/re-fetch it). A non-route surface — the Trips
+// home + "My statistics" map — must therefore clear them on mount, otherwise a
+// stale transfer line from the last opened trip bleeds through over the country
+// fill. Also resets the cached signature so the next real route redraws cleanly.
+export function clearRouteLines(map) {
+  if (!map) return;
+  if (map.__routeLines) {
+    if (map.__routeLines.cancel) { try { map.__routeLines.cancel(); } catch { /* ignore */ } map.__routeLines.cancel = null; }
+    map.__routeLines.sig = null;
+  }
+  ALL_LINE_LAYER_IDS.forEach((id) => {
+    try { if (map.getLayer(id)) map.removeLayer(id); } catch { /* ignore */ }
+    try { if (map.getSource(id)) map.removeSource(id); } catch { /* ignore */ }
+  });
+  clearRouteHighlight(map);
+}
+
 // Paint the highlight for `leg` into the HL layers (idempotent — setLineLayer
 // updates geometry in place if they already exist, so a Mapbox upgrade re-render
 // just swaps the straight fallback for the real curve without changing z-order).

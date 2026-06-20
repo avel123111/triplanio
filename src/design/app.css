@@ -3667,9 +3667,16 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .map-legend { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 7px; flex-wrap: wrap; }
 .map-legend .c { display: inline-flex; align-items: center; gap: 7px; font-size: var(--fs-micro); font-weight: 800; color: var(--ink-2); background: color-mix(in srgb, var(--surface) 84%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 6px 11px; box-shadow: var(--sh-1); }
 .map-legend .d { width: 11px; height: 11px; border-radius: 4px; }
-.map-hint { position: absolute; right: 14px; top: 13px; z-index: 2; display: inline-flex; align-items: center; gap: 7px; font-size: var(--fs-micro); font-weight: 700; color: var(--ink-2); background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 6px 12px; }
-.map-hint svg { width: 14px; height: 14px; color: var(--primary); }
-@media (max-width: 640px) { .map-hint span { display: none; } }
+/* Mini city markers for the stats/home travel map (createMiniMarkerEl). Tiny dots
+   over the country fill — much smaller than the trip Ring pins. trip = solid brand,
+   manual = hollow brand ring (white centre), future = solid rose (--ev-activity). */
+.smk { width: 11px; height: 11px; }
+.smk.is-clickable { cursor: pointer; }
+.smk__dot { display: block; width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 0 2px var(--surface), 0 1px 5px rgba(0, 0, 0, .28); transition: transform .12s var(--ease-out); }
+.smk.is-clickable:hover .smk__dot, .smk.is-sel .smk__dot { transform: scale(1.45); }
+.smk--trip .smk__dot { background: hsl(var(--primary)); }
+.smk--future .smk__dot { background: var(--ev-activity); }
+.smk--manual .smk__dot { background: var(--surface); box-shadow: 0 0 0 2.5px hsl(var(--primary)), 0 1px 5px rgba(0, 0, 0, .28); }
 /* fullscreen: expand the existing singleton-map slot to a fixed overlay (no
    reparent — the same map element just fills the viewport; consumer calls resize) */
 .mapwrap.is-fs { position: fixed; inset: 0; z-index: 90; border-radius: 0; min-height: 0; }
@@ -3692,7 +3699,10 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .vp-x { margin-left: auto; width: 34px; height: 34px; border-radius: 10px; border: 0; background: var(--surface-2); display: grid; place-items: center; cursor: pointer; color: var(--ink-2); }
 .vp-x svg { width: 18px; height: 18px; }
 .vp-x:active { transform: scale(.95); }
-.vp-b { padding: 6px 20px 24px; overflow: auto; }
+.vp-b { flex: 1; min-height: 0; padding: 6px 20px 24px; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+/* Mobile bottom-sheet: clear the fixed bottom-nav so the last rows aren't hidden
+   under it, and keep the body the scroll container (flex:1 + min-height:0). */
+@media (max-width: 640px) { .vp-b { padding-bottom: calc(88px + env(safe-area-inset-bottom)); } }
 .visit { display: flex; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line-2); }
 .visit:last-child { border-bottom: 0; }
 .visit .when { flex: none; width: 44px; text-align: center; padding-top: 2px; }

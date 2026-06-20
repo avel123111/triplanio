@@ -73,7 +73,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
     setSaving(false);
     if (error) { console.error('user_custom_visits save failed:', error.message); setErr(t('stats.err_save')); return; }
     refresh();
-    toast({ description: isEdit ? t('stats.saved_toast') : t('stats.added_toast', { city: city.city_name }) });
+    toast({ variant: 'success', title: isEdit ? t('stats.saved_toast') : t('stats.added_toast', { city: city.city_name }) });
     onSaved?.();
     onOpenChange(false);
   };
@@ -85,24 +85,22 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
     setSaving(false);
     if (error) { console.error('user_custom_visits delete failed:', error.message); setErr(t('stats.err_delete')); return; }
     refresh();
-    toast({ description: t('stats.deleted_toast') });
+    toast({ variant: 'success', title: t('stats.deleted_toast') });
     onSaved?.();
     onOpenChange(false);
   };
 
   const foot = (
-    <div style={{ display: 'flex', gap: 10, width: '100%', alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: 10, width: '100%', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
       {isEdit && (
         <Btn variant="danger" size="sm" onClick={remove} disabled={saving} style={{ marginRight: 'auto' }}>
           {t('stats.delete_btn')}
         </Btn>
       )}
-      <div style={{ marginLeft: isEdit ? 0 : 'auto', display: 'flex', gap: 10 }}>
-        <Btn variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={saving}>{t('common.cancel') || 'Cancel'}</Btn>
-        <Btn variant="primary" size="sm" icon="check" onClick={submit} disabled={saving}>
-          {isEdit ? t('stats.save_btn') : t('stats.add_btn')}
-        </Btn>
-      </div>
+      <Btn variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={saving}>{t('common.cancel') || 'Cancel'}</Btn>
+      <Btn variant="primary" size="sm" icon="check" onClick={submit} disabled={saving}>
+        {isEdit ? t('stats.save_btn') : t('stats.add_btn')}
+      </Btn>
     </div>
   );
 

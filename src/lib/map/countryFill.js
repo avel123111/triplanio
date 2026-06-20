@@ -19,7 +19,7 @@
 // vector tileset. `promoteId` lifts each country's ISO-3166-1 alpha-2 code to the
 // feature id so we can paint visited countries with setFeatureState({ visited })
 // keyed by ISO code — no need to enumerate features or know their numeric ids.
-import { routeColor } from './mapTokens';
+import { routeColor, futureFillColor } from './mapTokens';
 
 const SRC_ID = 'tp-countries';
 const FILL_ID = 'tp-country-fill';
@@ -29,7 +29,39 @@ const VECTOR_URL = 'mapbox://mapbox.country-boundaries-v1';
 // Exposed so the stats map can wire a click on the fill layer (country → panel).
 export const COUNTRY_FILL_LAYER = FILL_ID;
 
-const VISITED_OPACITY = 0.45;
+// Per-visit-type fill. The priority (trip > manual > future) is resolved upstream
+// in StatsMap via dominantTone, then stamped onto each country as feature-state
+// `kind`. trip + manual share the brand colour and differ only by opacity; future
+// is the rose accent. Values are easy to tune here.
+const OPACITY = { trip: 0.42, manual: 0.16, future: 0.18 };
+// Extra opacity when a country is hovered OR selected (its panel is open).
+const HOVER_BOOST = 0.14;
+
+// fill-color depends on feature-state `kind`: future → rose, else brand. Rebuilt on
+// a theme switch (repaintCountryFill) so both colours follow day/night.
+function fillColorExpr() {
+  return ['case', ['==', ['feature-state', 'kind'], 'future'], futureFillColor(), routeColor()];
+}
+// Base fill-opacity per kind; unset (unvisited) → 0 (no fill).
+const BASE_OPACITY_EXPR = [
+  'case',
+  ['==', ['feature-state', 'kind'], 'trip'], OPACITY.trip,
+  ['==', ['feature-state', 'kind'], 'manual'], OPACITY.manual,
+  ['==', ['feature-state', 'kind'], 'future'], OPACITY.future,
+  0,
+];
+// Final opacity = base + a hover/selected boost, but ONLY where there is a fill
+// (base > 0) so hovering an unvisited country never paints it.
+const FILL_OPACITY_EXPR = [
+  'let', 'base', BASE_OPACITY_EXPR,
+  ['case',
+    ['==', ['var', 'base'], 0], 0,
+    ['any',
+      ['boolean', ['feature-state', 'hover'], false],
+      ['boolean', ['feature-state', 'selected'], false]],
+    ['min', 1, ['+', ['var', 'base'], HOVER_BOOST]],
+    ['var', 'base']],
+];
 
 // Create the source + fill layer once on the shared instance. Idempotent: on a
 // reused map (later screen) it just re-asserts visibility. Caller must ensure the
@@ -55,11 +87,18 @@ export function ensureCountryFill(map, { visible = true } = {}) {
         source: SRC_ID,
         'source-layer': SOURCE_LAYER,
         slot: 'middle',
+        // country-boundaries-v1 ships SEVERAL overlapping polygons per country —
+        // one per political `worldview` (US/CN/IN/RU/…) plus disputed areas. With a
+        // translucent fill those overlaps paint on top of each other and the alpha
+        // compounds, so multi-worldview countries (Russia, Serbia/Kosovo, Ukraine,
+        // China…) render darker than the rest. Pin to ONE worldview so every
+        // country is filled exactly once and the opacity reads uniformly.
+        filter: ['any', ['==', 'all', ['get', 'worldview']], ['in', 'US', ['get', 'worldview']]],
         layout: { visibility: visible ? 'visible' : 'none' },
         paint: {
-          'fill-color': routeColor(),
-          // Visited → translucent; everything else → fully transparent (no fill).
-          'fill-opacity': ['case', ['boolean', ['feature-state', 'visited'], false], VISITED_OPACITY, 0],
+          'fill-color': fillColorExpr(),
+          // Per-type opacity; unvisited (no `kind`) → 0 (no fill).
+          'fill-opacity': FILL_OPACITY_EXPR,
           // Mapbox Standard lights layers by the scene; without full emissive
           // strength the fill renders dark under the `night` preset (same fix the
           // route lines use).
@@ -75,18 +114,41 @@ export function ensureCountryFill(map, { visible = true } = {}) {
 // Paint the given ISO-3166-1 alpha-2 codes as visited (case-insensitive). Clears
 // any previous visited state first, so the same call re-colours the map when the
 // year filter changes — entirely client-side, no tile refetch.
-export function setVisitedCountries(map, isoCodes = []) {
+export function setCountryKinds(map, kindByCode = {}) {
   if (!map || !map.getSource(SRC_ID)) return;
   try { map.removeFeatureState({ source: SRC_ID, sourceLayer: SOURCE_LAYER }); } catch { /* nothing set yet */ }
-  for (const code of isoCodes) {
-    if (!code) continue;
+  // removeFeatureState wiped hover/selected too — drop the trackers so the next
+  // setCountryHover/Selected re-applies cleanly (the consumer re-asserts selected).
+  map.__cfHover = null; map.__cfSelected = null;
+  for (const [code, kind] of Object.entries(kindByCode)) {
+    if (!code || !kind) continue;
     try {
       map.setFeatureState(
         { source: SRC_ID, sourceLayer: SOURCE_LAYER, id: String(code).trim().toUpperCase() },
-        { visited: true },
+        { kind },
       );
     } catch { /* id not in tiles — ignore */ }
   }
+}
+
+// Hover / selected highlight via feature-state (boosts fill-opacity — see
+// FILL_OPACITY_EXPR). Each tracks the single highlighted country id on the instance
+// so the previous one is cleared without wiping the per-country `kind`.
+export function setCountryHover(map, code) {
+  if (!map || !map.getSource(SRC_ID)) return;
+  const id = code ? String(code).trim().toUpperCase() : null;
+  if (map.__cfHover === id) return;
+  try { if (map.__cfHover) map.setFeatureState({ source: SRC_ID, sourceLayer: SOURCE_LAYER, id: map.__cfHover }, { hover: false }); } catch { /* ignore */ }
+  try { if (id) map.setFeatureState({ source: SRC_ID, sourceLayer: SOURCE_LAYER, id }, { hover: true }); } catch { /* ignore */ }
+  map.__cfHover = id;
+}
+export function setCountrySelected(map, code) {
+  if (!map || !map.getSource(SRC_ID)) return;
+  const id = code ? String(code).trim().toUpperCase() : null;
+  if (map.__cfSelected === id) return;
+  try { if (map.__cfSelected) map.setFeatureState({ source: SRC_ID, sourceLayer: SOURCE_LAYER, id: map.__cfSelected }, { selected: false }); } catch { /* ignore */ }
+  try { if (id) map.setFeatureState({ source: SRC_ID, sourceLayer: SOURCE_LAYER, id }, { selected: true }); } catch { /* ignore */ }
+  map.__cfSelected = id;
 }
 
 // Show/hide the fill layer. Trip screens keep it hidden (they never call
@@ -101,5 +163,5 @@ export function setCountryFillVisible(map, visible) {
 // day/night switch so the fill follows the theme without rebuilding the source.
 export function repaintCountryFill(map) {
   if (!map || !map.getLayer(FILL_ID)) return;
-  try { map.setPaintProperty(FILL_ID, 'fill-color', routeColor()); } catch { /* ignore */ }
+  try { map.setPaintProperty(FILL_ID, 'fill-color', fillColorExpr()); } catch { /* ignore */ }
 }

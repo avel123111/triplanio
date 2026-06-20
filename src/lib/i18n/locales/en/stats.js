@@ -15,6 +15,7 @@ export default {
   'stats.map_loading': 'Loading map…',
   'stats.map_unavailable': 'Map unavailable',
   'stats.next_trip': 'Next trip',
+  'stats.next_trip_title': 'Next trip',
   'stats.next_start_in': 'Starts in',
   'stats.cd_days': 'days',
   'stats.cd_hours': 'hours',

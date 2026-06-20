@@ -13,14 +13,18 @@ export const MAP_STYLE = 'mapbox://styles/mapbox/standard';
 export const lightPresetFor = (scheme) => (scheme === 'DARK' ? 'night' : 'day');
 
 // Initial style config - passed to `new mapboxgl.Map({ config })` to avoid a flash.
-export const baseConfig = (scheme) => ({ basemap: { theme: 'default', lightPreset: lightPresetFor(scheme) } });
+// `theme` is the Standard basemap theme: 'default' (colour) everywhere, except the
+// Trips home + "My statistics" maps which pass 'monochrome' (grey). Switching it is
+// an in-place setConfigProperty (same as lightPreset) — NOT setStyle — so the single
+// session instance is preserved (tiles/sources/markers/lines stay).
+export const baseConfig = (scheme, theme = 'default') => ({ basemap: { theme, lightPreset: lightPresetFor(scheme) } });
 
 // Apply/refresh basemap config after the style is ready (for live theme toggling).
-export function applyBasemapConfig(map, scheme) {
+export function applyBasemapConfig(map, scheme, theme = 'default') {
   if (!map) return;
   const set = () => {
     try {
-      map.setConfigProperty('basemap', 'theme', 'default');
+      map.setConfigProperty('basemap', 'theme', theme);
       map.setConfigProperty('basemap', 'lightPreset', lightPresetFor(scheme));
     } catch { /* style/config not ready */ }
   };
