@@ -3,6 +3,7 @@ import { Icon } from '../design/icons';
 import { Btn } from '../design/index';
 import MapView from '@/components/views/MapView';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { DateTime } from 'luxon';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { sortVisits } from '@/lib/validation';
@@ -14,10 +15,13 @@ import { uniqueCityCount } from '@/lib/trip-cities';
 // =====================================================================
 
 // Pretty short date "16 июл" - used in stepper / city card subtitles.
+// Short localized date "16 июл" / "16 Jul" — Luxon uses the app-wide active
+// locale (Settings.defaultLocale, set on language change), so no hardcoded tag.
 function fmtShortDate(iso) {
   if (!iso) return '';
   try {
-    return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    const dt = DateTime.fromISO(iso);
+    return dt.isValid ? dt.toFormat('d LLL') : '';
   } catch { return ''; }
 }
 

@@ -20,7 +20,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import AiField from '@/components/ui/AiField';
 import {
-  Loader2, Sparkles, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft, X,
+  Loader2, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
   BedDouble, Ticket,
 } from 'lucide-react';
@@ -111,6 +111,10 @@ function makeSegment(defCur = 'EUR') {
   return {
     id: 'seg-' + (__segUid++), transport_type: 'plane',
     from_address: '', to_address: '', startLocal: '', endLocal: '',
+    // Endpoint coords are set only when an AI-parsed address resolves to a
+    // house-level match (geocodeAddress); otherwise stay null (address as text,
+    // no map point) — same rule as the hotel / single-leg transfer.
+    from_latitude: null, from_longitude: null, to_latitude: null, to_longitude: null,
     carrier: '', flight_number: '', booking_reference: '',
     price: '', currency: defCur, toCity: null, day_change: false,
   };
@@ -529,10 +533,6 @@ export default function EventEditDialog({
   const [confirmDel, setConfirmDel] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Extra transfer segments captured from AI parsing (the AI may detect a
-  // multi-leg booking; the additional legs get inserted as separate Transfer
-  // rows on save). Empty when AI returns a single segment.
-  const [extraSegments, setExtraSegments] = useState([]);
   // Soft note when an AI-parsed multi-leg booking's endpoints differ from the
   // trip leg the modal was opened for (we keep the trip's endpoints).
   // AI-highlighted fields inside layover segments - keyed `${seg.id}.${field}`.
@@ -563,9 +563,7 @@ export default function EventEditDialog({
     const k = initialKind || 'hotel';
     setCurrentKind(k);
     setForm(buildInitialForm(k, entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency, initialServiceKind }));
-    setAiFields(new Set());
-    setExtraSegments([]);
-    setAiSegFields(new Set()); setAiAdvisories([]);
+    setAiFields(new Set());    setAiSegFields(new Set()); setAiAdvisories([]);
     setTimeMissing({});
     setTouched(new Set()); setSubmitted(false);
     setAiState('checking'); // re-gate the parser on every open until Pro is re-checked
@@ -628,9 +626,7 @@ export default function EventEditDialog({
     if (isEdit) return;
     setCurrentKind(k);
     setForm(buildInitialForm(k, null, { visit, fromVisit, toVisit, defaultStart, defaultCurrency }));
-    setAiFields(new Set());
-    setExtraSegments([]);
-    setAiSegFields(new Set()); setAiAdvisories([]);
+    setAiFields(new Set());    setAiSegFields(new Set()); setAiAdvisories([]);
     setTimeMissing({});
     setTouched(new Set()); setSubmitted(false);
   };
@@ -737,7 +733,7 @@ export default function EventEditDialog({
   // A create that touches several rows/cities (layover chain or AI extra segments)
   // can't be cleanly mirrored optimistically — keep the awaited path for those.
   const isComplexTransferCreate = currentKind === 'transfer' && !entity
-    && ((form.hasLayovers && Array.isArray(form.segments) && form.segments.length >= 2) || extraSegments.length > 0);
+    && (form.hasLayovers && Array.isArray(form.segments) && form.segments.length >= 2);
 
   const handleSaveClick = () => {
     if (!canSave) {
@@ -788,32 +784,6 @@ export default function EventEditDialog({
         }
         const payload = buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz);
         const created = await upsert('transfers', entity, payload, user);
-        // If AI returned extra segments, create each as its own Transfer row.
-        if (!entity && extraSegments.length > 0) {
-          for (const seg of extraSegments) {
-            if (!seg.start_datetime || !seg.end_datetime) continue;
-            await supabase.from('transfers').insert({
-              trip_id: tripId,
-              from_city_visit_id: fromVisit?.id,
-              to_city_visit_id: toVisit?.id,
-              transport_type: seg.transport_type,
-              day_change: !!((seg.end_datetime || '').slice(0, 10) && (seg.end_datetime || '').slice(0, 10) > (seg.start_datetime || '').slice(0, 10)),
-              start_datetime: localToUtc(seg.start_datetime, startTz),
-              end_datetime: localToUtc(seg.end_datetime, endTz),
-              carrier: seg.carrier || undefined,
-              flight_number: seg.flight_number || undefined,
-              booking_reference: seg.booking_reference || undefined,
-              booking_url: form.booking_url || undefined,
-              booking_platform: form.booking_platform || undefined,
-              from_address: seg.from_address || undefined,
-              to_address: seg.to_address || undefined,
-              price: seg.price === '' || seg.price == null ? undefined : Number(seg.price),
-              currency: seg.currency || 'EUR',
-              details: {},
-              created_by: user?.id,
-            });
-          }
-        }
         return created;
       }
       if (currentKind === 'activity') {
@@ -988,6 +958,25 @@ export default function EventEditDialog({
           ]);
         }
       }
+      // Geocode each segment's endpoint addresses → coords, ONLY on a house-
+      // level match; otherwise leave coords null and keep the address as text
+      // (no map point, never the city center). Same geocodeAddress used for the
+      // hotel and single-leg transfer. Dedup identical strings so a shared
+      // layover address (one leg's to == next leg's from) costs one lookup.
+      const segAddrs = [...new Set(
+        formSegs.flatMap((s) => [s.from_address, s.to_address]).filter((a) => a && a.trim()),
+      )];
+      if (segAddrs.length) {
+        const geos = await Promise.all(segAddrs.map((a) => geocodeAddress(a, lang)));
+        const coordByAddr = new Map(segAddrs.map((a, i) => [a, geos[i]]));
+        formSegs.forEach((s) => {
+          const gf = s.from_address && coordByAddr.get(s.from_address);
+          if (gf) { s.from_latitude = gf.latitude; s.from_longitude = gf.longitude; }
+          const gt = s.to_address && coordByAddr.get(s.to_address);
+          if (gt) { s.to_latitude = gt.latitude; s.to_longitude = gt.longitude; }
+        });
+      }
+
       // Endpoints stay the trip's fromVisit/toVisit. Mismatches (wrong dates /
       // cities) are NOT soft-warned here anymore - the parsed chain is a normal
       // draft and goes through the same validateEntity gate (TR_DEP_DAY /
@@ -1122,7 +1111,7 @@ export default function EventEditDialog({
                 onExtract={currentKind === 'hotel' ? handleHotelExtract : handleTransferExtract}
                 onUpgrade={openUpgrade}
                 parsedFieldCount={aiFields.size + aiSegFields.size}
-                onReset={() => { setAiFields(new Set()); setExtraSegments([]); setAiSegFields(new Set()); setAiAdvisories([]); }}
+                onReset={() => { setAiFields(new Set()); setAiSegFields(new Set()); setAiAdvisories([]); }}
               />
             )}
 
@@ -1160,7 +1149,6 @@ export default function EventEditDialog({
                   setTime={setTime}
                   issues={displayIssues}
                   onTouch={markTouched}
-                  extraSegments={extraSegments}
                   isEdit={isEdit}
                   setUploading={setUploading}
                 />
@@ -1387,6 +1375,10 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
     flight_number: s.flight_number || null,
     from_address: s.from_address || null,
     to_address: s.to_address || null,
+    from_latitude: s.from_latitude ?? null,
+    from_longitude: s.from_longitude ?? null,
+    to_latitude: s.to_latitude ?? null,
+    to_longitude: s.to_longitude ?? null,
     booking_reference: s.booking_reference || null,
     booking_url: form.booking_url || null,
     booking_platform: form.booking_platform || null,
@@ -1699,7 +1691,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
   );
 }
 
-function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, issues, onTouch, extraSegments, isEdit, setUploading }) {
+function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, issues, onTouch, isEdit, setUploading }) {
   const { t } = useI18nFormat();
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
@@ -1886,23 +1878,6 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         </div>
       </div>
 
-      {extraSegments.length > 0 && (
-        <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm space-y-1.5">
-          <div className="flex items-center gap-2 font-semibold text-primary">
-            <Sparkles className="w-4 h-4" />{t('event.ai_found_more', { count: extraSegments.length, seg: extraSegments.length === 1 ? t('event.seg_one') : t('event.seg_few') })}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t('event.extra_segs_hint')}
-          </div>
-          <ul className="text-xs space-y-0.5 mt-1">
-            {extraSegments.map((s, i) => (
-              <li key={i} className="text-muted-foreground">
-                • {s.from_address || '?'} → {s.to_address || '?'} {s.carrier ? `(${s.carrier})` : ''}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
       </>
       )}
 

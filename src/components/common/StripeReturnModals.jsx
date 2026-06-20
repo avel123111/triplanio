@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import PaymentResultDialog from '@/components/common/PaymentResultDialog';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { fmtMoneyActive } from '@/lib/i18n/format';
 
 /**
  * Global Stripe-checkout return handler. Mounted ONCE above all authenticated
@@ -39,10 +40,7 @@ export default function StripeReturnModals() {
             const priceRes = await supabase.functions.invoke('getStripePrices', { body: {} });
             const p = priceRes.data?.prices?.[type];
             if (p?.unit_amount != null) {
-              const amt = new Intl.NumberFormat('ru-RU', {
-                style: 'currency', currency: (p.currency || 'eur').toUpperCase(),
-                minimumFractionDigits: 0, maximumFractionDigits: 2,
-              }).format(p.unit_amount / 100);
+              const amt = fmtMoneyActive(p.unit_amount / 100, p.currency || 'usd');
               const per = p.recurring_interval === 'month' ? t('sub.period_month') : p.recurring_interval === 'year' ? t('sub.period_year') : '';
               setPriceLabel(amt + per);
             }

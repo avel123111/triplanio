@@ -78,7 +78,15 @@ const recompute = layoutDates;
 function applyAdjacencyGaps(nodes, transfers = []) {
   let prevId = null;
   return nodes.map((n) => {
-    if (isAnchor(n)) { prevId = n.id; return n; }
+    // The finish anchor needs its incoming-leg gap so layoutDates can push the finish
+    // +1 on an overnight last->finish leg (mirror server recompute_trip end branch).
+    // The start anchor is the base — no incoming gap applies to it.
+    if (isAnchor(n)) {
+      const tr = (n.kind === 'end' && prevId) ? (transfers || []).find((t) => t.from_city_visit_id === prevId && t.to_city_visit_id === n.id) : null;
+      const next = n.kind === 'end' ? { ...n, gap: tr?.day_change ? 1 : 0 } : n;
+      prevId = n.id;
+      return next;
+    }
     const tr = prevId ? (transfers || []).find((t) => t.from_city_visit_id === prevId && t.to_city_visit_id === n.id) : null;
     const next = { ...n, gap: tr?.day_change ? 1 : 0 };
     prevId = n.id;

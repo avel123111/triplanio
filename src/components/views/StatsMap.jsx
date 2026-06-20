@@ -194,6 +194,22 @@ export default function StatsMap({
     requestAnimationFrame(() => { try { map.resize(); } catch { /* ignore */ } });
   }, [sizeSignal, ready]);
 
+  // Belt-and-braces: directly observe the container box too. Not every consumer
+  // bumps `sizeSignal`, and the surface can be stretched by a grid sibling (e.g.
+  // the home hero's rail growing taller than the map's min-height) — without this
+  // the canvas keeps its mount-time height and the `.mapwrap` background shows as
+  // a grey strip below the map. resize() only touches the canvas, so observing
+  // the container can't loop.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !ready || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => {
+      requestAnimationFrame(() => { try { mapRef.current?.resize(); } catch { /* ignore */ } });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ready]);
+
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: ready ? 1 : 0, transition: 'opacity .3s ease' }} />
