@@ -15,7 +15,12 @@
 //   • EVERY non-anchor (the first one too) uses its own gap: an overnight start->first
 //     leg pushes the first city +1 (arrival day). No special-casing of the first node.
 //   • a 'waypoint' is a single-date transit point (consumes no nights)
-//   • 'start'/'end' anchors carry no dates, only a position
+//   • 'start'/'end' anchors MATERIALIZE a single date (mirrors server recompute_trip,
+//     migration 0049): start = the anchor day (cursor, pre-gap; the start->city1 gap
+//     moves city1, not start); end = the last checkout (cursor) + its own incoming-leg
+//     gap (the finish moves on an overnight last->finish leg). Anchors consume no nights
+//     and never advance the cursor. So every consumer (timeline / marker / validator)
+//     reads one value.
 // Pure calendar-day math (UTC) → idempotent: with unchanged (nights, gap) it
 // reproduces the stored dates exactly.
 
@@ -31,7 +36,14 @@ export function layoutDates(nodes, baseISO) {
   let cursor = (baseISO ? toDT(baseISO) : toDT(firstTransit?.start_date)) || DateTime.utc();
   cursor = cursor.startOf('day');
   return nodes.map((n, i) => {
-    if (isAnchor(n)) return { ...n, position: i };
+    if (n.kind === 'start') {            // anchor day itself (pre-gap); cursor not advanced
+      const d = cursor.toISODate();
+      return { ...n, start_date: d, end_date: d, nights: null, position: i };
+    }
+    if (n.kind === 'end') {              // last checkout + own incoming-leg gap (finish moves)
+      const d = cursor.plus({ days: Number.isFinite(n.gap) ? n.gap : 0 }).toISODate();
+      return { ...n, start_date: d, end_date: d, nights: null, position: i };
+    }
     // No first-node special case: the first non-anchor's gap applies too, so an
     // overnight start->first leg lands the city on its arrival day. baseISO already
     // points at the start-leg departure day, so this stays idempotent.

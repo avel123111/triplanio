@@ -63,13 +63,21 @@ async function takeToken(priority: string): Promise<boolean> {
   return data === true;
 }
 
-// Wait briefly for a token, then give up (caller degrades). Total ≤ ~1.2 s,
-// well under the edge wall-clock/idle limits; the sleep is async I/O, so it does
-// NOT count against the per-request CPU limit.
-async function acquireToken(priority: string): Promise<boolean> {
-  const waits = priority === 'background' ? [0, 300, 500] : [0, 250, 450, 500];
-  for (let i = 0; i < waits.length; i++) {
-    if (waits[i]) await new Promise((r) => setTimeout(r, waits[i]));
+// Per-request token-wait budget. Background waits patiently so batches (AI
+// cities, booking addresses, layovers) RESOLVE instead of going red; the budget
+// is shared across a whole request (all cities in resolveCities), so total
+// wall-clock stays bounded well under the edge/gateway limit even for big trips.
+// Interactive (autocomplete / manual search) stays snappy — it rarely waits at
+// all because background yields to it (p_min). Sleeping is async I/O → no CPU cost.
+const TOKEN_WAIT_MS = { background: 20000, interactive: 3000 } as const;
+
+// Poll the shared bucket until a token frees up or the request `deadline` passes
+// (only then does the caller degrade). Jittered to avoid a thundering herd of
+// concurrent waiters hammering the bucket row in lock-step.
+async function acquireToken(priority: string, deadline: number): Promise<boolean> {
+  if (await takeToken(priority)) return true;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 250 + Math.random() * 250));
     if (await takeToken(priority)) return true;
   }
   return false;
@@ -122,6 +130,7 @@ async function resolveOne(
   priority: string,
   urlParams: { q?: unknown; lat?: unknown; lon?: unknown; limit: string; tag?: unknown },
   apiKey: string,
+  deadline: number,
 ): Promise<ResolveOutcome> {
   if (cacheKeyAction) {
     const { data: cached } = await supabaseAdmin
@@ -140,8 +149,8 @@ async function resolveOne(
     }
   }
 
-  // Real upstream call → take a token first.
-  if (!(await acquireToken(priority))) return { degraded: true };
+  // Real upstream call → take a token first (waits up to the request deadline).
+  if (!(await acquireToken(priority, deadline))) return { degraded: true };
 
   const url = buildUrl(endpoint, apiKey, { ...urlParams, lang });
   const res = await fetch(url, { headers: { accept: 'application/json' } });
@@ -186,6 +195,8 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'cities[] is required' }, { status: 400, headers: corsHeaders });
       }
       const prio = priority || 'background';
+      // One shared deadline for the whole batch → bounded total wall-clock.
+      const deadline = Date.now() + TOKEN_WAIT_MS[prio === 'background' ? 'background' : 'interactive'];
       const memo = new Map<string, unknown[]>();
       let degraded = false;
       const out: unknown[][] = [];
@@ -195,7 +206,7 @@ Deno.serve(async (req) => {
         const cLang = (typeof c?.lang === 'string' && c.lang.trim()) ? c.lang.trim() : acceptLang;
         const key = `${normKey(cq)}|${cLang}`;
         if (memo.has(key)) { out.push(memo.get(key)!); continue; }
-        const r = await resolveOne('search', 'search', normKey(cq), cLang, prio, { q: cq, limit: lim }, apiKey);
+        const r = await resolveOne('search', 'search', normKey(cq), cLang, prio, { q: cq, limit: lim }, apiKey, deadline);
         const arr = 'results' in r ? r.results : [];
         if ('degraded' in r) degraded = true;
         memo.set(key, arr);
@@ -231,12 +242,13 @@ Deno.serve(async (req) => {
     }
 
     const prio = priority || defaultPrio;
+    const deadline = Date.now() + TOKEN_WAIT_MS[prio === 'background' ? 'background' : 'interactive'];
     const queryKey = geocodeQueryKey(action, q, lat, lon);
-    const outcome = await resolveOne(endpoint, cacheKeyAction, queryKey, acceptLang, prio, { q, lat, lon, limit: lim, tag }, apiKey);
+    const outcome = await resolveOne(endpoint, cacheKeyAction, queryKey, acceptLang, prio, { q, lat, lon, limit: lim, tag }, apiKey, deadline);
 
     if ('degraded' in outcome) {
-      // Bucket exhausted even after the short wait → degrade. Client retries
-      // (TRIP-160). Surface a 429 + Retry-After rather than a fake empty 200.
+      // Bucket still empty after the full wait budget (pathological load) →
+      // degrade. Surface a 429 + Retry-After rather than a fake empty 200.
       await captureEdgeError(new Error('geocode bucket exhausted'), 'geoLocationiq', { action });
       return Response.json(
         { error: 'geocode_rate_limited', results: [] },
