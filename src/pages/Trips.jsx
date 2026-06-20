@@ -463,6 +463,31 @@ export default function Trips() {
   const tripIds  = allTrips.map(tr => tr.id);
   const hasTrips = tripIds.length > 0;
 
+  // ── Travel-stats RPC: one call powers the stat-bar, map fill/pins, "world
+  // explored" AND the trip cards. `trip_visits` carries each trip's visit rows
+  // (date range / past-active / city scope), so the home no longer needs a
+  // separate `select * from city_visits` round-trip. Year filtering / aggregates
+  // happen client-side (here it's unfiltered).
+  const { data: travelStats } = useQuery({
+    queryKey: ['travel-stats', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_user_travel_stats');
+      if (error) throw error;
+      return data || { points: [], trips: {}, transfers_total: 0, trip_visits: {} };
+    },
+    enabled: !!user?.id,
+    staleTime: 30_000,
+  });
+  const statsLoaded    = travelStats !== undefined;
+  const rpcTripVisits  = travelStats?.trip_visits || null; // null only on a pre-0044 RPC build
+  const statsPoints    = travelStats?.points || [];
+  const transfersTotal = travelStats?.transfers_total || 0;
+  const home  = useMemo(() => homeStats(statsPoints, transfersTotal), [statsPoints, transfersTotal]);
+  const world = useMemo(() => worldExplored(statsPoints), [statsPoints]);
+
+  // Backward-compatible fallback: only fetch city_visits separately when the RPC
+  // build in this environment hasn't shipped `trip_visits` yet (pre-0044). Once
+  // 0044 is deployed this query is permanently disabled — no extra round-trip.
   const { data: allVisits = [], isLoading: loadingVisits } = useQuery({
     queryKey: ['all-city-visits', tripIds.join(',')],
     queryFn: async () => {
@@ -470,26 +495,8 @@ export default function Trips() {
       if (error) throw error;
       return data || [];
     },
-    enabled: hasTrips,
+    enabled: hasTrips && statsLoaded && !rpcTripVisits,
   });
-
-  // ── Travel-stats RPC: compact point set + transfers total for the hero ──────
-  // Powers the stat-bar, the map fill/pins and the "world explored" widget. One
-  // call; year filtering / aggregates happen client-side (here it's unfiltered).
-  const { data: travelStats } = useQuery({
-    queryKey: ['travel-stats', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_user_travel_stats');
-      if (error) throw error;
-      return data || { points: [], trips: {}, transfers_total: 0 };
-    },
-    enabled: !!user?.id,
-    staleTime: 30_000,
-  });
-  const statsPoints    = travelStats?.points || [];
-  const transfersTotal = travelStats?.transfers_total || 0;
-  const home  = useMemo(() => homeStats(statsPoints, transfersTotal), [statsPoints, transfersTotal]);
-  const world = useMemo(() => worldExplored(statsPoints), [statsPoints]);
 
   // ── Single RPC: all participants (owner + active members) with avatar_url ──
   const { data: allParticipants = [] } = useQuery({
@@ -516,11 +523,15 @@ export default function Trips() {
     return m;
   }, [allParticipants]);
 
+  // Cards read per-trip visits from the RPC's trip_visits when present, else from
+  // the fallback query. Either way the shape is { trip_id: [visit rows] } and the
+  // downstream helpers (isTripInPast / scopeLabel / computeTripRange) are unchanged.
   const visitsByTrip = useMemo(() => {
+    if (rpcTripVisits) return rpcTripVisits;
     const m = {};
     allVisits.forEach(v => { (m[v.trip_id] ||= []).push(v); });
     return m;
-  }, [allVisits]);
+  }, [rpcTripVisits, allVisits]);
 
   // Derive current user's role from the participant profiles RPC result
   const getRoleFor = (trip) => {
@@ -589,7 +600,8 @@ export default function Trips() {
     setPendingPick(null);
   };
 
-  const isLoadingData = isLoading || (hasTrips && loadingVisits);
+  // Visits come from the RPC (ready once stats load) or the fallback query.
+  const isLoadingData = isLoading || (hasTrips && !rpcTripVisits && (!statsLoaded || loadingVisits));
   const subText = hasTrips
     ? t('stats.home_sub', { trips: home.trips, countries: home.countries })
     : t('stats.home_sub_empty');
