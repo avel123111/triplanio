@@ -27,7 +27,7 @@ export function Greeting({ greeting, name, photo, sub }) {
         <span className="head__av">
           {photo
             ? <img src={photo} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            : <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h3)' }}>{initialsOf(name)}</span>}
+            : <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'hsl(var(--primary-foreground))', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h3)' }}>{initialsOf(name)}</span>}
         </span>
         <div className="grow">
           <h1>{prefix}{name && <span className="nm">{name}</span>}</h1>
