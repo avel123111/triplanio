@@ -37,7 +37,7 @@ export default function StatsMap({
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, resize,
   // marker cleanup on unmount). projection follows the map/globe toggle.
   const { mapRef, ready, error } = useMapSurface(containerRef, {
-    markersRef, scheme: colorScheme, projection,
+    markersRef, scheme: colorScheme, projection, basemapTheme: 'monochrome',
   });
 
   // Keep latest click handlers without forcing the draw effect to re-run.

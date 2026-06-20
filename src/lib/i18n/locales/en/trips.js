@@ -42,7 +42,7 @@ export default {
   'trips.manual_desc_short': 'Pick cities, dates and hotels by hand',
   'trips.ai_desc_short': 'Describe it in words. Get a draft.',
   'trips.empty_desc': 'Triplanio brings cities, transfers, hotels, activities and budget into one picture. Start anywhere.',
-  'trips.page_title': 'Your trips',
+  'trips.page_title': 'All trips',
   'trips.count_summary': '{active} active · {past} archived',
   'trips.tab_active': 'Active',
   'trips.tab_past': 'Past',

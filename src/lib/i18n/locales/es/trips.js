@@ -42,7 +42,7 @@ export default {
   'trips.manual_desc_short': 'Elige ciudades, fechas y hoteles a mano',
   'trips.ai_desc_short': 'Descríbelo en palabras y obtén un borrador',
   'trips.empty_desc': 'Triplanio reúne ciudades, traslados, hoteles, actividades y presupuesto en una sola vista. Empieza por donde quieras.',
-  'trips.page_title': 'Tus viajes',
+  'trips.page_title': 'Todos los viajes',
   'trips.count_summary': '{active} activos · {past} archivados',
   'trips.tab_active': 'Activos',
   'trips.tab_past': 'Pasados',

@@ -117,9 +117,10 @@ function NextTripCard({ trip, onClick, t }) {
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
       </span>
       <span className="nextcard__tx">
-        <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
+        <span style={{ fontSize: 'var(--fs-micro)', fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--muted-2)' }}>{t('stats.next_trip_title')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
+        <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
         <span className="nextcard__cd">
           <span className="cdu"><b>{cd.d}</b><span>{t('stats.cd_days')}</span></span>
           <span className="cdu"><b>{cd.h}</b><span>{t('stats.cd_hours')}</span></span>
@@ -165,14 +166,14 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
             : <div className="map-skel"><Icon name="globe" /><div>{t('stats.map_loading')}</div></div>}
         </div>
         <div className="rail">
-          {nextTrip
-            ? <NextTripCard trip={nextTrip} onClick={onOpenNext} t={t} />
-            : <NoNextCard variant={home.trips > 0 ? 'no-planned' : 'empty'} onPlan={onPlan} t={t} />}
           <WorldMini
             world={world}
             title={t('stats.world_explored')}
             caption={t('stats.world_of', { visited: world.visited, total: world.total })}
           />
+          {nextTrip
+            ? <NextTripCard trip={nextTrip} onClick={onOpenNext} t={t} />
+            : <NoNextCard variant={home.trips > 0 ? 'no-planned' : 'empty'} onPlan={onPlan} t={t} />}
         </div>
       </div>
     </>

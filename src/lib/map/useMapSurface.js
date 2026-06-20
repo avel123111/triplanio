@@ -20,7 +20,7 @@ import { useSharedMap } from './MapProvider';
 // projection   : 'mercator' | 'globe' (live-applied).
 // active       : false when the map is kept mounted but hidden behind a tab;
 //                flipping back to true triggers a resize().
-export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', projection = 'mercator', active = true }) {
+export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', projection = 'mercator', active = true, basemapTheme = 'default' }) {
   const sharedMap = useSharedMap();
   const mapRef = useRef(null);
   const [ready, setReady] = useState(() => {
@@ -32,8 +32,10 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
   // Latest scheme/projection captured for the one-time acquire below.
   const schemeRef = useRef(scheme);
   const projRef = useRef(projection);
+  const themeRef = useRef(basemapTheme);
   useEffect(() => { schemeRef.current = scheme; }, [scheme]);
   useEffect(() => { projRef.current = projection; }, [projection]);
+  useEffect(() => { themeRef.current = basemapTheme; }, [basemapTheme]);
 
   // Claim the singleton into this slot on mount; park it back on unmount.
   useEffect(() => {
@@ -52,7 +54,7 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     // Re-assert this screen's view state on a reused instance (the live effects
     // below only fire on a later change, not on a fresh mount).
     try { map.setProjection(projRef.current); } catch { /* ignore */ }
-    applyBasemapConfig(map, schemeRef.current);
+    applyBasemapConfig(map, schemeRef.current, themeRef.current);
 
     // The singleton is re-parented into this screen's slot; Mapbox keeps the
     // canvas at its previous size until told. On a REUSED instance `ready` is
@@ -86,10 +88,10 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
   // theme (markers are CSS-tokened DOM, so they re-colour themselves).
   useEffect(() => {
     if (mapRef.current && ready) {
-      applyBasemapConfig(mapRef.current, scheme);
+      applyBasemapConfig(mapRef.current, scheme, basemapTheme);
       repaintRouteLines(mapRef.current);
     }
-  }, [scheme, ready]);
+  }, [scheme, ready, basemapTheme]);
 
   // Live projection (flat mercator ↔ globe).
   useEffect(() => {

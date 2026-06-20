@@ -189,7 +189,7 @@ export function VisitList({ rows = [], emptyText, onSelect }) {
           className={`vrow${r.selected ? ' sel' : ''}`}
           onClick={() => onSelect?.(r)}
         >
-          <span className="fl">
+          <span className="fl" style={r.cc ? { background: 'transparent' } : undefined}>
             {r.cc
               ? <img src={`/flags/${r.cc}.svg`} alt="" loading="lazy" onError={(e) => { if (e.currentTarget.dataset.fb !== '1') { e.currentTarget.dataset.fb = '1'; e.currentTarget.src = '/flags/xx.svg'; } }} />
               : r.badge}

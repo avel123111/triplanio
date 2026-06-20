@@ -42,7 +42,7 @@ export default {
   'trips.manual_desc_short': 'Выбрать города, даты, отели вручную',
   'trips.ai_desc_short': 'Описать словами и получить черновик',
   'trips.empty_desc': 'Triplanio собирает города, переезды, отели, активности и бюджет в одну картину. Начни с любого.',
-  'trips.page_title': 'Твои путешествия',
+  'trips.page_title': 'Все путешествия',
   'trips.count_summary': '{active} активных · {past} в архиве',
   'trips.tab_active': 'Активные',
   'trips.tab_past': 'Прошедшие',

@@ -155,7 +155,7 @@ export default function VisitPanel({
         >
           <div className="vp-grip" />
           <div className={`vp-h${isCity ? ' city' : ''}`}>
-            <div className="ic"><PanelFlag cc={cc} isCity={isCity} /></div>
+            <div className="ic" style={cc ? { background: 'transparent', borderRadius: '50%' } : undefined}><PanelFlag cc={cc} isCity={isCity} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <Dialog.Title asChild><h3>{name}</h3></Dialog.Title>
               <div className="s">{sub}</div>

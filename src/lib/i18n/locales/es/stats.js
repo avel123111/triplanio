@@ -15,6 +15,7 @@ export default {
   'stats.map_loading': 'Cargando mapa…',
   'stats.map_unavailable': 'Mapa no disponible',
   'stats.next_trip': 'Próximo viaje',
+  'stats.next_trip_title': 'Próximo viaje',
   'stats.next_start_in': 'Empieza en',
   'stats.cd_days': 'días',
   'stats.cd_hours': 'horas',
