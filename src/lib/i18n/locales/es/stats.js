@@ -87,4 +87,6 @@ export default {
   'stats.err_pick_city': 'Elige una ciudad de la lista',
   'stats.err_dates': 'Indica las fechas',
   'stats.err_date_order': '«Hasta» no puede ser anterior a «Desde»',
+  'stats.err_save': 'No se pudo guardar el lugar. Inténtalo de nuevo.',
+  'stats.err_delete': 'No se pudo eliminar el lugar. Inténtalo de nuevo.',
 };

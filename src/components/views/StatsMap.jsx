@@ -23,7 +23,6 @@ export default function StatsMap({
   points = [],
   colorScheme = 'LIGHT',
   projection = 'mercator',
-  active = true,
   onPointClick = null,
   onCountryClick = null,
   sizeSignal = null,
@@ -36,7 +35,7 @@ export default function StatsMap({
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, resize,
   // marker cleanup on unmount). projection follows the map/globe toggle.
   const { mapRef, ready, error } = useMapSurface(containerRef, {
-    markersRef, scheme: colorScheme, projection, active,
+    markersRef, scheme: colorScheme, projection,
   });
 
   // Keep latest click handlers without forcing the draw effect to re-run.

@@ -87,4 +87,6 @@ export default {
   'stats.err_pick_city': 'Pick a city from the list',
   'stats.err_dates': 'Set the dates',
   'stats.err_date_order': '"To" cannot be earlier than "From"',
+  'stats.err_save': "Couldn't save the place. Please try again.",
+  'stats.err_delete': "Couldn't delete the place. Please try again.",
 };

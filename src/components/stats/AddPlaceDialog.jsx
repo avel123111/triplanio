@@ -71,7 +71,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
       ? await supabase.from('user_custom_visits').update(row).eq('id', editing.id)
       : await supabase.from('user_custom_visits').insert(row);
     setSaving(false);
-    if (error) { setErr(error.message); return; }
+    if (error) { console.error('user_custom_visits save failed:', error.message); setErr(t('stats.err_save')); return; }
     refresh();
     toast({ description: isEdit ? t('stats.saved_toast') : t('stats.added_toast', { city: city.city_name }) });
     onSaved?.();
@@ -83,7 +83,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
     setSaving(true); setErr('');
     const { error } = await supabase.from('user_custom_visits').delete().eq('id', editing.id);
     setSaving(false);
-    if (error) { setErr(error.message); return; }
+    if (error) { console.error('user_custom_visits delete failed:', error.message); setErr(t('stats.err_delete')); return; }
     refresh();
     toast({ description: t('stats.deleted_toast') });
     onSaved?.();

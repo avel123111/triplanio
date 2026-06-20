@@ -445,7 +445,13 @@ export default function Trips() {
   const { data: allTrips = [], isLoading } = useQuery({
     queryKey: ['trips', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
+      // Select only the columns the cards / role / search / cover actually read —
+      // not select('*'). Keeps the home payload lean; the per-trip visit rows and
+      // covers come from the get_user_travel_stats RPC.
+      const { data, error } = await supabase
+        .from('trips')
+        .select('id, title, description, cover_gradient, cover_image_url, created_by, is_pro_trip')
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
     },
