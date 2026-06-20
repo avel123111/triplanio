@@ -53,7 +53,9 @@ function NewTripDialog({ onClose, onManual, onAi }) {
   return (
     <Dialog
       title={t('trips.new')}
-      icon="plus"
+      subtitle={t('trips.choice_subtitle')}
+      icon="plane"
+      iconTone="activity"
       size="sm"
       open={true}
       onOpenChange={(o) => { if (!o) onClose(); }}

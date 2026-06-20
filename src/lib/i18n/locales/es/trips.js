@@ -57,6 +57,9 @@ export default {
   'trips.go_pro': 'Ir a Pro',
   'trips.empty_eyebrow': 'Tu primer viaje',
   'trips.empty_heading': 'Planea un viaje que no se desmorone en el camino',
-  'trips.manual_desc_full': 'Tú eliges ciudades, fechas, hoteles y actividades. Control total.',
-  'trips.ai_desc_full': 'Descríbelo en palabras: obtén un borrador y perfecciónalo con el asistente',
+  'trips.empty_route_sub': 'Ciudades, fechas y traslados se alinean en una sola ruta — y aparecen en tu mapa.',
+  'trips.invite_title': '¿Listo para una nueva aventura?',
+  'trips.invite_desc': 'Aún no hay viajes activos — los pasados ya están en tu mapa. Es hora de planear el siguiente.',
+  'trips.invite_create': 'Crear viaje',
+  'trips.invite_show_past': 'Ver pasados',
 };

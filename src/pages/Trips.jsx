@@ -302,13 +302,33 @@ const TripRow = ({ trip, onClick }) => {
   );
 };
 
-// ─── Create choices (empty collection) ─────────────────────────────────────────
-function CreateChoices({ onManual, onAi }) {
+// ─── Empty collection · "Маршрут" — itinerary-rail hero + manual/AI choices ─────
+// Decorative orbs are inline-styled (no shared `.blob` class in this stylesheet);
+// the rail illustration + copy + choice pair sit above them (z-index 1).
+const _ORB = { position: 'absolute', borderRadius: '50%', filter: 'blur(12px)', pointerEvents: 'none', zIndex: 0 };
+function EmptyRoute({ onManual, onAi }) {
   const { t } = useI18n();
   return (
-    <div className="trips-empty__choices">
-      <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_full')} onClick={onManual} />
-      <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_full')} onClick={onAi} />
+    <div className="eroute" style={{ marginTop: 28 }}>
+      <span style={{ ..._ORB, width: 300, height: 300, background: 'var(--brand-grad)', top: -150, right: -60, opacity: 0.12 }} />
+      <span style={{ ..._ORB, width: 170, height: 170, background: 'var(--ai-gradient)', top: -30, right: '26%', opacity: 0.10 }} />
+      <div className="eroute__rail">
+        <svg viewBox="0 0 560 64" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <path className="rl" d="M30 36 H330" />
+          <path className="rl-dash" d="M330 36 H512" />
+          <circle className="rnode" cx="30" cy="36" r="7" /><circle className="rfill" cx="30" cy="36" r="2.6" />
+          <circle className="rnode" cx="180" cy="36" r="7" /><circle className="rfill" cx="180" cy="36" r="2.6" />
+          <circle className="rnode" cx="330" cy="36" r="7" /><circle className="rfill" cx="330" cy="36" r="2.6" />
+          <path className="rplane" d="M249 30 l16 6 -16 6 4 -6 z" />
+          <circle className="radd" cx="512" cy="36" r="10" /><path className="radd-plus" d="M512 31 v10 M507 36 h10" />
+        </svg>
+      </div>
+      <h3>{t('trips.empty_heading')}</h3>
+      <p>{t('trips.empty_route_sub')}</p>
+      <div className="eroute__create">
+        <ChoiceCard variant="man" icon="edit" title={t('trips.start_manual')} sub={t('trips.manual_desc_short')} onClick={onManual} />
+        <ChoiceCard variant="ai" icon="sparkles" title={t('trips.start_with_ai')} sub={t('trips.ai_desc_short')} onClick={onAi} />
+      </div>
     </div>
   );
 }
@@ -596,14 +616,9 @@ export default function Trips() {
           </>
         )}
 
-        {/* Empty collection — create choices below the hero (skeleton-with-zeros) */}
+        {/* Empty collection — "Маршрут" itinerary-rail hero below the ghost stats */}
         {!isLoadingData && allTrips.length === 0 && (
-          <div className="trips-empty" style={{ marginTop: 28 }}>
-            <div className="sec-head">
-              <h2 style={{ fontSize: 'var(--fs-h3)' }}>{t('trips.empty_heading')}</h2>
-            </div>
-            <CreateChoices onManual={() => startCreate('manual')} onAi={() => startCreate('ai')} />
-          </div>
+          <EmptyRoute onManual={() => startCreate('manual')} onAi={() => startCreate('ai')} />
         )}
 
         {/* Normal view */}
@@ -648,11 +663,27 @@ export default function Trips() {
             {isLoadingData ? (
               <TripSkeleton viewMode={viewMode} />
             ) : shownNorm.length === 0 ? (
-              <EmptyState
-                icon={filterMode === 'past' ? 'calendar' : 'search'}
-                title={filterMode === 'past' ? t('trips.empty_archive_title') : t('trips.empty_search_title')}
-                body={filterMode === 'past' ? t('trips.empty_archive_body') : t('trips.empty_search_body')}
-              />
+              // Active tab with no upcoming/active trips (past ones exist) → invite,
+              // not a generic empty. A real search miss still shows empty_search.
+              (filterMode === 'active' && !search.trim()) ? (
+                <div className="invite">
+                  <span className="invite__ic"><Icon name="sparkles" size={28} /></span>
+                  <div className="invite__tx">
+                    <h3>{t('trips.invite_title')}</h3>
+                    <p>{t('trips.invite_desc')}</p>
+                  </div>
+                  <div className="invite__act">
+                    <Btn variant="primary" icon="plus" onClick={() => openChoice()}>{t('trips.invite_create')}</Btn>
+                    <Btn variant="ghost" onClick={() => setFilterMode('past')}>{t('trips.invite_show_past')}</Btn>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={filterMode === 'past' ? 'calendar' : 'search'}
+                  title={filterMode === 'past' ? t('trips.empty_archive_title') : t('trips.empty_search_title')}
+                  body={filterMode === 'past' ? t('trips.empty_archive_body') : t('trips.empty_search_body')}
+                />
+              )
             ) : viewMode === 'grid' ? (
               <div className="tc-grid">
                 {shownNorm.map(tr => (

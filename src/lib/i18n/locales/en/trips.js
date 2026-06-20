@@ -57,6 +57,9 @@ export default {
   'trips.go_pro': 'Go to Pro',
   'trips.empty_eyebrow': 'Your first trip',
   'trips.empty_heading': 'Plan a trip that won\'t fall apart on the road',
-  'trips.manual_desc_full': 'You pick cities, dates, hotels and activities. Full control.',
-  'trips.ai_desc_full': 'Describe it in words, get a draft and refine it with the assistant',
+  'trips.empty_route_sub': 'Cities, dates and transfers line up into one route — and land on your map.',
+  'trips.invite_title': 'Ready for a new adventure?',
+  'trips.invite_desc': 'No active trips yet — your past ones are already on the map. Time to plan the next one.',
+  'trips.invite_create': 'Create a trip',
+  'trips.invite_show_past': 'Show past trips',
 };
