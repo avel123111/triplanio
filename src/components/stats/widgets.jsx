@@ -1,5 +1,6 @@
 import React from 'react';
 import { Btn } from '@/design/index';
+import { Icon } from '@/design/icons';
 
 // Shared presentational widgets for the travel-stats screens (Trips home +
 // "My statistics"). Pure, props-driven, no data fetching — so the greeting hero,
@@ -12,14 +13,6 @@ export function initialsOf(name = '') {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
-
-// Inline glyphs (markers/cards in Trips keep their own; these are the stat-bar set).
-export const IconGlobe     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 0 0 18"/></svg>;
-export const IconBuildings = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V8l5-3v16M14 21V10l5-2v13"/></svg>;
-export const IconContinent = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 2 7l10 5 10-5z"/><path d="M2 12l10 5 10-5M2 17l10 5 10-5"/></svg>;
-export const IconSuitcase  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
-export const IconTransfer  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h14l-3-3M21 16H7l3 3"/></svg>;
-export const IconArrowR    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>;
 
 // Greeting hero — highlights the name inside the localized greeting string
 // (every locale places {name} last, so we slice before its last occurrence).
@@ -90,18 +83,12 @@ export function WorldMini({ world, title, caption }) {
 
 // CTA helper for the stat-bar action so callers don't reach for Btn directly.
 export function AllStatsCta({ label, onClick }) {
-  return <Btn variant="soft" onClick={onClick}>{label}<IconArrowR /></Btn>;
+  return <Btn variant="soft" onClick={onClick}>{label}<Icon name="arrowR" size={16} /></Btn>;
 }
 
 // ─── Ф5 widgets (My-statistics screen) ───────────────────────────────────────
 // All pure / props-driven, same as the Ф4 set above. Statistics.jsx derives the
 // data from travel-stats.statisticsBundle (year-filtered) and feeds these.
-
-export const IconFlight   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>;
-export const IconCalendar = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>;
-export const IconHeart    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.7-7-11a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 6.3-7 11-7 11z"/></svg>;
-export const IconStar     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.4 2.3 7.2L12 16.6 5.7 21l2.3-7.2-6-4.4h7.6z"/></svg>;
-export const IconPin      = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-5.7-7-11a7 7 0 0 1 14 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>;
 
 // Summary tiles. items = [{ key, value, label, tone, icon, soon }]. `tone` maps
 // to .c-* (city/cont/trip/flight/transfer); `soon` greys a not-yet-computed value.

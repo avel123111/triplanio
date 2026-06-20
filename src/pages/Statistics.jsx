@@ -9,16 +9,16 @@ import { isProActive } from '@/lib/subscription';
 import { cityKey } from '@/lib/trip-cities';
 import { continentOf } from '@/lib/continents';
 import {
-  statisticsBundle, availableYears, filterByYear, pointType,
+  statisticsBundle, availableYears, filterByYear, dominantTone, TONE,
 } from '@/lib/travel-stats';
 import StatsMap from '@/components/views/StatsMap';
 import VisitPanel from '@/components/stats/VisitPanel';
+import AddPlaceDialog from '@/components/stats/AddPlaceDialog';
 import {
   SummaryTiles, WorldRing, ContinentBars, Records, YearChart, VisitList,
-  IconGlobe, IconBuildings, IconContinent, IconSuitcase, IconTransfer,
-  IconFlight, IconCalendar, IconHeart, IconStar, IconPin,
 } from '@/components/stats/widgets';
 import { Btn } from '@/design/index';
+import { Icon } from '@/design/icons';
 import AppHeader from '@/components/AppHeader';
 import '../design/app.css';
 
@@ -34,23 +34,6 @@ const CONT_COLOR = {
   EU: 'var(--primary)', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
   AF: 'var(--warm)', SA: 'var(--ev-transfer)', OC: 'var(--ai)', AN: 'var(--muted)',
 };
-const TONE_COLOR = { trip: 'var(--primary)', manual: 'var(--ev-car)', future: 'var(--ai)' };
-const TONE_RANK = { trip: 0, manual: 1, future: 2 };
-
-function dominantTone(points = []) {
-  let best = null;
-  for (const p of points) {
-    const tn = pointType(p);
-    if (best == null || TONE_RANK[tn] < TONE_RANK[best]) best = tn;
-  }
-  return best || 'trip';
-}
-
-const IconGlobeLine = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>;
-const IconExpand = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H3v5M16 3h5v5M16 21h5v-5M8 21H3v-5" /></svg>;
-const IconClose = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>;
-const IconCrosshair = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 11a3 3 0 1 0 6 0 3 3 0 0 0-6 0z" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>;
-
 export default function Statistics() {
   const { t, locale } = useI18n();
   const { user } = useAuth();
@@ -110,6 +93,12 @@ export default function Statistics() {
   const [listMode, setListMode] = useState('countries');
   const [panel, setPanel] = useState(null); // { kind, key }
 
+  // ── add / edit manual place ─────────────────────────────────────────────────
+  const [addOpen, setAddOpen] = useState(false);
+  const [editingPoint, setEditingPoint] = useState(null);
+  const openAdd = useCallback(() => { setEditingPoint(null); setAddOpen(true); }, []);
+  const openEditManual = useCallback((p) => { setPanel(null); setEditingPoint(p); setAddOpen(true); }, []);
+
   // tone (dominant visit type) per country / city — colours list badges + legend.
   const { countryTone, cityTone } = useMemo(() => {
     const byCountry = new Map();
@@ -139,14 +128,14 @@ export default function Statistics() {
   }, [points]);
 
   // ── derived view models ─────────────────────────────────────────────────────
-  const summaryItems = [
-    { key: 'countries', value: bundle.countries, label: t('stats.sb_countries'), icon: <IconGlobe /> },
-    { key: 'cities', value: bundle.cities, tone: 'city', label: t('stats.sb_cities'), icon: <IconBuildings /> },
-    { key: 'continents', value: bundle.continents, tone: 'cont', label: t('stats.sb_continents'), icon: <IconContinent /> },
-    { key: 'trips', value: bundle.trips, tone: 'trip', label: t('stats.sb_trips'), icon: <IconSuitcase /> },
-    { key: 'flights', value: '—', soon: true, tone: 'flight', label: t('stats.sb_flights'), icon: <IconFlight /> },
-    { key: 'ground', value: '—', soon: true, tone: 'transfer', label: t('stats.sb_ground'), icon: <IconTransfer /> },
-  ];
+  const summaryItems = useMemo(() => [
+    { key: 'countries', value: bundle.countries, label: t('stats.sb_countries'), icon: <Icon name="globe" /> },
+    { key: 'cities', value: bundle.cities, tone: 'city', label: t('stats.sb_cities'), icon: <Icon name="buildings" /> },
+    { key: 'continents', value: bundle.continents, tone: 'cont', label: t('stats.sb_continents'), icon: <Icon name="layers" /> },
+    { key: 'trips', value: bundle.trips, tone: 'trip', label: t('stats.sb_trips'), icon: <Icon name="suitcase" /> },
+    { key: 'flights', value: '—', soon: true, tone: 'flight', label: t('stats.sb_flights'), icon: <Icon name="plane" /> },
+    { key: 'ground', value: '—', soon: true, tone: 'transfer', label: t('stats.sb_ground'), icon: <Icon name="arrowSwap" /> },
+  ], [bundle.countries, bundle.cities, bundle.continents, bundle.trips, t]);
 
   const contRows = useMemo(() => {
     const bd = bundle.continentsBreakdown || {};
@@ -166,15 +155,15 @@ export default function Statistics() {
         return {
           type: 'country', key: c.code, badge: c.code, name: regionName(c.code),
           sub: `${cont ? t(`stats.cont_${cont}`) : ''}${cont ? ' · ' : ''}${t('stats.n_cities', { n: nCities })}`,
-          count: c.count, tone: TONE_COLOR[countryTone[c.code]] || TONE_COLOR.trip,
+          count: c.count, tone: TONE[countryTone[c.code]] || TONE.trip,
           selected: panel?.kind === 'country' && panel.key === c.code,
         };
       });
     }
     return bundle.citiesList.map((c) => ({
-      type: 'city', key: c.key, badge: <IconBuildings />, name: c.city_name,
+      type: 'city', key: c.key, badge: <Icon name="buildings" />, name: c.city_name,
       sub: regionName(c.country_code), count: c.count,
-      tone: TONE_COLOR[cityTone[c.key]] || TONE_COLOR.trip,
+      tone: TONE[cityTone[c.key]] || TONE.trip,
       selected: panel?.kind === 'city' && panel.key === c.key,
     }));
   }, [listMode, bundle.countriesList, bundle.citiesList, citiesPerCountry, countryTone, cityTone, panel, regionName, t]);
@@ -183,10 +172,10 @@ export default function Statistics() {
     const r = bundle.records;
     const soon = t('stats.rec_soon');
     return [
-      { key: 'days', iconClass: 'r-days', icon: <IconCalendar />, label: t('stats.rec_days'), value: r.days ? r.days.toLocaleString(locale) : '—', sub: r.days ? t('stats.rec_days_sub') : soon },
-      { key: 'favcity', iconClass: 'r-fav', icon: <IconHeart />, label: t('stats.rec_fav_city'), value: r.favoriteCity?.city_name || '—', sub: r.favoriteCity ? `${t('stats.visits_count')}: ${r.favoriteCity.count}` : soon },
-      { key: 'favcountry', iconClass: 'r-star', icon: <IconStar />, label: t('stats.rec_fav_country'), value: r.favoriteCountry ? regionName(r.favoriteCountry.code) : '—', sub: r.favoriteCountry ? `${t('stats.visits_count')}: ${r.favoriteCountry.count}` : soon },
-      { key: 'longest', iconClass: 'r-route', icon: <IconPin />, label: t('stats.rec_longest'), value: r.longestTrip?.title || '—', sub: r.longestTrip ? `${t('stats.rec_cities')}: ${r.longestTrip.cities}` : soon },
+      { key: 'days', iconClass: 'r-days', icon: <Icon name="calendar" />, label: t('stats.rec_days'), value: r.days ? r.days.toLocaleString(locale) : '—', sub: r.days ? t('stats.rec_days_sub') : soon },
+      { key: 'favcity', iconClass: 'r-fav', icon: <Icon name="heart" />, label: t('stats.rec_fav_city'), value: r.favoriteCity?.city_name || '—', sub: r.favoriteCity ? `${t('stats.visits_count')}: ${r.favoriteCity.count}` : soon },
+      { key: 'favcountry', iconClass: 'r-star', icon: <Icon name="star" />, label: t('stats.rec_fav_country'), value: r.favoriteCountry ? regionName(r.favoriteCountry.code) : '—', sub: r.favoriteCountry ? `${t('stats.visits_count')}: ${r.favoriteCountry.count}` : soon },
+      { key: 'longest', iconClass: 'r-route', icon: <Icon name="pin" />, label: t('stats.rec_longest'), value: r.longestTrip?.title || '—', sub: r.longestTrip ? `${t('stats.rec_cities')}: ${r.longestTrip.cities}` : soon },
     ];
   }, [bundle.records, regionName, locale, t]);
 
@@ -204,7 +193,7 @@ export default function Statistics() {
   const legendRows = useMemo(() => {
     const tally = { trip: 0, manual: 0, future: 0 };
     Object.values(countryTone).forEach((tn) => { tally[tn] = (tally[tn] || 0) + 1; });
-    return ['trip', 'manual', 'future'].map((tn) => ({ tone: tn, color: TONE_COLOR[tn], label: t(`stats.type_${tn}`), count: tally[tn] }));
+    return ['trip', 'manual', 'future'].map((tn) => ({ tone: tn, color: TONE[tn], label: t(`stats.type_${tn}`), count: tally[tn] }));
   }, [countryTone, t]);
 
   // ── panel open/close ──────────────────────────────────────────────────────────
@@ -255,26 +244,29 @@ export default function Statistics() {
               <h1>{t('stats.page_title')}</h1>
               <div className="sub">{headSub}</div>
             </div>
-            {years.length > 0 && (
-              <div className="seg" role="group" aria-label={t('stats.period')}>
-                <button aria-pressed={year === 'all'} onClick={() => { setYear('all'); setPanel(null); }}>{t('stats.year_all')}</button>
-                {years.map((y) => (
-                  <button key={y} aria-pressed={year === y} onClick={() => { setYear(y); setPanel(null); }}>{y}</button>
-                ))}
-              </div>
-            )}
+            <div className="sec-actions">
+              {years.length > 0 && (
+                <div className="seg" role="group" aria-label={t('stats.period')}>
+                  <button aria-pressed={year === 'all'} onClick={() => { setYear('all'); setPanel(null); }}>{t('stats.year_all')}</button>
+                  {years.map((y) => (
+                    <button key={y} aria-pressed={year === y} onClick={() => { setYear(y); setPanel(null); }}>{y}</button>
+                  ))}
+                </div>
+              )}
+              <Btn variant="soft" size="sm" icon="plus" onClick={openAdd}>{t('stats.add_place')}</Btn>
+            </div>
           </div>
         </div>
 
         {/* empty-state note */}
         {isEmpty && (
           <div className="empty-note" style={{ marginTop: 18 }}>
-            <span className="en-ic"><IconGlobe /></span>
+            <span className="en-ic"><Icon name="globe" /></span>
             <span className="en-tx">
               <b>{t('stats.empty_title')}</b>
               <span>{t('stats.empty_sub')}</span>
             </span>
-            <Btn variant="primary" size="sm" icon="plus" onClick={() => nav('/?new=1')}>{t('stats.empty_cta')}</Btn>
+            <Btn variant="primary" size="sm" icon="plus" onClick={openAdd}>{t('stats.empty_cta')}</Btn>
           </div>
         )}
 
@@ -291,12 +283,12 @@ export default function Statistics() {
                 sizeSignal={fs ? 'fs' : 'win'}
               >
                 <div className="map-ctl">
-                  <button className={globe ? 'on' : ''} onClick={() => setGlobe((g) => !g)} aria-label={t('stats.map_globe')}><IconGlobeLine /></button>
-                  <button onClick={() => setFs((v) => !v)} aria-label={t('stats.map_fullscreen')}><IconExpand /></button>
+                  <button className={globe ? 'on' : ''} onClick={() => setGlobe((g) => !g)} aria-label={t('stats.map_globe')}><Icon name="globe" /></button>
+                  <button onClick={() => setFs((v) => !v)} aria-label={t('stats.map_fullscreen')}><Icon name="expand" /></button>
                 </div>
-                {fs && <button className="mapfs-close" onClick={() => setFs(false)} aria-label={t('common.close') || 'Close'}><IconClose /></button>}
+                {fs && <button className="mapfs-close" onClick={() => setFs(false)} aria-label={t('common.close') || 'Close'}><Icon name="close" /></button>}
                 {!isEmpty && (
-                  <span className="map-hint"><IconCrosshair /><span>{t('stats.map_hint')}</span></span>
+                  <span className="map-hint"><Icon name="crosshair" /><span>{t('stats.map_hint')}</span></span>
                 )}
                 <div className="map-legend">
                   {legendRows.map((r) => (
@@ -305,7 +297,7 @@ export default function Statistics() {
                 </div>
               </StatsMap>
             )
-            : <div className="map-skel"><IconGlobe /><div>{t('stats.map_loading')}</div></div>}
+            : <div className="map-skel"><Icon name="globe" /><div>{t('stats.map_loading')}</div></div>}
         </div>
 
         {/* summary */}
@@ -359,6 +351,14 @@ export default function Statistics() {
         t={t}
         lang={locale}
         onOpenTrip={(id) => nav(`/trip/${id}`)}
+        onEditManual={openEditManual}
+      />
+
+      <AddPlaceDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        editing={editingPoint}
+        onSaved={() => setEditingPoint(null)}
       />
     </div>
   );

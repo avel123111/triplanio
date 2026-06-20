@@ -7,6 +7,7 @@ import {
   GripVertical, Crown, ArrowRightLeft, Upload, TrainFront, Sun, Shield, RefreshCw,
   ChevronUp, ChevronDown, Menu, Compass, MonitorSmartphone, Waypoints, Gift,
   Ticket, Route, ShieldCheck, Car, Minus,
+  Building2, Layers, Luggage, Heart, Star, Maximize2, Crosshair,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,6 +100,9 @@ const LUCIDE = {
   // правки иконок событий (2026-06-18)
   ticket: Ticket, route: Route, 'shield-check': ShieldCheck, car: Car,
   'folder-bookmark': FolderBookmark, 'card-sim': CardSim,
+  // статистика путешествий (2026-06-20)
+  buildings: Building2, layers: Layers, suitcase: Luggage, heart: Heart,
+  star: Star, expand: Maximize2, crosshair: Crosshair,
 };
 
 // ── Легаси-набор (fallback для имён вне LUCIDE/BRAND) ─────────────────────────

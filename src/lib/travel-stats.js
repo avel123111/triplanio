@@ -49,6 +49,25 @@ export function pointType(p, today = new Date()) {
   return 'trip';
 }
 
+// Single source of truth for the visit-type accent (map pins/legend, list badges,
+// visit panel). Binds to EXISTING design tokens — no new tokens. Previously this
+// map + dominantTone() were copy-pasted in Statistics.jsx / StatsMap.jsx /
+// VisitPanel.jsx; they import these now so the colour can never drift.
+export const TONE = { trip: 'var(--primary)', manual: 'var(--ev-car)', future: 'var(--ai)' };
+// "Most real" wins (trip > manual > future) so a city visited on a trip never
+// looks merely "planned" when several visit types share a pin/place.
+export const TONE_RANK = { trip: 0, manual: 1, future: 2 };
+
+/** Dominant visit type across a group of points (lowest TONE_RANK wins). */
+export function dominantTone(points = []) {
+  let best = null;
+  for (const p of points) {
+    const tn = pointType(p);
+    if (best == null || TONE_RANK[tn] < TONE_RANK[best]) best = tn;
+  }
+  return best || 'trip';
+}
+
 // ─── counts (dedup identical to trip-cities.js) ──────────────────────────────
 export function countCities(points = []) {
   const s = new Set();
