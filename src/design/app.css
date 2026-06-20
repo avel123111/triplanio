@@ -3719,8 +3719,3 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .triplink svg { width: 14px; height: 14px; color: var(--muted); }
 @media (hover: hover) { .triplink:hover { background: var(--primary-soft); color: var(--primary); } .triplink:hover svg { color: var(--primary); } }
 .vmanual { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-meta); font-weight: 700; color: var(--muted); }
-
-/* — stats map pins: per-visit-type ring colour via the existing --tmk hook — */
-.tmk--t-trip { --tmk: var(--primary); }
-.tmk--t-manual { --tmk: var(--ev-car); }
-.tmk--t-future { --tmk: var(--ai); }
