@@ -3729,9 +3729,13 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .mapwrap.is-fs { position: fixed; inset: 0; z-index: 100; border-radius: 0; min-height: 0; }
 .mapfs-close { position: absolute; right: 14px; top: 13px; z-index: 4; width: 38px; height: 38px; border-radius: var(--r-pill); border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(8px); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
 .mapfs-close svg { width: 18px; height: 18px; }
-/* Fullscreen covers the app header (z-index above it); push the controls clear of
-   the notch / status bar so the close + mode buttons aren't hidden at the very top. */
+/* Fullscreen sits above the app header (z-index 100 > 50). On mobile, push the
+   controls below the header band (54px) + notch so the close + mode buttons are
+   never hidden under the top bar — robust regardless of any stacking context. */
 .mapwrap.is-fs .map-ctl, .mapwrap.is-fs .mapfs-close { top: max(13px, calc(env(safe-area-inset-top) + 10px)); }
+@media (max-width: 640px) {
+  .mapwrap.is-fs .map-ctl, .mapwrap.is-fs .mapfs-close { top: calc(54px + max(12px, env(safe-area-inset-top))); }
+}
 
 /* — visit panel (desktop right slide-over / mobile bottom sheet) over the app — */
 .vscrim { position: fixed; inset: 0; background: var(--scrim); z-index: 110; }

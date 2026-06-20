@@ -311,7 +311,7 @@ export default function Statistics() {
         )}
 
         {/* map hero */}
-        <div className={`mapwrap${fs ? ' is-fs' : ''}${isEmpty ? ' is-ghost' : ''}`} style={{ minHeight: 420, marginTop: 18 }}>
+        <div className={`mapwrap${fs ? ' is-fs' : ''}${isEmpty ? ' is-ghost' : ''}`} style={{ minHeight: fs ? 0 : 420, marginTop: fs ? 0 : 18 }}>
           {showMap
             ? (
               <StatsMap
