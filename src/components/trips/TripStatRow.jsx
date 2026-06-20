@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from '@/design/icons';
-import { useI18n } from '@/lib/i18n/I18nContext';
+import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { tripStats } from '@/lib/trip-stats';
 
 // Five at-a-glance trip stats (Lumo .statrow / .statcard): cities, countries,
@@ -8,7 +8,7 @@ import { tripStats } from '@/lib/trip-stats';
 // `orderedVisits` (trip order, for the distance sum) is optional — falls back to
 // `visits` inside tripStats.
 export default function TripStatRow({ visits = [], transfers = [], trip, orderedVisits }) {
-  const { t } = useI18n();
+  const { t, fmtNumber } = useI18nFormat();
   const s = tripStats({ visits, transfers, trip, orderedVisits });
 
   const cards = [
@@ -20,7 +20,7 @@ export default function TripStatRow({ visits = [], transfers = [], trip, ordered
       icon: 'route',
       value: (
         <>
-          {s.distanceKm.toLocaleString('ru-RU')}
+          {fmtNumber(s.distanceKm)}
           <span className="statcard-unit"> {t('overview.unit_km')}</span>
         </>
       ),

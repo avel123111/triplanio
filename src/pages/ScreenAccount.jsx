@@ -45,15 +45,11 @@ function fmtDate(iso, locale) {
 // ─── Subscription module (4 plan faces) ───────────────────────────────────────
 
 function SubscriptionModule({ planState, plan, planLoading, awaitingWebhook, portalLoading, onUpgrade, onManage, locale, prices, switchingPlan, onSwitchYearly }) {
-  const { t } = useI18nFormat();
-  const money = (cents, cur) => {
-    try {
-      return new Intl.NumberFormat(locale || 'ru-RU', {
-        style: 'currency', currency: (cur || 'eur').toUpperCase(),
-        minimumFractionDigits: 0, maximumFractionDigits: 2,
-      }).format(cents / 100);
-    } catch { return null; }
-  };
+  const { t, fmtMoney } = useI18nFormat();
+  // Tariff amounts come from Stripe in minor units; format in the active locale,
+  // currency from Stripe (fallback usd = the products' real currency).
+  const money = (cents, cur) =>
+    cents == null ? null : fmtMoney(cents / 100, cur || 'usd', { minFraction: 0, maxFraction: 2 });
   const priceOf = (type) => {
     const p = prices?.[type];
     return (p && p.unit_amount != null) ? money(p.unit_amount, p.currency) : null;

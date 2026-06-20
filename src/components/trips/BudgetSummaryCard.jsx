@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Icon } from '@/design/icons';
-import { useI18n } from '@/lib/i18n/I18nContext';
+import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useFxRates } from '@/lib/fx';
 import { toMain as toMainCur, fmtMoney } from '@/lib/budget/money';
 import { categoryColor } from '@/lib/budget/category-colors';
@@ -19,12 +19,12 @@ export default function BudgetSummaryCard({
   onOpen,
   onLocked,
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18nFormat();
   const mainCurrency = trip?.details?.main_currency || budget?.currency || 'EUR';
   const { data: fx } = useFxRates(mainCurrency);
   const overrides = budget?.fx_overrides || {};
 
-  const money = (v) => fmtMoney(v, mainCurrency, 'ru-RU');
+  const money = (v) => fmtMoney(v, mainCurrency, locale);
   const conv = (e) =>
     toMainCur(e.original_amount, e.original_currency || mainCurrency, mainCurrency, fx, overrides);
 

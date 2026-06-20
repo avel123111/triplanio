@@ -26,7 +26,7 @@ async function readActualPrice(stripeSubscriptionId: string | null) {
     if (!price || price.unit_amount == null) return null;
     return {
       amount: price.unit_amount,                 // minor units (cents)
-      currency: (price.currency || 'eur').toUpperCase(),
+      currency: (price.currency || 'usd').toUpperCase(),
       interval: price.recurring?.interval || null, // 'month' | 'year'
     };
   } catch (e) {
