@@ -17,7 +17,7 @@ import './PublicTrip.css';
 // page is rendered off the landing route.
 const SITE = 'https://triplanio.com/';
 // Per-city accent cycle — all existing Lumo event/accent tokens (no new tokens).
-const ACCENTS = ['var(--primary)', 'var(--ev-activity)', 'var(--ev-car)', 'var(--ai)', 'var(--pro)', 'var(--ev-transfer)'];
+const ACCENTS = ['var(--brand)', 'var(--ev-activity)', 'var(--ev-car)', 'var(--ai)', 'var(--pro)', 'var(--ev-transfer)'];
 
 const initials = (name = '') =>
   name.split(' ').map((w) => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
@@ -305,11 +305,11 @@ export default function PublicTrip() {
           <h2>{t('public.cta_title')}</h2>
           <p>{t('public.cta_sub')}</p>
           <div className="pt-cta__act">
-            <a className="pt-btn pt-btn--glass" href={SITE} style={{ fontSize: '15.5px', padding: '14px 24px' }}>
+            <a className="btn btn--white btn--lg" href={SITE}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
               {t('public.cta_copy')}
             </a>
-            <a className="pt-btn pt-btn--white" href={SITE} style={{ fontSize: '15.5px', padding: '14px 24px' }}>{t('public.cta_plan')}</a>
+            <a className="btn btn--white btn--lg" href={SITE}>{t('public.cta_plan')}</a>
           </div>
         </div>
       </section>
@@ -319,7 +319,7 @@ export default function PublicTrip() {
       {/* ── Mobile sticky CTA ── */}
       <div className="pt-scta">
         <div className="tx"><b>{t('public.scta_title')}</b><span>{t('public.scta_sub')}</span></div>
-        <a className="pt-btn pt-btn--primary pt-btn--sm" href={SITE}>{t('public.scta_btn')}</a>
+        <a className="btn btn--primary btn--sm" href={SITE}>{t('public.scta_btn')}</a>
       </div>
     </div>
   );
