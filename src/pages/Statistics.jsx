@@ -329,7 +329,10 @@ export default function Statistics() {
                 {fs && <button className="mapfs-close" onClick={() => setFs(false)} aria-label={t('common.close') || 'Close'}><Icon name="close" /></button>}
                 <div className="map-legend">
                   {legendRows.map((r) => (
-                    <span className="c" key={r.tone}><i className="d" style={{ background: r.color }} />{r.label}{r.count ? ` · ${r.count}` : ''}</span>
+                    <span className="c" key={r.tone}>
+                      <i className="d" style={r.tone === 'manual' ? { background: 'var(--surface)', boxShadow: 'inset 0 0 0 2px hsl(var(--primary))' } : { background: r.color }} />
+                      {r.label}{r.count ? ` · ${r.count}` : ''}
+                    </span>
                   ))}
                 </div>
               </StatsMap>

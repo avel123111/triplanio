@@ -51,8 +51,8 @@ test('dominantTone — "most real" wins, tokens bound', () => {
   assert.equal(dominantTone([]), 'trip');
   assert.equal(TONE_RANK.trip < TONE_RANK.manual && TONE_RANK.manual < TONE_RANK.future, true);
   assert.equal(TONE.trip, 'hsl(var(--primary))');
-  assert.equal(TONE.manual, 'var(--ev-car)');
-  assert.equal(TONE.future, 'var(--ai)');
+  assert.equal(TONE.manual, 'hsl(var(--primary))');
+  assert.equal(TONE.future, 'var(--ev-activity)');
 });
 
 test('year filter', () => {

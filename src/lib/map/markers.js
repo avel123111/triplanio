@@ -104,3 +104,18 @@ export function createMarkerEl(labels, { onClick, title, icon, tone } = {}) {
   if (onClick) el.addEventListener('click', onClick);
   return el;
 }
+
+// Mini marker for the stats / home travel map — a small coloured dot (~11px),
+// deliberately NOT the trip Ring pin: these screens show an unordered set of
+// lifetime visits over a country fill, so the pins must be tiny and unobtrusive.
+// tone ('trip'|'manual'|'future') drives the colour via .smk--* (the marker is a
+// DOM node, so it inherits the design tokens directly): trip = solid brand,
+// manual = hollow brand ring, future = solid rose.
+export function createMiniMarkerEl(tone = 'trip', { onClick, title } = {}) {
+  const el = document.createElement('div');
+  el.className = `smk smk--${tone}`;
+  if (onClick) el.classList.add('is-clickable');
+  if (title) el.title = title;
+  if (onClick) el.addEventListener('click', onClick);
+  return el;
+}

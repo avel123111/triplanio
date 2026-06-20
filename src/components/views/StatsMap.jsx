@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
-import { createMarkerEl, groupByLocation } from '@/lib/map/markers';
+import { createMiniMarkerEl, groupByLocation } from '@/lib/map/markers';
 import { dominantTone } from '@/lib/travel-stats';
 import {
-  ensureCountryFill, setVisitedCountries, setCountryFillVisible, repaintCountryFill,
+  ensureCountryFill, setCountryKinds, setCountryFillVisible, repaintCountryFill,
   COUNTRY_FILL_LAYER,
 } from '@/lib/map/countryFill';
 import { clearRouteLines } from '@/lib/map/routeLines';
@@ -54,11 +54,18 @@ export default function StatsMap({
     [points],
   );
 
-  // ISO codes to fill — unique country codes from the points.
-  const visitedSig = useMemo(() => {
-    const set = new Set();
-    for (const p of drawable) { const c = p.country_code; if (c) set.add(String(c).trim().toUpperCase()); }
-    return [...set].sort().join(',');
+  // Per-country dominant visit type (priority trip > manual > future) — drives the
+  // 3-colour country fill. Derived from the points this screen is showing.
+  const countryKinds = useMemo(() => {
+    const byC = new Map();
+    for (const p of drawable) {
+      const c = p.country_code ? String(p.country_code).trim().toUpperCase() : '';
+      if (!c) continue;
+      let a = byC.get(c); if (!a) { a = []; byC.set(c, a); } a.push(p);
+    }
+    const out = {};
+    for (const [c, ps] of byC) out[c] = dominantTone(ps);
+    return out;
   }, [drawable]);
 
   const pointsSig = useMemo(
@@ -79,12 +86,12 @@ export default function StatsMap({
     return () => { setCountryFillVisible(map, false); };
   }, [ready]);
 
-  // Repaint visited countries when the set (year filter) changes.
+  // Repaint country fill (kind per country) when the set / year filter changes.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    setVisitedCountries(map, visitedSig ? visitedSig.split(',') : []);
-  }, [ready, visitedSig]);
+    setCountryKinds(map, countryKinds);
+  }, [ready, countryKinds]);
 
   // Follow day/night for the fill colour (markers re-colour themselves via CSS).
   useEffect(() => {
@@ -104,9 +111,8 @@ export default function StatsMap({
     if (pins) {
       groupByLocation(drawable.map((p) => ({ lng: +p.lng, lat: +p.lat, label: null, data: p }))).forEach((g) => {
         const title = g.data.map((p) => p.city_name).filter(Boolean).join(' • ');
-        const el = createMarkerEl(null, {
+        const el = createMiniMarkerEl(dominantTone(g.data), {
           title,
-          tone: dominantTone(g.data),
           onClick: onPointClickRef.current ? (ev) => { if (ev) ev.stopPropagation(); const cb = onPointClickRef.current; if (cb) cb(g.data); } : undefined,
         });
         const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);

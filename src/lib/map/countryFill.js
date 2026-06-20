@@ -19,7 +19,7 @@
 // vector tileset. `promoteId` lifts each country's ISO-3166-1 alpha-2 code to the
 // feature id so we can paint visited countries with setFeatureState({ visited })
 // keyed by ISO code — no need to enumerate features or know their numeric ids.
-import { routeColor } from './mapTokens';
+import { routeColor, futureFillColor } from './mapTokens';
 
 const SRC_ID = 'tp-countries';
 const FILL_ID = 'tp-country-fill';
@@ -29,7 +29,25 @@ const VECTOR_URL = 'mapbox://mapbox.country-boundaries-v1';
 // Exposed so the stats map can wire a click on the fill layer (country → panel).
 export const COUNTRY_FILL_LAYER = FILL_ID;
 
-const VISITED_OPACITY = 0.45;
+// Per-visit-type fill. The priority (trip > manual > future) is resolved upstream
+// in StatsMap via dominantTone, then stamped onto each country as feature-state
+// `kind`. trip + manual share the brand colour and differ only by opacity; future
+// is the rose accent. Values are easy to tune here.
+const OPACITY = { trip: 0.32, manual: 0.16, future: 0.18 };
+
+// fill-color depends on feature-state `kind`: future → rose, else brand. Rebuilt on
+// a theme switch (repaintCountryFill) so both colours follow day/night.
+function fillColorExpr() {
+  return ['case', ['==', ['feature-state', 'kind'], 'future'], futureFillColor(), routeColor()];
+}
+// fill-opacity per kind; unset (unvisited) → 0 (no fill).
+const FILL_OPACITY_EXPR = [
+  'case',
+  ['==', ['feature-state', 'kind'], 'trip'], OPACITY.trip,
+  ['==', ['feature-state', 'kind'], 'manual'], OPACITY.manual,
+  ['==', ['feature-state', 'kind'], 'future'], OPACITY.future,
+  0,
+];
 
 // Create the source + fill layer once on the shared instance. Idempotent: on a
 // reused map (later screen) it just re-asserts visibility. Caller must ensure the
@@ -57,9 +75,9 @@ export function ensureCountryFill(map, { visible = true } = {}) {
         slot: 'middle',
         layout: { visibility: visible ? 'visible' : 'none' },
         paint: {
-          'fill-color': routeColor(),
-          // Visited → translucent; everything else → fully transparent (no fill).
-          'fill-opacity': ['case', ['boolean', ['feature-state', 'visited'], false], VISITED_OPACITY, 0],
+          'fill-color': fillColorExpr(),
+          // Per-type opacity; unvisited (no `kind`) → 0 (no fill).
+          'fill-opacity': FILL_OPACITY_EXPR,
           // Mapbox Standard lights layers by the scene; without full emissive
           // strength the fill renders dark under the `night` preset (same fix the
           // route lines use).
@@ -75,15 +93,15 @@ export function ensureCountryFill(map, { visible = true } = {}) {
 // Paint the given ISO-3166-1 alpha-2 codes as visited (case-insensitive). Clears
 // any previous visited state first, so the same call re-colours the map when the
 // year filter changes — entirely client-side, no tile refetch.
-export function setVisitedCountries(map, isoCodes = []) {
+export function setCountryKinds(map, kindByCode = {}) {
   if (!map || !map.getSource(SRC_ID)) return;
   try { map.removeFeatureState({ source: SRC_ID, sourceLayer: SOURCE_LAYER }); } catch { /* nothing set yet */ }
-  for (const code of isoCodes) {
-    if (!code) continue;
+  for (const [code, kind] of Object.entries(kindByCode)) {
+    if (!code || !kind) continue;
     try {
       map.setFeatureState(
         { source: SRC_ID, sourceLayer: SOURCE_LAYER, id: String(code).trim().toUpperCase() },
-        { visited: true },
+        { kind },
       );
     } catch { /* id not in tiles — ignore */ }
   }
@@ -101,5 +119,5 @@ export function setCountryFillVisible(map, visible) {
 // day/night switch so the fill follows the theme without rebuilding the source.
 export function repaintCountryFill(map) {
   if (!map || !map.getLayer(FILL_ID)) return;
-  try { map.setPaintProperty(FILL_ID, 'fill-color', routeColor()); } catch { /* ignore */ }
+  try { map.setPaintProperty(FILL_ID, 'fill-color', fillColorExpr()); } catch { /* ignore */ }
 }
