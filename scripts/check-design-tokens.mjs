@@ -41,13 +41,11 @@ const COLOR_WHITELIST = [
   'src/lib/booking-platforms.js',                       // external partner brand classes
   'src/components/chat/TriplanioAvatar.jsx',            // SVG illustration fills
   'src/components/AppErrorBoundary.jsx',                // crash screen — must not depend on tokens/CSS
-  'src/components/views/ReadOnlyTimelineView.jsx',      // deferred refactor
   'src/components/views/StaySectionExpandable.jsx',     // pending colour pass (deferred w/ timeline)
 ];
 
 // Files allowed to contain raw FONT SIZES.
 const TYPO_WHITELIST = [
-  'src/components/views/ReadOnlyTimelineView.jsx',      // deferred refactor
   'src/index.css', 'src/design/app.css', 'src/pages/login.css', // --fs-* token defs only
 ];
 

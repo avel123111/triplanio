@@ -273,7 +273,7 @@ export default function Statistics() {
   return (
     <div className={`app-shell${isEmpty ? ' stats-ghost' : ''}`} style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} onBack={() => nav('/trips')} backTitle={t('telegram.go_to_trips')} title={t('stats.page_title')} />
-      <main style={{ flex: 1, padding: '32px 28px', maxWidth: 'var(--content-max)', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <main style={{ flex: 1, padding: '32px 28px', width: '100%', boxSizing: 'border-box' }}>
         {showSkeleton ? <StatsScreenSkeleton /> : (<>
 
         {/* head: title + sub + year filter */}

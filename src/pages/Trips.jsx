@@ -568,7 +568,7 @@ export default function Trips() {
       <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
 
       {/* PAGE CONTENT */}
-      <main style={{ flex: 1, padding: '32px 28px', maxWidth: 'var(--content-max)', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <main style={{ flex: 1, padding: '32px 28px', width: '100%', boxSizing: 'border-box' }}>
 
         {/* Loading skeleton */}
         {isLoadingData && allTrips.length === 0 && (

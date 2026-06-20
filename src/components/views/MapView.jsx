@@ -38,12 +38,19 @@ export default function MapView({
   // Falsy/empty → no override (the whole-route auto-fit stays in charge); when
   // it clears after a focus, the camera eases back to the full route.
   focus = null,
+  // Duration (ms) of the single-city focus flyTo. Default 700; the public
+  // shared-trip reader passes a larger value for a slower, calmer camera.
+  focusDuration = 700,
   // When the map is kept mounted but hidden behind another tab, the parent flips
   // `active` to false. On re-show its container regains size, so the map needs a
   // resize() (handled in useMapSurface).
   active = true,
   // Show the on-map control buttons (projection, theme, start/finish toggles).
   mapControls = false,
+  // Basemap variant forwarded to the shared surface (e.g. 'monochrome' for the
+  // public shared-trip reader, mirroring the stats map). Defaults to the normal
+  // styled basemap.
+  basemapTheme = 'default',
   children,
 }) {
   const containerRef = useRef(null);
@@ -61,7 +68,7 @@ export default function MapView({
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, projection,
   // resize, marker cleanup on unmount).
   const { mapRef, ready, error } = useMapSurface(containerRef, {
-    markersRef, scheme: mapScheme, projection, active,
+    markersRef, scheme: mapScheme, projection, active, basemapTheme,
   });
 
   // Force a re-fit on (re)mount so the first draw frames the route.
@@ -96,7 +103,7 @@ export default function MapView({
     if (focusSig) {
       hadFocusRef.current = true;
       if (focus.length === 1) {
-        map.flyTo({ center: focus[0], zoom: 9.5, duration: 700, essential: true });
+        map.flyTo({ center: focus[0], zoom: 9.5, duration: focusDuration, essential: true });
       } else {
         fitToPoints(map, focus, { padding: 110, maxZoom: 9, animate: true });
       }

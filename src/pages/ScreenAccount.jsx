@@ -618,7 +618,7 @@ export default function ScreenAccount() {
 
       {/* Payment / action error banner (full width, above the workspace) */}
       {errorMsg && (
-        <div style={{ maxWidth: 'var(--content-max)', margin: '16px auto 0', padding: '0 24px', width: '100%', boxSizing: 'border-box' }}>
+        <div style={{ maxWidth: 1120, margin: '16px auto 0', padding: '0 24px', width: '100%', boxSizing: 'border-box' }}>
           <Severity level="error" title={t('account.error_title')}
             action={<Btn variant="ghost" size="sm" onClick={() => setErrorMsg(null)}>{t('common.close')}</Btn>}>
             {errorMsg}
