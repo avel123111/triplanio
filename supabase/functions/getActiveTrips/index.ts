@@ -1,6 +1,9 @@
 // getActiveTrips
 // Returns the count of the caller's active trips + whether they are Pro.
-// Active = trip has no dated visits yet, OR latest visit end_datetime >= today (UTC).
+// Active = trip has no dated visits yet, OR latest city_visits.end_date >= today (UTC).
+// NOTE: the real free-tier enforcement lives in the create_trip RPC. This endpoint
+// only drives the upsell dialog, so on ANY data error we fail OPEN (activeCount 0)
+// instead of letting a failed query read as "all trips active" and falsely blocking.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -37,9 +40,14 @@ Deno.serve(async (req) => {
       && !!me.subscription_end_date
       && new Date(me.subscription_end_date) > now;
 
-    const { data: trips } = await admin
+    const { data: trips, error: tErr } = await admin
       .from('trips').select('id, title').eq('created_by', user.id);
 
+    if (tErr) {
+      console.error('getActiveTrips trips query error:', tErr);
+      // Fail open: create_trip is the real enforcement; never falsely block.
+      return Response.json({ isPro, activeCount: 0, activeTrips: [] }, { headers: corsHeaders });
+    }
     if (!trips || trips.length === 0) {
       return Response.json({ isPro, activeCount: 0, activeTrips: [] }, { headers: corsHeaders });
     }
@@ -47,8 +55,14 @@ Deno.serve(async (req) => {
     const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
     const tripIds = trips.map((t) => t.id);
 
-    const { data: visits } = await admin
+    const { data: visits, error: vErr } = await admin
       .from('city_visits').select('trip_id, end_date').in('trip_id', tripIds);
+
+    if (vErr) {
+      console.error('getActiveTrips visits query error:', vErr);
+      // Fail open (see above): a failed visits read must NOT be treated as "all trips active".
+      return Response.json({ isPro, activeCount: 0, activeTrips: [] }, { headers: corsHeaders });
+    }
 
     const maxEndByTrip = new Map<string, number>();
     for (const v of visits ?? []) {
