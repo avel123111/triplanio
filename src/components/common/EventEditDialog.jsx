@@ -111,6 +111,10 @@ function makeSegment(defCur = 'EUR') {
   return {
     id: 'seg-' + (__segUid++), transport_type: 'plane',
     from_address: '', to_address: '', startLocal: '', endLocal: '',
+    // Endpoint coords are set only when an AI-parsed address resolves to a
+    // house-level match (geocodeAddress); otherwise stay null (address as text,
+    // no map point) — same rule as the hotel / single-leg transfer.
+    from_latitude: null, from_longitude: null, to_latitude: null, to_longitude: null,
     carrier: '', flight_number: '', booking_reference: '',
     price: '', currency: defCur, toCity: null, day_change: false,
   };
@@ -988,6 +992,25 @@ export default function EventEditDialog({
           ]);
         }
       }
+      // Geocode each segment's endpoint addresses → coords, ONLY on a house-
+      // level match; otherwise leave coords null and keep the address as text
+      // (no map point, never the city center). Same geocodeAddress used for the
+      // hotel and single-leg transfer. Dedup identical strings so a shared
+      // layover address (one leg's to == next leg's from) costs one lookup.
+      const segAddrs = [...new Set(
+        formSegs.flatMap((s) => [s.from_address, s.to_address]).filter((a) => a && a.trim()),
+      )];
+      if (segAddrs.length) {
+        const geos = await Promise.all(segAddrs.map((a) => geocodeAddress(a, lang)));
+        const coordByAddr = new Map(segAddrs.map((a, i) => [a, geos[i]]));
+        formSegs.forEach((s) => {
+          const gf = s.from_address && coordByAddr.get(s.from_address);
+          if (gf) { s.from_latitude = gf.latitude; s.from_longitude = gf.longitude; }
+          const gt = s.to_address && coordByAddr.get(s.to_address);
+          if (gt) { s.to_latitude = gt.latitude; s.to_longitude = gt.longitude; }
+        });
+      }
+
       // Endpoints stay the trip's fromVisit/toVisit. Mismatches (wrong dates /
       // cities) are NOT soft-warned here anymore - the parsed chain is a normal
       // draft and goes through the same validateEntity gate (TR_DEP_DAY /
@@ -1387,6 +1410,10 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
     flight_number: s.flight_number || null,
     from_address: s.from_address || null,
     to_address: s.to_address || null,
+    from_latitude: s.from_latitude ?? null,
+    from_longitude: s.from_longitude ?? null,
+    to_latitude: s.to_latitude ?? null,
+    to_longitude: s.to_longitude ?? null,
     booking_reference: s.booking_reference || null,
     booking_url: form.booking_url || null,
     booking_platform: form.booking_platform || null,
