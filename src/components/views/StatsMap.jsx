@@ -5,9 +5,10 @@ import { createMiniMarkerEl, groupByLocation } from '@/lib/map/markers';
 import { dominantTone } from '@/lib/travel-stats';
 import {
   ensureCountryFill, setCountryKinds, setCountryFillVisible, repaintCountryFill,
-  COUNTRY_FILL_LAYER,
+  setCountryHover, setCountrySelected, COUNTRY_FILL_LAYER,
 } from '@/lib/map/countryFill';
 import { clearRouteLines } from '@/lib/map/routeLines';
+import { cityKey } from '@/lib/trip-cities';
 
 // Travel-stats map surface (Trips home + "My statistics"). Renders on the SAME
 // app-wide singleton Mapbox map as the trip lenses (one map per session) via
@@ -28,11 +29,14 @@ export default function StatsMap({
   onPointClick = null,
   onCountryClick = null,
   sizeSignal = null,
+  selected = null,
   children,
 }) {
   const containerRef = useRef(null);
   const markersRef = useRef([]);
   const fittedSigRef = useRef('');
+  const cityElsRef = useRef(new Map()); // cityKey → marker element (for .is-sel)
+  const selectedRef = useRef(selected); // latest selected, read by the draw effect
 
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, resize,
   // marker cleanup on unmount). projection follows the map/globe toggle.
@@ -45,6 +49,7 @@ export default function StatsMap({
   useEffect(() => { onPointClickRef.current = onPointClick; }, [onPointClick]);
   const onCountryClickRef = useRef(onCountryClick);
   useEffect(() => { onCountryClickRef.current = onCountryClick; }, [onCountryClick]);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
 
   // Force a re-fit on (re)mount so the first draw frames all points.
   useEffect(() => { fittedSigRef.current = ''; }, []);
@@ -106,6 +111,7 @@ export default function StatsMap({
 
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
+    cityElsRef.current = new Map();
 
     // City pins are optional — the Trips home shows country fill only (pins={false}).
     if (pins) {
@@ -115,6 +121,14 @@ export default function StatsMap({
           title,
           onClick: onPointClickRef.current ? (ev) => { if (ev) ev.stopPropagation(); const cb = onPointClickRef.current; if (cb) cb(g.data); } : undefined,
         });
+        // Map the pin to its city key so the open panel can keep it selected, and
+        // re-assert .is-sel here in case the markers were rebuilt (year filter).
+        const key = cityKey(g.data[0]);
+        if (key) {
+          cityElsRef.current.set(key, el);
+          const sel = selectedRef.current;
+          if (sel && sel.kind === 'city' && sel.key === key) el.classList.add('is-sel');
+        }
         const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
         markersRef.current.push(marker);
       });
@@ -140,20 +154,37 @@ export default function StatsMap({
       if (iso && cb) cb(String(iso).toUpperCase());
     };
     const enter = () => { map.getCanvas().style.cursor = 'pointer'; };
-    const leave = () => { map.getCanvas().style.cursor = ''; };
+    const move = (e) => { const f = e.features && e.features[0]; setCountryHover(map, f ? f.id : null); };
+    const leave = () => { map.getCanvas().style.cursor = ''; setCountryHover(map, null); };
     try {
       map.on('click', COUNTRY_FILL_LAYER, onClick);
       map.on('mouseenter', COUNTRY_FILL_LAYER, enter);
+      map.on('mousemove', COUNTRY_FILL_LAYER, move);
       map.on('mouseleave', COUNTRY_FILL_LAYER, leave);
     } catch { /* layer not present yet — ignore */ }
     return () => {
       try {
         map.off('click', COUNTRY_FILL_LAYER, onClick);
         map.off('mouseenter', COUNTRY_FILL_LAYER, enter);
+        map.off('mousemove', COUNTRY_FILL_LAYER, move);
         map.off('mouseleave', COUNTRY_FILL_LAYER, leave);
       } catch { /* ignore */ }
     };
   }, [ready]);
+
+  // Highlight the place whose panel is open: country via feature-state (boosts the
+  // fill so it reads as "active"), city via its marker's .is-sel — and it persists
+  // for as long as the panel stays open.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    setCountrySelected(map, selected && selected.kind === 'country' ? selected.key : null);
+    cityElsRef.current.forEach((el) => el.classList.remove('is-sel'));
+    if (selected && selected.kind === 'city') {
+      const el = cityElsRef.current.get(selected.key);
+      if (el) el.classList.add('is-sel');
+    }
+  }, [ready, selected]);
 
   // Resize when the container changes size out-of-band (e.g. fullscreen toggle):
   // Mapbox can't observe a CSS-driven resize, so the consumer bumps `sizeSignal`.

@@ -321,6 +321,7 @@ export default function Statistics() {
                 onPointClick={openCityGroup}
                 onCountryClick={openCountry}
                 sizeSignal={fs ? 'fs' : 'win'}
+                selected={panel ? { kind: panel.kind, key: panel.key } : null}
               >
                 <div className="map-ctl">
                   <button className={globe ? 'on' : ''} onClick={() => setGlobe((g) => !g)} aria-label={t('stats.map_globe')}><Icon name="globe" /></button>
