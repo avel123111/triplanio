@@ -5,7 +5,7 @@ import {
   countCities, countCountries, countContinents, countTrips,
   worldExplored, countriesList, citiesList, continentsBreakdown,
   tripsByYear, daysInTrips, favoriteCity, favoriteCountry, longestTrip,
-  WORLD_COUNTRIES,
+  WORLD_COUNTRIES, dominantTone, TONE, TONE_RANK,
 } from './travel-stats.js';
 
 // trip A (2024): Madrid, Barcelona (ES) + return Madrid (dedup) → 2 cities, 1 country
@@ -40,6 +40,19 @@ test('pointType buckets', () => {
   assert.equal(pointType(pts[5], today), 'manual');
   assert.equal(pointType(pts[0], today), 'trip');
   assert.equal(pointType({ kind: 'trip', start_date: '2026-01-01' }, today), 'future');
+});
+
+test('dominantTone — "most real" wins, tokens bound', () => {
+  const today = new Date('2025-01-01');
+  // trip beats manual beats future at the same place
+  assert.equal(dominantTone([{ kind: 'custom' }, pts[0]]), 'trip');
+  assert.equal(dominantTone([{ kind: 'custom' }, { kind: 'trip', start_date: '2099-01-01' }]), 'manual');
+  assert.equal(dominantTone([{ kind: 'trip', start_date: '2099-01-01' }]), 'future', `today=${today.toISOString()}`);
+  assert.equal(dominantTone([]), 'trip');
+  assert.equal(TONE_RANK.trip < TONE_RANK.manual && TONE_RANK.manual < TONE_RANK.future, true);
+  assert.equal(TONE.trip, 'var(--primary)');
+  assert.equal(TONE.manual, 'var(--ev-car)');
+  assert.equal(TONE.future, 'var(--ai)');
 });
 
 test('year filter', () => {

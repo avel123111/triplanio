@@ -5,13 +5,11 @@ import React from 'react';
 // "Search by <provider>" placement, shown wherever LocationIQ results appear.
 export default function GeoAttribution({ className = '' }) {
   return (
-    <div className={`px-3 py-1.5 text-[11px] text-muted-foreground border-t border-border ${className}`}>
-      <a
-        href="https://locationiq.com"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="hover:underline"
-      >
+    <div
+      className={className}
+      style={{ padding: '6px 12px', fontSize: 'var(--fs-micro)', fontWeight: 600, color: 'var(--muted)', borderTop: '1px solid var(--line)' }}
+    >
+      <a href="https://locationiq.com" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>
         Search by LocationIQ
       </a>
     </div>

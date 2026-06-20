@@ -2,24 +2,11 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { createMarkerEl, groupByLocation } from '@/lib/map/markers';
-import { pointType } from '@/lib/travel-stats';
+import { dominantTone } from '@/lib/travel-stats';
 import {
   ensureCountryFill, setVisitedCountries, setCountryFillVisible, repaintCountryFill,
   COUNTRY_FILL_LAYER,
 } from '@/lib/map/countryFill';
-
-// Dominant visit type for a grouped pin: the "most real" wins (trip > manual >
-// future), mirroring the mockup's ranking, so a city visited on a trip never
-// looks merely "planned".
-const TONE_RANK = { trip: 0, manual: 1, future: 2 };
-function dominantTone(points = []) {
-  let best = null;
-  for (const p of points) {
-    const tone = pointType(p);
-    if (best == null || TONE_RANK[tone] < TONE_RANK[best]) best = tone;
-  }
-  return best || 'trip';
-}
 
 // Travel-stats map surface (Trips home + "My statistics"). Renders on the SAME
 // app-wide singleton Mapbox map as the trip lenses (one map per session) via
@@ -30,13 +17,10 @@ function dominantTone(points = []) {
 //
 // points: [{ city_name, country_code, lat, lng, kind, start_date, end_date }]
 //   from the get_user_travel_stats RPC (already deduped to real destinations).
-// visitedCountries: optional explicit ISO-3166-1 alpha-2 list for the fill; when
-//   omitted it's derived from the points' country codes.
-// Pins are a single colour for now (the default .tmk ring) — per-visit-type
-// colouring is deferred. onPointClick(groupData[]) is optional (stats side-panel).
+// The fill's ISO-3166-1 alpha-2 set is derived from the points' country codes.
+// onPointClick(groupData[]) is optional (stats side-panel).
 export default function StatsMap({
   points = [],
-  visitedCountries = null,
   colorScheme = 'LIGHT',
   projection = 'mercator',
   active = true,
@@ -69,15 +53,12 @@ export default function StatsMap({
     [points],
   );
 
-  // ISO codes to fill (explicit list wins; else unique codes from the points).
+  // ISO codes to fill — unique country codes from the points.
   const visitedSig = useMemo(() => {
-    const src = visitedCountries
-      ? visitedCountries
-      : drawable.map((p) => p.country_code);
     const set = new Set();
-    for (const c of src) { if (c) set.add(String(c).trim().toUpperCase()); }
+    for (const p of drawable) { const c = p.country_code; if (c) set.add(String(c).trim().toUpperCase()); }
     return [...set].sort().join(',');
-  }, [visitedCountries, drawable]);
+  }, [drawable]);
 
   const pointsSig = useMemo(
     () => drawable.map((p) => `${(+p.lat).toFixed(5)},${(+p.lng).toFixed(5)}`).join('|'),

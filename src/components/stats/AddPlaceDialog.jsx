@@ -5,7 +5,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, Btn, Field } from '@/design/index';
-import { Input } from '@/components/ui/input';
 import { countryFlag } from '@/lib/geo';
 import CitySearch from '@/components/cities/CitySearch';
 
@@ -134,8 +133,8 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label={t('stats.field_from')}><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-          <Field label={t('stats.field_to')}><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+          <Field label={t('stats.field_from')}><input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
+          <Field label={t('stats.field_to')}><input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
         </div>
 
         {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', fontWeight: 700 }}>{err}</div>}

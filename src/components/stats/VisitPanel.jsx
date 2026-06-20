@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { pointType } from '@/lib/travel-stats';
+import { pointType, TONE } from '@/lib/travel-stats';
 import { getGradientById } from '@/lib/trip-gradients';
+import { Icon } from '@/design/icons';
 
 // Visit panel for the "My statistics" screen — opens when a country/city/pin is
 // selected and lists every visit at that place (newest first). Reuses Radix
@@ -18,24 +19,6 @@ import { getGradientById } from '@/lib/trip-gradients';
 //   trips               — { [trip_id]: { title, cover_gradient } } from the RPC
 //   t, lang             — i18n
 //   onOpenTrip(tripId)  — navigate to a trip
-
-const TYPE_COLOR = { trip: 'var(--primary)', manual: 'var(--ev-car)', future: 'var(--ai)' };
-
-const IconGlobe = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 0 0 18" /></svg>
-);
-const IconCity = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V8l5-3v16M14 21V10l5-2v13" /></svg>
-);
-const IconX = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-);
-const IconArrow = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-);
-const IconEdit = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
-);
 
 function monthShort(dateStr, lang) {
   const d = new Date(dateStr);
@@ -55,7 +38,7 @@ function dateRange(a, b, lang) {
 
 function VisitRow({ v, trips, t, lang, onOpenTrip, onEditManual }) {
   const type = pointType(v);
-  const color = TYPE_COLOR[type] || TYPE_COLOR.trip;
+  const color = TONE[type] || TONE.trip;
   const yr = new Date(v.start_date || v.end_date).getFullYear();
   const trip = v.kind === 'trip' && v.trip_id ? trips?.[v.trip_id] : null;
   const grad = trip?.cover_gradient ? getGradientById(trip.cover_gradient) : null;
@@ -76,12 +59,12 @@ function VisitRow({ v, trips, t, lang, onOpenTrip, onEditManual }) {
             <button type="button" className="triplink" onClick={() => onOpenTrip?.(v.trip_id)}>
               <span className="d" style={{ background: grad ? grad.css : 'var(--primary)' }} />
               {trip.title || t('stats.open_trip')}
-              <IconArrow />
+              <Icon name="arrowR" />
             </button>
           ) : v.kind === 'custom' ? (
             onEditManual ? (
               <button type="button" className="triplink" onClick={() => onEditManual(v)}>
-                <IconEdit />{t('stats.edit_place')}
+                <Icon name="edit" />{t('stats.edit_place')}
               </button>
             ) : (
               <span className="vmanual">{t('stats.added_manually')}</span>
@@ -108,13 +91,13 @@ export default function VisitPanel({
         >
           <div className="vp-grip" />
           <div className={`vp-h${isCity ? ' city' : ''}`}>
-            <div className="ic">{isCity ? <IconCity /> : <IconGlobe />}</div>
+            <div className="ic">{isCity ? <Icon name="buildings" /> : <Icon name="globe" />}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <Dialog.Title asChild><h3>{name}</h3></Dialog.Title>
               <div className="s">{sub}</div>
             </div>
             <Dialog.Close asChild>
-              <button className="vp-x" aria-label={t('common.close') || 'Close'}><IconX /></button>
+              <button className="vp-x" aria-label={t('common.close') || 'Close'}><Icon name="close" /></button>
             </Dialog.Close>
           </div>
           <div className="vp-b">

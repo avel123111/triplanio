@@ -15,7 +15,6 @@ import { homeStats, worldExplored } from '@/lib/travel-stats';
 import StatsMap from '@/components/views/StatsMap';
 import {
   Greeting, StatBar, WorldMini, AllStatsCta,
-  IconGlobe, IconBuildings, IconSuitcase, IconTransfer,
 } from '@/components/stats/widgets';
 import '../design/app.css';
 
@@ -160,10 +159,10 @@ function NoNextCard({ variant, onPlan, t }) {
 // ─── Map hero + rail (shared by filled + empty screens) ────────────────────────
 function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, onPlan, onOpenNext, t }) {
   const items = [
-    { key: 'countries', value: home.countries, label: t('stats.sb_countries'), icon: <IconGlobe /> },
-    { key: 'cities',    value: home.cities,    label: t('stats.sb_cities'),     tone: 'city',     icon: <IconBuildings /> },
-    { key: 'trips',     value: home.trips,     label: t('stats.sb_trips'),      tone: 'trip',     icon: <IconSuitcase /> },
-    { key: 'transfers', value: home.transfers, label: t('stats.sb_transfers'),  tone: 'transfer', icon: <IconTransfer /> },
+    { key: 'countries', value: home.countries, label: t('stats.sb_countries'), icon: <Icon name="globe" /> },
+    { key: 'cities',    value: home.cities,    label: t('stats.sb_cities'),     tone: 'city',     icon: <Icon name="buildings" /> },
+    { key: 'trips',     value: home.trips,     label: t('stats.sb_trips'),      tone: 'trip',     icon: <Icon name="suitcase" /> },
+    { key: 'transfers', value: home.transfers, label: t('stats.sb_transfers'),  tone: 'transfer', icon: <Icon name="arrowSwap" /> },
   ];
   return (
     <>
@@ -172,7 +171,7 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
         <div className="mapwrap">
           {showMap
             ? <StatsMap points={points} colorScheme={scheme} />
-            : <div className="map-skel"><IconGlobe /><div>{t('stats.map_loading')}</div></div>}
+            : <div className="map-skel"><Icon name="globe" /><div>{t('stats.map_loading')}</div></div>}
         </div>
         <div className="rail">
           {nextTrip
