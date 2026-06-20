@@ -149,7 +149,7 @@ function NoNextCard({ variant, onPlan, t }) {
 }
 
 // ─── Map hero + rail (shared by filled + empty screens) ────────────────────────
-function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, onPlan, onOpenNext, t }) {
+function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, onPlan, onOpenNext, t, ghost = false }) {
   const items = [
     { key: 'countries', value: home.countries, label: t('stats.sb_countries'), icon: <Icon name="globe" /> },
     { key: 'cities',    value: home.cities,    label: t('stats.sb_cities'),     tone: 'city',     icon: <Icon name="buildings" /> },
@@ -158,8 +158,8 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
   ];
   return (
     <>
-      <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} />
-      <div className="dash-hero">
+      <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} className={ghost ? 'is-ghost' : ''} />
+      <div className={`dash-hero${ghost ? ' is-ghost' : ''}`}>
         <div className="mapwrap">
           {showMap
             ? <StatsMap points={points} colorScheme={scheme} pins={false} />
@@ -606,7 +606,7 @@ export default function Trips() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
+    <div className={`app-shell${!isLoadingData && allTrips.length === 0 ? ' stats-ghost' : ''}`} style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
 
       {/* APP HEADER */}
       <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} />
@@ -638,6 +638,7 @@ export default function Trips() {
               onPlan={() => setShowNewTrip(true)}
               onOpenNext={() => nextTrip && nav(`/trip/${nextTrip.id}`)}
               t={t}
+              ghost={!isLoadingData && allTrips.length === 0}
             />
           </>
         )}

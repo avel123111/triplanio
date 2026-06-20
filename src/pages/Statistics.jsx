@@ -25,14 +25,16 @@ import '../design/app.css';
 // "Моя статистика" — full Ф5 screen. Reads the same get_user_travel_stats RPC the
 // home screen uses, year-filters + aggregates entirely on the client via
 // travel-stats, and lays the result out with the shared stats widgets + the
-// singleton StatsMap. Read-only: visited places come from trips and any existing
-// manual visits; ADDING manual places ("Добавить место") lands in a later PR.
+// singleton StatsMap. Visited places come from trips and manual visits; manual
+// places can be added / edited / deleted via AddPlaceDialog (free — no Pro gate).
 
 // Continent display order + colours (existing event tokens — no new tokens).
-const CONT_ORDER = ['EU', 'AS', 'NA', 'AF', 'SA', 'OC', 'AN'];
+// Antarctica (AN) is intentionally omitted — it has no travel destinations, so a
+// permanent "0" bar only adds noise.
+const CONT_ORDER = ['EU', 'AS', 'NA', 'AF', 'SA', 'OC'];
 const CONT_COLOR = {
   EU: 'hsl(var(--primary))', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
-  AF: 'var(--warm)', SA: 'var(--ev-transfer)', OC: 'var(--ai)', AN: 'var(--muted)',
+  AF: 'var(--warm)', SA: 'var(--ev-transfer)', OC: 'var(--ai)',
 };
 export default function Statistics() {
   const { t, locale } = useI18n();
@@ -99,9 +101,8 @@ export default function Statistics() {
   const openAdd = useCallback(() => { setEditingPoint(null); setAddOpen(true); }, []);
   const openEditManual = useCallback((p) => { setPanel(null); setEditingPoint(p); setAddOpen(true); }, []);
 
-  // tone (dominant visit type) per country / city — colours list badges + legend.
   // Dominant visit type per country — drives the map legend tally only (the
-  // country/city LISTS now show real flags, no tone tint).
+  // country/city lists show real flags, no tone tint).
   const countryTone = useMemo(() => {
     const byCountry = new Map();
     for (const p of points) {

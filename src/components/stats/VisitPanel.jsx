@@ -7,8 +7,8 @@ import { Icon } from '@/design/icons';
 // selected and lists every visit at that place (newest first). Reuses Radix
 // Dialog (focus-trap / Esc / scroll-lock / outside-click) exactly like the
 // canonical Sheet; the `.vpanel` CSS makes it a right slide-over on desktop and a
-// bottom sheet under 640px (same breakpoint as the rest of the app). Read-only:
-// manual visits show an "added manually" tag — editing lands in the later PR.
+// bottom sheet under 640px (same breakpoint as the rest of the app). Manual visits
+// expose an inline "Edit" action (onEditManual) that opens AddPlaceDialog.
 //
 // Props:
 //   open, onOpenChange  — controlled visibility

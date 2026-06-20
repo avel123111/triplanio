@@ -36,9 +36,9 @@ export function Greeting({ greeting, name, avatarName, photo, sub }) {
 
 // Horizontal stat-bar. `items` = [{ key, value, label, tone, icon }] where tone
 // maps to the .c-* icon colour (city/trip/transfer). Optional trailing CTA node.
-export function StatBar({ items = [], cta = null }) {
+export function StatBar({ items = [], cta = null, className = '' }) {
   return (
-    <div className="statbar">
+    <div className={`statbar${className ? ` ${className}` : ''}`}>
       {items.map((it) => (
         <div key={it.key} className={`s${it.tone ? ` c-${it.tone}` : ''}`}>
           <span className="ic">{it.icon}</span>
@@ -191,7 +191,7 @@ export function VisitList({ rows = [], emptyText, onSelect }) {
         >
           <span className="fl">
             {r.cc
-              ? <img src={`https://www.triplanio.com/flags/${r.cc}.svg`} alt="" loading="lazy" onError={(e) => { if (e.currentTarget.dataset.fb !== '1') { e.currentTarget.dataset.fb = '1'; e.currentTarget.src = 'https://www.triplanio.com/flags/xx.svg'; } }} />
+              ? <img src={`/flags/${r.cc}.svg`} alt="" loading="lazy" onError={(e) => { if (e.currentTarget.dataset.fb !== '1') { e.currentTarget.dataset.fb = '1'; e.currentTarget.src = '/flags/xx.svg'; } }} />
               : r.badge}
           </span>
           <span>
