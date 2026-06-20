@@ -115,15 +115,19 @@ function GroupedRow({ row, isCity, trips, t, lang, onOpenTrip, onEditManual }) {
       <div className="info">
         <div className="dt">{title}</div>
         <div className="rng">{dateRange(row.start, row.end, lang)}</div>
-        <div className="vbottom">
-          <span className="vpill" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}>
-            <i className="d" style={{ background: color }} />{t(`stats.type_${type}`)}
-          </span>
+        <div className={`vbottom${type === 'future' ? ' vbottom--stack' : ''}`}>
+          {/* "С поездкой" (type==='trip') показывает только бейдж трипа — сам
+              статус-пилл скрыт. "Запланировано"/"Вручную" пилл оставляют. */}
+          {type !== 'trip' && (
+            <span className="vpill" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}>
+              <i className="d" style={{ background: color }} />{t(`stats.type_${type}`)}
+            </span>
+          )}
           {!isManual && trip ? (
             <button type="button" className="triplink" onClick={() => onOpenTrip?.(row.trip_id)}>
               <TripDot trip={trip} />
               {trip.title || t('stats.open_trip')}
-              <Icon name="arrowR" />
+              <Icon name="chev" />
             </button>
           ) : isManual ? (
             onEditManual ? (

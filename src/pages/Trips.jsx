@@ -652,9 +652,6 @@ export default function Trips() {
                   {t('trips.count_summary', { active: activeTrips.length, past: pastTrips.length })}
                 </div>
               </div>
-              <span className="trips-newbtn">
-                <Btn variant="primary" size="lg" icon="plus" onClick={() => openChoice()}>{t('trips.new')}</Btn>
-              </span>
             </div>
 
             {/* Filters row — adaptive (.trips-toolbar): wraps the search to its own

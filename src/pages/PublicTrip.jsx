@@ -66,6 +66,17 @@ export default function PublicTrip() {
   const trip = data?.trip;
   const owner = data?.owner || null;
   const members = data?.members || [];
+  // Participants list = trip owner FIRST, then active members (dedupe the owner
+  // if they also appear among members). Owner payload has no id, so match by name.
+  const people = useMemo(() => {
+    const list = [];
+    if (owner?.display_name) list.push({ display_name: owner.display_name, avatar_url: owner.avatar_url });
+    members.forEach((m) => {
+      if (owner?.display_name && m.display_name === owner.display_name) return;
+      list.push(m);
+    });
+    return list;
+  }, [owner, members]);
   const visits = useMemo(() => data?.visits || [], [data]);
   const hotels = useMemo(() => data?.hotels || [], [data]);
   const transfers = useMemo(() => data?.transfers || [], [data]);
@@ -149,7 +160,7 @@ export default function PublicTrip() {
     }, { threshold: 0.15 });
     document.querySelectorAll('.pt-reveal').forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, [cssReady, members.length]);
+  }, [cssReady, people.length]);
 
   if (!cssReady) return null;
   if (!token) return <NotFound message={t('public.invalid_link')} t={t} />;
@@ -224,9 +235,9 @@ export default function PublicTrip() {
         <div className="pt-itin" ref={itinRef}>
           {stops.map((s, i) => (
             <React.Fragment key={s.id}>
-              <div className="pt-cstop" data-i={i}>
+              <div className={`pt-cstop${i === focusIdx ? ' is-active' : ''}`} data-i={i}>
                 <div className="pt-cstop__h">
-                  <div className="pt-cstop__num" style={{ background: s.accent }}>{s.n}</div>
+                  <div className="pt-cstop__num" style={{ background: i === focusIdx ? 'var(--brand)' : s.accent }}>{s.n}</div>
                   <div className="pt-cstop__ht">
                     <h2>{s.city}</h2>
                     <div className="pt-cstop__sub">
@@ -249,7 +260,12 @@ export default function PublicTrip() {
                       <div className="pt-act" key={ai}>
                         <span className="dot" style={{ background: s.accent }} />
                         <span className="nm">{a.nm}</span>
-                        {a.day && <span className="day">{a.day}</span>}
+                        {a.day && (
+                          <span
+                            className="day"
+                            style={{ background: `color-mix(in srgb, ${s.accent} 16%, transparent)`, color: s.accent }}
+                          >{a.day}</span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -282,19 +298,31 @@ export default function PublicTrip() {
               colorScheme="LIGHT"
               basemapTheme="monochrome"
               focus={focusPts}
-              focusDuration={2100}
+              focusDuration={4200}
+              selectedVisitId={stops[focusIdx]?.id ?? null}
             />
+            {stops[focusIdx] && (
+              <div className="pt-mapcap">
+                <span className="pt-mapcap__pill">{stops[focusIdx].n}</span>
+                <span className="pt-mapcap__tx">
+                  <b>{stops[focusIdx].city}</b>
+                  {stops[focusIdx].nights > 0 && (
+                    <span>· {stops[focusIdx].nights} {plural(stops[focusIdx].nights, 'public.nights')}</span>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div></section>
 
       {/* ── Participants ── */}
-      {members.length > 0 && (
+      {people.length > 0 && (
         <section className="pt-band"><div className="pt-wide pt-reveal">
           <div className="pt-eyebrow">{t('public.people_eyebrow')}</div>
           <h2 className="pt-h-lead">{t('public.people_title')}</h2>
           <div className="pt-people">
-            {members.map((m, i) => (
+            {people.map((m, i) => (
               <div className="pt-person" key={i}>
                 <span className="av" style={{ background: ACCENTS[i % ACCENTS.length] }}>
                   {initials(m.display_name)}

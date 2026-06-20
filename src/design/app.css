@@ -2925,9 +2925,6 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .trips-toolbar .seg--view { order: 2; flex: none; }
   .trips-toolbar__search { order: 3; flex: 1 1 100%; max-width: none; min-width: 0; }
   .trips-toolbar__spacer { display: none; }
-  /* The header "Новое путешествие" button is redundant on mobile — the
-     bottom-nav FAB already creates a trip. */
-  .trips-newbtn { display: none !important; }
 }
 
 /* ── Баннер лимита Free-тарифа ─────────────────────────────── */
@@ -3610,7 +3607,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .nextcard__cover svg { width: 24px; height: 24px; position: relative; z-index: 1; }
 .nextcard__cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.18)); }
 .nextcard__tx { flex: 1; min-width: 0; }
-.nextcard__tag { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-nano); font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--success-ink); background: var(--success-soft); padding: 4px 9px; border-radius: var(--r-pill); }
+.nextcard__tag { display: flex; width: max-content; max-width: 100%; margin-top: 9px; align-items: center; gap: 6px; font-size: var(--fs-nano); font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--success-ink); background: var(--success-soft); padding: 4px 9px; border-radius: var(--r-pill); }
 .nextcard__tag svg { width: 12px; height: 12px; }
 .nextcard__tx b { display: block; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h4); margin-top: 7px; color: var(--ink); }
 .nextcard__tx .rt { font-size: var(--fs-meta); color: var(--muted); font-weight: 700; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3800,6 +3797,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .visit .info .dt { font-size: var(--fs-strong); font-weight: 800; color: var(--ink); }
 .visit .info .rng { font-size: var(--fs-meta); color: var(--muted); font-weight: 700; margin-top: 2px; }
 .vbottom { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+/* "Запланировано": статус-пилл и бейдж трипа на разных строках. */
+.vbottom--stack { flex-direction: column; align-items: flex-start; }
 .vpill { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-micro); font-weight: 800; text-transform: uppercase; letter-spacing: .03em; padding: 4px 9px; border-radius: var(--r-pill); }
 .vpill .d { width: 8px; height: 8px; border-radius: 50%; }
 .triplink { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 11px; background: var(--surface-2); cursor: pointer; border: 0; font: inherit; font-weight: 800; font-size: var(--fs-meta); color: var(--ink-2); transition: .15s; }

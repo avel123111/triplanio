@@ -69,14 +69,24 @@
 .pt-reader{display:grid;grid-template-columns:1fr minmax(420px,44%);gap:48px;align-items:start;padding-bottom:20px}
 .pt-mapcol{position:sticky;top:84px;height:calc(100vh - 110px);min-height:460px}
 .pt-mapbox{position:relative;height:100%;border-radius:var(--r-card);overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh-1);background:var(--surface-3)}
+/* Bottom-left glass caption: which city the camera is on + its nights. */
+.pt-mapcap{position:absolute;left:16px;bottom:16px;z-index:2;display:flex;align-items:center;gap:10px;padding:9px 14px 9px 11px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:saturate(160%) blur(10px);border:1px solid var(--line);box-shadow:var(--sh-1)}
+.pt-mapcap__pill{width:24px;height:24px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--brand);color:#fff;font-family:var(--font-display);font-weight:800;font-size:12px}
+.pt-mapcap__tx{display:flex;align-items:baseline;gap:5px;min-width:0}
+.pt-mapcap__tx b{font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--ink);white-space:nowrap}
+.pt-mapcap__tx span{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
 
 .pt-itin{min-width:0;--num:44px;--gap:16px}
 .pt-cstop{padding:30px 0 38px;border-top:1px solid var(--line)}
 .pt-cstop:first-child{border-top:0;padding-top:6px}
 .pt-cstop__h{display:flex;align-items:flex-start;gap:var(--gap)}
-.pt-cstop__num{width:var(--num);height:var(--num);border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--font-display);font-weight:800;font-size:18px;color:#fff;box-shadow:0 8px 18px -8px rgba(0,0,0,.25)}
+/* The number badge eases between its per-city accent and the active blue as the
+   reader scrolls, so the highlight visibly "moves" from one city to the next. */
+.pt-cstop__num{width:var(--num);height:var(--num);border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--font-display);font-weight:800;font-size:18px;color:#fff;box-shadow:0 8px 18px -8px rgba(0,0,0,.25);transition:background .35s var(--ease-out),box-shadow .35s var(--ease-out)}
+.pt-cstop.is-active .pt-cstop__num{box-shadow:0 10px 22px -8px var(--primary-ring,rgba(33,115,200,.28))}
 .pt-cstop__ht{flex:1;min-width:0}
-.pt-cstop__ht h2{font-size:clamp(26px,3.4vw,36px);letter-spacing:-.03em;line-height:1}
+.pt-cstop__ht h2{font-size:clamp(26px,3.4vw,36px);letter-spacing:-.03em;line-height:1;transition:color .35s var(--ease-out)}
+.pt-cstop.is-active .pt-cstop__ht h2{color:var(--brand)}
 .pt-cstop__sub{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:9px;font-size:14px;font-weight:700;color:var(--muted)}
 .pt-cstop__sub img{width:22px;height:15px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(0,0,0,.10)}
 .pt-cstop__sub b{color:var(--ink-2);font-weight:800}
