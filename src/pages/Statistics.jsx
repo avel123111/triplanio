@@ -7,7 +7,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
 import { cityKey } from '@/lib/trip-cities';
-import { continentOf } from '@/lib/continents';
+import { continentOf, COUNTRIES_PER_CONTINENT } from '@/lib/continents';
 import {
   statisticsBundle, availableYears, filterByYear, dominantTone, TONE,
 } from '@/lib/travel-stats';
@@ -17,7 +17,7 @@ import AddPlaceDialog from '@/components/stats/AddPlaceDialog';
 import {
   SummaryTiles, WorldRing, ContinentBars, Records, YearChart, VisitList,
 } from '@/components/stats/widgets';
-import { Btn } from '@/design/index';
+import { Btn, Skeleton } from '@/design/index';
 import { Icon } from '@/design/icons';
 import AppHeader from '@/components/AppHeader';
 import '../design/app.css';
@@ -36,6 +36,39 @@ const CONT_COLOR = {
   EU: 'hsl(var(--primary))', AS: 'var(--ev-activity)', NA: 'var(--ev-car)',
   AF: 'var(--warm)', SA: 'var(--ev-transfer)', OC: 'var(--ai)',
 };
+
+// First-load skeleton — mirrors the real /stats layout blocks (head, map hero,
+// 6-tile summary, world+continents panel, list, 4 records, year chart) using the
+// shared Skeleton + the same .summary/.records/.sec-head grids so columns match.
+function StatsScreenSkeleton() {
+  return (
+    <>
+      <div className="head">
+        <div className="head__row">
+          <div className="grow">
+            <Skeleton w={210} h={30} r={8} style={{ marginBottom: 10 }} />
+            <Skeleton w={280} h={15} r={6} />
+          </div>
+          <Skeleton w={220} h={40} r={12} />
+        </div>
+      </div>
+      <Skeleton w="100%" h={420} r={24} style={{ marginTop: 18 }} />
+      <div className="summary" style={{ marginTop: 18 }}>
+        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} w="100%" h={92} r={20} />)}
+      </div>
+      <Skeleton w="100%" h={220} r={24} style={{ marginTop: 18 }} />
+      <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={180} h={22} r={6} /></div>
+      <Skeleton w="100%" h={240} r={24} />
+      <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={140} h={22} r={6} /></div>
+      <div className="records">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} w="100%" h={120} r={20} />)}
+      </div>
+      <div className="sec-head" style={{ marginTop: 10 }}><Skeleton w={160} h={22} r={6} /></div>
+      <Skeleton w="100%" h={220} r={24} />
+    </>
+  );
+}
+
 export default function Statistics() {
   const { t, locale } = useI18n();
   const { user } = useAuth();
@@ -56,7 +89,7 @@ export default function Statistics() {
   }, [locale]);
 
   // ── data ────────────────────────────────────────────────────────────────────
-  const { data: travelStats } = useQuery({
+  const { data: travelStats, isLoading } = useQuery({
     queryKey: ['travel-stats', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_user_travel_stats');
@@ -66,6 +99,7 @@ export default function Statistics() {
     enabled: !!user?.id,
     staleTime: 30_000,
   });
+  const showSkeleton = isLoading && !travelStats;
   const allPoints = travelStats?.points || [];
   const trips = travelStats?.trips || {};
   const isEmpty = allPoints.length === 0;
@@ -139,11 +173,17 @@ export default function Statistics() {
   const contRows = useMemo(() => {
     const bd = bundle.continentsBreakdown || {};
     // Show ALL continents (each with its own bar) — unvisited ones read 0.
-    const max = Math.max(1, ...CONT_ORDER.map((c) => bd[c] || 0));
-    return CONT_ORDER.map((c) => ({
-      key: c, label: t(`stats.cont_${c}`), count: bd[c] || 0, color: CONT_COLOR[c],
-      pct: Math.round(((bd[c] || 0) / max) * 100), countLabel: t('stats.cont_countries'),
-    }));
+    // Bar = continent COVERAGE: countries visited / total countries on that
+    // continent. So equal counts on differently-sized continents read different,
+    // and no continent is forced to 100% just for being the most-visited one.
+    return CONT_ORDER.map((c) => {
+      const visited = bd[c] || 0;
+      const total = COUNTRIES_PER_CONTINENT[c] || 1;
+      return {
+        key: c, label: t(`stats.cont_${c}`), count: visited, color: CONT_COLOR[c],
+        pct: Math.min(100, Math.round((visited / total) * 100)), countLabel: t('stats.cont_countries'),
+      };
+    });
   }, [bundle.continentsBreakdown, t]);
 
   const listRows = useMemo(() => {
@@ -223,7 +263,8 @@ export default function Statistics() {
       sub = `${regionName(visits[0]?.country_code)} · ${t('stats.visits_count')}: ${visits.length}`;
     }
     visits = visits.slice().sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
-    return { kind: panel.kind, name, sub, visits };
+    const cc = panel.kind === 'country' ? panel.key : visits[0]?.country_code;
+    return { kind: panel.kind, name, sub, visits, cc };
   }, [panel, points, regionName, t]);
 
   const headSub = t('stats.stats_sub', { countries: bundle.countries, cities: bundle.cities, continents: bundle.continents });
@@ -233,6 +274,7 @@ export default function Statistics() {
     <div className={`app-shell${isEmpty ? ' stats-ghost' : ''}`} style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
       <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} onBack={() => nav('/trips')} backTitle={t('telegram.go_to_trips')} />
       <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+        {showSkeleton ? <StatsScreenSkeleton /> : (<>
 
         {/* head: title + sub + year filter */}
         <div className="head">
@@ -333,12 +375,14 @@ export default function Statistics() {
         {/* trips per year */}
         <div className="sec-head"><h2 style={{ fontSize: 'var(--fs-h3)' }}>{t('stats.byyear_title')}</h2></div>
         <YearChart bars={yearBars.bars} caption={yearBars.caption} />
+        </>)}
       </main>
 
       <VisitPanel
         open={!!panelData}
         onOpenChange={(o) => { if (!o) setPanel(null); }}
         kind={panelData?.kind || 'country'}
+        cc={panelData?.cc}
         name={panelData?.name}
         sub={panelData?.sub}
         visits={panelData?.visits || []}

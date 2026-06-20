@@ -73,7 +73,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
     setSaving(false);
     if (error) { console.error('user_custom_visits save failed:', error.message); setErr(t('stats.err_save')); return; }
     refresh();
-    toast({ description: isEdit ? t('stats.saved_toast') : t('stats.added_toast', { city: city.city_name }) });
+    toast({ variant: 'success', title: isEdit ? t('stats.saved_toast') : t('stats.added_toast', { city: city.city_name }) });
     onSaved?.();
     onOpenChange(false);
   };
@@ -85,7 +85,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
     setSaving(false);
     if (error) { console.error('user_custom_visits delete failed:', error.message); setErr(t('stats.err_delete')); return; }
     refresh();
-    toast({ description: t('stats.deleted_toast') });
+    toast({ variant: 'success', title: t('stats.deleted_toast') });
     onSaved?.();
     onOpenChange(false);
   };

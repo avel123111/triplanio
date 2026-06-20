@@ -7,6 +7,7 @@ import {
   ensureCountryFill, setVisitedCountries, setCountryFillVisible, repaintCountryFill,
   COUNTRY_FILL_LAYER,
 } from '@/lib/map/countryFill';
+import { clearRouteLines } from '@/lib/map/routeLines';
 
 // Travel-stats map surface (Trips home + "My statistics"). Renders on the SAME
 // app-wide singleton Mapbox map as the trip lenses (one map per session) via
@@ -72,6 +73,9 @@ export default function StatsMap({
     const map = mapRef.current;
     if (!map || !ready) return undefined;
     ensureCountryFill(map, { visible: true });
+    // This is a non-route surface sharing the singleton: clear any trip route
+    // lines the lenses left behind so a stale transfer line can't bleed through.
+    clearRouteLines(map);
     return () => { setCountryFillVisible(map, false); };
   }, [ready]);
 
@@ -103,7 +107,7 @@ export default function StatsMap({
         const el = createMarkerEl(null, {
           title,
           tone: dominantTone(g.data),
-          onClick: onPointClickRef.current ? () => { const cb = onPointClickRef.current; if (cb) cb(g.data); } : undefined,
+          onClick: onPointClickRef.current ? (ev) => { if (ev) ev.stopPropagation(); const cb = onPointClickRef.current; if (cb) cb(g.data); } : undefined,
         });
         const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
         markersRef.current.push(marker);

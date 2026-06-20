@@ -115,7 +115,6 @@ function NextTripCard({ trip, onClick, t }) {
     <button type="button" className="nextcard" onClick={onClick}>
       <span className="nextcard__cover" style={{ background: bg || undefined }}>
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
-        <Icon name="plane" />
       </span>
       <span className="nextcard__tx">
         <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
@@ -354,17 +353,37 @@ function CreateChoices({ onManual, onAi }) {
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
-function TripsHeaderSkeleton() {
+// First-load skeleton — mirrors the new home layout: greeting hero, stat-bar,
+// the map+rail dash-hero, then the trips section header + a card/list skeleton.
+// Reuses the real .head / .dash-hero / .rail grids so columns line up.
+function HomeSkeleton({ viewMode }) {
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <Skeleton w={170} h={28} r={8} style={{ marginBottom: 8 }} />
-          <Skeleton w={220} h={15} r={6} />
+      <div className="head">
+        <div className="head__row">
+          <Skeleton w={60} h={60} r={16} />
+          <div className="grow">
+            <Skeleton w={220} h={32} r={8} style={{ marginBottom: 10 }} />
+            <Skeleton w={260} h={15} r={6} />
+          </div>
         </div>
-        <Skeleton w={150} h={44} r={10} />
       </div>
-      <Skeleton w="100%" h={86} r={20} style={{ marginBottom: 18 }} />
+      <Skeleton w="100%" h={86} r={20} />
+      <div className="dash-hero" style={{ marginTop: 18 }}>
+        <Skeleton w="100%" h={340} r={24} />
+        <div className="rail">
+          <Skeleton w="100%" h={150} r={20} />
+          <Skeleton w="100%" h={120} r={20} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <Skeleton w={170} h={26} r={8} style={{ marginBottom: 8 }} />
+          <Skeleton w={140} h={14} r={6} />
+        </div>
+        <Skeleton w={150} h={44} r={12} />
+      </div>
+      <TripSkeleton viewMode={viewMode} />
     </>
   );
 }
@@ -616,10 +635,7 @@ export default function Trips() {
 
         {/* Loading skeleton */}
         {isLoadingData && allTrips.length === 0 && (
-          <>
-            <TripsHeaderSkeleton />
-            <TripSkeleton viewMode={viewMode} />
-          </>
+          <HomeSkeleton viewMode={viewMode} />
         )}
 
         {/* Greeting + stats hero — shown for both empty and filled (not while the
