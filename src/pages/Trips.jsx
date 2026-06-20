@@ -115,10 +115,10 @@ function NextTripCard({ trip, onClick, t }) {
     <button type="button" className="nextcard" onClick={onClick}>
       <span className="nextcard__cover" style={{ background: bg || undefined }}>
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
-        <Icon name="shield" />
+        <Icon name="plane" />
       </span>
       <span className="nextcard__tx">
-        <span className="nextcard__tag"><Icon name="shield" />{t('stats.next_start_in')}</span>
+        <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
         <span className="nextcard__cd">
@@ -601,7 +601,7 @@ export default function Trips() {
   // Visits come from the RPC (ready once stats load) or the fallback query.
   const isLoadingData = isLoading || (hasTrips && !rpcTripVisits && (!statsLoaded || loadingVisits));
   const subText = hasTrips
-    ? t('stats.home_sub', { trips: home.trips, countries: home.countries })
+    ? t('stats.home_sub', { trips: home.trips, countries: home.countries, cities: home.cities })
     : t('stats.home_sub_empty');
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -626,7 +626,7 @@ export default function Trips() {
             first-load skeleton is up). */}
         {!(isLoadingData && allTrips.length === 0) && (
           <>
-            <Greeting greeting={t('stats.greeting', { name: displayName })} name={displayName} photo={user?.avatar_url} sub={subText} />
+            <Greeting greeting={t('stats.greeting', { name: displayName })} name={displayName} avatarName={user?.full_name || user?.email || '?'} photo={user?.avatar_url} sub={subText} />
             <StatHero
               points={statsPoints}
               home={home}

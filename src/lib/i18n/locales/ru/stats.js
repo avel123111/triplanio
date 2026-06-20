@@ -1,6 +1,6 @@
 export default {
   'stats.greeting': 'Привет, {name}',
-  'stats.home_sub': 'Поездок: {trips} · стран на карте: {countries}',
+  'stats.home_sub': '{trips} путешествий · {countries} стран · {cities} городов',
   'stats.home_sub_empty': 'Поездок пока нет — впереди первое путешествие',
   'stats.page_title': 'Моя статистика',
   'stats.all_stats': 'Вся статистика',

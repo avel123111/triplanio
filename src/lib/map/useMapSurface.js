@@ -54,6 +54,16 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     try { map.setProjection(projRef.current); } catch { /* ignore */ }
     applyBasemapConfig(map, schemeRef.current);
 
+    // The singleton is re-parented into this screen's slot; Mapbox keeps the
+    // canvas at its previous size until told. On a REUSED instance `ready` is
+    // already true (no style.load transition), so the [active, ready] resize
+    // effect can fire before layout settles — resize again after two frames so
+    // the canvas matches the new container (otherwise the map can render blank,
+    // e.g. the stats screen whose .mapwrap sizes via min-height).
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      try { map.resize(); } catch { /* ignore */ }
+    }));
+
     const onErr = (e) => { if (e?.error?.message) setError(e.error.message); };
     map.on('error', onErr);
 
