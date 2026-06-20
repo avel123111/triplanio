@@ -41,14 +41,12 @@ function normKey(q: unknown): string {
   return String(q).trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-// Cache key for a single action. reverse rounds lat/lon to ~1 m (cities don't
-// move); search/autocomplete fold the text query; autocomplete also folds its
-// `tag` bias (it changes the result set).
-function geocodeQueryKey(action: string, q: unknown, lat: unknown, lon: unknown, tag: unknown): string {
+// Cache key for a cacheable action. reverse rounds lat/lon to ~1 m (cities don't
+// move); search folds the text query. autocomplete/geocodeAddress are uncached,
+// so their key is never used — no per-action folding needed here.
+function geocodeQueryKey(action: string, q: unknown, lat: unknown, lon: unknown): string {
   if (action === 'reverse') return `${Number(lat).toFixed(5)},${Number(lon).toFixed(5)}`;
-  let key = normKey(q);
-  if (action === 'autocomplete' && tag) key += `|tag:${String(tag).trim().toLowerCase()}`;
-  return key;
+  return normKey(q);
 }
 
 // ── Token bucket (TRIP-145 P2) ───────────────────────────────────────────────
@@ -233,7 +231,7 @@ Deno.serve(async (req) => {
     }
 
     const prio = priority || defaultPrio;
-    const queryKey = geocodeQueryKey(action, q, lat, lon, tag);
+    const queryKey = geocodeQueryKey(action, q, lat, lon);
     const outcome = await resolveOne(endpoint, cacheKeyAction, queryKey, acceptLang, prio, { q, lat, lon, limit: lim, tag }, apiKey);
 
     if ('degraded' in outcome) {
