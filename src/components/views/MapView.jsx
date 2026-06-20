@@ -44,6 +44,10 @@ export default function MapView({
   active = true,
   // Show the on-map control buttons (projection, theme, start/finish toggles).
   mapControls = false,
+  // Basemap variant forwarded to the shared surface (e.g. 'monochrome' for the
+  // public shared-trip reader, mirroring the stats map). Defaults to the normal
+  // styled basemap.
+  basemapTheme = 'default',
   children,
 }) {
   const containerRef = useRef(null);
@@ -61,7 +65,7 @@ export default function MapView({
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, projection,
   // resize, marker cleanup on unmount).
   const { mapRef, ready, error } = useMapSurface(containerRef, {
-    markersRef, scheme: mapScheme, projection, active,
+    markersRef, scheme: mapScheme, projection, active, basemapTheme,
   });
 
   // Force a re-fit on (re)mount so the first draw frames the route.
