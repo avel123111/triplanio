@@ -189,7 +189,11 @@ export function VisitList({ rows = [], emptyText, onSelect }) {
           className={`vrow${r.selected ? ' sel' : ''}`}
           onClick={() => onSelect?.(r)}
         >
-          <span className="fl" style={{ background: `color-mix(in srgb, ${r.tone} 13%, transparent)`, color: r.tone }}>{r.badge}</span>
+          <span className="fl">
+            {r.cc
+              ? <img src={`https://www.triplanio.com/flags/${r.cc}.svg`} alt="" loading="lazy" onError={(e) => { if (e.currentTarget.dataset.fb !== '1') { e.currentTarget.dataset.fb = '1'; e.currentTarget.src = 'https://www.triplanio.com/flags/xx.svg'; } }} />
+              : r.badge}
+          </span>
           <span>
             <span className="nm">{r.name}</span>
             {r.sub && <span className="s">{r.sub}</span>}

@@ -23,6 +23,7 @@ export default function StatsMap({
   points = [],
   colorScheme = 'LIGHT',
   projection = 'mercator',
+  pins = true,
   onPointClick = null,
   onCountryClick = null,
   sizeSignal = null,
@@ -95,23 +96,26 @@ export default function StatsMap({
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    groupByLocation(drawable.map((p) => ({ lng: +p.lng, lat: +p.lat, label: null, data: p }))).forEach((g) => {
-      const title = g.data.map((p) => p.city_name).filter(Boolean).join(' • ');
-      const el = createMarkerEl(null, {
-        title,
-        tone: dominantTone(g.data),
-        onClick: onPointClickRef.current ? () => { const cb = onPointClickRef.current; if (cb) cb(g.data); } : undefined,
+    // City pins are optional — the Trips home shows country fill only (pins={false}).
+    if (pins) {
+      groupByLocation(drawable.map((p) => ({ lng: +p.lng, lat: +p.lat, label: null, data: p }))).forEach((g) => {
+        const title = g.data.map((p) => p.city_name).filter(Boolean).join(' • ');
+        const el = createMarkerEl(null, {
+          title,
+          tone: dominantTone(g.data),
+          onClick: onPointClickRef.current ? () => { const cb = onPointClickRef.current; if (cb) cb(g.data); } : undefined,
+        });
+        const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
+        markersRef.current.push(marker);
       });
-      const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
-      markersRef.current.push(marker);
-    });
+    }
 
     if (drawable.length > 0 && fittedSigRef.current !== pointsSig) {
       fitToPoints(map, drawable.map((p) => [+p.lng, +p.lat]), { padding: 56, maxZoom: 6, animate: fittedSigRef.current !== '' });
       fittedSigRef.current = pointsSig;
     }
     return undefined;
-  }, [ready, drawable, pointsSig]);
+  }, [ready, drawable, pointsSig, pins]);
 
   // Country fill click → onCountryClick(isoAlpha2). The fill layer covers every
   // country (visited or not); the consumer decides whether the clicked code is in

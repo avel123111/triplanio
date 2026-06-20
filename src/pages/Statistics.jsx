@@ -100,18 +100,16 @@ export default function Statistics() {
   const openEditManual = useCallback((p) => { setPanel(null); setEditingPoint(p); setAddOpen(true); }, []);
 
   // tone (dominant visit type) per country / city — colours list badges + legend.
-  const { countryTone, cityTone } = useMemo(() => {
+  // Dominant visit type per country — drives the map legend tally only (the
+  // country/city LISTS now show real flags, no tone tint).
+  const countryTone = useMemo(() => {
     const byCountry = new Map();
-    const byCity = new Map();
     for (const p of points) {
       const cc = p?.country_code ? String(p.country_code).toUpperCase() : '';
       if (cc) { let a = byCountry.get(cc); if (!a) { a = []; byCountry.set(cc, a); } a.push(p); }
-      const ck = cityKey(p);
-      if (ck) { let a = byCity.get(ck); if (!a) { a = []; byCity.set(ck, a); } a.push(p); }
     }
     const cT = {}; for (const [cc, ps] of byCountry) cT[cc] = dominantTone(ps);
-    const ciT = {}; for (const [ck, ps] of byCity) ciT[ck] = dominantTone(ps);
-    return { countryTone: cT, cityTone: ciT };
+    return cT;
   }, [points]);
 
   // distinct cities per country (list sub-label)
@@ -153,20 +151,19 @@ export default function Statistics() {
         const nCities = citiesPerCountry.get(c.code)?.size || 0;
         const cont = continentOf(c.code);
         return {
-          type: 'country', key: c.code, badge: c.code, name: regionName(c.code),
+          type: 'country', key: c.code, cc: String(c.code).toLowerCase(), badge: c.code, name: regionName(c.code),
           sub: `${cont ? t(`stats.cont_${cont}`) : ''}${cont ? ' · ' : ''}${t('stats.n_cities', { n: nCities })}`,
-          count: c.count, tone: TONE[countryTone[c.code]] || TONE.trip,
+          count: c.count,
           selected: panel?.kind === 'country' && panel.key === c.code,
         };
       });
     }
     return bundle.citiesList.map((c) => ({
-      type: 'city', key: c.key, badge: <Icon name="buildings" />, name: c.city_name,
+      type: 'city', key: c.key, cc: c.country_code ? String(c.country_code).toLowerCase() : '', badge: <Icon name="buildings" />, name: c.city_name,
       sub: regionName(c.country_code), count: c.count,
-      tone: TONE[cityTone[c.key]] || TONE.trip,
       selected: panel?.kind === 'city' && panel.key === c.key,
     }));
-  }, [listMode, bundle.countriesList, bundle.citiesList, citiesPerCountry, countryTone, cityTone, panel, regionName, t]);
+  }, [listMode, bundle.countriesList, bundle.citiesList, citiesPerCountry, panel, regionName, t]);
 
   const recordItems = useMemo(() => {
     const r = bundle.records;
@@ -233,7 +230,7 @@ export default function Statistics() {
   // ── render ──────────────────────────────────────────────────────────────────
   return (
     <div className={`app-shell${isEmpty ? ' stats-ghost' : ''}`} style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
-      <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} onBack={() => nav('/')} backTitle={t('telegram.go_to_trips')} />
+      <AppHeader user={user} isPro={isPro} isDark={isDark} onToggleTheme={toggleTheme} onBack={() => nav('/trips')} backTitle={t('telegram.go_to_trips')} />
       <main style={{ flex: 1, padding: '32px 28px', maxWidth: 1240, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
         {/* head: title + sub + year filter */}
