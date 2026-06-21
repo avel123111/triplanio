@@ -401,36 +401,106 @@ Deno.serve(async (req) => {
         break;
       }
 
-      // Refund / chargeback → revoke. pro_trip flips is_pro_trip off; recurring → recompute.
-      // NOTE (CK-1, TRIP-162 тема B): recurring rows have a null payment_intent, so this
-      // PI match only catches pro_trip today; subscription refund/dispute revoke is tracked
-      // separately and not yet implemented here.
+      // Refund / chargeback → revoke (T3, CK-1 fix). Two attribution paths:
+      //   1) payment_intent match — catches pro_trip (one-time; PI stored on the row).
+      //   2) subscription match — recurring rows have a NULL payment_intent, so we
+      //      resolve charge → invoice → subscription and match by stripe_subscription_id.
+      // A DISPUTE always revokes (status=disputed). A REFUND revokes only when FULL
+      // (partial refund leaves Pro). recompute() then derives users.subscription_*
+      // (refunded/disputed are not Pro); pro_trip clears is_pro_trip directly.
       case 'charge.refunded':
       case 'charge.dispute.created': {
-        const obj = event.data.object as { payment_intent?: string | null };
-        const paymentIntentId = typeof obj.payment_intent === 'string' ? obj.payment_intent : null;
-        if (!paymentIntentId) break;
-        const newStatus = event.type === 'charge.dispute.created' ? 'disputed' : 'refunded';
+        const isDispute = event.type === 'charge.dispute.created';
+        const newStatus = isDispute ? 'disputed' : 'refunded';
 
-        const { data: rows } = await supabaseAdmin
-          .from('trip_subscriptions')
-          .select('id, user_id, trip_id, type')
-          .eq('stripe_payment_intent_id', paymentIntentId)
-          .limit(1);
-        if (rows && rows.length > 0) {
-          const row = rows[0];
-          await ensureWrite('refund/dispute status update', supabaseAdmin
-            .from('trip_subscriptions')
-            .update({ status: newStatus })
-            .eq('id', row.id));
-          if (row.type === 'pro_trip' && row.trip_id) {
-            await ensureWrite('refund is_pro_trip clear', supabaseAdmin
-              .from('trips').update({ is_pro_trip: false }).eq('id', row.trip_id));
-            console.log('Pro-trip revoked after', event.type, '->', row.trip_id);
-          } else {
-            await recompute(row.user_id);
-            console.log('Subscription revoked after', event.type, 'for user', row.user_id);
+        // Resolve the underlying charge + payment_intent. For charge.refunded the
+        // event object IS the charge; for charge.dispute.created it's a Dispute that
+        // references a charge.
+        let charge: Stripe.Charge | null = null;
+        let paymentIntentId: string | null = null;
+        if (isDispute) {
+          const dispute = event.data.object as Stripe.Dispute;
+          paymentIntentId = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : null;
+          const chargeId = typeof dispute.charge === 'string' ? dispute.charge : null;
+          if (chargeId) {
+            try { charge = await stripe.charges.retrieve(chargeId); }
+            catch (e) { console.error('dispute charge lookup failed:', (e as Error).message); }
           }
+        } else {
+          charge = event.data.object as Stripe.Charge;
+          paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
+        }
+
+        // Partial refund must NOT revoke Pro (only a full refund does). Disputes always revoke.
+        if (!isDispute) {
+          const fullyRefunded = charge?.refunded === true
+            || (typeof charge?.amount === 'number' && typeof charge?.amount_refunded === 'number'
+                && charge.amount > 0 && charge.amount_refunded >= charge.amount);
+          if (!fullyRefunded) {
+            console.log('Partial refund — Pro not revoked (pi', paymentIntentId, ')');
+            break;
+          }
+        }
+
+        // Path 1: direct payment_intent match (pro_trip).
+        let row: { id: string; user_id: string; trip_id: string | null; type: string } | null = null;
+        if (paymentIntentId) {
+          const { data, error } = await supabaseAdmin
+            .from('trip_subscriptions')
+            .select('id, user_id, trip_id, type')
+            .eq('stripe_payment_intent_id', paymentIntentId)
+            .limit(1);
+          if (error) {
+            await captureEdgeError(new Error(`refund PI lookup failed: ${error.message}`), 'stripe-webhook');
+            throw new Error('refund PI lookup failed');
+          }
+          row = data && data.length > 0 ? data[0] : null;
+        }
+
+        // Path 2: subscription refund/dispute — resolve charge → invoice → subscription.
+        if (!row && charge && typeof charge.invoice === 'string' && charge.invoice) {
+          let subId: string | null = null;
+          try {
+            const invoice = await stripe.invoices.retrieve(charge.invoice);
+            subId = invoiceSubId(invoice);
+          } catch (e) {
+            console.error('refund invoice lookup failed:', (e as Error).message);
+          }
+          if (subId) {
+            const { data, error } = await supabaseAdmin
+              .from('trip_subscriptions')
+              .select('id, user_id, trip_id, type')
+              .eq('stripe_subscription_id', subId)
+              .limit(1);
+            if (error) {
+              await captureEdgeError(new Error(`refund sub lookup failed: ${error.message}`), 'stripe-webhook');
+              throw new Error('refund sub lookup failed');
+            }
+            row = data && data.length > 0 ? data[0] : null;
+          }
+        }
+
+        if (!row) {
+          // Refund/dispute we can't attribute to any ledger row — anomaly worth a look
+          // (T5 #6). Non-fatal: nothing to revoke here.
+          await captureEdgeError(
+            new Error(`${event.type}: no ledger row (pi=${paymentIntentId})`),
+            'stripe-webhook',
+          );
+          break;
+        }
+
+        await ensureWrite('refund/dispute status update', supabaseAdmin
+          .from('trip_subscriptions')
+          .update({ status: newStatus })
+          .eq('id', row.id));
+        if (row.type === 'pro_trip' && row.trip_id) {
+          await ensureWrite('refund is_pro_trip clear', supabaseAdmin
+            .from('trips').update({ is_pro_trip: false }).eq('id', row.trip_id));
+          console.log('Pro-trip revoked after', event.type, '->', row.trip_id);
+        } else {
+          await recompute(row.user_id);
+          console.log('Subscription revoked after', event.type, 'for user', row.user_id);
         }
         break;
       }
