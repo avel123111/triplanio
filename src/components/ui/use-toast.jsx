@@ -1,8 +1,12 @@
 // Inspired by react-hot-toast library
 import { useState, useEffect } from "react";
 
-const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+// Max toasts visible at once (older ones drop off the stack).
+const TOAST_LIMIT = 4;
+// How long a dismissed toast lingers in state before being purged. Auto-dismiss
+// timing (per-variant) is handled in <Toaster> via the `duration` prop; this is
+// only the post-close cleanup, kept short so closed toasts don't accumulate.
+const TOAST_REMOVE_DELAY = 400;
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",

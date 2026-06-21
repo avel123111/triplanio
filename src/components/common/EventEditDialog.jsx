@@ -1959,7 +1959,7 @@ const fmtDur = (m, t) => {
 function SegTransportGrid({ value, onChange, color }) {
   const { t } = useI18nFormat();
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginBottom: 14 }}>
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5" style={{ marginBottom: 14 }}>
       {TRANSPORT_KINDS.map((k) => {
         const active = value === k.id; const Ic = k.Icon;
         return (
@@ -2073,7 +2073,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                 <div className="eyebrow" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
                 <SegTransportGrid value={seg.transport_type} onChange={(k) => patchSeg(i, { transport_type: k })} color={color} />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 14 }}>
+                <div className="fld-grid" style={{ marginBottom: 14 }}>
                   <div style={{ padding: 14, background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--line-2)' }}>
                     <div className="eyebrow" style={{ marginBottom: 8, color }}>{t('event.from')}</div>
                     <div>
@@ -2103,11 +2103,11 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div className="fld-grid" style={{ marginBottom: 12 }}>
                   <div><Label>{t('event.carrier')}</Label><AiField active={aiOn(seg, 'carrier')}><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder={t('event.carrier_ph')} /></AiField></div>
                   <div><Label>{t('event.flight_train_no')}</Label><AiField active={aiOn(seg, 'flight_number')}><Input style={{ fontFamily: 'var(--font-mono)' }} value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></AiField></div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.5fr', gap: 12 }}>
+                <div className="fld-grid">
                   <div><Label>{t('event.price')}</Label><AiField active={aiOn(seg, 'price')}><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></AiField></div>
                   <div><Label>{t('event.currency')}</Label><CurrencyCombobox value={seg.currency} onChange={(v) => patchSeg(i, { currency: v })} /></div>
                 </div>
