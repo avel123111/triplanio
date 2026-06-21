@@ -40,7 +40,12 @@ export function useTripProStatus(tripId, isProTrip = false) {
     enabled: !!tripId,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
-    retry: false,
+    // A transient failure of checkSubscriptionStatus (cold start / network blip)
+    // must NOT drop a paying user to "not Pro" on the first miss. Retry a couple
+    // of times (react-query applies exponential backoff) before settling to error.
+    // Still fails safe: after retries exhaust, isError → resolved with Pro denied,
+    // never granted.
+    retry: 2,
   });
   const ownerPro = q.data === true;
   return {
