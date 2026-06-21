@@ -5,6 +5,7 @@
 // caller's own subscription (used by the trip-creation paywall).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { reconcileEntitlement } from '../_shared/reconcileEntitlement.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,9 +44,17 @@ Deno.serve(async (req) => {
 
     // No trip context → check caller's own subscription.
     if (!tripId) {
-      const { data: me } = await admin
+      let { data: me } = await admin
         .from('users').select('subscription_status, subscription_end_date')
         .eq('id', user.id).single();
+      // recompute-on-read (Ф3): self-heal a stale 'pro' cache, throttled.
+      if (me?.subscription_status === 'pro'
+          && (!me?.subscription_end_date || new Date(me.subscription_end_date) <= now)
+          && await reconcileEntitlement(admin, user.id)) {
+        ({ data: me } = await admin
+          .from('users').select('subscription_status, subscription_end_date')
+          .eq('id', user.id).single());
+      }
       const isPro = isActivePro(me, now);
       return Response.json({ isPro, reason: isPro ? 'subscription' : null }, { headers: corsHeaders });
     }
@@ -62,9 +71,17 @@ Deno.serve(async (req) => {
     }
 
     if (trip.created_by) {
-      const { data: owner } = await admin
+      let { data: owner } = await admin
         .from('users').select('subscription_status, subscription_end_date')
         .eq('id', trip.created_by).single();
+      // recompute-on-read (Ф3): self-heal the owner's stale 'pro' cache, throttled.
+      if (owner?.subscription_status === 'pro'
+          && (!owner?.subscription_end_date || new Date(owner.subscription_end_date) <= now)
+          && await reconcileEntitlement(admin, trip.created_by)) {
+        ({ data: owner } = await admin
+          .from('users').select('subscription_status, subscription_end_date')
+          .eq('id', trip.created_by).single());
+      }
       if (isActivePro(owner, now)) {
         return Response.json({ isPro: true, isOwner, reason: 'owner_subscription' }, { headers: corsHeaders });
       }

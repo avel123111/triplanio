@@ -35,21 +35,6 @@ Deno.serve(async (req) => {
     const safeReturn = (returnPath && returnPath.startsWith('/')) ? returnPath : '/settings';
     const returnUrl = `${publicAppUrl}${safeReturn}`;
 
-    // Find the most recent active recurring subscription with a Stripe ID
-    const { data: subs } = await supabaseAdmin
-      .from('trip_subscriptions')
-      .select('stripe_subscription_id, start_date')
-      .eq('user_id', user.id)
-      .in('type', ['pro_monthly', 'pro_yearly'])
-      .not('stripe_subscription_id', 'is', null)
-      .order('start_date', { ascending: false })
-      .limit(5);
-
-    const latest = (subs ?? []).find((s) => s.stripe_subscription_id);
-    if (!latest?.stripe_subscription_id) {
-      return Response.json({ error: 'No active subscription found' }, { status: 404, headers: corsHeaders });
-    }
-
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!stripeKey) {
       console.error('STRIPE_SECRET_KEY missing');
@@ -57,8 +42,31 @@ Deno.serve(async (req) => {
     }
     const stripe = new Stripe(stripeKey);
 
-    const subscription = await stripe.subscriptions.retrieve(latest.stripe_subscription_id);
-    const customerId = subscription.customer as string;
+    // Fast path (Ф3): use the stored customer id (populated lazily by the webhook).
+    // Avoids a Stripe round-trip through the subscription object.
+    let customerId: string | null = null;
+    const { data: urow } = await supabaseAdmin
+      .from('users').select('stripe_customer_id').eq('id', user.id).single();
+    customerId = (urow?.stripe_customer_id as string) || null;
+
+    // Fallback: resolve the customer through the most recent recurring subscription.
+    if (!customerId) {
+      const { data: subs } = await supabaseAdmin
+        .from('trip_subscriptions')
+        .select('stripe_subscription_id, start_date')
+        .eq('user_id', user.id)
+        .in('type', ['pro_monthly', 'pro_yearly'])
+        .not('stripe_subscription_id', 'is', null)
+        .order('start_date', { ascending: false })
+        .limit(5);
+      const latest = (subs ?? []).find((s) => s.stripe_subscription_id);
+      if (!latest?.stripe_subscription_id) {
+        return Response.json({ error: 'No active subscription found' }, { status: 404, headers: corsHeaders });
+      }
+      const subscription = await stripe.subscriptions.retrieve(latest.stripe_subscription_id);
+      customerId = (subscription.customer as string) || null;
+    }
+
     if (!customerId) {
       return Response.json({ error: 'No Stripe customer linked to this subscription' }, { status: 404, headers: corsHeaders });
     }

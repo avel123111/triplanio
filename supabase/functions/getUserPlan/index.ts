@@ -10,6 +10,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { reconcileEntitlement } from '../_shared/reconcileEntitlement.ts';
 
 // Reads the EXACT amount the caller is billed from their live Stripe subscription
 // (the price line item), not the public catalog price — so a user on a legacy /
@@ -43,13 +44,28 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
     // Read subscription fields from users table
-    const { data: userData } = await supabaseAdmin
+    let { data: userData } = await supabaseAdmin
       .from('users')
       .select('subscription_status, subscription_end_date, email')
       .eq('id', user.id)
       .single();
 
     const now = new Date();
+
+    // recompute-on-read (Ф3): cache says pro but the date looks stale (a lost
+    // webhook?) → one throttled reconcile from Stripe, then re-read. Cheap in the
+    // common case (only fires for an expired/missing end on a 'pro' row).
+    const looksStale =
+      userData?.subscription_status === 'pro' &&
+      (!userData?.subscription_end_date || new Date(userData.subscription_end_date) <= now);
+    if (looksStale && await reconcileEntitlement(supabaseAdmin, user.id)) {
+      ({ data: userData } = await supabaseAdmin
+        .from('users')
+        .select('subscription_status, subscription_end_date, email')
+        .eq('id', user.id)
+        .single());
+    }
+
     const hasProSubscription =
       userData?.subscription_status === 'pro' &&
       userData?.subscription_end_date &&

@@ -164,6 +164,12 @@ Deno.serve(async (req) => {
         plan_type: planType,
         return_path: safeReturn,
       },
+      // Carry identity onto the SUBSCRIPTION too, so invoice.* webhooks (renewal /
+      // dunning) can reconstruct the ledger row even if checkout.session.completed
+      // was lost. (session.metadata alone is not visible on invoice events.)
+      ...(mode === 'subscription'
+        ? { subscription_data: { metadata: { user_id: user.id, plan_type: planType } } }
+        : {}),
     });
 
     return Response.json({ url: session.url }, { headers: corsHeaders });
