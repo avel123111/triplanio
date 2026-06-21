@@ -49,7 +49,16 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     // 'style.load' only fires on the instance's first life; on reuse the style is
     // already loaded, so check synchronously and fall back to the event.
     const markReady = () => setReady(true);
-    if (map.isStyleLoaded()) markReady(); else map.once('style.load', markReady);
+    if (map.isStyleLoaded()) markReady();
+    else {
+      // Reused instance: the style is already loaded, so 'style.load' may never
+      // fire again. If isStyleLoaded() read false transiently right after the
+      // re-parent, waiting only on 'style.load' hangs the map under the loading
+      // overlay until a remount. 'idle' fires once rendering settles → reliable
+      // fallback that also covers the first-ever (truly loading) instance.
+      map.once('style.load', markReady);
+      map.once('idle', markReady);
+    }
 
     // Re-assert this screen's view state on a reused instance (the live effects
     // below only fire on a later change, not on a fresh mount).
@@ -64,6 +73,9 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     // e.g. the stats screen whose .mapwrap sizes via min-height).
     requestAnimationFrame(() => requestAnimationFrame(() => {
       try { map.resize(); } catch { /* ignore */ }
+      // Reused instance has settled into the new slot — leave the loading overlay
+      // even if isStyleLoaded() read false at acquire time (no later 'style.load').
+      if (map.isStyleLoaded && map.isStyleLoaded()) setReady(true);
       // Re-assert this screen's basemap theme/preset after the canvas settles in
       // its new slot. The synchronous applyBasemapConfig above can be dropped while
       // the singleton is mid re-parent (the previous screen's variant — e.g. the
