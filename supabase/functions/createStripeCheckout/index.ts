@@ -5,8 +5,9 @@
  *
  * Security:
  * - pro_trip: validates trip ownership (created_by === caller email)
- * - pro_monthly/pro_yearly: blocks duplicate active subscription
- * - Race-condition guard: rejects if a recent Stripe session is in flight
+ * - pro_monthly/pro_yearly: blocks duplicate active subscription (status-driven)
+ * - Checkout retry (TRIP-82): expire abandoned OPEN sessions instead of a 15-min
+ *   block; a freshly COMPLETE session returns CHECKOUT_PROCESSING (no 2nd sub)
  * - Origin validation: only PUBLIC_APP_URL allowed
  *
  * Stripe mode (test/live) is auto-detected from STRIPE_SECRET_KEY — one mode
@@ -17,20 +18,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
-
-const VALID_PLANS = ['pro_trip', 'pro_monthly', 'pro_yearly'] as const;
-type PlanType = typeof VALID_PLANS[number];
-
-const LIVE_PRODUCTS: Record<PlanType, string> = {
-  pro_trip: 'prod_UYfZZsZnknkxDj',
-  pro_monthly: 'prod_UYfZf8WvFNE3cI',
-  pro_yearly: 'prod_UYfZBYzOWrKiLu',
-};
-const TEST_PRODUCTS: Record<PlanType, string> = {
-  pro_trip: 'prod_UZnCx7GA3YlLJd',
-  pro_monthly: 'prod_UZnBPOlJL0xmue',
-  pro_yearly: 'prod_UZnBUDGL1PuyEN',
-};
+import { VALID_PLANS, type PlanType, isTestStripeKey, productsForEnv } from '../_shared/stripeCatalog.ts';
 
 const SUPPORTED_LOCALES = new Set([
   'auto','bg','cs','da','de','el','en','en-GB','es','es-419','et','fi','fil',
@@ -70,8 +58,17 @@ Deno.serve(async (req) => {
       console.error('STRIPE_SECRET_KEY missing');
       return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
     }
-    const isTestEnv = stripeKey.includes('_test_');
+    const isTestEnv = isTestStripeKey(stripeKey);
     console.log('Stripe checkout mode:', isTestEnv ? 'TEST' : 'LIVE', 'origin:', reqOrigin);
+
+    // ---------- CK-6: reuse the saved Stripe customer ----------
+    // In subscription mode, passing customer_email makes Stripe create a NEW
+    // Customer on every purchase. Once we know this user's customer id (saved by
+    // the webhook), pass `customer: id` so all purchases attach to one Customer.
+    // Falls back to customer_email when no id is stored yet.
+    const { data: urow } = await supabaseAdmin
+      .from('users').select('stripe_customer_id').eq('id', user.id).single();
+    const existingCustomerId = (urow?.stripe_customer_id as string) || null;
 
     // ---------- Per-trip Pro: validate trip ownership ----------
     if (planType === 'pro_trip') {
@@ -98,14 +95,15 @@ Deno.serve(async (req) => {
     if (planType === 'pro_monthly' || planType === 'pro_yearly') {
       const { data: subs } = await supabaseAdmin
         .from('trip_subscriptions')
-        .select('type, status, end_date')
+        .select('type, status')
         .eq('user_id', user.id);
 
-      const now = Date.now();
+      // Status-driven (matches recompute_user_entitlement): active/trialing/past_due
+      // all hold Pro (past_due = dunning grace). Date is NOT the gate here — a
+      // past_due row may carry a stale period end while the user still has Pro.
+      const ENTITLING = new Set(['active', 'trialing', 'past_due']);
       const hasActiveRecurring = (subs ?? []).some((s) =>
-        (s.type === 'pro_monthly' || s.type === 'pro_yearly') &&
-        s.status === 'active' &&
-        s.end_date && new Date(s.end_date).getTime() > now
+        (s.type === 'pro_monthly' || s.type === 'pro_yearly') && ENTITLING.has(s.status)
       );
       if (hasActiveRecurring) {
         return Response.json({
@@ -117,36 +115,51 @@ Deno.serve(async (req) => {
 
     const stripe = new Stripe(stripeKey);
 
-    // ---------- Race-condition guard: recent checkout in flight ----------
+    // ---------- Checkout retry handling (TRIP-82) ----------
+    // No 15-min block. Two cases for a user's recent subscription sessions:
+    //  • complete  → payment already went through but the webhook hasn't
+    //    materialized the row yet (the SUBSCRIPTION_ALREADY_ACTIVE guard above
+    //    passed, so the ledger has no active row). Don't create a 2nd
+    //    subscription — return CHECKOUT_PROCESSING so the client shows
+    //    "processing" + lets entitlement settle. Bounded to a short window so a
+    //    stale (later-canceled) complete session can't block forever.
+    //  • open      → abandoned (back / card fail / closed tab); Stripe keeps it
+    //    ~24h. Expire it so a retry is never falsely blocked, then create fresh.
     if (planType === 'pro_monthly' || planType === 'pro_yearly') {
       try {
-        const fifteenMinAgo = Math.floor(Date.now() / 1000) - 15 * 60;
-        const recent = await stripe.checkout.sessions.list({
-          limit: 10,
-          created: { gte: fifteenMinAgo },
-          customer_details: { email: user.email! },
-        }).catch(() => null);
-        const sessions = recent?.data || [];
-        const inFlight = sessions.find((s) =>
+        const recent = await stripe.checkout.sessions.list(
+          existingCustomerId
+            ? { limit: 10, customer: existingCustomerId }
+            : { limit: 10, customer_details: { email: user.email! } }
+        ).catch(() => null);
+        const sessions = (recent?.data || []).filter((s) =>
           s.mode === 'subscription' &&
-          s.customer_email === user.email &&
-          (s.status === 'complete' || s.status === 'open')
+          (existingCustomerId ? s.customer === existingCustomerId : s.customer_email === user.email)
         );
-        if (inFlight) {
-          console.log('Recent checkout in flight for', user.email, '->', inFlight.id, inFlight.status);
+
+        const tenMinAgo = Math.floor(Date.now() / 1000) - 10 * 60;
+        const completeInFlight = sessions.find((s) =>
+          s.status === 'complete' && (s.created ?? 0) >= tenMinAgo
+        );
+        if (completeInFlight) {
           return Response.json({
             error: 'A recent payment is still being processed. Please wait a moment and refresh.',
-            code: 'RECENT_CHECKOUT_PENDING',
+            code: 'CHECKOUT_PROCESSING',
           }, { status: 409, headers: corsHeaders });
         }
+
+        for (const s of sessions.filter((s) => s.status === 'open')) {
+          await stripe.checkout.sessions.expire(s.id).catch((e) =>
+            console.error('Expire open session failed (non-fatal):', s.id, (e as Error).message)
+          );
+        }
       } catch (e) {
-        console.error('Recent-checkout lookup failed (non-fatal):', (e as Error).message);
+        console.error('Open-checkout cleanup failed (non-fatal):', (e as Error).message);
       }
     }
 
     // Resolve active price via product.default_price
-    const productMap = isTestEnv ? TEST_PRODUCTS : LIVE_PRODUCTS;
-    const productId = productMap[planType as PlanType];
+    const productId = productsForEnv(isTestEnv)[planType as PlanType];
     const product = await stripe.products.retrieve(productId, { expand: ['default_price'] });
     let price = product.default_price;
     if (!price || typeof price === 'string') {
@@ -161,16 +174,25 @@ Deno.serve(async (req) => {
     const safeReturn = (returnPath && returnPath.startsWith('/')) ? returnPath : '/';
     const sep = safeReturn.includes('?') ? '&' : '?';
     const stripeLocale = SUPPORTED_LOCALES.has(locale) ? locale : 'auto';
+    // Carry context back to the global return modal (StripeReturnModals): kind
+    // (trip|sub) picks the success copy/CTA; pt (trip id) lets a per-trip retry
+    // return to /pro?tripId=… instead of the bare subscriptions page.
+    const ctxParam = planType === 'pro_trip' ? `&kind=trip&pt=${tripId}` : '&kind=sub';
 
-    const session = await stripe.checkout.sessions.create({
+    // CK-6: attach to the existing Stripe customer when known, else fall back to
+    // customer_email (the webhook saves the id afterwards). `customer` and
+    // `customer_email` are mutually exclusive — pass exactly one.
+    const buildParams = (useCustomerId: boolean): Stripe.Checkout.SessionCreateParams => ({
       payment_method_types: ['card'],
       line_items: [{ price: (price as Stripe.Price).id, quantity: 1 }],
       mode,
       locale: stripeLocale,
-      success_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=cancel`,
+      success_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=success&session_id={CHECKOUT_SESSION_ID}${ctxParam}`,
+      cancel_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=cancel${ctxParam}`,
       client_reference_id: user.id,
-      customer_email: user.email!,
+      ...(useCustomerId && existingCustomerId
+        ? { customer: existingCustomerId }
+        : { customer_email: user.email! }),
       metadata: {
         user_id: user.id,
         user_email: user.email!,
@@ -178,7 +200,33 @@ Deno.serve(async (req) => {
         plan_type: planType,
         return_path: safeReturn,
       },
+      // Carry identity onto the SUBSCRIPTION too, so invoice.* webhooks (renewal /
+      // dunning) can reconstruct the ledger row even if checkout.session.completed
+      // was lost. (session.metadata alone is not visible on invoice events.)
+      ...(mode === 'subscription'
+        ? { subscription_data: { metadata: { user_id: user.id, plan_type: planType } } }
+        : {}),
     });
+
+    // Fresh per-attempt key: guards a network retry of THIS create call from
+    // spawning two sessions. Not a static user+plan+trip key — that conflicts with
+    // expire+recreate (Stripe caches the response ~24h and would return an
+    // already-expired session). Double-click is covered by the button's loading
+    // state; double-pay by the webhook pro_trip guard + uq indexes + the
+    // SUBSCRIPTION_ALREADY_ACTIVE / CHECKOUT_PROCESSING guards above.
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create(buildParams(true), { idempotencyKey: crypto.randomUUID() });
+    } catch (e) {
+      // Stale/deleted stored customer id → retry once by email (self-heals a bad id).
+      const err = e as { code?: string; message?: string };
+      if (existingCustomerId && (err.code === 'resource_missing' || /no such customer/i.test(err.message || ''))) {
+        console.error('createStripeCheckout: stale stripe_customer_id, retrying by email');
+        session = await stripe.checkout.sessions.create(buildParams(false), { idempotencyKey: crypto.randomUUID() });
+      } else {
+        throw e;
+      }
+    }
 
     return Response.json({ url: session.url }, { headers: corsHeaders });
 

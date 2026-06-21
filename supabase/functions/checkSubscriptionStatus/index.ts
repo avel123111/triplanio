@@ -5,6 +5,7 @@
 // caller's own subscription (used by the trip-creation paywall).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { reconcileEntitlement } from '../_shared/reconcileEntitlement.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,9 +44,19 @@ Deno.serve(async (req) => {
 
     // No trip context → check caller's own subscription.
     if (!tripId) {
-      const { data: me } = await admin
-        .from('users').select('subscription_status, subscription_end_date')
+      let { data: me } = await admin
+        .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
         .eq('id', user.id).single();
+      // recompute-on-read (Ф3): self-heal a wrong cache, throttled. Stuck-PRO (pro
+      // but end stale) OR stuck-FREE (free but has a Stripe customer = lost activation).
+      const meEndPast = !me?.subscription_end_date || new Date(me.subscription_end_date) <= now;
+      const meNeeds = (me?.subscription_status === 'pro' && meEndPast)
+        || (me?.subscription_status !== 'pro' && !!me?.stripe_customer_id);
+      if (meNeeds && await reconcileEntitlement(admin, user.id)) {
+        ({ data: me } = await admin
+          .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
+          .eq('id', user.id).single());
+      }
       const isPro = isActivePro(me, now);
       return Response.json({ isPro, reason: isPro ? 'subscription' : null }, { headers: corsHeaders });
     }
@@ -62,9 +73,22 @@ Deno.serve(async (req) => {
     }
 
     if (trip.created_by) {
-      const { data: owner } = await admin
-        .from('users').select('subscription_status, subscription_end_date')
+      let { data: owner } = await admin
+        .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
         .eq('id', trip.created_by).single();
+      // recompute-on-read (Ф3): self-heal the owner's cache, throttled. Same two
+      // perekos as the no-trip branch / getUserPlan:
+      //  • stuck-PRO  — 'pro' but end date stale/missing (lost renewal)
+      //  • stuck-FREE — not 'pro' but has a Stripe customer id (lost activation),
+      //    so an invited participant opening the trip also heals the owner.
+      const ownerEndPast = !owner?.subscription_end_date || new Date(owner.subscription_end_date) <= now;
+      const ownerNeeds = (owner?.subscription_status === 'pro' && ownerEndPast)
+        || (owner?.subscription_status !== 'pro' && !!owner?.stripe_customer_id);
+      if (ownerNeeds && await reconcileEntitlement(admin, trip.created_by)) {
+        ({ data: owner } = await admin
+          .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
+          .eq('id', trip.created_by).single());
+      }
       if (isActivePro(owner, now)) {
         return Response.json({ isPro: true, isOwner, reason: 'owner_subscription' }, { headers: corsHeaders });
       }

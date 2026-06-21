@@ -49,7 +49,16 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     // 'style.load' only fires on the instance's first life; on reuse the style is
     // already loaded, so check synchronously and fall back to the event.
     const markReady = () => setReady(true);
-    if (map.isStyleLoaded()) markReady(); else map.once('style.load', markReady);
+    if (map.isStyleLoaded()) markReady();
+    else {
+      // Reused instance: the style is already loaded, so 'style.load' may never
+      // fire again. If isStyleLoaded() read false transiently right after the
+      // re-parent, waiting only on 'style.load' hangs the map under the loading
+      // overlay until a remount. 'idle' fires once rendering settles → reliable
+      // fallback that also covers the first-ever (truly loading) instance.
+      map.once('style.load', markReady);
+      map.once('idle', markReady);
+    }
 
     // Re-assert this screen's view state on a reused instance (the live effects
     // below only fire on a later change, not on a fresh mount).
@@ -64,12 +73,38 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     // e.g. the stats screen whose .mapwrap sizes via min-height).
     requestAnimationFrame(() => requestAnimationFrame(() => {
       try { map.resize(); } catch { /* ignore */ }
+      // Reused instance has settled into the new slot — leave the loading overlay
+      // even if isStyleLoaded() read false at acquire time (no later 'style.load').
+      if (map.isStyleLoaded && map.isStyleLoaded()) setReady(true);
+      // Re-assert this screen's basemap theme/preset after the canvas settles in
+      // its new slot. The synchronous applyBasemapConfig above can be dropped while
+      // the singleton is mid re-parent (the previous screen's variant — e.g. the
+      // monochrome Trips/Stats map — then lingers until a later remount/resize).
+      // Re-applying here flips the style immediately on navigation.
+      applyBasemapConfig(map, schemeRef.current, themeRef.current);
+      repaintRouteLines(map);
     }));
+
+    // Belt-and-braces: re-apply theme/preset once the re-parented map is fully
+    // idle. setConfigProperty('basemap','theme',…) called synchronously (or even
+    // on rAF) right after the DOM move can throw "style is not done loading" and
+    // get swallowed by applyBasemapConfig's try/catch — leaving the PREVIOUS
+    // screen's basemap theme (the grey monochrome map from Home/Stats) on a
+    // trip/planner map until a remount. 'idle' fires after the resize + first
+    // render settle, when the config is reliably writable, so the theme actually
+    // flips here. Self-removes after the first successful pass.
+    const applyThemeOnIdle = () => {
+      applyBasemapConfig(map, schemeRef.current, themeRef.current);
+      repaintRouteLines(map);
+      try { map.off('idle', applyThemeOnIdle); } catch { /* ignore */ }
+    };
+    map.on('idle', applyThemeOnIdle);
 
     const onErr = (e) => { if (e?.error?.message) setError(e.error.message); };
     map.on('error', onErr);
 
     return () => {
+      try { map.off('idle', applyThemeOnIdle); } catch { /* ignore */ }
       map.off('error', onErr);
       // Remove only this screen's markers; the route line layers stay on the
       // shared instance (drawRouteLinesCached replaces them only on change).

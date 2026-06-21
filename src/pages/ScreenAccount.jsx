@@ -44,7 +44,7 @@ function fmtDate(iso, locale) {
 
 // ─── Subscription module (4 plan faces) ───────────────────────────────────────
 
-function SubscriptionModule({ planState, plan, planLoading, awaitingWebhook, portalLoading, onUpgrade, onManage, locale, prices, switchingPlan, onSwitchYearly }) {
+function SubscriptionModule({ planState, plan, planLoading, awaitingWebhook, portalLoading, onUpgrade, onManage, locale, prices }) {
   const { t, fmtMoney } = useI18nFormat();
   // Tariff amounts come from Stripe in minor units; format in the active locale,
   // currency from Stripe (fallback usd = the products' real currency).
@@ -114,8 +114,8 @@ function SubscriptionModule({ planState, plan, planLoading, awaitingWebhook, por
             )}
             <div className="acct-plan__acts">
               {yearlyPrice && (
-                <Btn variant="soft" size="sm" icon="arrow" disabled={switchingPlan} onClick={onSwitchYearly}>
-                  {switchingPlan ? t('account.switching') : t('account.switch_yearly', { price: yearlyPrice })}
+                <Btn variant="soft" size="sm" icon="arrow" disabled={portalLoading} onClick={onManage}>
+                  {t('account.switch_yearly', { price: yearlyPrice })}
                 </Btn>
               )}
               <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={onManage}>
@@ -335,7 +335,6 @@ export default function ScreenAccount() {
   const [planLoading, setPlanLoading] = useState(true);
   const [awaitingWebhook, setAwaitingWebhook] = useState(false);
   const [prices, setPrices] = useState(null);
-  const [switchingPlan, setSwitchingPlan] = useState(false);
 
   // ── Profile form ───────────────────────────────────────────────────────────
   const [fullName, setFullName] = useState('');
@@ -428,24 +427,6 @@ export default function ScreenAccount() {
       .catch((e) => console.error('getStripePrices error:', e));
     return () => { cancelled = true; };
   }, []);
-
-  const handleSwitchToYearly = async () => {
-    setSwitchingPlan(true);
-    setErrorMsg(null);
-    try {
-      const { data, error } = await supabase.functions.invoke('changeSubscriptionPlan', {
-        body: { targetPlan: 'pro_yearly' },
-      });
-      if (error) throw error;
-      if (!data?.ok) { setErrorMsg(t('account.err_switch_plan') + (data?.code || t('account.error_title'))); return; }
-      await loadPlan();
-    } catch (e) {
-      console.error('changeSubscriptionPlan error:', e);
-      setErrorMsg(t('account.err_switch_plan_generic') + (e.message || String(e)));
-    } finally {
-      setSwitchingPlan(false);
-    }
-  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -703,10 +684,8 @@ export default function ScreenAccount() {
               portalLoading={portalLoading}
               locale={locale}
               prices={prices}
-              switchingPlan={switchingPlan}
               onUpgrade={openUpgrade}
               onManage={handleManageSubscription}
-              onSwitchYearly={handleSwitchToYearly}
             />
           </section>
 

@@ -262,11 +262,6 @@ function validateService(d = {}, ctx = {}) {
   if (!d.pickup) out.push(mk('error', 'SVC_PICKUP_REQUIRED', 'field', { field: 'pickup', ...ref }));
   if (!d.dropoff) out.push(mk('error', 'SVC_DROPOFF_REQUIRED', 'field', { field: 'dropoff', ...ref }));
   if (d.pickup && d.dropoff && _ms(d.dropoff) <= _ms(d.pickup)) out.push(mk('error', 'SVC_ORDER', 'field', { field: 'dropoff', ...ref }));
-  const trip = ctx.trip || null;
-  if (trip?.start_date && trip?.end_date && d.pickup && d.dropoff) {
-    const ps = String(d.pickup).slice(0, 10), de = String(d.dropoff).slice(0, 10);
-    if (ps < trip.start_date || de > trip.end_date) out.push(mk('warning', 'SVC_OUT_OF_TRIP', 'entity', { field: 'pickup', ...ref }));
-  }
   return out;
 }
 

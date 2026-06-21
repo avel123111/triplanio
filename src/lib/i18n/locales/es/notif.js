@@ -16,6 +16,9 @@ export default {
   // Sent by the Stripe webhook after a successful subscription payment.
   'notif.tpl_pro_activated_title': 'Suscripción Pro activada',
   'notif.tpl_pro_activated_msg': 'Tu pago se realizó correctamente. ¡Gracias!',
+  // Sent by the Stripe webhook when a subscription renewal payment fails (dunning).
+  'notif.tpl_pro_payment_failed_title': 'No se pudo cobrar el pago Pro',
+  'notif.tpl_pro_payment_failed_msg': 'No pudimos cobrar tu suscripción. Actualiza tu método de pago para mantener Pro.',
   // Member events (M1–M4) + booking added (M6). Created server-side, rendered here.
   'notif.tpl_invite_declined_title': '{name} rechazó la invitación',
   'notif.tpl_invite_declined_msg': 'Al viaje «{trip}»',

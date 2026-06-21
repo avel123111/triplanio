@@ -54,7 +54,7 @@ export default {
   'stats.rec_days': 'Дней в пути',
   'stats.rec_days_sub': 'суммарно по городам',
   'stats.rec_fav_city': 'Любимый город',
-  'stats.rec_fav_country': 'Чаще всего',
+  'stats.rec_fav_country': 'Любимая страна',
   'stats.rec_longest': 'Самая большая',
   'stats.rec_cities': 'Городов',
   'stats.rec_soon': 'появится позже',

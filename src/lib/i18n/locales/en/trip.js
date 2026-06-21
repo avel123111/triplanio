@@ -1,8 +1,6 @@
 export default {
   'trip.title_label': 'Title',
   'trip.description': 'Description',
-  'trip.start_date': 'Start date',
-  'trip.end_date': 'End date',
   'trip.cover_image': 'Cover image',
   'trip.cover_upload': 'Upload cover',
   'trip.create': 'Create trip',

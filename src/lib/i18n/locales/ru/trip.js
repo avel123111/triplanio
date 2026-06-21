@@ -1,8 +1,6 @@
 export default {
   'trip.title_label': 'Название',
   'trip.description': 'Описание',
-  'trip.start_date': 'Дата начала',
-  'trip.end_date': 'Дата окончания',
   'trip.cover_image': 'Обложка',
   'trip.cover_upload': 'Загрузить обложку',
   'trip.create': 'Создать путешествие',

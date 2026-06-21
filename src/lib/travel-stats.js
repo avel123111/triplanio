@@ -71,6 +71,25 @@ export function dominantTone(points = []) {
   return best || 'trip';
 }
 
+// ─── visit unit (one "посещение") ────────────────────────────────────────────
+// A "посещение" of a place = one TRIP that went there (all the trip's points in a
+// country/city collapse to one), or one MANUAL visit (each custom row counts on
+// its own). This is the unit the country/city lists, the "favorite" records and
+// the visit-panel header all count by — so a country with 9 trips reads "9", not
+// the number of city-stops, and matches what VisitPanel groups in its body.
+function visitUnitKey(p) {
+  if (!p) return null;
+  if (p.kind === 'trip' && p.trip_id) return `t:${p.trip_id}`;
+  if (p.kind === 'custom') return `c:${p.id}`;
+  return null;
+}
+/** Distinct visit units (trips + manual entries) across a set of points. */
+export function countVisitUnits(points = []) {
+  const s = new Set();
+  for (const p of points) { const u = visitUnitKey(p); if (u) s.add(u); }
+  return s.size;
+}
+
 // ─── counts (dedup identical to trip-cities.js) ──────────────────────────────
 export function countCities(points = []) {
   const s = new Set();
@@ -101,21 +120,30 @@ export function worldExplored(points = []) {
 }
 
 // ─── lists ───────────────────────────────────────────────────────────────────
-/** Countries with visit counts, desc. [{ code, count }] */
+/** Countries with VISIT counts (distinct trips + manual entries), desc. [{ code, count }] */
 export function countriesList(points = []) {
-  const m = new Map();
-  for (const p of points) { const c = ccUp(p?.country_code); if (!c) continue; m.set(c, (m.get(c) || 0) + 1); }
-  return [...m.entries()].map(([code, count]) => ({ code, count })).sort((a, b) => b.count - a.count);
+  const m = new Map(); // code → Set of visit-unit keys
+  for (const p of points) {
+    const c = ccUp(p?.country_code); if (!c) continue;
+    const u = visitUnitKey(p); if (!u) continue;
+    let s = m.get(c); if (!s) { s = new Set(); m.set(c, s); }
+    s.add(u);
+  }
+  return [...m.entries()].map(([code, s]) => ({ code, count: s.size })).sort((a, b) => b.count - a.count);
 }
-/** Cities with visit counts, desc. [{ key, city_name, country_code, count }] */
+/** Cities with VISIT counts (distinct trips + manual entries), desc. [{ key, city_name, country_code, count }] */
 export function citiesList(points = []) {
   const m = new Map();
   for (const p of points) {
     const k = cityKey(p); if (!k) continue;
-    const e = m.get(k) || { key: k, city_name: p.city_name, country_code: p.country_code, count: 0 };
-    e.count += 1; m.set(k, e);
+    const u = visitUnitKey(p); if (!u) continue;
+    let e = m.get(k);
+    if (!e) { e = { key: k, city_name: p.city_name, country_code: p.country_code, units: new Set() }; m.set(k, e); }
+    e.units.add(u);
   }
-  return [...m.values()].sort((a, b) => b.count - a.count);
+  return [...m.values()]
+    .map((e) => ({ key: e.key, city_name: e.city_name, country_code: e.country_code, count: e.units.size }))
+    .sort((a, b) => b.count - a.count);
 }
 /** Distinct countries visited per continent. { AF: 3, EU: 7, ... } */
 export function continentsBreakdown(points = []) {
@@ -165,17 +193,10 @@ export function daysInTrips(points = []) {
   }
   return days;
 }
-/** Most-visited city: { city_name, country_code, count } | null. */
+/** Most-visited city by visit units (trips + manual): { city_name, country_code, count } | null. */
 export function favoriteCity(points = []) {
-  const m = new Map();
-  for (const p of points) {
-    const k = cityKey(p); if (!k) continue;
-    const e = m.get(k) || { city_name: p.city_name, country_code: p.country_code, count: 0 };
-    e.count += 1; m.set(k, e);
-  }
-  let best = null;
-  for (const e of m.values()) if (!best || e.count > best.count) best = e;
-  return best;
+  const top = citiesList(points)[0];
+  return top ? { city_name: top.city_name, country_code: top.country_code, count: top.count } : null;
 }
 /** Most-visited country: { code, count } | null. */
 export function favoriteCountry(points = []) {

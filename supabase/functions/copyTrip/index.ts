@@ -18,6 +18,7 @@
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
+import { PRO_ONLY_ADDONS } from '../_shared/proAddons.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
 
@@ -85,10 +86,9 @@ Deno.serve(async (req) => {
 
     // --- Sanitize details for the copy ---
     // The copy is never Pro (is_pro_trip: false), so it must not inherit
-    // Pro-only addons. Mirrors src/lib/tripAddons.js PRO_ONLY_ADDONS — keep in
-    // sync if that set changes. Free addons (calendar_view, hotels_selection)
+    // Pro-only addons. PRO_ONLY_ADDONS comes from the shared edge module
+    // (_shared/proAddons.ts); free addons (calendar_view, hotels_selection)
     // are preserved.
-    const PRO_ONLY_ADDONS = ['budget', 'chat', 'telegram_assistant'];
     const sourceDetails = (sourceTrip.details && typeof sourceTrip.details === 'object')
       ? sourceTrip.details as Record<string, unknown>
       : {};
@@ -108,8 +108,6 @@ Deno.serve(async (req) => {
       .insert({
         title: `Copy of ${sourceTrip.title}`,
         description: sourceTrip.description,
-        start_date: sourceTrip.start_date,
-        end_date: sourceTrip.end_date,
         cover_image_url: sourceTrip.cover_image_url,
         notes: sourceTrip.notes,
         details: copyDetails,

@@ -2,14 +2,11 @@ import * as React from "react";
 import { Check, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Positioning container (top on mobile, bottom-right on desktop). Toasts stack
-// with a small gap. The card visuals live in `.toast` (Lumo) in app.css.
+// Positioning container. Layout/position live in `.toast-host` (app.css):
+// desktop = bottom-right; mobile = top, clear of the sticky app header + safe-area.
+// Card visuals live in `.toast` (Lumo) in app.css.
 const ToastProvider = React.forwardRef(({ ...props }, ref) => (
-  <div
-    ref={ref}
-    className="fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse gap-2 p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[400px]"
-    {...props}
-  />
+  <div ref={ref} className="toast-host" {...props} />
 ));
 ToastProvider.displayName = "ToastProvider";
 

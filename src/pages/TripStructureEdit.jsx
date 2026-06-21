@@ -128,7 +128,7 @@ function buildDraft(shell, transfers = []) {
   const startAnchor = visits.find((v) => v.kind === 'start');
   const startLeg = startAnchor ? (transfers || []).find((t) => t.from_city_visit_id === startAnchor.id) : null;
   const anchorDate = startLeg?.start_datetime ? (dayOf(startLeg.start_datetime)?.toISODate() || null) : null;
-  const startDate = anchorDate || firstTransit?.start_date || (shell?.trip?.start_date || null);
+  const startDate = anchorDate || firstTransit?.start_date || null;
   return { nodes, startDate };
 }
 

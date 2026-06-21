@@ -64,7 +64,9 @@ export default function Pro() {
       try { isIframe = window.self !== window.top; } catch { isIframe = true; }
       if (isIframe) { setErrorMsg(t('sub.iframe_alert')); setLoading(false); return; }
 
-      const returnPath = '/settings';
+      // pro_trip returns to the trip itself (not the profile) — the result modal is
+      // global and opens on any route; subscriptions return to settings.
+      const returnPath = (planType === 'pro_trip' && tripId) ? `/trip/${tripId}` : '/settings';
       const response = await supabase.functions.invoke('createStripeCheckout', { body: { tripId, planType, returnPath, locale: lang } });
       if (response.error) throw response.error;
       if (response.data?.url) { window.location.href = response.data.url; return; }
@@ -82,7 +84,7 @@ export default function Pro() {
         setLoading(false);
         return;
       }
-      if (code === 'RECENT_CHECKOUT_PENDING') {
+      if (code === 'CHECKOUT_PROCESSING') {
         setErrorMsg(t('sub.recent_pending_msg'));
         setLoading(false);
         return;

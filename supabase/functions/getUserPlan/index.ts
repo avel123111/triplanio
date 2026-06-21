@@ -10,6 +10,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { reconcileEntitlement } from '../_shared/reconcileEntitlement.ts';
 
 // Reads the EXACT amount the caller is billed from their live Stripe subscription
 // (the price line item), not the public catalog price — so a user on a legacy /
@@ -43,13 +44,33 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
     // Read subscription fields from users table
-    const { data: userData } = await supabaseAdmin
+    let { data: userData } = await supabaseAdmin
       .from('users')
-      .select('subscription_status, subscription_end_date, email')
+      .select('subscription_status, subscription_end_date, email, stripe_customer_id')
       .eq('id', user.id)
       .single();
 
     const now = new Date();
+
+    // recompute-on-read (Ф3): self-heal a wrong cache via a throttled reconcile.
+    //  • stuck-PRO  — cache says pro but the end date is past/missing (lost renewal).
+    //  • stuck-FREE — cache says free but the user has a Stripe customer id (a lost
+    //    ACTIVATION webhook); reconcile discovers the live sub and restores Pro.
+    // Cheap in the common case: never fires for a never-paid free user (no customer
+    // id) or a healthy pro row (future end). Throttled to ≤1 Stripe call / 10 min.
+    const endPast =
+      !userData?.subscription_end_date || new Date(userData.subscription_end_date) <= now;
+    const needsReconcile =
+      (userData?.subscription_status === 'pro' && endPast) ||
+      (userData?.subscription_status !== 'pro' && !!userData?.stripe_customer_id);
+    if (needsReconcile && await reconcileEntitlement(supabaseAdmin, user.id)) {
+      ({ data: userData } = await supabaseAdmin
+        .from('users')
+        .select('subscription_status, subscription_end_date, email, stripe_customer_id')
+        .eq('id', user.id)
+        .single());
+    }
+
     const hasProSubscription =
       userData?.subscription_status === 'pro' &&
       userData?.subscription_end_date &&
@@ -75,7 +96,9 @@ Deno.serve(async (req) => {
         plan: 'pro',
         subscriptionEnd: userData.subscription_end_date,
         subscriptionType: latest?.type || null,
-        cancelled: latest?.status === 'cancelled',
+        // Scheduled cancellation (UI "won't renew" state). Status stays 'active'
+        // verbatim; the flag lives in cancel_at_period_end (set by the webhook).
+        cancelled: latest?.cancel_at_period_end === true,
         stripeSubscriptionId: latest?.stripe_subscription_id || null,
         // Exact billed amount from Stripe (minor units), e.g. { amount: 500, currency: 'EUR', interval: 'month' }.
         actualPrice,

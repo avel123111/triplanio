@@ -429,7 +429,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
   // exposes planning gaps.
   const showBookingWarnings = !isViewer && trip?.details?.display?.booking_warnings !== false;
 
-  if (!trip.start_date && !trip.end_date && !visits.length) {
+  if (!visits.length) {
     return (
       <EmptyState
         icon="list"
@@ -441,14 +441,13 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
 
   // Determine timeline bounds. Start/end anchors are pure markers and have
   // no datetimes - derive the trip range from the first/last TRANSIT visit
-  // (the cities the user actually stays in). Falls back to trip.start_date /
-  // trip.end_date when there are no transits with dates.
+  // (the cities the user actually stays in).
   const datedTransits = sortVisits(visits)
     .filter(v => v.kind !== 'start' && v.kind !== 'end' && v.start_date && v.end_date);
   const transitStart = datedTransits.length ? naiveDayKey(datedTransits[0].start_date) : null;
   const transitEnd = datedTransits.length ? naiveDayKey(datedTransits[datedTransits.length - 1].end_date) : null;
-  const tripStart = transitStart || trip.start_date || null;
-  const tripEnd = transitEnd || trip.end_date || null;
+  const tripStart = transitStart || null;
+  const tripEnd = transitEnd || null;
 
   if (!tripStart || !tripEnd) {
     return (
@@ -970,8 +969,8 @@ export default function TripView() {
   const tripNights = (() => {
     const starts = visits.map((v) => v.start_date).filter(Boolean).sort();
     const ends = visits.map((v) => v.end_date).filter(Boolean).sort();
-    const s = starts[0] || trip?.start_date;
-    const e = ends[ends.length - 1] || trip?.end_date;
+    const s = starts[0] || null;
+    const e = ends[ends.length - 1] || null;
     if (!s || !e) return null;
     const n = Math.round(DateTime.fromISO(e).diff(DateTime.fromISO(s), 'days').days);
     return n >= 0 ? n : null;

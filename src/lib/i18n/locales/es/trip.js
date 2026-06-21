@@ -1,8 +1,6 @@
 export default {
   'trip.title_label': 'Título',
   'trip.description': 'Descripción',
-  'trip.start_date': 'Fecha de inicio',
-  'trip.end_date': 'Fecha de fin',
   'trip.cover_image': 'Imagen de portada',
   'trip.cover_upload': 'Subir portada',
   'trip.create': 'Crear viaje',

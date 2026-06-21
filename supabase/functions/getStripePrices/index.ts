@@ -14,17 +14,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
-
-const LIVE_PRODUCT_IDS = {
-  pro_trip: 'prod_UYfZZsZnknkxDj',
-  pro_monthly: 'prod_UYfZf8WvFNE3cI',
-  pro_yearly: 'prod_UYfZBYzOWrKiLu',
-};
-const TEST_PRODUCT_IDS = {
-  pro_trip: 'prod_UZnCx7GA3YlLJd',
-  pro_monthly: 'prod_UZnBPOlJL0xmue',
-  pro_yearly: 'prod_UZnBUDGL1PuyEN',
-};
+import { isTestStripeKey, productsForEnv } from '../_shared/stripeCatalog.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -38,10 +28,10 @@ Deno.serve(async (req) => {
       console.error('STRIPE_SECRET_KEY missing');
       return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
     }
-    const isTestEnv = stripeKey.includes('_test_');
+    const isTestEnv = isTestStripeKey(stripeKey);
 
     const stripe = new Stripe(stripeKey);
-    const productIds = isTestEnv ? TEST_PRODUCT_IDS : LIVE_PRODUCT_IDS;
+    const productIds = productsForEnv(isTestEnv);
 
     const entries = await Promise.all(
       Object.entries(productIds).map(async ([planType, productId]) => {
