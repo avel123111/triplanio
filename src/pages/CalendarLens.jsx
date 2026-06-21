@@ -343,10 +343,9 @@ export default function CalendarLens({ stream, visits, trip, isLoading, onOpenEv
   const [monthOffset, setMonthOffset] = useState(0);
   const [weekOffset,  setWeekOffset]  = useState(0);
 
-  // Base date: trip start or first dated visit
+  // Base date: first dated visit
   const firstDatedVisit = visits.find(v => v.start_date);
-  const baseDateStr = trip?.start_date
-    || (firstDatedVisit ? naiveDayKey(firstDatedVisit.start_date) : null);
+  const baseDateStr = firstDatedVisit ? naiveDayKey(firstDatedVisit.start_date) : null;
   const baseDate     = baseDateStr ? parseNaive(baseDateStr + 'T00:00:00') : null;
   const currentMonth = baseDate ? baseDate.plus({ months: monthOffset }) : null;
   const today        = DateTime.now();

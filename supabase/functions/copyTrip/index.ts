@@ -108,8 +108,6 @@ Deno.serve(async (req) => {
       .insert({
         title: `Copy of ${sourceTrip.title}`,
         description: sourceTrip.description,
-        start_date: sourceTrip.start_date,
-        end_date: sourceTrip.end_date,
         cover_image_url: sourceTrip.cover_image_url,
         notes: sourceTrip.notes,
         details: copyDetails,

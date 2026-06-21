@@ -42,8 +42,8 @@ export function tripDateSpan(trip, visits = []) {
   if (min != null && max != null) {
     return [new Date(min).toISOString(), new Date(max).toISOString()];
   }
-  const start = trip?.start_date || trip?.details?.start_date || null;
-  const end = trip?.end_date || trip?.details?.end_date || null;
+  const start = trip?.details?.start_date || null;
+  const end = trip?.details?.end_date || null;
   return [start, end];
 }
 
