@@ -20,13 +20,13 @@ const C = {
   SN:'AF',SC:'AF',SL:'AF',SO:'AF',ZA:'AF',SS:'AF',SD:'AF',TZ:'AF',TG:'AF',TN:'AF',UG:'AF',
   EH:'AF',ZM:'AF',ZW:'AF',
   // Asia
-  AF:'AS',AM:'AS',AZ:'AS',BH:'AS',BD:'AS',BT:'AS',BN:'AS',KH:'AS',CN:'AS',CY:'AS',GE:'AS',
+  AF:'AS',AM:'AS',AZ:'AS',BH:'AS',BD:'AS',BT:'AS',BN:'AS',KH:'AS',CN:'AS',GE:'AS',
   HK:'AS',IN:'AS',ID:'AS',IR:'AS',IQ:'AS',IL:'AS',JP:'AS',JO:'AS',KZ:'AS',KW:'AS',KG:'AS',
   LA:'AS',LB:'AS',MO:'AS',MY:'AS',MV:'AS',MN:'AS',MM:'AS',NP:'AS',KP:'AS',OM:'AS',PK:'AS',
   PS:'AS',PH:'AS',QA:'AS',SA:'AS',SG:'AS',KR:'AS',LK:'AS',SY:'AS',TW:'AS',TJ:'AS',TH:'AS',
   TL:'AS',TR:'AS',TM:'AS',AE:'AS',UZ:'AS',VN:'AS',YE:'AS',
   // Europe
-  AL:'EU',AD:'EU',AT:'EU',BY:'EU',BE:'EU',BA:'EU',BG:'EU',HR:'EU',CZ:'EU',DK:'EU',EE:'EU',
+  AL:'EU',AD:'EU',AT:'EU',BY:'EU',BE:'EU',BA:'EU',BG:'EU',HR:'EU',CY:'EU',CZ:'EU',DK:'EU',EE:'EU',
   FO:'EU',FI:'EU',FR:'EU',DE:'EU',GI:'EU',GR:'EU',GG:'EU',HU:'EU',IS:'EU',IE:'EU',IM:'EU',
   IT:'EU',JE:'EU',XK:'EU',LV:'EU',LI:'EU',LT:'EU',LU:'EU',MT:'EU',MD:'EU',MC:'EU',ME:'EU',
   NL:'EU',MK:'EU',NO:'EU',PL:'EU',PT:'EU',RO:'EU',RU:'EU',SM:'EU',RS:'EU',SK:'EU',SI:'EU',
