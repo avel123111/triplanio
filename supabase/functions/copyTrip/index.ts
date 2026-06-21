@@ -36,33 +36,12 @@ Deno.serve(async (req) => {
     const hasAccess = await isCallerParticipant(tripId, user.id);
     if (!hasAccess) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
 
-    // --- Check subscription / trip limit for free users ---
-    // Pro verdict from the single SQL source (is_user_pro, migration 0055). This is
-    // a write-enforcement gate, so it fails CLOSED: on RPC error isPro=false → the
-    // free 1-active-trip limit check below runs (which also fails closed).
-    const { data: isProRpc } = await supabaseAdmin.rpc('is_user_pro', { p_uid: user.id });
-    const isPro = isProRpc === true;
-
-    if (!isPro) {
-      // Same single-source rule as create_trip: at most 1 ACTIVE owned trip.
-      const { data: activeCount, error: limitErr } = await supabaseAdmin
-        .rpc('count_active_owned_trips', { p_uid: user.id });
-
-      if (limitErr) {
-        // Copy is a write action and this IS its enforcement, so fail closed.
-        console.error('copyTrip limit check error:', limitErr);
-        return Response.json(
-          { error: 'Could not verify trip limit. Please try again.' },
-          { status: 500, headers: corsHeaders },
-        );
-      }
-      if ((activeCount ?? 0) >= 1) {
-        return Response.json(
-          { error: 'Trip limit reached. Upgrade to Pro to create more trips.' },
-          { status: 403, headers: corsHeaders },
-        );
-      }
-    }
+    // --- Free-tier trip limit ---
+    // Enforced server-side by the trips_enforce_limit BEFORE INSERT trigger
+    // (migration 0058) — the SINGLE source for every creation path. The new-trip
+    // insert below is the first write, so an over-limit free user is rejected
+    // there (TRIP_LIMIT_REACHED) before any child rows are copied. We map that
+    // error to a clean 403 at the insert site.
 
     // --- Load source trip ---
     const { data: sourceTrip } = await supabaseAdmin
@@ -106,7 +85,17 @@ Deno.serve(async (req) => {
       .select()
       .single();
 
-    if (tripErr || !newTrip) throw tripErr ?? new Error('Failed to create trip');
+    if (tripErr || !newTrip) {
+      // The trips_enforce_limit trigger raises TRIP_LIMIT_REACHED (P0001) for an
+      // over-limit free user — surface it as a clean 403, matching create_trip.
+      if ((tripErr?.message ?? '').includes('TRIP_LIMIT_REACHED')) {
+        return Response.json(
+          { error: 'Trip limit reached. Upgrade to Pro to create more trips.' },
+          { status: 403, headers: corsHeaders },
+        );
+      }
+      throw tripErr ?? new Error('Failed to create trip');
+    }
 
     const newTripId = newTrip.id;
 
