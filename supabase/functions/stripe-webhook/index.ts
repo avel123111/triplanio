@@ -29,7 +29,7 @@
 
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
-import { captureEdgeError } from '../_shared/sentry.ts';
+import { captureEdgeError, reportPaymentAnomaly } from '../_shared/sentry.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { planTypeForProduct, isTestStripeKey } from '../_shared/stripeCatalog.ts';
 
@@ -110,10 +110,9 @@ async function resolveRecurringUser(
     planType = planType ?? ((sub.metadata?.plan_type as string) || null);
   }
   if (!userId || (planType !== 'pro_monthly' && planType !== 'pro_yearly')) {
-    await captureEdgeError(
-      new Error(`${ctx}: subscription ${subId} has no resolvable user_id/plan_type`),
-      'stripe-webhook',
-    );
+    // Money-critical anomaly: a paid subscription event we can't attribute to a
+    // user/plan. Non-fatal (caller breaks) → error-level for alert routing.
+    await reportPaymentAnomaly('sub_unresolved_user', { ctx, sub_id: subId }, 'error');
     return null;
   }
   return { userId, planType };
@@ -171,10 +170,9 @@ Deno.serve(async (req) => {
           const { data: tripRow } = await supabaseAdmin
             .from('trips').select('is_pro_trip').eq('id', trip_id).single();
           if (tripRow?.is_pro_trip) {
-            await captureEdgeError(
-              new Error(`pro_trip_double_paid: trip ${trip_id} already Pro; duplicate session ${session.id} user ${user_id}`),
-              'stripe-webhook',
-            );
+            // Money-critical: a genuine second payment for an already-Pro trip
+            // (no auto-refund — manual in Dashboard). Non-fatal → error-level.
+            await reportPaymentAnomaly('pro_trip_double_paid', { trip_id, session_id: session.id, user_id }, 'error');
             break;
           }
 
@@ -481,12 +479,9 @@ Deno.serve(async (req) => {
         }
 
         if (!row) {
-          // Refund/dispute we can't attribute to any ledger row — anomaly worth a look
-          // (T5 #6). Non-fatal: nothing to revoke here.
-          await captureEdgeError(
-            new Error(`${event.type}: no ledger row (pi=${paymentIntentId})`),
-            'stripe-webhook',
-          );
+          // Refund/dispute we can't attribute to any ledger row — money-critical
+          // anomaly worth a look (T5 #6). Non-fatal: nothing to revoke here.
+          await reportPaymentAnomaly('refund_no_ledger', { event_type: event.type, payment_intent: paymentIntentId }, 'error');
           break;
         }
 
@@ -502,6 +497,14 @@ Deno.serve(async (req) => {
           await recompute(row.user_id);
           console.log('Subscription revoked after', event.type, 'for user', row.user_id);
         }
+        break;
+      }
+
+      default: {
+        // Event type outside our subscribed set (endpoint subscribes to 8). Not an
+        // error — info-level only, no alert. Surfaces drift in the Stripe endpoint
+        // config (a type we now receive but don't handle). Still recorded below.
+        await reportPaymentAnomaly('unsupported_event', { event_type: event.type, event_id: event.id }, 'info');
         break;
       }
     }

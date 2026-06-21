@@ -22,6 +22,7 @@ import Stripe from 'npm:stripe@17.0.0';
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { getPeriodEndUnix, unixToIso } from './getPeriodEnd.ts';
 import { planTypeForProduct, isTestStripeKey } from './stripeCatalog.ts';
+import { reportPaymentAnomaly } from './sentry.ts';
 
 const THROTTLE_MIN = 10;
 
@@ -82,6 +83,9 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
         status: 'all',
         limit: 10,
       });
+      // No recurring rows existed (this branch), so any pro sub found here is a
+      // genuine recovery of a lost activation webhook — collect for one signal.
+      const recovered: string[] = [];
       for (const sub of subs.data) {
         const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
         const productId = typeof price?.product === 'string'
@@ -103,6 +107,12 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
             start_date: startIso,
             ...(iso ? { current_period_end: iso, end_date: iso } : {}),
           }, { onConflict: 'stripe_subscription_id' });
+        recovered.push(sub.id);
+      }
+      // Self-heal succeeded: a webhook was lost and recompute-on-read materialized
+      // the missing ledger row(s). Healthy recovery → warning-level (no alert).
+      if (recovered.length > 0) {
+        await reportPaymentAnomaly('reconcile_recovered_sub', { user_id: userId, sub_ids: recovered }, 'warning');
       }
     } catch (e) {
       console.error('reconcileEntitlement: list-by-customer failed', (e as Error).message);
