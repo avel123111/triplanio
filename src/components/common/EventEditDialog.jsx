@@ -1959,7 +1959,7 @@ const fmtDur = (m, t) => {
 function SegTransportGrid({ value, onChange, color }) {
   const { t } = useI18nFormat();
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5" style={{ marginBottom: 14 }}>
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
       {TRANSPORT_KINDS.map((k) => {
         const active = value === k.id; const Ic = k.Icon;
         return (
