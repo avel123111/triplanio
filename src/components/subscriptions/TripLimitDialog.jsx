@@ -5,6 +5,7 @@ import { Icon } from '@/design/icons';
 import { Btn } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { isActiveTripCapReached } from '@/lib/limits';
 
 /**
  * Trip-limit modal (Variant D) - shown for the IN-APP "new trip" action when a
@@ -57,7 +58,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
   // Allowed → proceed automatically (in effect, never in render).
   useEffect(() => {
     if (!open || state.status !== 'ready') return;
-    const shouldBlock = !state.isPro && state.activeCount >= 1;
+    const shouldBlock = isActiveTripCapReached(state.isPro, state.activeCount);
     if (!shouldBlock && !proceededRef.current) {
       proceededRef.current = true;
       onProceed?.();
@@ -77,7 +78,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
     );
   }
 
-  const shouldBlock = !state.isPro && state.activeCount >= 1;
+  const shouldBlock = isActiveTripCapReached(state.isPro, state.activeCount);
   if (!shouldBlock) return null;
 
   const freeRows = [

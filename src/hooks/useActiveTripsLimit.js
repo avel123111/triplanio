@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { isActiveTripCapReached } from '@/lib/limits';
 
 /**
  * Single client-side source for the free-tier "active owned trip" gate.
@@ -34,7 +35,7 @@ export function useActiveTripsLimit(userId) {
   return {
     activeCount,
     isPro,
-    isBlocked: !isPro && activeCount >= 1,
+    isBlocked: isActiveTripCapReached(isPro, activeCount),
     isLoading: q.isLoading,
     refetch: q.refetch,
   };
