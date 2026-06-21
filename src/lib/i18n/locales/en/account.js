@@ -3,7 +3,6 @@ export default {
   'account.now_free': 'Currently Free',
   'account.free_plan': 'Free plan',
   'account.free_desc': '1 active trip · no AI assistant, booking recognition or calendar section',
-  'account.activating_pro': 'Activating Pro…',
   'account.go_to_pro': 'Go to Pro',
   'account.pro_monthly_sub': 'Pro · monthly',
   'account.per_month_short': '/mo',

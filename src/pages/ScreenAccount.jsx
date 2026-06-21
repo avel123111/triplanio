@@ -88,8 +88,8 @@ function SubscriptionModule({ planState, plan, planLoading, awaitingWebhook, por
           <div className="acct-plan__side">
             <div className="acct-plan__line">{t('account.free_desc')}</div>
             <div className="acct-plan__acts">
-              <Btn variant="pro" icon={awaitingWebhook ? undefined : 'pro'} disabled={awaitingWebhook} onClick={onUpgrade}>
-                {awaitingWebhook ? t('account.activating_pro') : t('account.go_to_pro')}
+              <Btn variant="pro" icon="pro" disabled={awaitingWebhook} onClick={onUpgrade}>
+                {t('account.go_to_pro')}
               </Btn>
             </div>
           </div>
@@ -333,7 +333,6 @@ export default function ScreenAccount() {
   // ── Plan ───────────────────────────────────────────────────────────────────
   const [plan, setPlan] = useState(null);
   const [planLoading, setPlanLoading] = useState(true);
-  const [awaitingWebhook, setAwaitingWebhook] = useState(false);
   const [prices, setPrices] = useState(null);
 
   // ── Profile form ───────────────────────────────────────────────────────────
@@ -377,27 +376,11 @@ export default function ScreenAccount() {
     loadPlan();
   }, [user]); // eslint-disable-line
 
-  // ── Stripe success: poll getUserPlan until webhook flips plan to Pro ────────
-  useEffect(() => {
-    if (searchParams?.get('stripe_status') !== 'success') return;
-    let cancelled = false;
-    setAwaitingWebhook(true);
-    const start = Date.now();
-    const tick = async () => {
-      if (cancelled) return;
-      try {
-        const { data } = await supabase.functions.invoke('getUserPlan');
-        if (cancelled) return;
-        setPlan(data ?? null);
-        setPlanLoading(false);
-        if (data?.plan === 'pro') { setAwaitingWebhook(false); return; }
-      } catch (e) { console.error('getUserPlan poll error:', e); }
-      if (Date.now() - start >= 20000) { setAwaitingWebhook(false); return; }
-      setTimeout(tick, 1500);
-    };
-    tick();
-    return () => { cancelled = true; };
-  }, [searchParams]); // eslint-disable-line
+  // Stripe-return polling + user refresh is owned globally by StripeReturnModals
+  // (single handler). It keeps `stripe_status` in the URL until the webhook
+  // flips Pro, then refreshes AuthContext.user — which re-seeds `plan` here via
+  // the [user] effect above. We only read that URL flag (below) to disable the
+  // upgrade button meanwhile, so a double-tap can't trigger a second checkout.
 
   // ── Scroll-spy: highlight the nav item for the section in view ──────────────
   useEffect(() => {
@@ -557,6 +540,10 @@ export default function ScreenAccount() {
   }
 
   const isPro = isProActive(user);
+  // Checkout just returned and the webhook hasn't flipped Pro yet: StripeReturnModals
+  // holds `stripe_status` in the URL while it polls. Disable the upgrade button in
+  // this window so a second tap can't start another checkout (no own poller).
+  const awaitingWebhook = searchParams?.get('stripe_status') === 'success' && !isPro;
   const isDark = theme === 'dark';
 
   const planBadge =

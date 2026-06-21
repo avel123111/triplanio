@@ -71,10 +71,12 @@ Deno.serve(async (req) => {
         .single());
     }
 
-    const hasProSubscription =
-      userData?.subscription_status === 'pro' &&
-      userData?.subscription_end_date &&
-      new Date(userData.subscription_end_date) > now;
+    // Pro verdict from the single SQL source (is_user_pro, migration 0055). The raw
+    // columns above are still read for the reconcile trigger + the response
+    // (subscriptionEnd / email); this is one extra indexed read, negligible next to
+    // the Stripe call in readActualPrice.
+    const { data: isProRpc } = await supabaseAdmin.rpc('is_user_pro', { p_uid: user.id });
+    const hasProSubscription = isProRpc === true;
 
     if (hasProSubscription) {
       // Find active TripSubscription record — surfaces plan type & cancellation state

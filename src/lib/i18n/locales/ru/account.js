@@ -3,7 +3,6 @@ export default {
   'account.now_free': 'Сейчас Free',
   'account.free_plan': 'Free тариф',
   'account.free_desc': '1 активное путешествие · без ИИ-помощника, ИИ-распознавания и календарного раздела',
-  'account.activating_pro': 'Активируем Pro…',
   'account.go_to_pro': 'Перейти к Pro',
   'account.pro_monthly_sub': 'Pro · ежемесячная',
   'account.per_month_short': '/мес',

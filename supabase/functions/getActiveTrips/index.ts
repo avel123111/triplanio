@@ -34,14 +34,12 @@ Deno.serve(async (req) => {
     const user = await getUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
-    const now = new Date();
-    const { data: me } = await admin
-      .from('users').select('subscription_status, subscription_end_date')
-      .eq('id', user.id).single();
-    const isPro = !!me
-      && me.subscription_status === 'pro'
-      && !!me.subscription_end_date
-      && new Date(me.subscription_end_date) > now;
+    // Pro verdict from the single SQL source (is_user_pro, migration 0055) instead
+    // of an inline copy of the predicate. Fail-open: on RPC error isPro=false and
+    // activeCount stays 0, so the upsell never falsely blocks (create_trip is the
+    // real enforcement).
+    const { data: isProRpc } = await admin.rpc('is_user_pro', { p_uid: user.id });
+    const isPro = isProRpc === true;
 
     // Single source of truth (migration 0045): active = owned trip with no dated
     // visits yet OR max(city_visits.end_date) >= today.

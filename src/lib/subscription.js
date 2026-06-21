@@ -3,7 +3,6 @@
 // source of truth for enforcement; this mirrors it for showing the right UI.
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 
 // A user is "active Pro" when their status is 'pro' and the subscription has not
 // expired. Mirrors the server (getUserPlan): a 'pro' row with NO end date is
@@ -30,6 +29,11 @@ export function useTripProStatus(tripId, isProTrip = false) {
   const q = useQuery({
     queryKey: ['trip-owner-pro', tripId],
     queryFn: async () => {
+      // Lazy import keeps this module free of the '@/api/supabaseClient' alias at
+      // load time, so the pure isProActive predicate stays importable under
+      // `node --test` (the drift-guard test). Behaviour is unchanged — the client
+      // is a singleton resolved on first use.
+      const { supabase } = await import('@/api/supabaseClient');
       const res = await supabase.functions.invoke('checkSubscriptionStatus', { body: { tripId } });
       return !!res.data?.isPro;
     },

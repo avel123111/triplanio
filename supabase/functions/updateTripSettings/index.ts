@@ -47,14 +47,10 @@ Deno.serve(async (req) => {
     }
     if (!allowed) return Response.json({ ok: false, code: 'FORBIDDEN' }, { headers: corsHeaders });
 
-    // Trip-level Pro = is_pro_trip OR the owner has an active subscription.
-    let tripIsPro = !!trip.is_pro_trip;
-    if (!tripIsPro && trip.created_by) {
-      const { data: owner } = await supabaseAdmin
-        .from('users').select('subscription_status, subscription_end_date').eq('id', trip.created_by).single();
-      tripIsPro = !!owner && owner.subscription_status === 'pro'
-        && !!owner.subscription_end_date && new Date(owner.subscription_end_date) > new Date();
-    }
+    // Trip-level Pro from the single SQL source (is_trip_pro = is_pro_trip OR owner
+    // is_user_pro, migration 0055). Used only to gate enabling PRO addons below.
+    const { data: tripProRpc } = await supabaseAdmin.rpc('is_trip_pro', { p_trip_id: tripId });
+    const tripIsPro = tripProRpc === true;
 
     const update: Record<string, unknown> = {};
     if (fields && typeof fields === 'object') {

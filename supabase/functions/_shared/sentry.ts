@@ -67,4 +67,31 @@ export async function captureEdgeError(
   }
 }
 
+/**
+ * Report a payment / entitlement ANOMALY as a message-level event (not a thrown
+ * exception). Tagged for precise alert routing: alert rules fire on
+ * `kind:payment_anomaly AND level:error` only — `warning`/`info` stay silent
+ * (healthy self-heals, expected denials). Never throws; no-op without a DSN.
+ *
+ * Use ONLY for non-fatal money anomalies that `break` rather than retry. Genuine
+ * write/RPC failures still go through captureEdgeError + throw so Stripe retries.
+ */
+export async function reportPaymentAnomaly(
+  tag: string,
+  ctx?: Record<string, unknown>,
+  level: 'info' | 'warning' | 'error' = 'error',
+): Promise<void> {
+  if (!dsn) return;
+  try {
+    Sentry.captureMessage(`payment_anomaly:${tag}`, {
+      level,
+      tags: { fn: 'payments', kind: 'payment_anomaly', anomaly: tag },
+      ...(ctx ? { extra: ctx } : {}),
+    });
+    await Sentry.flush(2000);
+  } catch (_e) {
+    // swallow — monitoring must never surface to the caller
+  }
+}
+
 export { Sentry };

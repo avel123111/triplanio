@@ -29,7 +29,7 @@
 
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
-import { captureEdgeError } from '../_shared/sentry.ts';
+import { captureEdgeError, reportPaymentAnomaly } from '../_shared/sentry.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { planTypeForProduct, isTestStripeKey } from '../_shared/stripeCatalog.ts';
 
@@ -110,10 +110,9 @@ async function resolveRecurringUser(
     planType = planType ?? ((sub.metadata?.plan_type as string) || null);
   }
   if (!userId || (planType !== 'pro_monthly' && planType !== 'pro_yearly')) {
-    await captureEdgeError(
-      new Error(`${ctx}: subscription ${subId} has no resolvable user_id/plan_type`),
-      'stripe-webhook',
-    );
+    // Money-critical anomaly: a paid subscription event we can't attribute to a
+    // user/plan. Non-fatal (caller breaks) → error-level for alert routing.
+    await reportPaymentAnomaly('sub_unresolved_user', { ctx, sub_id: subId }, 'error');
     return null;
   }
   return { userId, planType };
@@ -163,18 +162,24 @@ Deno.serve(async (req) => {
         console.log('Checkout completed for:', user_id, plan_type, 'trip:', trip_id);
 
         if (plan_type === 'pro_trip' && trip_id) {
-          // Anti-double-pay (TRIP-82): a DIFFERENT checkout session already turned
-          // this trip Pro (e.g. two tabs both paid). Same-session redelivery can't
-          // reach here (duplicate event_id is skipped above), so is_pro_trip=true
-          // means a genuine second payment. Don't insert a 2nd ledger row / double-
-          // count — flag it for a human (manual refund in Dashboard; no auto-refund).
+          // Idempotency by checkout id (PRIMARY, T7): this exact checkout already
+          // wrote a ledger row → a retry/redelivery that slipped past the event-id
+          // dedup (a failed stripe_events write, or Stripe reusing the checkout under
+          // a new event id). Silently no-op — recorded below; NO alert, no double
+          // count. Keying on stripe_checkout_id (not the derived is_pro_trip flag)
+          // is what makes a crash-retry distinguishable from a real second payment.
+          const { data: sameCheckout } = await supabaseAdmin
+            .from('trip_subscriptions').select('id').eq('stripe_checkout_id', session.id).limit(1);
+          if (sameCheckout && sameCheckout.length > 0) break;
+
+          // Genuine second payment (TRIP-82): the checkout id is NEW (passed above) yet
+          // the trip is already Pro → a DIFFERENT checkout paid again (e.g. two tabs).
+          // Don't insert a 2nd ledger row / double-count — flag for a human (manual
+          // refund in Dashboard; no auto-refund). Money-critical → error-level.
           const { data: tripRow } = await supabaseAdmin
             .from('trips').select('is_pro_trip').eq('id', trip_id).single();
           if (tripRow?.is_pro_trip) {
-            await captureEdgeError(
-              new Error(`pro_trip_double_paid: trip ${trip_id} already Pro; duplicate session ${session.id} user ${user_id}`),
-              'stripe-webhook',
-            );
+            await reportPaymentAnomaly('pro_trip_double_paid', { trip_id, session_id: session.id, user_id }, 'error');
             break;
           }
 
@@ -401,37 +406,112 @@ Deno.serve(async (req) => {
         break;
       }
 
-      // Refund / chargeback → revoke. pro_trip flips is_pro_trip off; recurring → recompute.
-      // NOTE (CK-1, TRIP-162 тема B): recurring rows have a null payment_intent, so this
-      // PI match only catches pro_trip today; subscription refund/dispute revoke is tracked
-      // separately and not yet implemented here.
+      // Refund / chargeback → revoke (T3, CK-1 fix). Two attribution paths:
+      //   1) payment_intent match — catches pro_trip (one-time; PI stored on the row).
+      //   2) subscription match — recurring rows have a NULL payment_intent, so we
+      //      resolve charge → invoice → subscription and match by stripe_subscription_id.
+      // A DISPUTE always revokes (status=disputed). A REFUND revokes only when FULL
+      // (partial refund leaves Pro). recompute() then derives users.subscription_*
+      // (refunded/disputed are not Pro); pro_trip clears is_pro_trip directly.
       case 'charge.refunded':
       case 'charge.dispute.created': {
-        const obj = event.data.object as { payment_intent?: string | null };
-        const paymentIntentId = typeof obj.payment_intent === 'string' ? obj.payment_intent : null;
-        if (!paymentIntentId) break;
-        const newStatus = event.type === 'charge.dispute.created' ? 'disputed' : 'refunded';
+        const isDispute = event.type === 'charge.dispute.created';
+        const newStatus = isDispute ? 'disputed' : 'refunded';
 
-        const { data: rows } = await supabaseAdmin
-          .from('trip_subscriptions')
-          .select('id, user_id, trip_id, type')
-          .eq('stripe_payment_intent_id', paymentIntentId)
-          .limit(1);
-        if (rows && rows.length > 0) {
-          const row = rows[0];
-          await ensureWrite('refund/dispute status update', supabaseAdmin
-            .from('trip_subscriptions')
-            .update({ status: newStatus })
-            .eq('id', row.id));
-          if (row.type === 'pro_trip' && row.trip_id) {
-            await ensureWrite('refund is_pro_trip clear', supabaseAdmin
-              .from('trips').update({ is_pro_trip: false }).eq('id', row.trip_id));
-            console.log('Pro-trip revoked after', event.type, '->', row.trip_id);
-          } else {
-            await recompute(row.user_id);
-            console.log('Subscription revoked after', event.type, 'for user', row.user_id);
+        // Resolve the underlying charge + payment_intent. For charge.refunded the
+        // event object IS the charge; for charge.dispute.created it's a Dispute that
+        // references a charge.
+        let charge: Stripe.Charge | null = null;
+        let paymentIntentId: string | null = null;
+        if (isDispute) {
+          const dispute = event.data.object as Stripe.Dispute;
+          paymentIntentId = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : null;
+          const chargeId = typeof dispute.charge === 'string' ? dispute.charge : null;
+          if (chargeId) {
+            try { charge = await stripe.charges.retrieve(chargeId); }
+            catch (e) { console.error('dispute charge lookup failed:', (e as Error).message); }
+          }
+        } else {
+          charge = event.data.object as Stripe.Charge;
+          paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
+        }
+
+        // Partial refund must NOT revoke Pro (only a full refund does). Disputes always revoke.
+        if (!isDispute) {
+          const fullyRefunded = charge?.refunded === true
+            || (typeof charge?.amount === 'number' && typeof charge?.amount_refunded === 'number'
+                && charge.amount > 0 && charge.amount_refunded >= charge.amount);
+          if (!fullyRefunded) {
+            console.log('Partial refund — Pro not revoked (pi', paymentIntentId, ')');
+            break;
           }
         }
+
+        // Path 1: direct payment_intent match (pro_trip).
+        let row: { id: string; user_id: string; trip_id: string | null; type: string } | null = null;
+        if (paymentIntentId) {
+          const { data, error } = await supabaseAdmin
+            .from('trip_subscriptions')
+            .select('id, user_id, trip_id, type')
+            .eq('stripe_payment_intent_id', paymentIntentId)
+            .limit(1);
+          if (error) {
+            await captureEdgeError(new Error(`refund PI lookup failed: ${error.message}`), 'stripe-webhook');
+            throw new Error('refund PI lookup failed');
+          }
+          row = data && data.length > 0 ? data[0] : null;
+        }
+
+        // Path 2: subscription refund/dispute — resolve charge → invoice → subscription.
+        if (!row && charge && typeof charge.invoice === 'string' && charge.invoice) {
+          let subId: string | null = null;
+          try {
+            const invoice = await stripe.invoices.retrieve(charge.invoice);
+            subId = invoiceSubId(invoice);
+          } catch (e) {
+            console.error('refund invoice lookup failed:', (e as Error).message);
+          }
+          if (subId) {
+            const { data, error } = await supabaseAdmin
+              .from('trip_subscriptions')
+              .select('id, user_id, trip_id, type')
+              .eq('stripe_subscription_id', subId)
+              .limit(1);
+            if (error) {
+              await captureEdgeError(new Error(`refund sub lookup failed: ${error.message}`), 'stripe-webhook');
+              throw new Error('refund sub lookup failed');
+            }
+            row = data && data.length > 0 ? data[0] : null;
+          }
+        }
+
+        if (!row) {
+          // Refund/dispute we can't attribute to any ledger row — money-critical
+          // anomaly worth a look (T5 #6). Non-fatal: nothing to revoke here.
+          await reportPaymentAnomaly('refund_no_ledger', { event_type: event.type, payment_intent: paymentIntentId }, 'error');
+          break;
+        }
+
+        await ensureWrite('refund/dispute status update', supabaseAdmin
+          .from('trip_subscriptions')
+          .update({ status: newStatus })
+          .eq('id', row.id));
+        if (row.type === 'pro_trip' && row.trip_id) {
+          await ensureWrite('refund is_pro_trip clear', supabaseAdmin
+            .from('trips').update({ is_pro_trip: false }).eq('id', row.trip_id));
+          console.log('Pro-trip revoked after', event.type, '->', row.trip_id);
+        } else {
+          await recompute(row.user_id);
+          console.log('Subscription revoked after', event.type, 'for user', row.user_id);
+        }
+        break;
+      }
+
+      default: {
+        // Event type outside our subscribed set (endpoint subscribes to 8). Not an
+        // error — info-level only, no alert. Surfaces drift in the Stripe endpoint
+        // config (a type we now receive but don't handle). Still recorded below.
+        await reportPaymentAnomaly('unsupported_event', { event_type: event.type, event_id: event.id }, 'info');
         break;
       }
     }

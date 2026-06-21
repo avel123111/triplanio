@@ -37,22 +37,11 @@ Deno.serve(async (req) => {
     if (!hasAccess) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
 
     // --- Check subscription / trip limit for free users ---
-    const { data: profile } = await supabaseAdmin
-      .from('users')
-      .select('subscription_status, subscription_end_date')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    // Pro = status 'pro' with a non-expired end date. MUST match the canonical
-    // check used by isProActive (client) + getUserPlan/checkSubscriptionStatus
-    // (server). The old 'active'/'pro_trip'/'cancelled' check never matched the
-    // real 'pro' status, so every Pro user was treated as free and hit the
-    // 3-trip limit on copy.
-    const now = new Date();
-    const isPro =
-      profile?.subscription_status === 'pro' &&
-      !!profile?.subscription_end_date &&
-      new Date(profile.subscription_end_date) > now;
+    // Pro verdict from the single SQL source (is_user_pro, migration 0055). This is
+    // a write-enforcement gate, so it fails CLOSED: on RPC error isPro=false → the
+    // free 1-active-trip limit check below runs (which also fails closed).
+    const { data: isProRpc } = await supabaseAdmin.rpc('is_user_pro', { p_uid: user.id });
+    const isPro = isProRpc === true;
 
     if (!isPro) {
       // Same single-source rule as create_trip: at most 1 ACTIVE owned trip.

@@ -26,13 +26,6 @@ async function getUser(req: Request) {
   return user ?? null;
 }
 
-function isActivePro(row: { subscription_status?: string; subscription_end_date?: string } | null, now: Date) {
-  return !!row
-    && row.subscription_status === 'pro'
-    && !!row.subscription_end_date
-    && new Date(row.subscription_end_date) > now;
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
@@ -44,7 +37,7 @@ Deno.serve(async (req) => {
 
     // No trip context → check caller's own subscription.
     if (!tripId) {
-      let { data: me } = await admin
+      const { data: me } = await admin
         .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
         .eq('id', user.id).single();
       // recompute-on-read (Ф3): self-heal a wrong cache, throttled. Stuck-PRO (pro
@@ -52,12 +45,11 @@ Deno.serve(async (req) => {
       const meEndPast = !me?.subscription_end_date || new Date(me.subscription_end_date) <= now;
       const meNeeds = (me?.subscription_status === 'pro' && meEndPast)
         || (me?.subscription_status !== 'pro' && !!me?.stripe_customer_id);
-      if (meNeeds && await reconcileEntitlement(admin, user.id)) {
-        ({ data: me } = await admin
-          .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
-          .eq('id', user.id).single());
-      }
-      const isPro = isActivePro(me, now);
+      if (meNeeds) await reconcileEntitlement(admin, user.id);
+      // Verdict from the single SQL source (is_user_pro, migration 0055) — reads the
+      // post-reconcile state, so no manual re-select needed.
+      const { data: isProRpc } = await admin.rpc('is_user_pro', { p_uid: user.id });
+      const isPro = isProRpc === true;
       return Response.json({ isPro, reason: isPro ? 'subscription' : null }, { headers: corsHeaders });
     }
 
@@ -73,7 +65,7 @@ Deno.serve(async (req) => {
     }
 
     if (trip.created_by) {
-      let { data: owner } = await admin
+      const { data: owner } = await admin
         .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
         .eq('id', trip.created_by).single();
       // recompute-on-read (Ф3): self-heal the owner's cache, throttled. Same two
@@ -84,12 +76,11 @@ Deno.serve(async (req) => {
       const ownerEndPast = !owner?.subscription_end_date || new Date(owner.subscription_end_date) <= now;
       const ownerNeeds = (owner?.subscription_status === 'pro' && ownerEndPast)
         || (owner?.subscription_status !== 'pro' && !!owner?.stripe_customer_id);
-      if (ownerNeeds && await reconcileEntitlement(admin, trip.created_by)) {
-        ({ data: owner } = await admin
-          .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
-          .eq('id', trip.created_by).single());
-      }
-      if (isActivePro(owner, now)) {
+      if (ownerNeeds) await reconcileEntitlement(admin, trip.created_by);
+      // Verdict from the single SQL source (is_user_pro, migration 0055) — reads the
+      // owner's post-reconcile state, so no manual re-select needed.
+      const { data: ownerProRpc } = await admin.rpc('is_user_pro', { p_uid: trip.created_by });
+      if (ownerProRpc === true) {
         return Response.json({ isPro: true, isOwner, reason: 'owner_subscription' }, { headers: corsHeaders });
       }
     }

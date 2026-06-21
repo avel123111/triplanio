@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import PaymentResultDialog from '@/components/common/PaymentResultDialog';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { useAuth } from '@/lib/AuthContext';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 
 /**
@@ -23,6 +24,8 @@ export default function StripeReturnModals() {
   const [searchParams, setSearchParams] = useSearchParams();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const { checkUserAuth } = useAuth();
+  const handledRef = useRef(null); // run-once guard per checkout return
   const [payModal, setPayModal] = useState(null); // 'success' | 'fail' | null
   const [variant, setVariant] = useState('sub');   // 'sub' | 'trip'
   const [retryTo, setRetryTo] = useState('/pro');
@@ -32,48 +35,84 @@ export default function StripeReturnModals() {
   useEffect(() => {
     const status = searchParams.get('stripe_status');
     if (!status) return;
+    // Run once per return: a re-render or StrictMode double-mount must not
+    // restart the poll. Key on session_id (unique per checkout) or status.
+    const runKey = searchParams.get('session_id') || status;
+    if (handledRef.current === runKey) return;
+    handledRef.current = runKey;
+
     const kind = searchParams.get('kind') === 'trip' ? 'trip' : 'sub';
     const pt = searchParams.get('pt');
     setVariant(kind);
     setRetryTo(kind === 'trip' && pt ? `/pro?tripId=${pt}` : '/pro');
 
-    if (status === 'success') {
-      setPayModal('success');
-      qc.invalidateQueries({ queryKey: ['my-pro-status'] });
-      qc.invalidateQueries({ queryKey: ['me'] });
-      qc.invalidateQueries({ queryKey: ['trips'] });
-      // Subscription only: fetch plan + price for the success chip. A per-trip
-      // purchase has no subscription, so we skip it — no plan label, no polling
-      // for an "activating subscription" that will never come.
-      if (kind === 'sub') {
-        (async () => {
-          try {
-            const planRes = await supabase.functions.invoke('getUserPlan');
-            const type = planRes.data?.subscriptionType;
-            setPlanLabel(type === 'pro_monthly' ? t('sub.plan_monthly_title') : type === 'pro_yearly' ? t('sub.plan_yearly_title') : null);
-            if (type) {
-              const priceRes = await supabase.functions.invoke('getStripePrices', { body: {} });
-              const p = priceRes.data?.prices?.[type];
-              if (p?.unit_amount != null) {
-                const amt = fmtMoneyActive(p.unit_amount / 100, p.currency || 'usd');
-                const per = p.recurring_interval === 'month' ? t('sub.period_month') : p.recurring_interval === 'year' ? t('sub.period_year') : '';
-                setPriceLabel(amt + per);
-              }
-            }
-          } catch { /* chip is optional */ }
-        })();
-      }
-    } else if (status === 'cancel') {
+    // Strip return params from the URL. Deferred until the entitlement has been
+    // polled (success) so a screen that reads `stripe_status` to gate its own UI
+    // (the Account upgrade button) keeps the signal until the webhook flips Pro.
+    const stripParams = () => {
+      const sp = new URLSearchParams(searchParams);
+      sp.delete('stripe_status');
+      sp.delete('session_id');
+      sp.delete('kind');
+      sp.delete('pt');
+      setSearchParams(sp, { replace: true });
+    };
+
+    if (status === 'cancel') {
       setPayModal('fail');
+      stripParams();
+      return;
     }
-    // Strip the params so a refresh / back doesn't re-trigger the modal.
-    const sp = new URLSearchParams(searchParams);
-    sp.delete('stripe_status');
-    sp.delete('session_id');
-    sp.delete('kind');
-    sp.delete('pt');
-    setSearchParams(sp, { replace: true });
-  }, [searchParams, setSearchParams, qc]);
+
+    // success
+    setPayModal('success');
+    qc.invalidateQueries({ queryKey: ['my-pro-status'] });
+    qc.invalidateQueries({ queryKey: ['me'] });
+    qc.invalidateQueries({ queryKey: ['trips'] });
+
+    let cancelled = false;
+    (async () => {
+      // Subscription return: fetch the success chip (plan + price, best-effort),
+      // then poll getUserPlan until the webhook flips the cache to Pro (capped
+      // backoff, bounded budget). A per-trip purchase has its is_pro_trip set by
+      // the webhook before redirect, so we don't poll — just refresh the user.
+      if (kind === 'sub') {
+        try {
+          const planRes = await supabase.functions.invoke('getUserPlan');
+          const type = planRes.data?.subscriptionType;
+          setPlanLabel(type === 'pro_monthly' ? t('sub.plan_monthly_title') : type === 'pro_yearly' ? t('sub.plan_yearly_title') : null);
+          if (type) {
+            const priceRes = await supabase.functions.invoke('getStripePrices', { body: {} });
+            const p = priceRes.data?.prices?.[type];
+            if (p?.unit_amount != null) {
+              const amt = fmtMoneyActive(p.unit_amount / 100, p.currency || 'usd');
+              const per = p.recurring_interval === 'month' ? t('sub.period_month') : p.recurring_interval === 'year' ? t('sub.period_year') : '';
+              setPriceLabel(amt + per);
+            }
+          }
+        } catch { /* chip is optional */ }
+
+        const deadline = Date.now() + 20000;
+        let delay = 1000;
+        while (!cancelled && Date.now() < deadline) {
+          try {
+            const { data } = await supabase.functions.invoke('getUserPlan'); // eslint-disable-line no-await-in-loop
+            if (data?.plan === 'pro') break;
+          } catch { /* transient — keep polling within budget */ }
+          await new Promise(r => setTimeout(r, delay)); // eslint-disable-line no-await-in-loop
+          delay = Math.min(delay + 500, 3000);
+        }
+      }
+      if (cancelled) return;
+      // Refresh AuthContext.user so isProActive(user) flips app-wide — the cache
+      // columns are read from `user`, not react-query. Then drop the URL params.
+      try { await checkUserAuth(); } catch { /* non-fatal — reconcile-on-read covers it */ }
+      if (cancelled) return;
+      stripParams();
+    })();
+
+    return () => { cancelled = true; };
+  }, [searchParams, setSearchParams, qc]); // eslint-disable-line
 
   return (
     <PaymentResultDialog

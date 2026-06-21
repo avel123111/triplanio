@@ -1106,6 +1106,7 @@ export default function EventEditDialog({
             {(currentKind === 'hotel' || currentKind === 'transfer') && (
               <EventAiBlock
                 kind={currentKind}
+                tripId={tripId}
                 state={aiState}
                 setState={setAiState}
                 onExtract={currentKind === 'hotel' ? handleHotelExtract : handleTransferExtract}
