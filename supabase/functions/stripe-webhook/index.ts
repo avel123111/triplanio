@@ -136,6 +136,21 @@ Deno.serve(async (req) => {
         console.log('Checkout completed for:', user_id, plan_type, 'trip:', trip_id);
 
         if (plan_type === 'pro_trip' && trip_id) {
+          // Anti-double-pay (TRIP-82): a DIFFERENT checkout session already turned
+          // this trip Pro (e.g. two tabs both paid). Same-session redelivery can't
+          // reach here (duplicate event_id is skipped above), so is_pro_trip=true
+          // means a genuine second payment. Don't insert a 2nd ledger row / double-
+          // count — flag it for a human (manual refund in Dashboard; no auto-refund).
+          const { data: tripRow } = await supabaseAdmin
+            .from('trips').select('is_pro_trip').eq('id', trip_id).single();
+          if (tripRow?.is_pro_trip) {
+            await captureEdgeError(
+              new Error(`pro_trip_double_paid: trip ${trip_id} already Pro; duplicate session ${session.id} user ${user_id}`),
+              'stripe-webhook',
+            );
+            break;
+          }
+
           // Per-trip Pro. Anti-dup on the checkout id (uq_trip_subs_checkout).
           const { error: insErr } = await supabaseAdmin
             .from('trip_subscriptions')

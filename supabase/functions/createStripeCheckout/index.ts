@@ -5,8 +5,9 @@
  *
  * Security:
  * - pro_trip: validates trip ownership (created_by === caller email)
- * - pro_monthly/pro_yearly: blocks duplicate active subscription
- * - Race-condition guard: rejects if a recent Stripe session is in flight
+ * - pro_monthly/pro_yearly: blocks duplicate active subscription (status-driven)
+ * - Checkout retry (TRIP-82): expire abandoned OPEN sessions instead of a 15-min
+ *   block; a freshly COMPLETE session returns CHECKOUT_PROCESSING (no 2nd sub)
  * - Origin validation: only PUBLIC_APP_URL allowed
  *
  * Stripe mode (test/live) is auto-detected from STRIPE_SECRET_KEY — one mode
@@ -85,14 +86,15 @@ Deno.serve(async (req) => {
     if (planType === 'pro_monthly' || planType === 'pro_yearly') {
       const { data: subs } = await supabaseAdmin
         .from('trip_subscriptions')
-        .select('type, status, end_date')
+        .select('type, status')
         .eq('user_id', user.id);
 
-      const now = Date.now();
+      // Status-driven (matches recompute_user_entitlement): active/trialing/past_due
+      // all hold Pro (past_due = dunning grace). Date is NOT the gate here — a
+      // past_due row may carry a stale period end while the user still has Pro.
+      const ENTITLING = new Set(['active', 'trialing', 'past_due']);
       const hasActiveRecurring = (subs ?? []).some((s) =>
-        (s.type === 'pro_monthly' || s.type === 'pro_yearly') &&
-        s.status === 'active' &&
-        s.end_date && new Date(s.end_date).getTime() > now
+        (s.type === 'pro_monthly' || s.type === 'pro_yearly') && ENTITLING.has(s.status)
       );
       if (hasActiveRecurring) {
         return Response.json({
@@ -104,30 +106,44 @@ Deno.serve(async (req) => {
 
     const stripe = new Stripe(stripeKey);
 
-    // ---------- Race-condition guard: recent checkout in flight ----------
+    // ---------- Checkout retry handling (TRIP-82) ----------
+    // No 15-min block. Two cases for a user's recent subscription sessions:
+    //  • complete  → payment already went through but the webhook hasn't
+    //    materialized the row yet (the SUBSCRIPTION_ALREADY_ACTIVE guard above
+    //    passed, so the ledger has no active row). Don't create a 2nd
+    //    subscription — return CHECKOUT_PROCESSING so the client shows
+    //    "processing" + lets entitlement settle. Bounded to a short window so a
+    //    stale (later-canceled) complete session can't block forever.
+    //  • open      → abandoned (back / card fail / closed tab); Stripe keeps it
+    //    ~24h. Expire it so a retry is never falsely blocked, then create fresh.
     if (planType === 'pro_monthly' || planType === 'pro_yearly') {
       try {
-        const fifteenMinAgo = Math.floor(Date.now() / 1000) - 15 * 60;
         const recent = await stripe.checkout.sessions.list({
           limit: 10,
-          created: { gte: fifteenMinAgo },
           customer_details: { email: user.email! },
         }).catch(() => null);
-        const sessions = recent?.data || [];
-        const inFlight = sessions.find((s) =>
-          s.mode === 'subscription' &&
-          s.customer_email === user.email &&
-          (s.status === 'complete' || s.status === 'open')
+        const sessions = (recent?.data || []).filter((s) =>
+          s.mode === 'subscription' && s.customer_email === user.email
         );
-        if (inFlight) {
-          console.log('Recent checkout in flight for', user.email, '->', inFlight.id, inFlight.status);
+
+        const tenMinAgo = Math.floor(Date.now() / 1000) - 10 * 60;
+        const completeInFlight = sessions.find((s) =>
+          s.status === 'complete' && (s.created ?? 0) >= tenMinAgo
+        );
+        if (completeInFlight) {
           return Response.json({
             error: 'A recent payment is still being processed. Please wait a moment and refresh.',
-            code: 'RECENT_CHECKOUT_PENDING',
+            code: 'CHECKOUT_PROCESSING',
           }, { status: 409, headers: corsHeaders });
         }
+
+        for (const s of sessions.filter((s) => s.status === 'open')) {
+          await stripe.checkout.sessions.expire(s.id).catch((e) =>
+            console.error('Expire open session failed (non-fatal):', s.id, (e as Error).message)
+          );
+        }
       } catch (e) {
-        console.error('Recent-checkout lookup failed (non-fatal):', (e as Error).message);
+        console.error('Open-checkout cleanup failed (non-fatal):', (e as Error).message);
       }
     }
 
@@ -170,6 +186,14 @@ Deno.serve(async (req) => {
       ...(mode === 'subscription'
         ? { subscription_data: { metadata: { user_id: user.id, plan_type: planType } } }
         : {}),
+    }, {
+      // Fresh per-attempt key: guards a network retry of THIS create call from
+      // spawning two sessions. Not a static user+plan+trip key — that conflicts
+      // with expire+recreate (Stripe caches the response ~24h and would return an
+      // already-expired session). Double-click is covered by the button's loading
+      // state; double-pay by the webhook pro_trip guard + uq indexes + the
+      // SUBSCRIPTION_ALREADY_ACTIVE / CHECKOUT_PROCESSING guards above.
+      idempotencyKey: crypto.randomUUID(),
     });
 
     return Response.json({ url: session.url }, { headers: corsHeaders });

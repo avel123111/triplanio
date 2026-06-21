@@ -82,7 +82,7 @@ export default function Pro() {
         setLoading(false);
         return;
       }
-      if (code === 'RECENT_CHECKOUT_PENDING') {
+      if (code === 'CHECKOUT_PROCESSING') {
         setErrorMsg(t('sub.recent_pending_msg'));
         setLoading(false);
         return;
