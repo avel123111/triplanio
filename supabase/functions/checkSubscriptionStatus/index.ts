@@ -45,14 +45,16 @@ Deno.serve(async (req) => {
     // No trip context → check caller's own subscription.
     if (!tripId) {
       let { data: me } = await admin
-        .from('users').select('subscription_status, subscription_end_date')
+        .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
         .eq('id', user.id).single();
-      // recompute-on-read (Ф3): self-heal a stale 'pro' cache, throttled.
-      if (me?.subscription_status === 'pro'
-          && (!me?.subscription_end_date || new Date(me.subscription_end_date) <= now)
-          && await reconcileEntitlement(admin, user.id)) {
+      // recompute-on-read (Ф3): self-heal a wrong cache, throttled. Stuck-PRO (pro
+      // but end stale) OR stuck-FREE (free but has a Stripe customer = lost activation).
+      const meEndPast = !me?.subscription_end_date || new Date(me.subscription_end_date) <= now;
+      const meNeeds = (me?.subscription_status === 'pro' && meEndPast)
+        || (me?.subscription_status !== 'pro' && !!me?.stripe_customer_id);
+      if (meNeeds && await reconcileEntitlement(admin, user.id)) {
         ({ data: me } = await admin
-          .from('users').select('subscription_status, subscription_end_date')
+          .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
           .eq('id', user.id).single());
       }
       const isPro = isActivePro(me, now);
