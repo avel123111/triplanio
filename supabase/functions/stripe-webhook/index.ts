@@ -194,6 +194,10 @@ Deno.serve(async (req) => {
             }, { onConflict: 'stripe_checkout_id', ignoreDuplicates: true }));
           await ensureWrite('pro_trip is_pro_trip set', supabaseAdmin
             .from('trips').update({ is_pro_trip: true }).eq('id', trip_id));
+          // CK-6: persist the customer id on the FIRST purchase too (incl. pro_trip),
+          // so the next checkout reuses it instead of letting Stripe create a 2nd
+          // (guest) customer. Recurring branch already does this below.
+          await saveCustomerId(user_id, session.customer);
 
         } else if (plan_type === 'pro_monthly' || plan_type === 'pro_yearly') {
           // Recurring: pull the live subscription for real status / period / cancel flag.

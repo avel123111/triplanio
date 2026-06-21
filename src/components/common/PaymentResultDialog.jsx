@@ -22,14 +22,17 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 export default function PaymentResultDialog({
   open, onOpenChange,
   status,
+  variant = 'sub',           // 'sub' | 'trip' — picks copy/CTA for the success state
   planLabel, priceLabel,
   code, onRetry,
 }) {
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const isSuccess = status === 'success';
+  const isTrip = variant === 'trip';
 
-  const chip = isSuccess && planLabel
+  // Per-trip purchase has no subscription → never show a plan/price chip.
+  const chip = isSuccess && !isTrip && planLabel
     ? (priceLabel ? `${planLabel} · ${priceLabel}` : planLabel)
     : null;
 
@@ -51,12 +54,12 @@ export default function PaymentResultDialog({
               </div>
 
               <h2 style={{ marginBottom: 8, fontSize: 'var(--fs-h3)' }}>
-                {isSuccess ? t('sub.success_title') : t('sub.fail_title')}
+                {isSuccess ? t(isTrip ? 'sub.success_title_trip' : 'sub.success_title') : t('sub.fail_title')}
               </h2>
 
               <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, maxWidth: 340, margin: '0 auto 14px' }}>
                 {isSuccess
-                  ? t('sub.success_desc')
+                  ? t(isTrip ? 'sub.success_desc_trip' : 'sub.success_desc')
                   : code
                     ? <>{t('sub.fail_declined_pre')}<span className="mono" style={{ color: 'var(--ink-2)' }}>{code}</span>{t('sub.fail_declined_post')}</>
                     : t('sub.fail_cancelled')
@@ -82,7 +85,7 @@ export default function PaymentResultDialog({
             <div className="dlg__foot" style={{ justifyContent: 'center' }}>
               {isSuccess ? (
                 <Btn variant="primary" onClick={close} style={{ minWidth: 160 }}>
-                  {t('sub.success_cta')}
+                  {t(isTrip ? 'sub.success_cta_trip' : 'sub.success_cta')}
                 </Btn>
               ) : (
                 <>

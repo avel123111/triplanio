@@ -174,6 +174,10 @@ Deno.serve(async (req) => {
     const safeReturn = (returnPath && returnPath.startsWith('/')) ? returnPath : '/';
     const sep = safeReturn.includes('?') ? '&' : '?';
     const stripeLocale = SUPPORTED_LOCALES.has(locale) ? locale : 'auto';
+    // Carry context back to the global return modal (StripeReturnModals): kind
+    // (trip|sub) picks the success copy/CTA; pt (trip id) lets a per-trip retry
+    // return to /pro?tripId=… instead of the bare subscriptions page.
+    const ctxParam = planType === 'pro_trip' ? `&kind=trip&pt=${tripId}` : '&kind=sub';
 
     // CK-6: attach to the existing Stripe customer when known, else fall back to
     // customer_email (the webhook saves the id afterwards). `customer` and
@@ -183,8 +187,8 @@ Deno.serve(async (req) => {
       line_items: [{ price: (price as Stripe.Price).id, quantity: 1 }],
       mode,
       locale: stripeLocale,
-      success_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=cancel`,
+      success_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=success&session_id={CHECKOUT_SESSION_ID}${ctxParam}`,
+      cancel_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=cancel${ctxParam}`,
       client_reference_id: user.id,
       ...(useCustomerId && existingCustomerId
         ? { customer: existingCustomerId }
