@@ -20,6 +20,11 @@
  * (active/trialing/past_due/canceled/unpaid/…); scheduled cancellation = status
  * stays 'active' + cancel_at_period_end=true. recompute treats active/trialing/
  * past_due as Pro. pro_trip / charge-derived rows use active/refunded/disputed.
+ *
+ * Write integrity: every entitlement-affecting DB write goes through ensureWrite()
+ * — on a Postgres error it reports to Sentry AND throws, so the event is NOT
+ * recorded and Stripe retries. A swallowed write error here is exactly what hid
+ * the 0052 ON CONFLICT bug (user stayed `free` after paying, silently).
  */
 
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
@@ -28,21 +33,42 @@ import { captureEdgeError } from '../_shared/sentry.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { planTypeForProduct, isTestStripeKey } from '../_shared/stripeCatalog.ts';
 
-// Single writer of the user-level cache. No-op without a user id.
+// Critical write guard. Supabase query builders are thenable and resolve to
+// { data, error }. On error: report to Sentry and THROW, so the outer catch
+// returns 500, the event is not recorded, and Stripe retries (handlers are
+// upsert-idempotent, so a retry is safe). Use for entitlement-affecting writes
+// only — best-effort writes (notifications, customer-id) stay non-fatal.
+async function ensureWrite(label: string, op: PromiseLike<{ error: unknown }>) {
+  const { error } = await op;
+  if (error) {
+    const msg = (error as { message?: string }).message ?? String(error);
+    await captureEdgeError(new Error(`${label}: ${msg}`), 'stripe-webhook');
+    throw new Error(`${label} failed`);
+  }
+}
+
+// Single writer of the user-level cache. No-op without a user id. A failed RPC
+// would leave the cache stale (recompute-on-read heals it later), but that is a
+// silent drift — report + throw so Stripe retries and the cache is fixed now.
 async function recompute(userId: string | null | undefined) {
   if (!userId) return;
   const { error } = await supabaseAdmin.rpc('recompute_user_entitlement', { p_user_id: userId });
-  if (error) console.error('recompute_user_entitlement failed:', error.message, 'user', userId);
+  if (error) {
+    await captureEdgeError(new Error(`recompute_user_entitlement failed (user ${userId}): ${error.message}`), 'stripe-webhook');
+    throw new Error('recompute_user_entitlement failed');
+  }
 }
 
 // Persist the Stripe customer id on first sight; never overwrite an existing one.
+// Best-effort (not entitlement-critical): a failure must not block the event.
 async function saveCustomerId(userId: string | null | undefined, customerId: unknown) {
   if (!userId || typeof customerId !== 'string' || !customerId) return;
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from('users')
     .update({ stripe_customer_id: customerId })
     .eq('id', userId)
     .is('stripe_customer_id', null);
+  if (error) console.error('saveCustomerId failed (non-fatal):', error.message);
 }
 
 // Version-tolerant: invoice.subscription moved under parent.subscription_details
@@ -153,7 +179,7 @@ Deno.serve(async (req) => {
           }
 
           // Per-trip Pro. Anti-dup on the checkout id (uq_trip_subs_checkout).
-          const { error: insErr } = await supabaseAdmin
+          await ensureWrite('pro_trip ledger upsert', supabaseAdmin
             .from('trip_subscriptions')
             .upsert({
               user_id,
@@ -165,9 +191,9 @@ Deno.serve(async (req) => {
               start_date: new Date().toISOString(),
               amount_paid: session.amount_total,
               currency: session.currency || 'usd',
-            }, { onConflict: 'stripe_checkout_id', ignoreDuplicates: true });
-          if (insErr) console.error('pro_trip ledger upsert failed:', insErr.message);
-          await supabaseAdmin.from('trips').update({ is_pro_trip: true }).eq('id', trip_id);
+            }, { onConflict: 'stripe_checkout_id', ignoreDuplicates: true }));
+          await ensureWrite('pro_trip is_pro_trip set', supabaseAdmin
+            .from('trips').update({ is_pro_trip: true }).eq('id', trip_id));
 
         } else if (plan_type === 'pro_monthly' || plan_type === 'pro_yearly') {
           // Recurring: pull the live subscription for real status / period / cancel flag.
@@ -181,7 +207,7 @@ Deno.serve(async (req) => {
             periodEndIso = unixToIso(getPeriodEndUnix(sub));
             cancelAtPeriodEnd = sub.cancel_at_period_end === true;
           }
-          await supabaseAdmin
+          await ensureWrite('checkout recurring upsert', supabaseAdmin
             .from('trip_subscriptions')
             .upsert({
               user_id,
@@ -196,7 +222,7 @@ Deno.serve(async (req) => {
               cancel_at_period_end: cancelAtPeriodEnd,
               amount_paid: session.amount_total,
               currency: session.currency || 'usd',
-            }, { onConflict: 'stripe_subscription_id' });
+            }, { onConflict: 'stripe_subscription_id' }));
           await saveCustomerId(user_id, session.customer);
           await recompute(user_id);
 
@@ -233,7 +259,7 @@ Deno.serve(async (req) => {
         await saveCustomerId(resolved.userId, invoice.customer);
         const sub = await stripe.subscriptions.retrieve(subId);
         const periodEndIso = unixToIso(getPeriodEndUnix(sub));
-        await supabaseAdmin
+        await ensureWrite('invoice.paid upsert', supabaseAdmin
           .from('trip_subscriptions')
           .upsert({
             user_id: resolved.userId,
@@ -244,7 +270,7 @@ Deno.serve(async (req) => {
             provider_meta: null,              // clear any stale past_due grace marker
             ...(periodEndIso ? { current_period_end: periodEndIso, end_date: periodEndIso } : {}),
             ...(existing ? {} : { start_date: new Date().toISOString(), currency: invoice.currency || 'usd' }),
-          }, { onConflict: 'stripe_subscription_id' });
+          }, { onConflict: 'stripe_subscription_id' }));
         await recompute(resolved.userId);
         break;
       }
@@ -261,7 +287,7 @@ Deno.serve(async (req) => {
         // Under automations next_payment_attempt is usually null here (it rides
         // invoice.updated); recompute falls back to a short buffer until then.
         const nextAttemptIso = invoice.next_payment_attempt ? unixToIso(invoice.next_payment_attempt) : null;
-        await supabaseAdmin
+        await ensureWrite('invoice.payment_failed upsert', supabaseAdmin
           .from('trip_subscriptions')
           .upsert({
             user_id: resolved.userId,
@@ -270,7 +296,7 @@ Deno.serve(async (req) => {
             status: 'past_due',
             ...(nextAttemptIso ? { provider_meta: { next_payment_attempt: nextAttemptIso } } : {}),
             ...(existing ? {} : { start_date: new Date().toISOString(), currency: invoice.currency || 'usd' }),
-          }, { onConflict: 'stripe_subscription_id' });
+          }, { onConflict: 'stripe_subscription_id' }));
         await recompute(resolved.userId);
 
         // Dunning notification — ask the user to update their card. Replay-safe.
@@ -306,7 +332,7 @@ Deno.serve(async (req) => {
         const resolved = await resolveRecurringUser(stripe, subId, existing, 'invoice.updated');
         if (!resolved) break;
         await saveCustomerId(resolved.userId, invoice.customer);
-        await supabaseAdmin
+        await ensureWrite('invoice.updated upsert', supabaseAdmin
           .from('trip_subscriptions')
           .upsert({
             user_id: resolved.userId,
@@ -316,7 +342,7 @@ Deno.serve(async (req) => {
             // Only assume past_due when reconstructing a missing row; never override
             // an existing row's status from this event.
             ...(existing ? {} : { status: 'past_due', start_date: new Date().toISOString(), currency: invoice.currency || 'usd' }),
-          }, { onConflict: 'stripe_subscription_id' });
+          }, { onConflict: 'stripe_subscription_id' }));
         await recompute(resolved.userId);
         break;
       }
@@ -340,7 +366,7 @@ Deno.serve(async (req) => {
           const planType = productId
             ? planTypeForProduct(productId, isTestStripeKey(Deno.env.get('STRIPE_SECRET_KEY')!))
             : null;
-          await supabaseAdmin
+          await ensureWrite('subscription.updated update', supabaseAdmin
             .from('trip_subscriptions')
             .update({
               status: sub.status, // verbatim — scheduled cancel keeps 'active' + flag below
@@ -348,7 +374,7 @@ Deno.serve(async (req) => {
               ...(planType ? { type: planType } : {}),
               ...(periodEndIso ? { current_period_end: periodEndIso, end_date: periodEndIso } : {}),
             })
-            .eq('id', rows[0].id);
+            .eq('id', rows[0].id));
           await recompute(rows[0].user_id);
         }
         break;
@@ -362,16 +388,19 @@ Deno.serve(async (req) => {
           .eq('stripe_subscription_id', sub.id)
           .limit(1);
         if (rows && rows.length > 0) {
-          await supabaseAdmin
+          await ensureWrite('subscription.deleted update', supabaseAdmin
             .from('trip_subscriptions')
             .update({ status: 'canceled' })
-            .eq('id', rows[0].id);
+            .eq('id', rows[0].id));
           await recompute(rows[0].user_id);
         }
         break;
       }
 
       // Refund / chargeback → revoke. pro_trip flips is_pro_trip off; recurring → recompute.
+      // NOTE (CK-1, TRIP-162 тема B): recurring rows have a null payment_intent, so this
+      // PI match only catches pro_trip today; subscription refund/dispute revoke is tracked
+      // separately and not yet implemented here.
       case 'charge.refunded':
       case 'charge.dispute.created': {
         const obj = event.data.object as { payment_intent?: string | null };
@@ -386,12 +415,13 @@ Deno.serve(async (req) => {
           .limit(1);
         if (rows && rows.length > 0) {
           const row = rows[0];
-          await supabaseAdmin
+          await ensureWrite('refund/dispute status update', supabaseAdmin
             .from('trip_subscriptions')
             .update({ status: newStatus })
-            .eq('id', row.id);
+            .eq('id', row.id));
           if (row.type === 'pro_trip' && row.trip_id) {
-            await supabaseAdmin.from('trips').update({ is_pro_trip: false }).eq('id', row.trip_id);
+            await ensureWrite('refund is_pro_trip clear', supabaseAdmin
+              .from('trips').update({ is_pro_trip: false }).eq('id', row.trip_id));
             console.log('Pro-trip revoked after', event.type, '->', row.trip_id);
           } else {
             await recompute(row.user_id);
