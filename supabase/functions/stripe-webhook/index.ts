@@ -26,6 +26,7 @@ import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
+import { planTypeForProduct, isTestStripeKey } from '../_shared/stripeCatalog.ts';
 
 // Single writer of the user-level cache. No-op without a user id.
 async function recompute(userId: string | null | undefined) {
@@ -329,11 +330,22 @@ Deno.serve(async (req) => {
           .limit(1);
         if (rows && rows.length > 0) {
           const periodEndIso = unixToIso(getPeriodEndUnix(sub));
+          // Map the live price back to our plan type so a Billing-Portal plan
+          // switch (TRIP-53) updates type instead of freezing it. No resolvable
+          // product → leave type unchanged.
+          const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
+          const productId = typeof price?.product === 'string'
+            ? price.product
+            : ((price?.product as { id?: string } | undefined)?.id ?? null);
+          const planType = productId
+            ? planTypeForProduct(productId, isTestStripeKey(Deno.env.get('STRIPE_SECRET_KEY')!))
+            : null;
           await supabaseAdmin
             .from('trip_subscriptions')
             .update({
               status: sub.status, // verbatim — scheduled cancel keeps 'active' + flag below
               cancel_at_period_end: sub.cancel_at_period_end === true,
+              ...(planType ? { type: planType } : {}),
               ...(periodEndIso ? { current_period_end: periodEndIso, end_date: periodEndIso } : {}),
             })
             .eq('id', rows[0].id);

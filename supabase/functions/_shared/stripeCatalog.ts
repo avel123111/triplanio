@@ -33,3 +33,11 @@ export function isTestStripeKey(key: string): boolean {
 export function productsForEnv(isTestEnv: boolean): Record<PlanType, string> {
   return isTestEnv ? TEST_PRODUCTS : LIVE_PRODUCTS;
 }
+
+// Reverse lookup: Stripe product id → our plan type. Used by the webhook to keep
+// trip_subscriptions.type in sync after a plan switch in the Billing Portal
+// (TRIP-53), now that changeSubscriptionPlan no longer writes type directly.
+export function planTypeForProduct(productId: string, isTestEnv: boolean): PlanType | null {
+  const map = productsForEnv(isTestEnv);
+  return (Object.keys(map) as PlanType[]).find((k) => map[k] === productId) ?? null;
+}

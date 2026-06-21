@@ -91,7 +91,9 @@ Deno.serve(async (req) => {
         plan: 'pro',
         subscriptionEnd: userData.subscription_end_date,
         subscriptionType: latest?.type || null,
-        cancelled: latest?.status === 'cancelled',
+        // Scheduled cancellation (UI "won't renew" state). Status stays 'active'
+        // verbatim; the flag lives in cancel_at_period_end (set by the webhook).
+        cancelled: latest?.cancel_at_period_end === true,
         stripeSubscriptionId: latest?.stripe_subscription_id || null,
         // Exact billed amount from Stripe (minor units), e.g. { amount: 500, currency: 'EUR', interval: 'month' }.
         actualPrice,
