@@ -64,6 +64,13 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     // e.g. the stats screen whose .mapwrap sizes via min-height).
     requestAnimationFrame(() => requestAnimationFrame(() => {
       try { map.resize(); } catch { /* ignore */ }
+      // Re-assert this screen's basemap theme/preset after the canvas settles in
+      // its new slot. The synchronous applyBasemapConfig above can be dropped while
+      // the singleton is mid re-parent (the previous screen's variant — e.g. the
+      // monochrome Trips/Stats map — then lingers until a later remount/resize).
+      // Re-applying here flips the style immediately on navigation.
+      applyBasemapConfig(map, schemeRef.current, themeRef.current);
+      repaintRouteLines(map);
     }));
 
     const onErr = (e) => { if (e?.error?.message) setError(e.error.message); };

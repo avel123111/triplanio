@@ -86,7 +86,7 @@ export default function MobileBottomNav() {
       <nav className="mbnav" aria-label={t('nav.trips')}>
         <div className="mbnav__dock">
           <NavItem icon="grid" label={t('trip_menu.overview')} active={lens === 'overview'} onClick={() => go('overview')} />
-          <NavItem icon="map" label={t('trip_menu.map')} active={lens === 'map'} onClick={() => go('map')} />
+          <NavItem icon="list" label={t('trip_menu.timeline')} active={lens === 'timeline'} onClick={() => go('timeline')} />
           <span className="mbnav__center">
             <button type="button" className="mbnav__fab" aria-label={t('common.add')} onClick={() => tripCtx?.openAdd?.()}>
               <Icon name="plus" size={26} />

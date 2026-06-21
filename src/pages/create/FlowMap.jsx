@@ -6,6 +6,7 @@ import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers
 import MapControls from '@/lib/map/MapControls';
 import { Icon } from '../../design/icons';
 import { useT } from '@/lib/i18n/I18nContext';
+import { useTheme } from '@/lib/ThemeContext';
 
 // Build ordered legs (home → cities → return) - self-contained so the map has
 // no dependency on the planner's save logic. Mirrors computeLegs ordering.
@@ -31,12 +32,16 @@ function buildLegs(home, cities, returnCity, finalPoint) {
 // =====================================================================
 export default function FlowMap({ home, cities = [], returnCity, transport = {}, finalPoint = false, badge }) {
   const t = useT();
+  const { isDark } = useTheme();
   const containerRef = useRef(null);
   const markersRef = useRef([]);
 
   // On-map controls (same set as MapView): projection / theme / start-finish.
   const [projection, setProjection] = useState('mercator');
-  const [scheme, setScheme] = useState(() => (typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'));
+  // Seed from the app theme and follow it live (mirrors MapView): the on-map
+  // toggle can still override until the next app-theme change.
+  const [scheme, setScheme] = useState(isDark ? 'DARK' : 'LIGHT');
+  useEffect(() => { setScheme(isDark ? 'DARK' : 'LIGHT'); }, [isDark]);
   const [showSE, setShowSE] = useState(true);
 
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, projection,
