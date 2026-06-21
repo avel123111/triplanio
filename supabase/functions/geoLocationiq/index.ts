@@ -172,6 +172,36 @@ async function resolveOne(
   return { results };
 }
 
+// Batch item resolve with bounded retry on a TRANSIENT upstream failure
+// (LocationIQ 429/5xx). TRIP-145 follow-up: the single-shot path is retried by
+// the FE `liq()` backoff + a surfaced 502, but the batch path used to swallow a
+// per-item `upstreamError` as `[]` (city goes red, no retry, no signal) — the
+// exact failure when a cold batch's burst trips LocationIQ's own ~2 req/s limit.
+// A genuine no-match returns `{ results: [] }` and is NOT retried. `degraded`
+// means the rate budget is already spent (acquireToken waited to the deadline),
+// so retrying can't help → stop. Retries share the batch `deadline`, so one
+// flaky city can't drain the whole budget and starve later cities.
+const BATCH_ITEM_MAX_RETRIES = 2;
+async function resolveBatchItem(
+  queryKey: string,
+  lang: string,
+  priority: string,
+  urlParams: { q?: unknown; limit: string },
+  apiKey: string,
+  deadline: number,
+): Promise<{ results: unknown[]; failed: boolean }> {
+  for (let attempt = 0; ; attempt++) {
+    const r = await resolveOne('search', 'search', queryKey, lang, priority, urlParams, apiKey, deadline);
+    if ('results' in r) return { results: r.results, failed: false };
+    if ('degraded' in r || attempt >= BATCH_ITEM_MAX_RETRIES || Date.now() >= deadline) {
+      return { results: [], failed: true };
+    }
+    // Back off so LocationIQ's own 1 s window clears before we re-take a token.
+    await new Promise((res) => setTimeout(res, 700 + Math.random() * 300));
+    if (Date.now() >= deadline) return { results: [], failed: true };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -206,14 +236,13 @@ Deno.serve(async (req) => {
         const cLang = (typeof c?.lang === 'string' && c.lang.trim()) ? c.lang.trim() : acceptLang;
         const key = `${normKey(cq)}|${cLang}`;
         if (memo.has(key)) { out.push(memo.get(key)!); continue; }
-        const r = await resolveOne('search', 'search', normKey(cq), cLang, prio, { q: cq, limit: lim }, apiKey, deadline);
-        const arr = 'results' in r ? r.results : [];
-        if ('degraded' in r) degraded = true;
-        memo.set(key, arr);
-        out.push(arr);
+        const item = await resolveBatchItem(normKey(cq), cLang, prio, { q: cq, limit: lim }, apiKey, deadline);
+        if (item.failed) degraded = true; // rate budget spent OR upstream error after retries
+        memo.set(key, item.results);
+        out.push(item.results);
       }
       if (degraded) {
-        await captureEdgeError(new Error('geocode bucket exhausted'), 'geoLocationiq', { action: 'resolveCities', count: cities.length });
+        await captureEdgeError(new Error('geocode batch had unresolved items'), 'geoLocationiq', { action: 'resolveCities', count: cities.length });
       }
       return Response.json({ results: out, degraded }, { headers: corsHeaders });
     }
