@@ -162,16 +162,23 @@ Deno.serve(async (req) => {
         console.log('Checkout completed for:', user_id, plan_type, 'trip:', trip_id);
 
         if (plan_type === 'pro_trip' && trip_id) {
-          // Anti-double-pay (TRIP-82): a DIFFERENT checkout session already turned
-          // this trip Pro (e.g. two tabs both paid). Same-session redelivery can't
-          // reach here (duplicate event_id is skipped above), so is_pro_trip=true
-          // means a genuine second payment. Don't insert a 2nd ledger row / double-
-          // count — flag it for a human (manual refund in Dashboard; no auto-refund).
+          // Idempotency by checkout id (PRIMARY, T7): this exact checkout already
+          // wrote a ledger row → a retry/redelivery that slipped past the event-id
+          // dedup (a failed stripe_events write, or Stripe reusing the checkout under
+          // a new event id). Silently no-op — recorded below; NO alert, no double
+          // count. Keying on stripe_checkout_id (not the derived is_pro_trip flag)
+          // is what makes a crash-retry distinguishable from a real second payment.
+          const { data: sameCheckout } = await supabaseAdmin
+            .from('trip_subscriptions').select('id').eq('stripe_checkout_id', session.id).limit(1);
+          if (sameCheckout && sameCheckout.length > 0) break;
+
+          // Genuine second payment (TRIP-82): the checkout id is NEW (passed above) yet
+          // the trip is already Pro → a DIFFERENT checkout paid again (e.g. two tabs).
+          // Don't insert a 2nd ledger row / double-count — flag for a human (manual
+          // refund in Dashboard; no auto-refund). Money-critical → error-level.
           const { data: tripRow } = await supabaseAdmin
             .from('trips').select('is_pro_trip').eq('id', trip_id).single();
           if (tripRow?.is_pro_trip) {
-            // Money-critical: a genuine second payment for an already-Pro trip
-            // (no auto-refund — manual in Dashboard). Non-fatal → error-level.
             await reportPaymentAnomaly('pro_trip_double_paid', { trip_id, session_id: session.id, user_id }, 'error');
             break;
           }
