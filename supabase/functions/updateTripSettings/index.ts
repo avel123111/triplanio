@@ -19,9 +19,9 @@
  */
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { PRO_ADDON_SET } from '../_shared/proAddons.ts';
 
 const ALLOWED_COLS = ['title', 'description', 'cover_image_url', 'cover_gradient', 'notes'];
-const PRO_ADDONS = new Set(['budget', 'telegram_assistant', 'chat']);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -72,11 +72,13 @@ Deno.serve(async (req) => {
         // Block enabling a PRO addon when the trip isn't Pro.
         const prev = (trip.details?.addons) || {};
         for (const key of Object.keys(addons)) {
-          if (addons[key] === true && PRO_ADDONS.has(key) && prev[key] !== true && !tripIsPro) {
+          if (addons[key] === true && PRO_ADDON_SET.has(key) && prev[key] !== true && !tripIsPro) {
             return Response.json({ ok: false, code: 'PRO_REQUIRED' }, { headers: corsHeaders });
           }
         }
-        newDetails.addons = addons;
+        // Shallow-merge so a partial addons body never wipes unrelated flags
+        // (symmetric with the display merge above).
+        newDetails.addons = { ...prev, ...addons };
       }
       update.details = newDetails;
     }

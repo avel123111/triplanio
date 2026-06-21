@@ -54,7 +54,7 @@ export default {
   'stats.rec_days': 'Days traveling',
   'stats.rec_days_sub': 'across all cities',
   'stats.rec_fav_city': 'Favorite city',
-  'stats.rec_fav_country': 'Most visited',
+  'stats.rec_fav_country': 'Favorite country',
   'stats.rec_longest': 'Biggest trip',
   'stats.rec_cities': 'Cities',
   'stats.rec_soon': 'coming later',

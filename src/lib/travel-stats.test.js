@@ -5,7 +5,7 @@ import {
   countCities, countCountries, countContinents, countTrips,
   worldExplored, countriesList, citiesList, continentsBreakdown,
   tripsByYear, daysInTrips, favoriteCity, favoriteCountry, longestTrip,
-  WORLD_COUNTRIES, dominantTone, TONE, TONE_RANK,
+  WORLD_COUNTRIES, dominantTone, TONE, TONE_RANK, countVisitUnits,
 } from './travel-stats.js';
 
 // trip A (2024): Madrid, Barcelona (ES) + return Madrid (dedup) → 2 cities, 1 country
@@ -68,7 +68,7 @@ test('records', () => {
   assert.equal(daysInTrips(pts), 18);
   const fc = favoriteCity(pts);
   assert.equal(fc.city_name, 'Madrid');
-  assert.equal(fc.count, 2);
+  assert.equal(fc.count, 1); // Madrid is one TRIP (visited twice in trip A → 1 unit)
   assert.equal(favoriteCountry(pts).code, 'ES');
   const lt = longestTrip(pts, trips);
   assert.equal(lt.cities, 2); // both trips have 2 unique cities; first max wins
@@ -79,4 +79,34 @@ test('lists + continents breakdown', () => {
   assert.equal(countriesList(pts)[0].code, 'ES');
   assert.equal(citiesList(pts)[0].city_name, 'Madrid');
   assert.deepEqual(continentsBreakdown(pts), { EU: 3, AS: 1 });
+});
+
+// Visit counts = distinct TRIPS that went there + each MANUAL visit, NOT the
+// number of city-stops. Madrid here is in trip A (twice), trip C, plus one manual
+// visit → 3 visits (not 4 stops). ES inherits the same 3.
+const tripUnitPts = [
+  { id: 1, kind: 'trip', trip_id: 'A', city_name: 'Madrid', country_code: 'ES', start_date: '2024-03-01', end_date: '2024-03-04' },
+  { id: 2, kind: 'trip', trip_id: 'A', city_name: 'Madrid', country_code: 'ES', start_date: '2024-03-08', end_date: '2024-03-09' },
+  { id: 3, kind: 'trip', trip_id: 'C', city_name: 'Madrid', country_code: 'ES', start_date: '2025-01-01', end_date: '2025-01-05' },
+  { id: 99, kind: 'custom', trip_id: null, city_name: 'Madrid', country_code: 'ES', start_date: '2023-01-01', end_date: '2023-01-03' },
+];
+
+test('counts are by trip/manual units, not city-stops', () => {
+  // 3 units: trip A, trip C, custom 99 (the two trip-A rows collapse to one)
+  assert.equal(countVisitUnits(tripUnitPts), 3);
+
+  const country = countriesList(tripUnitPts)[0];
+  assert.equal(country.code, 'ES');
+  assert.equal(country.count, 3);
+
+  const city = citiesList(tripUnitPts)[0];
+  assert.equal(city.city_name, 'Madrid');
+  assert.equal(city.count, 3);
+
+  assert.equal(favoriteCity(tripUnitPts).count, 3);
+  assert.equal(favoriteCountry(tripUnitPts).count, 3);
+
+  // A city visited twice within ONE trip counts once.
+  const oneTrip = tripUnitPts.filter((p) => p.trip_id === 'A');
+  assert.equal(citiesList(oneTrip)[0].count, 1);
 });

@@ -9,7 +9,7 @@ import { isProActive } from '@/lib/subscription';
 import { cityKey } from '@/lib/trip-cities';
 import { continentOf, COUNTRIES_PER_CONTINENT } from '@/lib/continents';
 import {
-  statisticsBundle, availableYears, filterByYear, dominantTone, TONE,
+  statisticsBundle, availableYears, filterByYear, dominantTone, TONE, countVisitUnits,
 } from '@/lib/travel-stats';
 import StatsMap from '@/components/views/StatsMap';
 import VisitPanel from '@/components/stats/VisitPanel';
@@ -172,11 +172,13 @@ export default function Statistics() {
 
   const contRows = useMemo(() => {
     const bd = bundle.continentsBreakdown || {};
-    // Show ALL continents (each with its own bar) — unvisited ones read 0.
+    // Show only VISITED continents (unvisited are hidden, not rendered as 0). The
+    // breakdown is computed over the already year-filtered points, so this list
+    // follows the year filter like the rest of the screen.
     // Bar = continent COVERAGE: countries visited / total countries on that
     // continent. So equal counts on differently-sized continents read different,
     // and no continent is forced to 100% just for being the most-visited one.
-    return CONT_ORDER.map((c) => {
+    return CONT_ORDER.filter((c) => (bd[c] || 0) > 0).map((c) => {
       const visited = bd[c] || 0;
       const total = COUNTRIES_PER_CONTINENT[c] || 1;
       return {
@@ -256,11 +258,11 @@ export default function Statistics() {
       visits = points.filter((p) => String(p.country_code).toUpperCase() === panel.key);
       const nCities = new Set(visits.map((p) => cityKey(p)).filter(Boolean)).size;
       name = regionName(panel.key);
-      sub = `${t('stats.n_cities', { n: nCities })} · ${t('stats.visits_count')}: ${visits.length}`;
+      sub = `${t('stats.n_cities', { n: nCities })} · ${t('stats.visits_count')}: ${countVisitUnits(visits)}`;
     } else {
       visits = points.filter((p) => cityKey(p) === panel.key);
       name = visits[0]?.city_name || '';
-      sub = `${regionName(visits[0]?.country_code)} · ${t('stats.visits_count')}: ${visits.length}`;
+      sub = `${regionName(visits[0]?.country_code)} · ${t('stats.visits_count')}: ${countVisitUnits(visits)}`;
     }
     visits = visits.slice().sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
     const cc = panel.kind === 'country' ? panel.key : visits[0]?.country_code;

@@ -74,14 +74,19 @@ Deno.serve(async (req) => {
 
     if (trip.created_by) {
       let { data: owner } = await admin
-        .from('users').select('subscription_status, subscription_end_date')
+        .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
         .eq('id', trip.created_by).single();
-      // recompute-on-read (Ф3): self-heal the owner's stale 'pro' cache, throttled.
-      if (owner?.subscription_status === 'pro'
-          && (!owner?.subscription_end_date || new Date(owner.subscription_end_date) <= now)
-          && await reconcileEntitlement(admin, trip.created_by)) {
+      // recompute-on-read (Ф3): self-heal the owner's cache, throttled. Same two
+      // perekos as the no-trip branch / getUserPlan:
+      //  • stuck-PRO  — 'pro' but end date stale/missing (lost renewal)
+      //  • stuck-FREE — not 'pro' but has a Stripe customer id (lost activation),
+      //    so an invited participant opening the trip also heals the owner.
+      const ownerEndPast = !owner?.subscription_end_date || new Date(owner.subscription_end_date) <= now;
+      const ownerNeeds = (owner?.subscription_status === 'pro' && ownerEndPast)
+        || (owner?.subscription_status !== 'pro' && !!owner?.stripe_customer_id);
+      if (ownerNeeds && await reconcileEntitlement(admin, trip.created_by)) {
         ({ data: owner } = await admin
-          .from('users').select('subscription_status, subscription_end_date')
+          .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
           .eq('id', trip.created_by).single());
       }
       if (isActivePro(owner, now)) {
