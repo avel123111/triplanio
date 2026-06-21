@@ -1300,7 +1300,7 @@ export default function TripView() {
               transfers={transfers ?? []}
               hotels={hotels ?? []}
               activities={activities ?? []}
-              canEdit={myRole === 'owner' || myRole === 'editor' || myRole === 'admin'}
+              canEdit={myRole === 'owner' || myRole === 'admin'}
               active
               openEvent={(kind, id) => setEventView({ open: true, kind, id })}
             />
