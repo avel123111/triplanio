@@ -52,6 +52,7 @@ export default function EventAiBlock({
   onUpgrade,
   parsedFieldCount = 0,
   onReset,
+  tripId, // required by the server-side Pro/membership gate (parseBookingWithAi)
 }) {
   const { t } = useI18n();
   const [text, setText] = useState('');
@@ -113,7 +114,7 @@ export default function EventAiBlock({
 
       // 2. Call the edge function. kind + fileUrls + the pasted text all go to
       //    n8n (prompts and schemas live inside the n8n workflow).
-      const body = { kind, fileUrls, text: text.trim() };
+      const body = { kind, fileUrls, text: text.trim(), trip_id: tripId };
       const { data: invoked, error: invokeErr } = await supabase.functions.invoke('parseBookingWithAi', { body });
       if (invokeErr) throw invokeErr;
       if (invoked?.error) throw new Error(invoked.error);

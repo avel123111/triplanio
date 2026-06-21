@@ -17,6 +17,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { isCallerParticipant } from '../_shared/tripAccess.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -46,7 +47,7 @@ Deno.serve(async (req) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
-    const { kind, fileUrls, text } = await req.json();
+    const { kind, fileUrls, text, trip_id } = await req.json();
 
     if (kind !== 'hotel' && kind !== 'transfer') {
       return Response.json({ error: "kind must be 'hotel' or 'transfer'" }, { status: 400, headers: corsHeaders });
@@ -56,6 +57,26 @@ Deno.serve(async (req) => {
     }
     if (fileUrls.length === 0 && !(text && String(text).trim())) {
       return Response.json({ error: 'Provide at least one file or some text' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Pro/membership gate — server-side, in the execution point (not the UI).
+    // parseBookingWithAi forwards to a paid n8n/LLM pipeline, so a free user or a
+    // non-member must never reach it. AI booking parsing is a per-trip Pro feature:
+    // the trip is Pro ⇔ is_pro_trip OR the owner has an active subscription
+    // (single SQL source is_trip_pro, migration 0055). Membership = isCallerParticipant.
+    if (!trip_id || typeof trip_id !== 'string') {
+      return Response.json({ error: 'trip_id required', code: 'BAD_REQUEST' }, { status: 400, headers: corsHeaders });
+    }
+    if (!(await isCallerParticipant(trip_id, user.id))) {
+      return Response.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403, headers: corsHeaders });
+    }
+    const { data: tripPro, error: proErr } = await supabaseAdmin.rpc('is_trip_pro', { p_trip_id: trip_id });
+    if (proErr) {
+      console.error('is_trip_pro rpc error:', proErr);
+      return Response.json({ error: 'Pro check failed' }, { status: 500, headers: corsHeaders });
+    }
+    if (!tripPro) {
+      return Response.json({ error: 'Pro required', code: 'PRO_REQUIRED' }, { status: 403, headers: corsHeaders });
     }
 
     const n8nSecret = Deno.env.get('N8N_SECRET');
