@@ -49,7 +49,6 @@ export default {
   'validation.SVC_PICKUP_REQUIRED': 'Укажи дату и время получения',
   'validation.SVC_DROPOFF_REQUIRED': 'Укажи дату и время возврата',
   'validation.SVC_ORDER': 'Возврат должен быть позже получения',
-  'validation.SVC_OUT_OF_TRIP': 'Услуга вне дат путешествия',
   'validation.INS_DATE_ORDER': 'Дата окончания страховки должна быть позже даты начала',
   // City visit
   'validation.CITY_DATES_REQUIRED': 'Укажи даты города',
