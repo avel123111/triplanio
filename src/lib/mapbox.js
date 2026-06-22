@@ -17,13 +17,9 @@ export const lightPresetFor = (scheme) => (scheme === 'DARK' ? 'night' : 'day');
 // Trips home + "My statistics" maps which pass 'monochrome' (grey). Switching it is
 // an in-place setConfigProperty (same as lightPreset) — NOT setStyle — so the single
 // session instance is preserved (tiles/sources/markers/lines stay).
-// `lang` localises basemap labels (Mapbox Standard `language` config). Our i18n
-// codes (en/es/ru) are valid Mapbox language tags. Set ONCE at map creation: the
-// singleton map is created fresh on every page load, so a new locale is picked up
-// on reload — we deliberately do NOT re-set it live on language change.
-export const baseConfig = (scheme, theme = 'default', lang) => ({
-  basemap: { theme, lightPreset: lightPresetFor(scheme), ...(lang ? { language: lang } : {}) },
-});
+// NOTE: label language is NOT a basemap config property — it is the top-level Map
+// option `language` set at construction in MapProvider (see ensureMap).
+export const baseConfig = (scheme, theme = 'default') => ({ basemap: { theme, lightPreset: lightPresetFor(scheme) } });
 
 // Apply/refresh basemap config after the style is ready (for live theme toggling).
 export function applyBasemapConfig(map, scheme, theme = 'default') {

@@ -57,7 +57,12 @@ export function MapProvider({ children }) {
     const map = new mapboxgl.Map({
       container: el,
       style: MAP_STYLE,
-      config: baseConfig(scheme, 'default', lang),
+      config: baseConfig(scheme),
+      // Localise basemap labels. `language` is a top-level Map option (NOT a
+      // basemap config prop) — Mapbox Standard reads it at construction and shows
+      // labels in this language where the tile data has them. Read once here; the
+      // singleton is recreated on each page load, so a new locale applies on reload.
+      ...(lang ? { language: lang } : {}),
       center: [0, 20],
       zoom: 2,
       projection: 'mercator',
