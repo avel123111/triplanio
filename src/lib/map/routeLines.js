@@ -106,6 +106,90 @@ function drawRouteLines(map, legs, opts) {
   return () => { cancelled = true; };
 }
 
+// ---------------------------------------------------------------------------
+// Progressive reveal (public shared-trip reader). Same geometry rule as the base
+// line, but only PART of the route is painted: every leg up to the active city is
+// full, and the leg leaving the active city is sliced to `progress` (0→1) so the
+// line visibly "grows" toward the next city as the reader scrolls. Writes the
+// SAME mv-dashed / mv-solid layer ids the full draw uses (so theme repaint keeps
+// working); the consumer (MapView) bypasses the cached full draw while revealing
+// and lets the cached path reclaim the layers when reveal clears.
+
+// Geometry for one leg in [lng,lat] order, following the base-line rule (flight
+// arc / cached Mapbox road / straight). Road legs not yet in the session cache
+// fall back to a straight segment — the reveal stays light (no async upgrade).
+function legGeometry(from, to, kind) {
+  if (isFlightTransport(kind)) {
+    return geodesicLine(from.latitude, from.longitude, to.latitude, to.longitude).map(([la, lo]) => [lo, la]);
+  }
+  if (isRoadTransport(kind)) {
+    return roadCache.get(legKey(from, to, kind)) || [[from.longitude, from.latitude], [to.longitude, to.latitude]];
+  }
+  return [[from.longitude, from.latitude], [to.longitude, to.latitude]];
+}
+
+// Return the first `f` (0..1) of a polyline by cumulative planar length, with an
+// interpolated end point. Visual-only (short legs), so a flat lng/lat metric is
+// good enough — no turf dependency. Always returns ≥ 2 points.
+function sliceLine(coords, f) {
+  if (!coords || coords.length < 2) return coords;
+  if (f >= 1) return coords;
+  if (f <= 0) return [coords[0], coords[0]];
+  let total = 0;
+  for (let i = 1; i < coords.length; i++) {
+    total += Math.hypot(coords[i][0] - coords[i - 1][0], coords[i][1] - coords[i - 1][1]);
+  }
+  const target = total * f;
+  let acc = 0;
+  const out = [coords[0]];
+  for (let i = 1; i < coords.length; i++) {
+    const seg = Math.hypot(coords[i][0] - coords[i - 1][0], coords[i][1] - coords[i - 1][1]);
+    if (acc + seg >= target) {
+      const t = seg === 0 ? 0 : (target - acc) / seg;
+      out.push([
+        coords[i - 1][0] + (coords[i][0] - coords[i - 1][0]) * t,
+        coords[i - 1][1] + (coords[i][1] - coords[i - 1][1]) * t,
+      ]);
+      return out;
+    }
+    acc += seg;
+    out.push(coords[i]);
+  }
+  return out;
+}
+
+// legs: same shape as drawRouteLines ([{from,to,kind?}]). activeIdx = index of the
+// active city (legs 0..activeIdx-1 fully drawn; leg activeIdx sliced to progress).
+// progress: 0..1 growth of the active leg. activeIdx < 0 ⇒ nothing drawn.
+export function drawRouteReveal(map, legs, activeIdx, progress, opts) {
+  if (!map) return;
+  const {
+    dashedId = 'mv-dashed', solidId = 'mv-solid',
+    dashedColor = routeColor(), solidColor = routeColor(),
+    dashedWidth = DASHED_WIDTH, solidWidth = SOLID_WIDTH, dashedOpacity = DASHED_OPACITY,
+  } = opts || {};
+
+  const dashed = [];
+  const solid = [];
+  const push = (kind, coords) => {
+    if (!coords || coords.length < 2) return;
+    (kind ? solid : dashed).push(lineFeature(coords));
+  };
+
+  legs.forEach((leg, i) => {
+    const { from, to, kind } = leg;
+    if (!from?.latitude || !to?.latitude) return;
+    if (i < activeIdx) {
+      push(kind, legGeometry(from, to, kind));
+    } else if (i === activeIdx && progress > 0) {
+      push(kind, sliceLine(legGeometry(from, to, kind), Math.min(1, Math.max(0, progress))));
+    }
+  });
+
+  setLineLayer(map, dashedId, dashed, { color: dashedColor, width: dashedWidth, dashed: true, opacity: dashedOpacity });
+  setLineLayer(map, solidId, solid, { color: solidColor, width: solidWidth });
+}
+
 // Every line layer id any surface can draw. Used to wipe a previous route
 // (this screen's or another surface's) before drawing a different one.
 const ALL_LINE_LAYER_IDS = ['mv-dashed', 'mv-solid', 'flow-dashed', 'flow-solid'];
