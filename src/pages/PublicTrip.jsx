@@ -205,13 +205,9 @@ export default function PublicTrip() {
     };
   }, [stops.length]);
 
-  // At the top (focusIdx < 0) leave focus null so MapView keeps the whole-route
-  // fit; once a stop is active, fly to it.
-  const focusPts = useMemo(() => {
-    if (focusIdx < 0) return null;
-    const c = stops[focusIdx]?.coords;
-    return c ? [c] : null;
-  }, [stops, focusIdx]);
+  // The active stop drives the map's reveal (which the map's reveal controller
+  // turns into the camera flight + line growth). At the top (focusIdx < 0) nothing
+  // is active and the map shows the whole route.
   const activeStop = focusIdx >= 0 ? stops[focusIdx] : null;
   const activeId = activeStop?.id ?? null;
 
@@ -383,8 +379,6 @@ export default function PublicTrip() {
               transfers={transfers}
               colorScheme="LIGHT"
               basemapTheme="monochrome"
-              focus={focusPts}
-              focusDuration={4200}
               selectedVisitId={activeId}
               revealActiveId={activeId}
             />
