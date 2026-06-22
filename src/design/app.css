@@ -2292,11 +2292,11 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 }
 /* icon chip on top, centered; number + label stacked below */
 .statcard .ic {
-  width: 40px; height: 40px; border-radius: 12px; flex: none;
+  width: 32px; height: 32px; border-radius: 11px; flex: none;
   display: grid; place-items: center;
   background: var(--primary-soft); color: var(--primary);
 }
-.statcard .ic svg { width: 20px; height: 20px; }
+.statcard .ic svg { width: 17px; height: 17px; }
 .statcard .meta { display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 5px; min-width: 0; }
 .statcard .v {
   font-family: var(--font-display); font-weight: 600; font-size: 16px;
