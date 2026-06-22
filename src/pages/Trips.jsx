@@ -506,12 +506,15 @@ export default function Trips() {
   const participantsByTrip = useMemo(() => {
     const m = {};
     allParticipants.forEach(p => {
-      if (!m[p.trip_id]) m[p.trip_id] = [];
-      if (p.is_owner) m[p.trip_id].unshift(p);
-      else m[p.trip_id].push(p);
+      // Anonymized (soft-deleted) users: show a localized label instead of the
+      // scrubbed empty name (also yields one uniform avatar gradient for all).
+      const pp = p.is_deleted ? { ...p, full_name: t('common.deleted_user') } : p;
+      if (!m[pp.trip_id]) m[pp.trip_id] = [];
+      if (pp.is_owner) m[pp.trip_id].unshift(pp);
+      else m[pp.trip_id].push(pp);
     });
     return m;
-  }, [allParticipants]);
+  }, [allParticipants, t]);
 
   // Cards read per-trip visits from the RPC's trip_visits when present, else from
   // the fallback query. Either way the shape is { trip_id: [visit rows] } and the

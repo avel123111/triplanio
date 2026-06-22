@@ -72,6 +72,8 @@ export default {
   'account.err_portal_open': 'No se pudo abrir el portal de facturación. Inténtalo más tarde.',
   'account.err_billing': 'Error de facturación: ',
   'account.err_delete': 'Error al eliminar: ',
+  'account.err_delete_failed': 'No se pudo eliminar la cuenta. Inténtalo más tarde o escribe a soporte.',
+  'account.err_delete_unauthorized': 'La sesión ha expirado. Inicia sesión de nuevo e inténtalo otra vez.',
   'account.per_year_short': '/año',
   'account.plan_current': 'Plan actual',
   'account.nav_help': 'Ayuda y legal',

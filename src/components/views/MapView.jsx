@@ -1,11 +1,65 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
-import { drawRouteLinesCached, drawRouteReveal, drawRouteHighlight, clearRouteHighlight } from '@/lib/map/routeLines';
+import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers';
 import MapControls from '@/lib/map/MapControls';
 import { countryFlag } from '@/lib/geo';
 import { sortVisits } from '@/lib/validation';
+
+// Great-circle distance (km) between two visits — used to scale the reveal flyTo
+// duration so a Moscow→New York leg flies for longer than a short hop.
+function legKm(from, to) {
+  const R = 6371;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(to.latitude - from.latitude);
+  const dLon = toRad(to.longitude - from.longitude);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(from.latitude)) * Math.cos(toRad(to.latitude)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+// Per-leg reveal animation duration (ms) from leg length: short hops ~2s,
+// intercontinental legs up to ~8s. sqrt keeps very long legs from dragging on.
+// The motion itself is LINEAR (no terminal slow-down), so the overall tempo is a
+// touch calmer but the speed doesn't collapse before arrival.
+function revealLegDuration(from, to) {
+  return Math.min(8000, Math.max(2000, Math.round(1700 + Math.sqrt(legKm(from, to)) * 72)));
+}
+
+// Final camera zoom when the reveal settles on a city — deliberately pulled back
+// on this reader map (a city sits in its region, not filling the frame).
+const REVEAL_CITY_ZOOM = 5.6;
+
+// Apply marker visibility (and a one-shot pop on first appearance) for a reveal
+// state. `markerMax` = highest ordered-index allowed to show; revealing=false ⇒
+// show all. Kept module-level so the build effect and the reveal controller share
+// exactly one implementation.
+function applyMarkerVisibility(markers, orderIndexById, markerMax, revealing) {
+  markers.forEach((m) => {
+    const el = m.getElement();
+    let hide = false;
+    if (revealing) {
+      const ids = (el.dataset.vids || '').split(',').filter(Boolean);
+      const minIdx = ids.reduce((acc, id) => {
+        const i = orderIndexById.get(id);
+        return i == null ? acc : Math.min(acc, i);
+      }, Infinity);
+      hide = minIdx > markerMax;
+    }
+    const wasHidden = el.style.display === 'none';
+    el.style.display = hide ? 'none' : '';
+    if (!hide && wasHidden) {
+      const core = el.querySelector('.tmk__core');
+      if (core && core.animate) {
+        core.animate(
+          [{ transform: 'scale(0.2)', opacity: 0 }, { transform: 'scale(1.12)', opacity: 1, offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }],
+          { duration: 340, easing: 'cubic-bezier(.22,1,.36,1)' },
+        );
+      }
+    }
+  });
+}
 
 // ---------------- Main MapView ----------------
 // Pure map surface - the parent supplies chrome (theme toggle, overlays) and
@@ -137,72 +191,138 @@ export default function MapView({
   // route instead of blanking it.
   const revealing = revealActiveId != null && revealActiveIdx >= 0;
 
-  // Reveal animation state. `legIdx` = the leg currently growing (source→next);
-  // `prog` = 0→1 growth. When legIdx < 0 the route is static: every leg up to the
-  // active city is full and nothing beyond is drawn. `markerMax` = highest marker
-  // index allowed to show. While a leg grows toward city k, markerMax stays at
-  // k-1 so the destination pin pops in only when the line arrives.
-  const [anim, setAnim] = useState({ legIdx: -1, prog: 0 });
-  const prevIdxRef = useRef(-1);
+  // Reveal controller — ONE imperative owner of the camera, the route line and
+  // marker visibility for the progressive reveal. Driven by a QUEUE: the line +
+  // camera animate ONE leg at a time and never skip, so fast scrolling just makes
+  // the animation lag behind (each leg still plays fully) instead of snapping in.
+  // Draw state lives in refs (not React state) and is painted imperatively, so the
+  // per-frame camera updates never trigger re-renders and there are no effect races.
+  //   reachedRef — city index the reveal has reached (line drawn up to here)
+  //   targetRef  — city index the scroll wants (the active stop)
+  //   genRef     — generation token; bumped to abort an in-flight pump
+  const revealStateRef = useRef({ animLeg: -1, animProg: 0, fullLegs: 0, markerMax: -1, revealing: false });
+  const reachedRef = useRef(-1);
+  const targetRef = useRef(-1);
+  const pumpingRef = useRef(false);
+  const rafRef = useRef(0);
+  const genRef = useRef(0);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    const prev = prevIdxRef.current;
-    const cur = revealActiveIdx;
-    prevIdxRef.current = revealing ? cur : -1;
-    // Forward by one+ city (not arriving from the top): grow the LAST leg
-    // (cur-1 → cur) tied to the camera's LIVE position — the line head is set from
-    // where the camera actually is on each `move`, so it can never out-run or lag
-    // the flyTo (no easing / zoom-parabola desync). Earlier legs snap to full.
-    if (revealing && cur > prev && prev >= 0) {
-      const legIdx = cur - 1;
-      const from = ordered[legIdx];
-      const to = ordered[legIdx + 1];
-      if (from && to) {
-        const ax = from.longitude;
-        const ay = from.latitude;
-        const dx = to.longitude - ax;
-        const dy = to.latitude - ay;
-        const len2 = dx * dx + dy * dy || 1;
-        let done = false;
-        const project = () => {
-          const c = map.getCenter();
-          // Parameter of the camera centre projected onto the A→B segment (0→1).
-          let tt = ((c.lng - ax) * dx + (c.lat - ay) * dy) / len2;
-          tt = Math.min(1, Math.max(0, tt));
-          setAnim({ legIdx, prog: tt });
-        };
-        const onMove = () => { if (!done) project(); };
-        const onEnd = () => {
-          if (done) return;
-          done = true;
-          map.off('move', onMove);
-          map.off('moveend', onEnd);
-          setAnim({ legIdx: -1, prog: 0 }); // settle: legs 0..cur-1 full, marker cur reveals
-        };
-        setAnim({ legIdx, prog: 0 });
-        map.on('move', onMove);
-        map.on('moveend', onEnd);
-        return () => { done = true; map.off('move', onMove); map.off('moveend', onEnd); };
+
+    const paint = () => {
+      const s = revealStateRef.current;
+      if (map.__routeLines) map.__routeLines.sig = null;
+      drawRouteReveal(map, legs, s.animLeg >= 0 ? s.animLeg : s.fullLegs, s.animLeg >= 0 ? s.animProg : 0, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
+      applyMarkerVisibility(markersRef.current, orderIndexById, s.markerMax, true);
+    };
+    const settle = (reached) => {
+      revealStateRef.current = { animLeg: -1, animProg: 0, fullLegs: reached, markerMax: reached, revealing: true };
+      paint();
+    };
+
+    // ── Not revealing (top of the page): the WHOLE route + all markers; ease the
+    // camera back to the full frame if we are leaving a reveal. ──
+    if (!revealing) {
+      genRef.current += 1;
+      cancelAnimationFrame(rafRef.current);
+      pumpingRef.current = false;
+      const leaving = reachedRef.current >= 0;
+      reachedRef.current = -1;
+      targetRef.current = -1;
+      revealStateRef.current = { animLeg: -1, animProg: 0, fullLegs: 0, markerMax: -1, revealing: false };
+      drawRouteLinesCached(map, lineSig, legs, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
+      applyMarkerVisibility(markersRef.current, orderIndexById, -1, false);
+      if (leaving && ordered.length > 0) {
+        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: true });
       }
+      return undefined;
     }
-    // Backward, first landing from the top, or reveal off → no growing leg.
-    setAnim({ legIdx: -1, prog: 0 });
+
+    targetRef.current = revealActiveIdx;
+
+    // ── Scroll BACK: abort the pump and snap to the active city (no reverse anim). ──
+    if (targetRef.current < reachedRef.current) {
+      genRef.current += 1;
+      cancelAnimationFrame(rafRef.current);
+      pumpingRef.current = false;
+      reachedRef.current = targetRef.current;
+      settle(reachedRef.current);
+      const dest = ordered[reachedRef.current];
+      if (dest) map.flyTo({ center: [dest.longitude, dest.latitude], zoom: REVEAL_CITY_ZOOM, duration: 900, essential: true });
+      return undefined;
+    }
+
+    // ── Forward: start the queue pump (if not already running). ──
+    if (!pumpingRef.current && targetRef.current > reachedRef.current) {
+      pumpingRef.current = true;
+      const myGen = ++genRef.current;
+
+      const animateLeg = (L, step) => {
+        const from = ordered[L];
+        const to = ordered[L + 1];
+        if (!from || !to) { reachedRef.current = L + 1; settle(reachedRef.current); step(); return; }
+        const kind = legs[L]?.kind;
+        // Mid-flight zoom-out amount: long legs dip further out so the whole leg
+        // is visible, short legs stay near the city zoom (dip ≈ 0).
+        let dip = 0;
+        try {
+          const cam = map.cameraForBounds(
+            new mapboxgl.LngLatBounds([from.longitude, from.latitude], [to.longitude, to.latitude]),
+            { padding: 80 },
+          );
+          if (cam && typeof cam.zoom === 'number') dip = Math.max(0, REVEAL_CITY_ZOOM - cam.zoom);
+        } catch { /* ignore */ }
+        const dur = revealLegDuration(from, to);
+        const t0 = performance.now();
+        revealStateRef.current = { animLeg: L, animProg: 0, fullLegs: L, markerMax: L, revealing: true };
+        paint();
+        const frame = (now) => {
+          if (myGen !== genRef.current) return;
+          const p = Math.min(1, (now - t0) / dur); // LINEAR — constant tempo, no terminal slow-down
+          revealStateRef.current.animProg = p;
+          paint();
+          const tip = legPointAt(from, to, kind, p); // camera rides the line's head
+          if (tip) map.jumpTo({ center: tip, zoom: REVEAL_CITY_ZOOM - dip * Math.sin(Math.PI * p) });
+          if (p < 1) { rafRef.current = requestAnimationFrame(frame); return; }
+          reachedRef.current = L + 1;
+          settle(reachedRef.current); // leg full + destination pin pops in
+          step();
+        };
+        rafRef.current = requestAnimationFrame(frame);
+      };
+
+      const step = () => {
+        if (myGen !== genRef.current) return;
+        const reached = reachedRef.current;
+        const target = targetRef.current;
+        if (reached >= target) { pumpingRef.current = false; settle(reached < 0 ? 0 : reached); return; }
+        if (reached < 0) {
+          // Enter the first city — no leg, just fly the camera in, then continue.
+          reachedRef.current = 0;
+          settle(0);
+          const c0 = ordered[0];
+          if (c0) map.flyTo({ center: [c0.longitude, c0.latitude], zoom: REVEAL_CITY_ZOOM, duration: 1000, essential: true });
+          map.once('moveend', () => { if (myGen === genRef.current) step(); });
+          return;
+        }
+        if (reached < ordered.length - 1) { animateLeg(reached, step); return; }
+        pumpingRef.current = false;
+        settle(reached);
+      };
+      step();
+      return undefined; // pump survives re-renders; aborted via genRef, not effect cleanup
+    }
+
+    // Already pumping (just keep the updated targetRef), or nothing to do for an
+    // equal index — make sure the static draw is correct.
+    if (!pumpingRef.current) settle(reachedRef.current < 0 ? 0 : reachedRef.current);
     return undefined;
-  }, [ready, revealing, revealActiveIdx, ordered]);
+  }, [ready, revealing, revealActiveIdx, legs, lineSig, orderIndexById, ordered]);
 
-  // Draw bookkeeping derived from the animation: which leg slices (and to what),
-  // and the highest marker index that may show.
-  const drawActiveIdx = anim.legIdx >= 0 ? anim.legIdx : revealActiveIdx;
-  const drawProg = anim.legIdx >= 0 ? anim.prog : 0;
-  const markerMax = anim.legIdx >= 0 ? anim.legIdx : revealActiveIdx;
-
-  // Latest "are we revealing?" for the marker-build effect (whose deps exclude the
-  // reveal props) so a data redraw re-applies visibility immediately.
-  const revealingRef = useRef(revealing);
-  revealingRef.current = revealing;
-  const markerMaxRef = useRef(markerMax);
-  markerMaxRef.current = markerMax;
+  // Abort any in-flight reveal pump on unmount (the scroll effect intentionally
+  // does NOT cancel on every re-render, so the queue can run across re-renders).
+  useEffect(() => () => { genRef.current += 1; cancelAnimationFrame(rafRef.current); }, []);
 
   // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
@@ -216,6 +336,8 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    // While a progressive reveal is active, the reveal controller owns the camera.
+    if (revealActiveId != null) return;
     if (focusSig) {
       hadFocusRef.current = true;
       if (focus.length === 1) {
@@ -229,7 +351,7 @@ export default function MapView({
         fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: true });
       }
     }
-  }, [ready, focusSig]);
+  }, [ready, focusSig, revealActiveId]);
 
   // --- Draw markers + route lines whenever the data changes ---
   useEffect(() => {
@@ -266,15 +388,16 @@ export default function MapView({
       // effect can toggle .is-sel / .is-hover without rebuilding the markers.
       el.dataset.vids = g.data.map((v) => v && v.id).filter(Boolean).join(',');
       // While revealing, markers past the active city must start hidden so they
-      // appear only as the line reaches them (the visibility effect keeps this in
+      // appear only as the line reaches them (the reveal controller keeps this in
       // sync on scroll; this just avoids a flash of all pins right after a rebuild).
-      if (revealingRef.current) {
+      const rs = revealStateRef.current;
+      if (rs.revealing) {
         const ids = (el.dataset.vids || '').split(',').filter(Boolean);
         const minIdx = ids.reduce((acc, id) => {
           const i = orderIndexById.get(id);
           return i == null ? acc : Math.min(acc, i);
         }, Infinity);
-        if (minIdx > markerMaxRef.current) el.style.display = 'none';
+        if (minIdx > rs.markerMax) el.style.display = 'none';
       }
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
       markersRef.current.push(marker);
@@ -292,56 +415,6 @@ export default function MapView({
 
     return undefined;
   }, [ready, ordered, transfers, visitsSignature]);
-
-  // --- Route lines: full (cached) when not revealing, progressive when revealing.
-  // Splitting this out of the marker/fit effect lets the reveal redraw cheaply on
-  // every scroll tick (revealProgress) via in-place source updates — no marker
-  // rebuild, no fit. When reveal clears, the cached path reclaims the same layers;
-  // we null the cached signature on entry so leaving reveal forces that redraw. ---
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready) return undefined;
-    if (revealing) {
-      if (map.__routeLines) map.__routeLines.sig = null;
-      drawRouteReveal(map, legs, drawActiveIdx, drawProg, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
-    } else {
-      drawRouteLinesCached(map, lineSig, legs, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
-    }
-    return undefined;
-  }, [ready, revealing, drawActiveIdx, drawProg, legs, lineSig]);
-
-  // --- Marker visibility under reveal — hide pins past the active city without
-  // rebuilding markers (cheap class-free toggle on the existing DOM nodes). When
-  // not revealing, every marker is shown. ---
-  useEffect(() => {
-    if (!ready) return;
-    markersRef.current.forEach((m) => {
-      const el = m.getElement();
-      let hide = false;
-      if (revealing) {
-        const ids = (el.dataset.vids || '').split(',').filter(Boolean);
-        const minIdx = ids.reduce((acc, id) => {
-          const i = orderIndexById.get(id);
-          return i == null ? acc : Math.min(acc, i);
-        }, Infinity);
-        hide = minIdx > markerMax;
-      }
-      const wasHidden = el.style.display === 'none';
-      el.style.display = hide ? 'none' : '';
-      // Pop the pin in when it first appears (the line just reached this city).
-      // Animate the inner .tmk__core (Mapbox owns the root's transform), via the
-      // Web Animations API so no shared marker CSS is touched.
-      if (!hide && wasHidden) {
-        const core = el.querySelector('.tmk__core');
-        if (core && core.animate) {
-          core.animate(
-            [{ transform: 'scale(0.2)', opacity: 0 }, { transform: 'scale(1.12)', opacity: 1, offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }],
-            { duration: 340, easing: 'cubic-bezier(.22,1,.36,1)' },
-          );
-        }
-      }
-    });
-  }, [ready, revealing, markerMax, orderIndexById, visitsSignature]);
 
   // Selection + hover highlight — toggled on the existing marker elements (no
   // rebuild, so hovering a list is cheap). Re-runs after a marker rebuild too

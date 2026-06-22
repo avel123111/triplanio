@@ -514,16 +514,25 @@ export default function ScreenAccount() {
     setErrorMsg(null);
     try {
       const { data, error } = await supabase.functions.invoke('deleteMyAccount');
-      if (error) throw error;
-      if (data?.error) {
-        const msg = String(data.error).toLowerCase();
-        if (msg.includes('subscription') || msg.includes('cancel')) { setDeleteState('blocked'); return; }
-        throw new Error(data.error);
+      if (error) {
+        // supabase-js puts the real response body on FunctionsHttpError.context
+        // (a Response); .message is only the useless "non-2xx status code".
+        let code = '';
+        try { code = (await error.context?.json())?.code || ''; } catch { /* no body */ }
+        if (code === 'active_subscription') { setDeleteState('blocked'); return; }
+        setErrorMsg(t(code === 'unauthorized' ? 'account.err_delete_unauthorized' : 'account.err_delete_failed'));
+        setDeleteState(null);
+        return;
+      }
+      if (data?.code && data.code !== 'ok') {
+        setErrorMsg(t('account.err_delete_failed'));
+        setDeleteState(null);
+        return;
       }
       await logout();
     } catch (e) {
       console.error('deleteMyAccount error:', e);
-      setErrorMsg(t('account.err_delete') + (e.message || String(e)));
+      setErrorMsg(t('account.err_delete_failed'));
       setDeleteState(null);
     } finally {
       setDeletingAccount(false);

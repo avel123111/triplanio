@@ -72,6 +72,8 @@ export default {
   'account.err_portal_open': 'Не удалось открыть биллинг-портал. Попробуй позже.',
   'account.err_billing': 'Ошибка биллинга: ',
   'account.err_delete': 'Ошибка удаления: ',
+  'account.err_delete_failed': 'Не удалось удалить аккаунт. Попробуй позже или напиши в поддержку.',
+  'account.err_delete_unauthorized': 'Сессия истекла. Войди заново и повтори.',
   'account.per_year_short': '/год',
   'account.plan_current': 'Текущий тариф',
   'account.nav_help': 'Помощь и право',
