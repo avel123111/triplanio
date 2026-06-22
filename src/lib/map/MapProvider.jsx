@@ -47,7 +47,9 @@ export function MapProvider({ children }) {
   }, []);
 
   // Create the single map on first demand (parked in the holder).
-  const ensureMap = useCallback((scheme) => {
+  // `lang` localises basemap labels and is read ONCE here (map is created fresh on
+  // each page load → new locale applies on reload). Later acquires can't change it.
+  const ensureMap = useCallback((scheme, lang) => {
     if (mapRef.current || !MAPBOX_TOKEN || !holderRef.current) return mapRef.current;
     const el = document.createElement('div');
     el.style.cssText = 'width:100%;height:100%;';
@@ -55,7 +57,7 @@ export function MapProvider({ children }) {
     const map = new mapboxgl.Map({
       container: el,
       style: MAP_STYLE,
-      config: baseConfig(scheme),
+      config: baseConfig(scheme, 'default', lang),
       center: [0, 20],
       zoom: 2,
       projection: 'mercator',
@@ -70,9 +72,10 @@ export function MapProvider({ children }) {
   }, []);
 
   // A screen claims the map: move its element into `slot` and resize.
-  const acquire = useCallback((slot, scheme) => {
+  // `lang` is forwarded to the first-ever creation only (singleton).
+  const acquire = useCallback((slot, scheme, lang) => {
     if (!slot) return null;
-    const map = ensureMap(scheme);
+    const map = ensureMap(scheme, lang);
     if (!map) return null;
     const el = map.getContainer();
     if (el.parentNode !== slot) slot.appendChild(el);
