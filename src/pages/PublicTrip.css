@@ -35,13 +35,15 @@
 /* Buttons reuse the shared marketing `.btn` classes from /landing.css (loaded
    with the header/footer chrome) — no page-specific button styles. */
 
-/* ── masthead ── */
+/* ── masthead (now the left column of the reader grid) ── */
 /* The shared marketing header (/landing.css) is fixed; clear it with the
    landing's own --hero-top offset so the kick isn't tucked under the bar. */
-.pt-mast{padding:var(--hero-top,96px) 0 40px}
+.pt-top{padding:var(--hero-top,96px) 0 48px}
 .pt-mast__kick{display:inline-flex;align-items:center;gap:10px;font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--brand)}
 .pt-mast__kick::before{content:"";width:28px;height:2px;background:var(--brand);border-radius:2px}
-.pt-mast h1{font-size:clamp(40px,8vw,84px);font-weight:800;line-height:.98;letter-spacing:-.035em;margin:20px 0 0}
+/* Sized to fit the left column (was a full-width hero); the map now rides up to
+   the right of it, just under the site-header divider. */
+.pt-head h1{font-size:clamp(32px,4.4vw,58px);font-weight:800;line-height:1.0;letter-spacing:-.035em;margin:18px 0 0}
 .pt-mast__by{display:flex;align-items:center;gap:13px;margin-top:24px}
 .pt-mast__av{width:46px;height:46px;border-radius:50%;position:relative;overflow:hidden;flex:none;background:var(--brand-grad);display:grid;place-items:center;color:#fff;font-family:var(--font-display);font-weight:700;font-size:16px;box-shadow:var(--sh-1)}
 .pt-mast__av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -65,9 +67,13 @@
 .pt-mm .n small{font-size:14px;font-weight:700;color:var(--brand);opacity:.65;margin-left:2px}
 .pt-mm .k{font-size:13px;font-weight:700;color:var(--muted)}
 
-/* ── reader: itinerary + sticky map ── */
-.pt-reader{display:grid;grid-template-columns:1fr minmax(420px,44%);gap:48px;align-items:start;padding-bottom:20px}
-.pt-mapcol{position:sticky;top:84px;height:calc(100vh - 110px);min-height:460px}
+/* ── reader: masthead + itinerary (left column) and lifted sticky map (right) ──
+   The map spans both rows so it sits beside the masthead AND the route list,
+   pinned just under the site-header divider as the reader scrolls. */
+.pt-reader{display:grid;grid-template-columns:1fr minmax(420px,44%);grid-template-rows:auto 1fr;column-gap:48px;align-items:start;padding-bottom:20px}
+.pt-head{grid-column:1;grid-row:1;margin-bottom:6px}
+.pt-itin{grid-column:1;grid-row:2}
+.pt-mapcol{grid-column:2;grid-row:1 / span 2;position:sticky;top:84px;height:calc(100vh - 110px);min-height:460px}
 .pt-mapbox{position:relative;height:100%;border-radius:var(--r-card);overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh-1);background:var(--surface-3)}
 /* Bottom-left glass caption: which city the camera is on + its nights. */
 .pt-mapcap{position:absolute;left:16px;bottom:16px;z-index:2;display:flex;align-items:center;gap:10px;padding:9px 14px 9px 11px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:saturate(160%) blur(10px);border:1px solid var(--line);box-shadow:var(--sh-1)}
@@ -93,6 +99,24 @@
 .pt-cstop__hotel{display:inline-flex;align-items:center;gap:10px;margin-top:18px;font-weight:700;font-size:14.5px;color:var(--ink-2)}
 .pt-cstop__hotel .ic{width:32px;height:32px;border-radius:10px;flex:none;display:grid;place-items:center;background:var(--ev-hotel-soft);color:var(--ev-hotel-ink)}
 .pt-cstop__hotel .ic svg{width:17px;height:17px}
+
+/* Anchors (start/finish): the number badge carries a flag glyph instead of a
+   digit, plus a small role tag next to the city name. The badge background is the
+   stop's accent (start = brand, finish = transfer-teal) — same colour as the map
+   pin's ring and the on-map caption pill. */
+.pt-cstop__num--icon svg{width:21px;height:21px;color:#fff}
+.pt-role{display:inline-block;margin-left:11px;vertical-align:middle;font-family:var(--font-ui);font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:3px 10px;border-radius:var(--r-pill);line-height:1.5}
+
+/* Waypoint: a slim "ghost" pass-through row between cities — a small ring dot on
+   the rail, the flag, the city and a TRANSIT tag. No number, no card. */
+.pt-cstop--wp{display:flex;align-items:center;gap:11px;padding:13px 0;border-top:1px dashed var(--line)}
+.pt-cstop--wp:first-child{border-top:0}
+.pt-wp__dot{width:14px;height:14px;border-radius:50%;flex:none;margin-left:calc((var(--num) - 14px) / 2);background:var(--surface);border:2.5px solid var(--muted);transition:border-color .35s var(--ease-out)}
+.pt-cstop--wp.is-active .pt-wp__dot{border-color:var(--brand)}
+.pt-wp__flag{width:20px;height:14px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(0,0,0,.10);flex:none}
+.pt-wp__city{font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--ink-2);transition:color .35s var(--ease-out)}
+.pt-cstop--wp.is-active .pt-wp__city{color:var(--brand)}
+.pt-wp__tag{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);padding:2px 9px;border-radius:var(--r-pill)}
 
 .pt-acts{margin:18px 0 0;padding-left:calc(var(--num) + var(--gap))}
 .pt-act{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px dashed var(--line)}
@@ -142,12 +166,15 @@
 .pt-reveal.in{opacity:1;transform:none}
 
 @media(max-width:880px){
-  .pt-reader{grid-template-columns:1fr;gap:0}
-  .pt-mapcol{position:relative;top:0;height:auto;min-height:0;margin-bottom:26px;order:-1}
+  /* Single column: masthead → map → itinerary. The map is no longer sticky. */
+  .pt-reader{grid-template-columns:1fr;grid-template-rows:none;column-gap:0}
+  .pt-head{grid-column:1;grid-row:auto;order:1;margin-bottom:0}
+  .pt-mapcol{grid-column:1;grid-row:auto;position:relative;top:0;height:auto;min-height:0;margin:10px 0 26px;order:2}
+  .pt-itin{grid-column:1;grid-row:auto;order:3}
   .pt-mapbox{height:300px}
 }
 @media(max-width:600px){
-  .pt-mast{padding:var(--hero-top,120px) 0 26px}
+  .pt-top{padding:var(--hero-top,120px) 0 22px}
   .pt-wide{padding:0 18px}
   .pt-scta{display:flex}
   .ptrip{padding-bottom:70px}

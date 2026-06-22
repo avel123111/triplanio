@@ -7,7 +7,6 @@ import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { SiteHeader, SiteFooter, useLandingCss } from '@/components/site/SiteChrome';
 import MapView from '@/components/views/MapView';
 import { sortVisits } from '@/lib/validation';
-import { transitVisits } from '@/lib/trip-cities';
 import { tripStats, tripDateSpan } from '@/lib/trip-stats';
 import { transportInfo } from '@/lib/transport';
 import { formatDuration } from '@/lib/time';
@@ -21,6 +20,21 @@ const ACCENTS = ['var(--brand)', 'var(--ev-activity)', 'var(--ev-car)', 'var(--a
 
 const initials = (name = '') =>
   name.split(' ').map((w) => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
+
+// Role badge glyph for the anchors / waypoint — the SAME paths the map markers
+// use (src/lib/map/markers.js), so the timeline badge and the map pin read as the
+// same symbol. start/end = flag; waypoint = interchange arrows.
+function RoleGlyph({ kind }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {kind === 'waypoint' ? (
+        <path d="M7 7h13l-4-4M17 17H4l4 4" />
+      ) : (
+        <><path d="M5 3v18" /><path d="M5 4h12l-2 4 2 4H5" /></>
+      )}
+    </svg>
+  );
+}
 
 function FlagImg({ cc, className }) {
   const code = (cc || '').trim().toLowerCase();
@@ -86,10 +100,16 @@ export default function PublicTrip() {
 
   const fmt = (d) => (d ? fmtDate(d, 'utc', 'd MMM') : '');
 
-  // Build the city stops (transit cities only, in trip order) with their hotel,
-  // activities, nights and coordinates.
+  // Build the itinerary stops — now the WHOLE route, in trip order: the start
+  // anchor, transit cities, pass-through waypoints and the end anchor. Only
+  // transit cities carry a sequential number (1,2,3…); start/end render as
+  // anchor pills and waypoints as a slim "ghost" row (mirrors the map markers).
   const stops = useMemo(() => {
-    return transitVisits(ordered).map((v, i) => {
+    let transitNo = 0;
+    return ordered.map((v) => {
+      const kind = v.kind === 'start' || v.kind === 'end' || v.kind === 'waypoint' ? v.kind : 'transit';
+      const isTransit = kind === 'transit';
+      const n = isTransit ? ++transitNo : null;
       const start = v.start_date;
       const end = v.end_date;
       const nights = start && end
@@ -101,20 +121,34 @@ export default function PublicTrip() {
         .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime))
         .map((a) => ({ nm: a.title, day: fmt(a.start_datetime) }));
       const hasCoords = v.latitude != null && v.longitude != null;
+      // Badge colour — reused for BOTH the timeline badge and the on-map caption
+      // pill so they always match. Transit cycles the Lumo accents by its own
+      // number; start = brand, end = transfer-teal, waypoint = muted (ghost).
+      const accent = isTransit
+        ? ACCENTS[(n - 1) % ACCENTS.length]
+        : kind === 'start' ? 'var(--brand)'
+          : kind === 'end' ? 'var(--ev-transfer)'
+            : 'var(--muted)';
       return {
         id: v.id,
-        n: i + 1,
+        kind,
+        isTransit,
+        n,
         city: v.city_name,
         country: v.country || '',
         cc: v.country_code || '',
         start, end, nights,
         hotel: hotel?.name || null,
         acts,
-        accent: ACCENTS[i % ACCENTS.length],
+        accent,
         coords: hasCoords ? [Number(v.longitude), Number(v.latitude)] : null,
       };
     });
   }, [ordered, hotels, activities, locale]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The destination strip in the masthead stays transit-only (anchors/waypoints
+  // are not destinations); the full route lives in the itinerary below.
+  const transitStops = useMemo(() => stops.filter((s) => s.isTransit), [stops]);
 
   // Transfer leg between two consecutive stops (if booked), for the pill.
   const legFor = (a, b) => {
@@ -134,23 +168,59 @@ export default function PublicTrip() {
   );
   const [spanStart, spanEnd] = useMemo(() => tripDateSpan(trip, visits), [trip, visits]);
 
-  // Map scroll-focus: the active city stop drives the map camera.
-  const [focusIdx, setFocusIdx] = useState(0);
+  // Map scroll-focus: the active stop drives the camera AND the progressive route
+  // reveal. focusIdx = -1 means "still at the top" → the map shows the WHOLE route
+  // (every marker + line) and nothing is selected. Once the first stop scrolls
+  // past the anchor, focusIdx = 0 and the camera/reveal start. The active index is
+  // computed deterministically as the LAST stop whose top crossed the anchor line
+  // (not by IntersectionObserver toggles), so scrolling up never "skips" a city.
+  // `progress` is how far the anchor has travelled from the active stop toward the
+  // next one (0→1) — it drives the line growing toward the next city.
+  const [focusIdx, setFocusIdx] = useState(-1);
+  const [progress, setProgress] = useState(0);
   const itinRef = useRef(null);
   useEffect(() => {
-    if (!itinRef.current || stops.length === 0) return;
-    const els = itinRef.current.querySelectorAll('.pt-cstop');
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => { if (e.isIntersecting) setFocusIdx(Number(e.target.dataset.i)); });
-    }, { rootMargin: '-45% 0px -45% 0px', threshold: 0 });
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, [stops]);
+    const itin = itinRef.current;
+    if (!itin || stops.length === 0) { setFocusIdx(-1); setProgress(0); return undefined; }
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const els = itin.querySelectorAll('.pt-cstop');
+      if (!els.length) return;
+      const anchor = window.innerHeight * 0.45;
+      const tops = Array.from(els, (el) => el.getBoundingClientRect().top);
+      let active = -1;
+      for (let i = 0; i < tops.length; i++) {
+        if (tops[i] <= anchor) active = i; else break;
+      }
+      let prog = 0;
+      if (active >= 0 && active < tops.length - 1) {
+        const span = tops[active + 1] - tops[active];
+        prog = span > 0 ? Math.min(1, Math.max(0, (anchor - tops[active]) / span)) : 0;
+      }
+      setFocusIdx(active);
+      setProgress(prog);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    measure();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [stops.length]);
 
+  // At the top (focusIdx < 0) leave focus null so MapView keeps the whole-route
+  // fit; once a stop is active, fly to it.
   const focusPts = useMemo(() => {
+    if (focusIdx < 0) return null;
     const c = stops[focusIdx]?.coords;
     return c ? [c] : null;
   }, [stops, focusIdx]);
+  const activeStop = focusIdx >= 0 ? stops[focusIdx] : null;
+  const activeId = activeStop?.id ?? null;
 
   // Reveal-on-scroll for the participants / CTA blocks.
   useEffect(() => {
@@ -186,91 +256,110 @@ export default function PublicTrip() {
     <div className="ptrip">
       <SiteHeader lang={lang} setLang={setLang} navBase={SITE} brandHref={SITE} />
 
-      {/* ── Masthead ── */}
-      <section className="pt-mast"><div className="pt-wide">
-        <span className="pt-mast__kick">{t('public.mast_kick')}</span>
-        <h1>{trip.title}</h1>
+      {/* ── Reader: masthead + itinerary (left) and the lifted sticky map (right).
+           The masthead/stats and the route list are grouped in the left column so
+           the map can ride up to just under the site-header divider. ── */}
+      <section className="pt-wide pt-top"><div className="pt-reader">
+        <header className="pt-head">
+          <span className="pt-mast__kick">{t('public.mast_kick')}</span>
+          <h1>{trip.title}</h1>
 
-        {ownerName && (
-          <div className="pt-mast__by">
-            <span className="pt-mast__av">
-              {initials(ownerName)}
-              {owner.avatar_url && <img src={owner.avatar_url} alt="" onError={(e) => e.currentTarget.remove()} />}
-            </span>
-            <span className="pt-mast__tx">
-              <span className="pt-mast__l1">{t('public.shared_by')} <b>{ownerName}</b></span>
-              <span className="pt-mast__l2">{t('public.shared_sub')}</span>
-            </span>
-          </div>
-        )}
-
-        {stops.length > 0 && (
-          <div className="pt-ribbon">
-            {stops.map((s, i) => (
-              <React.Fragment key={s.id}>
-                <span className="pt-rchip"><FlagImg cc={s.cc} /><b>{s.city}</b></span>
-                {i < stops.length - 1 && (
-                  <span className="pt-rsep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        )}
-
-        <div className="pt-meta">
-          {dateRange && (
-            <div className="pt-mm"><span className="n">{dateRange}</span><span className="k">{stats.days} {plural(stats.days, 'public.subtitle_days')}</span></div>
+          {ownerName && (
+            <div className="pt-mast__by">
+              <span className="pt-mast__av">
+                {initials(ownerName)}
+                {owner.avatar_url && <img src={owner.avatar_url} alt="" onError={(e) => e.currentTarget.remove()} />}
+              </span>
+              <span className="pt-mast__tx">
+                <span className="pt-mast__l1">{t('public.shared_by')} <b>{ownerName}</b></span>
+                <span className="pt-mast__l2">{t('public.shared_sub')}</span>
+              </span>
+            </div>
           )}
-          <div className="pt-mm"><span className="n tnum">{stats.cities}</span><span className="k">{t('public.meta_cities')}</span></div>
-          <div className="pt-mm"><span className="n tnum">{stats.countries}</span><span className="k">{t('public.meta_countries')}</span></div>
-          <div className="pt-mm"><span className="n tnum">{stats.transfers}</span><span className="k">{t('public.meta_transfers')}</span></div>
-          {stats.distanceKm > 0 && (
-            <div className="pt-mm"><span className="n tnum">{stats.distanceKm.toLocaleString(locale)}<small>{t('public.km')}</small></span><span className="k">{t('public.meta_distance')}</span></div>
-          )}
-        </div>
-      </div></section>
 
-      {/* ── Reader: itinerary + sticky map ── */}
-      <section className="pt-wide"><div className="pt-reader">
+          {transitStops.length > 0 && (
+            <div className="pt-ribbon">
+              {transitStops.map((s, i) => (
+                <React.Fragment key={s.id}>
+                  <span className="pt-rchip"><FlagImg cc={s.cc} /><b>{s.city}</b></span>
+                  {i < transitStops.length - 1 && (
+                    <span className="pt-rsep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+
+          <div className="pt-meta">
+            {dateRange && (
+              <div className="pt-mm"><span className="n">{dateRange}</span><span className="k">{stats.days} {plural(stats.days, 'public.subtitle_days')}</span></div>
+            )}
+            <div className="pt-mm"><span className="n tnum">{stats.cities}</span><span className="k">{t('public.meta_cities')}</span></div>
+            <div className="pt-mm"><span className="n tnum">{stats.countries}</span><span className="k">{t('public.meta_countries')}</span></div>
+            <div className="pt-mm"><span className="n tnum">{stats.transfers}</span><span className="k">{t('public.meta_transfers')}</span></div>
+            {stats.distanceKm > 0 && (
+              <div className="pt-mm"><span className="n tnum">{stats.distanceKm.toLocaleString(locale)}<small>{t('public.km')}</small></span><span className="k">{t('public.meta_distance')}</span></div>
+            )}
+          </div>
+        </header>
+
         <div className="pt-itin" ref={itinRef}>
           {stops.map((s, i) => (
             <React.Fragment key={s.id}>
-              <div className={`pt-cstop${i === focusIdx ? ' is-active' : ''}`} data-i={i}>
-                <div className="pt-cstop__h">
-                  <div className="pt-cstop__num" style={{ background: i === focusIdx ? 'var(--brand)' : s.accent }}>{s.n}</div>
-                  <div className="pt-cstop__ht">
-                    <h2>{s.city}</h2>
-                    <div className="pt-cstop__sub">
-                      <FlagImg cc={s.cc} />
-                      {s.country && <span>{s.country}</span>}
-                      {(s.start || s.end) && <span>· {fmt(s.start)} → {fmt(s.end)}</span>}
-                      {s.nights > 0 && <span>· <b>{s.nights} {plural(s.nights, 'public.nights')}</b></span>}
-                    </div>
-                    {s.hotel && (
-                      <div className="pt-cstop__hotel">
-                        <span className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M10 21v-4h4v4"/></svg></span>
-                        {s.hotel}
-                      </div>
-                    )}
-                  </div>
+              {s.kind === 'waypoint' ? (
+                <div className={`pt-cstop pt-cstop--wp${i === focusIdx ? ' is-active' : ''}`} data-i={i}>
+                  <span className="pt-wp__dot" style={{ borderColor: i === focusIdx ? 'var(--brand)' : s.accent }} />
+                  <FlagImg cc={s.cc} className="pt-wp__flag" />
+                  <span className="pt-wp__city">{s.city}</span>
+                  <span className="pt-wp__tag">{t('public.role_waypoint')}</span>
                 </div>
-                {s.acts.length > 0 && (
-                  <div className="pt-acts">
-                    {s.acts.map((a, ai) => (
-                      <div className="pt-act" key={ai}>
-                        <span className="dot" style={{ background: s.accent }} />
-                        <span className="nm">{a.nm}</span>
-                        {a.day && (
-                          <span
-                            className="day"
-                            style={{ background: `color-mix(in srgb, ${s.accent} 16%, transparent)`, color: s.accent }}
-                          >{a.day}</span>
+              ) : (
+                <div className={`pt-cstop${i === focusIdx ? ' is-active' : ''}${s.isTransit ? '' : ' pt-cstop--anchor'}`} data-i={i}>
+                  <div className="pt-cstop__h">
+                    <div className={`pt-cstop__num${s.isTransit ? '' : ' pt-cstop__num--icon'}`} style={{ background: i === focusIdx ? 'var(--brand)' : s.accent }}>
+                      {s.isTransit ? s.n : <RoleGlyph kind={s.kind} />}
+                    </div>
+                    <div className="pt-cstop__ht">
+                      <h2>
+                        {s.city}
+                        {!s.isTransit && (
+                          <span className="pt-role" style={{ color: s.accent, background: `color-mix(in srgb, ${s.accent} 14%, transparent)` }}>
+                            {t(`public.role_${s.kind}`)}
+                          </span>
                         )}
+                      </h2>
+                      <div className="pt-cstop__sub">
+                        <FlagImg cc={s.cc} />
+                        {s.country && <span>{s.country}</span>}
+                        {(s.start || s.end) && <span>· {fmt(s.start)} → {fmt(s.end)}</span>}
+                        {s.nights > 0 && <span>· <b>{s.nights} {plural(s.nights, 'public.nights')}</b></span>}
                       </div>
-                    ))}
+                      {s.hotel && (
+                        <div className="pt-cstop__hotel">
+                          <span className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M10 21v-4h4v4"/></svg></span>
+                          {s.hotel}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
+                  {s.acts.length > 0 && (
+                    <div className="pt-acts">
+                      {s.acts.map((a, ai) => (
+                        <div className="pt-act" key={ai}>
+                          <span className="dot" style={{ background: s.accent }} />
+                          <span className="nm">{a.nm}</span>
+                          {a.day && (
+                            <span
+                              className="day"
+                              style={{ background: `color-mix(in srgb, ${s.accent} 16%, transparent)`, color: s.accent }}
+                            >{a.day}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {i < stops.length - 1 && (() => {
                 const leg = legFor(s, stops[i + 1]);
                 if (!leg) return null;
@@ -299,15 +388,19 @@ export default function PublicTrip() {
               basemapTheme="monochrome"
               focus={focusPts}
               focusDuration={4200}
-              selectedVisitId={stops[focusIdx]?.id ?? null}
+              selectedVisitId={activeId}
+              revealActiveId={activeId}
+              revealProgress={progress}
             />
-            {stops[focusIdx] && (
+            {activeStop && (
               <div className="pt-mapcap">
-                <span className="pt-mapcap__pill">{stops[focusIdx].n}</span>
+                <span className="pt-mapcap__pill" style={{ background: activeStop.accent }}>
+                  {activeStop.isTransit ? activeStop.n : <RoleGlyph kind={activeStop.kind} />}
+                </span>
                 <span className="pt-mapcap__tx">
-                  <b>{stops[focusIdx].city}</b>
-                  {stops[focusIdx].nights > 0 && (
-                    <span>· {stops[focusIdx].nights} {plural(stops[focusIdx].nights, 'public.nights')}</span>
+                  <b>{activeStop.city}</b>
+                  {activeStop.nights > 0 && (
+                    <span>· {activeStop.nights} {plural(activeStop.nights, 'public.nights')}</span>
                   )}
                 </span>
               </div>

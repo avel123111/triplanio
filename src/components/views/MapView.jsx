@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
-import { drawRouteLinesCached, drawRouteHighlight, clearRouteHighlight } from '@/lib/map/routeLines';
+import { drawRouteLinesCached, drawRouteReveal, drawRouteHighlight, clearRouteHighlight } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers';
 import MapControls from '@/lib/map/MapControls';
 import { countryFlag } from '@/lib/geo';
@@ -41,6 +41,15 @@ export default function MapView({
   // Duration (ms) of the single-city focus flyTo. Default 700; the public
   // shared-trip reader passes a larger value for a slower, calmer camera.
   focusDuration = 700,
+  // Optional progressive reveal (public shared-trip reader). When `revealActiveId`
+  // is set, the route is NOT drawn whole: markers up to the active city are shown,
+  // markers past it are hidden, every leg up to the active city is full, and the
+  // leg leaving the active city is sliced to `revealProgress` (0→1) so the line
+  // grows toward the next city as the reader scrolls. The next city's marker only
+  // appears once `revealActiveId` advances to it. `revealActiveId == null` ⇒ the
+  // whole route + all markers draw normally (default — every other surface).
+  revealActiveId = null,
+  revealProgress = 0,
   // When the map is kept mounted but hidden behind another tab, the parent flips
   // `active` to false. On re-show its container regains size, so the map needs a
   // resize() (handled in useMapSurface).
@@ -87,6 +96,50 @@ export default function MapView({
     () => ordered.map((v) => `${v.id}:${v.latitude.toFixed(5)},${v.longitude.toFixed(5)}`).join('|'),
     [ordered],
   );
+
+  // Route legs (consecutive ordered visits + the transport on each pair) and the
+  // line signature — shared by the line-draw effect (full vs progressive reveal).
+  const legs = useMemo(() => {
+    const transferByPair = new globalThis.Map();
+    transfers.forEach((t) => {
+      const k = `${t.from_city_visit_id}__${t.to_city_visit_id}`;
+      if (!transferByPair.has(k)) transferByPair.set(k, t);
+    });
+    const out = [];
+    for (let i = 0; i < ordered.length - 1; i++) {
+      const from = ordered[i];
+      const to = ordered[i + 1];
+      out.push({ from, to, kind: transferByPair.get(`${from.id}__${to.id}`)?.transport_type });
+    }
+    return out;
+  }, [ordered, transfers]);
+
+  const lineSig = useMemo(() => {
+    const transfersSig = transfers
+      .map((t) => `${t.from_city_visit_id}>${t.to_city_visit_id}:${t.transport_type || ''}`)
+      .join('|');
+    return `trip:${visitsSignature}::${transfersSig}`;
+  }, [visitsSignature, transfers]);
+
+  // Reveal bookkeeping: index of the active city in `ordered` and an id→index map
+  // (used to hide markers past the active city without rebuilding them).
+  const revealActiveIdx = useMemo(
+    () => (revealActiveId == null ? -1 : ordered.findIndex((v) => String(v.id) === String(revealActiveId))),
+    [ordered, revealActiveId],
+  );
+  const orderIndexById = useMemo(() => {
+    const m = new globalThis.Map();
+    ordered.forEach((v, i) => m.set(String(v.id), i));
+    return m;
+  }, [ordered]);
+  // Revealing only when the active id actually resolves to a marker on the map —
+  // if the active stop has no coordinates (rare anchor), fall back to the whole
+  // route instead of blanking it.
+  const revealing = revealActiveId != null && revealActiveIdx >= 0;
+  // Latest "are we revealing?" for the marker-build effect (whose deps exclude the
+  // reveal props) so a data redraw re-applies visibility immediately.
+  const revealingRef = useRef(revealing);
+  revealingRef.current = revealing;
 
   // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
@@ -149,32 +202,20 @@ export default function MapView({
       // Tag the element with the visit ids at this spot so the selection/hover
       // effect can toggle .is-sel / .is-hover without rebuilding the markers.
       el.dataset.vids = g.data.map((v) => v && v.id).filter(Boolean).join(',');
+      // While revealing, markers past the active city must start hidden so they
+      // appear only as the line reaches them (the visibility effect keeps this in
+      // sync on scroll; this just avoids a flash of all pins right after a rebuild).
+      if (revealingRef.current) {
+        const ids = (el.dataset.vids || '').split(',').filter(Boolean);
+        const minIdx = ids.reduce((acc, id) => {
+          const i = orderIndexById.get(id);
+          return i == null ? acc : Math.min(acc, i);
+        }, Infinity);
+        if (minIdx > revealActiveIdx) el.style.display = 'none';
+      }
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
       markersRef.current.push(marker);
     });
-
-    // Routes - dashed for "no transfer", solid for road/flight/other. Leg kind
-    // comes from the transfer between consecutive visits (none ⇒ dashed).
-    const transferByPair = new globalThis.Map();
-    transfers.forEach((t) => {
-      const k = `${t.from_city_visit_id}__${t.to_city_visit_id}`;
-      if (!transferByPair.has(k)) transferByPair.set(k, t);
-    });
-    const legs = [];
-    for (let i = 0; i < ordered.length - 1; i++) {
-      const from = ordered[i];
-      const to = ordered[i + 1];
-      legs.push({ from, to, kind: transferByPair.get(`${from.id}__${to.id}`)?.transport_type });
-    }
-    // Signature of everything the lines depend on (route order/coords +
-    // per-leg transport). If unchanged, the cached draw is a no-op → no rebuild,
-    // no road refetch, no flicker when reopening the map.
-    const transfersSig = transfers
-      .map((t) => `${t.from_city_visit_id}>${t.to_city_visit_id}:${t.transport_type || ''}`)
-      .join('|');
-    const lineSig = `trip:${visitsSignature}::${transfersSig}`;
-    // Colours/widths come from the shared mapStyle defaults.
-    drawRouteLinesCached(map, lineSig, legs, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
 
     // Fit once per distinct set of visits - animate the camera so the map
     // glides out/in to the route as it changes (e.g. while editing structure).
@@ -188,6 +229,43 @@ export default function MapView({
 
     return undefined;
   }, [ready, ordered, transfers, visitsSignature]);
+
+  // --- Route lines: full (cached) when not revealing, progressive when revealing.
+  // Splitting this out of the marker/fit effect lets the reveal redraw cheaply on
+  // every scroll tick (revealProgress) via in-place source updates — no marker
+  // rebuild, no fit. When reveal clears, the cached path reclaims the same layers;
+  // we null the cached signature on entry so leaving reveal forces that redraw. ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return undefined;
+    if (revealing) {
+      if (map.__routeLines) map.__routeLines.sig = null;
+      drawRouteReveal(map, legs, revealActiveIdx, revealProgress, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
+    } else {
+      drawRouteLinesCached(map, lineSig, legs, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
+    }
+    return undefined;
+  }, [ready, revealing, revealActiveIdx, revealProgress, legs, lineSig]);
+
+  // --- Marker visibility under reveal — hide pins past the active city without
+  // rebuilding markers (cheap class-free toggle on the existing DOM nodes). When
+  // not revealing, every marker is shown. ---
+  useEffect(() => {
+    if (!ready) return;
+    markersRef.current.forEach((m) => {
+      const el = m.getElement();
+      let hide = false;
+      if (revealing) {
+        const ids = (el.dataset.vids || '').split(',').filter(Boolean);
+        const minIdx = ids.reduce((acc, id) => {
+          const i = orderIndexById.get(id);
+          return i == null ? acc : Math.min(acc, i);
+        }, Infinity);
+        hide = minIdx > revealActiveIdx;
+      }
+      el.style.display = hide ? 'none' : '';
+    });
+  }, [ready, revealing, revealActiveIdx, orderIndexById, visitsSignature]);
 
   // Selection + hover highlight — toggled on the existing marker elements (no
   // rebuild, so hovering a list is cheap). Re-runs after a marker rebuild too
