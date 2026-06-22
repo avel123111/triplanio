@@ -190,6 +190,15 @@ export function drawRouteReveal(map, legs, activeIdx, progress, opts) {
   setLineLayer(map, solidId, solid, { color: solidColor, width: solidWidth });
 }
 
+// [lng,lat] of the point at fraction `f` (0..1) along a leg's geometry — i.e. the
+// exact head of the line drawn by drawRouteReveal at the same fraction. The reveal
+// camera follows this so it sits on the growing line tip (perfect line↔camera sync).
+export function legPointAt(from, to, kind, f) {
+  const geo = legGeometry(from, to, kind);
+  const sliced = sliceLine(geo, Math.min(1, Math.max(0, f)));
+  return sliced[sliced.length - 1];
+}
+
 // Every line layer id any surface can draw. Used to wipe a previous route
 // (this screen's or another surface's) before drawing a different one.
 const ALL_LINE_LAYER_IDS = ['mv-dashed', 'mv-solid', 'flow-dashed', 'flow-solid'];
