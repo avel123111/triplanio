@@ -23,7 +23,7 @@ export default function TripStatRow({ visits = [], transfers = [], trip, ordered
     <div className="statrow">
       {cards.map((c, i) => (
         <div className={`statcard${c.tone ? ` c-${c.tone}` : ''}`} key={c.key} style={{ '--i': i }}>
-          <span className="ic"><Icon name={c.icon} size={20} /></span>
+          <span className="ic"><Icon name={c.icon} size={17} /></span>
           <div className="meta">
             <div className="v num">{c.value}</div>
             <div className="k">{c.label}</div>
