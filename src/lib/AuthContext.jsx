@@ -110,6 +110,13 @@ export const AuthProvider = ({ children }) => {
         .eq('id', authUser.id)
         .single();
 
+      if (profile?.deleted_at) {
+        // Account was anonymized/deleted server-side — force logout even if a
+        // still-signed token is present in this tab/device (kills the zombie).
+        await logout();
+        return;
+      }
+
       if (error && error.code === 'PGRST116') {
         // Profile doesn't exist yet - create it (first login via Google or email).
         // Avatar policy: keep ONLY a real uploaded/OAuth image. When there is

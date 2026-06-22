@@ -9,10 +9,11 @@
 -- people's trips and required financial history.
 --
 -- Approach: keep the public.users row (stable author id for shared content),
--- scrub its PII, delete only purely-personal records, and remove the auth
--- account (done by the edge function via the GoTrue admin API — not possible
--- from SQL). App-store and GDPR rules accept anonymization + retention of
--- legally-required financial data.
+-- scrub its PII, delete only purely-personal records, and neutralize the auth
+-- account in place (ban + scrub email + drop identities/sessions) rather than
+-- hard-delete it — a hard delete fails on FKs from retained content such as
+-- chat_messages.user_id -> auth.users. App-store and GDPR rules accept
+-- anonymization + retention of legally-required financial data.
 
 -- 1) Deletion marker. This is the ONLY signal of a deleted account; never infer
 --    deletion from an empty name (live users can legitimately have no full_name).
@@ -60,8 +61,11 @@ begin
   delete from public.trip_telegram_integrations where user_id = p_user_id;
 
   -- Scrub the profile row. id stays so shared content keeps a stable author.
+  -- email is NOT NULL + UNIQUE, so it can't be nulled: replace with a unique
+  -- non-routable placeholder. This still removes the real address (freeing it
+  -- for re-registration) and scrubs the PII.
   update public.users
-  set email      = null,
+  set email      = 'deleted+' || p_user_id::text || '@deleted.invalid',
       full_name  = null,
       avatar_url = null,
       deleted_at = now()
@@ -73,6 +77,21 @@ begin
   set user_full_name = null,
       invite_email   = null
   where user_id = p_user_id;
+
+  -- Neutralize the auth account IN PLACE. We cannot hard-delete auth.users:
+  -- public.users cascades from auth.users (users_id_fkey ON DELETE CASCADE) and
+  -- is referenced by retained content, so a hard delete fails (SQLSTATE 23503).
+  -- Instead drop identities + sessions and scrub the auth email. This makes login
+  -- impossible (no provider mapping, no password, no session) AND lets the person
+  -- re-register fresh: a new provider login creates a brand-new user row, and the
+  -- freed email no longer collides. No ban is set — it would add nothing here and
+  -- only muddy the re-registration story.
+  delete from auth.sessions   where user_id = p_user_id;
+  delete from auth.identities where user_id = p_user_id;
+  update auth.users
+  set email      = 'deleted+' || p_user_id::text || '@deleted.invalid',
+      updated_at = now()
+  where id = p_user_id;
 
   return jsonb_build_object('code', 'ok');
 end;

@@ -120,6 +120,7 @@ export default function MembersSummaryCard({
                 <Avatar
                   name={name}
                   photo={profile?.avatar_url || ''}
+                  deleted={profile?.is_deleted}
                   kind={isPending ? 'placeholder' : undefined}
                 />
                 <div className="fl1">

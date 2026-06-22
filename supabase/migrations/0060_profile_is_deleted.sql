@@ -28,10 +28,14 @@ as $function$
     SELECT t.id FROM trips t WHERE t.id = ANY(trip_id_list)
       AND (t.created_by = auth.uid() OR EXISTS (SELECT 1 FROM trip_members tm WHERE tm.trip_id = t.id AND tm.user_id = auth.uid() AND tm.status = 'active'))
   )
-  SELECT t.id, u.id, COALESCE(u.full_name,''), COALESCE(u.email,''), COALESCE(u.avatar_url,''), 'owner'::text, true, (u.deleted_at IS NOT NULL)
+  SELECT t.id, u.id, COALESCE(u.full_name,''),
+         CASE WHEN u.deleted_at IS NOT NULL THEN '' ELSE COALESCE(u.email,'') END,
+         COALESCE(u.avatar_url,''), 'owner'::text, true, (u.deleted_at IS NOT NULL)
   FROM trips t JOIN users u ON u.id = t.created_by WHERE t.id IN (SELECT id FROM accessible)
   UNION ALL
-  SELECT tm.trip_id, COALESCE(u.id, tm.user_id), COALESCE(u.full_name, tm.user_full_name,''), COALESCE(u.email, tm.invite_email,''), COALESCE(u.avatar_url,''), tm.role, false, (u.deleted_at IS NOT NULL)
+  SELECT tm.trip_id, COALESCE(u.id, tm.user_id), COALESCE(u.full_name, tm.user_full_name,''),
+         CASE WHEN u.deleted_at IS NOT NULL THEN '' ELSE COALESCE(u.email, tm.invite_email,'') END,
+         COALESCE(u.avatar_url,''), tm.role, false, (u.deleted_at IS NOT NULL)
   FROM trip_members tm LEFT JOIN users u ON u.id = tm.user_id
   WHERE tm.trip_id IN (SELECT id FROM accessible) AND tm.status = 'active';
 $function$;

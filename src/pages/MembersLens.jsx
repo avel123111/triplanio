@@ -381,7 +381,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
 
           return (
             <div key={m.id || i} className={`mbrow${isRemoving ? ' mbrow--busy' : ''}`}>
-              <Avatar name={name} photo={profile?.avatar_url || ''} size="lg" />
+              <Avatar name={name} photo={profile?.avatar_url || ''} deleted={profile?.is_deleted} size="lg" />
               <div className="mbrow__id">
                 <div className="mbrow__name">
                   {name}
