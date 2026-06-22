@@ -12,12 +12,13 @@ export default function TripStatRow({ visits = [], transfers = [], trip, ordered
   const s = tripStats({ visits, transfers, trip, orderedVisits });
 
   const cards = [
-    { key: 'cities', icon: 'pin', value: s.cities, label: t('overview.stat_cities') },
-    { key: 'countries', icon: 'globe', value: s.countries, label: t('overview.stat_countries') },
-    { key: 'transfers', icon: 'plane', value: s.transfers, label: t('overview.stat_transfers') },
+    { key: 'cities', icon: 'buildings', tone: 'city', value: s.cities, label: t('overview.stat_cities') },
+    { key: 'countries', icon: 'globe', tone: null, value: s.countries, label: t('overview.stat_countries') },
+    { key: 'transfers', icon: 'arrowSwap', tone: 'transfer', value: s.transfers, label: t('overview.stat_transfers') },
     {
       key: 'distance',
       icon: 'route',
+      tone: 'distance',
       value: (
         <>
           {fmtNumber(s.distanceKm)}
@@ -29,6 +30,7 @@ export default function TripStatRow({ visits = [], transfers = [], trip, ordered
     {
       key: 'duration',
       icon: 'calendar',
+      tone: 'duration',
       value: (
         <>
           {s.days}
@@ -42,11 +44,11 @@ export default function TripStatRow({ visits = [], transfers = [], trip, ordered
   return (
     <div className="statrow">
       {cards.map((c, i) => (
-        <div className="statcard" key={c.key} style={{ '--i': i }}>
-          <div className="v num">{c.value}</div>
-          <div className="k">
-            <Icon name={c.icon} size={12} />
-            {c.label}
+        <div className={`statcard${c.tone ? ` c-${c.tone}` : ''}`} key={c.key} style={{ '--i': i }}>
+          <span className="ic"><Icon name={c.icon} size={19} /></span>
+          <div className="meta">
+            <div className="v num">{c.value}</div>
+            <div className="k">{c.label}</div>
           </div>
         </div>
       ))}
