@@ -42,14 +42,14 @@ export default function MapView({
   // shared-trip reader passes a larger value for a slower, calmer camera.
   focusDuration = 700,
   // Optional progressive reveal (public shared-trip reader). When `revealActiveId`
-  // is set, the route is NOT drawn whole: markers up to the active city are shown,
-  // markers past it are hidden, every leg up to the active city is full, and the
-  // leg leaving the active city is sliced to `revealProgress` (0→1) so the line
-  // grows toward the next city as the reader scrolls. The next city's marker only
-  // appears once `revealActiveId` advances to it. `revealActiveId == null` ⇒ the
-  // whole route + all markers draw normally (default — every other surface).
+  // is set, the route is NOT drawn whole: only the legs UP TO the active city are
+  // painted and markers past it are hidden. When the active city ADVANCES to the
+  // next one, the connecting leg is animated growing 0→1 over `focusDuration` —
+  // in lockstep with the camera flyTo — and the next marker appears once the line
+  // arrives. While the reader sits on a city, the leg toward the NEXT city is not
+  // drawn at all (no pre-drawn future legs). `revealActiveId == null` ⇒ the whole
+  // route + all markers draw normally (default — every other surface).
   revealActiveId = null,
-  revealProgress = 0,
   // When the map is kept mounted but hidden behind another tab, the parent flips
   // `active` to false. On re-show its container regains size, so the map needs a
   // resize() (handled in useMapSurface).
@@ -136,10 +136,54 @@ export default function MapView({
   // if the active stop has no coordinates (rare anchor), fall back to the whole
   // route instead of blanking it.
   const revealing = revealActiveId != null && revealActiveIdx >= 0;
+
+  // Reveal animation state. `legIdx` = the leg currently growing (source→next);
+  // `prog` = 0→1 growth. When legIdx < 0 the route is static: every leg up to the
+  // active city is full and nothing beyond is drawn. `markerMax` = highest marker
+  // index allowed to show. While a leg grows toward city k, markerMax stays at
+  // k-1 so the destination pin pops in only when the line arrives.
+  const [anim, setAnim] = useState({ legIdx: -1, prog: 0 });
+  const prevIdxRef = useRef(-1);
+  const animRafRef = useRef(0);
+  useEffect(() => {
+    if (!ready) return undefined;
+    const prev = prevIdxRef.current;
+    const cur = revealActiveIdx;
+    prevIdxRef.current = revealing ? cur : -1;
+    cancelAnimationFrame(animRafRef.current);
+    // Forward by one+ city (and not arriving from the top): grow the LAST leg
+    // (cur-1 → cur) in time with the camera flyTo; legs before it snap to full.
+    if (revealing && cur > prev && prev >= 0) {
+      const legIdx = cur - 1;
+      const dur = Math.max(1, focusDuration);
+      const t0 = performance.now();
+      const tick = (now) => {
+        const p = Math.min(1, (now - t0) / dur);
+        const e = 1 - Math.pow(1 - p, 3); // easeOutCubic ≈ flyTo easing
+        setAnim({ legIdx, prog: e });
+        if (p < 1) animRafRef.current = requestAnimationFrame(tick);
+        else setAnim({ legIdx: -1, prog: 0 });
+      };
+      animRafRef.current = requestAnimationFrame(tick);
+    } else {
+      // Backward, first landing from the top, or reveal off → no growing leg.
+      setAnim({ legIdx: -1, prog: 0 });
+    }
+    return () => cancelAnimationFrame(animRafRef.current);
+  }, [ready, revealing, revealActiveIdx, focusDuration]);
+
+  // Draw bookkeeping derived from the animation: which leg slices (and to what),
+  // and the highest marker index that may show.
+  const drawActiveIdx = anim.legIdx >= 0 ? anim.legIdx : revealActiveIdx;
+  const drawProg = anim.legIdx >= 0 ? anim.prog : 0;
+  const markerMax = anim.legIdx >= 0 ? anim.legIdx : revealActiveIdx;
+
   // Latest "are we revealing?" for the marker-build effect (whose deps exclude the
   // reveal props) so a data redraw re-applies visibility immediately.
   const revealingRef = useRef(revealing);
   revealingRef.current = revealing;
+  const markerMaxRef = useRef(markerMax);
+  markerMaxRef.current = markerMax;
 
   // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
@@ -211,7 +255,7 @@ export default function MapView({
           const i = orderIndexById.get(id);
           return i == null ? acc : Math.min(acc, i);
         }, Infinity);
-        if (minIdx > revealActiveIdx) el.style.display = 'none';
+        if (minIdx > markerMaxRef.current) el.style.display = 'none';
       }
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
       markersRef.current.push(marker);
@@ -240,12 +284,12 @@ export default function MapView({
     if (!map || !ready) return undefined;
     if (revealing) {
       if (map.__routeLines) map.__routeLines.sig = null;
-      drawRouteReveal(map, legs, revealActiveIdx, revealProgress, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
+      drawRouteReveal(map, legs, drawActiveIdx, drawProg, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
     } else {
       drawRouteLinesCached(map, lineSig, legs, { dashedId: 'mv-dashed', solidId: 'mv-solid' });
     }
     return undefined;
-  }, [ready, revealing, revealActiveIdx, revealProgress, legs, lineSig]);
+  }, [ready, revealing, drawActiveIdx, drawProg, legs, lineSig]);
 
   // --- Marker visibility under reveal — hide pins past the active city without
   // rebuilding markers (cheap class-free toggle on the existing DOM nodes). When
@@ -261,11 +305,11 @@ export default function MapView({
           const i = orderIndexById.get(id);
           return i == null ? acc : Math.min(acc, i);
         }, Infinity);
-        hide = minIdx > revealActiveIdx;
+        hide = minIdx > markerMax;
       }
       el.style.display = hide ? 'none' : '';
     });
-  }, [ready, revealing, revealActiveIdx, orderIndexById, visitsSignature]);
+  }, [ready, revealing, markerMax, orderIndexById, visitsSignature]);
 
   // Selection + hover highlight — toggled on the existing marker elements (no
   // rebuild, so hovering a list is cheap). Re-runs after a marker rebuild too
