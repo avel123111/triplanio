@@ -168,20 +168,19 @@ export default function PublicTrip() {
   );
   const [spanStart, spanEnd] = useMemo(() => tripDateSpan(trip, visits), [trip, visits]);
 
-  // Map scroll-focus: the active stop drives the camera AND the progressive route
+  // Map scroll-focus: the active stop drives the camera and the progressive route
   // reveal. focusIdx = -1 means "still at the top" → the map shows the WHOLE route
   // (every marker + line) and nothing is selected. Once the first stop scrolls
   // past the anchor, focusIdx = 0 and the camera/reveal start. The active index is
   // computed deterministically as the LAST stop whose top crossed the anchor line
   // (not by IntersectionObserver toggles), so scrolling up never "skips" a city.
-  // `progress` is how far the anchor has travelled from the active stop toward the
-  // next one (0→1) — it drives the line growing toward the next city.
+  // The line growth between cities is animated INSIDE MapView, in time with the
+  // camera flyTo — this component only reports which city is active.
   const [focusIdx, setFocusIdx] = useState(-1);
-  const [progress, setProgress] = useState(0);
   const itinRef = useRef(null);
   useEffect(() => {
     const itin = itinRef.current;
-    if (!itin || stops.length === 0) { setFocusIdx(-1); setProgress(0); return undefined; }
+    if (!itin || stops.length === 0) { setFocusIdx(-1); return undefined; }
     let raf = 0;
     const measure = () => {
       raf = 0;
@@ -193,13 +192,7 @@ export default function PublicTrip() {
       for (let i = 0; i < tops.length; i++) {
         if (tops[i] <= anchor) active = i; else break;
       }
-      let prog = 0;
-      if (active >= 0 && active < tops.length - 1) {
-        const span = tops[active + 1] - tops[active];
-        prog = span > 0 ? Math.min(1, Math.max(0, (anchor - tops[active]) / span)) : 0;
-      }
       setFocusIdx(active);
-      setProgress(prog);
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
     measure();
@@ -256,11 +249,9 @@ export default function PublicTrip() {
     <div className="ptrip">
       <SiteHeader lang={lang} setLang={setLang} navBase={SITE} brandHref={SITE} />
 
-      {/* ── Reader: masthead + itinerary (left) and the lifted sticky map (right).
-           The masthead/stats and the route list are grouped in the left column so
-           the map can ride up to just under the site-header divider. ── */}
-      <section className="pt-wide pt-top"><div className="pt-reader">
-        <header className="pt-head">
+      {/* ── Masthead: full-width title + author, then a divider. ── */}
+      <section className="pt-wide pt-top">
+        <header className="pt-mast">
           <span className="pt-mast__kick">{t('public.mast_kick')}</span>
           <h1>{trip.title}</h1>
 
@@ -276,7 +267,13 @@ export default function PublicTrip() {
               </span>
             </div>
           )}
+        </header>
+      </section>
 
+      {/* ── Reader: below the divider — left column (cities strip + stats + the
+           route list), right column the sticky map lifted to just under it. ── */}
+      <section className="pt-wide"><div className="pt-reader">
+        <div className="pt-left">
           {transitStops.length > 0 && (
             <div className="pt-ribbon">
               {transitStops.map((s, i) => (
@@ -301,9 +298,8 @@ export default function PublicTrip() {
               <div className="pt-mm"><span className="n tnum">{stats.distanceKm.toLocaleString(locale)}<small>{t('public.km')}</small></span><span className="k">{t('public.meta_distance')}</span></div>
             )}
           </div>
-        </header>
 
-        <div className="pt-itin" ref={itinRef}>
+          <div className="pt-itin" ref={itinRef}>
           {stops.map((s, i) => (
             <React.Fragment key={s.id}>
               {s.kind === 'waypoint' ? (
@@ -377,6 +373,7 @@ export default function PublicTrip() {
               })()}
             </React.Fragment>
           ))}
+          </div>
         </div>
 
         <div className="pt-mapcol">
@@ -390,7 +387,6 @@ export default function PublicTrip() {
               focusDuration={4200}
               selectedVisitId={activeId}
               revealActiveId={activeId}
-              revealProgress={progress}
             />
             {activeStop && (
               <div className="pt-mapcap">
