@@ -88,12 +88,20 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadUserProfile = async (authUser) => {
+  const loadUserProfile = async (authUser, { silent = false } = {}) => {
     // Prevent concurrent loads for the same user
     if (loadingForRef.current === authUser.id) return;
     loadingForRef.current = authUser.id;
     try {
-      setIsLoadingAuth(true);
+      // A silent refresh (checkUserAuth after a profile save / avatar change /
+      // Stripe-return entitlement poll) updates `user` in place WITHOUT flipping
+      // isLoadingAuth. The whole authenticated tree is gated on isLoadingAuth in
+      // App.jsx, so toggling it here unmounts+remounts the entire app — a visible
+      // "full page refresh", and on the global Stripe-return handler it became an
+      // infinite reload loop (the remount wipes that handler's run-once guard
+      // while the stripe_status URL param is still present, so it re-fires
+      // checkUserAuth on every remount forever).
+      if (!silent) setIsLoadingAuth(true);
 
       // Fetch profile from public.users
       let { data: profile, error } = await supabase
@@ -134,17 +142,22 @@ export const AuthProvider = ({ children }) => {
 
       setUser({ ...profile, id: authUser.id });
       setIsAuthenticated(true);
-      setIsLoadingAuth(false);
+      if (!silent) setIsLoadingAuth(false);
       setAuthChecked(true);
       // Mark this user as fully loaded so repeat SIGNED_IN events (tab refocus)
       // are ignored by the onAuthStateChange guard above.
       loadedUserIdRef.current = authUser.id;
     } catch (error) {
       console.error('Failed to load user profile:', error);
-      setAuthError({ type: 'unknown', message: error.message });
-      setIsAuthenticated(false);
-      setIsLoadingAuth(false);
-      setAuthChecked(true);
+      // On a silent refresh, keep the current auth state untouched — a transient
+      // profile-fetch blip must not flip the app to "loading" or sign the user
+      // out; reconcile-on-read covers the missed refresh.
+      if (!silent) {
+        setAuthError({ type: 'unknown', message: error.message });
+        setIsAuthenticated(false);
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+      }
     } finally {
       // Release the in-flight guard. It exists only to dedupe CONCURRENT loads
       // (SIGNED_IN + INITIAL_SESSION firing together on page load). If it stayed
@@ -160,7 +173,7 @@ export const AuthProvider = ({ children }) => {
     if (session) {
       // Force a genuine re-fetch even if this user was already loaded once.
       loadingForRef.current = null;
-      await loadUserProfile(session.user);
+      await loadUserProfile(session.user, { silent: true });
     }
   };
 
