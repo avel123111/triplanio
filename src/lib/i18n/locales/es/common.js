@@ -65,4 +65,5 @@ export default {
   'common.currency_search_ph': 'Buscar (USD, Euro, ₽…)',
   'common.link': 'Enlace',
   'common.done': 'Listo',
+  'common.deleted_user': 'Cuenta eliminada',
 };

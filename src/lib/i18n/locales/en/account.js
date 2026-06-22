@@ -72,6 +72,8 @@ export default {
   'account.err_portal_open': 'Could not open the billing portal. Try later.',
   'account.err_billing': 'Billing error: ',
   'account.err_delete': 'Deletion error: ',
+  'account.err_delete_failed': 'Could not delete the account. Try again later or contact support.',
+  'account.err_delete_unauthorized': 'Your session has expired. Sign in again and retry.',
   'account.per_year_short': '/yr',
   'account.plan_current': 'Current plan',
   'account.nav_help': 'Help & legal',

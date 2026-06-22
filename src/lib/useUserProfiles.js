@@ -7,8 +7,10 @@
 // All ids are de-duplicated; results are cached by trip+ids key so
 // multiple components requesting the same set don't re-fetch.
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { useT } from '@/lib/i18n/I18nContext';
 
 async function fetchProfiles(tripId, userIds) {
   if (!tripId || !userIds || userIds.length === 0) return {};
@@ -17,7 +19,12 @@ async function fetchProfiles(tripId, userIds) {
     const list = res?.data?.profiles || [];
     const map = {};
     for (const p of list) {
-      if (p?.id) map[p.id] = { full_name: p.full_name || '', avatar_url: p.avatar_url || '', email: p.email || '' };
+      if (p?.id) map[p.id] = {
+        full_name: p.full_name || '',
+        avatar_url: p.avatar_url || '',
+        email: p.email || '',
+        is_deleted: !!p.is_deleted,
+      };
     }
     return map;
   } catch {
@@ -30,6 +37,7 @@ async function fetchProfiles(tripId, userIds) {
  * @param {string}   tripId  - trip context, REQUIRED for authorization
  */
 export function useUserProfiles(userIds, tripId) {
+  const t = useT();
   const unique = Array.from(
     new Set(
       (userIds || [])
@@ -44,5 +52,16 @@ export function useUserProfiles(userIds, tripId) {
     enabled: !!tripId && unique.length > 0,
     staleTime: 60_000,
   });
-  return data;
+  // Anonymized (soft-deleted) accounts: surface a localized "deleted account"
+  // label so the scrubbed empty name doesn't fall through to a cached value or
+  // render blank. A single shared name also yields one uniform avatar gradient
+  // for all deleted users.
+  return useMemo(() => {
+    const out = {};
+    for (const id of Object.keys(data)) {
+      const p = data[id];
+      out[id] = p?.is_deleted ? { ...p, full_name: t('common.deleted_user') } : p;
+    }
+    return out;
+  }, [data, t]);
 }

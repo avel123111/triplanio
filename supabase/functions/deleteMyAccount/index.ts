@@ -3,28 +3,20 @@
  *
  * POST — no body required.
  *
- * Deletes all data belonging to the authenticated user, then removes the auth account.
+ * Soft-deletes (anonymizes) the authenticated user's account:
+ *   1. anonymize_my_account RPC (one transaction): blocks on an active recurring
+ *      subscription, deletes purely-personal records, scrubs PII on public.users
+ *      and on cached trip_members snapshots. Shared trip content and financial
+ *      records are preserved.
+ *   2. Removes the auth account (GoTrue admin API) so the user can no longer log
+ *      in and their email is freed for re-registration.
  *
- * Blocked if user has an active recurring subscription (pro_monthly / pro_yearly).
- * (They must cancel first before deleting the account.)
- *
- * Cascade order (owned trips first, then user-level records):
- *   For each owned trip:
- *     budget_expenses → budget_categories → trip_budgets
- *     hotel_stays → activities → transfers → trip_services
- *     city_visits
- *     chat_messages (for this trip)
- *     trip_telegram_integrations (for this trip)
- *     telegram_link_tokens (for this trip)
- *     trip_members
- *     trip itself
- *   Then:
- *     trip_members (memberships in other trips)
- *     trip_subscriptions
- *     telegram_link_tokens (remaining)
- *     trip_telegram_integrations (remaining)
- *     users row
- *     auth.users entry
+ * Responses always carry a machine-readable `code` so the frontend can map it to
+ * a localized message (the body is readable on non-2xx via error.context):
+ *   200 { code: 'ok' }
+ *   400 { code: 'active_subscription' }  — cancel subscription first
+ *   401 { code: 'unauthorized' }
+ *   500 { code: 'delete_failed' }
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
@@ -35,88 +27,44 @@ Deno.serve(async (req) => {
 
   try {
     const user = await getRequestUser(req);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
-
-    const userId = user.id;
-
-    // --- Block if active recurring subscription ---
-    const { data: activeSubs } = await supabaseAdmin
-      .from('trip_subscriptions')
-      .select('id, type, status')
-      .eq('user_id', userId)
-      .in('type', ['pro_monthly', 'pro_yearly'])
-      .eq('status', 'active');
-
-    if (activeSubs && activeSubs.length > 0) {
-      return Response.json(
-        { error: 'Please cancel your active subscription before deleting your account.' },
-        { status: 400, headers: corsHeaders },
-      );
+    if (!user) {
+      return Response.json({ code: 'unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
-    // --- Get all trips owned by this user ---
-    const { data: ownedTrips } = await supabaseAdmin
-      .from('trips')
-      .select('id')
-      .eq('created_by', userId);
+    // --- Anonymize all DB data in one transaction (service-role RPC) ---
+    const { data, error: rpcError } = await supabaseAdmin.rpc('anonymize_my_account', {
+      p_user_id: user.id,
+    });
 
-    const tripIds = (ownedTrips ?? []).map((t) => t.id);
-
-    // --- Delete child records for each owned trip ---
-    for (const tripId of tripIds) {
-      // Budget
-      await supabaseAdmin.from('budget_expenses').delete().eq('trip_id', tripId);
-      await supabaseAdmin.from('budget_categories').delete().eq('trip_id', tripId);
-      await supabaseAdmin.from('trip_budgets').delete().eq('trip_id', tripId);
-
-      // Itinerary items
-      await supabaseAdmin.from('hotel_stays').delete().eq('trip_id', tripId);
-      await supabaseAdmin.from('activities').delete().eq('trip_id', tripId);
-      await supabaseAdmin.from('transfers').delete().eq('trip_id', tripId);
-      await supabaseAdmin.from('trip_services').delete().eq('trip_id', tripId);
-      await supabaseAdmin.from('city_visits').delete().eq('trip_id', tripId);
-
-      // Chat & Telegram
-      await supabaseAdmin.from('chat_messages').delete().eq('trip_id', tripId);
-      await supabaseAdmin.from('trip_telegram_integrations').delete().eq('trip_id', tripId);
-      await supabaseAdmin.from('telegram_link_tokens').delete().eq('trip_id', tripId);
-      await supabaseAdmin.from('telegram_reminder_logs').delete().eq('trip_id', tripId);
-
-      // Members
-      await supabaseAdmin.from('trip_members').delete().eq('trip_id', tripId);
-
-      // Trip itself
-      await supabaseAdmin.from('trips').delete().eq('id', tripId);
+    if (rpcError) {
+      console.error('anonymize_my_account error:', rpcError);
+      return Response.json({ code: 'delete_failed' }, { status: 500, headers: corsHeaders });
     }
 
-    // --- Delete user-level records ---
-    // Memberships in other people's trips
-    await supabaseAdmin.from('trip_members').delete().eq('user_id', userId);
+    const code = (data as { code?: string } | null)?.code;
 
-    // Subscriptions
-    await supabaseAdmin.from('trip_subscriptions').delete().eq('user_id', userId);
+    if (code === 'active_subscription') {
+      return Response.json({ code }, { status: 400, headers: corsHeaders });
+    }
+    if (code === 'unauthorized') {
+      return Response.json({ code }, { status: 401, headers: corsHeaders });
+    }
+    if (code !== 'ok') {
+      console.error('anonymize_my_account unexpected code:', code);
+      return Response.json({ code: 'delete_failed' }, { status: 500, headers: corsHeaders });
+    }
 
-    // Remaining Telegram records (not tied to owned trips)
-    await supabaseAdmin.from('telegram_link_tokens').delete().eq('user_id', userId);
-    await supabaseAdmin.from('trip_telegram_integrations').delete().eq('user_id', userId);
+    // --- Remove the auth account (must be last; no FK/trigger to public.users) ---
+    const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(user.id);
+    if (authErr) {
+      console.error('auth.admin.deleteUser error:', authErr);
+      return Response.json({ code: 'delete_failed' }, { status: 500, headers: corsHeaders });
+    }
 
-    // Chat messages in other trips
-    await supabaseAdmin.from('chat_messages').delete().eq('user_id', userId);
-
-    // Users profile row
-    await supabaseAdmin.from('users').delete().eq('id', userId);
-
-    // Delete auth user (must be last)
-    const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
-    if (authErr) throw authErr;
-
-    return Response.json({ ok: true }, { headers: corsHeaders });
+    return Response.json({ code: 'ok' }, { headers: corsHeaders });
 
   } catch (e) {
     console.error('deleteMyAccount error:', e);
-    return Response.json(
-      { error: (e as Error).message },
-      { status: 500, headers: corsHeaders },
-    );
+    return Response.json({ code: 'delete_failed' }, { status: 500, headers: corsHeaders });
   }
 });
