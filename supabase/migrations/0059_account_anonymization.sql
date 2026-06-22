@@ -59,6 +59,8 @@ begin
   delete from public.telegram_link_tokens   where user_id = p_user_id;
   delete from public.telegram_reminder_logs where user_id = p_user_id;
   delete from public.trip_telegram_integrations where user_id = p_user_id;
+  delete from public.user_custom_visits     where user_id = p_user_id;  -- personal /stats data
+  delete from public.trip_member_blocks     where user_id = p_user_id;  -- personal moderation rows
 
   -- Scrub the profile row. id stays so shared content keeps a stable author.
   -- email is NOT NULL + UNIQUE, so it can't be nulled: replace with a unique

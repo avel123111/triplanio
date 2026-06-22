@@ -75,7 +75,7 @@ function DateDivider({ date }) {
 
 // ─── Msg ──────────────────────────────────────────────────────────────────────
 
-function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl }) {
+function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl, isDeleted }) {
   const bubbleMod = isMe ? 'chat-bubble--me' : isAi ? 'chat-bubble--ai' : 'chat-bubble--them';
 
   return (
@@ -84,7 +84,7 @@ function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl }) {
       {!isMe && (
         grouped
           ? <div className="chat-row__sp" aria-hidden />
-          : (isAi ? <TriplanioAvatar size="sm" /> : <Avatar name={who} photo={avatarUrl || ''} size="sm" style={{ flexShrink: 0 }} />)
+          : (isAi ? <TriplanioAvatar size="sm" /> : <Avatar name={who} photo={avatarUrl || ''} deleted={isDeleted} size="sm" style={{ flexShrink: 0 }} />)
       )}
       <div className="chat-col">
         {!grouped && !isMe && (
@@ -110,12 +110,12 @@ function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl }) {
 
 // ─── ChatMember ───────────────────────────────────────────────────────────────
 
-function ChatMember({ name, role, ai, avatarUrl }) {
+function ChatMember({ name, role, ai, avatarUrl, isDeleted }) {
   return (
     <div className="chat-member">
       {ai
         ? <TriplanioAvatar size="sm" />
-        : <Avatar name={name} photo={avatarUrl || ''} size="sm" style={{ width: 28, height: 28 }} />}
+        : <Avatar name={name} photo={avatarUrl || ''} deleted={isDeleted} size="sm" style={{ width: 28, height: 28 }} />}
       <div className="chat-member__b">
         <div className="chat-member__nm">{name}</div>
         <div className="chat-member__rl">{role}</div>
@@ -388,6 +388,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
           time={fmtMsgTime(m.created_at)}
           grouped={grouped}
           avatarUrl={profiles[m.user_id]?.avatar_url}
+          isDeleted={profiles[m.user_id]?.is_deleted}
         />,
       );
     }
@@ -509,6 +510,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
                   key={m.id}
                   name={nameFor(m.user_id)}
                   avatarUrl={profiles[m.user_id]?.avatar_url}
+          isDeleted={profiles[m.user_id]?.is_deleted}
                   role={m.role === 'owner' ? t('members.role_owner') : m.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer')}
                 />
               ))
