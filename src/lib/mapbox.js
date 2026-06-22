@@ -9,7 +9,7 @@ if (MAPBOX_TOKEN) mapboxgl.accessToken = MAPBOX_TOKEN;
 // One Mapbox Standard style for every map surface. Light/dark is the
 // `lightPreset` config (day/night), switched in place - the map is NOT
 // re-created on theme change. `theme: 'default'`.
-export const MAP_STYLE = 'mapbox://styles/mapbox/standard';
+export const MAP_STYLE = 'mapbox://styles/avel1231/cmqogtezo001s01qzal5699es';
 export const lightPresetFor = (scheme) => (scheme === 'DARK' ? 'night' : 'day');
 
 // Initial style config - passed to `new mapboxgl.Map({ config })` to avoid a flash.
