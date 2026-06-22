@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
     };
 
     if (wantShell) {
-      add('cityVisits', supabaseAdmin.from('city_visits').select('*').eq('trip_id', tripId).order('position'));
+      add('cityVisits', supabaseAdmin.from('city_visits').select('*, cities(iata_code, viator_dest_id, getyourguide_id, name_en)').eq('trip_id', tripId).order('position'));
     }
     if (wantContent) {
       add('hotels',     supabaseAdmin.from('hotel_stays').select('*').eq('trip_id', tripId));
