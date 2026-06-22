@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MAPBOX_TOKEN, applyBasemapConfig } from '@/lib/mapbox';
+import { useI18n } from '@/lib/i18n/I18nContext';
 import { repaintRouteLines } from './routeLines';
 import { useSharedMap } from './MapProvider';
 
@@ -22,6 +23,7 @@ import { useSharedMap } from './MapProvider';
 //                flipping back to true triggers a resize().
 export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', projection = 'mercator', active = true, basemapTheme = 'default' }) {
   const sharedMap = useSharedMap();
+  const { lang } = useI18n();
   const mapRef = useRef(null);
   const [ready, setReady] = useState(() => {
     const m = sharedMap?.getMap?.();
@@ -29,20 +31,24 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
   });
   const [error, setError] = useState(MAPBOX_TOKEN ? null : 'No Mapbox token');
 
-  // Latest scheme/projection captured for the one-time acquire below.
+  // Latest scheme/projection/lang captured for the one-time acquire below.
+  // `lang` only feeds the map's first-ever creation (singleton, set once); it is
+  // not re-applied live — a new locale is picked up on the next page load.
   const schemeRef = useRef(scheme);
   const projRef = useRef(projection);
   const themeRef = useRef(basemapTheme);
+  const langRef = useRef(lang);
   useEffect(() => { schemeRef.current = scheme; }, [scheme]);
   useEffect(() => { projRef.current = projection; }, [projection]);
   useEffect(() => { themeRef.current = basemapTheme; }, [basemapTheme]);
+  useEffect(() => { langRef.current = lang; }, [lang]);
 
   // Claim the singleton into this slot on mount; park it back on unmount.
   useEffect(() => {
     const slot = containerRef.current;
     if (!slot) return undefined;
     if (!sharedMap || !sharedMap.hasToken) { setError('No Mapbox token'); return undefined; }
-    const map = sharedMap.acquire(slot, schemeRef.current);
+    const map = sharedMap.acquire(slot, schemeRef.current, langRef.current);
     if (!map) { setError('No map'); return undefined; }
     mapRef.current = map;
 
