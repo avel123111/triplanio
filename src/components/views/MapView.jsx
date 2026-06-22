@@ -144,33 +144,52 @@ export default function MapView({
   // k-1 so the destination pin pops in only when the line arrives.
   const [anim, setAnim] = useState({ legIdx: -1, prog: 0 });
   const prevIdxRef = useRef(-1);
-  const animRafRef = useRef(0);
   useEffect(() => {
-    if (!ready) return undefined;
+    const map = mapRef.current;
+    if (!map || !ready) return undefined;
     const prev = prevIdxRef.current;
     const cur = revealActiveIdx;
     prevIdxRef.current = revealing ? cur : -1;
-    cancelAnimationFrame(animRafRef.current);
-    // Forward by one+ city (and not arriving from the top): grow the LAST leg
-    // (cur-1 → cur) in time with the camera flyTo; legs before it snap to full.
+    // Forward by one+ city (not arriving from the top): grow the LAST leg
+    // (cur-1 → cur) tied to the camera's LIVE position — the line head is set from
+    // where the camera actually is on each `move`, so it can never out-run or lag
+    // the flyTo (no easing / zoom-parabola desync). Earlier legs snap to full.
     if (revealing && cur > prev && prev >= 0) {
       const legIdx = cur - 1;
-      const dur = Math.max(1, focusDuration);
-      const t0 = performance.now();
-      const tick = (now) => {
-        const p = Math.min(1, (now - t0) / dur);
-        const e = 1 - Math.pow(1 - p, 3); // easeOutCubic ≈ flyTo easing
-        setAnim({ legIdx, prog: e });
-        if (p < 1) animRafRef.current = requestAnimationFrame(tick);
-        else setAnim({ legIdx: -1, prog: 0 });
-      };
-      animRafRef.current = requestAnimationFrame(tick);
-    } else {
-      // Backward, first landing from the top, or reveal off → no growing leg.
-      setAnim({ legIdx: -1, prog: 0 });
+      const from = ordered[legIdx];
+      const to = ordered[legIdx + 1];
+      if (from && to) {
+        const ax = from.longitude;
+        const ay = from.latitude;
+        const dx = to.longitude - ax;
+        const dy = to.latitude - ay;
+        const len2 = dx * dx + dy * dy || 1;
+        let done = false;
+        const project = () => {
+          const c = map.getCenter();
+          // Parameter of the camera centre projected onto the A→B segment (0→1).
+          let tt = ((c.lng - ax) * dx + (c.lat - ay) * dy) / len2;
+          tt = Math.min(1, Math.max(0, tt));
+          setAnim({ legIdx, prog: tt });
+        };
+        const onMove = () => { if (!done) project(); };
+        const onEnd = () => {
+          if (done) return;
+          done = true;
+          map.off('move', onMove);
+          map.off('moveend', onEnd);
+          setAnim({ legIdx: -1, prog: 0 }); // settle: legs 0..cur-1 full, marker cur reveals
+        };
+        setAnim({ legIdx, prog: 0 });
+        map.on('move', onMove);
+        map.on('moveend', onEnd);
+        return () => { done = true; map.off('move', onMove); map.off('moveend', onEnd); };
+      }
     }
-    return () => cancelAnimationFrame(animRafRef.current);
-  }, [ready, revealing, revealActiveIdx, focusDuration]);
+    // Backward, first landing from the top, or reveal off → no growing leg.
+    setAnim({ legIdx: -1, prog: 0 });
+    return undefined;
+  }, [ready, revealing, revealActiveIdx, ordered]);
 
   // Draw bookkeeping derived from the animation: which leg slices (and to what),
   // and the highest marker index that may show.
@@ -307,7 +326,20 @@ export default function MapView({
         }, Infinity);
         hide = minIdx > markerMax;
       }
+      const wasHidden = el.style.display === 'none';
       el.style.display = hide ? 'none' : '';
+      // Pop the pin in when it first appears (the line just reached this city).
+      // Animate the inner .tmk__core (Mapbox owns the root's transform), via the
+      // Web Animations API so no shared marker CSS is touched.
+      if (!hide && wasHidden) {
+        const core = el.querySelector('.tmk__core');
+        if (core && core.animate) {
+          core.animate(
+            [{ transform: 'scale(0.2)', opacity: 0 }, { transform: 'scale(1.12)', opacity: 1, offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }],
+            { duration: 340, easing: 'cubic-bezier(.22,1,.36,1)' },
+          );
+        }
+      }
     });
   }, [ready, revealing, markerMax, orderIndexById, visitsSignature]);
 

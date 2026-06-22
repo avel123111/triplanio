@@ -43,10 +43,21 @@ const ddmm = (iso) => (iso ? DateTime.fromISO(iso).toFormat('ddLL') : '');
 // Each dynamic link falls back to the partner homepage (attribution preserved).
 export function activityPlatforms(visit, t, lang) {
   const cityEn = visit?.city_name_en || visit?.cities?.name_en || visit?.city_name || '';
-  const q = encodeURIComponent(cityEn);
   const viatorDest = visit?.cities?.viator_dest_id ?? visit?.viator_dest_id;
   // Viator affiliate ids (public partner ids); destination deep-link host.
   const VIATOR_REF = 'mcid=42383&pid=P00306202&medium=api&api_version=2.0';
+
+  // GetYourGuide affiliate deep-link: location slug (cities.getyourguide_id, e.g.
+  // 'sorrento-l391') + partner attribution + the city-visit window as date_from/
+  // date_to (plain YYYY-MM-DD dates; appended only when both are present). Falls
+  // back to the attributed homepage when the city has no GYG location id.
+  const GYG_BASE = 'partner_id=IMHPJIH&utm_medium=local_partners';
+  const gygId = visit?.cities?.getyourguide_id ?? visit?.getyourguide_id;
+  const gygDates = (visit?.start_date && visit?.end_date)
+    ? `&date_from=${visit.start_date}&date_to=${visit.end_date}` : '';
+  const gygUrl = gygId
+    ? `https://www.getyourguide.com/${gygId}?${GYG_BASE}&cmp=fork_dialog${gygDates}`
+    : `https://www.getyourguide.com/?${GYG_BASE}`;
 
   const list = [
     {
@@ -64,7 +75,7 @@ export function activityPlatforms(visit, t, lang) {
       label: findOn(t, 'GetYourGuide'),
       hint: cityEn,
       logo: platformLogoUrl('getyourguide', 'getyourguide.com'),
-      url: cityEn ? `https://www.getyourguide.com/s/?q=${q}` : 'https://www.getyourguide.com/',
+      url: gygUrl,
       provider: 'getyourguide',
     },
   ];
