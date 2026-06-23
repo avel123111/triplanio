@@ -202,6 +202,43 @@ async function resolveBatchItem(
   }
 }
 
+// ── Local directory (TRIP-145 P3) ────────────────────────────────────────────
+// resolveCities first asks the curated `cities` table by (name_en, country_code)
+// via resolve_cities_local. A hit returns coords with NO upstream call. We shape
+// the hit back into a LocationIQ/Nominatim-style row so the client's refineCities
+// path consumes it unchanged; external_city_id becomes a stable `dir:<id>` (an
+// opaque identity key client-side). city_id/viator are re-attached at save by
+// the existing coords trigger (set_city_id), so nothing is plumbed here.
+function directoryRow(h: { city_id: number; name_en: string; country_code: string; lat: number; lng: number }): Record<string, unknown> {
+  return {
+    place_id: `dir:${h.city_id}`,
+    lat: String(h.lat),
+    lon: String(h.lng),
+    display_name: h.name_en,
+    name: h.name_en,
+    namedetails: { 'name:en': h.name_en },
+    address: { country_code: String(h.country_code || '').toLowerCase() },
+    type: 'city',
+    class: 'place',
+    importance: 1,
+  };
+}
+
+// Pick the most relevant row's coords from a LocationIQ result array (highest
+// importance with finite lat/lon). Used only to seed the directory (learn_city).
+function bestCoords(rows: unknown[]): { lat: number; lng: number } | null {
+  let best: { lat: number; lng: number } | null = null;
+  let bestImp = -Infinity;
+  for (const d of (rows || []) as Array<{ lat?: unknown; lon?: unknown; importance?: unknown }>) {
+    const lat = parseFloat(String(d?.lat));
+    const lng = parseFloat(String(d?.lon));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    const imp = Number(d?.importance) || 0;
+    if (imp > bestImp) { bestImp = imp; best = { lat, lng }; }
+  }
+  return best;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -227,10 +264,33 @@ Deno.serve(async (req) => {
       const prio = priority || 'background';
       // One shared deadline for the whole batch → bounded total wall-clock.
       const deadline = Date.now() + TOKEN_WAIT_MS[prio === 'background' ? 'background' : 'interactive'];
+
+      // (C) Directory-first: one RPC resolves the whole batch by name → hits skip
+      // LocationIQ entirely. Fail-open: a limiter/RPC error just falls through to
+      // the geocoder for every city (old behaviour).
+      let dir: Array<{ city_id: number; name_en: string; country_code: string; lat: number; lng: number } | null> = [];
+      try {
+        const { data: dirData } = await supabaseAdmin.rpc('resolve_cities_local', {
+          p_items: cities.map((c: { name_en?: unknown; country_code?: unknown }) => ({
+            name_en: c?.name_en ?? null,
+            country_code: c?.country_code ?? null,
+          })),
+        });
+        if (Array.isArray(dirData)) dir = dirData;
+      } catch (e) {
+        console.error('[geoLocationiq] resolve_cities_local failed', (e as Error).message);
+      }
+
       const memo = new Map<string, unknown[]>();
       let degraded = false;
       const out: unknown[][] = [];
-      for (const c of cities) {
+      for (let i = 0; i < cities.length; i++) {
+        const c = cities[i];
+        const hit = dir[i];
+        if (hit && hit.lat != null && hit.lng != null) {
+          out.push([directoryRow(hit)]);
+          continue;
+        }
         const cq = c?.q;
         if (!cq || !String(cq).trim()) { out.push([]); continue; }
         const cLang = (typeof c?.lang === 'string' && c.lang.trim()) ? c.lang.trim() : acceptLang;
@@ -238,6 +298,20 @@ Deno.serve(async (req) => {
         if (memo.has(key)) { out.push(memo.get(key)!); continue; }
         const item = await resolveBatchItem(normKey(cq), cLang, prio, { q: cq, limit: lim }, apiKey, deadline);
         if (item.failed) degraded = true; // rate budget spent OR upstream error after retries
+        // (#4) Self-heal: a fresh successful resolve of a city the directory did
+        // not have → promote it so the next lookup hits the directory. Gated on a
+        // name_en + country_code from the caller; fire-and-forget.
+        if (!item.failed && item.results.length && c?.name_en && c?.country_code) {
+          const best = bestCoords(item.results);
+          if (best) {
+            supabaseAdmin.rpc('learn_city', {
+              p_name_en: c.name_en,
+              p_country_code: c.country_code,
+              p_lat: best.lat,
+              p_lng: best.lng,
+            }).then(() => {}, () => {});
+          }
+        }
         memo.set(key, item.results);
         out.push(item.results);
       }

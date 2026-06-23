@@ -94,18 +94,40 @@ export async function searchCities(query, lang) {
 // to `queries`, each element refined exactly like searchCities (best = [0]) so
 // callers pick result[0] as before. Background priority (yields to interactive
 // autocomplete/manual search under the rate limit).
-export async function resolveCities(queries, lang) {
-  if (!Array.isArray(queries) || queries.length === 0) return [];
+// `items` is an array of EITHER plain query strings (legacy) OR objects
+// `{ city_name, name_en, country, country_code }`. For objects we send the
+// English name + country_code so the edge can (1) hit the local `cities`
+// directory by name and skip LocationIQ entirely, and (2) fall back to an
+// English geocoder query (small towns that 404 in Cyrillic resolve in English).
+// The displayed/saved Russian name is the caller's `city_name` — the geocoder
+// only supplies coordinates — so localisation is unaffected.
+export async function resolveCities(items, lang) {
+  if (!Array.isArray(items) || items.length === 0) return [];
   const acceptLang = lang
     || (typeof navigator !== 'undefined' && navigator.language)
     || 'en';
-  const cities = queries.map((qx) => ({ q: qx, lang: acceptLang }));
+  const cities = items.map((it) => {
+    if (typeof it === 'string') return { q: it, lang: acceptLang };
+    const nameEn = (it.name_en || it.city_name_en || '').trim();
+    const cc = (it.country_code || '').trim();
+    // Free-text fallback query for the geocoder: prefer the English name, else
+    // the localised one. Append the country for disambiguation.
+    const base = nameEn || it.city_name || it.q || '';
+    const q = it.q || `${base}${it.country ? ', ' + it.country : ''}`;
+    return {
+      q,
+      name_en: nameEn || null,
+      country_code: cc || null,
+      // English geocoder query when we have an English name; locale otherwise.
+      lang: nameEn ? 'en' : acceptLang,
+    };
+  });
   const { data, error } = await supabase.functions.invoke('geoLocationiq', {
     body: { action: 'resolveCities', cities },
   });
-  if (error) return queries.map(() => []);
+  if (error) return items.map(() => []);
   const raw = data?.results || [];
-  return queries.map((_, i) => refineCities(raw[i] || []));
+  return items.map((_, i) => refineCities(raw[i] || []));
 }
 
 // Reverse geocode lat/lon → city object.
