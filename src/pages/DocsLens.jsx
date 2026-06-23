@@ -22,6 +22,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Field, Severity, Skeleton } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
+import { resolveAuthor } from '@/lib/resolveAuthor';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -117,6 +118,10 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
       documents:  documents.length ? documents : null,
       visibility,
       created_by: user?.id ?? null,
+      // Author-name snapshot — mirrors chat_messages.user_full_name so the
+      // uploader's name survives them leaving the trip (their trip_members /
+      // active-profile row is gone). resolveAuthor() reads this as the fallback.
+      created_by_name: (user?.full_name || '').trim() || null,
     });
     setSaving(false);
     if (error) { setErr(error.message); return; }
@@ -423,19 +428,20 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
   const more     = files.length - shown.length;
   const isShared = scope !== 'personal';
 
-  // Uploader info: resolve from members array or fall back to current user
+  // Uploader info via the shared resolver (same mechanism as chat): falls back
+  // to the created_by_name snapshot so a doc whose author has LEFT the trip
+  // still shows their name + gradient-initials avatar instead of "?".
   const uploader = useMemo(() => {
     if (!isShared) return { name: null, photo: null, deleted: false }; // personal → "Только вы"
-    const p = profiles?.[doc.created_by];
-    if (p?.is_deleted) return { name: t('common.deleted_user'), photo: null, deleted: true };
-    if (p && (p.full_name || p.avatar_url)) return { name: p.full_name || '?', photo: p.avatar_url || null, deleted: false };
-    // invited/offline author without a users profile — use the membership snapshot
-    const m = members?.find(m => m.user_id === doc.created_by);
-    if (m && (m.user_full_name || m.invite_email)) return { name: m.user_full_name || m.invite_email, photo: null, deleted: false };
-    // own upload — safe to show self; never attribute someone else's doc to the viewer
-    if (doc.created_by && doc.created_by === user?.id) return { name: user?.full_name || '?', photo: user?.avatar_url || null, deleted: false };
-    return { name: '?', photo: null, deleted: false };
-  }, [doc.created_by, profiles, members, isShared, user, t]);
+    return resolveAuthor({
+      userId: doc.created_by,
+      nameSnapshot: doc.created_by_name,
+      profiles,
+      members,
+      selfUser: user,
+      deletedLabel: t('common.deleted_user'),
+    });
+  }, [doc.created_by, doc.created_by_name, profiles, members, isShared, user, t]);
 
   return (
     <button

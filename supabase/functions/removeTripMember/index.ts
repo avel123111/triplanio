@@ -10,6 +10,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerAdmin } from '../_shared/tripAccess.ts';
+import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 import { renderMemberLeftNotification, renderMemberRemovedNotification } from '../_shared/emailTemplate.ts';
 
 Deno.serve(async (req) => {
@@ -56,13 +57,15 @@ Deno.serve(async (req) => {
     }
 
     // Revoke this member's Telegram bindings for the trip — bot/reminder access
-    // is tied to trip membership. (Offline members have user_id null → skip.)
+    // is tied to trip membership. Routed through the single teardown source
+    // (_shared/telegramTeardown) so user-facing disconnect, Pro-rollback and
+    // member-leave never drift; scoped by userId so other members keep theirs.
+    // (Offline members have user_id null → skip.)
     if (member.user_id) {
-      await supabaseAdmin
-        .from('trip_telegram_integrations')
-        .delete()
-        .eq('trip_id', member.trip_id)
-        .eq('user_id', member.user_id);
+      await disconnectTripTelegram(supabaseAdmin, {
+        tripId: member.trip_id,
+        userId: member.user_id,
+      });
     }
 
     // M2/M3 — notify about the membership change. Inserted AFTER the member

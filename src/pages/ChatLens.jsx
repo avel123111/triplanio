@@ -18,6 +18,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIPLANIO_BOT_USER_ID, TRIPLANIO_BOT_NAME } from '@/lib/triplanio';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
+import { resolveAuthor } from '@/lib/resolveAuthor';
 import ChatMarkdown from '@/components/chat/ChatMarkdown';
 import TriplanioAvatar from '@/components/chat/TriplanioAvatar.jsx';
 import { Avatar, Card, EmptyState } from '../design/index';
@@ -378,23 +379,37 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       }
       const isMe    = m.user_id === user?.id;
       const grouped = prev && isSameDay(m.created_at, prev.created_at) && prev.user_id === m.user_id;
+      const isBot   = m.user_id === TRIPLANIO_BOT_USER_ID;
+      // Author identity via the shared resolver: falls back to the message's
+      // user_full_name snapshot so a member who has LEFT the trip still shows
+      // their name (and a gradient-initials avatar) on past messages.
+      const author = isBot
+        ? null
+        : resolveAuthor({
+            userId: m.user_id,
+            nameSnapshot: m.user_full_name,
+            profiles,
+            members,
+            selfUser: user,
+            deletedLabel: t('common.deleted_user'),
+          });
       rows.push(
         <Msg
           key={m.id}
-          who={m.user_id === TRIPLANIO_BOT_USER_ID ? TRIPLANIO_BOT_NAME : nameFor(m.user_id)}
+          who={isBot ? TRIPLANIO_BOT_NAME : author.name}
           isMe={isMe}
-          isAi={m.user_id === TRIPLANIO_BOT_USER_ID}
+          isAi={isBot}
           text={m.text || ''}
           time={fmtMsgTime(m.created_at)}
           grouped={grouped}
-          avatarUrl={profiles[m.user_id]?.avatar_url}
-          isDeleted={profiles[m.user_id]?.is_deleted}
+          avatarUrl={isBot ? '' : author.photo}
+          isDeleted={isBot ? false : author.deleted}
         />,
       );
     }
     return rows;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [msgs, profiles, user?.id]);
+  }, [msgs, profiles, members, user?.id, t]);
 
   // Chat participants = owner + active admins/viewers (excl. offline/pending).
   const activeMembers = (() => {
