@@ -21,6 +21,7 @@ import { safeStorageName } from '@/lib/storage';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Field, Severity, Skeleton } from '../design/index';
+import { useUserProfiles } from '@/lib/useUserProfiles';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -414,7 +415,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
 
 // ─── DocCard ──────────────────────────────────────────────────────────────────
 
-function DocCard({ doc, scope, members, onOpenDetail }) {
+function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
   const { t }    = useI18n();
   const { user } = useAuth();
   const files    = doc.documents || [];
@@ -424,11 +425,17 @@ function DocCard({ doc, scope, members, onOpenDetail }) {
 
   // Uploader info: resolve from members array or fall back to current user
   const uploader = useMemo(() => {
-    if (!isShared) return { name: null, photo: null }; // personal → "Только вы"
+    if (!isShared) return { name: null, photo: null, deleted: false }; // personal → "Только вы"
+    const p = profiles?.[doc.created_by];
+    if (p?.is_deleted) return { name: t('common.deleted_user'), photo: null, deleted: true };
+    if (p && (p.full_name || p.avatar_url)) return { name: p.full_name || '?', photo: p.avatar_url || null, deleted: false };
+    // invited/offline author without a users profile — use the membership snapshot
     const m = members?.find(m => m.user_id === doc.created_by);
-    if (m) return { name: m.user_full_name || m.invite_email || '?', photo: m.avatar_url || null };
-    return { name: user?.full_name || '?', photo: null };
-  }, [doc.created_by, members, isShared, user]);
+    if (m && (m.user_full_name || m.invite_email)) return { name: m.user_full_name || m.invite_email, photo: null, deleted: false };
+    // own upload — safe to show self; never attribute someone else's doc to the viewer
+    if (doc.created_by && doc.created_by === user?.id) return { name: user?.full_name || '?', photo: user?.avatar_url || null, deleted: false };
+    return { name: '?', photo: null, deleted: false };
+  }, [doc.created_by, profiles, members, isShared, user, t]);
 
   return (
     <button
@@ -482,7 +489,7 @@ function DocCard({ doc, scope, members, onOpenDetail }) {
       <div className="dl-card__foot">
         {isShared ? (
           <>
-            <Avatar name={uploader.name} photo={uploader.photo} size="sm" />
+            <Avatar name={uploader.name} photo={uploader.photo} deleted={uploader.deleted} size="sm" />
             <span className="dl-card__foot-who">{uploader.name}</span>
           </>
         ) : (
@@ -523,13 +530,13 @@ function DocEmpty({ scope, onOpenAdd }) {
 
 // ─── DocsGrid ─────────────────────────────────────────────────────────────────
 
-function DocsGrid({ docs, scope, members, onOpenAdd, onOpenDetail }) {
+function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail }) {
   const { t }    = useI18n();
   const isShared = scope !== 'personal';
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
       {docs.map(d => (
-        <DocCard key={d.id} doc={d} scope={scope} members={members} onOpenDetail={onOpenDetail} />
+        <DocCard key={d.id} doc={d} scope={scope} members={members} profiles={profiles} onOpenDetail={onOpenDetail} />
       ))}
       <button
         className={`dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
@@ -566,6 +573,16 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
     },
     enabled: !!tripId,
   });
+
+  // Resolve real author identity (name/avatar/is_deleted) for every doc creator
+  // and member via the shared profile resolver — same source as other screens.
+  const profileIds = useMemo(() => {
+    const ids = new Set();
+    docs.forEach(d => { if (d.created_by) ids.add(d.created_by); });
+    members.forEach(m => { if (m.user_id) ids.add(m.user_id); });
+    return Array.from(ids);
+  }, [docs, members]);
+  const profiles = useUserProfiles(profileIds, tripId);
 
   // Search + filter (applied after visibility split)
   const filterDoc = (d) => {
@@ -657,6 +674,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
               docs={sharedDocs}
               scope="shared"
               members={members}
+              profiles={profiles}
               onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })}
               onOpenDetail={setDetailDoc}
             />}
@@ -687,6 +705,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
               docs={personalDocs}
               scope="personal"
               members={members}
+              profiles={profiles}
               onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })}
               onOpenDetail={setDetailDoc}
             />}

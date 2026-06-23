@@ -10,8 +10,11 @@ import { fmtMoneyActive } from '@/lib/i18n/format';
 // =====================================================================
 
 // ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
-export const Avatar = ({ name = "?", size, role, kind, photo, className = "", style: styleProp }) => {
+export const Avatar = ({ name = "?", size, role, kind, photo, deleted, className = "", style: styleProp }) => {
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
+  if (deleted) {
+    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label="Deleted account"><Icon name="user" size={size === "lg" ? 18 : size === "xl" ? 26 : size === "sm" ? 12 : 15} /></div>;
+  }
   if (kind === "ai") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp}>AI</div>;
   }

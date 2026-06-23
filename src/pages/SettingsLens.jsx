@@ -17,6 +17,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, Severity, Toggle } from '../design/index';
+import { useUserProfiles } from '@/lib/useUserProfiles';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -370,15 +371,16 @@ function TelegramSection({ tripId }) {
 
 // ─── ApproverRow ──────────────────────────────────────────────────────────────
 
-function ApproverRow({ member, locked }) {
+function ApproverRow({ member, profile, locked }) {
   const { t } = useI18n();
   const [on, setOn] = useState(false);
-  const name = member.user_full_name || member.invite_email || '-';
+  const isDeleted = !!profile?.is_deleted;
+  const name = isDeleted ? t('common.deleted_user') : (profile?.full_name || member.user_full_name || member.invite_email || '-');
   const roleLabel = member.role === 'owner' ? t('members.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <Avatar name={name} size="sm" />
+      <Avatar name={name} photo={profile?.avatar_url || ''} deleted={isDeleted} size="sm" />
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700 }}>{name}</div>
         <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{roleLabel}</div>
@@ -393,6 +395,7 @@ function ApproverRow({ member, locked }) {
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
 export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, queryClient }) {
+  const memberProfiles = useUserProfiles((members || []).map(m => m.user_id), tripId);
   const { t } = useI18n();
   const confirm = useConfirm();
   const { user } = useAuth();
@@ -733,8 +736,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           {SHOW_HOTEL_VOTING && (
             <Card title={t('settings.approvers_title')} subtitle={t('settings.approvers_desc')}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {approvers.map(m => <ApproverRow key={m.id} member={m} locked />)}
-                {viewerMems.map(m => <ApproverRow key={m.id} member={m} locked={false} />)}
+                {approvers.map(m => <ApproverRow key={m.id} member={m} profile={memberProfiles[m.user_id]} locked />)}
+                {viewerMems.map(m => <ApproverRow key={m.id} member={m} profile={memberProfiles[m.user_id]} locked={false} />)}
                 {members.length === 0 && (
                   <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>{t('settings.members_loading')}</div>
                 )}

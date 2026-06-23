@@ -217,7 +217,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             ? <div className="chat-row__sp" aria-hidden />
             : (isAi
                 ? <TriplanioAvatar size="sm" />
-                : <Avatar name={who} photo={profiles[m.user_id]?.avatar_url || ''} size="sm" style={{ flexShrink: 0 }} />)
+                : <Avatar name={who} photo={profiles[m.user_id]?.avatar_url || ''} deleted={profiles[m.user_id]?.is_deleted} size="sm" style={{ flexShrink: 0 }} />)
         )}
         <div className="chat-col">
           {!grouped && !isMe && (
@@ -277,6 +277,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
             key={m.id || i}
             name={nameFor(m.user_id)}
             photo={profiles[m.user_id]?.avatar_url || ''}
+            deleted={profiles[m.user_id]?.is_deleted}
             size="sm"
             style={{ marginLeft: i === 0 ? 0 : -8, border: '1.5px solid var(--surface)', borderRadius: '50%', zIndex: 4 - i }}
           />

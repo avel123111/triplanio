@@ -78,7 +78,8 @@ Deno.serve(async (req) => {
       id: u.id,
       full_name: u.full_name || '',
       avatar_url: u.avatar_url || '',
-      email: u.email || '',
+      // Never expose a deleted user's email (it's a scrubbed placeholder anyway).
+      email: u.deleted_at ? '' : (u.email || ''),
       is_deleted: !!u.deleted_at,
     }));
 

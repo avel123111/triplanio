@@ -90,6 +90,7 @@ const AvatarStack = ({ members, maxShow = 3, white = false }) => {
           key={m.user_id ?? i}
           name={m.full_name || m.email || '?'}
           photo={m.avatar_url || ''}
+          deleted={m.is_deleted}
           size="sm"
         />
       ))}

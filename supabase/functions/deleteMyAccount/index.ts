@@ -3,20 +3,18 @@
  *
  * POST — no body required.
  *
- * Soft-deletes (anonymizes) the authenticated user's account:
- *   1. anonymize_my_account RPC (one transaction): blocks on an active recurring
- *      subscription, deletes purely-personal records, scrubs PII on public.users
- *      and on cached trip_members snapshots. Shared trip content and financial
- *      records are preserved.
- *   2. Removes the auth account (GoTrue admin API) so the user can no longer log
- *      in and their email is freed for re-registration.
+ * Soft-deletes (anonymizes) the authenticated user's account in a single DB
+ * transaction (anonymize_my_account RPC):
+ *   - blocks on an active recurring subscription;
+ *   - deletes purely-personal records;
+ *   - scrubs PII on public.users and on cached trip_members snapshots;
+ *   - neutralizes the auth account IN PLACE — drops identities, scrubs the auth
+ *     email, permanently bans, and kills sessions. (We can't hard-delete
+ *     auth.users because retained shared content references it via FK.)
  *
- * Responses always carry a machine-readable `code` so the frontend can map it to
- * a localized message (the body is readable on non-2xx via error.context):
- *   200 { code: 'ok' }
- *   400 { code: 'active_subscription' }  — cancel subscription first
- *   401 { code: 'unauthorized' }
- *   500 { code: 'delete_failed' }
+ * Responses always carry a machine-readable `code` (readable on non-2xx via
+ * error.context): 200 ok | 400 active_subscription | 401 unauthorized |
+ * 500 delete_failed.
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
@@ -31,7 +29,6 @@ Deno.serve(async (req) => {
       return Response.json({ code: 'unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
-    // --- Anonymize all DB data in one transaction (service-role RPC) ---
     const { data, error: rpcError } = await supabaseAdmin.rpc('anonymize_my_account', {
       p_user_id: user.id,
     });
@@ -51,13 +48,6 @@ Deno.serve(async (req) => {
     }
     if (code !== 'ok') {
       console.error('anonymize_my_account unexpected code:', code);
-      return Response.json({ code: 'delete_failed' }, { status: 500, headers: corsHeaders });
-    }
-
-    // --- Remove the auth account (must be last; no FK/trigger to public.users) ---
-    const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(user.id);
-    if (authErr) {
-      console.error('auth.admin.deleteUser error:', authErr);
       return Response.json({ code: 'delete_failed' }, { status: 500, headers: corsHeaders });
     }
 
