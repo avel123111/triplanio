@@ -60,8 +60,6 @@ export default {
   'trip.notif_daily_desc': 'Сводка всей активности за день',
   'trip.copy': 'Дублировать',
   'trip.delete': 'Удалить',
-  'trip.delete_pro_confirm_title': 'Ты удаляешь Pro-путешествие',
-  'trip.delete_pro_confirm_desc': 'Это Pro-путешествие: разовая покупка Pro для него будет утеряна. Точно удалить?',
   'trip.copy_confirm_title': 'Скопировать эту поездку?',
   'trip.copy_confirm_desc': 'Будет создана полная копия со всеми городами, отелями, активностями и трансферами. Участники путешествия и Pro-статус не копируются.',
   'trip.copy_done': 'Путешествие скопировано',

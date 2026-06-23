@@ -17,6 +17,8 @@ export default {
   'confirm.leave_trip.body': 'Perderás el acceso. Solo podrás volver con una nueva invitación',
   'confirm.delete_trip.title': '¿Eliminar viaje?',
   'confirm.delete_trip.body': 'Todos los datos ({n} ciudades, reservas, presupuesto) se eliminarán para siempre',
+  'confirm.delete_pro_trip.title': 'Estás eliminando un viaje Pro',
+  'confirm.delete_pro_trip.body': 'Este es un viaje Pro - la mejora única que pagaste se perderá. ¿Eliminar?',
   'confirm.delete_city.title': '¿Eliminar ciudad?',
   'confirm.delete_city.body': 'También se eliminarán los hoteles, actividades y traslados de esta ciudad',
   'confirm.unlink_telegram.title': '¿Desconectar Telegram?',

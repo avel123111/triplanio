@@ -1277,6 +1277,7 @@ export default function TripView() {
               members={members}
               myRole={myRole}
               isPro={tripIsPro}
+              isProTrip={!!trip?.is_pro_trip}
               queryClient={qc}
             />
           )}
