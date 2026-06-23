@@ -243,7 +243,7 @@ function CityAnchorRow({ label, city_name, country, kind }) {
 // list and the structural editor render the SAME row skeleton — one component,
 // two variants. The trailing actions (nights stepper + delete) are the only
 // per-screen difference; the final-point toggle still lives on the last card.
-function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onToggleFinalPoint, onArm, onChange, onRemove, onMove }) {
+function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, finalPoint, onToggleFinalPoint, onArm, onChange, onRemove, onMove }) {
   const t = useT();
   const { lang } = useI18n();
   const invalid = !!city.city_name && city.latitude == null;
@@ -280,6 +280,7 @@ function CityRow({ idx, city, isDragging, isFinalAnchor, isLast, finalPoint, onT
       variant="planner"
       className={isFinalAnchor ? 'te-row--fin' : ''}
       dragging={isDragging}
+      pressing={isPressing}
       invalid={invalid}
       onArm={onArm}
       stopCellPointer={editing}
@@ -463,7 +464,7 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
   // implementation, no second copy to drift. Creation cities have no pinned ends,
   // so every row is movable (isAnchor → false); a commit just reorders the list
   // by id and re-cascades the dates through the shared layout engine.
-  const { dragIdx, displayNodes, setRowRef, armDrag, moveNodeById } = useRouteDnD({
+  const { dragIdx, pressingId, displayNodes, setRowRef, armDrag, moveNodeById } = useRouteDnD({
     ordered: cities,
     isAnchor: () => false,
     onCommitOrder: (ids) => setCities(cs => {
@@ -510,6 +511,7 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
                   idx={dIdx}
                   city={c}
                   isDragging={dragIdx === dIdx}
+                  isPressing={pressingId === c.id}
                   isLast={dIdx === cities.length - 1}
                   isFinalAnchor={dIdx === cities.length - 1 && finalPoint}
                   finalPoint={finalPoint}

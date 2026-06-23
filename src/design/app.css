@@ -1324,6 +1324,12 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    the reorder, so never let it select the city text or pop the iOS long-press
    callout. The grip already had this; the whole row needs it for whole-row drag. */
 .te-row { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* Touch long-press feedback: the row "depresses" the instant the finger lands so
+   the hold registers visibly; on arm it hands off to the lifted .is-dragging pop.
+   Only set while pressing (before the drag arms) → no clash with the JS-driven
+   inline transform during the drag itself. */
+.te-row.is-pressing { transform: scale(0.985); transition: transform .12s var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .te-row.is-pressing { transform: none; } }
 /* Geo-suggest prompt cards (create-flow step 1: ask / loading / denied) — icon +
    copy + action in a row. On narrow phones the action wraps to its own full-width
    row instead of squeezing the copy into a tall sliver (the "стремно" mobile bug).
