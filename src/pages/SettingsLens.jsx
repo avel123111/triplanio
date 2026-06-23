@@ -394,7 +394,7 @@ function ApproverRow({ member, profile, locked }) {
 
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
-export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, queryClient }) {
+export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, proResolved = true, queryClient }) {
   const memberProfiles = useUserProfiles((members || []).map(m => m.user_id), tripId);
   const { t } = useI18n();
   const confirm = useConfirm();
@@ -684,8 +684,38 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       {/* Management cards (features, integrations, warnings, approvers) are
           owner/admin controls — hidden for a read-only viewer. */}
       {!readOnly && (<>
-      {/* ── Features: addon widget cards (Lumo DS §D1), full width ── */}
-      <Card title={t('settings.optional_features')}>
+      {/* ── Features: addon widget cards (Lumo DS §D1), full width ──
+          The Pro upgrade banner lives INSIDE this panel, above the heading
+          (matches the approved prototype). Shown on the same condition as the
+          right-menu plate (TripSidebar `showUpgrade`): trip not Pro and Pro
+          status resolved (avoids a flash on Pro trips). Gated by owner /
+          non-owner, NOT by a specific role: the owner gets the upgrade CTA, any
+          non-owner gets the "enabled by owner" button that opens the same info
+          modal as the sidebar plate. Card title is rendered manually (via the
+          shared .card-h) so the banner can sit above it. Reuses the EXACT
+          sidebar-plate elements — .pro-up / .pi / .pt / .pro-up p / .lockmsg —
+          so it looks identical to the right-menu plate, just horizontal. */}
+      <Card>
+        {proResolved && !hasPro && (
+          <div className="pro-up" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+            <div className="pi"><Icon name="crown" size={17} /></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="pt">{t('trip_menu.free_trip_title')}</div>
+              <p style={{ margin: 0 }}>{t('trip.pro_locked_lenses')}</p>
+            </div>
+            {isOwner ? (
+              <Btn variant="pro" size="sm" icon="pro" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
+            ) : (
+              <button className="lockmsg" style={{ width: 'auto' }} onClick={() => setUpsell({ open: true, mode: 'info', feature: '' })}>
+                <Icon name="lock" size={14} />
+                {t('trip.pro_by_owner')}
+              </button>
+            )}
+          </div>
+        )}
+        <div className="card-h">
+          <div style={{ flex: 1 }}><h3>{t('settings.optional_features')}</h3></div>
+        </div>
         <div className="addon-grid">
           {FEATURES
             .filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection')

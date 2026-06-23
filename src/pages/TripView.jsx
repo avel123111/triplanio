@@ -1256,6 +1256,7 @@ export default function TripView() {
               myRole={myRole}
               isPro={tripIsPro}
               isProTrip={!!trip?.is_pro_trip}
+              proResolved={tripProResolved}
               queryClient={qc}
             />
           )}
