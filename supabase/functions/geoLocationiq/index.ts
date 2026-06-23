@@ -49,18 +49,38 @@ function geocodeQueryKey(action: string, q: unknown, lat: unknown, lon: unknown)
   return normKey(q);
 }
 
-// ── Token bucket (TRIP-145 P2) ───────────────────────────────────────────────
-// Take one token from the shared Postgres bucket. Interactive=1 (may drain to
-// zero), background=2 (only takes with headroom). Fail-open: if the limiter
-// itself errors, don't block geocoding.
-async function takeToken(priority: string): Promise<boolean> {
-  const p_min = priority === 'background' ? 2 : 1;
-  const { data, error } = await supabaseAdmin.rpc('take_geocode_token', { p_min });
+// ── Fair FIFO admission (TRIP-145 P2 follow-up) ──────────────────────────────
+// The shared Postgres token bucket caps the single-key LocationIQ rate; a ticket
+// queue in front of it (geocode_queue) serves waiters in arrival order —
+// interactive ahead of background, FIFO within a priority — instead of letting
+// over-capacity callers time out at random. priority → p_min: background needs
+// headroom (2), interactive may drain to zero (1). All three calls fail-open: a
+// limiter error must never block geocoding.
+function priorityNum(priority: string): number {
+  return priority === 'background' ? 2 : 1;
+}
+
+async function enqueueTicket(priority: string): Promise<number | null> {
+  const { data, error } = await supabaseAdmin.rpc('geocode_enqueue', { p_priority: priorityNum(priority) });
   if (error) {
-    console.error('[geoLocationiq] take_geocode_token failed', error.message);
-    return true;
+    console.error('[geoLocationiq] geocode_enqueue failed', error.message);
+    return null;
+  }
+  return data == null ? null : Number(data);
+}
+
+async function serveTicket(ticket: number, priority: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc('geocode_serve_fair', { p_ticket: ticket, p_min: priorityNum(priority) });
+  if (error) {
+    console.error('[geoLocationiq] geocode_serve_fair failed', error.message);
+    return false;
   }
   return data === true;
+}
+
+// Fire-and-forget — giving up the slot must not add latency to the caller.
+function dequeueTicket(ticket: number): void {
+  supabaseAdmin.rpc('geocode_dequeue', { p_ticket: ticket }).then(() => {}, () => {});
 }
 
 // Per-request token-wait budget. Background waits patiently so batches (AI
@@ -71,15 +91,19 @@ async function takeToken(priority: string): Promise<boolean> {
 // all because background yields to it (p_min). Sleeping is async I/O → no CPU cost.
 const TOKEN_WAIT_MS = { background: 20000, interactive: 3000 } as const;
 
-// Poll the shared bucket until a token frees up or the request `deadline` passes
-// (only then does the caller degrade). Jittered to avoid a thundering herd of
-// concurrent waiters hammering the bucket row in lock-step.
+// Take a ticket, then poll until we're the queue head with a free token or the
+// request `deadline` passes (only then does the caller degrade). Jittered to
+// avoid lock-step polling on the bucket row. A successful serve removes the
+// ticket itself; on give-up we dequeue so a dead waiter never blocks the line.
 async function acquireToken(priority: string, deadline: number): Promise<boolean> {
-  if (await takeToken(priority)) return true;
+  const ticket = await enqueueTicket(priority);
+  if (ticket == null) return true; // fail-open: queue unavailable → don't block
+  if (await serveTicket(ticket, priority)) return true;
   while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 250 + Math.random() * 250));
-    if (await takeToken(priority)) return true;
+    await new Promise((r) => setTimeout(r, 200 + Math.random() * 200));
+    if (await serveTicket(ticket, priority)) return true;
   }
+  dequeueTicket(ticket);
   return false;
 }
 
