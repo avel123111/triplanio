@@ -184,7 +184,12 @@ async function resolveOne(
     return { upstreamError: res.status };
   }
 
-  if (cacheKeyAction) {
+  // Only cache NON-EMPTY results. Empty (zero-match) responses are dominated by
+  // typos and abandoned partial queries from the city search box; caching them
+  // would permanently pollute geocode_cache with dead rows that are never reused.
+  // Skipping them also gives a genuinely-missing city another chance next time
+  // (a 404 here can be transient), rather than pinning it to an empty hit.
+  if (cacheKeyAction && Array.isArray(results) && results.length > 0) {
     const { error } = await supabaseAdmin
       .from('geocode_cache')
       .upsert(
