@@ -153,7 +153,7 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
       clear();                                  // drop pre-arm listeners + clear the press state
       try { navigator.vibrate?.(12); } catch { /* haptic optional */ }
       begin(true);                              // hand off press → lift
-    }, 300);
+    }, 400);
   };
 
   // Per-render move/end closures (read live values), reached via the stable
@@ -171,7 +171,7 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
       const naturalTop = rowEl.getBoundingClientRect().top - info.ty;
       info.ty = (e.clientY - info.grabOffset) - naturalTop;
       rowEl.style.transition = 'none';
-      rowEl.style.transform = `translateY(${info.ty}px) scale(1.015)`;
+      rowEl.style.transform = `translateY(${info.ty}px) scale(1.03)`;
     }
     // Hit-test: first row (excluding the lifted one) whose midpoint is below the
     // pointer = insertion gap; below all → move-to-end (ordered.length).
