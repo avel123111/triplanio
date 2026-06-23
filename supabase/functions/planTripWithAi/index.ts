@@ -52,7 +52,11 @@ Deno.serve(async (req) => {
     const res = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${n8nJwt}` },
-      body: JSON.stringify({ sessionId, prompt, language }),
+      // userId is forwarded so the AI Usage Logger poller can attribute the
+      // trip_planner ai_usage_events row to the caller (it reads runData.Webhook
+      // body, same as trip_parser reads `kind`). trip_id stays null — no trip
+      // exists yet at generation time (this is a pre-save preview).
+      body: JSON.stringify({ sessionId, prompt, language, userId: user.id }),
     });
 
     if (!res.ok) {
