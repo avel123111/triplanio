@@ -37,6 +37,7 @@ import React from 'react';
 export default function CityRow({
   variant = 'planner',
   dragging = false,
+  pressing = false,
   invalid = false,
   onArm,
   onClick,
@@ -55,6 +56,7 @@ export default function CityRow({
     'te-row',
     variant === 'planner' ? 'te-row--plan' : '',
     dragging ? 'is-dragging' : '',
+    pressing ? 'is-pressing' : '',
     invalid ? 'te-row--bad' : '',
     className,
   ].filter(Boolean).join(' ');

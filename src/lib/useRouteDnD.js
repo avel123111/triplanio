@@ -23,6 +23,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
   const [dragIdx, setDragIdx] = useState(null);   // ordered index of the row being dragged
   const [overGap, setOverGap] = useState(null);   // insertion position (index in `ordered`) the row would drop into
+  const [pressingId, setPressingId] = useState(null); // touch long-press feedback: row being held before the drag arms
   const endDrag = () => { setDragIdx(null); setOverGap(null); };
   const justDraggedRef = useRef(false); // suppress the click that fires right after a drag
 
@@ -108,14 +109,16 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
     const rowEl = rowElRefs.current.get(nodeId);
     if (!rowEl) return;
     const cx = e.clientX, cy = e.clientY;
-    const begin = () => {
+    const begin = (touchArmed) => {
       const rect = rowEl.getBoundingClientRect();
-      dragInfoRef.current = { id: nodeId, dIdx, startX: cx, startY: cy, grabOffset: cy - rect.top, ty: 0, activated: false, lastTarget: null };
-      // Touch/pen: once the long-press has armed the drag, take the gesture off the
-      // browser's scroll handler (touch-action:none) and capture the pointer so the
-      // following moves drag the row instead of scrolling the page. Without this the
-      // browser treats the move as a scroll, fires pointercancel, and the drag dies
-      // immediately — that's why mobile DnD "не работает вообще".
+      dragInfoRef.current = { id: nodeId, dIdx, startX: cx, startY: cy, grabOffset: cy - rect.top, ty: 0, activated: !!touchArmed, lastTarget: null };
+      // Touch/pen: the long-press has armed the drag → lift the row IMMEDIATELY
+      // (activated:true, no second move-threshold) so "drag started" is obvious,
+      // and take the gesture off the browser's scroll handler (touch-action:none) +
+      // capture the pointer so the following moves drag the row instead of scrolling
+      // the page. Without the capture the browser treats the move as a scroll, fires
+      // pointercancel, and the drag dies immediately.
+      if (touchArmed) { setDragIdx(dIdx); setOverGap(null); document.body.style.userSelect = 'none'; }
       if (e.pointerType !== 'mouse') {
         rowEl.style.touchAction = 'none';
         try { rowEl.setPointerCapture(e.pointerId); } catch { /* capture not supported */ }
@@ -125,13 +128,18 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
       window.addEventListener('pointerup', stableEnd, { once: true });
       window.addEventListener('pointercancel', stableEnd, { once: true });
     };
-    // Mouse: whole card draggable immediately. Touch/pen: long-press (430ms) on
-    // the row arms the drag — any scroll/lift before then cancels, so the list
-    // still scrolls normally and there's no accidental reordering.
-    if (e.pointerType === 'mouse') { begin(); return; }
+    // Mouse: whole card draggable immediately (drag activates after a 5px move, so a
+    // plain click still opens the row). Touch/pen: long-press (300ms) on the row
+    // arms the drag — any scroll/lift before then cancels, so the list still scrolls
+    // normally and there's no accidental reordering.
+    if (e.pointerType === 'mouse') { begin(false); return; }
+    // Touch: show the "pressing" depress state the instant the finger lands, so the
+    // hold registers visibly (the old timer gave zero feedback → felt broken).
+    setPressingId(nodeId);
     let timer = null;
     const clear = () => {
       if (timer) { clearTimeout(timer); timer = null; }
+      setPressingId(null);
       window.removeEventListener('pointermove', preMove);
       window.removeEventListener('pointerup', preUp);
       window.removeEventListener('pointercancel', preUp);
@@ -142,10 +150,10 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
     window.addEventListener('pointerup', preUp, { once: true });
     window.addEventListener('pointercancel', preUp, { once: true });
     timer = setTimeout(() => {
-      clear();
+      clear();                                  // drop pre-arm listeners + clear the press state
       try { navigator.vibrate?.(12); } catch { /* haptic optional */ }
-      begin();
-    }, 430);
+      begin(true);                              // hand off press → lift
+    }, 300);
   };
 
   // Per-render move/end closures (read live values), reached via the stable
@@ -212,5 +220,5 @@ export function useRouteDnD({ ordered, isAnchor, onCommitOrder }) {
   // post-early-return locals directly).
   liveRef.current = { ordered, displayNodes };
 
-  return { dragIdx, overGap, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef };
+  return { dragIdx, overGap, pressingId, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef };
 }

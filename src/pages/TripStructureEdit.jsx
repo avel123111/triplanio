@@ -321,7 +321,7 @@ export default function TripStructureEdit() {
     });
     persistOrder(ids);
   };
-  const { dragIdx, overGap, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef } =
+  const { dragIdx, overGap, pressingId, displayNodes, setRowRef, armDrag, moveNodeById, justDraggedRef } =
     useRouteDnD({ ordered: dndOrdered, isAnchor, onCommitOrder: commitOrder });
   // Nights 0..60. Hitting 0 turns a city into a waypoint (a 0-night transit
   // stop); raising a waypoint above 0 turns it back into a transit city.
@@ -798,6 +798,7 @@ export default function TripStructureEdit() {
               const dragging = dragIdx === dIdx;
               const dragProps = {
                 dragging,
+                pressing: pressingId === n.id,
                 onArm: (e) => armDrag(e, dIdx, n.id),
                 onMove: (dir) => moveNodeById(n.id, dir),
               };
@@ -1062,7 +1063,7 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
   );
   if (seg.kind === 'waypoint') {
     return (
-      <CityRow variant="editor" dragging={drag.dragging} onArm={drag.onArm} onClick={onOpenCity}
+      <CityRow variant="editor" dragging={drag.dragging} pressing={drag.pressing} onArm={drag.onArm} onClick={onOpenCity}
         grip={gripEl}
         lead={<span className="te-row__node" style={{ background: 'transparent', color: 'var(--ev-transfer)', border: '1.5px dashed var(--ev-transfer)' }}><Icon name="arrowSwap" size={11} /></span>}
         name={seg.city_name}
@@ -1075,7 +1076,7 @@ function GridNode({ seg, stayNum, cityConf, hotel, hotelWarn, acts = [], actWarn
     );
   }
   return (
-    <CityRow variant="editor" dragging={drag.dragging} onArm={drag.onArm} onClick={onOpenCity}
+    <CityRow variant="editor" dragging={drag.dragging} pressing={drag.pressing} onArm={drag.onArm} onClick={onOpenCity}
       grip={gripEl}
       lead={<span className={'te-row__num' + (cityConf ? ' is-warn' : '')}>{stayNum}</span>}
       name={seg.city_name}

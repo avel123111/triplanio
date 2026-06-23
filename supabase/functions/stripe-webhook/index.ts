@@ -32,6 +32,7 @@ import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError, reportPaymentAnomaly } from '../_shared/sentry.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { planTypeForProduct, isTestStripeKey } from '../_shared/stripeCatalog.ts';
+import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from '../_shared/revokeLostProFeatures.ts';
 
 // Critical write guard. Supabase query builders are thenable and resolve to
 // { data, error }. On error: report to Sentry and THROW, so the outer catch
@@ -57,6 +58,11 @@ async function recompute(userId: string | null | undefined) {
     await captureEdgeError(new Error(`recompute_user_entitlement failed (user ${userId}): ${error.message}`), 'stripe-webhook');
     throw new Error('recompute_user_entitlement failed');
   }
+  // After the entitlement cache settles, roll back Pro addons for any of this
+  // user's trips that just lost Pro (sub canceled/expired/refunded). Self-gating
+  // (SQL no-ops still-Pro trips) and best-effort — must not throw, or a healthy
+  // entitlement write would be retried by Stripe. Covers ALL recompute callers here.
+  await revokeLostProFeaturesForUser(supabaseAdmin, userId);
 }
 
 // Persist the Stripe customer id on first sight; never overwrite an existing one.
@@ -499,6 +505,9 @@ Deno.serve(async (req) => {
         if (row.type === 'pro_trip' && row.trip_id) {
           await ensureWrite('refund is_pro_trip clear', supabaseAdmin
             .from('trips').update({ is_pro_trip: false }).eq('id', row.trip_id));
+          // is_pro_trip just dropped — roll back this trip's Pro addons + TG bindings
+          // (no-op if the owner's subscription still keeps it Pro). Best-effort.
+          await revokeLostProFeaturesForTrip(supabaseAdmin, row.trip_id);
           console.log('Pro-trip revoked after', event.type, '->', row.trip_id);
         } else {
           await recompute(row.user_id);

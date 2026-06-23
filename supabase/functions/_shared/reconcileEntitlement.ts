@@ -23,6 +23,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { getPeriodEndUnix, unixToIso } from './getPeriodEnd.ts';
 import { planTypeForProduct, isTestStripeKey } from './stripeCatalog.ts';
 import { reportPaymentAnomaly } from './sentry.ts';
+import { revokeLostProFeaturesForUser } from './revokeLostProFeatures.ts';
 
 const THROTTLE_MIN = 10;
 
@@ -121,5 +122,10 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
 
   // Always recompute — even with no rows, this correctly drops the user to free.
   await admin.rpc('recompute_user_entitlement', { p_user_id: userId });
+  // Recompute-on-read just settled the cache. If the user lapsed to free (sub
+  // expired by time / lost cancel webhook), roll back Pro addons + TG bindings for
+  // their trips. Self-gating (no-op on still-Pro trips) and best-effort. This is the
+  // path that covers pure time-lapse, which no webhook event fires for.
+  await revokeLostProFeaturesForUser(admin, userId);
   return true;
 }
