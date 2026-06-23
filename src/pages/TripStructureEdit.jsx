@@ -488,7 +488,18 @@ export default function TripStructureEdit() {
   // The map is always shown beside the itinerary now (the old "hide map" toggle
   // was removed); on phones it's hidden via CSS (.ts-col-right), so no toggle.
 
-  if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">{t('tse.err_load')}{String(shellError.message || shellError)}</div></div></>;
+  if (shellError) {
+    // supabase-js buries the real reason: error.message is always the generic
+    // "Edge Function returned a non-2xx status code". The HTTP status lives on
+    // error.context (the Response) — branch on it for an actionable message,
+    // falling back to the generic err_load for anything unexpected (e.g. 500).
+    const status = shellError?.context?.status ?? null;
+    const msg = status === 403 ? t('tse.err_forbidden')
+      : status === 404 ? t('tse.err_notfound')
+      : status === 401 ? t('tse.err_unauth')
+      : `${t('tse.err_load')}${String(shellError.message || shellError)}`;
+    return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">{msg}</div></div></>;
+  }
   // shell/content are cached (shared with TripView) so the editor paints instantly.
   if (loadingShell || loadingContent || !draft) {
     return <>{headerEl}<div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}><Skeleton w="40%" h={28} style={{ marginBottom: 18 }} /><Skeleton w="100%" h={120} style={{ marginBottom: 10 }} /><Skeleton w="100%" h={120} /></div></>;
