@@ -49,18 +49,38 @@ function geocodeQueryKey(action: string, q: unknown, lat: unknown, lon: unknown)
   return normKey(q);
 }
 
-// ── Token bucket (TRIP-145 P2) ───────────────────────────────────────────────
-// Take one token from the shared Postgres bucket. Interactive=1 (may drain to
-// zero), background=2 (only takes with headroom). Fail-open: if the limiter
-// itself errors, don't block geocoding.
-async function takeToken(priority: string): Promise<boolean> {
-  const p_min = priority === 'background' ? 2 : 1;
-  const { data, error } = await supabaseAdmin.rpc('take_geocode_token', { p_min });
+// ── Fair FIFO admission (TRIP-145 P2 follow-up) ──────────────────────────────
+// The shared Postgres token bucket caps the single-key LocationIQ rate; a ticket
+// queue in front of it (geocode_queue) serves waiters in arrival order —
+// interactive ahead of background, FIFO within a priority — instead of letting
+// over-capacity callers time out at random. priority → p_min: background needs
+// headroom (2), interactive may drain to zero (1). All three calls fail-open: a
+// limiter error must never block geocoding.
+function priorityNum(priority: string): number {
+  return priority === 'background' ? 2 : 1;
+}
+
+async function enqueueTicket(priority: string): Promise<number | null> {
+  const { data, error } = await supabaseAdmin.rpc('geocode_enqueue', { p_priority: priorityNum(priority) });
   if (error) {
-    console.error('[geoLocationiq] take_geocode_token failed', error.message);
-    return true;
+    console.error('[geoLocationiq] geocode_enqueue failed', error.message);
+    return null;
+  }
+  return data == null ? null : Number(data);
+}
+
+async function serveTicket(ticket: number, priority: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc('geocode_serve_fair', { p_ticket: ticket, p_min: priorityNum(priority) });
+  if (error) {
+    console.error('[geoLocationiq] geocode_serve_fair failed', error.message);
+    return false;
   }
   return data === true;
+}
+
+// Fire-and-forget — giving up the slot must not add latency to the caller.
+function dequeueTicket(ticket: number): void {
+  supabaseAdmin.rpc('geocode_dequeue', { p_ticket: ticket }).then(() => {}, () => {});
 }
 
 // Per-request token-wait budget. Background waits patiently so batches (AI
@@ -71,15 +91,19 @@ async function takeToken(priority: string): Promise<boolean> {
 // all because background yields to it (p_min). Sleeping is async I/O → no CPU cost.
 const TOKEN_WAIT_MS = { background: 20000, interactive: 3000 } as const;
 
-// Poll the shared bucket until a token frees up or the request `deadline` passes
-// (only then does the caller degrade). Jittered to avoid a thundering herd of
-// concurrent waiters hammering the bucket row in lock-step.
+// Take a ticket, then poll until we're the queue head with a free token or the
+// request `deadline` passes (only then does the caller degrade). Jittered to
+// avoid lock-step polling on the bucket row. A successful serve removes the
+// ticket itself; on give-up we dequeue so a dead waiter never blocks the line.
 async function acquireToken(priority: string, deadline: number): Promise<boolean> {
-  if (await takeToken(priority)) return true;
+  const ticket = await enqueueTicket(priority);
+  if (ticket == null) return true; // fail-open: queue unavailable → don't block
+  if (await serveTicket(ticket, priority)) return true;
   while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 250 + Math.random() * 250));
-    if (await takeToken(priority)) return true;
+    await new Promise((r) => setTimeout(r, 200 + Math.random() * 200));
+    if (await serveTicket(ticket, priority)) return true;
   }
+  dequeueTicket(ticket);
   return false;
 }
 
@@ -160,7 +184,12 @@ async function resolveOne(
     return { upstreamError: res.status };
   }
 
-  if (cacheKeyAction) {
+  // Only cache NON-EMPTY results. Empty (zero-match) responses are dominated by
+  // typos and abandoned partial queries from the city search box; caching them
+  // would permanently pollute geocode_cache with dead rows that are never reused.
+  // Skipping them also gives a genuinely-missing city another chance next time
+  // (a 404 here can be transient), rather than pinning it to an empty hit.
+  if (cacheKeyAction && Array.isArray(results) && results.length > 0) {
     const { error } = await supabaseAdmin
       .from('geocode_cache')
       .upsert(
@@ -202,6 +231,43 @@ async function resolveBatchItem(
   }
 }
 
+// ── Local directory (TRIP-145 P3) ────────────────────────────────────────────
+// resolveCities first asks the curated `cities` table by (name_en, country_code)
+// via resolve_cities_local. A hit returns coords with NO upstream call. We shape
+// the hit back into a LocationIQ/Nominatim-style row so the client's refineCities
+// path consumes it unchanged; external_city_id becomes a stable `dir:<id>` (an
+// opaque identity key client-side). city_id/viator are re-attached at save by
+// the existing coords trigger (set_city_id), so nothing is plumbed here.
+function directoryRow(h: { city_id: number; name_en: string; country_code: string; lat: number; lng: number }): Record<string, unknown> {
+  return {
+    place_id: `dir:${h.city_id}`,
+    lat: String(h.lat),
+    lon: String(h.lng),
+    display_name: h.name_en,
+    name: h.name_en,
+    namedetails: { 'name:en': h.name_en },
+    address: { country_code: String(h.country_code || '').toLowerCase() },
+    type: 'city',
+    class: 'place',
+    importance: 1,
+  };
+}
+
+// Pick the most relevant row's coords from a LocationIQ result array (highest
+// importance with finite lat/lon). Used only to seed the directory (learn_city).
+function bestCoords(rows: unknown[]): { lat: number; lng: number } | null {
+  let best: { lat: number; lng: number } | null = null;
+  let bestImp = -Infinity;
+  for (const d of (rows || []) as Array<{ lat?: unknown; lon?: unknown; importance?: unknown }>) {
+    const lat = parseFloat(String(d?.lat));
+    const lng = parseFloat(String(d?.lon));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    const imp = Number(d?.importance) || 0;
+    if (imp > bestImp) { bestImp = imp; best = { lat, lng }; }
+  }
+  return best;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -227,10 +293,33 @@ Deno.serve(async (req) => {
       const prio = priority || 'background';
       // One shared deadline for the whole batch → bounded total wall-clock.
       const deadline = Date.now() + TOKEN_WAIT_MS[prio === 'background' ? 'background' : 'interactive'];
+
+      // (C) Directory-first: one RPC resolves the whole batch by name → hits skip
+      // LocationIQ entirely. Fail-open: a limiter/RPC error just falls through to
+      // the geocoder for every city (old behaviour).
+      let dir: Array<{ city_id: number; name_en: string; country_code: string; lat: number; lng: number } | null> = [];
+      try {
+        const { data: dirData } = await supabaseAdmin.rpc('resolve_cities_local', {
+          p_items: cities.map((c: { name_en?: unknown; country_code?: unknown }) => ({
+            name_en: c?.name_en ?? null,
+            country_code: c?.country_code ?? null,
+          })),
+        });
+        if (Array.isArray(dirData)) dir = dirData;
+      } catch (e) {
+        console.error('[geoLocationiq] resolve_cities_local failed', (e as Error).message);
+      }
+
       const memo = new Map<string, unknown[]>();
       let degraded = false;
       const out: unknown[][] = [];
-      for (const c of cities) {
+      for (let i = 0; i < cities.length; i++) {
+        const c = cities[i];
+        const hit = dir[i];
+        if (hit && hit.lat != null && hit.lng != null) {
+          out.push([directoryRow(hit)]);
+          continue;
+        }
         const cq = c?.q;
         if (!cq || !String(cq).trim()) { out.push([]); continue; }
         const cLang = (typeof c?.lang === 'string' && c.lang.trim()) ? c.lang.trim() : acceptLang;
@@ -238,6 +327,20 @@ Deno.serve(async (req) => {
         if (memo.has(key)) { out.push(memo.get(key)!); continue; }
         const item = await resolveBatchItem(normKey(cq), cLang, prio, { q: cq, limit: lim }, apiKey, deadline);
         if (item.failed) degraded = true; // rate budget spent OR upstream error after retries
+        // (#4) Self-heal: a fresh successful resolve of a city the directory did
+        // not have → promote it so the next lookup hits the directory. Gated on a
+        // name_en + country_code from the caller; fire-and-forget.
+        if (!item.failed && item.results.length && c?.name_en && c?.country_code) {
+          const best = bestCoords(item.results);
+          if (best) {
+            supabaseAdmin.rpc('learn_city', {
+              p_name_en: c.name_en,
+              p_country_code: c.country_code,
+              p_lat: best.lat,
+              p_lng: best.lng,
+            }).then(() => {}, () => {});
+          }
+        }
         memo.set(key, item.results);
         out.push(item.results);
       }

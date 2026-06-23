@@ -894,6 +894,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       id: Date.now() + idx,
       external_city_id: best?.external_city_id || null,
       city_name: c.city_name || '',
+      // English name kept for partner links (Stay22/Viator) and the directory:
+      // prefer the AI's city_name_en, else the geocoder's canonical en name.
+      city_name_en: c.city_name_en || best?.city_name_en || '',
       country: c.country || best?.country || '',
       country_code: (c.country_code || best?.country_code || '').toUpperCase(),
       latitude: best?.latitude ?? null,
@@ -919,8 +922,17 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     if (startSrc) order.push(startSrc);
     if (endSrc) order.push(endSrc);
     transitSrc.forEach((c) => order.push(c));
+    // Resolve by English name + country_code: the edge hits the local `cities`
+    // directory by name first (skips LocationIQ for known cities) and falls back
+    // to an English geocoder query for the rest (small towns that 404 in
+    // Cyrillic). The Russian city_name from the AI is what we display/save.
     const lists = await resolveCities(
-      order.map((c) => `${c.city_name}${c.country ? ', ' + c.country : ''}`),
+      order.map((c) => ({
+        city_name: c.city_name,
+        name_en: c.city_name_en,
+        country: c.country,
+        country_code: c.country_code,
+      })),
       lang || 'ru',
     );
     let oi = 0;
@@ -1094,6 +1106,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           trip_id: trip.id,
           external_city_id: home.external_city_id || null,
           city_name: home.city_name,
+          city_name_en: home.city_name_en || null,
           country: home.country || null,
           country_code: home.country_code || null,
           latitude: home.latitude || null,
@@ -1117,6 +1130,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           trip_id: trip.id,
           external_city_id: c.external_city_id || null,
           city_name: c.city_name,
+          city_name_en: c.city_name_en || null,
           country: c.country || null,
           country_code: c.country_code || null,
           latitude: c.latitude || null,
@@ -1137,6 +1151,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           trip_id: trip.id,
           external_city_id: effectiveReturn.external_city_id || null,
           city_name: effectiveReturn.city_name,
+          city_name_en: effectiveReturn.city_name_en || null,
           country: effectiveReturn.country || null,
           country_code: effectiveReturn.country_code || null,
           latitude: effectiveReturn.latitude || null,

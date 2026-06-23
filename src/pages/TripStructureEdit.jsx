@@ -32,6 +32,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import TripSidebar from '@/components/trips/TripSidebar';
+import TripAccessError from '@/components/trips/TripAccessError';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import TripStartControl from '@/components/trip/TripStartControl';
@@ -488,7 +489,9 @@ export default function TripStructureEdit() {
   // The map is always shown beside the itinerary now (the old "hide map" toggle
   // was removed); on phones it's hidden via CSS (.ts-col-right), so no toggle.
 
-  if (shellError) return <>{headerEl}<div style={{ padding: 40, textAlign: 'center' }}><div className="sev sev--error">{t('tse.err_load')}{String(shellError.message || shellError)}</div></div></>;
+  // Trip can't be loaded for this user (403 / not a member / deleted) → the same
+  // full-screen "no access" stub TripView shows, not a bespoke editor banner.
+  if (shellError) return <TripAccessError onBack={() => nav('/trips')} />;
   // shell/content are cached (shared with TripView) so the editor paints instantly.
   if (loadingShell || loadingContent || !draft) {
     return <>{headerEl}<div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}><Skeleton w="40%" h={28} style={{ marginBottom: 18 }} /><Skeleton w="100%" h={120} style={{ marginBottom: 10 }} /><Skeleton w="100%" h={120} /></div></>;

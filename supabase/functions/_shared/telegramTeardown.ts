@@ -12,19 +12,26 @@
  * нескольким трипам, сохраняет остальные привязки. Это та же DELETE-семантика,
  * что у telegramDisconnect исторически.
  *
+ * Опционально удаление можно сузить:
+ *   - integrationId — снять одну конкретную привязку (ручной telegramDisconnect);
+ *   - userId — снять только привязки, сделанные этим пользователем в трипе
+ *     (выход участника: removeTripMember отзывает доступ только уходящего,
+ *     не трогая привязки остальных).
+ *
  * @returns число удалённых привязок.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
 export async function disconnectTripTelegram(
   admin: SupabaseClient,
-  opts: { tripId: string; integrationId?: string },
+  opts: { tripId: string; integrationId?: string; userId?: string },
 ): Promise<number> {
-  const { tripId, integrationId } = opts;
+  const { tripId, integrationId, userId } = opts;
   if (!tripId) return 0;
 
   let q = admin.from('trip_telegram_integrations').delete().eq('trip_id', tripId);
   if (integrationId) q = q.eq('id', integrationId);
+  if (userId) q = q.eq('user_id', userId);
 
   const { data, error } = await q.select('id');
   if (error) throw error;
