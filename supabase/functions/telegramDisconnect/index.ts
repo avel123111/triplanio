@@ -10,6 +10,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
+import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -27,15 +28,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
     }
 
-    const { data: removed, error } = await supabaseAdmin
-      .from('trip_telegram_integrations')
-      .delete()
-      .eq('id', integrationId)
-      .eq('trip_id', tripId)
-      .select('id');
-    if (error) throw error;
+    // Delete via the single source of truth (_shared/telegramTeardown) so the
+    // user-facing path and the Pro-rollback path never drift. Scoped by integrationId.
+    const removed = await disconnectTripTelegram(supabaseAdmin, { tripId, integrationId });
 
-    return Response.json({ ok: true, removed: (removed ?? []).length }, { headers: corsHeaders });
+    return Response.json({ ok: true, removed }, { headers: corsHeaders });
 
   } catch (e) {
     console.error('telegramDisconnect error:', e);
