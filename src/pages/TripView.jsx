@@ -19,7 +19,7 @@ import ShareDialog from '@/components/trips/ShareDialog';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
 import { Btn, Dialog, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow } from '../design/index';
-import { SystemStub } from '@/lib/PageNotFound';
+import TripAccessError from '@/components/trips/TripAccessError';
 import { sortVisits, cityIdentity } from '@/lib/validation';
 import { useToast } from '@/components/ui/use-toast';
 import { ActionMenu } from '@/components/ui/ActionMenu';
@@ -282,28 +282,6 @@ function LoadingScreen({ lens = 'overview' }) {
           </main>
         </div>
       </div>
-    </div>
-  );
-}
-
-function ErrorScreen({ onBack }) {
-  const { t } = useI18n();
-  const nav = useNavigate();
-  const { logout } = useAuth();
-  const loginOther = async () => {
-    try { await logout?.(false); } catch { /* ignore */ }
-    nav('/login');
-  };
-  return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <SystemStub
-        icon="lock"
-        tone="warm"
-        title={t('trip.no_access_title')}
-        body={t('trip.no_access_desc')}
-        primary={{ label: t('trip.to_my_trips'), onClick: onBack }}
-        secondary={{ label: t('trip.login_other'), onClick: loginOther }}
-      />
     </div>
   );
 }
@@ -956,7 +934,7 @@ export default function TripView() {
   useEffect(() => { if (screenBodyRef.current) screenBodyRef.current.scrollTop = 0; }, [shownLens]);
 
   if (loadingShell) return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} />;
-  if (shellError || (!loadingShell && !trip)) return <ErrorScreen onBack={() => nav('/trips')} />;
+  if (shellError || (!loadingShell && !trip)) return <TripAccessError onBack={() => nav('/trips')} />;
 
   // ── Global trip header: cover, subtitle and the right-hand hero actions ──
   // (Share / Edit / "…"). Cover priority mirrors the old cover strip: uploaded
