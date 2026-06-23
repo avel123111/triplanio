@@ -59,8 +59,6 @@ export default {
   'trip.notif_daily_desc': 'Un resumen de toda la actividad',
   'trip.copy': 'Duplicar',
   'trip.delete': 'Eliminar',
-  'trip.delete_pro_confirm_title': 'Estás eliminando un viaje Pro',
-  'trip.delete_pro_confirm_desc': 'Este es un viaje Pro: se perderá la mejora única que pagaste. ¿Seguro que quieres eliminarlo?',
   'trip.copy_confirm_title': '¿Duplicar este viaje?',
   'trip.copy_confirm_desc': 'Se creará una copia completa con todas las ciudades, hoteles, actividades y traslados. Los miembros del viaje y el estado Pro no se copian.',
   'trip.copy_done': 'Viaje copiado',

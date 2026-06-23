@@ -17,6 +17,8 @@ export default {
   'confirm.leave_trip.body': 'Ты потеряешь доступ. Вернуться можно только по новому приглашению',
   'confirm.delete_trip.title': 'Удалить путешествие?',
   'confirm.delete_trip.body': 'Все данные ({n} городов, брони, бюджет) удалятся навсегда',
+  'confirm.delete_pro_trip.title': 'Вы удаляете Pro-путешествие',
+  'confirm.delete_pro_trip.body': 'Это Pro-путешествие - разовый апгрейд, который вы оплатили, сгорит. Удалить?',
   'confirm.delete_city.title': 'Удалить город?',
   'confirm.delete_city.body': 'Отели, активности и переезды этого города тоже удалятся',
   'confirm.unlink_telegram.title': 'Отключить Telegram?',

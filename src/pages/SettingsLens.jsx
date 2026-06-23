@@ -394,7 +394,7 @@ function ApproverRow({ member, profile, locked }) {
 
 // ─── SettingsLens (main export) ───────────────────────────────────────────────
 
-export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, queryClient }) {
+export default function SettingsLens({ tripId, trip, members = [], myRole, isPro, isProTrip, queryClient }) {
   const memberProfiles = useUserProfiles((members || []).map(m => m.user_id), tripId);
   const { t } = useI18n();
   const confirm = useConfirm();
@@ -589,12 +589,31 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     nav('/trips');
   }
 
-  // Delete trip (owner only)
+  // Delete trip (owner only). Routed through the deleteTrip edge function so
+  // Telegram teardown + Storage purge run before the irreversible DELETE.
   async function deleteTrip() {
     if (!(await confirm({ title: t('settings.delete_confirm1'), variant: 'destructive' }))) return;
     if (!(await confirm({ title: t('settings.delete_confirm2'), variant: 'destructive' }))) return;
-    const { error } = await supabase.from('trips').delete().eq('id', tripId);
-    if (error) { toast({ description: t('settings.save_error2', { message: error.message }), variant: 'destructive' }); return; }
+
+    // 3rd confirm — ONLY for a trip carrying a one-time Pro purchase
+    // (is_pro_trip), which burns on delete. NOT shown when Pro comes from an
+    // account-level subscription (that survives the trip being deleted), so we
+    // key off is_pro_trip, not the merged isPro flag.
+    if (isProTrip) {
+      if (!(await confirm({
+        title: t('confirm.delete_pro_trip.title'),
+        description: t('confirm.delete_pro_trip.body'),
+        variant: 'destructive',
+      }))) return;
+    }
+
+    const { data, error } = await supabase.functions.invoke('deleteTrip', { body: { tripId } });
+    if (error || !data?.ok) {
+      let msg = data?.error || error?.message || '';
+      try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
+      toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
+      return;
+    }
     nav('/trips');
   }
 
