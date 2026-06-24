@@ -76,7 +76,9 @@ Deno.serve(async (req) => {
       .insert({
         title: `Copy of ${sourceTrip.title}`,
         description: sourceTrip.description,
-        cover_image_url: sourceTrip.cover_image_url,
+        // The copy is born WITHOUT any documents (Pavel decision 2026-06-24):
+        // the cover image is a Storage-backed document, so it is never copied.
+        cover_image_url: null,
         notes: sourceTrip.notes,
         details: copyDetails,
         is_pro_trip: false, // copy is not automatically pro
@@ -143,10 +145,11 @@ Deno.serve(async (req) => {
       .eq('trip_id', tripId);
 
     if (hotels && hotels.length > 0) {
-      const newHotels = hotels.map(({ id: _id, created_at: _ca, updated_at: _ua, ...h }) => ({
+      const newHotels = hotels.map(({ id: _id, created_at: _ca, updated_at: _ua, documents: _docs, ...h }) => ({
         ...h,
         trip_id: newTripId,
         city_visit_id: h.city_visit_id ? (cityVisitIdMap[h.city_visit_id] ?? null) : null,
+        documents: [], // copy is born without documents (Pavel 2026-06-24)
         created_by: user.id,
       }));
       await supabaseAdmin.from('hotel_stays').insert(newHotels);
@@ -159,10 +162,11 @@ Deno.serve(async (req) => {
       .eq('trip_id', tripId);
 
     if (activities && activities.length > 0) {
-      const newActivities = activities.map(({ id: _id, created_at: _ca, updated_at: _ua, ...a }) => ({
+      const newActivities = activities.map(({ id: _id, created_at: _ca, updated_at: _ua, documents: _docs, ...a }) => ({
         ...a,
         trip_id: newTripId,
         city_visit_id: a.city_visit_id ? (cityVisitIdMap[a.city_visit_id] ?? null) : null,
+        documents: [], // copy is born without documents (Pavel 2026-06-24)
         created_by: user.id,
       }));
       await supabaseAdmin.from('activities').insert(newActivities);
@@ -175,11 +179,12 @@ Deno.serve(async (req) => {
       .eq('trip_id', tripId);
 
     if (transfers && transfers.length > 0) {
-      const newTransfers = transfers.map(({ id: _id, created_at: _ca, updated_at: _ua, ...t }) => ({
+      const newTransfers = transfers.map(({ id: _id, created_at: _ca, updated_at: _ua, documents: _docs, ...t }) => ({
         ...t,
         trip_id: newTripId,
         from_city_visit_id: t.from_city_visit_id ? (cityVisitIdMap[t.from_city_visit_id] ?? null) : null,
         to_city_visit_id: t.to_city_visit_id ? (cityVisitIdMap[t.to_city_visit_id] ?? null) : null,
+        documents: [], // copy is born without documents (Pavel 2026-06-24)
         created_by: user.id,
       }));
       await supabaseAdmin.from('transfers').insert(newTransfers);
@@ -192,11 +197,17 @@ Deno.serve(async (req) => {
       .eq('trip_id', tripId);
 
     if (services && services.length > 0) {
-      const newServices = services.map(({ id: _id, created_at: _ca, updated_at: _ua, ...s }) => ({
-        ...s,
-        trip_id: newTripId,
-        created_by: user.id,
-      }));
+      const newServices = services.map(({ id: _id, created_at: _ca, updated_at: _ua, ...s }) => {
+        // Drop the `documents` key from details — copy is born without documents
+        // (Pavel 2026-06-24). Rest of details (provider/booking data) is preserved.
+        const { documents: _drop, ...details } = (s.details && typeof s.details === 'object') ? s.details : {};
+        return {
+          ...s,
+          details,
+          trip_id: newTripId,
+          created_by: user.id,
+        };
+      });
       await supabaseAdmin.from('trip_services').insert(newServices);
     }
 
