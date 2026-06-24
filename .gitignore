@@ -40,3 +40,6 @@ dist_chk*/
 
 ._*.cjs
 *.xlsx
+
+# Claude Code / Cyrus local (per-machine) settings
+.claude/settings.local.json
