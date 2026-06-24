@@ -4,7 +4,6 @@ import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers';
 import MapControls from '@/lib/map/MapControls';
-import { Icon } from '../../design/icons';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 
@@ -30,7 +29,7 @@ function buildLegs(home, cities, returnCity, finalPoint) {
 // instance, markers, route lines and controls as the trip MapView — only the
 // data source (home/cities/transport) and the start/finish labels differ.
 // =====================================================================
-export default function FlowMap({ home, cities = [], returnCity, transport = {}, finalPoint = false, badge }) {
+export default function FlowMap({ home, cities = [], returnCity, transport = {}, finalPoint = false }) {
   const t = useT();
   const { isDark } = useTheme();
   const containerRef = useRef(null);
@@ -112,17 +111,6 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
           showSE={showSE}
           onToggleSE={() => setShowSE((v) => !v)}
         />
-      )}
-
-      {badge && pts.length > 0 && (
-        <div style={{
-          position: 'absolute', top: 14, left: 14,
-          display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px',
-          background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999,
-          fontSize: 'var(--fs-micro)', fontWeight: 650, color: badge.color || 'var(--brand)', boxShadow: 'var(--shadow-soft)',
-        }}>
-          <Icon name={badge.icon || 'map'} size={12} /> {badge.label}
-        </div>
       )}
 
       {totalNights > 0 && (

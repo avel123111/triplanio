@@ -34,7 +34,7 @@ import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import TripSidebar from '@/components/trips/TripSidebar';
 import TripAccessError from '@/components/trips/TripAccessError';
 import ShareDialog from '@/components/trips/ShareDialog';
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel } from '@/components/ui/alert-dialog';
+import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripStartControl from '@/components/trip/TripStartControl';
 
 // =====================================================================
@@ -172,7 +172,7 @@ export default function TripStructureEdit() {
   }, [leftPanel]);
   const [showWarn, setShowWarn] = useState(false); // collapsible warnings overlay on the map
   const { startCopy, copying } = useCreateTrip(); // header "…" → Copy trip
-  const [confirmDel, setConfirmDel] = useState(null); // city pending delete-confirm
+  const confirm = useConfirm(); // city delete → shared confirm (sheet on mobile)
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [sideOpen, setSideOpen] = useState(false); // mobile menu drawer
   const [shareOpen, setShareOpen] = useState(false);
@@ -380,7 +380,17 @@ export default function TripStructureEdit() {
   // Remove a city → confirm first. On confirm the city AND its attached bookings
   // leave the draft (the city goes to the tray; on save save_trip_edit deletes the
   // city + children). Bookings are stashed on the node so Restore brings them back.
-  const removeCity = (id) => { const n = draft.nodes.find((x) => x.id === id); if (n && !isAnchor(n)) setConfirmDel(n); };
+  const removeCity = async (id) => {
+    const n = draft.nodes.find((x) => x.id === id);
+    if (!n || isAnchor(n)) return;
+    const ok = await confirm({
+      title: t('tse.delete_city_q', { city: n.city_name }),
+      description: t('tse.delete_city_desc'),
+      confirmLabel: t('tse.delete_city'),
+      variant: 'destructive',
+    });
+    if (ok) doRemoveCity(id);
+  };
   // partial optimism: drop the node from the list now; downstream dates are NOT
   // recomputed on the client — the server (remove_city → recompute_trip) reflows
   // the chain and runAction refetches it. (removed-tray push stays until the
@@ -390,7 +400,6 @@ export default function TripStructureEdit() {
       const node = d.nodes.find((n) => n.id === id); if (!node) return d;
       return { ...d, nodes: d.nodes.filter((n) => n.id !== id) };
     });
-    setConfirmDel(null);
     if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
   };
   // Start/finish anchors go through the same confirm dialog as regular cities.
@@ -930,19 +939,6 @@ export default function TripStructureEdit() {
       </div>{/* /editor content column */}
     </div>
 
-      {/* Delete-city confirm — AlertDialog (focus-trapped, Esc-closable). */}
-      <AlertDialog open={!!confirmDel} onOpenChange={(o) => { if (!o) setConfirmDel(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('tse.delete_city_q', { city: confirmDel?.city_name })}</AlertDialogTitle>
-            <AlertDialogDescription>{t('tse.delete_city_desc')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <Btn variant="danger-solid" icon="trash" onClick={() => confirmDel && doRemoveCity(confirmDel.id)}>{t('tse.delete_city')}</Btn>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <style>{`
         .ts-step { border: none; background: transparent; border-radius: 8px; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; width: 26px; height: 26px; transition: background .12s var(--ease-out), transform .1s var(--ease-out); }

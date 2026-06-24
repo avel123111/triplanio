@@ -78,8 +78,6 @@ export default {
   'planner.limit_desc_strong': '1 viaje activo',
   'planner.limit_desc_post': '. Espera a que termine el actual o pásate a Pro.',
   'planner.to_trips': 'A los viajes',
-  'planner.badge_ai': 'Ruta de la IA',
-  'planner.badge_mine': 'Tu ruta',
   'planner.last_city_fallback': 'la última ciudad',
   'planner.err_no_date': 'Indica la fecha de inicio del viaje, sin ella no se puede guardar',
   'planner.err_no_title': 'Indica un nombre para el viaje',
