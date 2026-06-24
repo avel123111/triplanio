@@ -1,12 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { Upload, Loader2, Check } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
-import { safeStorageName } from '@/lib/storage';
+import { TRIP_BUCKET, SIGNED_URL_TTL, DRAFT_PREFIX, tripStoragePath } from '@/lib/storage';
 import { TRIP_GRADIENTS, getGradientById } from '@/lib/trip-gradients';
 import { useT } from '@/lib/i18n/I18nContext';
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 MB
-const BUCKET = 'trip-covers';
 
 /**
  * Cover picker shared by TripFormDialog and the AI create wizard. Lets the
@@ -44,13 +43,19 @@ export default function TripCoverPicker({
     setError('');
     setUploading(true);
     try {
-      const path = `${tripId || 'new'}/${Date.now()}_${safeStorageName(file.name)}`;
-      const { data, error: uploadErr } = await supabase.storage
-        .from(BUCKET)
+      // Before the trip exists, park the file under `_drafts/`; finalizeDraftCover
+      // moves it under `<tripId>/` on trip creation. The bucket is private, so the
+      // cover is served via a long-lived signed URL (not a public URL).
+      const path = tripStoragePath(tripId || DRAFT_PREFIX, file.name);
+      const { error: uploadErr } = await supabase.storage
+        .from(TRIP_BUCKET)
         .upload(path, file, { cacheControl: '3600', upsert: true });
       if (uploadErr) throw uploadErr;
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(data.path);
-      onChange({ cover_image_url: pub.publicUrl, cover_gradient: '' });
+      const { data: signed, error: signErr } = await supabase.storage
+        .from(TRIP_BUCKET)
+        .createSignedUrl(path, SIGNED_URL_TTL);
+      if (signErr || !signed?.signedUrl) throw signErr || new Error(t('trip.cover_upload_failed'));
+      onChange({ cover_image_url: signed.signedUrl, cover_gradient: '' });
     } catch (err) {
       setError(err?.message || t('trip.cover_upload_failed'));
     } finally {

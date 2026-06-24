@@ -3,53 +3,47 @@
  *
  * POST body: { tripId }
  *
- * Replaces the old frontend `supabase.from('trips').delete()` so that the
- * external side-effects that FK cascades can't reach run BEFORE the row is
- * irreversibly gone:
+ * Owner-only trip delete. Runs the external side-effects that FK cascades can't
+ * reach BEFORE the row is irreversibly gone:
  *   1. Telegram teardown via the single _shared/telegramTeardown source
  *      (critical — aborts the delete if it fails, so a retry is idempotent).
- *   2. Storage purge of both buckets (best-effort — an orphan file must never
- *      block the delete).
- *   3. The trip DELETE last; Postgres cascades wipe the 21 child tables.
+ *   2. Storage purge of the `trips` bucket (best-effort — an orphan file must
+ *      never block the delete).
+ *   3. The trip DELETE last; Postgres cascades wipe the child tables.
  *
  * Auth: OWNER ONLY (trips.created_by === caller). Mirrors the RLS policy
  * `trips_delete: created_by = auth.uid()` — the admin client bypasses RLS, so
- * the check is duplicated explicitly here. Admin / viewer / member cannot
- * delete: a trip delete wipes every member's data, so only the creator may.
+ * the check is duplicated explicitly here.
  *
- * Storage layout note: only trip documents (`${tripId}/…`) and covers
- * (`${tripId}/…`) are keyed by trip. Event / service / AI attachments live
- * under `attachments/<uid>/…` and `ai-uploads/<uid>/…` with NO trip in the
- * path, so a prefix list alone can't find them. We collect their object paths
- * from the DB `documents[]` arrays (storage_path, or parsed from file_url when
- * absent — AI uploads drop storage_path) and remove them explicitly, then add
- * a prefix sweep as a safety net for trip-keyed files.
+ * Storage layout. Every trip file lives in the single private `trips` bucket as
+ * `<tripId>/<uid>-<file>` (covers included), so the whole trip is one prefix.
+ * The prefix sweep is the only way to reach the cover (it has no `documents[]`
+ * entry); the DB-path collector is kept as a permanent fallback so a file
+ * missed by the sweep is still removed.
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 
-const DOCS_BUCKET = 'documents';
-const COVERS_BUCKET = 'trip-covers';
+const BUCKET = 'trips';
 
 /**
- * Extract a `documents` bucket object path from a stored file_url. Handles both
- * signed (…/object/sign/documents/<path>?token=…) and public
- * (…/object/public/documents/<path>) URLs. Returns null if it isn't a
- * documents-bucket URL.
+ * Extract a `trips`-bucket object path from a stored file_url. Handles signed
+ * (…/object/sign/trips/<path>?token=…), public and authenticated URLs. Returns
+ * null if it isn't a trips-bucket URL.
  */
 function pathFromUrl(url: unknown): string | null {
   if (typeof url !== 'string' || !url) return null;
-  const m = url.match(/\/object\/(?:sign|public|authenticated)\/documents\/([^?]+)/);
+  const m = url.match(/\/object\/(?:sign|public|authenticated)\/trips\/([^?]+)/);
   if (!m) return null;
   try { return decodeURIComponent(m[1]); } catch { return m[1]; }
 }
 
 /**
  * Walk every `documents[]` array attached to the trip and collect the object
- * paths in the `documents` bucket. Prefer storage_path; fall back to parsing
- * file_url (AI-block uploads persist only file_url + file_name).
+ * paths. Prefer parsing file_url; fall back to storage_path (the stored key
+ * inside the `trips` bucket).
  */
 async function collectDocumentPaths(tripId: string): Promise<string[]> {
   const paths = new Set<string>();
@@ -58,10 +52,10 @@ async function collectDocumentPaths(tripId: string): Promise<string[]> {
     if (!Array.isArray(docs)) return;
     for (const d of docs) {
       if (!d || typeof d !== 'object') continue;
-      const sp = (d as { storage_path?: unknown }).storage_path;
-      if (typeof sp === 'string' && sp) { paths.add(sp); continue; }
       const p = pathFromUrl((d as { file_url?: unknown }).file_url);
-      if (p) paths.add(p);
+      if (p) { paths.add(p); continue; }
+      const sp = (d as { storage_path?: unknown }).storage_path;
+      if (typeof sp === 'string' && sp) paths.add(sp);
     }
   };
 
@@ -85,26 +79,26 @@ async function collectDocumentPaths(tripId: string): Promise<string[]> {
 }
 
 /** Remove explicit object paths in chunks (best-effort). */
-async function removePaths(bucket: string, paths: string[]): Promise<void> {
+async function removePaths(paths: string[]): Promise<void> {
   for (let i = 0; i < paths.length; i += 100) {
     const chunk = paths.slice(i, i + 100);
-    const { error } = await supabaseAdmin.storage.from(bucket).remove(chunk);
-    if (error) console.error(`deleteTrip: remove ${bucket} chunk failed`, error);
+    const { error } = await supabaseAdmin.storage.from(BUCKET).remove(chunk);
+    if (error) console.error('deleteTrip: remove chunk failed', error);
   }
 }
 
-/** Sweep everything under `${prefix}/` in a bucket, paginated (best-effort). */
-async function purgeBucketByPrefix(bucket: string, prefix: string): Promise<void> {
+/** Sweep everything under `${prefix}/` in the trips bucket, paginated (best-effort). */
+async function purgeBucketByPrefix(prefix: string): Promise<void> {
   const limit = 100;
   let offset = 0;
   for (;;) {
-    const { data: files, error } = await supabaseAdmin.storage.from(bucket).list(prefix, { limit, offset });
-    if (error) { console.error(`deleteTrip: list ${bucket}/${prefix} failed`, error); return; }
+    const { data: files, error } = await supabaseAdmin.storage.from(BUCKET).list(prefix, { limit, offset });
+    if (error) { console.error(`deleteTrip: list ${BUCKET}/${prefix} failed`, error); return; }
     if (!files?.length) return;
     const toRemove = files.filter((f) => f.name).map((f) => `${prefix}/${f.name}`);
     if (toRemove.length) {
-      const { error: rmErr } = await supabaseAdmin.storage.from(bucket).remove(toRemove);
-      if (rmErr) console.error(`deleteTrip: remove ${bucket}/${prefix} failed`, rmErr);
+      const { error: rmErr } = await supabaseAdmin.storage.from(BUCKET).remove(toRemove);
+      if (rmErr) console.error(`deleteTrip: remove ${BUCKET}/${prefix} failed`, rmErr);
     }
     if (files.length < limit) return;
     offset += limit;
@@ -144,19 +138,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 3 — storage purge (best-effort, must NOT block the delete). Collect
-    // DB-tracked attachment paths first (the only way to reach event/service/AI
-    // files under attachments/ and ai-uploads/), then sweep trip-keyed prefixes.
+    // Step 3 — storage purge (best-effort, must NOT block the delete). Sweep the
+    // `<tripId>/` prefix in the trips bucket; the DB-path collector is a fallback
+    // for anything the sweep misses.
     try {
       const docPaths = await collectDocumentPaths(tripId);
-      if (docPaths.length) await removePaths(DOCS_BUCKET, docPaths);
-      await purgeBucketByPrefix(DOCS_BUCKET, tripId);     // trip documents (safety net)
-      await purgeBucketByPrefix(COVERS_BUCKET, tripId);   // cover image
+      if (docPaths.length) await removePaths(docPaths);
+      await purgeBucketByPrefix(tripId);
     } catch (e) {
       console.error('deleteTrip: storage purge failed', e);
     }
 
-    // Step 4 — delete the trip (critical, last). FK cascades wipe all 21 child
+    // Step 4 — delete the trip (critical, last). FK cascades wipe all child
     // tables; trip_subscriptions / partner_clicks are SET NULL (kept).
     const { error: delErr } = await supabaseAdmin.from('trips').delete().eq('id', tripId);
     if (delErr) {

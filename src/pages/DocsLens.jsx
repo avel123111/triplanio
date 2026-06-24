@@ -8,7 +8,8 @@
  *
  * Reads/writes trip_documents table directly via Supabase client.
  * visibility: 'shared' = all members see it; 'private' = only the creator.
- * Files are uploaded to Supabase Storage bucket 'documents'.
+ * Files are uploaded to the private Supabase Storage bucket 'trips' under
+ * `<tripId>/<uid>-<file>`.
  *
  * Visual: Lumo redesign (2026-06-08). Page-scoped styles in DocsLens.css
  * (.dl-* on app.css tokens). Dialogs use Radix ui/dialog (dlg__head /
@@ -17,7 +18,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { safeStorageName } from '@/lib/storage';
+import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Field, Severity, Skeleton } from '../design/index';
@@ -95,10 +96,10 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
           setErr(t('doc.file_too_big', { name: file.name }));
           continue;
         }
-        const path = `${tripId}/${Date.now()}-${safeStorageName(file.name)}`;
-        const { error: uploadErr } = await supabase.storage.from('documents').upload(path, file);
+        const path = tripStoragePath(tripId, file.name);
+        const { error: uploadErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, file);
         if (uploadErr) { setErr(uploadErr.message); continue; }
-        const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);
+        const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
         uploaded.push({ file_url: urlData?.signedUrl || '', file_name: file.name, storage_path: path });
       }
       if (uploaded.length) setDocuments(prev => [...prev, ...uploaded]);

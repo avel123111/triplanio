@@ -12,7 +12,7 @@
 import React, { useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { safeStorageName } from '@/lib/storage';
+import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { detectPlatformFromUrl } from '@/lib/booking-platforms';
 import { Badge } from '@/design/index';
 import {
@@ -100,14 +100,13 @@ export default function EventAiBlock({
       // 1. Upload local files to Storage → long-lived signed URLs.
       const uploaded = await Promise.all(files.map(async (f) => {
         if (f.file_url) return f;
-        const uid = (crypto?.randomUUID?.()) || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        // Supabase Storage keys reject non-ASCII / special chars (Cyrillic
-        // filenames → "Invalid key"). Sanitise the path; keep the real name for
+        // tripStoragePath sanitises the filename (Supabase Storage rejects
+        // non-ASCII / special chars → "Invalid key"); the real name is kept for
         // display via `documents` below.
-        const path = `ai-uploads/${uid}/${safeStorageName(f.name)}`;
-        const { error: upErr } = await supabase.storage.from('documents').upload(path, f.file);
+        const path = tripStoragePath(tripId, f.name);
+        const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, f.file);
         if (upErr) throw new Error(upErr.message || t('event.ai_upload_error'));
-        const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);
+        const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
         return { ...f, file_url: urlData?.signedUrl || '', storage_path: path };
       }));
       const fileUrls = uploaded.map((f) => f.file_url).filter(Boolean);
@@ -139,7 +138,7 @@ export default function EventAiBlock({
 
       const documents = uploaded
         .filter((u) => u.file_url)
-        .map((u) => ({ file_url: u.file_url, file_name: u.name }));
+        .map((u) => ({ file_url: u.file_url, file_name: u.name, storage_path: u.storage_path }));
       onExtract(
         { ...result, documents },
         documents[0]?.file_url || null,
