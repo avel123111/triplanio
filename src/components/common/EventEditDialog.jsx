@@ -1303,8 +1303,6 @@ function buildHotelPayload(form, visit, tz) {
     booking_url: form.booking_url || null,
     booking_platform: form.booking_platform || null,
     documents: Array.isArray(form.documents) ? form.documents : [],
-    voucher_file_url: '',
-    voucher_file_name: '',
     notes: form.notes,
     details: {},
   };
@@ -1333,8 +1331,6 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
     price: form.price === '' ? null : Number(form.price),
     currency: form.currency || 'EUR',
     documents: Array.isArray(form.documents) ? form.documents : [],
-    voucher_file_url: '',
-    voucher_file_name: '',
     notes: form.notes,
     details: {},
   };
@@ -1487,8 +1483,6 @@ function buildServicePayload(form, tripId, t) {
       booking_url: form.booking_url || null,
       booking_platform: form.booking_platform || null,
       documents: Array.isArray(form.documents) ? form.documents : [],
-      voucher_file_url: undefined,
-      voucher_file_name: undefined,
       price: undefined,
       currency: undefined,
       notes: form.notes || undefined,
