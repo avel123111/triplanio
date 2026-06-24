@@ -40,8 +40,13 @@ works now), never changelogs; small facts go into the nearest existing topic;
 - Repo = codebase only; no docs on the repo
 12. **Deploy topology**
 - **Frontend:** Vercel, auto on push. Deploy changes to **both `dev` and `main`** during current testing phase.
-- **Supabase:** functions + migrations deployed **manually** (no CI). Two projects: prod `tizscxrpuopobgcxbekf` + dev `nydhzevdizkfaxdlikgc` — keep both in sync.
-- **verify_jwt trap:** CLI/MCP batch deploys silently reset `verify_jwt=true` and break webhook/N8N_SECRET functions. Deploy the canon-10 with explicit `--no-verify-jwt` and re-verify via `list_edge_functions` after every deploy. Canon-10 (must stay false): `getTripByTelegramChatId, getTripById, getPublicTrip, stripe-webhook, telegramWebhook, triplanioAiReply, seedTripBudget, syncTripExpense, getPendingReminders, getDailyReminders`.
+- **Supabase:** functions + migrations deployed **manually** (no CI). Two projects: prod `tizscxrpuopobgcxbekf` + dev `nydhzevdizkfaxdlikgc` — keep both in sync (deploy to BOTH on every function change).
+- **Edge-function deploy SOP (MANDATORY — follow on every deploy):** CLI/MCP deploys silently reset `verify_jwt=true`, which breaks webhook / public / N8N_SECRET functions. The default is `true` and WILL break the canon-10 — never rely on it.
+  1. **canon-10 → always deploy with `verify_jwt: false` EXPLICITLY** (MCP `deploy_edge_function` param; CLI `--no-verify-jwt`). Never omit it. Canon-10 (must stay `false`): `getTripByTelegramChatId, getTripById, getPublicTrip, stripe-webhook, telegramWebhook, triplanioAiReply, seedTripBudget, syncTripExpense, getPendingReminders, getDailyReminders`.
+  2. **All other functions → default `verify_jwt: true`** (do not pass `false`).
+  3. **After EVERY deploy → run `list_edge_functions` and verify all canon-10 = `false`.** If any flipped to `true`, redeploy that function with `verify_jwt: false` and re-verify.
+  4. **Keep dev (`nydhzevdizkfaxdlikgc`) and prod (`tizscxrpuopobgcxbekf`) in sync** — deploy the same function to both projects.
+  5. **New externally-callable function** (webhook / public / N8N-secret) → add it to the canon-10 list above AND deploy it with `verify_jwt: false`.
 13. **Security-sensitive areas (highest review priority)**
 Stripe webhook + subscription/entitlement reconciliation; Pro/Premium tier gating; edge-function auth (known IDOR / fail-open risks on trip-read functions). Run a security review on any change here.
 14. **ECC skills** to reach for`ecc:plan` (planning gate), `ecc:react-review` / `ecc:react-build`, `ecc:security-review`, `ecc:postgres-patterns` + `ecc:database-migrations`, `ecc:customer-billing-ops` (Stripe), `ecc:code-review` + `ecc:pr`. See `memory/triplanio-ecc-toolkit.md` for the full DAILY/LIBRARY map.
