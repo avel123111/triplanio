@@ -2638,7 +2638,11 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    channel card visually consistent (the icon no longer floats mid-card on the
    taller Telegram card). The trailing CTA/chevron re-centres on desktop. */
 .acct-chan { display: flex; align-items: flex-start; gap: 13px; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); transition: border-color .2s, background .2s; }
-.acct-chan > .btn, .acct-chan__chev { align-self: center; }
+/* Status badge ("Coming soon" / "Connected") lives as a trailing top-right chip
+   on every channel card (NOT inline in the title) so its position is identical
+   regardless of title length — the title can no longer push it onto a new line. */
+.acct-chan > .badge, .acct-chan > .btn, .acct-chan__chev { align-self: center; }
+.acct-chan > .badge { flex: none; }
 .acct-chan__ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex: none; } .acct-chan__ic svg { width: 20px; height: 20px; }
 .acct-chan__main { flex: 1; min-width: 0; }
 .acct-chan__t { font-weight: 700; font-size: var(--fs-strong); color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
