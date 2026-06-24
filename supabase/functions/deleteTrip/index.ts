@@ -17,51 +17,68 @@
  * the check is duplicated explicitly here. Admin / viewer / member cannot
  * delete: a trip delete wipes every member's data, so only the creator may.
  *
- * Storage layout note: only trip documents (`${tripId}/…`) and covers
- * (`${tripId}/…`) are keyed by trip. Event / service / AI attachments live
- * under `attachments/<uid>/…` and `ai-uploads/<uid>/…` with NO trip in the
- * path, so a prefix list alone can't find them. We collect their object paths
- * from the DB `documents[]` arrays (storage_path, or parsed from file_url when
- * absent — AI uploads drop storage_path) and remove them explicitly, then add
- * a prefix sweep as a safety net for trip-keyed files.
+ * Storage layout note (transitional). The target layout keys every trip file
+ * under a single private bucket `trips` as `<tripId>/<uid>-<file>` (covers
+ * included). During the migration window files may still live in the legacy
+ * buckets: `documents` (trip docs `<tripId>/…`, event/service attachments
+ * `attachments/<uid>/…`, AI uploads `ai-uploads/<uid>/…`) and `trip-covers`
+ * (`<tripId>/…`). Covers carry NO entry in any `documents[]` array, so only a
+ * prefix sweep can reach them. We therefore (1) collect DB-tracked attachment
+ * paths from `documents[]` (storage_path, or parsed from file_url when absent —
+ * legacy AI uploads drop storage_path), remembering which bucket each lives in,
+ * and (2) sweep the `<tripId>/` prefix across ALL THREE buckets as the safety
+ * net for trip-keyed files (covers especially). Once the backfill is done and
+ * the legacy buckets are retired this collapses to the `trips` bucket alone
+ * (step 3.3-B).
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 
-const DOCS_BUCKET = 'documents';
-const COVERS_BUCKET = 'trip-covers';
+const NEW_BUCKET = 'trips';
+const LEGACY_DOCS_BUCKET = 'documents';
+const LEGACY_COVERS_BUCKET = 'trip-covers';
+// Buckets swept by `<tripId>/` prefix. Transitional set; trims to [NEW_BUCKET]
+// in step 3.3-B after the backfill retires the legacy buckets.
+const PREFIX_SWEEP_BUCKETS = [NEW_BUCKET, LEGACY_DOCS_BUCKET, LEGACY_COVERS_BUCKET];
 
 /**
- * Extract a `documents` bucket object path from a stored file_url. Handles both
- * signed (…/object/sign/documents/<path>?token=…) and public
- * (…/object/public/documents/<path>) URLs. Returns null if it isn't a
- * documents-bucket URL.
+ * Parse a stored file_url into { bucket, path }. Handles signed
+ * (…/object/sign/<bucket>/<path>?token=…), public and authenticated URLs for
+ * the new `trips` bucket and the legacy `documents` / `trip-covers` buckets.
+ * Returns null if it isn't one of those storage URLs.
  */
-function pathFromUrl(url: unknown): string | null {
+function parseStorageUrl(url: unknown): { bucket: string; path: string } | null {
   if (typeof url !== 'string' || !url) return null;
-  const m = url.match(/\/object\/(?:sign|public|authenticated)\/documents\/([^?]+)/);
+  const m = url.match(/\/object\/(?:sign|public|authenticated)\/(trips|documents|trip-covers)\/([^?]+)/);
   if (!m) return null;
-  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+  let path = m[2];
+  try { path = decodeURIComponent(path); } catch { /* keep raw */ }
+  return { bucket: m[1], path };
 }
 
 /**
- * Walk every `documents[]` array attached to the trip and collect the object
- * paths in the `documents` bucket. Prefer storage_path; fall back to parsing
- * file_url (AI-block uploads persist only file_url + file_name).
+ * Walk every `documents[]` array attached to the trip and collect object paths
+ * grouped by bucket. Prefer file_url (it names the bucket); fall back to
+ * storage_path keyed under the legacy `documents` bucket (the only place
+ * storage_path historically pointed before the `trips` migration).
  */
-async function collectDocumentPaths(tripId: string): Promise<string[]> {
-  const paths = new Set<string>();
+async function collectDocumentPaths(tripId: string): Promise<Map<string, Set<string>>> {
+  const byBucket = new Map<string, Set<string>>();
+  const add = (bucket: string, path: string) => {
+    if (!byBucket.has(bucket)) byBucket.set(bucket, new Set<string>());
+    byBucket.get(bucket)!.add(path);
+  };
 
   const addFromDocs = (docs: unknown) => {
     if (!Array.isArray(docs)) return;
     for (const d of docs) {
       if (!d || typeof d !== 'object') continue;
+      const parsed = parseStorageUrl((d as { file_url?: unknown }).file_url);
+      if (parsed) { add(parsed.bucket, parsed.path); continue; }
       const sp = (d as { storage_path?: unknown }).storage_path;
-      if (typeof sp === 'string' && sp) { paths.add(sp); continue; }
-      const p = pathFromUrl((d as { file_url?: unknown }).file_url);
-      if (p) paths.add(p);
+      if (typeof sp === 'string' && sp) add(LEGACY_DOCS_BUCKET, sp);
     }
   };
 
@@ -81,7 +98,7 @@ async function collectDocumentPaths(tripId: string): Promise<string[]> {
     }
   }
 
-  return [...paths];
+  return byBucket;
 }
 
 /** Remove explicit object paths in chunks (best-effort). */
@@ -146,12 +163,17 @@ Deno.serve(async (req) => {
 
     // Step 3 — storage purge (best-effort, must NOT block the delete). Collect
     // DB-tracked attachment paths first (the only way to reach event/service/AI
-    // files under attachments/ and ai-uploads/), then sweep trip-keyed prefixes.
+    // files under attachments/ and ai-uploads/), then sweep the `<tripId>/`
+    // prefix across the new `trips` bucket and the legacy buckets — the only way
+    // to reach covers (they have no `documents[]` entry).
     try {
-      const docPaths = await collectDocumentPaths(tripId);
-      if (docPaths.length) await removePaths(DOCS_BUCKET, docPaths);
-      await purgeBucketByPrefix(DOCS_BUCKET, tripId);     // trip documents (safety net)
-      await purgeBucketByPrefix(COVERS_BUCKET, tripId);   // cover image
+      const byBucket = await collectDocumentPaths(tripId);
+      for (const [bucket, paths] of byBucket) {
+        if (paths.size) await removePaths(bucket, [...paths]);
+      }
+      for (const bucket of PREFIX_SWEEP_BUCKETS) {
+        await purgeBucketByPrefix(bucket, tripId);
+      }
     } catch (e) {
       console.error('deleteTrip: storage purge failed', e);
     }
