@@ -49,4 +49,13 @@ works now), never changelogs; small facts go into the nearest existing topic;
   5. **New externally-callable function** (webhook / public / N8N-secret) → add it to the canon-10 list above AND deploy it with `verify_jwt: false`.
 13. **Security-sensitive areas (highest review priority)**
 Stripe webhook + subscription/entitlement reconciliation; Pro/Premium tier gating; edge-function auth (known IDOR / fail-open risks on trip-read functions). Run a security review on any change here.
-14. **ECC skills** to reach for`ecc:plan` (planning gate), `ecc:react-review` / `ecc:react-build`, `ecc:security-review`, `ecc:postgres-patterns` + `ecc:database-migrations`, `ecc:customer-billing-ops` (Stripe), `ecc:code-review` + `ecc:pr`. See `memory/triplanio-ecc-toolkit.md` for the full DAILY/LIBRARY map.
+14. **Vendored skills/commands/agents (TRIP-23) — use by default.** Real upstream content lives in the repo under `.claude/` (NOT the Cowork `ecc:*` plugin namespace, which does not exist in our self-hosted Cyrus). Route by task type:
+- **Analyze / plan** → command `/ecc-plan`; skills `superpowers-*`, `engineering-system-design` / `engineering-architecture`.
+- **React / Vite frontend** → commands `/ecc-react-review`, `/ecc-react-build`, `/ecc-react-test`; skills `ecc-react-patterns`, `ecc-vite-patterns`, `agent-skills-frontend-ui-engineering`, `web-quality-*` (accessibility/performance/core-web-vitals/seo/best-practices/audit).
+- **Security** (Stripe webhook / IDOR / RLS / tier-gating — highest priority, rule 13) → skills `ecc-security-review`, `ecc-security-scan`, `ecc-gateguard`, `agent-skills-security-and-hardening`.
+- **Stripe / billing** → skill `ecc-customer-billing-ops`.
+- **Supabase / Postgres / migrations** → skills `ecc-postgres-patterns`, `ecc-database-migrations`.
+- **Tests / debugging** → skills `superpowers-test-driven-development`, `superpowers-systematic-debugging`, `superpowers-verification-before-completion`, `agent-skills-debugging-and-error-recovery`, `engineering-testing-strategy` / `engineering-debug` / `engineering-tech-debt`; code review `agent-skills-code-review-and-quality`, `engineering-code-review`.
+- **Design / UX** → skills `design-*` (critique/system/accessibility-review/ux-copy/handoff), `ui-ux-pro-max`, `example-frontend-design`.
+- **Finish a change** → commands `/ecc-code-review`, `/ecc-pr`.
+- Attribution manifest: `.claude/skills/VENDORED.md`. ⚠️ `.claude/commands/` + `.claude/agents/` are reliably auto-loaded by Cyrus; `.claude/skills/` is NOT named in the Cyrus "carries over" docs — if a session doesn't surface a skill, read its `SKILL.md` directly as a file. See `memory/triplanio-cyrus-skills-loading.md` + `memory/triplanio-ecc-toolkit.md`.
