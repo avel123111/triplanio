@@ -84,7 +84,7 @@ const CLICK_TYPE = {
 // Brand display name per partner key (bold title in the new partner card).
 const PARTNER_NAME = {
   booking: 'Booking.com', airbnb: 'Airbnb', skyscanner: 'Skyscanner', omio: 'Omio', kiwi: 'Kiwi.com',
-  rentalcars: 'Rentalcars', discovercars: 'DiscoverCars', airalo: 'Airalo', yesim: 'Yesim',
+  economybookings: 'EconomyBookings', getrentacar: 'GetRentacar', airalo: 'Airalo', yesim: 'Yesim',
   safetywing: 'SafetyWing', ektatraveling: 'Ekta Traveling',
   aviasales: 'Aviasales', ostrovok: 'Островок', yandextravel: 'Яндекс Путешествия',
   viator: 'Viator', getyourguide: 'GetYourGuide', tripster: 'Tripster', sputnik8: 'Sputnik8',

@@ -182,25 +182,24 @@ export function hotelPlatforms(visit, t, lang) {
   ];
 }
 
-// CAR RENTAL: Rentalcars + DiscoverCars search by city
+// CAR RENTAL: EconomyBookings (TravelPayouts) + GetRentacar
 export function carRentalPlatforms(trip, t) {
   const cityQuery = trip?.title || '';
   return [
     {
-      key: 'rentalcars',
-      label: findOn(t, 'Rentalcars'),
+      key: 'economybookings',
+      label: findOn(t, 'EconomyBookings'),
       hint: cityQuery,
-      logo: platformLogoUrl('rentalcars'),
-      color: 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/40 text-yellow-900 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40',
-      url: `https://www.rentalcars.com/`,
+      logo: 'https://img.wway.io/travelpayouts/brands/icon/10@svg',
+      url: 'https://economybookings.tpx.lt/EozXdo4z?erid=2VtzqvEF14M',
+      provider: 'travelpayouts',
     },
     {
-      key: 'discovercars',
-      label: findOn(t, 'DiscoverCars'),
+      key: 'getrentacar',
+      label: findOn(t, 'GetRentacar'),
       hint: cityQuery,
-      logo: platformLogoUrl('discovercars'),
-      color: 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/40',
-      url: `https://www.discovercars.com/`,
+      logo: platformLogoUrl('getrentacar', 'getrentacar.com'),
+      url: 'https://www.getrentacar.com/',
     },
   ];
 }
