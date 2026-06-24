@@ -182,25 +182,26 @@ export function hotelPlatforms(visit, t, lang) {
   ];
 }
 
-// CAR RENTAL: Getrentacar + GetTransfer — both TravelPayouts affiliate partners
-// (provider=travelpayouts). Links are static *.tpx.lt referral links (no trip
-// params, no fallback), like Ekta Traveling. Logos are TravelPayouts SVG icons.
+// CAR RENTAL: GetRentacar + EconomyBookings — both TravelPayouts affiliate
+// partners (provider=travelpayouts). Links are static *.tpx.lt referral links
+// (no trip params, no fallback), like Ekta Traveling. Logos are TravelPayouts
+// SVG icons.
 export function carRentalPlatforms(trip, t) {
   return [
     {
       key: 'getrentacar',
-      label: findOn(t, 'Getrentacar'),
+      label: findOn(t, 'GetRentacar'),
       hint: t ? t('service.car_getrentacar_hint') : 'Car rental worldwide',
       logo: 'https://img.wway.io/travelpayouts/brands/icon/222@svg',
       url: 'https://getrentacar.tpx.lt/RB21f57P',
       provider: 'travelpayouts',
     },
     {
-      key: 'gettransfer',
-      label: findOn(t, 'GetTransfer'),
-      hint: t ? t('service.car_gettransfer_hint') : 'Transfers & private rides',
-      logo: 'https://img.wway.io/travelpayouts/brands/icon/147@svg',
-      url: 'https://gettransfer.tpx.lt/X6Yt2gHo',
+      key: 'economybookings',
+      label: findOn(t, 'EconomyBookings'),
+      hint: t ? t('service.car_economybookings_hint') : 'Car rental deals worldwide',
+      logo: 'https://img.wway.io/travelpayouts/brands/icon/10@svg',
+      url: 'https://economybookings.tpx.lt/EozXdo4z?erid=2VtzqvEF14M',
       provider: 'travelpayouts',
     },
   ];
