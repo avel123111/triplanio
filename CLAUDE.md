@@ -40,7 +40,7 @@ works now), never changelogs; small facts go into the nearest existing topic;
 - Repo = codebase only; no docs on the repo
 12. **Deploy topology**
 - **Frontend:** Vercel, auto on push. Deploy changes to **both `dev` and `main`** during current testing phase.
-- **Supabase:** functions + migrations deployed **manually** (no CI). Two projects: prod `tizscxrpuopobgcxbekf` + dev `nydhzevdizkfaxdlikgc` — keep both in sync (deploy to BOTH on every function change).
+- **Supabase:** functions + migrations have **no push-triggered CI** — nothing deploys on `git push`. A deploy is always initiated manually, but "manual" = "not automatic on push", NOT "agent can't": run it **either by the agent via the Supabase MCP connector (`deploy_edge_function`, `apply_migration`) or by a human via the Supabase CLI**. Either way, keep deployed code in lockstep with the merged branch (no repo-vs-runtime drift). Two projects: prod `tizscxrpuopobgcxbekf` + dev `nydhzevdizkfaxdlikgc` — keep both in sync (deploy to BOTH on every function change).
 - **Edge-function deploy SOP (MANDATORY — follow on every deploy):** CLI/MCP deploys silently reset `verify_jwt=true`, which breaks webhook / public / N8N_SECRET functions. The default is `true` and WILL break the canon-10 — never rely on it.
   1. **canon-10 → always deploy with `verify_jwt: false` EXPLICITLY** (MCP `deploy_edge_function` param; CLI `--no-verify-jwt`). Never omit it. Canon-10 (must stay `false`): `getTripByTelegramChatId, getTripById, getPublicTrip, stripe-webhook, telegramWebhook, triplanioAiReply, seedTripBudget, syncTripExpense, getPendingReminders, getDailyReminders`.
   2. **All other functions → default `verify_jwt: true`** (do not pass `false`).
