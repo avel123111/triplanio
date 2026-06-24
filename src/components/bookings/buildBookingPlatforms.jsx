@@ -182,25 +182,26 @@ export function hotelPlatforms(visit, t, lang) {
   ];
 }
 
-// CAR RENTAL: Rentalcars + DiscoverCars search by city
+// CAR RENTAL: Getrentacar + GetTransfer — both TravelPayouts affiliate partners
+// (provider=travelpayouts). Links are static *.tpx.lt referral links (no trip
+// params, no fallback), like Ekta Traveling. Logos are TravelPayouts SVG icons.
 export function carRentalPlatforms(trip, t) {
-  const cityQuery = trip?.title || '';
   return [
     {
-      key: 'rentalcars',
-      label: findOn(t, 'Rentalcars'),
-      hint: cityQuery,
-      logo: platformLogoUrl('rentalcars'),
-      color: 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/40 text-yellow-900 dark:text-yellow-200 hover:bg-yellow-100 dark:hover:bg-yellow-900/40',
-      url: `https://www.rentalcars.com/`,
+      key: 'getrentacar',
+      label: findOn(t, 'Getrentacar'),
+      hint: t ? t('service.car_getrentacar_hint') : 'Car rental worldwide',
+      logo: 'https://img.wway.io/travelpayouts/brands/icon/222@svg',
+      url: 'https://getrentacar.tpx.lt/RB21f57P',
+      provider: 'travelpayouts',
     },
     {
-      key: 'discovercars',
-      label: findOn(t, 'DiscoverCars'),
-      hint: cityQuery,
-      logo: platformLogoUrl('discovercars'),
-      color: 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/40',
-      url: `https://www.discovercars.com/`,
+      key: 'gettransfer',
+      label: findOn(t, 'GetTransfer'),
+      hint: t ? t('service.car_gettransfer_hint') : 'Transfers & private rides',
+      logo: 'https://img.wway.io/travelpayouts/brands/icon/147@svg',
+      url: 'https://gettransfer.tpx.lt/X6Yt2gHo',
+      provider: 'travelpayouts',
     },
   ];
 }
