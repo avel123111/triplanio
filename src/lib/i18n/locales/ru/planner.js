@@ -78,8 +78,6 @@ export default {
   'planner.limit_desc_strong': '1 активное путешествие',
   'planner.limit_desc_post': '. Дождись окончания текущего или перейди на Pro.',
   'planner.to_trips': 'К путешествиям',
-  'planner.badge_ai': 'Маршрут от ИИ',
-  'planner.badge_mine': 'Твой маршрут',
   'planner.last_city_fallback': 'последний город',
   'planner.err_no_date': 'Укажи дату начала путешествия, без неё сохранить нельзя',
   'planner.err_no_title': 'Укажи название путешествия',

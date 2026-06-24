@@ -9,6 +9,9 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
+import Sheet from '@/components/ui/Sheet';
+import { Btn } from '@/design/index';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useT } from '@/lib/i18n/I18nContext';
 
 /**
@@ -34,8 +37,41 @@ export default function ConfirmDialog({
   onConfirm,
 }) {
   const t = useT();
+  const isMobile = useIsMobile();
   const finalConfirmLabel = confirmLabel || (singleButton ? t('common.ok') : t('common.confirm'));
   const finalCancelLabel = cancelLabel || t('common.cancel');
+
+  // Mobile: render through the canonical bottom-sheet (<Sheet>) so confirms share
+  // the same grip / swipe / animation as every other sheet and inherit future
+  // sheet changes centrally. Desktop keeps the centred AlertDialog.
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange} title={title} titleText={title || finalConfirmLabel}>
+        {description && (
+          <p
+            className="muted"
+            style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, margin: '2px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+          >
+            {description}
+          </p>
+        )}
+        <div className="dlg__foot" style={{ border: 'none', background: 'none', padding: '14px 0 4px' }}>
+          {!singleButton && (
+            <Btn variant="ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenChange?.(false)}>
+              {finalCancelLabel}
+            </Btn>
+          )}
+          <Btn
+            variant={variant === 'destructive' ? 'danger-solid' : 'primary'}
+            style={{ flex: 1, justifyContent: 'center' }}
+            onClick={() => onConfirm?.()}
+          >
+            {finalConfirmLabel}
+          </Btn>
+        </div>
+      </Sheet>
+    );
+  }
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>

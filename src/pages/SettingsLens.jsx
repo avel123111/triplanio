@@ -76,11 +76,15 @@ function FeatureCard({ feat, on, onChange, hasPro }) {
           ? <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
           : proLocked
             ? <Badge variant="pro" icon="pro">Pro</Badge>
-            : <Toggle on={on} onChange={onChange} />}
+            : (
+              <div className="addon-card__status">
+                {feat.pro && hasPro && <Badge variant="success" icon="check">{t('settings.feat_available')}</Badge>}
+                <Toggle on={on} onChange={onChange} />
+              </div>
+            )}
       </div>
       <div className="addon-card__title">
         {t(feat.labelKey)}
-        {feat.pro && hasPro && !feat.locked && <Badge variant="success" icon="check">{t('settings.feat_available')}</Badge>}
       </div>
       <div className="addon-card__desc">{t(feat.descKey)}</div>
       {proLocked && !feat.locked && (

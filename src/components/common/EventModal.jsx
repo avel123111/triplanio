@@ -128,26 +128,39 @@ export default function EventModal(props) {
             </div>
           ) : (
             <>
-              {bookingUrl && (
-                <a
-                  href={normalizeExternalUrl(bookingUrl)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bk-link"
-                  style={{ alignSelf: 'flex-start' }}
-                >
-                  {platformLogo ? (
-                    <span className="pb" style={{ background: platformInfo?.color || 'var(--surface-2)', overflow: 'hidden' }}>
-                      <img src={platformLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </span>
-                  ) : platformInfo ? (
-                    <span className="pb" style={{ background: platformInfo.color || 'var(--muted)' }}>
-                      {(platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label || '?').charAt(0)}
-                    </span>
-                  ) : null}
-                  {t('event.view_booking')}
-                  <ExternalLink />
-                </a>
+              {(bookingUrl || mapAddress) && (
+                <div className="ev-actions-top">
+                  {bookingUrl && (
+                    <a
+                      href={normalizeExternalUrl(bookingUrl)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="bk-link"
+                    >
+                      {platformLogo ? (
+                        <span className="pb" style={{ background: platformInfo?.color || 'var(--surface-2)', overflow: 'hidden' }}>
+                          <img src={platformLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </span>
+                      ) : platformInfo ? (
+                        <span className="pb" style={{ background: platformInfo.color || 'var(--muted)' }}>
+                          {(platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label || '?').charAt(0)}
+                        </span>
+                      ) : null}
+                      {t('event.view_booking')}
+                      <ExternalLink />
+                    </a>
+                  )}
+                  {mapAddress && (
+                    <button
+                      type="button"
+                      className="bk-link"
+                      onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`, '_blank', 'noopener,noreferrer')}
+                    >
+                      <MapPin />
+                      {t('service.car_view_on_map')}
+                    </button>
+                  )}
+                </div>
               )}
               <EventViewSections
                 kind={kind} entity={entity} fromVisit={fromVisit} toVisit={toVisit}
@@ -157,11 +170,12 @@ export default function EventModal(props) {
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer — only when there are edit/delete actions (map + booking moved
+            to the top action row, so read-only events no longer need a footer). */}
+        {canEdit && (onDelete || onEdit) && (
         <div className="ev-dlg-ft">
           {confirmDel ? (
             <>
-              <div style={{ flex: 1 }} />
               <Btn variant="ghost" size="sm" onClick={() => setConfirmDel(false)} disabled={deleting}>
                 {t('trip.form_cancel')}
               </Btn>
@@ -180,16 +194,6 @@ export default function EventModal(props) {
             </>
           ) : (
             <>
-              {mapAddress && (
-                <Btn
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`, '_blank', 'noopener,noreferrer')}
-                >
-                  <MapPin style={{ width: 14, height: 14, marginRight: 6 }} />{t('service.car_view_on_map')}
-                </Btn>
-              )}
-              <div style={{ flex: 1 }} />
               {canEdit && onDelete && (
                 <Btn variant="danger" size="sm" onClick={() => setConfirmDel(true)}>
                   <Trash2 style={{ width: 14, height: 14, marginRight: 6 }} />{t('trip.delete')}
@@ -203,6 +207,7 @@ export default function EventModal(props) {
             </>
           )}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

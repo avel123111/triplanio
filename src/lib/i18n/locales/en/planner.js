@@ -78,8 +78,6 @@ export default {
   'planner.limit_desc_strong': '1 active trip',
   'planner.limit_desc_post': '. Wait for the current one to end or upgrade to Pro.',
   'planner.to_trips': 'To trips',
-  'planner.badge_ai': 'Route by AI',
-  'planner.badge_mine': 'Your route',
   'planner.last_city_fallback': 'the last city',
   'planner.err_no_date': 'Set the trip start date, it cannot be saved without it',
   'planner.err_no_title': 'Enter a trip name',
