@@ -218,16 +218,16 @@ function ReminderChannels() {
         <div className="acct-chan__main">
           <div className="acct-chan__t">WhatsApp</div>
           <div className="acct-chan__s">{t('account.channel_whatsapp_desc')}</div>
+          <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
         </div>
-        <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
       </div>
       <div className="acct-chan acct-chan--soon">
         <span className="acct-chan__ic" style={{ background: 'var(--surface-2)', color: 'var(--ai)' }}><Icon name="bell" size={20} /></span>
         <div className="acct-chan__main">
           <div className="acct-chan__t">{t('account.channel_push')}</div>
           <div className="acct-chan__s">{t('account.channel_push_desc')}</div>
+          <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
         </div>
-        <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
       </div>
     </>
   );
@@ -247,8 +247,8 @@ function ReminderChannels() {
               <span className="acct-chan__main">
                 <span className="acct-chan__t">Telegram</span>
                 <span className="acct-chan__s">{t('telegram.account_section_subtitle')}</span>
+                <Badge variant="success" icon="check">{t('telegram.connected')}</Badge>
               </span>
-              <Badge variant="success" icon="check">{t('telegram.connected')}</Badge>
               <Icon name="chev" size={16} className="acct-chan__chev" />
             </button>
             {open && (
