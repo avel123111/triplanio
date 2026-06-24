@@ -8,8 +8,8 @@
  * irreversibly gone:
  *   1. Telegram teardown via the single _shared/telegramTeardown source
  *      (critical — aborts the delete if it fails, so a retry is idempotent).
- *   2. Storage purge of both buckets (best-effort — an orphan file must never
- *      block the delete).
+ *   2. Storage purge across the trips + legacy buckets (best-effort — an orphan
+ *      file must never block the delete).
  *   3. The trip DELETE last; Postgres cascades wipe the 21 child tables.
  *
  * Auth: OWNER ONLY (trips.created_by === caller). Mirrors the RLS policy
