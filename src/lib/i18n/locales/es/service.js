@@ -54,7 +54,6 @@ export default {
   'service.car_choice_manual': 'Añadir reserva manualmente',
   'service.car_choice_manual_hint': 'Si el coche ya está reservado',
   'service.car_getrentacar_hint': 'Alquiler de coches en todo el mundo',
-  'service.car_economybookings_hint': 'Ofertas de alquiler de coches en todo el mundo',
   // eSIM view/edit dialog
   'service.esim_new': 'Añadir eSIM',
   'service.esim_edit': 'Editar eSIM',

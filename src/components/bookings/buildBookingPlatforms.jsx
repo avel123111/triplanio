@@ -199,7 +199,7 @@ export function carRentalPlatforms(trip, t) {
     {
       key: 'economybookings',
       label: findOn(t, 'EconomyBookings'),
-      hint: t ? t('service.car_economybookings_hint') : 'Car rental deals worldwide',
+      hint: t ? t('service.car_getrentacar_hint') : 'Car rental worldwide',
       logo: 'https://img.wway.io/travelpayouts/brands/icon/10@svg',
       url: 'https://economybookings.tpx.lt/EozXdo4z?erid=2VtzqvEF14M',
       provider: 'travelpayouts',
