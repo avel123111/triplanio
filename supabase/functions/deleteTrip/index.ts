@@ -16,10 +16,11 @@
  * the check is duplicated explicitly here.
  *
  * Storage layout. Every trip file lives in the single private `trips` bucket as
- * `<tripId>/<uid>-<file>` (covers included), so the whole trip is one prefix.
- * The prefix sweep is the only way to reach the cover (it has no `documents[]`
- * entry); the DB-path collector is kept as a permanent fallback so a file
- * missed by the sweep is still removed.
+ * `<tripId>/<uid>-<file>` (covers included), so the whole trip is one flat
+ * prefix. A single prefix sweep removes 100% of a trip's files — including the
+ * cover, which has no `documents[]` entry. (Verified 2026-06-24 on prod+dev:
+ * every stored document path sits under its `<tripId>/` prefix, so the former
+ * DB-path collector was pure overlap and was removed — TRIP-13.)
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
@@ -27,65 +28,6 @@ import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 
 const BUCKET = 'trips';
-
-/**
- * Extract a `trips`-bucket object path from a stored file_url. Handles signed
- * (…/object/sign/trips/<path>?token=…), public and authenticated URLs. Returns
- * null if it isn't a trips-bucket URL.
- */
-function pathFromUrl(url: unknown): string | null {
-  if (typeof url !== 'string' || !url) return null;
-  const m = url.match(/\/object\/(?:sign|public|authenticated)\/trips\/([^?]+)/);
-  if (!m) return null;
-  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
-}
-
-/**
- * Walk every `documents[]` array attached to the trip and collect the object
- * paths. Prefer parsing file_url; fall back to storage_path (the stored key
- * inside the `trips` bucket).
- */
-async function collectDocumentPaths(tripId: string): Promise<string[]> {
-  const paths = new Set<string>();
-
-  const addFromDocs = (docs: unknown) => {
-    if (!Array.isArray(docs)) return;
-    for (const d of docs) {
-      if (!d || typeof d !== 'object') continue;
-      const p = pathFromUrl((d as { file_url?: unknown }).file_url);
-      if (p) { paths.add(p); continue; }
-      const sp = (d as { storage_path?: unknown }).storage_path;
-      if (typeof sp === 'string' && sp) paths.add(sp);
-    }
-  };
-
-  // Tables with a top-level `documents` jsonb column.
-  for (const table of ['trip_documents', 'activities', 'hotel_stays', 'transfers']) {
-    const { data, error } = await supabaseAdmin.from(table).select('documents').eq('trip_id', tripId);
-    if (error) { console.error(`deleteTrip: read ${table}.documents failed`, error); continue; }
-    for (const row of data ?? []) addFromDocs((row as { documents?: unknown }).documents);
-  }
-
-  // Services keep their documents under details.documents.
-  {
-    const { data, error } = await supabaseAdmin.from('trip_services').select('details').eq('trip_id', tripId);
-    if (error) console.error('deleteTrip: read trip_services.details failed', error);
-    for (const row of data ?? []) {
-      addFromDocs((row as { details?: { documents?: unknown } }).details?.documents);
-    }
-  }
-
-  return [...paths];
-}
-
-/** Remove explicit object paths in chunks (best-effort). */
-async function removePaths(paths: string[]): Promise<void> {
-  for (let i = 0; i < paths.length; i += 100) {
-    const chunk = paths.slice(i, i + 100);
-    const { error } = await supabaseAdmin.storage.from(BUCKET).remove(chunk);
-    if (error) console.error('deleteTrip: remove chunk failed', error);
-  }
-}
 
 /** Sweep everything under `${prefix}/` in the trips bucket, paginated (best-effort). */
 async function purgeBucketByPrefix(prefix: string): Promise<void> {
@@ -138,12 +80,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 3 — storage purge (best-effort, must NOT block the delete). Sweep the
-    // `<tripId>/` prefix in the trips bucket; the DB-path collector is a fallback
-    // for anything the sweep misses.
+    // Step 3 — storage purge (best-effort, must NOT block the delete). One sweep
+    // of the `<tripId>/` prefix removes every file the trip owns.
     try {
-      const docPaths = await collectDocumentPaths(tripId);
-      if (docPaths.length) await removePaths(docPaths);
       await purgeBucketByPrefix(tripId);
     } catch (e) {
       console.error('deleteTrip: storage purge failed', e);
