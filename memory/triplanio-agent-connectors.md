@@ -15,6 +15,8 @@ metadata:
 
 - **Linear — MCP-сервер** (`mcp__linear__*`). Создание/правка задач (`save_issue`), комментарии, проекты, лейблы, статусы. Команда воркспейса — «Pavel» (UUID `6035454e-b654-4639-890c-eb0e26588f37`), префикс задач **TRIP**. При создании задачи `team` требует UUID, не имя.
 
+- **Sentry — MCP-сервер** (`mcp__sentry__*`), подключён TRIP-20 (2026-06-24). Объявлен файлом **`.mcp.json` в корне репо** (`npx @sentry/mcp-server@latest --host=de.sentry.io`, токен из env `SENTRY_ACCESS_TOKEN`); секрет лежит в Railway (self-hosted runtime Cyrus), allow-list `mcp__sentry` включён в Cyrus webapp `/settings/tools` (вкладка Linear). Орга `triplanio` на **EU-регионе** (`de.sentry.io`) — `--host` обязателен, иначе сервер уходит на US и оргу не видит. Read-набор: `find_organizations/projects/teams`, `search_issues`, `search_events`, `get_sentry_resource`, `analyze_issue_with_seer` (Seer-разбор), + write `update_issue` (резолв/назначение). Авторизация = User Auth Token Pavel (read-скоупы), агенту значение не видно. Подробности самого мониторинга Sentry (фронт/edge/DSN) — [[triplanio-sentry-monitoring]]. OAuth-ремоут `mcp.sentry.dev` для облачного Cyrus НЕ поддерживается → только токен. Каталог `~/.cyrus/` (runtime-конфиг хоста) для агента закрыт наглухо — коннекторы добавляются через repo `.mcp.json` или дашборд `/integrations`, не правкой `~/.cyrus/mcp.json`.
+
 - **Прочие MCP в сессии:** `cyrus-docs` (дока Cyrus — поиск/чтение), `cyrus-tools` (служебные: self-report фейлов, агент-сессии Linear).
 
 Память агента грузится так: корневой `CLAUDE.md` авто-инлайнит `@memory/MEMORY.md` (индекс) в каждую сессию → этот файл агент открывает по указателю из индекса. Подробнее о механизме — блок «Memory» в `CLAUDE.md`.
