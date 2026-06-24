@@ -843,27 +843,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     } catch {}
   }, [step, home, cities, returnMode, returnCity, tripTitle, finalPoint, startDate, cover, aiState, restored, user?.id]);
 
-  // Keep the fixed bottom action bar above the on-screen keyboard. visualViewport
-  // shrinks when the keyboard opens (esp. iOS Safari, which ignores the viewport
-  // interactive-widget hint); expose the keyboard height as --kb-inset so the
-  // fixed .flow-foot rides above it instead of being hidden/thrown around.
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return undefined;
-    const sync = () => {
-      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      document.documentElement.style.setProperty('--kb-inset', `${kb}px`);
-    };
-    sync();
-    vv.addEventListener('resize', sync);
-    vv.addEventListener('scroll', sync);
-    return () => {
-      vv.removeEventListener('resize', sync);
-      vv.removeEventListener('scroll', sync);
-      document.documentElement.style.removeProperty('--kb-inset');
-    };
-  }, []);
-
   // setStartDate cascades to cities (first city anchors all subsequent dates).
   // Empty/invalid values are IGNORED - the trip start is required and can't be
   // cleared from any date control (step 1, step 2 or review).
@@ -1298,9 +1277,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               cities={cities}
               returnCity={effectiveReturn}
               finalPoint={finalPoint}
-              badge={isAi
-                ? { label: t('planner.badge_ai'), icon: 'sparkles', color: 'var(--ai)' }
-                : { label: t('planner.badge_mine'), icon: 'map', color: 'var(--brand)' }}
             />
           </div>
         </div>

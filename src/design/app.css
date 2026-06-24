@@ -1006,7 +1006,10 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .app-header__menu { display: none; }
   .app-header__account { display: none; }
   .trip-screen-body { padding-bottom: 96px !important; }
-  .trip-screen-body--flush, .trip-screen-body--chat { padding-bottom: 0 !important; }
+  .trip-screen-body--flush { padding-bottom: 0 !important; }
+  /* Chat: keep the body the fixed (non-scrolling) frame, but reserve room for the
+     floating bottom-nav so the composer + send button sit above it, not under. */
+  .trip-screen-body--chat { padding: 12px 12px calc(88px + env(safe-area-inset-bottom)) !important; }
   /* App shell on phones: the standalone app pages (Trips / Account / Inbox / Pro)
      become a fixed-height shell — the global header pins (never scrolls), the
      content scrolls INSIDE its own container, and the bottom nav stays glued.
@@ -1241,30 +1244,20 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .flow-foot > .btn { flex: 1 1 auto; min-width: 0; justify-content: center; }
 }
 
-/* Phones / tablets: the map is a normal block on top, everything scrolls with
-   the page, and the footer is pinned to the viewport bottom (the mobile
-   bottom-nav is already hidden on these routes). */
+/* Phones / tablets: fixed-shell layout (mirrors the standalone .app-shell). The
+   global header pins at the top, the map sits in a fixed row on top, the panel
+   body (.flow-lp-b) is the ONLY scroller, and the action footer stays glued to
+   the bottom of the card in normal flow. The shell height tracks the visual
+   viewport (--vvh, maintained globally by initKeyboardInset) so when the
+   keyboard opens the whole shell shrinks and the footer sits right above it —
+   the footer never jumps on scroll and never flies up with the keyboard. */
 @media (max-width: 960px) {
-  /* Phones/tablets: the whole page scrolls as ONE (mirrors the editor's mobile
-     model — .ts-screen height:auto / overflow:visible). The old fixed-viewport
-     shell (100dvh + overflow:hidden) with an internally-scrolling .lp-b made the
-     map feel sticky and the sticky footer jump up when the keyboard opened. Now
-     the map scrolls away with the content, the header stays sticky, and the
-     footer sits in normal flow after the body. */
-  .flow-page { height: auto; min-height: 100dvh; overflow: visible; }
-  .flow-grid { display: block; overflow: visible; }
-  .flow-mapcol { display: block; }
+  .flow-page { height: var(--vvh, 100dvh); }
+  .flow-grid { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .flow-mapcol { min-height: 0; }
   .flow-mapbox { position: relative; inset: auto; right: auto; height: 160px; margin: 12px 12px 0; border-radius: 14px; }
-  .flow-editcol { display: block; }
-  .flow-editcol > .lp { display: flex; flex-direction: column; margin: 12px; min-height: 0; overflow: visible; }
-  .flow-editcol .flow-lp-b { overflow: visible; }
-  /* Bottom clearance so the last content isn't hidden behind the fixed action bar. */
-  .flow-lp-b { padding: 16px 14px calc(84px + env(safe-area-inset-bottom)); }
-  /* Fixed bottom action bar — STATIC, glued to the screen bottom while the page
-     (map + content) scrolls. --kb-inset (set from visualViewport in ManualPlanner)
-     lifts it above the on-screen keyboard on iOS; on Chrome the resized viewport
-     already keeps it at the bottom. */
-  .flow-foot { position: fixed; left: 0; right: 0; bottom: var(--kb-inset, 0px); z-index: 20; padding-bottom: calc(11px + env(safe-area-inset-bottom)); transition: bottom .18s ease; }
+  .flow-editcol > .lp { margin: 12px; }
+  .flow-lp-b { padding: 16px 14px; }
 }
 
 /* Planner route row — REUSES the editor's .te-row grid + primitives (.te-grip /
@@ -1610,7 +1603,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* ── Composer (shared) ── */
 .chat-composer { border-top: 1px solid var(--line-2); padding: 12px; position: relative; flex: none; }
 .chat-composer__row { display: flex; gap: 8px; align-items: flex-end; }
-.chat-composer__field { flex: 1; position: relative; }
+.chat-composer__field { flex: 1; min-width: 0; position: relative; }
 /* Visible highlight overlay sits BEHIND a transparent-text textarea so
    @triplanio renders bold-coloured while the caret stays in lockstep. */
 /* Overlay (visible text) and textarea (transparent, caret source) MUST share
@@ -2536,6 +2529,14 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .addon-card--on .addon-card__ic { background: color-mix(in srgb, var(--ac) 22%, transparent); }
 .addon-card--locked { opacity: .74; }
 .addon-card--locked .addon-card__ic { filter: grayscale(.35); opacity: .55; }
+/* Status cluster (toggle + "available" badge) in the card top-right, so the
+   availability state never wraps inside the title line. */
+.addon-card__status { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+/* Phones: one column, drop the fixed min-height so cards size to content. */
+@media (max-width: 640px) {
+  .addon-grid { grid-template-columns: 1fr; }
+  .addon-card { min-height: 0; }
+}
 
 /* ============================================================
    ACCOUNT SCREEN — Lumo two-pane workspace (ScreenAccount.jsx)
@@ -2669,16 +2670,21 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .acct-bento { grid-template-columns: 1fr; }
   .acct-hero__edit { grid-template-columns: 1fr; }
 }
+/* Card rows (channel cards, linked-trip rows, delete/logout) wrap on phones so
+   the trailing button(s) drop to their own line instead of overflowing or
+   squeezing the text. */
+@media (max-width: 640px) {
+  .acct-chan { flex-wrap: wrap; row-gap: 12px; }
+  .acct-chan > .btn { flex: 1 1 100%; width: 100%; }
+  .acct-tgrow { flex-wrap: wrap; row-gap: 10px; }
+  .acct-tgrow > .btn { flex: 1 1 auto; min-width: 0; }
+  .acct-divrow { flex-wrap: wrap; row-gap: 12px; }
+  .acct-divrow > .btn { flex: 1 1 100%; width: 100%; }
+}
 @media (max-width: 520px) {
   .acct-hero__row { flex-direction: column; align-items: center; text-align: center; gap: 12px; }
   .acct-hero__actions { justify-content: center; }
   .acct-hero__name { white-space: normal; }
-  /* Card rows (channel cards, delete/logout) wrap so the trailing button drops
-     to its own full-width line instead of overflowing or squeezing the text. */
-  .acct-chan { flex-wrap: wrap; row-gap: 12px; }
-  .acct-chan > .btn { flex: 1 1 100%; width: 100%; }
-  .acct-divrow { flex-wrap: wrap; row-gap: 12px; }
-  .acct-divrow > .btn { flex: 1 1 100%; width: 100%; }
 }
 /* entrance — reuse the Overview rise-in, lightly staggered per section.
    fill=backwards (NOT both): after the animation the section drops its transform,
@@ -3410,7 +3416,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    (.route/.docrow/.notes/.kvgrid used by the trip-editor left panels).
    ═══════════════════════════════════════════════════════════════════════════ */
 .ev-dlg{display:flex;flex-direction:column;overflow:hidden;}
-.ev-dlg-hd{display:flex;align-items:center;gap:12px;padding:18px 20px 16px;position:relative;overflow:hidden;}
+.ev-dlg-hd{display:flex;align-items:center;gap:12px;padding:18px 20px 16px;position:relative;overflow:hidden;flex:none;}
 .ev-dlg-hd::before{content:'';position:absolute;inset:0;background:var(--ev-soft);z-index:0;}
 .ev-dlg-hd>*{position:relative;}
 .ev-dlg-ic{width:44px;height:44px;border-radius:14px;background:var(--ev-color);color:#fff;display:grid;place-items:center;flex:none;box-shadow:0 4px 12px -4px color-mix(in srgb,var(--ev-color) 50%,transparent);}
@@ -3426,7 +3432,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .ev-dlg-close:hover{background:var(--surface-2);color:var(--ink);}
 .ev-dlg-close svg{width:15px;height:15px;}
 .ev-dlg-body{padding:15px 20px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:11px;align-items:stretch;}
-.ev-dlg-ft{padding:11px 20px;border-top:1px solid var(--line-2);background:var(--wash);display:flex;gap:7px;align-items:center;}
+.ev-dlg-ft{padding:11px 20px;border-top:1px solid var(--line-2);background:var(--wash);display:flex;gap:7px;align-items:center;flex:none;flex-wrap:wrap;justify-content:flex-end;}
+/* Top action chips (booking link + "on map") — wrap on narrow widths. */
+.ev-actions-top{display:flex;flex-wrap:wrap;gap:7px;}
 /* section cards */
 .ev-sec{background:var(--surface-3);border:1px solid var(--line-2);border-radius:var(--r-md);padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
 .ev-sec-lbl{display:flex;align-items:center;gap:7px;margin-bottom:2px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ev-color,var(--primary));}
@@ -3513,6 +3521,10 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    Force 16px on small screens so opening any sheet/modal field never zooms. */
 @media (max-width: 640px) {
   .input, .select, .textarea { font-size: 16px; }
+  /* View-modal footer actions (Delete / Edit) share the row evenly instead of
+     crowding. Scoped away from the edit dialog footer (.lp-f--edit), which has
+     its own layout (icon-only delete + grow-to-fill save). */
+  .ev-dlg-ft:not(.lp-f--edit) .btn { flex: 1 1 auto; justify-content: center; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
