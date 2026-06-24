@@ -18,6 +18,7 @@ import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
 import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
+import { finalizeDraftCover } from '@/lib/coverStorage';
 import { getGradientById } from '@/lib/trip-gradients';
 import FlowProgress from '@/pages/create/FlowProgress';
 import FlowMap from '@/pages/create/FlowMap';
@@ -1087,10 +1088,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // 1b. Persist cover (gradient or uploaded image). The RPC doesn't accept
       // cover fields, so update the row immediately after creation.
       if (cover?.cover_gradient || cover?.cover_image_url) {
+        // Cover was uploaded before the trip existed (draft prefix) — move it
+        // under <tripId>/ and re-sign before persisting the URL.
+        const finalCoverUrl = cover.cover_image_url
+          ? await finalizeDraftCover(trip.id, cover.cover_image_url)
+          : null;
         const { error: coverErr } = await supabase
           .from('trips')
           .update({
-            cover_image_url: cover.cover_image_url || null,
+            cover_image_url: finalCoverUrl,
             cover_gradient: cover.cover_gradient || null,
           })
           .eq('id', trip.id);

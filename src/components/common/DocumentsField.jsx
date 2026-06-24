@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
-import { safeStorageName } from '@/lib/storage';
+import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { Paperclip, Upload, X, Loader2, Plus } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -16,6 +16,7 @@ export default function DocumentsField({
   value = [],
   onChange,
   onUploadingChange,
+  tripId,
   maxFiles = null,
   label = '',
   iconColor = 'text-primary',
@@ -54,17 +55,14 @@ export default function DocumentsField({
     try {
       const uploaded = [];
       for (const file of toUpload) {
-        const uid = (typeof crypto !== 'undefined' && crypto.randomUUID)
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const path = `attachments/${uid}/${safeStorageName(file.name)}`;
-        const { error: upErr } = await supabase.storage.from('documents').upload(path, file);
+        const path = tripStoragePath(tripId, file.name);
+        const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, file);
         if (upErr) {
           toast({ title: t('event.ai_upload_error'), description: upErr.message, variant: 'destructive' });
           continue;
         }
         // Long-lived signed URL (10 years) - matches the documents lens convention.
-        const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);
+        const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
         uploaded.push({ file_url: urlData?.signedUrl || '', file_name: file.name, storage_path: path });
       }
       if (uploaded.length) onChange([...docs, ...uploaded]);

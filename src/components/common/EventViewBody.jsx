@@ -17,7 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/api/supabaseClient';
-import { safeStorageName } from '@/lib/storage';
+import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { parseNaive } from '@/lib/naive-time';
 import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
@@ -478,11 +478,10 @@ export function useEntityDocs(kind, entity, canEdit) {
     try {
       const uploaded = [];
       for (const file of files) {
-        const uid = (crypto?.randomUUID?.()) || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const path = `attachments/${uid}/${safeStorageName(file.name)}`;
-        const { error: upErr } = await supabase.storage.from('documents').upload(path, file);
+        const path = tripStoragePath(entity.trip_id, file.name);
+        const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, file);
         if (upErr) { console.error('upload error', upErr); continue; }
-        const { data: urlData } = await supabase.storage.from('documents').createSignedUrl(path, 315360000);
+        const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
         uploaded.push({ file_url: urlData?.signedUrl || '', file_name: file.name, storage_path: path });
       }
       if (uploaded.length) {

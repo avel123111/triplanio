@@ -1133,6 +1133,7 @@ export default function EventEditDialog({
                   setTime={setTime}
                   issues={displayIssues}
                   setUploading={setUploading}
+                  tripId={tripId}
                 />
               )}
               {currentKind === 'transfer' && (
@@ -1152,6 +1153,7 @@ export default function EventEditDialog({
                   onTouch={markTouched}
                   isEdit={isEdit}
                   setUploading={setUploading}
+                  tripId={tripId}
                 />
               )}
               {currentKind === 'activity' && (
@@ -1164,6 +1166,7 @@ export default function EventEditDialog({
                   setTime={setTime}
                   issues={displayIssues}
                   setUploading={setUploading}
+                  tripId={tripId}
                 />
               )}
               {currentKind === 'service' && (
@@ -1176,6 +1179,7 @@ export default function EventEditDialog({
                   issues={displayIssues}
                   isEdit={isEdit}
                   setUploading={setUploading}
+                  tripId={tripId}
                 />
               )}
 
@@ -1508,7 +1512,7 @@ function SectionHeader({ children }) {
 //  Field groups per kind
 // ─────────────────────────────────────────────────────────────────────────────
 
-function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploading }) {
+function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
@@ -1681,6 +1685,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
           value={form.documents}
           onChange={(docs) => setField('documents', docs)}
           onUploadingChange={setUploading}
+          tripId={tripId}
           bare
         />
       </AiField>
@@ -1692,7 +1697,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
   );
 }
 
-function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, issues, onTouch, isEdit, setUploading }) {
+function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
@@ -1888,6 +1893,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           value={form.documents}
           onChange={(docs) => setField('documents', docs)}
           onUploadingChange={setUploading}
+          tripId={tripId}
           bare
         />
       </AiField>
@@ -2148,7 +2154,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
   );
 }
 
-function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues, setUploading }) {
+function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.activity.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
@@ -2220,6 +2226,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         value={form.documents}
         onChange={(docs) => setField('documents', docs)}
         onUploadingChange={setUploading}
+        tripId={tripId}
         bare
         iconColor="text-violet-600 dark:text-violet-300"
       />
@@ -2231,7 +2238,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
   );
 }
 
-function EsimServiceFields({ form, setField, issues, setUploading }) {
+function EsimServiceFields({ form, setField, issues, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -2260,6 +2267,7 @@ function EsimServiceFields({ form, setField, issues, setUploading }) {
         value={form.documents}
         onChange={(docs) => setField('documents', docs)}
         onUploadingChange={setUploading}
+        tripId={tripId}
         bare
       />
       <div>
@@ -2270,7 +2278,7 @@ function EsimServiceFields({ form, setField, issues, setUploading }) {
   );
 }
 
-function InsuranceServiceFields({ form, setField, issues, setUploading }) {
+function InsuranceServiceFields({ form, setField, issues, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -2316,6 +2324,7 @@ function InsuranceServiceFields({ form, setField, issues, setUploading }) {
         value={form.documents}
         onChange={(docs) => setField('documents', docs)}
         onUploadingChange={setUploading}
+        tripId={tripId}
         bare
       />
       <div>
@@ -2326,14 +2335,14 @@ function InsuranceServiceFields({ form, setField, issues, setUploading }) {
   );
 }
 
-function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading }) {
+function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading, tripId }) {
   const svcKind = form.service_kind || 'car_rental';
-  if (svcKind === 'esim') return <EsimServiceFields form={form} setField={setField} issues={issues} setUploading={setUploading} />;
-  if (svcKind === 'insurance') return <InsuranceServiceFields form={form} setField={setField} issues={issues} setUploading={setUploading} />;
-  return <CarRentalServiceFields form={form} setField={setField} setForm={setForm} aiFields={aiFields} setTime={setTime} issues={issues} isEdit={isEdit} setUploading={setUploading} />;
+  if (svcKind === 'esim') return <EsimServiceFields form={form} setField={setField} issues={issues} setUploading={setUploading} tripId={tripId} />;
+  if (svcKind === 'insurance') return <InsuranceServiceFields form={form} setField={setField} issues={issues} setUploading={setUploading} tripId={tripId} />;
+  return <CarRentalServiceFields form={form} setField={setField} setForm={setForm} aiFields={aiFields} setTime={setTime} issues={issues} isEdit={isEdit} setUploading={setUploading} tripId={tripId} />;
 }
 
-function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading }) {
+function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
   const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
@@ -2478,6 +2487,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         value={form.documents}
         onChange={(docs) => setField('documents', docs)}
         onUploadingChange={setUploading}
+        tripId={tripId}
         bare
         iconColor="text-emerald-700 dark:text-emerald-300"
       />
