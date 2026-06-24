@@ -1,0 +1,20 @@
+---
+name: triplanio-deploy-verify-jwt
+description: ГРАБЛИ деплоя — supabase CLI сбрасывает verify_jwt в true; функции с N8N_SECRET/webhook ломаются
+metadata: 
+  node_type: memory
+  type: feedback
+  originSessionId: 1daf8e84-6538-4b32-a5b9-318119fe6b08
+---
+
+`supabase functions deploy <fn>` по умолчанию ставит **verify_jwt=true**. Для функций, которые сами авторизуют вызывающего (Bearer N8N_SECRET) или вызываются вебхуком (Telegram), это ЛОМАЕТ прод: шлюз Supabase требует валидный Supabase-JWT ДО запуска кода, а n8n/бот шлёт сырой N8N_SECRET (не JWT) → 401 от шлюза, код не выполняется.
+
+**Why:** 2026-05-30 прод `getTripByTelegramChatId` задеплоился через CLI с verify_jwt=true и перестал отвечать боту (v6 broken → пофикшено редеплоем v7 с verify_jwt=false).
+
+**How to apply:** `supabase/config.toml` СОЗДАН 2026-05-30 и пинит verify_jwt=false ровно для 10 функций (= фактический live-список прода): **getTripByTelegramChatId, getTripById, getPublicTrip, stripe-webhook, telegramWebhook, triplanioAiReply, seedTripBudget, syncTripExpense, getPendingReminders, getDailyReminders**. Все остальные функции дефолтят в verify_jwt=true. Это полный список — если добавляется новая verify_jwt=false функция, её НАДО дописать в config.toml, иначе CLI-деплой поставит ей true. project_id в config = prod (tizscxrpuopobgcxbekf), но деплой идёт с явным --project-ref (dev nydhzevdizkfaxdlikgc), флаги применяются к целевому проекту. После любого деплоя сверять фактический verify_jwt через get_edge_function. Источник полного списка verify_jwt по функциям: list_edge_functions. (deploy_userid_functions.sh содержит лишь НЕПОЛНЫЙ батч миграции — не опираться на него как на список.)
+
+**ОБНОВЛЕНИЕ 2026-06-03 (CLI 2.102.0) — config.toml НЕ спас.** При деплое Sentry-батча `supabase functions deploy <name> --project-ref ...` флаг verify_jwt всё равно слетел в true у **telegramWebhook, getPublicTrip, getTripById, triplanioAiReply** на ОБОИХ проектах (dev nydhzevdizkfaxdlikgc + prod tizscxrpuopobgcxbekf), хотя в config.toml они =false. stripe-webhook почему-то остался false (поведение config.toml непоследовательное — НЕ полагаться). Вывод: эти функции деплоить ТОЛЬКО с явным `--no-verify-jwt`, и ОБЯЗАТЕЛЬНО сверять `verify_jwt` через `list_edge_functions` после каждого деплоя. Чинили повторным деплоем с флагом. (Также: `for fn in $VAR` в zsh НЕ делает word-splitting — перечислять функции литералами в `for`.)
+
+**ПОВТОР 2026-06-05.** Снова слетели в true на ОБОИХ проектах ровно 4 функции: **telegramWebhook, triplanioAiReply, getPublicTrip, getTripById** (все с общим updated_at ~1780513xxx = тот же Sentry-батч-деплой от 2026-06-04). Симптом — шлюз отвечает `401 {"code":"UNAUTHORIZED_INVALID_JWT_FORMAT","message":"Invalid JWT"}` на telegramWebhook (это шлюз ДО кода, не баг токена). Код JWT исправен (signN8nJwt исходящие / requireN8nSecret входящие) — менять нечего. **Рабочий способ флипа без изменения кода:** Supabase MCP `deploy_edge_function` принимает параметр `verify_jwt` — вытянуть текущий бандл через `get_edge_function`, редеплоить 1-в-1 с `verify_jwt:false`; `ezbr_sha256` остаётся прежним → код гарантированно не тронут. Сделано для всех 4 × 2 проекта, sha сохранены, остальные 6 из канон-списка остались false. config.toml в репо (ветка dev, коммит 5647274) уже содержит правильный список 10 — проблема не в нём, а в том что CLI/MCP-батч его игнорирует. **Системный фикс не сделан:** любой будущий батч-деплой этих функций без явного флага снова всё сломает; нужен деплой-скрипт/обёртка, всегда проставляющая verify_jwt=false для канон-10.
+
+**Ещё грабли:** git-команды Pavel вставляет в терминал целиком — `git add` с несколькими путями в одной строке разъезжается при вставке (второй путь уходит отдельной командой → "permission denied", файл не стейджится). Давать по одному пути на строку или `git add <dir>`. Связано: [[triplanio-telegram-bot]], [[triplanio-stripe-integration]].

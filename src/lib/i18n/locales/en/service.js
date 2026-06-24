@@ -53,6 +53,8 @@ export default {
   'service.car_choice_desc': 'Enter a booking manually or find one on a platform',
   'service.car_choice_manual': 'Add booking manually',
   'service.car_choice_manual_hint': 'If the car is already booked',
+  'service.car_getrentacar_hint': 'Car rental worldwide',
+  'service.car_gettransfer_hint': 'Transfers & private rides',
   // eSIM view/edit dialog
   'service.esim_new': 'Add eSIM',
   'service.esim_edit': 'Edit eSIM',

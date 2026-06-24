@@ -1,0 +1,27 @@
+---
+name: triplanio-noheader-layout-implemented
+description: Triplanio — РЕАЛИЗАЦИЯ убирания per-screen TripScreenBar на всех экранах трипа + переносы кнопок + новая шапка планировщика (dev)
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: d7a78334-0f7a-408e-9123-45fd9f69c050
+---
+
+★РЕАЛИЗОВАНО 2026-06-17 в `dev` (build зелёный, eslint по изменённым чист; typecheck-ошибки — пред-существующий baseline-шум tsc на каждом Btn/Icon/Dialog, не регресс). Браузер-смоук НЕ делался (окружение под авторизацией) — нужен на dev-деплое (десктоп+мобайл). Ждёт push dev+main. Реализует подмножество макета [[triplanio-noheader-layout-prototype]].
+
+Решение по охвату (Pavel, 3 вопроса): убираем ТОЛЬКО per-screen `TripScreenBar` (.trip-screenbar) на всех экранах; глобальный синий `AppHeader` (название трипа, Поделиться/Изменить/…, бургер-меню на мобиле) НЕ трогаем; название экрана на мобиле НЕ добавляем (хватает подсветки в меню); в планировщик добавляем мини-календарь.
+
+Что сделано (файлы):
+- `TripView.jsx`: убран `<TripScreenBar>`, `TripScreenBarCtx.Provider`, стейт `screenActions`, `SCREEN_TITLE_KEY`, скелетон-полоска в LoadingScreen; импорт ужат до `isLensVisible`.
+- `app.css`: удалён мёртвый блок `.trip-screenbar*` + `.screenbar-action*`.
+- `components/trips/TripScreenBar.jsx`: УДАЛЁН (был единственным потребителем).
+- `BudgetLens.jsx`/`.css`: снят `useTripScreenActions`; добавлена шапка `.bgt-head` (заголовок + Курсы(ghost)+Ручная трата(primary) вверху-справа) на десктопе; мобайл — кнопки шапки скрыты, добавлен `.bgt-fab` (Ручная трата, fixed bottom-right), а Курсы открываются по существующей FX-стат-карточке `.bgt-stat--fx`. ВНИМАНИЕ: на мобиле FAB может пересекаться с плавающим ChatWidget (тоже bottom-right) если включён аддон чата — проверить на dev, при необходимости поднять FAB.
+- `DocsLens.jsx`: снят `useTripScreenActions` (добавление уже есть в теле — `DocEmpty` CTA + `.dl-addcard`).
+- `MembersLens.jsx`: снят `useTripScreenActions` (инвайт уже есть инлайн в теле — `.invite-banner`, гейт `canManage`).
+- `TripStructureEdit.jsx`: убран `<TripScreenBar>` и тумблер «убрать карту» (`showMap` удалён; карта всегда two-col на десктопе, ≤640 скрыта существующим `.ts-col-right{display:none}`, 641–1080 стек 340px как раньше). Добавлена панель-шапка «Маршрут» `.ts-routehead` ВНУТРИ левого списка (левая edit-панель её перекрывает, как и список). Контрол старта `.ts-startctl`: лейбл «Старт» + степпер ±1 (`shiftStart`) + дата открывает Radix `Popover` с новым компактным `StartCalendar` (месяц-грид, Mon-first, выбор даты → delta → `shiftStart`). i18n переиспользованы `planner.step_cities`='Маршрут', `ai_plan.start`='Старт' (новых ключей нет). Новые CSS — в существующем inline `<style>` планировщика.
+
+Новые стили только под новые элементы (`.bgt-head/.bgt-fab/.ts-routehead/.ts-startctl/.ts-cal*`), всё на существующих токенах. Открытые хвосты: FAB-vs-Chat overlap; «Курсы» на десктопе дублирует FX-карточку (так в макете); живой QA.
+
+★Доделки edit-экрана #2 (2026-06-17, dev, build+eslint зелёные): (1) левая колонка обёрнута в `.ts-leftbox` (margin 14, border+radius16, overflow hidden, bg surface) — теперь два равных контейнера: левый (редактор) и правый (карта-`.ts-map` inset14); шапка «Маршрут» = шапка контейнера, сайд-панели рендерятся внутри той же коробки; `.ts-col-left` bg→`--bg`. (2) степпер старта: ОБЕ стрелки — шевроны (левая = `chev` rotate180, была `back`/ArrowLeft — разнобой стилей); nav мини-календаря тоже. (3) мобильный календарь старта (`isSheet`/≤640) открывается через готовый `Sheet` (`@/components/ui/Sheet`), не Popover; десктоп — Popover. (4) мобайл: в строках городов скрыты иконки отель/актив (`.te-cell--hotel/.te-cell--act display:none`, грид строки → 3 колонки). (5) `.te-row:hover` border → `var(--brand)` (две правила: базовое и `.te-table`). (6) GridEndpoint: `.te-endlabel` («Старт»/«Финиш») вынесен блоком НАД названием города, `display:block`, вес 800. (7) заголовки таблицы `.te-th`: `--fs-micro`→`--fs-nano` (на размер меньше) + вес 600→700. Без новых токенов.
+
+★Доделки edit-экрана #3 (2026-06-17, dev, build+eslint зелёные; макет `Planner — единый дизайн (4 экрана).html`): (1) зазор между left/right блоками = 14 как у края: `.ts-leftbox` margin `14 7 14 14` + `.ts-map` inline `left:7` (сброс на ≤1080: leftbox margin 14, map left 14). (2) сайд-панели: `.ts-leftbox .lp { border:none; border-radius:16px; box-shadow:none }` — радиус как у контейнера, без двойного бордера (было `--r-card` 24 vs 16). (3) фон списка `.ts-leftscroll` → `var(--surface)` (белый). (4) шапка «Маршрут» перенесена ВНУТРЬ `.ts-leftscroll` (скроллится с контентом, не sticky; bleed `.ts-leftscroll > .ts-routehead { margin:-12px -12px 12px }`). (5) плашки панели города компактнее: `.bookrow/.gadd` padding 11→9, `.bi/.gadd .gi` 38→34. (6) РЕДИЗАЙН hero CityPanel: убраны CityPhoto+overlay+emoji (удалён `flagEmoji` + `flag` из metaOf в TripStructureEdit), `.lp-hero` переопределён в brand-шапку в строку: back + имя(`.lph-name` h2) + чип страны(`.lph-fc` = meta.country) + Заезд/Выезд(`.lph-meta`, ключи `hotel.check_in/out`, fmtDate start/end); БЕЗ местного времени/погоды; адаптив (flex-wrap, ≤560 meta уходит вниз). (7) back-кнопки унифицированы: базовый `.lp-back` = surface-чип с видимым hover (wash+line-hover), `.lp-h--ev .lp-back` так же, `.lp-hero .lp-back` = белая на brand (hover rgba .28). Новые классы только `.lph-*`. Открытый хвост: живой QA адаптива панели-шита на мобиле.

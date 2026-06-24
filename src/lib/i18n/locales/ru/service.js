@@ -59,6 +59,8 @@ export default {
   'service.car_choice_desc': 'Выбери способ: внеси бронь сам или найди вариант на платформе',
   'service.car_choice_manual': 'Добавить бронь вручную',
   'service.car_choice_manual_hint': 'Если авто уже забронировано',
+  'service.car_getrentacar_hint': 'Аренда авто по всему миру',
+  'service.car_gettransfer_hint': 'Трансферы и частные поездки',
   // eSIM view/edit dialog
   'service.esim_new': 'Добавить eSIM',
   'service.esim_edit': 'Редактировать eSIM',
