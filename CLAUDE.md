@@ -50,3 +50,13 @@ works now), never changelogs; small facts go into the nearest existing topic;
 13. **Security-sensitive areas (highest review priority)**
 Stripe webhook + subscription/entitlement reconciliation; Pro/Premium tier gating; edge-function auth (known IDOR / fail-open risks on trip-read functions). Run a security review on any change here.
 14. **ECC skills** to reach for`ecc:plan` (planning gate), `ecc:react-review` / `ecc:react-build`, `ecc:security-review`, `ecc:postgres-patterns` + `ecc:database-migrations`, `ecc:customer-billing-ops` (Stripe), `ecc:code-review` + `ecc:pr`. See `memory/triplanio-ecc-toolkit.md` for the full DAILY/LIBRARY map.
+15. **Design / frontend skills (MANDATORY consult).** Self-hosted Cyrus does NOT auto-load `.claude/skills/` as Skill tools (smoke-tested — only `cyrus-skills:*` + `.claude/agents/` + `.claude/commands/` load). But the vendored skill files ARE on disk and readable. **On ANY frontend / design / redesign / UI task — before writing UI code — open and apply the relevant playbook(s) below via `Read`** (they are the design source-of-truth alongside `src/design/index.jsx` and the Lumo system; do not skip them, do not hand-edit them — re-vendor instead). For React/TS/build correctness keep using the loaded ECC agents (`ecc-react-reviewer`, `ecc-typescript-reviewer`, `ecc-react-build-resolver`).
+- **Design critique / UX review** → `.claude/skills/design-design-critique/SKILL.md` (review a screen/mockup, hierarchy, usability)
+- **Design system audit / extend** → `.claude/skills/design-design-system/SKILL.md` (naming/token consistency, document a component's variants/states)
+- **Accessibility (WCAG 2.1 AA)** → `.claude/skills/design-accessibility-review/SKILL.md` (contrast, keyboard, touch targets, SR)
+- **UX copy / microcopy** → `.claude/skills/design-ux-copy/SKILL.md` (buttons, errors, empty states, onboarding — pair with i18n rule 4)
+- **Design→dev handoff spec** → `.claude/skills/design-design-handoff/SKILL.md` (layout, tokens, props, states, breakpoints)
+- **Visual direction / distinctive UI** → `.claude/skills/example-frontend-design/SKILL.md`
+- **Production-quality UI build** → `.claude/skills/agent-skills-frontend-ui-engineering/SKILL.md`
+- **UI/UX intelligence (styles, palettes, font pairings, patterns)** → `.claude/skills/ui-ux-pro-max/SKILL.md`
+- **Web quality (perf / a11y / SEO / CWV / best practices)** → `.claude/skills/web-quality-*/SKILL.md`
