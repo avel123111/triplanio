@@ -15,8 +15,6 @@ export default {
   'confirm.remove_member.body': '{name} perderá el acceso al viaje',
   'confirm.leave_trip.title': '¿Salir del viaje?',
   'confirm.leave_trip.body': 'Perderás el acceso. Solo podrás volver con una nueva invitación',
-  'confirm.delete_trip.title': '¿Eliminar viaje?',
-  'confirm.delete_trip.body': 'Todos los datos ({n} ciudades, reservas, presupuesto) se eliminarán para siempre',
   'confirm.delete_pro_trip.title': 'Estás eliminando un viaje Pro',
   'confirm.delete_pro_trip.body': 'Este es un viaje Pro - la mejora única que pagaste se perderá. ¿Eliminar?',
   'confirm.delete_city.title': '¿Eliminar ciudad?',
