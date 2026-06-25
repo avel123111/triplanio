@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
@@ -118,11 +119,56 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const timerRef = useRef(null);
+  const wrapRef = useRef(null);
+  const [pos, setPos] = useState(null);
 
   // Sync display when value changes externally
   useEffect(() => {
     setQ(value?.city_name || '');
   }, [value?.city_name]);
+
+  // The results list is an OVERLAY: rendered as a fixed-position portal on <body>
+  // anchored to the input's on-screen rect. This makes it sit ON TOP of the page
+  // (it does NOT push/expand the row it lives in) and escape the create-flow
+  // scroller / card overflow (so it is never clipped). Coordinates come straight
+  // from getBoundingClientRect (viewport space) and are recomputed on open, on
+  // results change, and on every scroll/resize while open — so it tracks the
+  // input. It flips above the input when there isn't room below (near keyboard).
+  useEffect(() => {
+    if (!open || results.length === 0) { setPos(null); return undefined; }
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const el = wrapRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const vh = window.visualViewport?.height || window.innerHeight;
+      const spaceBelow = vh - r.bottom - 8;
+      const spaceAbove = r.top - 8;
+      const below = spaceBelow >= 180 || spaceBelow >= spaceAbove;
+      const maxH = Math.max(120, Math.min(280, below ? spaceBelow : spaceAbove));
+      setPos({
+        left: Math.round(r.left),
+        width: Math.round(r.width),
+        maxH: Math.round(maxH),
+        top: below ? Math.round(r.bottom + 4) : null,
+        bottom: below ? null : Math.round(vh - r.top + 4),
+      });
+    };
+    measure();
+    const onUpd = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    window.addEventListener('scroll', onUpd, true);
+    window.addEventListener('resize', onUpd);
+    window.visualViewport?.addEventListener('resize', onUpd);
+    window.visualViewport?.addEventListener('scroll', onUpd);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onUpd, true);
+      window.removeEventListener('resize', onUpd);
+      window.visualViewport?.removeEventListener('resize', onUpd);
+      window.visualViewport?.removeEventListener('scroll', onUpd);
+    };
+  }, [open, results.length]);
 
   const runSearch = (query) => {
     clearTimeout(timerRef.current);
@@ -160,7 +206,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
 
   return (
     <div style={{ position: 'relative', ...extStyle }}>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }} ref={wrapRef}>
         <Icon
           name="pin" size={15}
           style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: value ? 'var(--brand)' : 'var(--muted-2)', pointerEvents: 'none' }}
@@ -179,11 +225,13 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
           <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
         )}
       </div>
-      {open && results.length > 0 && (
+      {open && results.length > 0 && pos && createPortal(
         <div className="flow-city-dd" style={{
-          marginTop: 4, position: 'relative', zIndex: 5,
+          position: 'fixed', left: pos.left, width: pos.width, zIndex: 4000,
+          ...(pos.top != null ? { top: pos.top } : { bottom: pos.bottom }),
+          maxHeight: pos.maxH,
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10,
-          boxShadow: '0 8px 24px rgba(0,0,0,.12)', overflow: 'hidden', overflowY: 'auto',
+          boxShadow: '0 8px 24px rgba(0,0,0,.18)', overflowX: 'hidden', overflowY: 'auto',
         }}>
           {results.map((c) => (
             <button
@@ -203,7 +251,8 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
               </div>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -780,6 +829,18 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
+
+  // Lock the document from scrolling while the planner is mounted (mobile shell).
+  // The flow uses a fixed-height flex shell where ONLY the middle (.flow-grid)
+  // scrolls; if the document itself can scroll (iOS rubber-band / 100dvh overshoot)
+  // it carries the static header off-screen. The .flow-noscroll CSS pins <body>
+  // to the viewport. useLayoutEffect so it applies before paint (no flash); the
+  // class is removed on unmount so other screens scroll normally.
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    html.classList.add('flow-noscroll');
+    return () => html.classList.remove('flow-noscroll');
+  }, []);
 
   // 'manual' | 'ai' - only the entry screen differs; from the skeleton onward
   // both methods share the same steps.
