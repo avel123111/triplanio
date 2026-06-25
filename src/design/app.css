@@ -1218,9 +1218,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Progress header — bordered, non-scrolling top of the card. */
 .flow-lp-h { flex: none; padding: 12px 16px; border-bottom: 1px solid var(--line-2); background: var(--surface); }
 .flow-lp-b { padding: 20px; }
-/* City autocomplete dropdown (CityPicker). Desktop default; mobile caps it to
-   the visible viewport in the keyboard rule below so the list never hides
-   behind the keyboard. */
+/* City autocomplete dropdown (CityPicker). */
 .flow-city-dd { max-height: 260px; }
 /* Step title: 32px in the half-width panel (the 40px page-h1 dwarfed the column);
    on phones a fluid clamp instead of the global hard 26px !important shrink.
@@ -1248,45 +1246,25 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .flow-foot > .btn { flex: 1 1 auto; min-width: 0; justify-content: center; }
 }
 
-/* Phones / tablets: fixed-shell layout that OVERLAYS the visual viewport exactly.
-   The shell is position:fixed and positioned/sized from the live visual-viewport
-   metrics (--vvt/--vvl/--vvw/--vvh, maintained globally by initKeyboardInset),
-   NOT pinned to layout y=0. This is the crux of the keyboard/zoom fix on iOS
-   Safari: when an input is focused the browser scrolls the *visual viewport*
-   (offsetTop) to reveal the field — a shell pinned at top:0 of the layout
-   viewport would then sit above the visible area and the whole card + footer
-   would "fly up off the screen". By tracking top:var(--vvt)/left:var(--vvl) the
-   shell follows that scroll (and zoom panning), so it always covers the visible
-   region; only the inner panel body (.flow-lp-b) scrolls. The footer sits in
-   normal flow at the bottom of the shell, so when --vvh shrinks for the keyboard
-   the footer lands exactly above it and never jumps. Fallbacks (0/100vw/100dvh)
-   make it behave as a plain full-viewport shell before the JS runs / without the
-   visualViewport API. */
+/* Phones / tablets: the WHOLE page scrolls naturally — only the app header stays
+   pinned (it is position:sticky on its own). The previous fixed-shell / inner-
+   scroller model is gone: it stopped the map from scrolling and made the footer
+   fight the on-screen keyboard. Here the map, progress header, step body and
+   action footer all sit in normal document flow inside the single document
+   scroll. The map scrolls away with everything else; the footer simply follows
+   the content at its end (not pinned); and when the keyboard opens the browser
+   just scrolls the document to reveal the focused field — nothing flies up,
+   nothing is clipped, the city dropdown has the whole page to open into. */
 @media (max-width: 960px) {
-  .flow-page {
-    position: fixed;
-    top: var(--vvt, 0px);
-    left: var(--vvl, 0px);
-    width: var(--vvw, 100vw);
-    height: var(--vvh, 100dvh);
-  }
-  .flow-grid { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
-  .flow-mapcol { min-height: 0; }
-  .flow-mapbox { position: relative; inset: auto; right: auto; height: 160px; margin: 12px 12px 0; border-radius: 14px; }
-  .flow-editcol > .lp { margin: 12px; }
-  .flow-lp-b { padding: 16px 14px; }
-  /* Keyboard open (.is-kb, toggled by useKeyboardOpen): collapse the map row and
-     the action footer so the focused field + its city dropdown get the whole
-     visible area. With the keyboard up these two are useless — the map is
-     decorative while typing and the footer sits behind the keyboard — and they
-     were exactly what left "no room for the city list". Both return when the
-     keyboard closes (the map re-runs map.resize() via its active prop). */
-  .flow-page.is-kb .flow-mapcol { display: none; }
-  .flow-page.is-kb .flow-foot { display: none; }
-  /* Cap the city dropdown to the live visible viewport (--vvh shrinks with the
-     keyboard) so the list always fits above the keyboard and stays scrollable
-     instead of being clipped by the panel or hidden behind the keyboard. */
-  .flow-city-dd { max-height: min(260px, calc(var(--vvh, 100dvh) - 210px)); }
+  .flow-page { height: auto; min-height: 100dvh; overflow: visible; }
+  .flow-grid { display: block; overflow: visible; flex: none; min-height: 0; }
+  .flow-mapcol { position: relative; min-height: 0; }
+  .flow-mapbox { position: relative; inset: auto; right: auto; height: 200px; margin: 12px 12px 0; border-radius: 14px; }
+  .flow-editcol { display: block; }
+  .flow-editcol > .lp { margin: 12px; overflow: visible; }
+  /* No inner scroller — the body grows with its content and the document
+     scrolls; the footer (.flow-foot / .lp-f) follows it in normal flow. */
+  .flow-lp-b { padding: 16px 14px; flex: none; min-height: 0; overflow: visible; }
 }
 
 /* Planner route row — REUSES the editor's .te-row grid + primitives (.te-grip /
