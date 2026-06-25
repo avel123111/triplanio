@@ -1244,15 +1244,17 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .flow-foot > .btn { flex: 1 1 auto; min-width: 0; justify-content: center; }
 }
 
-/* Phones / tablets: fixed-shell layout (mirrors the standalone .app-shell). The
-   global header pins at the top, the map sits in a fixed row on top, the panel
-   body (.flow-lp-b) is the ONLY scroller, and the action footer stays glued to
-   the bottom of the card in normal flow. The shell height tracks the visual
-   viewport (--vvh, maintained globally by initKeyboardInset) so when the
-   keyboard opens the whole shell shrinks and the footer sits right above it —
-   the footer never jumps on scroll and never flies up with the keyboard. */
+/* Phones / tablets: fixed-shell layout. The shell is position:fixed and sized to
+   the visual viewport (--vvh, maintained globally by initKeyboardInset), so the
+   DOCUMENT itself never scrolls — only the inner panel body (.flow-lp-b) does.
+   This is the crux of the keyboard fix: on iOS Safari, when an input is focused
+   the browser scrolls the *document* to reveal the field, which would drag a
+   normal-flow footer up the screen ("flies into space"); pinning the shell with
+   position:fixed removes that document scroll entirely. The footer sits in
+   normal flow at the bottom of the shell, so when --vvh shrinks for the keyboard
+   the footer lands exactly above it and never jumps. */
 @media (max-width: 960px) {
-  .flow-page { height: var(--vvh, 100dvh); }
+  .flow-page { position: fixed; top: 0; left: 0; right: 0; height: var(--vvh, 100dvh); }
   .flow-grid { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
   .flow-mapcol { min-height: 0; }
   .flow-mapbox { position: relative; inset: auto; right: auto; height: 160px; margin: 12px 12px 0; border-radius: 14px; }
