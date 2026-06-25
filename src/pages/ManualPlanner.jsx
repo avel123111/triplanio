@@ -111,6 +111,20 @@ function recomputeDates(list) {
 
 // ─── CityPicker ──────────────────────────────────────────────────────────────
 
+// Nearest vertically-scrollable ancestor (the create-flow scroller: .flow-grid on
+// mobile, .lp-b on desktop). The dropdown is portaled INTO it and positioned
+// absolutely within its scrolled content, so it moves with the input on scroll
+// with zero lag (no position:fixed, no per-frame recompute → it cannot "fly").
+function getScrollParent(el) {
+  let n = el?.parentElement;
+  while (n && n !== document.body) {
+    const oy = getComputedStyle(n).overflowY;
+    if (oy === 'auto' || oy === 'scroll' || oy === 'overlay') return n;
+    n = n.parentElement;
+  }
+  return document.scrollingElement || document.body;
+}
+
 function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }) {
   const t = useT();
   const { lang } = useI18n();
@@ -120,53 +134,47 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
   const [open, setOpen] = useState(false);
   const timerRef = useRef(null);
   const wrapRef = useRef(null);
-  const [pos, setPos] = useState(null);
+  const [box, setBox] = useState(null);
 
   // Sync display when value changes externally
   useEffect(() => {
     setQ(value?.city_name || '');
   }, [value?.city_name]);
 
-  // The results list is an OVERLAY: rendered as a fixed-position portal on <body>
-  // anchored to the input's on-screen rect. This makes it sit ON TOP of the page
-  // (it does NOT push/expand the row it lives in) and escape the create-flow
-  // scroller / card overflow (so it is never clipped). Coordinates come straight
-  // from getBoundingClientRect (viewport space) and are recomputed on open, on
-  // results change, and on every scroll/resize while open — so it tracks the
-  // input. It flips above the input when there isn't room below (near keyboard).
-  useEffect(() => {
-    if (!open || results.length === 0) { setPos(null); return undefined; }
-    let raf = 0;
-    const measure = () => {
-      raf = 0;
+  // The results list is an OVERLAY portaled into the nearest scroll container and
+  // positioned ABSOLUTELY within its scrolled content. Three properties at once:
+  //  • out of flow → it does NOT push/expand the row it lives in;
+  //  • lives in the scroller, ABOVE the card → never clipped by .lp overflow:hidden;
+  //  • absolute-in-scroller → it is part of the scrolled content, so it moves
+  //    pixel-for-pixel WITH the input on scroll. No position:fixed, no scroll
+  //    listener, no per-frame recompute → it can never lag behind / "fly".
+  // Position is computed once on open / results change and re-derived only when the
+  // viewport itself changes (resize / keyboard show-hide).
+  useLayoutEffect(() => {
+    if (!open || results.length === 0) { setBox(null); return undefined; }
+    const compute = () => {
       const el = wrapRef.current;
       if (!el) return;
+      const sp = getScrollParent(el);
       const r = el.getBoundingClientRect();
+      const spRect = sp.getBoundingClientRect();
       const vh = window.visualViewport?.height || window.innerHeight;
-      const spaceBelow = vh - r.bottom - 8;
-      const spaceAbove = r.top - 8;
-      const below = spaceBelow >= 180 || spaceBelow >= spaceAbove;
-      const maxH = Math.max(120, Math.min(280, below ? spaceBelow : spaceAbove));
-      setPos({
-        left: Math.round(r.left),
+      const spaceBelow = vh - r.bottom - 12;
+      setBox({
+        sp,
+        left: Math.round(r.left - spRect.left + sp.scrollLeft),
+        top: Math.round(r.bottom - spRect.top + sp.scrollTop + 4),
         width: Math.round(r.width),
-        maxH: Math.round(maxH),
-        top: below ? Math.round(r.bottom + 4) : null,
-        bottom: below ? null : Math.round(vh - r.top + 4),
+        maxH: Math.round(Math.max(160, Math.min(300, spaceBelow))),
       });
     };
-    measure();
-    const onUpd = () => { if (!raf) raf = requestAnimationFrame(measure); };
-    window.addEventListener('scroll', onUpd, true);
-    window.addEventListener('resize', onUpd);
-    window.visualViewport?.addEventListener('resize', onUpd);
-    window.visualViewport?.addEventListener('scroll', onUpd);
+    compute();
+    const onR = () => compute();
+    window.addEventListener('resize', onR);
+    window.visualViewport?.addEventListener('resize', onR);
     return () => {
-      if (raf) cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', onUpd, true);
-      window.removeEventListener('resize', onUpd);
-      window.visualViewport?.removeEventListener('resize', onUpd);
-      window.visualViewport?.removeEventListener('scroll', onUpd);
+      window.removeEventListener('resize', onR);
+      window.visualViewport?.removeEventListener('resize', onR);
     };
   }, [open, results.length]);
 
@@ -225,11 +233,10 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
           <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
         )}
       </div>
-      {open && results.length > 0 && pos && createPortal(
+      {open && results.length > 0 && box && createPortal(
         <div className="flow-city-dd" style={{
-          position: 'fixed', left: pos.left, width: pos.width, zIndex: 4000,
-          ...(pos.top != null ? { top: pos.top } : { bottom: pos.bottom }),
-          maxHeight: pos.maxH,
+          position: 'absolute', left: box.left, top: box.top, width: box.width, zIndex: 60,
+          maxHeight: box.maxH,
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10,
           boxShadow: '0 8px 24px rgba(0,0,0,.18)', overflowX: 'hidden', overflowY: 'auto',
         }}>
@@ -252,7 +259,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
             </button>
           ))}
         </div>,
-        document.body
+        box.sp
       )}
     </div>
   );
