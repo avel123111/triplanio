@@ -34,11 +34,12 @@ import validation from './validation';
 import confirm from './confirm';
 import landing from './landing';
 import stats from './stats';
+import units from './units';
 
 export default {
   ...common, ...event, ...nav, ...trips, ...trip, ...visit, ...hotel, ...activity,
   ...transfer, ...member, ...notif, ...view, ...settings, ...auth, ...calendar,
   ...doc, ...service, ...sub, ...pub, ...booking, ...telegram, ...budget, ...chat,
   ...admin, ...trip_menu, ...overview, ...ai_plan, ...planner, ...account, ...tse, ...sys, ...tl,
-  ...validation, ...confirm, ...landing, ...stats,
+  ...validation, ...confirm, ...landing, ...stats, ...units,
 };

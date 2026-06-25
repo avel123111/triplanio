@@ -15,10 +15,14 @@ import {
 const I18nContext = createContext({
   lang: 'en',
   setLang: () => {},
+  units: 'metric',
+  setUnits: () => {},
   t: (key) => key,
 });
 
 const STORAGE_KEY = 'travel-planner-lang';
+const UNITS_STORAGE_KEY = 'travel-planner-units';
+const UNIT_SYSTEMS = ['metric', 'imperial'];
 
 function detectInitialLang(user) {
   if (user?.language && TRANSLATIONS[user.language]) return user.language;
@@ -30,9 +34,22 @@ function detectInitialLang(user) {
   return TRANSLATIONS[browser] ? browser : 'en';
 }
 
+// Distance unit system. Authoritative source = users.unit_system once signed in,
+// else localStorage, else 'metric'. Anonymous public-trip viewers fall back to
+// their own localStorage / default — never the trip owner's setting.
+function detectInitialUnits(user) {
+  if (user?.unit_system && UNIT_SYSTEMS.includes(user.unit_system)) return user.unit_system;
+  try {
+    const stored = localStorage.getItem(UNITS_STORAGE_KEY);
+    if (stored && UNIT_SYSTEMS.includes(stored)) return stored;
+  } catch (e) { /* ignore */ }
+  return 'metric';
+}
+
 export function I18nProvider({ children }) {
   const { user } = useAuth();
   const [lang, setLangState] = useState(() => detectInitialLang(null));
+  const [units, setUnitsState] = useState(() => detectInitialUnits(null));
 
   // Apply Luxon default locale on mount and whenever lang changes,
   // so every DateTime.toFormat('LLLL') / .toFormat('ccc') picks up the right names.
@@ -46,6 +63,10 @@ export function I18nProvider({ children }) {
     }
   }, [user?.language]); // eslint-disable-line
 
+  useEffect(() => {
+    if (user) setUnitsState(detectInitialUnits(user));
+  }, [user?.unit_system]); // eslint-disable-line
+
   const setLang = useCallback(async (newLang) => {
     if (!TRANSLATIONS[newLang]) return;
     setLangState(newLang);
@@ -53,6 +74,16 @@ export function I18nProvider({ children }) {
     // Persist on user if signed in
     if (user) {
       try { await supabase.from('users').update({ language: newLang }).eq('id', user.id); } catch (e) { /* ignore */ }
+    }
+  }, [user]);
+
+  const setUnits = useCallback(async (newUnits) => {
+    if (!UNIT_SYSTEMS.includes(newUnits)) return;
+    setUnitsState(newUnits);
+    try { localStorage.setItem(UNITS_STORAGE_KEY, newUnits); } catch (e) { /* ignore */ }
+    // Persist on user if signed in
+    if (user) {
+      try { await supabase.from('users').update({ unit_system: newUnits }).eq('id', user.id); } catch (e) { /* ignore */ }
     }
   }, [user]);
 
@@ -70,10 +101,12 @@ export function I18nProvider({ children }) {
   const value = useMemo(() => ({
     lang,
     setLang,
+    units,
+    setUnits,
     t,
     languages: LANGUAGES,
     locale: localeTag(lang),
-  }), [lang, setLang, t]);
+  }), [lang, setLang, units, setUnits, t]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
@@ -89,9 +122,10 @@ export function useT() {
 // Convenience hook that bundles t() + locale-aware formatters.
 // Usage: const { t, fmtDate, fmtCountry, fmtMoney, plural } = useI18nFormat();
 export function useI18nFormat() {
-  const { lang, t } = useI18n();
+  const { lang, units, t } = useI18n();
   return useMemo(() => ({
     lang,
+    units,
     locale: localeTag(lang),
     t,
     fmtDate: (value, tz, fmt) => formatDateTime(value, tz, fmt, lang),
@@ -100,5 +134,18 @@ export function useI18nFormat() {
     fmtMoney: (amount, currency, opts) => formatMoney(amount, currency, lang, opts),
     fmtNumber: (value, opts) => formatNumber(value, lang, opts),
     plural: (count, keyPrefix, vars) => pluralize(t, count, keyPrefix, lang, vars),
-  }), [lang, t]);
+    // Distance is always stored/computed in km; convert to the user's unit system
+    // ONLY at the output layer. Returns { value, unit } — value is a locale-formatted
+    // integer string, unit the localized label ('units.km' / 'units.mi').
+    fmtDistance: (km) => {
+      const n = Number(km);
+      if (km == null || isNaN(n)) return { value: '', unit: '' };
+      const imperial = units === 'imperial';
+      const converted = imperial ? n * 0.621371 : n;
+      return {
+        value: formatNumber(Math.round(converted), lang),
+        unit: t(imperial ? 'units.mi' : 'units.km'),
+      };
+    },
+  }), [lang, units, t]);
 }

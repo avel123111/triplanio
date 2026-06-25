@@ -19,7 +19,6 @@ export default {
   'public.meta_countries': 'страны',
   'public.meta_transfers': 'переезда',
   'public.meta_distance': 'в пути',
-  'public.km': 'км',
   'public.nights_one': 'ночь',
   'public.nights_few': 'ночи',
   'public.nights_many': 'ночей',
