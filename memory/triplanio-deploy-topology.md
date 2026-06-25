@@ -1,19 +1,18 @@
 ---
 name: triplanio-deploy-topology
-description: "Что и как деплоится в Triplanio — фронт через Vercel (авто), edge-функции АВТО через GitHub Actions (TRIP-73, с 2026-06-25), миграции пока вручную"
+description: "Что и как деплоится в Triplanio — фронт Vercel (авто), edge-функции И миграции АВТО через GitHub Actions (TRIP-73 + TRIP-68 Ф3); агент не деплоит сам"
 metadata: 
   node_type: memory
   type: project
   originSessionId: b60c8bc6-7010-41d8-834f-63aa0499f7c4
 ---
 
-Топология деплоя (обновлено 2026-06-25, TRIP-73):
+Топология деплоя (обновлено 2026-06-25, TRIP-68 Ф3):
 
+- **Агент НЕ деплоит сам и не предлагает ручной деплой** — всё через CI/CD (merge→GitHub Actions). См. [[feedback-no-manual-deploy-cicd-only]].
 - **Фронт (Vite-приложение)** — Vercel собирает и катит автоматически на пуш в ветку (dev/main).
-- **Supabase edge-функции — АВТО через GitHub Actions** (TRIP-73, с 2026-06-25). Мердж в `dev` → деплой всех функций в Supabase **dev** (`nydhzevdizkfaxdlikgc`); мердж в `main` → в **prod** (`tizscxrpuopobgcxbekf`). Воркфлоу `.github/workflows/supabase-deploy.yml` на push в dev/main по paths `supabase/functions/**`+`supabase/config.toml` (+ ручной `workflow_dispatch`). Config-driven (`functions deploy --project-ref`, без слага; `verify_jwt` только из `config.toml`), финальный шаг — ассерт verify_jwt через Management API. **Нормальный способ выкатить функцию = мердж в dev→main, НЕ руками.** Подробности: [[triplanio-cicd-github-actions]].
-- **Ручной деплой = фолбэк** (хотфикс без мерджа): MCP `deploy_edge_function` / CLI. После — перегнать через `workflow_dispatch`, чтобы рантайм == git. ⚠️ Ручной MCP/CLI-деплой сбрасывает `verify_jwt=true` — для pinned-false функций передавать `false` явно; CI делает это сам из config.toml.
-- **Миграции — пока ВРУЧНУЮ, CI нет** (Ф3 / TRIP-68, заблокировано reconcile истории миграций). Катить через MCP `apply_migration` / CLI на ОБА проекта.
+- **Supabase edge-функции — АВТО через GitHub Actions** (TRIP-73, с 2026-06-25). Мердж в `dev` → деплой всех функций в Supabase **dev** (`nydhzevdizkfaxdlikgc`); мердж в `main` → в **prod** (`tizscxrpuopobgcxbekf`). `verify_jwt` только из `config.toml` + ассерт через Management API. Подробности: [[triplanio-cicd-github-actions]].
+- **Supabase миграции — АВТО через GitHub Actions** (TRIP-68 Ф3, с 2026-06-25, после reconcile истории). Тот же воркфлоу `.github/workflows/supabase-deploy.yml`, job `migrate`: merge→`dev` → `supabase db push` в dev; merge→`main` → в prod; триггер по `supabase/migrations/**`; `detect`-job разводит functions-only vs migrations-only, чтобы не было лишних передеплоев. История = единый baseline `20260625120000_baseline.sql`; репо↔dev↔prod журналы идентичны. **Новые миграции ТОЛЬКО `supabase migration new` (таймстамп); `00NN` запрещены.** Требует секреты `SUPABASE_DB_URL_DEV`/`_PROD`. См. [[triplanio-migration-naming-drift]].
+- **Ручной деплой = аварийный фолбэк, только Pavel** (не агент): хотфикс без мерджа. После — `workflow_dispatch`, чтобы runtime == git. ⚠️ Ручной MCP/CLI-деплой функции сбрасывает `verify_jwt=true` — для pinned-false передавать `false` явно.
 
-Риск дрейфа (исторический, до TRIP-73): функцию деплоили из локали без коммита → GitHub отставал от рантайма. Теперь для функций дрейф убит авто-деплоем (рантайм следует за git). Для миграций риск остаётся — катить аккуратно на оба проекта.
-
-Связано: [[triplanio-deploy-verify-jwt]] (грабли verify_jwt при деплое webhook-функций), [[triplanio-i18n-no-hardcode]] (бот шлёт message из edge-функции).
+Связано: [[triplanio-deploy-verify-jwt]], [[triplanio-cicd-github-actions]], [[triplanio-migration-naming-drift]], [[feedback-no-manual-deploy-cicd-only]].
