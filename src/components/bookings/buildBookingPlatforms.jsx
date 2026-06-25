@@ -74,7 +74,10 @@ export function activityPlatforms(visit, t, lang) {
       key: 'getyourguide',
       label: findOn(t, 'GetYourGuide'),
       hint: cityEn,
-      logo: platformLogoUrl('getyourguide', 'getyourguide.com'),
+      // Canonical TravelPayouts brand SVG (icon 108). The generic Google
+      // favicon fallback no longer resolves for getyourguide.com, so pin the
+      // brand icon directly — same pattern as the other TP partners below.
+      logo: 'https://img.wway.io/travelpayouts/brands/icon/108@svg',
       url: gygUrl,
       provider: 'getyourguide',
     },
