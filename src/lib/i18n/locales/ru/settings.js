@@ -40,7 +40,6 @@ export default {
   'settings.admin_tools': 'Админ-инструменты',
   'settings.test_subscription_btn': 'Test subscription',
   'settings.test_subscription_hint': 'Открывает Stripe checkout для тестового продукта (только admin)',
-  'settings.feat_calendar_desc': 'Те же события на сетке месяца/недели',
   'settings.feat_budget_title': 'Полная разбивка бюджета',
   'settings.feat_budget_desc': 'Категории, ручные расходы, свои курсы валют',
   'settings.feat_chat_desc': 'Сообщения, упоминания, @assistant',

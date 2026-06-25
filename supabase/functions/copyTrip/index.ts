@@ -55,8 +55,7 @@ Deno.serve(async (req) => {
     // --- Sanitize details for the copy ---
     // The copy is never Pro (is_pro_trip: false), so it must not inherit
     // Pro-only addons. PRO_ONLY_ADDONS comes from the shared edge module
-    // (_shared/proAddons.ts); free addons (calendar_view, hotels_selection)
-    // are preserved.
+    // (_shared/proAddons.ts); free addons (hotels_selection) are preserved.
     const sourceDetails = (sourceTrip.details && typeof sourceTrip.details === 'object')
       ? sourceTrip.details as Record<string, unknown>
       : {};
