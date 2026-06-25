@@ -1272,7 +1272,12 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .flow-mapcol { flex: none; position: relative; min-height: 0; }
   .flow-mapbox { position: relative; inset: auto; right: auto; height: 200px; margin: 12px 12px 0; border-radius: 14px; }
   .flow-editcol { display: block; flex: none; }
-  .flow-editcol > .lp { margin: 12px; overflow: visible; }
+  /* Keep .lp's own overflow:hidden so its inner content is clipped to the card's
+     rounded corners (no square inner backgrounds poking over the rounded border).
+     The city dropdown no longer needs to escape this box — it is portalled to
+     <body> with fixed positioning (see CityPicker), so it can't be clipped by
+     this card or by the .flow-grid scroller. */
+  .flow-editcol > .lp { margin: 12px; }
   /* Body grows with its content; the .flow-grid scroller (not the body) scrolls. */
   .flow-lp-b { padding: 16px 14px; flex: none; min-height: 0; overflow: visible; }
   /* Footer: plain static element at the end of the scroll. No fixed/sticky → it

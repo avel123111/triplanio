@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
@@ -118,11 +119,42 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const timerRef = useRef(null);
+  const wrapRef = useRef(null);
+  const [ddRect, setDdRect] = useState(null);
 
   // Sync display when value changes externally
   useEffect(() => {
     setQ(value?.city_name || '');
   }, [value?.city_name]);
+
+  // The results dropdown is rendered as a fixed-position portal on <body> so it
+  // escapes the create-flow scroller (.flow-grid overflow:auto) and the card
+  // (.lp overflow:hidden) — otherwise the city list gets clipped / hidden under
+  // those containers and can't be selected. We anchor it to the input's rect and
+  // recompute on open + on any scroll/resize while it's open (keyboard included).
+  useEffect(() => {
+    if (!open || results.length === 0) { setDdRect(null); return undefined; }
+    const measure = () => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const top = r.bottom + 4;
+      const vh = window.visualViewport?.height || window.innerHeight;
+      const maxH = Math.max(120, Math.min(260, vh - top - 12));
+      setDdRect({ left: r.left, top, width: r.width, maxH });
+    };
+    measure();
+    window.addEventListener('scroll', measure, true);
+    window.addEventListener('resize', measure);
+    window.visualViewport?.addEventListener('resize', measure);
+    window.visualViewport?.addEventListener('scroll', measure);
+    return () => {
+      window.removeEventListener('scroll', measure, true);
+      window.removeEventListener('resize', measure);
+      window.visualViewport?.removeEventListener('resize', measure);
+      window.visualViewport?.removeEventListener('scroll', measure);
+    };
+  }, [open, results.length]);
 
   const runSearch = (query) => {
     clearTimeout(timerRef.current);
@@ -160,7 +192,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
 
   return (
     <div style={{ position: 'relative', ...extStyle }}>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }} ref={wrapRef}>
         <Icon
           name="pin" size={15}
           style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: value ? 'var(--brand)' : 'var(--muted-2)', pointerEvents: 'none' }}
@@ -179,9 +211,10 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
           <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
         )}
       </div>
-      {open && results.length > 0 && (
+      {open && results.length > 0 && ddRect && createPortal(
         <div className="flow-city-dd" style={{
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 200,
+          position: 'fixed', top: ddRect.top, left: ddRect.left, width: ddRect.width, zIndex: 1000,
+          maxHeight: ddRect.maxH,
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10,
           boxShadow: '0 8px 24px rgba(0,0,0,.12)', overflow: 'hidden', overflowY: 'auto',
         }}>
@@ -203,7 +236,8 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
               </div>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
