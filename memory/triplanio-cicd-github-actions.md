@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-★ TRIP-73 Этап 1+2 2026-06-25: PR #133 смержен в dev (squash 388053a), функции ЗАДЕПЛОЕНЫ в Supabase dev через CI (все 13 pinned-false подтверждены false). Follow-up PR (cyrus2/trip-73-cicd-followup) чинит 2 бага и доносит memory. Source-of-truth для verify_jwt = `supabase/config.toml`.
+★ TRIP-73 ГОТОВО (Этапы 1+2+3) 2026-06-25 — **авто-деплой edge-функций работает на dev И prod**. Мердж в `dev` → деплой в Supabase dev; мердж в `main` → deploy в prod (live-проверено: prod-прогон зелёный, все 13 pinned-false = false, версии всех ~47 функций подняты через CI-runner). Source-of-truth для verify_jwt = `supabase/config.toml`. Тех-долг вынесен в подзадачи TRIP-73: TRIP-93 (tsc ~1202), TRIP-94 (deno 14), TRIP-68 (миграции Ф3). Открытый вопрос: энфорс required-чека на мердж не работает на free private GitHub (нужен Team/Enterprise) — деплой при этом защищён `deploy: needs gate`. См. [[triplanio-deploy-topology]].
 
 **ГРАБЛИ деплой-прогона (исправлены в follow-up):**
 - Деплой-джоб упал, т.к. `SUPABASE_ACCESS_TOKEN` не был заведён → «Access token not provided». Pavel завёл Repository secret → ре-ран зелёный по деплою. Воркфлоу читает `${{ secrets.SUPABASE_ACCESS_TOKEN }}` без `environment:` → секрет = **Repository**, не Environment.
