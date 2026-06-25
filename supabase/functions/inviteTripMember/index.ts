@@ -10,7 +10,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerAdmin } from '../_shared/tripAccess.ts';
-import { renderInviteEmail, renderInviteNotification } from '../_shared/emailTemplate.ts';
+import { renderInviteTemplate, renderInviteNotification } from '../_shared/emailTemplate.ts';
 import { sendEmail } from '../_shared/sendEmail.ts';
 
 Deno.serve(async (req) => {
@@ -73,13 +73,16 @@ Deno.serve(async (req) => {
     const invitedUser = invitedUsers?.[0] ?? null;
     const recipientLang = invitedUser?.language ?? 'en';
 
-    // Fetch caller's profile to get display name
+    // Fetch caller's profile: display name + language.
+    // The EMAIL language follows the INVITER's app language (callerLang),
+    // while the in-app notification stays in the recipient's language (recipientLang).
     const { data: callerUsers } = await supabaseAdmin
       .from('users')
-      .select('full_name')
+      .select('full_name, language')
       .eq('id', user.id)
       .limit(1);
     const callerName = callerUsers?.[0]?.full_name || user.email!;
+    const callerLang = callerUsers?.[0]?.language ?? 'en';
 
     // Create the TripMember record (pending) — or, when re-inviting a declined
     // member, reset the existing row back to pending with the new role.
@@ -132,24 +135,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Send invite email (best-effort — failure doesn't break the invite)
+    // Send invite email via Resend template (best-effort — failure doesn't break the invite)
     try {
       const publicAppUrl = (Deno.env.get('PUBLIC_APP_URL') || '').replace(/\/+$/, '');
       const appUrl = publicAppUrl || new URL(req.url).origin;
 
-      const emailData = renderInviteEmail(recipientLang, {
+      const tpl = renderInviteTemplate(callerLang, 'invite', {
         title: trip.title,
         inviter: callerName,
         role,
-        recipientEmail: normalizedEmail,
         appUrl,
       });
 
       await sendEmail({
         to: normalizedEmail,
-        subject: emailData.subject,
-        body: emailData.body,
-        from_name: emailData.brand,
+        subject: tpl.subject,
+        from_name: tpl.brand,
+        template: { id: tpl.templateId, variables: tpl.variables },
       });
     } catch (e) {
       console.error('sendEmail failed (non-fatal):', e);

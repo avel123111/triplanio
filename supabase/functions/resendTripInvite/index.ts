@@ -10,7 +10,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerAdmin } from '../_shared/tripAccess.ts';
-import { renderResendEmail } from '../_shared/emailTemplate.ts';
+import { renderInviteTemplate } from '../_shared/emailTemplate.ts';
 import { sendEmail } from '../_shared/sendEmail.ts';
 
 Deno.serve(async (req) => {
@@ -46,38 +46,31 @@ Deno.serve(async (req) => {
       .single();
     if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
 
-    // Fetch recipient language (by the invitation address)
-    const { data: recipientUsers } = await supabaseAdmin
-      .from('users')
-      .select('language')
-      .eq('email', member.invite_email)
-      .limit(1);
-    const recipientLang = recipientUsers?.[0]?.language ?? 'en';
-
-    // Fetch caller display name
+    // Fetch caller (inviter) display name + language.
+    // The EMAIL language follows the INVITER's app language.
     const { data: callerUsers } = await supabaseAdmin
       .from('users')
-      .select('full_name')
+      .select('full_name, language')
       .eq('id', user.id)
       .limit(1);
     const callerName = callerUsers?.[0]?.full_name || user.email!;
+    const callerLang = callerUsers?.[0]?.language ?? 'en';
 
     const publicAppUrl = (Deno.env.get('PUBLIC_APP_URL') || '').replace(/\/+$/, '');
     const appUrl = publicAppUrl || new URL(req.url).origin;
 
-    const emailData = renderResendEmail(recipientLang, {
+    const tpl = renderInviteTemplate(callerLang, 'resend', {
       title: trip.title,
       inviter: callerName,
       role: member.role,
-      recipientEmail: member.invite_email,
       appUrl,
     });
 
     await sendEmail({
       to: member.invite_email,
-      subject: emailData.subject,
-      body: emailData.body,
-      from_name: emailData.brand,
+      subject: tpl.subject,
+      from_name: tpl.brand,
+      template: { id: tpl.templateId, variables: tpl.variables },
     });
 
     return Response.json({ ok: true }, { headers: corsHeaders });
