@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+
 // Native-app-style bottom sheets on mobile.
 //
 // On iOS Safari a `position: fixed` element is positioned against the LAYOUT
@@ -49,4 +51,35 @@ export function initKeyboardInset() {
     vv.removeEventListener('scroll', onChange);
     if (raf) cancelAnimationFrame(raf);
   };
+}
+
+// React hook: true while the on-screen keyboard is open (visual viewport shrank
+// by more than `threshold` px vs the layout viewport). Used to reclaim vertical
+// space on the create-flow when an input is focused — the map and footer are
+// collapsed so the focused field + its dropdown get the whole visible area.
+// Returns false on browsers without the visualViewport API (no keyboard inset to
+// detect) and during SSR.
+export function useKeyboardOpen(threshold = 120) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const vv = window.visualViewport;
+    if (!vv) return undefined;
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setOpen(kb > threshold);
+    };
+    const onChange = () => { if (!raf) raf = requestAnimationFrame(check); };
+    check();
+    vv.addEventListener('resize', onChange);
+    vv.addEventListener('scroll', onChange);
+    return () => {
+      vv.removeEventListener('resize', onChange);
+      vv.removeEventListener('scroll', onChange);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [threshold]);
+  return open;
 }

@@ -1218,6 +1218,10 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Progress header — bordered, non-scrolling top of the card. */
 .flow-lp-h { flex: none; padding: 12px 16px; border-bottom: 1px solid var(--line-2); background: var(--surface); }
 .flow-lp-b { padding: 20px; }
+/* City autocomplete dropdown (CityPicker). Desktop default; mobile caps it to
+   the visible viewport in the keyboard rule below so the list never hides
+   behind the keyboard. */
+.flow-city-dd { max-height: 260px; }
 /* Step title: 32px in the half-width panel (the 40px page-h1 dwarfed the column);
    on phones a fluid clamp instead of the global hard 26px !important shrink.
    Scoped to the create-flow panel so the global h1 is untouched. */
@@ -1271,6 +1275,18 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .flow-mapbox { position: relative; inset: auto; right: auto; height: 160px; margin: 12px 12px 0; border-radius: 14px; }
   .flow-editcol > .lp { margin: 12px; }
   .flow-lp-b { padding: 16px 14px; }
+  /* Keyboard open (.is-kb, toggled by useKeyboardOpen): collapse the map row and
+     the action footer so the focused field + its city dropdown get the whole
+     visible area. With the keyboard up these two are useless — the map is
+     decorative while typing and the footer sits behind the keyboard — and they
+     were exactly what left "no room for the city list". Both return when the
+     keyboard closes (the map re-runs map.resize() via its active prop). */
+  .flow-page.is-kb .flow-mapcol { display: none; }
+  .flow-page.is-kb .flow-foot { display: none; }
+  /* Cap the city dropdown to the live visible viewport (--vvh shrinks with the
+     keyboard) so the list always fits above the keyboard and stays scrollable
+     instead of being clipped by the panel or hidden behind the keyboard. */
+  .flow-city-dd { max-height: min(260px, calc(var(--vvh, 100dvh) - 210px)); }
 }
 
 /* Planner route row — REUSES the editor's .te-row grid + primitives (.te-grip /
