@@ -222,7 +222,7 @@ function emptyHotelForm(defCur = 'EUR') {
     booking_reference: '', payment_status: '', price: '', currency: defCur,
     free_cancellation: false, free_cancellation_until_local: '',
     phone: '', email: '',
-    booking_url: '', booking_platform: '',
+    booking_url: '',
     documents: [], notes: '',
   };
 }
@@ -236,7 +236,7 @@ function emptyTransferForm(defCur = 'EUR') {
     carrier: '',
     flight_number: '',
     booking_reference: '',
-    booking_url: '', booking_platform: '',
+    booking_url: '',
     price: '', currency: defCur,
     documents: [], notes: '',
     // Overnight / day-change: this leg crosses into the next day, so the
@@ -279,7 +279,7 @@ function emptyServiceForm(defCur = 'EUR', svcKind = 'car_rental') {
     dropoff_timezone: '',
     return_different_location: false,
     booking_reference: '',
-    booking_url: '', booking_platform: '',
+    booking_url: '',
   };
 }
 
@@ -296,7 +296,7 @@ function hotelToForm(h, tz) {
     free_cancellation: !!h.free_cancellation,
     free_cancellation_until_local: utcToLocalInput(h.free_cancellation_until, tz) || '',
     phone: h.phone || '', email: h.email || '',
-    booking_url: h.booking_url || '', booking_platform: h.booking_platform || '',
+    booking_url: h.booking_url || '',
     documents: getEntityDocuments(h), notes: h.notes || '',
   };
 }
@@ -319,7 +319,6 @@ function transferToForm(tr, startTz, endTz) {
     flight_number: tr.flight_number || '',
     booking_reference: tr.booking_reference || '',
     booking_url: tr.booking_url || '',
-    booking_platform: tr.booking_platform || '',
     price: tr.price ?? '', currency: tr.currency || 'EUR',
     documents: getEntityDocuments(tr), notes: tr.notes || '',
   };
@@ -381,7 +380,6 @@ function serviceToForm(svc) {
     return_different_location: hasDifferentDropoff,
     booking_reference: d.booking_reference || '',
     booking_url: d.booking_url || '',
-    booking_platform: d.booking_platform || '',
   };
 }
 
@@ -589,18 +587,6 @@ export default function EventEditDialog({
       return isPro ? 'available' : 'locked';
     });
   }, [isPro]);
-
-  // Auto-detect booking platform when URL changes; clear it when URL is removed.
-  useEffect(() => {
-    if (!form.booking_url) {
-      if (form.booking_platform) setForm((prev) => ({ ...prev, booking_platform: '' }));
-      return;
-    }
-    const p = detectPlatformFromUrl(form.booking_url);
-    if (p && p !== form.booking_platform) {
-      setForm((prev) => ({ ...prev, booking_platform: p }));
-    }
-  }, [form.booking_url]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Map a form key to its canonical validation field token (for touched-state).
   const FIELD_TOKEN = {
@@ -831,11 +817,21 @@ export default function EventEditDialog({
   const handleHotelExtract = async (data, fileUrl, fileName) => {
     const filled = new Set();
     const upd = { ...form };
-    const setIf = (k, v) => { if (v != null && v !== '') { upd[k] = v; filled.add(k); } };
+    // Drop literal "N/A" the LLM emits for absent fields (it otherwise lands as
+    // garbage text in booking_reference/phone/email…). TRIP-75.
+    const setIf = (k, v) => { if (v != null && v !== '' && v !== 'N/A') { upd[k] = v; filled.add(k); } };
     setIf('name', data.name);
     setIf('address', data.address);
     setIf('booking_reference', data.booking_reference);
-    setIf('payment_status', data.payment_status);
+    // payment_status is a closed-type control with a DB CHECK (paid/partial/
+    // pay_on_arrival). LLM output is non-deterministic (e.g. "Paid", "N/A"), so
+    // normalize + whitelist; anything else is ignored (field stays empty) rather
+    // than poisoning the save on hotel_stays_payment_status_check. TRIP-75.
+    const ps = String(data.payment_status ?? '').trim().toLowerCase();
+    if (ps === 'paid' || ps === 'partial' || ps === 'pay_on_arrival') {
+      upd.payment_status = ps;
+      filled.add('payment_status');
+    }
     // No type guard: AI often returns price as a string - populate it, the engine
     // validates downstream. (§12: don't drop AI values on type/validity.)
     setIf('price', data.price);
@@ -847,7 +843,6 @@ export default function EventEditDialog({
     setIf('phone', data.phone);
     setIf('email', data.email);
     setIf('booking_url', data.booking_url);
-    setIf('booking_platform', data.booking_platform);
     // date+time -> local string. Reject a malformed DATE part so a bad AI value
     // never blanks a prefilled field (datetime-local can't hold an invalid value).
     const combine = (d, t2) => {
@@ -859,7 +854,7 @@ export default function EventEditDialog({
     if (ci) { upd.checkInLocal = ci; filled.add('checkInLocal'); }
     const co = combine(data.check_out_date, data.check_out_time);
     if (co) { upd.checkOutLocal = co; filled.add('checkOutLocal'); }
-    if (data.free_cancellation_until) {
+    if (data.free_cancellation_until && data.free_cancellation_until !== 'N/A') {
       upd.free_cancellation_until_local = data.free_cancellation_until.replace(' ', 'T').slice(0, 16);
       filled.add('free_cancellation_until_local');
     }
@@ -993,14 +988,12 @@ export default function EventEditDialog({
 
       const topFilled = new Set();
       if (data.booking_url) topFilled.add('booking_url');
-      if (data.booking_platform) topFilled.add('booking_platform');
 
       setForm((prev) => ({
         ...prev,
         hasLayovers: true,
         segments: formSegs,
         booking_url: data.booking_url || prev.booking_url,
-        booking_platform: data.booking_platform || prev.booking_platform,
         documents: docs.length ? [...(prev.documents || []), ...docs].slice(0, 50) : prev.documents,
       }));
       setAiFields(topFilled);
@@ -1015,7 +1008,6 @@ export default function EventEditDialog({
     const setIf = (k, v) => { if (v != null && v !== '') { upd[k] = v; filled.add(k); } };
     const first = segs[0] || {};
     setIf('booking_url', data.booking_url);
-    setIf('booking_platform', data.booking_platform);
     setIf('carrier', first.carrier);
     setIf('flight_number', first.flight_number);
     setIf('booking_reference', first.booking_reference);
@@ -1301,7 +1293,6 @@ function buildHotelPayload(form, visit, tz) {
     phone: form.phone || undefined,
     email: form.email || undefined,
     booking_url: form.booking_url || null,
-    booking_platform: form.booking_platform || null,
     documents: Array.isArray(form.documents) ? form.documents : [],
     notes: form.notes,
     details: {},
@@ -1327,7 +1318,6 @@ function buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz) 
     to_longitude: form.to_longitude ?? null,
     booking_reference: form.booking_reference || undefined,
     booking_url: form.booking_url || null,
-    booking_platform: form.booking_platform || null,
     price: form.price === '' ? null : Number(form.price),
     currency: form.currency || 'EUR',
     documents: Array.isArray(form.documents) ? form.documents : [],
@@ -1382,7 +1372,6 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
     to_longitude: s.to_longitude ?? null,
     booking_reference: s.booking_reference || null,
     booking_url: form.booking_url || null,
-    booking_platform: form.booking_platform || null,
     price: s.price === '' || s.price == null ? null : Number(s.price),
     currency: s.currency || 'EUR',
     documents: i === 0 && Array.isArray(form.documents) ? form.documents : [],
@@ -1481,8 +1470,7 @@ function buildServicePayload(form, tripId, t) {
       dropoff_timezone: dropoffTz || undefined,
       booking_reference: form.booking_reference || undefined,
       booking_url: form.booking_url || null,
-      booking_platform: form.booking_platform || null,
-      documents: Array.isArray(form.documents) ? form.documents : [],
+        documents: Array.isArray(form.documents) ? form.documents : [],
       price: undefined,
       currency: undefined,
       notes: form.notes || undefined,
@@ -1508,8 +1496,9 @@ function SectionHeader({ children }) {
 
 function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
-  const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
+  const _platform = detectPlatformFromUrl(form.booking_url);
+  const platformInfo = _platform ? BOOKING_PLATFORMS[_platform] : null;
+  const platformLogo = platformLogoUrl(_platform, form.booking_url);
   const color = TYPE_META.hotel.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -1693,8 +1682,9 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
 
 function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
-  const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
+  const _platform = detectPlatformFromUrl(form.booking_url);
+  const platformInfo = _platform ? BOOKING_PLATFORMS[_platform] : null;
+  const platformLogo = platformLogoUrl(_platform, form.booking_url);
   const color = TYPE_META.transfer.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -2338,8 +2328,9 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, isE
 
 function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const platformInfo = form.booking_platform ? BOOKING_PLATFORMS[form.booking_platform] : null;
-  const platformLogo = platformLogoUrl(form.booking_platform, form.booking_url);
+  const _platform = detectPlatformFromUrl(form.booking_url);
+  const platformInfo = _platform ? BOOKING_PLATFORMS[_platform] : null;
+  const platformLogo = platformLogoUrl(_platform, form.booking_url);
   const color = TYPE_META.service.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
