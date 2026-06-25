@@ -9,7 +9,7 @@ metadata:
 
 **ГРАБЛИ деплой-прогона (исправлены в follow-up):**
 - Деплой-джоб упал, т.к. `SUPABASE_ACCESS_TOKEN` не был заведён → «Access token not provided». Pavel завёл Repository secret → ре-ран зелёный по деплою. Воркфлоу читает `${{ secrets.SUPABASE_ACCESS_TOKEN }}` без `environment:` → секрет = **Repository**, не Environment.
-- Ассерт verify_jwt падал ложно (все 13 = MISSING): **LIST endpoint `GET /v1/projects/{ref}/functions` НЕ отдаёт `verify_jwt`** — он есть только в **per-function `GET /functions/{slug}`**. Фикс: ассерт дёргает per-function. Сам деплой был корректен (config-driven verify_jwt применился).
+- Ассерт verify_jwt падал ложно (все 13 = MISSING) — **баг в jq**, НЕ в API: `.verify_jwt // "MISSING"` → в jq оператор `//` считает boolean `false` «пустым», поэтому `false // "MISSING"` = `"MISSING"`; все функции `false` → все «MISSING». Сам деплой был корректен. **Фикс:** `(.verify_jwt|tostring)` + guard по `length` (НЕ `//`); LIST endpoint `GET /v1/projects/{ref}/functions` отдаёт slug+verify_jwt (1 вызов, нормализован к массиву на случай `{functions:[...]}`). (Промежуточная попытка через per-function GET была лишней — корень был в `//`.)
 - Non-blocking deno/typecheck давали красные ❌ на PR (job-level continue-on-error). Follow-up → step-level continue-on-error + `::warning` аннотация: джоб GREEN, долг виден аннотацией.
 - Деплой-воркфлоу триггерится только на `push dev` с paths `functions/**`+`config.toml` → правки самих воркфлоу его НЕ запускают. Добавлен `workflow_dispatch` для ручного ре-деплоя/ре-проверки assert.
 

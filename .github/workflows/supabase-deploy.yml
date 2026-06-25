@@ -84,15 +84,19 @@ jobs:
           ' supabase/config.toml)
 
           echo "Expecting verify_jwt=false for ${#EXPECTED_FALSE[@]} functions on $REF"
-          # NB: the LIST endpoint (GET /functions) does NOT return verify_jwt — it
-          # comes only from the per-function GET /functions/{slug}. So query each
-          # pinned function individually. (No `set -e`: a 404/curl error must not
-          # abort the loop — it's reported as drift instead.)
+          RESP=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$REF/functions")
+          # Normalize to a bare array (the endpoint may return [...] or {functions:[...]}).
+          ITEMS=$(jq 'if type=="array" then . else (.functions // .data // []) end' <<<"$RESP")
+
           fail=0
           for fn in "${EXPECTED_FALSE[@]}"; do
-            body=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-              "https://api.supabase.com/v1/projects/$REF/functions/$fn") || body=""
-            vj=$(jq -r '.verify_jwt // "MISSING"' <<<"$body" 2>/dev/null || echo "MISSING")
+            # tostring (NOT `// "MISSING"`): jq's `//` treats boolean false as empty,
+            # so `false // "x"` returns "x" — every false function would falsely read
+            # as MISSING. Stringify the bool and guard absence with length instead.
+            vj=$(jq -r --arg s "$fn" \
+              'map(select(.slug==$s)) | if length==0 then "MISSING" else (.[0].verify_jwt|tostring) end' \
+              <<<"$ITEMS")
             if [ "$vj" != "false" ]; then
               echo "::error::verify_jwt drift: '$fn' is '$vj' on $REF (expected false)"
               fail=1
