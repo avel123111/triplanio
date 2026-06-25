@@ -1246,38 +1246,39 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .flow-foot > .btn { flex: 1 1 auto; min-width: 0; justify-content: center; }
 }
 
-/* Phones / tablets: the WHOLE page scrolls naturally — only the app header stays
-   pinned (it is position:sticky on its own). The previous fixed-shell / inner-
-   scroller model is gone: it stopped the map from scrolling and made the footer
-   fight the on-screen keyboard. Here the map, progress header, step body and
-   action footer all sit in normal document flow inside the single document
-   scroll. The map scrolls away with everything else; when the keyboard opens the
-   browser just scrolls the document to reveal the focused field — nothing flies
-   up, nothing is clipped, the city dropdown has the whole page to open into. */
+/* Phones / tablets: app-shell via flexbox — NO position:fixed and NO
+   position:sticky anywhere (both proved unreliable on iOS: fixed detaches to the
+   layout viewport and flies on zoom/keyboard; sticky failed to pin at all here).
+   Instead .flow-page is a normal-flow flex column sized to 100dvh, the app header
+   is a flex:none item that simply never scrolls (so it stays pinned WITHOUT any
+   positioning — it cannot fly), and the SINGLE scroller is the middle row
+   (.flow-grid): the map + progress + step body + footer all scroll inside it as
+   one. The map scrolls with everything (Pavel's ask). The footer is a plain
+   static element at the end of that scroll — it has zero positioning, so it
+   physically cannot fly; it just scrolls with the content. When the keyboard
+   opens, 100dvh shrinks (interactive-widget=resizes-content) so the shell + its
+   scroller shrink above the keyboard and the focused field scrolls into view. */
 @media (max-width: 960px) {
-  .flow-page { height: auto; min-height: 100dvh; overflow: visible; }
-  .flow-grid { display: block; overflow: visible; flex: none; min-height: 0; }
-  .flow-mapcol { position: relative; min-height: 0; }
-  .flow-mapbox { position: relative; inset: auto; right: auto; height: 200px; margin: 12px 12px 0; border-radius: 14px; }
-  .flow-editcol { display: block; }
-  .flow-editcol > .lp { margin: 12px; overflow: visible; }
-  /* No inner scroller — the body grows with its content and the document scrolls. */
-  .flow-lp-b { padding: 16px 14px; flex: none; min-height: 0; overflow: visible; }
-  /* Footer pinned to the bottom of the page scroll via position:sticky — NOT
-     position:fixed. Sticky stays in document flow: it scrolls and zooms WITH the
-     page and only pins at the scroll edge, so (unlike the old fixed footer) it
-     can't detach to the layout viewport and fly around on zoom/scroll. It sits
-     above the keyboard consistently on every step (the layout viewport shrinks
-     with the keyboard via interactive-widget=resizes-content). Needs every
-     ancestor up to the document to be overflow:visible (set above) and an opaque
-     background so content scrolls under it; safe-area padding keeps the buttons
-     above the iOS home indicator. */
-  .flow-foot {
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
-    padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px));
+  .flow-page { height: 100dvh; overflow: hidden; }
+  .flow-grid {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
+  .flow-mapcol { flex: none; position: relative; min-height: 0; }
+  .flow-mapbox { position: relative; inset: auto; right: auto; height: 200px; margin: 12px 12px 0; border-radius: 14px; }
+  .flow-editcol { display: block; flex: none; }
+  .flow-editcol > .lp { margin: 12px; overflow: visible; }
+  /* Body grows with its content; the .flow-grid scroller (not the body) scrolls. */
+  .flow-lp-b { padding: 16px 14px; flex: none; min-height: 0; overflow: visible; }
+  /* Footer: plain static element at the end of the scroll. No fixed/sticky → it
+     can never detach or fly; it just scrolls with the content. Safe-area padding
+     keeps the buttons above the iOS home indicator at the end of the scroll. */
+  .flow-foot { padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Planner route row — REUSES the editor's .te-row grid + primitives (.te-grip /
