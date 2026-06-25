@@ -1,0 +1,34 @@
+---
+name: triplanio-cicd-github-actions
+description: TRIP-73 CI/CD на GitHub Actions — авто-деплой edge-функций + PR-гейт; статус, устройство, baseline-долг, грабли (нет dev-ветки, Node 22, typecheck ~1200 ошибок)
+metadata:
+  type: project
+---
+
+★ TRIP-73 Этап 1+2 2026-06-25: PR #133 смержен в dev (squash 388053a), функции ЗАДЕПЛОЕНЫ в Supabase dev через CI (все 13 pinned-false подтверждены false). Follow-up PR (cyrus2/trip-73-cicd-followup) чинит 2 бага и доносит memory. Source-of-truth для verify_jwt = `supabase/config.toml`.
+
+**ГРАБЛИ деплой-прогона (исправлены в follow-up):**
+- Деплой-джоб упал, т.к. `SUPABASE_ACCESS_TOKEN` не был заведён → «Access token not provided». Pavel завёл Repository secret → ре-ран зелёный по деплою. Воркфлоу читает `${{ secrets.SUPABASE_ACCESS_TOKEN }}` без `environment:` → секрет = **Repository**, не Environment.
+- Ассерт verify_jwt падал ложно (все 13 = MISSING): **LIST endpoint `GET /v1/projects/{ref}/functions` НЕ отдаёт `verify_jwt`** — он есть только в **per-function `GET /functions/{slug}`**. Фикс: ассерт дёргает per-function. Сам деплой был корректен (config-driven verify_jwt применился).
+- Non-blocking deno/typecheck давали красные ❌ на PR (job-level continue-on-error). Follow-up → step-level continue-on-error + `::warning` аннотация: джоб GREEN, долг виден аннотацией.
+- Деплой-воркфлоу триггерится только на `push dev` с paths `functions/**`+`config.toml` → правки самих воркфлоу его НЕ запускают. Добавлен `workflow_dispatch` для ручного ре-деплоя/ре-проверки assert.
+
+**Что сделано (PR #133):**
+- `config.toml`: запиннен `telegramDisconnect verify_jwt=false` → теперь **13** pinned-false, сверено с live prod+dev (canon-10 + signupPrecheck + requestPasswordReset + telegramDisconnect). Первый config-driven деплой = no-op по auth.
+- Удалён легаси `supabase/deploy_userid_functions.sh` (конфликтующий 2-й источник истины, его NO_JWT без 5 из canon-10).
+- 3 воркфлоу:
+  - `.github/workflows/checks.yml` — переиспользуемый гейт (`workflow_call`). BLOCKING job `frontend` = npm ci→lint→test→build на **Node 22**. NON-BLOCKING (`continue-on-error`) jobs `typecheck` и `deno` (есть baseline-долг).
+  - `ci.yml` — PR-гейт `pull_request → dev/main`, зовёт checks.yml.
+  - `supabase-deploy.yml` (Ф1) — `on push dev` (Этап 3 добавит `main`), paths-фильтр (`functions/**`+`config.toml`), concurrency на ветку, `deploy needs gate`, config-driven `supabase functions deploy --project-ref <ref>` (dev=nydhz…, prod=tizsc…), финальный шаг — **ассерт verify_jwt** через Management API `GET /v1/projects/{ref}/functions`: парсит pinned-false из config.toml, фейлит job при дрейфе false→true.
+- Deno-чек в CI: `deno check --no-lock --node-modules-dir=none $(find supabase/functions -name '*.ts')` — `--node-modules-dir=none` обязателен, иначе корневой package.json толкает deno в node_modules-режим и npm:stripe не резолвится.
+
+**Baseline-долг (почему deno+typecheck НЕ блокирующие, проверено в CI run #28187132660):**
+- `deno check` = **14 ошибок** (getTripDetails ×10 PostgrestFilterBuilder/QueryBuilder mismatch; getActiveTrips/getFxRates/checkSubscriptionStatus ×3 TS2339 `error?.message`; getUserPlan ×1 `userData` null). Фикс трогает auth/Pro → отдельный follow-up, потом снять `continue-on-error`.
+- `npm run typecheck` (tsc checkJs) **глубоко красный: ~1202 ошибки** по всему фронту (EventEditDialog/TripView/ScreenAccount/BudgetLens/…, +~89 в `luxon.mjs`) — чек **никогда не был зелёным**. Озеленение = большая отдельная инициатива (возможно пересмотр jsconfig).
+
+**Грабли окружения (durable, нет в CLAUDE.md):**
+- **`npm test` требует Node ≥21**: скрипт `node --test "src/**/*.test.js"` раскрывает glob только в test-runner Node 21+. На Node 20 → «Could not find …». На Node 22 тесты 65/65 зелёные. CI запинен на 22.
+- **Ветки `dev` на remote НЕ было** (влита в main через PR #132 и удалена) — пересоздана агентом от main 2026-06-25 по согласованию с Pavel. Если снова исчезнет — пересоздавать от main. См. [[triplanio-deploy-topology]], [[triplanio-deploy-verify-jwt]], [[triplanio-migration-naming-drift]].
+- Трио зомби-функций (telegramGetBotInfo/WebhookInfo/sendTripReminders) уже нет ни в репо, ни в рантайме (prod+dev) — config-driven deploy ничего не воскрешает при условии нарезки ветки от свежего main/dev (risk C).
+
+**Не закрыто:** миграции (Ф3=TRIP-68, вручную); prod-деплой (Этап 3, после dev-обкатки ~неделю, мердж в main — Pavel).
