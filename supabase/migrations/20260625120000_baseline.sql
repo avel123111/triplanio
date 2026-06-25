@@ -1,10 +1,10 @@
 -- TRIP-68 baseline — snapshot схемы public (catalog-generated через pg_get_*def)
--- Сгенерировано 2026-06-25 из живой БД (dev==prod после Ф0.5). Версия baseline: 20260625120000
--- ВНИМАНИЕ: помечается applied на prod/dev (не выполняется на них). Канон pg_dump можно подложить позже.
+-- Перегенерирован 2026-06-25 из живой БД (dev==prod), включает 0069 (drop booking_platform, users.unit_system). Версия: 20260625120000
+-- Помечается applied на prod/dev (не выполняется на них). Канон pg_dump можно подложить позже.
 
 SET check_function_bodies = false;
 
--- ============ EXTENSIONS ============
+-- ===== EXTENSIONS =====
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
@@ -13,7 +13,7 @@ CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS fuzzystrmatch WITH SCHEMA public;
 
--- ============ SEQUENCES ============
+-- ===== SEQUENCES =====
 CREATE SEQUENCE IF NOT EXISTS public.password_reset_attempts_id_seq;
 CREATE SEQUENCE IF NOT EXISTS public.user_custom_visits_id_seq;
 CREATE SEQUENCE IF NOT EXISTS public.n8n_chat_histories_id_seq;
@@ -21,7 +21,7 @@ CREATE SEQUENCE IF NOT EXISTS public.geocode_cache_id_seq;
 CREATE SEQUENCE IF NOT EXISTS public.geocode_queue_id_seq;
 CREATE SEQUENCE IF NOT EXISTS public.cities_id_seq;
 
--- ============ TABLES ============
+-- ===== TABLES =====
 
 CREATE TABLE public.activities (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -462,7 +462,7 @@ CREATE TABLE public.users (
   deleted_at timestamp with time zone,
   unit_system text NOT NULL DEFAULT 'metric'::text\n);
 
--- ============ PK / UNIQUE / CHECK ============
+-- ===== PK/UNIQUE/CHECK =====
 ALTER TABLE public.activities ADD CONSTRAINT activities_pkey PRIMARY KEY (id);
 ALTER TABLE public.ai_model_prices ADD CONSTRAINT ai_model_prices_pkey PRIMARY KEY (id);
 ALTER TABLE public.ai_model_prices ADD CONSTRAINT ai_model_prices_unit_check CHECK ((unit = ANY (ARRAY['input_token'::text, 'output_token'::text, 'total_token'::text, 'page'::text, 'request'::text, 'second'::text, 'character'::text, 'image'::text])));
@@ -528,7 +528,7 @@ ALTER TABLE public.users ADD CONSTRAINT users_subscription_status_check CHECK ((
 ALTER TABLE public.users ADD CONSTRAINT users_theme_check CHECK ((theme = ANY (ARRAY['light'::text, 'dark'::text, 'system'::text])));
 ALTER TABLE public.users ADD CONSTRAINT users_unit_system_check CHECK ((unit_system = ANY (ARRAY['metric'::text, 'imperial'::text])));
 
--- ============ FOREIGN KEYS ============
+-- ===== FOREIGN KEYS =====
 ALTER TABLE public.activities ADD CONSTRAINT activities_city_visit_id_fkey FOREIGN KEY (city_visit_id) REFERENCES city_visits(id) ON DELETE CASCADE;
 ALTER TABLE public.activities ADD CONSTRAINT activities_created_by_fkey FOREIGN KEY (created_by) REFERENCES users(id);
 ALTER TABLE public.activities ADD CONSTRAINT activities_trip_id_fkey FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE;
@@ -588,7 +588,7 @@ ALTER TABLE public.trips ADD CONSTRAINT trips_created_by_fkey FOREIGN KEY (creat
 ALTER TABLE public.user_custom_visits ADD CONSTRAINT user_custom_visits_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.users ADD CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
--- ============ INDEXES ============
+-- ===== INDEXES =====
 CREATE INDEX ai_model_prices_lookup_idx ON public.ai_model_prices USING btree (provider, model, unit, effective_from DESC);
 CREATE INDEX ai_usage_events_execution_idx ON public.ai_usage_events USING btree (execution_id);
 CREATE INDEX ai_usage_events_model_idx ON public.ai_usage_events USING btree (provider, model);
@@ -634,7 +634,7 @@ CREATE UNIQUE INDEX uq_trip_subs_subscription ON public.trip_subscriptions USING
 CREATE INDEX user_custom_visits_user_idx ON public.user_custom_visits USING btree (user_id);
 CREATE UNIQUE INDEX ux_ai_usage_dedup ON public.ai_usage_events USING btree (execution_id, node_name, run_index);
 
--- ============ FUNCTIONS ============
+-- ===== FUNCTIONS =====
 
 CREATE OR REPLACE FUNCTION public._can_edit_trip(p_trip uuid, p_uid uuid)
  RETURNS boolean
@@ -2294,7 +2294,7 @@ CREATE OR REPLACE FUNCTION public.unaccent_lexize(internal, internal, internal, 
 AS '$libdir/unaccent', $function$unaccent_lexize$function$
 ;
 
--- ============ VIEWS ============
+-- ===== VIEWS =====
 
 CREATE OR REPLACE VIEW public.ai_cost_by_day AS  SELECT (date_trunc('day'::text, occurred_at))::date AS day,
     count(*) AS calls,
@@ -2350,7 +2350,7 @@ CREATE OR REPLACE VIEW public.ai_cost_by_week AS  SELECT (date_trunc('week'::tex
   GROUP BY ((date_trunc('week'::text, occurred_at))::date)
   ORDER BY ((date_trunc('week'::text, occurred_at))::date) DESC;
 
--- ============ TRIGGERS ============
+-- ===== TRIGGERS =====
 CREATE TRIGGER trg_sync_budget_activity AFTER INSERT OR DELETE OR UPDATE ON public.activities FOR EACH ROW EXECUTE FUNCTION sync_budget_expense();
 CREATE TRIGGER trg_ai_usage_cost BEFORE INSERT OR UPDATE ON public.ai_usage_events FOR EACH ROW EXECUTE FUNCTION compute_ai_usage_cost();
 CREATE TRIGGER trg_city_visits_city BEFORE INSERT OR UPDATE OF latitude, longitude, city_name_en, country_code ON public.city_visits FOR EACH ROW EXECUTE FUNCTION set_city_id();
@@ -2367,7 +2367,7 @@ CREATE TRIGGER trips_create_group_chat AFTER INSERT ON public.trips FOR EACH ROW
 CREATE TRIGGER trips_enforce_limit BEFORE INSERT ON public.trips FOR EACH ROW EXECUTE FUNCTION enforce_trip_limit();
 CREATE TRIGGER trg_link_pending_invites AFTER INSERT ON public.users FOR EACH ROW EXECUTE FUNCTION link_pending_invites();
 
--- ============ RLS ENABLE ============
+-- ===== RLS ENABLE =====
 ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_model_prices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_usage_events ENABLE ROW LEVEL SECURITY;
@@ -2401,7 +2401,7 @@ ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_custom_visits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
--- ============ POLICIES ============
+-- ===== POLICIES =====
 CREATE POLICY activities_all ON public.activities AS PERMISSIVE FOR ALL TO public USING (is_trip_participant(trip_id)) WITH CHECK (is_trip_participant(trip_id));
 CREATE POLICY budget_categories_all ON public.budget_categories AS PERMISSIVE FOR ALL TO public USING (is_trip_participant(trip_id)) WITH CHECK (is_trip_participant(trip_id));
 CREATE POLICY budget_expenses_all ON public.budget_expenses AS PERMISSIVE FOR ALL TO public USING (is_trip_participant(trip_id)) WITH CHECK (is_trip_participant(trip_id));
@@ -2451,7 +2451,7 @@ CREATE POLICY users_insert_own ON public.users AS PERMISSIVE FOR INSERT TO publi
 CREATE POLICY users_select_own ON public.users AS PERMISSIVE FOR SELECT TO public USING ((id = auth.uid()));
 CREATE POLICY users_update_own ON public.users AS PERMISSIVE FOR UPDATE TO public USING ((id = auth.uid()));
 
--- ============ GRANTS ============
+-- ===== GRANTS =====
 GRANT DELETE ON TABLE public.activities TO anon;
 GRANT INSERT ON TABLE public.activities TO anon;
 GRANT REFERENCES ON TABLE public.activities TO anon;

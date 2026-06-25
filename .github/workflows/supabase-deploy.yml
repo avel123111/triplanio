@@ -1,36 +1,37 @@
-# Auto-deploy Supabase edge functions for Triplanio (TRIP-73, Ф1).
+# Auto-deploy Supabase backend for Triplanio — edge functions (TRIP-73) + migrations (TRIP-68 Ф3).
 #
 # Model: merge → dev  deploys to Supabase dev  (nydhzevdizkfaxdlikgc)
 #        merge → main deploys to Supabase prod (tizscxrpuopobgcxbekf)
 # Feature branches / Vercel previews never touch the backend.
 #
-# Этап 2 (dev rollout): only `dev` is wired below.
-# Этап 3 (prod): add `main` to the `branches:` list AND to the ref mapping,
-# once the gate + verify_jwt assert are green on dev for ~a week.
+# Two independent deploy jobs, each gated by what actually changed (detect job):
+#   - deploy  : edge functions (config-driven `functions deploy`, verify_jwt from config.toml)
+#   - migrate : `supabase db push` applies pending migrations from supabase/migrations/
+# A functions-only change never re-pushes migrations; a migrations-only change never
+# re-deploys all functions (avoids version churn).
 #
-# Deploy is config-driven: `supabase functions deploy --project-ref <ref>` with
-# NO slug deploys every function under supabase/functions/, and verify_jwt is
-# taken ONLY from supabase/config.toml. We never pass --no-verify-jwt globally.
-# The first prod run re-deploys all ~44 functions on purpose (kills drift,
-# correctly fans out the _shared cascade).
+# MIGRATIONS (TRIP-68): history was reconciled to a single baseline
+# (supabase/migrations/20260625120000_baseline.sql); repo == dev == prod journals.
+# Going forward: new migrations MUST be timestamped (`supabase migration new <name>`),
+# NEVER hand-numbered 00NN (that re-introduces the drift TRIP-68 fixed). `db push`
+# applies only files newer than what each project's journal already has.
 #
-# Requires repo secret SUPABASE_ACCESS_TOKEN (Management API token for BOTH
-# projects). CI does not manage per-function secrets (STRIPE_*, N8N_SECRET,
-# RESEND_API_KEY, TELEGRAM_*) — a new function needing a new secret is a manual
-# step in both projects.
-name: Deploy Supabase functions
+# Requires repo secrets:
+#   SUPABASE_ACCESS_TOKEN              — Management API token (functions deploy + assert), both projects
+#   SUPABASE_DB_URL_DEV / _PROD        — full Postgres connection URI per project (session pooler or direct),
+#                                        used by `db push`. Get from Dashboard → Settings → Database →
+#                                        Connection string (URI), password included.
+# CI does not manage per-function secrets (STRIPE_*, N8N_SECRET, RESEND_API_KEY, TELEGRAM_*).
+name: Deploy Supabase (functions + migrations)
 
 on:
   push:
-    branches: [dev, main] # dev → Supabase dev; main → Supabase prod (Этап 3)
+    branches: [dev, main] # dev → Supabase dev; main → Supabase prod
     paths:
-      # Glob MUST cover _shared/** — a change there fans out to its consumers.
-      - 'supabase/functions/**'
+      - 'supabase/functions/**' # glob MUST cover _shared/** (fans out to consumers)
       - 'supabase/config.toml'
-  # Manual run: redeploy all functions + re-check verify_jwt on demand (the push
-  # trigger above only fires on functions/config changes, so this is the way to
-  # re-verify after a workflow-only change). Target project = the branch you run
-  # it from (dev → Supabase dev, main → prod once Этап 3 is live).
+      - 'supabase/migrations/**'
+  # Manual run: redeploy functions + re-push migrations on the branch you run it from.
   workflow_dispatch:
 
 # One deploy per branch at a time; never cancel a deploy mid-flight.
@@ -43,9 +44,28 @@ jobs:
   gate:
     uses: ./.github/workflows/checks.yml
 
+  # Decide which deploy jobs need to run (path-based). workflow_dispatch runs both.
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      functions: ${{ steps.f.outputs.functions }}
+      migrations: ${{ steps.f.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: f
+        with:
+          filters: |
+            functions:
+              - 'supabase/functions/**'
+              - 'supabase/config.toml'
+            migrations:
+              - 'supabase/migrations/**'
+
   deploy:
     name: Deploy functions
-    needs: gate
+    needs: [gate, detect]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect.outputs.functions == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -105,3 +125,34 @@ jobs:
             fi
           done
           exit $fail
+
+  migrate:
+    name: Apply migrations
+    needs: [gate, detect]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect.outputs.migrations == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply pending migrations (db push)
+        env:
+          DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+          DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}
+        run: |
+          set -euo pipefail
+          case "${{ github.ref_name }}" in
+            dev)  URL="$DB_URL_DEV" ;;
+            main) URL="$DB_URL_PROD" ;;
+            *) echo "::error::Unsupported branch '${{ github.ref_name }}'"; exit 1 ;;
+          esac
+          if [ -z "$URL" ]; then
+            echo "::error::Missing DB URL secret for ${{ github.ref_name }} (SUPABASE_DB_URL_DEV/_PROD)"; exit 1
+          fi
+          # Non-interactive: applies only migrations newer than the project's journal.
+          # After TRIP-68 reconcile the journal holds the baseline, so this is a
+          # no-op until a new timestamped migration lands.
+          supabase db push --db-url "$URL" --yes
