@@ -11,9 +11,13 @@
 #   BLOCKING (verified green on dev, 25.06.2026 — Node 22):
 #     - frontend : npm ci → lint → test → build
 #
-#   NON-BLOCKING (continue-on-error, with a known baseline to fix & then flip):
-#     - typecheck : tsc — 8 pre-existing errors (src/pages/Trips.jsx,
-#                   src/pages/create/PanelAi.jsx: Btn/Icon prop inference).
+# NON-BLOCKING jobs report GREEN with a warning annotation (step-level
+# continue-on-error) so the PR isn't a misleading red — they run, but their
+# known pre-existing baseline doesn't block merge. Flip to blocking later by
+# dropping continue-on-error + the annotate step and marking them required.
+#     - typecheck : tsc — ~1202 pre-existing errors across the frontend
+#                   (checkJs on untyped JS/JSX, incl. ~89 in luxon.mjs; the
+#                   check has never been green — greening it is a large effort).
 #     - deno      : deno check on edge functions — 14 pre-existing errors
 #                   (getTripDetails ×10, getActiveTrips/getFxRates/
 #                   checkSubscriptionStatus ×3, getUserPlan ×1). The frontend
@@ -50,10 +54,6 @@ jobs:
   typecheck:
     name: Typecheck (tsc) — non-blocking until baseline fixed
     runs-on: ubuntu-latest
-    # TRIP-73: remove `continue-on-error` to make blocking, once the 8 baseline
-    # tsc errors are fixed (separate follow-up — touches the design-system
-    # Btn/Icon prop types, needs review).
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -62,14 +62,21 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Typecheck
+        id: tsc
+        # Step-level continue-on-error: the job stays GREEN, the failure surfaces
+        # as a warning annotation below (not a red "build failed"). tsc is ~1202
+        # pre-existing errors deep (checkJs on untyped JS/JSX — never been green).
+        # TRIP-73: to make this blocking once green, drop continue-on-error here
+        # AND the annotate step, and mark this check required in branch protection.
+        continue-on-error: true
         run: npm run typecheck
+      - name: Annotate tsc baseline (non-blocking)
+        if: steps.tsc.outcome == 'failure'
+        run: echo "::warning title=tsc baseline (non-blocking)::npm run typecheck has known pre-existing errors — see the Typecheck step log. Does not block merge."
 
   deno:
     name: Deno typecheck (edge functions) — non-blocking until baseline fixed
     runs-on: ubuntu-latest
-    # TRIP-73: remove `continue-on-error` to make blocking, once the 14 baseline
-    # errors are fixed (separate follow-up — touches auth/Pro-gating code).
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
@@ -83,7 +90,16 @@ jobs:
           restore-keys: |
             deno-${{ runner.os }}-
       - name: Type-check edge functions
+        id: denocheck
+        # Step-level continue-on-error: job stays GREEN, failure surfaces as a
+        # warning annotation below. 14 pre-existing errors (getTripDetails ×10,
+        # getActiveTrips/getFxRates/checkSubscriptionStatus ×3, getUserPlan ×1).
         # --node-modules-dir=none forces Deno's own cache for npm:/URL imports
         # (the repo-root package.json would otherwise push Deno into node_modules
         # mode and fail to resolve npm:stripe etc.). --no-lock keeps CI lock-free.
+        # TRIP-73: to make blocking once fixed, drop continue-on-error + annotate.
+        continue-on-error: true
         run: deno check --no-lock --node-modules-dir=none $(find supabase/functions -name '*.ts')
+      - name: Annotate deno baseline (non-blocking)
+        if: steps.denocheck.outcome == 'failure'
+        run: echo "::warning title=Deno baseline (non-blocking)::deno check has known pre-existing edge-function type errors — see the Type-check step log. Does not block merge."
