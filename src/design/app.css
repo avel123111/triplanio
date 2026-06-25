@@ -1259,6 +1259,20 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    opens, 100dvh shrinks (interactive-widget=resizes-content) so the shell + its
    scroller shrink above the keyboard and the focused field scrolls into view. */
 @media (max-width: 960px) {
+  /* DOCUMENT SCROLL LOCK (class added by ManualPlanner on mount). The header
+     "scrolled away" because the whole DOCUMENT was scrolling (iOS lets the page
+     scroll when 100dvh slightly exceeds the visible height / on rubber-band),
+     carrying the static header with it. Pin <body> to the viewport so the
+     document cannot scroll AT ALL — only .flow-grid scrolls. With no document
+     scroll there is nothing that can move the header. */
+  html.flow-noscroll { overflow: hidden; }
+  html.flow-noscroll body {
+    position: fixed;
+    left: 0; right: 0; top: 0; bottom: 0;
+    width: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
   .flow-page { height: 100dvh; overflow: hidden; }
   /* Header is STATIC (not sticky, not fixed) — exactly like the app-shell header
      on every other screen (.app-shell > .app-header). In a 100dvh fixed-height
