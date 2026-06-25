@@ -7,7 +7,6 @@ export default {
   'overview.stat_transfers': 'Переезды',
   'overview.stat_distance': 'Путь',
   'overview.stat_duration': 'Длительность',
-  'overview.unit_km': 'км',
   'overview.unit_days': 'дн',
   'overview.unit_nights': 'ноч',
 };

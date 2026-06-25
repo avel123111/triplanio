@@ -8,14 +8,15 @@ import { tripStats } from '@/lib/trip-stats';
 // `orderedVisits` (trip order, for the distance sum) is optional — falls back to
 // `visits` inside tripStats.
 export default function TripStatRow({ visits = [], transfers = [], trip, orderedVisits }) {
-  const { t, fmtNumber } = useI18nFormat();
+  const { t, fmtDistance } = useI18nFormat();
   const s = tripStats({ visits, transfers, trip, orderedVisits });
+  const dist = fmtDistance(s.distanceKm);
 
   const cards = [
     { key: 'cities', icon: 'buildings', tone: 'city', value: s.cities, label: t('overview.stat_cities') },
     { key: 'countries', icon: 'globe', tone: null, value: s.countries, label: t('overview.stat_countries') },
     { key: 'transfers', icon: 'arrowSwap', tone: 'transfer', value: s.transfers, label: t('overview.stat_transfers') },
-    { key: 'distance', icon: 'route', tone: 'distance', value: fmtNumber(s.distanceKm), label: t('overview.unit_km') },
+    { key: 'distance', icon: 'route', tone: 'distance', value: dist.value, label: dist.unit },
     { key: 'duration', icon: 'calendar', tone: 'duration', value: s.days, label: t('overview.unit_days') },
   ];
 
