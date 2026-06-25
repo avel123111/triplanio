@@ -22,7 +22,7 @@ name: Deploy Supabase functions
 
 on:
   push:
-    branches: [dev] # Этап 3: [dev, main]
+    branches: [dev, main] # dev → Supabase dev; main → Supabase prod (Этап 3)
     paths:
       # Glob MUST cover _shared/** — a change there fans out to its consumers.
       - 'supabase/functions/**'
