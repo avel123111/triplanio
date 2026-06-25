@@ -1,0 +1,95 @@
+# Auto-deploy Supabase edge functions for Triplanio (TRIP-73, Ф1).
+#
+# Model: merge → dev  deploys to Supabase dev  (nydhzevdizkfaxdlikgc)
+#        merge → main deploys to Supabase prod (tizscxrpuopobgcxbekf)
+# Feature branches / Vercel previews never touch the backend.
+#
+# Этап 2 (dev rollout): only `dev` is wired below.
+# Этап 3 (prod): add `main` to the `branches:` list AND to the ref mapping,
+# once the gate + verify_jwt assert are green on dev for ~a week.
+#
+# Deploy is config-driven: `supabase functions deploy --project-ref <ref>` with
+# NO slug deploys every function under supabase/functions/, and verify_jwt is
+# taken ONLY from supabase/config.toml. We never pass --no-verify-jwt globally.
+# The first prod run re-deploys all ~44 functions on purpose (kills drift,
+# correctly fans out the _shared cascade).
+#
+# Requires repo secret SUPABASE_ACCESS_TOKEN (Management API token for BOTH
+# projects). CI does not manage per-function secrets (STRIPE_*, N8N_SECRET,
+# RESEND_API_KEY, TELEGRAM_*) — a new function needing a new secret is a manual
+# step in both projects.
+name: Deploy Supabase functions
+
+on:
+  push:
+    branches: [dev] # Этап 3: [dev, main]
+    paths:
+      # Glob MUST cover _shared/** — a change there fans out to its consumers.
+      - 'supabase/functions/**'
+      - 'supabase/config.toml'
+
+# One deploy per branch at a time; never cancel a deploy mid-flight.
+concurrency:
+  group: supabase-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Re-run the full gate on the merged branch before deploying.
+  gate:
+    uses: ./.github/workflows/checks.yml
+
+  deploy:
+    name: Deploy functions
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve target project
+        id: target
+        run: |
+          case "${{ github.ref_name }}" in
+            dev)  echo "ref=nydhzevdizkfaxdlikgc" >> "$GITHUB_OUTPUT" ;;
+            main) echo "ref=tizscxrpuopobgcxbekf" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::Unsupported branch '${{ github.ref_name }}'"; exit 1 ;;
+          esac
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy edge functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy --project-ref ${{ steps.target.outputs.ref }}
+
+      - name: Assert verify_jwt matches config.toml
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ steps.target.outputs.ref }}
+        run: |
+          set -euo pipefail
+          # Source of truth = config.toml: every function pinned verify_jwt=false
+          # there MUST be false on live. Catches the foot-gun where a deploy
+          # silently flips an externally-callable function to true (401s on
+          # webhook / public / N8N_SECRET callers).
+          mapfile -t EXPECTED_FALSE < <(awk '
+            /^\[functions\./ { name=$1; sub(/^\[functions\./,"",name); sub(/\]$/,"",name); cur=name; next }
+            /^verify_jwt[[:space:]]*=/ { if (cur != "" && $0 ~ /false/) print cur; cur="" }
+          ' supabase/config.toml)
+
+          echo "Expecting verify_jwt=false for ${#EXPECTED_FALSE[@]} functions on $REF"
+          RESP=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$REF/functions")
+
+          fail=0
+          for fn in "${EXPECTED_FALSE[@]}"; do
+            vj=$(jq -r --arg s "$fn" 'map(select(.slug==$s)) | .[0].verify_jwt // "MISSING"' <<<"$RESP")
+            if [ "$vj" != "false" ]; then
+              echo "::error::verify_jwt drift: '$fn' is '$vj' on $REF (expected false)"
+              fail=1
+            else
+              echo "ok: $fn = false"
+            fi
+          done
+          exit $fail
