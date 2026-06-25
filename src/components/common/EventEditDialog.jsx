@@ -831,11 +831,21 @@ export default function EventEditDialog({
   const handleHotelExtract = async (data, fileUrl, fileName) => {
     const filled = new Set();
     const upd = { ...form };
-    const setIf = (k, v) => { if (v != null && v !== '') { upd[k] = v; filled.add(k); } };
+    // Drop literal "N/A" the LLM emits for absent fields (it otherwise lands as
+    // garbage text in booking_reference/phone/email…). TRIP-75.
+    const setIf = (k, v) => { if (v != null && v !== '' && v !== 'N/A') { upd[k] = v; filled.add(k); } };
     setIf('name', data.name);
     setIf('address', data.address);
     setIf('booking_reference', data.booking_reference);
-    setIf('payment_status', data.payment_status);
+    // payment_status is a closed-type control with a DB CHECK (paid/partial/
+    // pay_on_arrival). LLM output is non-deterministic (e.g. "Paid", "N/A"), so
+    // normalize + whitelist; anything else is ignored (field stays empty) rather
+    // than poisoning the save on hotel_stays_payment_status_check. TRIP-75.
+    const ps = String(data.payment_status ?? '').trim().toLowerCase();
+    if (ps === 'paid' || ps === 'partial' || ps === 'pay_on_arrival') {
+      upd.payment_status = ps;
+      filled.add('payment_status');
+    }
     // No type guard: AI often returns price as a string - populate it, the engine
     // validates downstream. (§12: don't drop AI values on type/validity.)
     setIf('price', data.price);
@@ -859,7 +869,7 @@ export default function EventEditDialog({
     if (ci) { upd.checkInLocal = ci; filled.add('checkInLocal'); }
     const co = combine(data.check_out_date, data.check_out_time);
     if (co) { upd.checkOutLocal = co; filled.add('checkOutLocal'); }
-    if (data.free_cancellation_until) {
+    if (data.free_cancellation_until && data.free_cancellation_until !== 'N/A') {
       upd.free_cancellation_until_local = data.free_cancellation_until.replace(' ', 'T').slice(0, 16);
       filled.add('free_cancellation_until_local');
     }
