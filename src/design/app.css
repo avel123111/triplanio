@@ -1280,9 +1280,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .flow-editcol { display: block; flex: none; }
   /* Keep .lp's own overflow:hidden so its inner content is clipped to the card's
      rounded corners (no square inner backgrounds poking over the rounded border).
-     The city dropdown no longer needs to escape this box — it is portalled to
-     <body> with fixed positioning (see CityPicker), so it can't be clipped by
-     this card or by the .flow-grid scroller. */
+     The city dropdown renders in normal flow under the input (see CityPicker), so
+     it scrolls with the content inside the .flow-grid scroller — never clipped,
+     never mispositioned. */
   .flow-editcol > .lp { margin: 12px; }
   /* Body grows with its content; the .flow-grid scroller (not the body) scrolls. */
   .flow-lp-b { padding: 16px 14px; flex: none; min-height: 0; overflow: visible; }
