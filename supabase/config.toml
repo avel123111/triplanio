@@ -9,7 +9,8 @@
 # 2026-05-30). Declaring it here pins the setting so CLI deploys keep it.
 #
 # Functions NOT listed below default to verify_jwt = true (require a valid
-# Supabase JWT). The 10 entries below mirror the live production settings.
+# Supabase JWT). The 13 entries below mirror the live settings on both projects
+# (prod tizscxrpuopobgcxbekf + dev nydhzevdizkfaxdlikgc, verified 25.06.2026).
 #
 # project_id is only the default link target; deploys pass an explicit
 # --project-ref (dev: nydhzevdizkfaxdlikgc, prod: tizscxrpuopobgcxbekf), so the
@@ -54,4 +55,12 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.requestPasswordReset]
+verify_jwt = false
+
+# Authenticates the caller itself (getRequestUser + isCallerParticipant) and is
+# only ever called by the frontend with a user JWT. Pinned false to mirror live
+# (prod+dev, 25.06.2026) so the first config-driven CI deploy is a strict no-op
+# on auth. Flipping this to true is a separate, deliberate security decision
+# (smoke-test TG disconnect first) — not an infra side-effect.
+[functions.telegramDisconnect]
 verify_jwt = false
