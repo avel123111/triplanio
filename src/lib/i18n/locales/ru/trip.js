@@ -76,7 +76,6 @@ export default {
   // Upgrade prompts
   'trip.upgrade_to_pro': 'Улучшить до Pro',
   'trip.upgrade_short': 'Pro',
-  'trip.upgrade_past_hint': 'Чтобы редактировать прошлые поездки',
   // Sidebar section headers
   'trip.sidebar_members': 'Участники',
   'trip.sidebar_route': 'Маршрут',
@@ -101,8 +100,6 @@ export default {
   'trip.form_cancel': 'Отмена',
   'trip.form_create': 'Создать поездку',
   'trip.form_save': 'Сохранить',
-  'trip.form_cannot_edit': 'Нельзя редактировать',
-  'trip.form_past_alert': 'Нельзя редактировать прошлые поездки',
   // New trip choice dialog
   'trip.choice_title': 'Новое путешествие',
   'trip.choice_subtitle': 'Как хочешь начать?',

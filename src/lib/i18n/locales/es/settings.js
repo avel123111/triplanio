@@ -28,7 +28,6 @@ export default {
   'settings.plan_pro_intro': 'Qué incluye Pro:',
   'settings.plan_pro_feature_unlimited': 'Viajes activos ilimitados',
   'settings.plan_pro_feature_ai': 'Reconocimiento IA de vouchers (hoteles, traslados)',
-  'settings.plan_pro_feature_past': 'Editar viajes pasados',
   'settings.plan_pro_feature_members': 'Funciones Pro para todos los miembros de tus viajes',
   'settings.plan_upgrade_btn': 'Mejorar a Pro',
   'settings.plan_manage_btn': 'Gestionar suscripción',
