@@ -75,7 +75,6 @@ export default {
   // Upgrade prompts
   'trip.upgrade_to_pro': 'Mejorar a Pro',
   'trip.upgrade_short': 'Pro',
-  'trip.upgrade_past_hint': 'Para editar viajes pasados',
   // Sidebar section headers
   'trip.sidebar_members': 'Miembros',
   'trip.sidebar_route': 'Ruta',
@@ -100,8 +99,6 @@ export default {
   'trip.form_cancel': 'Cancelar',
   'trip.form_create': 'Crear viaje',
   'trip.form_save': 'Guardar cambios',
-  'trip.form_cannot_edit': 'No editable',
-  'trip.form_past_alert': 'No se pueden editar viajes pasados',
   // New trip choice dialog
   'trip.choice_title': 'Nuevo viaje',
   'trip.choice_subtitle': '¿Cómo quieres empezar?',

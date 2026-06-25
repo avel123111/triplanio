@@ -29,7 +29,6 @@ export default {
   'settings.plan_pro_intro': 'Что даёт Pro:',
   'settings.plan_pro_feature_unlimited': 'Без ограничений на количество активных путешествий',
   'settings.plan_pro_feature_ai': 'ИИ-распознавание ваучеров (отели, трансферы)',
-  'settings.plan_pro_feature_past': 'Редактирование прошедших путешествий',
   'settings.plan_pro_feature_members': 'Pro-функции доступны всем участникам твоих путешествий',
   'settings.plan_upgrade_btn': 'Улучшить до Pro',
   'settings.plan_manage_btn': 'Управлять подпиской',

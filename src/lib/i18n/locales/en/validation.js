@@ -9,7 +9,6 @@ export default {
   'validation.TRIP_START_REQUIRED': 'Set the trip start date',
   'validation.TRIP_NO_CITIES': 'Add at least one city to the route',
   'validation.TRIP_CITY_UNRESOLVED': 'Pick «{city}» from the suggestions',
-  'validation.TRIP_PAST_READONLY': 'Past trips cannot be edited',
   'validation.TRIP_COVER_TOO_LARGE': 'File is too large (max 4 MB)',
   // Hotel
   'validation.HOTEL_NAME_REQUIRED': 'Enter the hotel name',
