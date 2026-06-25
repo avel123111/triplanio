@@ -39,8 +39,6 @@ export default {
   'trip.addon_settings': 'Ajustes',
   'trip.addon_activation': 'Activación',
   'trip.addon_activation_hint': 'Activa o desactiva esta extensión para el viaje',
-  'trip.addon_calendar_title': 'Vista de calendario',
-  'trip.addon_calendar_desc': 'Muestra una pestaña de calendario con hoteles, actividades y traslados',
   'trip.addon_budget_title': 'Presupuesto del viaje',
   'trip.addon_budget_desc': 'Planifica y registra gastos en todas las categorías: con soporte multidivisa, categorías personalizadas y desglose detallado de los gastos de todo el viaje',
   'trip.addon_hotels_title': 'Selección de hotel',

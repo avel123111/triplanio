@@ -40,8 +40,6 @@ export default {
   'trip.addon_settings': 'Настройки',
   'trip.addon_activation': 'Активация',
   'trip.addon_activation_hint': 'Включить или выключить это расширение для путешествия',
-  'trip.addon_calendar_title': 'Календарь',
-  'trip.addon_calendar_desc': 'Показывать вкладку календаря с отелями, активностями и трансферами',
   'trip.addon_budget_title': 'Бюджет поездки',
   'trip.addon_budget_desc': 'Планируй и отслеживай расходы по всем категориям: несколько валют, свои категории и детальная разбивка трат за всё путешествие',
   'trip.addon_hotels_title': 'Подбор отеля',

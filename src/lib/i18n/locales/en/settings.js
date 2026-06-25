@@ -39,7 +39,6 @@ export default {
   'settings.admin_tools': 'Admin tools',
   'settings.test_subscription_btn': 'Test subscription',
   'settings.test_subscription_hint': 'Opens Stripe checkout for the test product (admin only)',
-  'settings.feat_calendar_desc': 'The same events on a month/week grid',
   'settings.feat_budget_title': 'Full budget breakdown',
   'settings.feat_budget_desc': 'Categories, manual expenses, custom exchange rates',
   'settings.feat_chat_desc': 'Messages, mentions, @assistant',

@@ -28,14 +28,13 @@ import TripCoverPicker from '@/components/trips/TripCoverPicker';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
 // `addon` is the key persisted under trip.details.addons (matches TripView lens ids
-// for the gateable lenses: calendar / budget / chat).
+// for the gateable lenses: budget / chat).
 
 // Pro flags MUST match the backend definition (lib/tripAddons.js PRO_ONLY_ADDONS):
-// pro = budget, chat, telegram_assistant. calendar is NOT pro. hotels_selection
-// is "coming soon" (locked). There is no personal-AI addon. docs is a core lens,
-// not an optional addon, so it's not listed here.
+// pro = budget, chat, telegram_assistant. hotels_selection is "coming soon"
+// (locked). There is no personal-AI addon. docs and calendar are core lenses
+// (always visible), not optional addons, so they're not listed here.
 const FEATURES = [
-  { id: 'cal',    addon: 'calendar',            icon: 'calendar',  color: 'var(--brand)',   labelKey: 'trip.addon_calendar_title', descKey: 'settings.feat_calendar_desc'                              },
   { id: 'budget', addon: 'budget',              icon: 'wallet',    color: 'var(--success)', labelKey: 'settings.feat_budget_title', descKey: 'settings.feat_budget_desc',             pro: true  },
   { id: 'chat',   addon: 'chat',                icon: 'chat',      color: 'var(--ai)',      labelKey: 'chat.group_title',          descKey: 'settings.feat_chat_desc',              pro: true  },
   { id: 'tg',     addon: 'telegram_assistant',  icon: 'telegram',  color: tgBrand.fg,        labelKey: 'settings.feat_tg_title',    descKey: 'settings.feat_tg_desc',                pro: true  },
