@@ -24,7 +24,6 @@ import FlowProgress from '@/pages/create/FlowProgress';
 import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
 import { useRouteDnD } from '@/lib/useRouteDnD';
-import { useKeyboardOpen } from '@/lib/keyboardInset';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 import '../design/app.css';
@@ -781,11 +780,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
-  // On mobile, while the on-screen keyboard is open we collapse the map + footer
-  // (see .flow-page.is-kb) so the focused field and its city dropdown get the
-  // whole visible area; the map is also parked (active=false) and resizes back
-  // when the keyboard closes.
-  const keyboardOpen = useKeyboardOpen();
 
   // 'manual' | 'ai' - only the entry screen differs; from the skeleton onward
   // both methods share the same steps.
@@ -1261,7 +1255,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   // ── Main render ───────────────────────────────────────────────────────────
   return (
-    <div className={'flow-page' + (keyboardOpen ? ' is-kb' : '')}>
+    <div className="flow-page">
       {/* Header */}
       <AppHeader
         user={user}
@@ -1283,7 +1277,6 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
               cities={cities}
               returnCity={effectiveReturn}
               finalPoint={finalPoint}
-              active={!keyboardOpen}
             />
           </div>
         </div>

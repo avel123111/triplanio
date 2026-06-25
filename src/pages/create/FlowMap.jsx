@@ -29,7 +29,7 @@ function buildLegs(home, cities, returnCity, finalPoint) {
 // instance, markers, route lines and controls as the trip MapView — only the
 // data source (home/cities/transport) and the start/finish labels differ.
 // =====================================================================
-export default function FlowMap({ home, cities = [], returnCity, transport = {}, finalPoint = false, active = true }) {
+export default function FlowMap({ home, cities = [], returnCity, transport = {}, finalPoint = false }) {
   const t = useT();
   const { isDark } = useTheme();
   const containerRef = useRef(null);
@@ -45,10 +45,7 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
 
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, projection,
   // marker cleanup on unmount).
-  // `active` flips false while the mobile keyboard is open (the map is collapsed
-  // to free space for the focused input); flipping back to true re-runs
-  // map.resize() so the parked map repaints at full size.
-  const { mapRef, ready } = useMapSurface(containerRef, { markersRef, scheme, projection, active });
+  const { mapRef, ready } = useMapSurface(containerRef, { markersRef, scheme, projection });
 
   // Unified with the trip MapView: home → start flag, return → finish flag,
   // transit cities numbered 1..N (icons/flags come from the shared renderer).
