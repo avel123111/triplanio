@@ -1260,6 +1260,12 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    scroller shrink above the keyboard and the focused field scrolls into view. */
 @media (max-width: 960px) {
   .flow-page { height: 100dvh; overflow: hidden; }
+  /* Header is STATIC (not sticky, not fixed) — exactly like the app-shell header
+     on every other screen (.app-shell > .app-header). In a 100dvh fixed-height
+     flex column where the MIDDLE scrolls, a static header simply never scrolls
+     and never flies. The global .app-header rule is position:sticky, which
+     misbehaved here on iOS (header scrolled away) — override it to static. */
+  .flow-page > .app-header { position: static; flex: none; }
   .flow-grid {
     display: flex;
     flex-direction: column;
