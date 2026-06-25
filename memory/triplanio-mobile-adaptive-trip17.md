@@ -15,19 +15,22 @@
   через CSS `.dlg-modal`, без грипа, и классы `.dlg-*` ≠ `.sheet-*` → правки
   листа на него не распространялись.)
 
-- **Flow создания (manual+AI) на мобиле = фикс-шелл `position:fixed` + `--vvh`.**
-  Откатили прежний мобильный режим (`.flow-page{height:auto;overflow:visible}` +
-  `position:fixed` футер с локальным `--kb-inset`), из-за которого футер «Далее»
-  скакал. КРИТИЧНО: `.flow-page` на `@media(max-width:960px)` =
-  `position:fixed; top/left/right:0; height:var(--vvh,100dvh)` — именно
-  `position:fixed` решает баг «футер улетает в космос при клавиатуре»: iOS Safari
-  при фокусе инпута скроллит ДОКУМЕНТ (поднимает поле над клавиатурой) и тянет
-  футер вверх; pinned-шелл убирает скролл документа вообще (скроллит только
-  `.flow-lp-b`). Карта — верхняя строка грида (160px), футер `.flow-foot` в
-  нормальном потоке внизу → при сжатии `--vvh` (его держит `initKeyboardInset` из
-  main.jsx, viewport meta `interactive-widget=resizes-content`) встаёт ровно над
-  клавиатурой и не двигается. Локальный `--kb-inset` effect в ManualPlanner удалён.
-  НЕ возвращать `height:var(--vvh)` без `position:fixed` — это и был баг.
+- **Flow создания (manual+AI) на мобиле = фикс-шелл, ОВЕРЛЕЙ visual viewport.**
+  (PR #130 → dev 2026-06-25; заменяет прежний `position:fixed; top:0` из PR #126.)
+  `.flow-page` на `@media(max-width:960px)` =
+  `position:fixed; top:var(--vvt); left:var(--vvl); width:var(--vvw); height:var(--vvh)`
+  — шелл оверлеит ВИДИМУЮ область (visual viewport), а не layout viewport.
+  Почему: на iOS Safari при фокусе инпута браузер скроллит VISUAL viewport
+  (`visualViewport.offsetTop>0`), чтобы показать поле; шелл, прибитый к `top:0`
+  layout-вьюпорта (старый фикс #126), оказывался ВЫШЕ видимой области → весь экран
+  с футером улетал наверх (повторный фидбэк Pavel). То же при пинч-зуме
+  (панорамирование). Фикс: `initKeyboardInset` (lib/keyboardInset.js, из main.jsx)
+  публикует на `<html>` `--vvt`/`--vvl`/`--vvw` (offsetTop/offsetLeft/width visual
+  viewport) рядом с прежними `--vvh`/`--kb`; шелл следует за ними. Футер `.flow-foot`
+  в нормальном потоке внизу шелла → над клавиатурой; скроллит только `.flow-lp-b`.
+  Фолбэки `0/100vw/100dvh` = обычный полноэкранный шелл до запуска JS / без
+  visualViewport API. Локальный `--kb-inset` effect в ManualPlanner удалён ранее.
+  НЕ возвращать `top:0/right:0` — шелл обязан следовать за `--vvt`/`--vvl`.
 
 - **Event View dialog (`EventModal`):** «На карте» + «Посмотреть бронирование» —
   верхний ряд чипов `.ev-actions-top` (оба на `.bk-link`); футер только
