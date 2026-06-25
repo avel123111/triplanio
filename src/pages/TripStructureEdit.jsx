@@ -40,7 +40,8 @@ import TripStartControl from '@/components/trip/TripStartControl';
 // =====================================================================
 // TRIP STRUCTURE EDITOR - "Сетка" (grid) design from the trip-structure-*
 // prototype, wired to the real id-based model (city_visits + position),
-// validateTrip conflicts (unified engine), lock + save_trip_edit RPC. Live Google map.
+// validateTrip conflicts (unified engine), live id-based RPC writes
+// (add_city / remove_city / reorder_cities / set_city_nights). Live Google map.
 // =====================================================================
 const TKIND = { plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { icon: 'train', labelKey: 'transfer.train' }, bus: { icon: 'bus', labelKey: 'transfer.bus' }, car: { icon: 'car', labelKey: 'event.tk_car' }, ferry: { icon: 'ferry', labelKey: 'transfer.ferry' } };
 const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9'];
@@ -57,9 +58,9 @@ const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('ts
 // '' when there's no valid 2-letter code (so the chip just shows the name).
 const flagEmoji = (cc) => (cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt(0))) : '');
 const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
-// A city added in the editor but not yet saved carries a 'tmp-…' id (no real uuid
-// until save_trip_edit inserts it). A LIVE transfer write to such a city fails the
-// uuid type, so transfer creation is gated until the new city is saved.
+// A city added in the editor but not yet persisted carries a 'tmp-…' id (no real uuid
+// until add_city inserts it). A LIVE transfer write to such a city fails the
+// uuid type, so transfer creation is gated until the new city is persisted.
 const isTmpId = (id) => String(id || '').startsWith('tmp-');
 const colorFor = (key) => { let h = 0; const s = String(key || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return PALETTE[h % PALETTE.length]; };
 const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.id), flag: flagEmoji(n.country_code), country: n.country || '' });
@@ -378,8 +379,8 @@ export default function TripStructureEdit() {
     }, 350);
   };
   // Remove a city → confirm first. On confirm the city AND its attached bookings
-  // leave the draft (the city goes to the tray; on save save_trip_edit deletes the
-  // city + children). Bookings are stashed on the node so Restore brings them back.
+  // leave the grid immediately (live remove_city cascade-deletes the city + children).
+  // Bookings are stashed on the node so Restore brings them back.
   const removeCity = async (id) => {
     const n = draft.nodes.find((x) => x.id === id);
     if (!n || isAnchor(n)) return;

@@ -6,7 +6,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
-import { formatTripRange, isTripInPast } from '@/lib/trip-dates';
+import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 import { isAddonEnabled } from '@/lib/tripAddons';
@@ -890,9 +890,9 @@ export default function TripView() {
   // Trip-level Pro (owner-aware), resolved via a shared CACHED hook so it doesn't
   // re-flash when crossing the edit↔trip route boundary. See useTripProStatus.
   const { isPro: tripIsPro, resolved: tripProResolved } = useTripProStatus(tripId, trip?.is_pro_trip);
-  // Edit Mode (structure editor) gate - exact current model (TRIP_EDIT_MODE_TZ §2):
-  // anyone but a viewer; past trips require the trip to be Pro (or owner Pro).
-  const canEditMode = myRole !== 'viewer' && (!isTripInPast(visits) || tripIsPro);
+  // Edit Mode (structure editor) gate: anyone but a viewer. Past trips are no
+  // longer Pro-gated (TRIP-28) — editing is open for owner/admin regardless of age.
+  const canEditMode = myRole !== 'viewer';
   const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [budgetAddonOff, setBudgetAddonOff] = useState(false);

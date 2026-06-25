@@ -10,7 +10,6 @@ export default {
   'validation.TRIP_START_REQUIRED': 'Укажи дату начала путешествия',
   'validation.TRIP_NO_CITIES': 'Добавь хотя бы один город маршрута',
   'validation.TRIP_CITY_UNRESOLVED': 'Выбери город «{city}» из списка подсказок',
-  'validation.TRIP_PAST_READONLY': 'Нельзя редактировать прошлое путешествие',
   'validation.TRIP_COVER_TOO_LARGE': 'Файл слишком большой (макс. 4 МБ)',
   // Hotel
   'validation.HOTEL_NAME_REQUIRED': 'Укажи название отеля',

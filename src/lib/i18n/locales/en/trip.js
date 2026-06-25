@@ -75,7 +75,6 @@ export default {
   // Upgrade prompts
   'trip.upgrade_to_pro': 'Upgrade to Pro',
   'trip.upgrade_short': 'Pro',
-  'trip.upgrade_past_hint': 'To edit past trips',
   // Sidebar section headers
   'trip.sidebar_members': 'Members',
   'trip.sidebar_route': 'Route',
@@ -100,8 +99,6 @@ export default {
   'trip.form_cancel': 'Cancel',
   'trip.form_create': 'Create trip',
   'trip.form_save': 'Save changes',
-  'trip.form_cannot_edit': 'Cannot edit',
-  'trip.form_past_alert': 'Cannot edit past trips',
   // New trip choice dialog
   'trip.choice_title': 'New trip',
   'trip.choice_subtitle': 'How would you like to start?',

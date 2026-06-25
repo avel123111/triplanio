@@ -15,16 +15,19 @@
   через CSS `.dlg-modal`, без грипа, и классы `.dlg-*` ≠ `.sheet-*` → правки
   листа на него не распространялись.)
 
-- **Flow создания (manual+AI) на мобиле = фикс-шелл, НЕ document-scroll.**
+- **Flow создания (manual+AI) на мобиле = фикс-шелл `position:fixed` + `--vvh`.**
   Откатили прежний мобильный режим (`.flow-page{height:auto;overflow:visible}` +
   `position:fixed` футер с локальным `--kb-inset`), из-за которого футер «Далее»
-  скакал от скролла/клавиатуры и app-header уезжал. Теперь `@media(max-width:960px)`:
-  `.flow-page{height:var(--vvh,100dvh)}` (фикс-шелл как `.app-shell`), карта в
-  верхней строке грида (160px), скроллер только `.flow-lp-b`, футер `.flow-foot`
-  в нормальном потоке (`margin-top:auto`) → прибит к низу, при клавиатуре шелл
-  сжимается по глобальному `--vvh` (его держит `initKeyboardInset` из main.jsx),
-  футер встаёт над клавиатурой. Локальный `--kb-inset` effect в ManualPlanner
-  удалён как мёртвый.
+  скакал. КРИТИЧНО: `.flow-page` на `@media(max-width:960px)` =
+  `position:fixed; top/left/right:0; height:var(--vvh,100dvh)` — именно
+  `position:fixed` решает баг «футер улетает в космос при клавиатуре»: iOS Safari
+  при фокусе инпута скроллит ДОКУМЕНТ (поднимает поле над клавиатурой) и тянет
+  футер вверх; pinned-шелл убирает скролл документа вообще (скроллит только
+  `.flow-lp-b`). Карта — верхняя строка грида (160px), футер `.flow-foot` в
+  нормальном потоке внизу → при сжатии `--vvh` (его держит `initKeyboardInset` из
+  main.jsx, viewport meta `interactive-widget=resizes-content`) встаёт ровно над
+  клавиатурой и не двигается. Локальный `--kb-inset` effect в ManualPlanner удалён.
+  НЕ возвращать `height:var(--vvh)` без `position:fixed` — это и был баг.
 
 - **Event View dialog (`EventModal`):** «На карте» + «Посмотреть бронирование» —
   верхний ряд чипов `.ev-actions-top` (оба на `.bk-link`); футер только

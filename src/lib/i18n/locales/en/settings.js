@@ -28,7 +28,6 @@ export default {
   'settings.plan_pro_intro': 'What Pro gives you:',
   'settings.plan_pro_feature_unlimited': 'Unlimited active trips',
   'settings.plan_pro_feature_ai': 'AI voucher recognition (hotels, transfers)',
-  'settings.plan_pro_feature_past': 'Edit past trips',
   'settings.plan_pro_feature_members': 'Pro features for all members of your trips',
   'settings.plan_upgrade_btn': 'Upgrade to Pro',
   'settings.plan_manage_btn': 'Manage subscription',

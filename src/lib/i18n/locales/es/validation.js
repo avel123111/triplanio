@@ -9,7 +9,6 @@ export default {
   'validation.TRIP_START_REQUIRED': 'Indica la fecha de inicio del viaje',
   'validation.TRIP_NO_CITIES': 'Agrega al menos una ciudad a la ruta',
   'validation.TRIP_CITY_UNRESOLVED': 'Elige «{city}» de las sugerencias',
-  'validation.TRIP_PAST_READONLY': 'No se pueden editar viajes pasados',
   'validation.TRIP_COVER_TOO_LARGE': 'El archivo es demasiado grande (máx. 4 MB)',
   // Hotel
   'validation.HOTEL_NAME_REQUIRED': 'Indica el nombre del hotel',
