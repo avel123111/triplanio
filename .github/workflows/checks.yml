@@ -1,0 +1,105 @@
+# Reusable CI checks for Triplanio (TRIP-73, Ф2).
+#
+# Single source of truth for the gate, called by BOTH:
+#   - ci.yml              (on pull_request — blocks merge)
+#   - supabase-deploy.yml (on push to dev/main — gates the deploy via `needs:`)
+#
+# Jobs split into BLOCKING (green today) and NON-BLOCKING (pre-existing baseline
+# debt — kept informational so the first PR doesn't go red and freeze all
+# merges, per the plan: baseline → fix → only then flip to blocking).
+#
+#   BLOCKING (verified green on dev, 25.06.2026 — Node 22):
+#     - frontend : npm ci → lint → test → build
+#
+# NON-BLOCKING jobs report GREEN with a warning annotation (step-level
+# continue-on-error) so the PR isn't a misleading red — they run, but their
+# known pre-existing baseline doesn't block merge. Flip to blocking later by
+# dropping continue-on-error + the annotate step and marking them required.
+#     - typecheck : tsc — ~1202 pre-existing errors across the frontend
+#                   (checkJs on untyped JS/JSX, incl. ~89 in luxon.mjs; the
+#                   check has never been green — greening it is a large effort).
+#     - deno      : deno check on edge functions — 14 pre-existing errors
+#                   (getTripDetails ×10, getActiveTrips/getFxRates/
+#                   checkSubscriptionStatus ×3, getUserPlan ×1). The frontend
+#                   toolchain never type-checks functions (jsconfig is src-only;
+#                   eslint matches src/** .js only; functions are .ts) — see
+#                   risk A. esbuild on deploy catches syntax, NOT types.
+#
+# Node 22: the project's `npm test` uses `node --test "src/**/*.test.js"` whose
+# glob is expanded by Node's test runner only on Node 21+ (Node 20 fails with
+# "Could not find"). Pin 22 so `npm test` runs as written.
+name: checks
+
+on:
+  workflow_call:
+
+jobs:
+  frontend:
+    name: Frontend (lint / test / build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  typecheck:
+    name: Typecheck (tsc) — non-blocking until baseline fixed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        id: tsc
+        # Step-level continue-on-error: the job stays GREEN, the failure surfaces
+        # as a warning annotation below (not a red "build failed"). tsc is ~1202
+        # pre-existing errors deep (checkJs on untyped JS/JSX — never been green).
+        # TRIP-73: to make this blocking once green, drop continue-on-error here
+        # AND the annotate step, and mark this check required in branch protection.
+        continue-on-error: true
+        run: npm run typecheck
+      - name: Annotate tsc baseline (non-blocking)
+        if: steps.tsc.outcome == 'failure'
+        run: echo "::warning title=tsc baseline (non-blocking)::npm run typecheck has known pre-existing errors — see the Typecheck step log. Does not block merge."
+
+  deno:
+    name: Deno typecheck (edge functions) — non-blocking until baseline fixed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: deno-${{ runner.os }}-${{ hashFiles('supabase/functions/**/*.ts') }}
+          restore-keys: |
+            deno-${{ runner.os }}-
+      - name: Type-check edge functions
+        id: denocheck
+        # Step-level continue-on-error: job stays GREEN, failure surfaces as a
+        # warning annotation below. 14 pre-existing errors (getTripDetails ×10,
+        # getActiveTrips/getFxRates/checkSubscriptionStatus ×3, getUserPlan ×1).
+        # --node-modules-dir=none forces Deno's own cache for npm:/URL imports
+        # (the repo-root package.json would otherwise push Deno into node_modules
+        # mode and fail to resolve npm:stripe etc.). --no-lock keeps CI lock-free.
+        # TRIP-73: to make blocking once fixed, drop continue-on-error + annotate.
+        continue-on-error: true
+        run: deno check --no-lock --node-modules-dir=none $(find supabase/functions -name '*.ts')
+      - name: Annotate deno baseline (non-blocking)
+        if: steps.denocheck.outcome == 'failure'
+        run: echo "::warning title=Deno baseline (non-blocking)::deno check has known pre-existing edge-function type errors — see the Type-check step log. Does not block merge."
