@@ -181,7 +181,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
       </div>
       {open && results.length > 0 && (
         <div className="flow-city-dd" style={{
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 200,
+          marginTop: 4, position: 'relative', zIndex: 5,
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10,
           boxShadow: '0 8px 24px rgba(0,0,0,.12)', overflow: 'hidden', overflowY: 'auto',
         }}>
