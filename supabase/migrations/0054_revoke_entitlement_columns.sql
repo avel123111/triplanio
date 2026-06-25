@@ -38,8 +38,11 @@ GRANT INSERT (id, email, full_name, avatar_url, language, theme,
 REVOKE INSERT, UPDATE ON public.trips FROM anon;
 REVOKE INSERT, UPDATE ON public.trips FROM authenticated;
 
+-- NB: editing_by / editing_since удалены из этого списка вместе с дропом колонок
+--     в 0068 (TRIP-70) — иначе при чистом реплее GRANT падал бы на несуществующих
+--     колонках. Колонки были частью мёртвого edit-lock.
 GRANT INSERT (id, title, description, cover_image_url, notes, details, share_token,
-              created_at, updated_at, cover_gradient, created_by, editing_by, editing_since),
+              created_at, updated_at, cover_gradient, created_by),
       UPDATE (id, title, description, cover_image_url, notes, details, share_token,
-              created_at, updated_at, cover_gradient, created_by, editing_by, editing_since)
+              created_at, updated_at, cover_gradient, created_by)
   ON public.trips TO authenticated;
