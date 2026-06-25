@@ -837,17 +837,11 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   const isPro = isProActive(user);
   const { isDark, toggle: toggleTheme } = useTheme();
 
-  // Lock the document from scrolling while the planner is mounted (mobile shell).
-  // The flow uses a fixed-height flex shell where ONLY the middle (.flow-grid)
-  // scrolls; if the document itself can scroll (iOS rubber-band / 100dvh overshoot)
-  // it carries the static header off-screen. The .flow-noscroll CSS pins <body>
-  // to the viewport. useLayoutEffect so it applies before paint (no flash); the
-  // class is removed on unmount so other screens scroll normally.
-  useLayoutEffect(() => {
-    const html = document.documentElement;
-    html.classList.add('flow-noscroll');
-    return () => html.classList.remove('flow-noscroll');
-  }, []);
+  // NB: no <body> scroll-lock here. The planner shell (.flow-page) is a 100dvh
+  // overflow:hidden root — the same fixed-shell pattern as .app-shell on every
+  // other screen — so the document never scrolls and the static header stays put,
+  // including when the keyboard opens. A body position:fixed lock (tried earlier)
+  // was what made the header fly up on keyboard, so it was removed.
 
   // 'manual' | 'ai' - only the entry screen differs; from the skeleton onward
   // both methods share the same steps.
