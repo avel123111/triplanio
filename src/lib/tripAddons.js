@@ -1,10 +1,9 @@
 // Trip-level addons toggle.
-// Addons are stored on Trip.details.addons as { calendar_view, budget, hotels_selection, telegram_assistant }.
+// Addons are stored on Trip.details.addons as { budget, hotels_selection, telegram_assistant, chat }.
 // All addons default to OFF for both new and existing trips.
-// System admins always see calendar & budget regardless of the toggle (debug view).
+// (Calendar is NOT an addon — it's a default always-visible lens, like overview/timeline/map/docs.)
 
 export const ADDON_KEYS = {
-  CALENDAR_VIEW: 'calendar_view',
   BUDGET: 'budget',
   HOTELS_SELECTION: 'hotels_selection',
   TELEGRAM_ASSISTANT: 'telegram_assistant',
@@ -17,7 +16,6 @@ export const PRO_ONLY_ADDONS = new Set([ADDON_KEYS.BUDGET, ADDON_KEYS.TELEGRAM_A
 export function getAddons(trip) {
   const raw = trip?.details?.addons || {};
   return {
-    [ADDON_KEYS.CALENDAR_VIEW]: !!raw[ADDON_KEYS.CALENDAR_VIEW],
     [ADDON_KEYS.BUDGET]: !!raw[ADDON_KEYS.BUDGET],
     [ADDON_KEYS.HOTELS_SELECTION]: !!raw[ADDON_KEYS.HOTELS_SELECTION],
     [ADDON_KEYS.TELEGRAM_ASSISTANT]: !!raw[ADDON_KEYS.TELEGRAM_ASSISTANT],

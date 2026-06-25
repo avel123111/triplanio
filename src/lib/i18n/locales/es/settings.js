@@ -39,7 +39,6 @@ export default {
   'settings.admin_tools': 'Herramientas de admin',
   'settings.test_subscription_btn': 'Suscripción de prueba',
   'settings.test_subscription_hint': 'Abre Stripe checkout para el producto de prueba (solo admin)',
-  'settings.feat_calendar_desc': 'Los mismos eventos en una cuadrícula de mes/semana',
   'settings.feat_budget_title': 'Desglose completo del presupuesto',
   'settings.feat_budget_desc': 'Categorías, gastos manuales, tipos de cambio manuales',
   'settings.feat_chat_desc': 'Mensajes, menciones, @assistant',

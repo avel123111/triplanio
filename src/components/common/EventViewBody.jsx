@@ -23,7 +23,7 @@ import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate } from '@/lib/trip-data';
-import { BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
+import { BOOKING_PLATFORMS, platformLogoUrl, detectPlatformFromUrl } from '@/lib/booking-platforms';
 import {
   Map as MapIcon, Calendar, FileText,
   BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
@@ -338,7 +338,8 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
   const price = kind === 'service' ? (entity.price ?? entity.details?.price) : entity.price;
 
   const bookingUrl = kind === 'service' ? entity.details?.booking_url : entity.booking_url;
-  const bookingPlatform = kind === 'service' ? entity.details?.booking_platform : entity.booking_platform;
+  // Platform is derived from the booking URL on the fly (no stored column) — TRIP-75.
+  const bookingPlatform = detectPlatformFromUrl(bookingUrl);
   const platformInfo = bookingPlatform ? BOOKING_PLATFORMS[bookingPlatform] : null;
   const platformLogo = platformLogoUrl(bookingPlatform, bookingUrl);
 

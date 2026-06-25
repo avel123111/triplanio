@@ -52,7 +52,7 @@ function FlagImg({ cc, className }) {
 
 export default function PublicTrip() {
   const { lang, setLang } = useI18n();
-  const { t, fmtDate, plural, locale } = useI18nFormat();
+  const { t, fmtDate, plural, locale, fmtDistance } = useI18nFormat();
   const cssReady = useLandingCss();
 
   const { tripId } = useParams();
@@ -290,9 +290,12 @@ export default function PublicTrip() {
             <div className="pt-mm"><span className="n tnum">{stats.cities}</span><span className="k">{t('public.meta_cities')}</span></div>
             <div className="pt-mm"><span className="n tnum">{stats.countries}</span><span className="k">{t('public.meta_countries')}</span></div>
             <div className="pt-mm"><span className="n tnum">{stats.transfers}</span><span className="k">{t('public.meta_transfers')}</span></div>
-            {stats.distanceKm > 0 && (
-              <div className="pt-mm"><span className="n tnum">{stats.distanceKm.toLocaleString(locale)}<small>{t('public.km')}</small></span><span className="k">{t('public.meta_distance')}</span></div>
-            )}
+            {stats.distanceKm > 0 && (() => {
+              const dist = fmtDistance(stats.distanceKm);
+              return (
+                <div className="pt-mm"><span className="n tnum">{dist.value}<small>{dist.unit}</small></span><span className="k">{t('public.meta_distance')}</span></div>
+              );
+            })()}
           </div>
 
           <div className="pt-itin" ref={itinRef}>

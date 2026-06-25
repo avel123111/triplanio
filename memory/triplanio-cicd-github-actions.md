@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-★ TRIP-73 Этап 1+2 2026-06-25: PR #133 смержен в dev (squash 388053a), функции ЗАДЕПЛОЕНЫ в Supabase dev через CI (все 13 pinned-false подтверждены false). Follow-up PR (cyrus2/trip-73-cicd-followup) чинит 2 бага и доносит memory. Source-of-truth для verify_jwt = `supabase/config.toml`.
+★ TRIP-73 ГОТОВО (Этапы 1+2+3) 2026-06-25 — **авто-деплой edge-функций работает на dev И prod**. Мердж в `dev` → деплой в Supabase dev; мердж в `main` → deploy в prod (live-проверено: prod-прогон зелёный, все 13 pinned-false = false, версии всех ~47 функций подняты через CI-runner). Source-of-truth для verify_jwt = `supabase/config.toml`. Тех-долг вынесен в подзадачи TRIP-73: TRIP-93 (tsc ~1202), TRIP-94 (deno 14), TRIP-68 (миграции Ф3). Открытый вопрос: энфорс required-чека на мердж не работает на free private GitHub (нужен Team/Enterprise) — деплой при этом защищён `deploy: needs gate`. См. [[triplanio-deploy-topology]].
 
 **ГРАБЛИ деплой-прогона (исправлены в follow-up):**
 - Деплой-джоб упал, т.к. `SUPABASE_ACCESS_TOKEN` не был заведён → «Access token not provided». Pavel завёл Repository secret → ре-ран зелёный по деплою. Воркфлоу читает `${{ secrets.SUPABASE_ACCESS_TOKEN }}` без `environment:` → секрет = **Repository**, не Environment.
@@ -31,4 +31,6 @@ metadata:
 - **Ветки `dev` на remote НЕ было** (влита в main через PR #132 и удалена) — пересоздана агентом от main 2026-06-25 по согласованию с Pavel. Если снова исчезнет — пересоздавать от main. См. [[triplanio-deploy-topology]], [[triplanio-deploy-verify-jwt]], [[triplanio-migration-naming-drift]].
 - Трио зомби-функций (telegramGetBotInfo/WebhookInfo/sendTripReminders) уже нет ни в репо, ни в рантайме (prod+dev) — config-driven deploy ничего не воскрешает при условии нарезки ветки от свежего main/dev (risk C).
 
-**Не закрыто:** миграции (Ф3=TRIP-68, вручную); prod-деплой (Этап 3, после dev-обкатки ~неделю, мердж в main — Pavel).
+**Не закрыто:** миграции (Ф3=TRIP-68, вручную); deno-гейт non-blocking (TRIP-94), tsc non-blocking (TRIP-93).
+
+**Аудит 2026-06-25 (по запросу Pavel):** ядро (авто-деплой функций dev+prod) подтверждено на ЖИВОМ рантайме обоих проектов — все 45 функций задеплоены раннером GitHub Actions (entrypoint_path=/home/runner/...), 13 pinned-false=false 1:1 с config.toml на проде И dev, орфанов нет, CI-ассерт зелёный на прод-прогоне. **РЕШЕНИЕ Pavel:** «CI-гейт на PR» остаётся **advisory** (branch protection не энфорсится на free private GitHub) — деплой защищён `needs:gate`, мердж красного на доверии; это принято осознанно, НЕ недоделка, TRIP-73 закрывается так. Остаточные риски (приняты для MVP): deno-типчек non-blocking → сломанная по типам функция доедет до прода (TRIP-94); ассерт verify_jwt односторонний (ловит false→true, не true→false); docs-PR #140 на dev, до main доедет следующим dev→main; TRIP-50 (зонтик деплой-дрейфа) — функц. половина закрыта, остаток=миграции TRIP-68.

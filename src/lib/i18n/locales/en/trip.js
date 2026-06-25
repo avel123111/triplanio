@@ -39,8 +39,6 @@ export default {
   'trip.addon_settings': 'Settings',
   'trip.addon_activation': 'Activation',
   'trip.addon_activation_hint': 'Turn this add-on on or off for the trip',
-  'trip.addon_calendar_title': 'Calendar view',
-  'trip.addon_calendar_desc': 'Show a calendar tab with hotels, activities and transfers',
   'trip.addon_budget_title': 'Trip budget',
   'trip.addon_budget_desc': 'Plan and track spending across all categories: with multi-currency support, custom categories, and detailed expense breakdowns for the whole trip',
   'trip.addon_hotels_title': 'Hotel selection',

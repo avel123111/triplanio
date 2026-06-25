@@ -301,7 +301,7 @@ function ReminderChannels() {
 export default function ScreenAccount() {
   const { user, checkUserAuth, logout } = useAuth();
   const { t } = useI18nFormat();
-  const { lang, setLang } = useI18n();
+  const { lang, setLang, units, setUnits } = useI18n();
   const { theme, setTheme } = useTheme();
   const nav = useNavigate();
 
@@ -688,16 +688,17 @@ export default function ScreenAccount() {
             />
           </section>
 
-          {/* ░░ APPEARANCE (bento) ░░ */}
+          {/* ░░ PREFERENCES (variant C — single-card list) ░░ */}
           <section id="acct-appearance">
             <h2 className="acct-sectitle">{t('account.preferences')}</h2>
-            <div className="acct-bento">
+            <div className="card">
 
               {/* Language */}
-              <div className="acct-tile">
-                <div className="acct-tile__h">
-                  <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="globe" size={16} /></span>
-                  <b>{t('settings.language')}</b>
+              <div className="acct-divrow">
+                <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="globe" size={16} /></span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="acct-divrow__t">{t('account.pref_language')}</div>
+                  <div className="acct-divrow__s">{t('account.pref_language_sub')}</div>
                 </div>
                 <SearchSelect
                   value={lang}
@@ -721,29 +722,34 @@ export default function ScreenAccount() {
                   emptyText={t('common.not_found')}
                   title={t('settings.language')}
                   triggerClassName="input"
-                  width={264}
+                  width={240}
                 />
               </div>
 
               {/* Theme */}
-              <div className="acct-tile">
-                <div className="acct-tile__h">
-                  <span className="acct-ic-tile" style={{ background: 'var(--ai-soft)', color: 'var(--ai)' }}><Icon name="sun" size={16} /></span>
-                  <b>{t('settings.theme')}</b>
+              <div className="acct-divrow">
+                <span className="acct-ic-tile" style={{ background: 'var(--ai-soft)', color: 'var(--ai)' }}><Icon name="sun" size={16} /></span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="acct-divrow__t">{t('settings.theme')}</div>
+                  <div className="acct-divrow__s">{t('account.pref_theme_sub')}</div>
                 </div>
-                <div className="acct-swrow">
-                  <button className={`acct-sw-card${theme === 'light' ? ' on' : ''}`} onClick={() => setTheme('light')}>
-                    <div className="pv" style={{ background: 'linear-gradient(135deg,#F4F4FB 60%,#fff)' }} />
-                    <div className="lb">{t('settings.theme_light')}</div>
-                  </button>
-                  <button className={`acct-sw-card${theme === 'dark' ? ' on' : ''}`} onClick={() => setTheme('dark')}>
-                    <div className="pv" style={{ background: 'linear-gradient(135deg,#201F2C 60%,#161520)' }} />
-                    <div className="lb">{t('settings.theme_dark')}</div>
-                  </button>
-                  <button className={`acct-sw-card${theme === 'system' ? ' on' : ''}`} onClick={() => setTheme('system')}>
-                    <div className="pv" style={{ background: 'linear-gradient(135deg,#F4F4FB 50%,#201F2C 50%)' }} />
-                    <div className="lb">{t('account.theme_system')}</div>
-                  </button>
+                <div className="seg" role="group" aria-label={t('settings.theme')}>
+                  <button aria-pressed={theme === 'light'} onClick={() => setTheme('light')}>{t('settings.theme_light')}</button>
+                  <button aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}>{t('settings.theme_dark')}</button>
+                  <button aria-pressed={theme === 'system'} onClick={() => setTheme('system')}>{t('settings.theme_system')}</button>
+                </div>
+              </div>
+
+              {/* Unit system */}
+              <div className="acct-divrow">
+                <span className="acct-ic-tile" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}><Icon name="route" size={16} /></span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="acct-divrow__t">{t('account.units')}</div>
+                  <div className="acct-divrow__s">{t('account.units_sub')}</div>
+                </div>
+                <div className="seg" role="group" aria-label={t('account.units')}>
+                  <button aria-pressed={units === 'metric'} onClick={() => setUnits('metric')}>{t('units.km')}</button>
+                  <button aria-pressed={units === 'imperial'} onClick={() => setUnits('imperial')}>{t('units.mi')}</button>
                 </div>
               </div>
             </div>

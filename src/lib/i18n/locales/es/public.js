@@ -19,7 +19,6 @@ export default {
   'public.meta_countries': 'países',
   'public.meta_transfers': 'traslados',
   'public.meta_distance': 'en camino',
-  'public.km': 'km',
   'public.nights_one': 'noche',
   'public.nights_few': 'noches',
   'public.nights_many': 'noches',

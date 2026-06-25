@@ -13,7 +13,6 @@ import React, { useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
-import { detectPlatformFromUrl } from '@/lib/booking-platforms';
 import { Badge } from '@/design/index';
 import {
   Sparkles, Lock, Upload, X, FileText, Image as ImageIcon,
@@ -31,7 +30,7 @@ function extractBookingPayload(node, depth = 0) {
   if (node == null || depth > 6) return node || {};
   if (Array.isArray(node)) return extractBookingPayload(node[0], depth + 1);
   if (typeof node !== 'object') return {};
-  const isBooking = ['transfers', 'waypoints', 'segments', 'name', 'from_address', 'check_in_date', 'booking_platform', 'booking_reference', 'booking_url']
+  const isBooking = ['transfers', 'waypoints', 'segments', 'name', 'from_address', 'check_in_date', 'booking_reference', 'booking_url']
     .some((k) => k in node);
   if (isBooking) return node;
   for (const key of ['output', 'data', 'json', 'body', 'result', 'response']) {
@@ -129,10 +128,6 @@ export default function EventAiBlock({
       if (legs) {
         const TT = { flight: 'plane', air: 'plane', airplane: 'plane', rail: 'train', boat: 'ferry', shuttle: 'bus' };
         legs.forEach((s) => { if (s && TT[s.transport_type]) s.transport_type = TT[s.transport_type]; });
-      }
-      if (!result.booking_platform && result.booking_url) {
-        const p = detectPlatformFromUrl(result.booking_url);
-        if (p) result.booking_platform = p;
       }
       if (kind === 'transfer' && !legs) result.transfers = [{}];
 

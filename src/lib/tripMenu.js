@@ -22,7 +22,7 @@ export const MGMT_ITEMS = [
 export const EDIT_ITEM = { id: 'edit', labelKey: 'trip.edit_structure', icon: 'edit' };
 
 // Addon-gated lenses: hidden unless the trip explicitly enabled them.
-export const GATED_LENS_ADDON = { calendar: 'calendar', budget: 'budget', chat: 'chat' };
+export const GATED_LENS_ADDON = { budget: 'budget', chat: 'chat' };
 
 export function isLensVisible(trip, lensId) {
   const key = GATED_LENS_ADDON[lensId];
