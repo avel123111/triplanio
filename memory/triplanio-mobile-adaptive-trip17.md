@@ -32,6 +32,23 @@
   visualViewport API. Локальный `--kb-inset` effect в ManualPlanner удалён ранее.
   НЕ возвращать `top:0/right:0` — шелл обязан следовать за `--vvt`/`--vvl`.
 
+- **Клавиатура на мобиле = свернуть карту+футер (место под список города).**
+  (db6abf5, dev+main 2026-06-25.) Сам по себе viewport-following футер НЕ решал
+  боль: шапка+карта(160px)+прогресс+футер съедали всю область над клавиатурой →
+  выпадающему списку CityPicker некуда раскрыться (уходил за клавиатуру, город
+  не выбрать). Фикс: пока клавиатура открыта, `.flow-page` получает класс `is-kb`
+  (хук `useKeyboardOpen` в lib/keyboardInset.js — visualViewport: `kb =
+  innerHeight − vv.height − offsetTop > 120`), и на `@media(max-width:960px)`
+  `.flow-page.is-kb` ставит `.flow-mapcol{display:none}` + `.flow-foot{display:none}`
+  (карта декоративна при вводе, футер всё равно за клавиатурой). Карта паркуется:
+  `FlowMap active={!keyboardOpen}` → `useMapSurface` при возврате active=true
+  дёргает `map.resize()` (без серой плитки). Дропдаун `.flow-city-dd` капается по
+  live `--vvh`: `max-height: min(260px, calc(var(--vvh,100dvh) − 210px))` → список
+  не уходит за клавиатуру, не обрезается панелью, скроллится. Всё возвращается на
+  blur. iOS-таргет (на Android с `interactive-widget=resizes-content` kb-инсет≈0,
+  is-kb не встанет — там layout и так ужимается; если всплывёт — детект по baseline
+  max vv.height, а не по innerHeight).
+
 - **Event View dialog (`EventModal`):** «На карте» + «Посмотреть бронирование» —
   верхний ряд чипов `.ev-actions-top` (оба на `.bk-link`); футер только
   Удалить/Редактировать, right-align, на мобиле кнопки делят строку
