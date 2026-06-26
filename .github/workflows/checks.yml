@@ -9,15 +9,22 @@
 # merges, per the plan: baseline → fix → only then flip to blocking).
 #
 #   BLOCKING (verified green on dev, 25.06.2026 — Node 22):
-#     - frontend : npm ci → lint → test → build
+#     - frontend  : npm ci → lint → test → build
+#     - typecheck : tsc — green since TRIP-93 (26.06.2026). The project is JS/JSX,
+#                   so `checkJs` is OFF in jsconfig.json (it produced ~1202 false
+#                   "missing prop" errors on untyped JSX + ~89 in luxon.mjs — noise,
+#                   not bugs). tsc now validates syntax / JSX / imports for the
+#                   whole tree, AND fully type-checks the growing opt-in set of
+#                   files that carry a `// @ts-check` pragma (ratchet — start =
+#                   the entitlement/Pro cluster: src/lib/{limits,subscription,
+#                   tripAddons,useTripAccess}.js). Add `// @ts-check` to a file to
+#                   bring it under real type enforcement; breaking its types fails
+#                   THIS gate. Grow coverage file-by-file, no big-bang TS migration.
 #
 # NON-BLOCKING jobs report GREEN with a warning annotation (step-level
 # continue-on-error) so the PR isn't a misleading red — they run, but their
 # known pre-existing baseline doesn't block merge. Flip to blocking later by
 # dropping continue-on-error + the annotate step and marking them required.
-#     - typecheck : tsc — ~1202 pre-existing errors across the frontend
-#                   (checkJs on untyped JS/JSX, incl. ~89 in luxon.mjs; the
-#                   check has never been green — greening it is a large effort).
 #     - deno      : deno check on edge functions — 14 pre-existing errors
 #                   (getTripDetails ×10, getActiveTrips/getFxRates/
 #                   checkSubscriptionStatus ×3, getUserPlan ×1). The frontend
@@ -52,7 +59,7 @@ jobs:
         run: npm run build
 
   typecheck:
-    name: Typecheck (tsc) — non-blocking until baseline fixed
+    name: Typecheck (tsc)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -62,17 +69,12 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Typecheck
-        id: tsc
-        # Step-level continue-on-error: the job stays GREEN, the failure surfaces
-        # as a warning annotation below (not a red "build failed"). tsc is ~1202
-        # pre-existing errors deep (checkJs on untyped JS/JSX — never been green).
-        # TRIP-73: to make this blocking once green, drop continue-on-error here
-        # AND the annotate step, and mark this check required in branch protection.
-        continue-on-error: true
+        # BLOCKING since TRIP-93 (was non-blocking under TRIP-73). Green because
+        # checkJs is off (the JS/JSX tree isn't type-checked — that was ~1202 false
+        # positives), while files marked `// @ts-check` ARE fully checked. A type
+        # break in any opt-in file (or a syntax/import/JSX error anywhere) fails
+        # the PR. Mark this check required in branch protection to enforce on merge.
         run: npm run typecheck
-      - name: Annotate tsc baseline (non-blocking)
-        if: steps.tsc.outcome == 'failure'
-        run: echo "::warning title=tsc baseline (non-blocking)::npm run typecheck has known pre-existing errors — see the Typecheck step log. Does not block merge."
 
   deno:
     name: Deno typecheck (edge functions) — non-blocking until baseline fixed
