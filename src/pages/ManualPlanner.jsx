@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
-import { useActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
+import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { searchCities, resolveCities, countryFlag, reverseGeocode } from '@/lib/geo';
@@ -1223,7 +1223,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // activities) - both are added later in the trip view / Edit Mode.
 
       sessionStorage.removeItem(storageKey(user?.id, method));
-      qc.invalidateQueries({ queryKey: ['trips'] });
+      // Creating a trip raises the active-trip count — drop the limit gate cache
+      // too, so a follow-up create reads the fresh (at-cap) count, not a stale 0.
+      invalidateActiveTripsLimit(qc);
       setSavedOk(true);
       setSavedTripId(trip.id);
     } catch (err) {
