@@ -1,3 +1,4 @@
+// @ts-check
 // Subscription / plan helpers (frontend UI gating).
 // The backend (getUserPlan / checkSubscriptionStatus edge functions) remains the
 // source of truth for enforcement; this mirrors it for showing the right UI.

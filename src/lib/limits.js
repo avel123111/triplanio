@@ -1,3 +1,4 @@
+// @ts-check
 // Free-tier active-trip cap — the single client-side source of the threshold.
 //
 // The VALUE (1) is mirrored server-side in the create_trip RPC
