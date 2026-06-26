@@ -9,6 +9,8 @@
  *   { code: 'ok' }                   — no account with this email; safe to sign up
  *   { code: 'email_exists' }         — any confirmed account already exists (email/pw OR Google/Apple)
  *   { code: 'confirmation_resent' }  — account exists but unconfirmed → confirmation re-sent
+ *   { code: 'retry_soon' }           — resend hit Supabase's ~60s min-interval (short wait)
+ *   { code: 'rate_limited' }         — per-IP cap exceeded (long wait)
  *
  * verify_jwt = false: called by anonymous (logged-out) users.
  * NOTE: this endpoint reveals whether an email is registered (product decision).
@@ -18,7 +20,7 @@
 import { corsFor } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
-import { ipRateLimited } from '../_shared/rateLimit.ts';
+import { ipRateLimited, supabaseThrottleKind } from '../_shared/rateLimit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -55,11 +57,16 @@ Deno.serve(async (req) => {
     // dead-ending the user on "already registered".
     if (!st.is_confirmed) {
       const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
-      await anon.auth.resend({
+      const { error: resendErr } = await anon.auth.resend({
         type: 'signup',
         email: norm,
         options: safeRedirect(redirectTo) ? { emailRedirectTo: redirectTo } : undefined,
       });
+      // Hit Supabase's ~60s min-interval between emails → "wait a minute",
+      // not the dead-end "try in an hour".
+      if (resendErr && supabaseThrottleKind(resendErr) === 'soon') {
+        return Response.json({ code: 'retry_soon' }, { headers: corsHeaders });
+      }
       return Response.json({ code: 'confirmation_resent' }, { headers: corsHeaders });
     }
 

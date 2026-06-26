@@ -11,6 +11,22 @@
  */
 import { supabaseAdmin } from './supabaseAdmin.ts';
 
+/**
+ * Classify a Supabase Auth send error as a throttle situation, so the UI can
+ * tell a SHORT wait from a LONG one instead of always saying "try in an hour":
+ *   'soon' — the ~60s minimum interval between emails ("...only after N seconds")
+ *   'hour' — an hourly / volume cap (a genuinely long wait)
+ *   null   — not a throttle (a real send failure → generic retry)
+ */
+export function supabaseThrottleKind(err: unknown): 'soon' | 'hour' | null {
+  const e = err as { status?: number; code?: number | string; message?: string } | null;
+  const status = e?.status ?? e?.code;
+  const m = String(e?.message ?? '').toLowerCase();
+  const throttled = status === 429 || /rate|frequenc|seconds|too many|limit/.test(m);
+  if (!throttled) return null;
+  return /second/.test(m) ? 'soon' : 'hour';
+}
+
 /** Best-effort client IP from the edge proxy headers (first hop of XFF). */
 export function clientIp(req: Request): string | null {
   const xff = req.headers.get('x-forwarded-for');

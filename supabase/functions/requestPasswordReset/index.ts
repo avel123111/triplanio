@@ -10,9 +10,10 @@
  *
  * Returns one of:
  *   { code: 'account_not_found' }
- *   { code: 'rate_limited' }
+ *   { code: 'rate_limited' }      — our IP/email hourly cap (long wait, "try in an hour")
+ *   { code: 'retry_soon' }        — Supabase's ~60s min-interval (short wait, "in a minute")
  *   { code: 'reset_sent' }
- *   { code: 'send_failed' }       — transient/Supabase throttle; UI shows generic retry
+ *   { code: 'send_failed' }       — transient send error; UI shows generic retry
  *
  * verify_jwt = false: called by anonymous (logged-out) users.
  * NOTE: revealing account existence is an enumeration oracle. Bounded by TWO
@@ -24,22 +25,13 @@
 import { corsFor } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
-import { ipRateLimited, underLimit, recordHit } from '../_shared/rateLimit.ts';
+import { ipRateLimited, underLimit, recordHit, supabaseThrottleKind } from '../_shared/rateLimit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const RESET_MAX_PER_HOUR = 5; // successful sends per rolling hour, per email
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FALLBACK_REDIRECT = 'https://www.triplanio.com/reset-password';
-
-// Supabase's built-in throttles (min interval between emails / hourly cap) come
-// back as 429 or a rate/frequency message — treat those as our "try later".
-function isThrottle(err: any): boolean {
-  const status = err?.status ?? err?.code;
-  if (status === 429) return true;
-  const m = String(err?.message ?? '').toLowerCase();
-  return /rate|frequenc|seconds|too many|limit/.test(m);
-}
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -78,11 +70,12 @@ Deno.serve(async (req) => {
     const { error: sendErr } = await anon.auth.resetPasswordForEmail(norm, { redirectTo: redirect });
     if (sendErr) {
       console.error('resetPasswordForEmail failed', sendErr.status, sendErr.message);
-      // Supabase's own min-interval / hourly throttle → show the limit message,
-      // and do NOT count it against our quota.
-      if (isThrottle(sendErr)) {
-        return Response.json({ code: 'rate_limited' }, { headers: corsHeaders });
-      }
+      // Supabase's own throttle → show the limit message and do NOT count it
+      // against our quota. Split the ~60s min-interval ('soon') from an hourly
+      // cap ('hour') so the UI can say "wait a minute" vs "try in an hour".
+      const kind = supabaseThrottleKind(sendErr);
+      if (kind === 'soon') return Response.json({ code: 'retry_soon' }, { headers: corsHeaders });
+      if (kind === 'hour') return Response.json({ code: 'rate_limited' }, { headers: corsHeaders });
       return Response.json({ code: 'send_failed' }, { headers: corsHeaders });
     }
 
