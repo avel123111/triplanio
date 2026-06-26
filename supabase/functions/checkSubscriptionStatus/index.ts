@@ -3,15 +3,10 @@
 // Pro is available if EITHER the trip is a one-time pro_trip OR the trip's
 // OWNER has an active Pro subscription. Without a tripId, falls back to the
 // caller's own subscription (used by the trip-creation paywall).
+import { corsFor } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { reconcileEntitlement } from '../_shared/reconcileEntitlement.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -27,6 +22,7 @@ async function getUser(req: Request) {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const user = await getUser(req);

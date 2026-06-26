@@ -20,7 +20,7 @@
  * Falls back to first category if system category is missing.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 
 type SourceKind = 'hotel_stay' | 'activity' | 'transfer' | 'trip_service';
@@ -106,6 +106,7 @@ async function resolveCategoryId(tripId: string, sourceKind: SourceKind): Promis
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {

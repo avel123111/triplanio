@@ -7,13 +7,14 @@
  * Owner role cannot be removed.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerAdmin } from '../_shared/tripAccess.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 import { renderMemberLeftNotification, renderMemberRemovedNotification } from '../_shared/emailTemplate.ts';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
