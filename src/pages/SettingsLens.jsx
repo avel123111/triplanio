@@ -426,7 +426,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const [bookingWarnings, setBookingWarnings] = useState(() => trip?.details?.display?.booking_warnings !== false);
   const [chatWidget, setChatWidget] = useState(() => trip?.details?.display?.chat_widget !== false);
   const [upsell, setUpsell] = useState({ open: false, mode: 'upgrade', feature: '' });
-  const openUpgrade = () => nav(`/pro?tripId=${tripId}&hidePerTrip=1`);
+  // Owner upgrade from Settings shows the SAME 3 offers as the sidebar / AI-block
+  // (per-trip + monthly + yearly). No hidePerTrip here: Pro.jsx already hides the
+  // per-trip offer for non-owners (tripOwner check), so the flag only created an
+  // owner-vs-owner inconsistency between Settings and the sidebar (TRIP-63 №2).
+  const openUpgrade = () => nav(`/pro?tripId=${tripId}`);
 
   // Seed local state when the trip first loads or when switching to a different
   // trip. Keyed on trip.id (NOT the trip object): react-query hands back a fresh
@@ -691,9 +695,22 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </fieldset>
       </Card>
 
-      {/* Management cards (features, integrations, warnings, approvers) are
-          owner/admin controls — hidden for a read-only viewer. */}
-      {!readOnly && (<>
+      {/* Management cards (features, integrations, warnings, approvers) stay
+          VISIBLE for a read-only viewer (TRIP-63 №5) but disabled: a native
+          <fieldset disabled> switches off every control inside (toggles, inputs,
+          file pickers and buttons are all native), and opacity + pointer-events
+          mute the block visually — the SAME proven pattern as the identity
+          fieldset above. The viewer now SEES the budget addon exists (just can't
+          flip it), so the budget-lock modal's "Open settings" CTA is no longer a
+          dead end. Only "Leave trip" (Danger zone, OUTSIDE this fieldset) stays
+          interactive. flex+gap mirrors the .settings-lens spacing so wrapping the
+          cards doesn't collapse the 16px gaps. */}
+      <fieldset
+        disabled={readOnly}
+        style={{ border: 0, margin: 0, padding: 0, minWidth: 0,
+          display: 'flex', flexDirection: 'column', gap: 16,
+          ...(readOnly ? { opacity: 0.65, pointerEvents: 'none' } : {}) }}
+      >
       {/* ── Features: addon widget cards (Lumo DS §D1), full width ──
           The Pro upgrade banner lives INSIDE this panel, above the heading
           (matches the approved prototype). Shown on the same condition as the
@@ -805,7 +822,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           )}
         </div>
       </div>
-      </>)}
+      </fieldset>
 
       {/* ── Danger zone (full width) ── */}
       <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>
