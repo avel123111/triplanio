@@ -190,7 +190,7 @@ function InboxEmpty({ onCollection }) {
       title={t('notif.inbox_empty')}
       body={t('notif.inbox_empty_lead')}
       action={
-        <div style={{ width: '100%', maxWidth: 320, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ width: '100%', maxWidth: 460, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 16 }}>
             {rows.map((r, i) => (
               <div
