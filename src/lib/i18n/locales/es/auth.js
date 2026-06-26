@@ -13,6 +13,7 @@ export default {
   'auth.err_account_not_found': 'No encontramos una cuenta con ese correo. Revísalo o regístrate.',
   'auth.err_reset_rate_limited': 'Demasiadas solicitudes de restablecimiento. Inténtalo de nuevo en una hora.',
   'auth.err_rate_limited': 'Demasiados intentos. Inténtalo de nuevo más tarde.',
+  'auth.err_retry_soon': 'Acabas de pedir un correo. Espera un minuto e inténtalo de nuevo.',
   'auth.err_generic': 'Algo salió mal. Inténtalo de nuevo.',
   'auth.login_eyebrow': 'Iniciar sesión',
   'auth.login_title': 'Bienvenido de nuevo',

@@ -13,6 +13,7 @@ export default {
   'auth.err_account_not_found': 'We couldn’t find an account with that email. Check it or sign up.',
   'auth.err_reset_rate_limited': 'Too many reset requests. Please try again in an hour.',
   'auth.err_rate_limited': 'Too many attempts. Please try again later.',
+  'auth.err_retry_soon': 'You just requested an email. Wait about a minute and try again.',
   'auth.err_generic': 'Something went wrong. Please try again.',
   'auth.login_eyebrow': 'Sign in',
   'auth.login_title': 'Welcome back',
