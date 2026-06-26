@@ -204,7 +204,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
           <div style={{ marginBottom: 16 }}>
             <div className="eyebrow" style={{ marginBottom: 6 }}>{t('telegram.link_label')}</div>
             <div style={{ display: 'flex', gap: 6 }}>
-              <input className="input mono" value={url} readOnly style={{ flex: 1, fontSize: 'var(--fs-meta)' }} />
+              <input className="input mono" value={url} readOnly style={{ flex: 1 }} />
               <Btn variant="ghost" icon="copy" onClick={copyLink}>{copied ? '✓' : t('settings.tg_copy')}</Btn>
             </div>
           </div>

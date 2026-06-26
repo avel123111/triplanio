@@ -63,7 +63,7 @@ export default function PanelAi({ ctx }) {
           onChange={(e) => setPrompt(e.target.value)}
           disabled={aiState === 'generating'}
           placeholder={aiState === 'draft' ? t('ai_plan.prompt_placeholder_refine') : t('ai_plan.prompt_placeholder_initial')}
-          style={{ minHeight: 110, border: 'none', padding: 0, background: 'transparent', fontSize: 'var(--fs-strong)', lineHeight: 1.55, width: '100%', resize: 'none' }}
+          style={{ minHeight: 110, border: 'none', padding: 0, background: 'transparent', lineHeight: 1.55, width: '100%', resize: 'none' }}
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12, alignItems: 'center', gap: 8 }}>
           {aiState === 'generating' ? (
