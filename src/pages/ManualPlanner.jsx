@@ -1227,7 +1227,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   };
 
   // ── Limit guard ───────────────────────────────────────────────────────────
-  if (!isPro && checkingLimit) {
+  // The guard gates ENTERING / continuing creation while a free user is at the
+  // cap — it must NOT override the terminal success screen. Saving the trip
+  // raises the active count and invalidates the limit cache (see above), so the
+  // refetch flips isOverLimit→true a moment after savedOk. Without `!savedOk`
+  // the success screen would be replaced by the "limit reached" blocker a second
+  // after it appears. savedOk can only be true if the user was UNDER the limit
+  // at save time (the blocker returns before the form), so suppressing it here is
+  // safe by construction.
+  if (!isPro && checkingLimit && !savedOk) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 32, height: 32, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
@@ -1235,7 +1243,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     );
   }
 
-  if (isOverLimit) {
+  if (isOverLimit && !savedOk) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
         <AppHeader
