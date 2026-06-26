@@ -47,7 +47,14 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, par
     days:      formatTripRange(visits, '-'),
     scope:     scopeLabel(t, visits),
     role,
-    pro:       !!trip.is_pro_trip,
+    // Owner-aware Pro badge (TRIP-63 №3): a trip is Pro either via a one-time
+    // per-trip purchase (is_pro_trip) OR because its owner has an active
+    // subscription. We resolve the subscription case cheaply, with NO extra
+    // request: when the current user IS the owner (role==='owner') their own
+    // account Pro (isPro) makes the trip Pro. A trip owned by someone else whose
+    // subscription unlocks it is a rare case left to a follow-up (would need a
+    // server-side owner-aware predicate to avoid an edge call per card).
+    pro:       !!trip.is_pro_trip || (role === 'owner' && isPro),
     userIsPro: isPro,
     status:    isTripInPast(visits) ? 'past' : 'active',
     isShared:  participants.length >= 2,
