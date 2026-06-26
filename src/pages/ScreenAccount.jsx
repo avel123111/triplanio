@@ -700,30 +700,32 @@ export default function ScreenAccount() {
                   <div className="acct-divrow__t">{t('account.pref_language')}</div>
                   <div className="acct-divrow__s">{t('account.pref_language_sub')}</div>
                 </div>
-                <SearchSelect
-                  value={lang}
-                  onChange={setLang}
-                  options={LANGS}
-                  getKey={(l) => l.code}
-                  matches={(l, q) => l.native.toLowerCase().includes(q) || l.sub.toLowerCase().includes(q) || l.code.includes(q)}
-                  renderValue={(l) => (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <span className="acct-lang__flag">{l.flag}</span>{l.native}
-                    </span>
-                  )}
-                  renderOption={(l) => (
-                    <>
-                      <span className="acct-lang__flag">{l.flag}</span>
-                      <span>{l.native}</span>
-                      <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{l.sub}</span>
-                    </>
-                  )}
-                  searchPlaceholder={t('common.search')}
-                  emptyText={t('common.not_found')}
-                  title={t('settings.language')}
-                  triggerClassName="input"
-                  width={240}
-                />
+                <div className="acct-prefctl">
+                  <SearchSelect
+                    value={lang}
+                    onChange={setLang}
+                    options={LANGS}
+                    getKey={(l) => l.code}
+                    matches={(l, q) => l.native.toLowerCase().includes(q) || l.sub.toLowerCase().includes(q) || l.code.includes(q)}
+                    renderValue={(l) => (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <span className="acct-lang__flag">{l.flag}</span>{l.native}
+                      </span>
+                    )}
+                    renderOption={(l) => (
+                      <>
+                        <span className="acct-lang__flag">{l.flag}</span>
+                        <span>{l.native}</span>
+                        <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{l.sub}</span>
+                      </>
+                    )}
+                    searchPlaceholder={t('common.search')}
+                    emptyText={t('common.not_found')}
+                    title={t('settings.language')}
+                    triggerClassName="input"
+                    width={240}
+                  />
+                </div>
               </div>
 
               {/* Theme */}
@@ -733,10 +735,12 @@ export default function ScreenAccount() {
                   <div className="acct-divrow__t">{t('settings.theme')}</div>
                   <div className="acct-divrow__s">{t('account.pref_theme_sub')}</div>
                 </div>
-                <div className="seg" role="group" aria-label={t('settings.theme')}>
-                  <button aria-pressed={theme === 'light'} onClick={() => setTheme('light')}>{t('settings.theme_light')}</button>
-                  <button aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}>{t('settings.theme_dark')}</button>
-                  <button aria-pressed={theme === 'system'} onClick={() => setTheme('system')}>{t('settings.theme_system')}</button>
+                <div className="acct-prefctl">
+                  <div className="seg" role="group" aria-label={t('settings.theme')}>
+                    <button aria-pressed={theme === 'light'} onClick={() => setTheme('light')}>{t('settings.theme_light')}</button>
+                    <button aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}>{t('settings.theme_dark')}</button>
+                    <button aria-pressed={theme === 'system'} onClick={() => setTheme('system')}>{t('settings.theme_system')}</button>
+                  </div>
                 </div>
               </div>
 
@@ -747,9 +751,11 @@ export default function ScreenAccount() {
                   <div className="acct-divrow__t">{t('account.units')}</div>
                   <div className="acct-divrow__s">{t('account.units_sub')}</div>
                 </div>
-                <div className="seg" role="group" aria-label={t('account.units')}>
-                  <button aria-pressed={units === 'metric'} onClick={() => setUnits('metric')}>{t('units.km')}</button>
-                  <button aria-pressed={units === 'imperial'} onClick={() => setUnits('imperial')}>{t('units.mi')}</button>
+                <div className="acct-prefctl">
+                  <div className="seg" role="group" aria-label={t('account.units')}>
+                    <button aria-pressed={units === 'metric'} onClick={() => setUnits('metric')}>{t('units.km')}</button>
+                    <button aria-pressed={units === 'imperial'} onClick={() => setUnits('imperial')}>{t('units.mi')}</button>
+                  </div>
                 </div>
               </div>
             </div>
