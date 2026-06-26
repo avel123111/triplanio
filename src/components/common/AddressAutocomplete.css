@@ -4,8 +4,11 @@
 /* loading spinner inside input — was: absolute right-2.5 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground */
 .aa-spin { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); animation: aispin 1s linear infinite; }
 
-/* popover list — was: p-0 w-[--radix-popover-trigger-width] max-h-72 overflow-y-auto bg-popover text-popover-foreground */
-.aa-pop { padding: 0; width: var(--radix-popover-trigger-width); max-height: 288px; overflow-y: auto; background: var(--surface); color: var(--ink); }
+/* popover list — was: p-0 w-[--radix-popover-trigger-width] max-h-72 overflow-y-auto bg-popover text-popover-foreground.
+   [data-state] boosts specificity over the Radix PopoverContent base (w-72/p-4/no-overflow), which
+   tailwind-merge no longer dedupes now that this is a plain class — that base was clipping width &
+   re-adding padding and suppressing the scroll (until ui/popover is de-Tailwinded in Этап 3). */
+.aa-pop[data-state] { padding: 0; width: var(--radix-popover-trigger-width); max-height: 288px; overflow-y: auto; background: var(--surface); color: var(--ink); }
 .aa-list { padding: 4px 0; }                                              /* py-1 */
 
 /* option row — was: w-full text-left px-3 py-2 flex items-start gap-2 text-sm text-foreground hover:bg-secondary */
