@@ -145,7 +145,7 @@ export default function Inbox() {
             {[1, 2, 3, 4].map(i => <Skeleton key={i} w="100%" h={64} r={12} />)}
           </div>
         ) : notifications.length === 0 ? (
-          <InboxEmpty onCollection={() => nav('/trips')} onAi={() => nav('/plan-trip-ai')} />
+          <InboxEmpty onCollection={() => nav('/trips')} />
         ) : filtered.length === 0 ? (
           <EmptyState icon="bell" title={t('notif.filter_empty')} />
         ) : (
@@ -176,17 +176,45 @@ export default function Inbox() {
   );
 }
 
-function InboxEmpty({ onCollection, onAi }) {
+function InboxEmpty({ onCollection }) {
   const t = useT();
+  // "What will land here" hint list — reuses existing tokens (no new CSS classes).
+  const rows = [
+    { icon: 'users', title: t('notif.invitations'), sub: t('notif.invitations_desc') },
+    { icon: 'refresh', title: t('notif.updates'), sub: t('notif.updates_desc') },
+    { icon: 'file', title: t('notif.whats_new'), sub: t('notif.whats_new_desc') },
+  ];
   return (
     <EmptyState
       icon="bell"
       title={t('notif.inbox_empty')}
-      body={t('notif.inbox_empty_desc')}
+      body={t('notif.inbox_empty_lead')}
       action={
-        <div style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <Btn variant="primary" icon="plus" onClick={onCollection}>{t('notif.to_collection')}</Btn>
-          <Btn variant="ghost" icon="sparkles" onClick={onAi}>{t('trips.ai')}</Btn>
+        <div style={{ width: '100%', maxWidth: 320, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 16 }}>
+            {rows.map((r, i) => (
+              <div
+                key={r.icon}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '11px 6px',
+                  borderBottom: i < rows.length - 1 ? '1px solid var(--line-2)' : 'none',
+                }}
+              >
+                <span style={{
+                  width: 34, height: 34, borderRadius: 10, flex: 'none',
+                  background: 'var(--brand-soft)', color: 'var(--brand)',
+                  display: 'grid', placeItems: 'center',
+                }}>
+                  <Icon name={r.icon} size={16} />
+                </span>
+                <span style={{ textAlign: 'left' }}>
+                  <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>{r.title}</div>
+                  <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', marginTop: 1, lineHeight: 1.35 }}>{r.sub}</div>
+                </span>
+              </div>
+            ))}
+          </div>
+          <Btn variant="primary" icon="plus" block onClick={onCollection}>{t('notif.to_collection')}</Btn>
         </div>
       }
     />
