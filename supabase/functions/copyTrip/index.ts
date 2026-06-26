@@ -78,6 +78,10 @@ Deno.serve(async (req) => {
         // The copy is born WITHOUT any documents (Pavel decision 2026-06-24):
         // the cover image is a Storage-backed document, so it is never copied.
         cover_image_url: null,
+        // The gradient is a plain id (not a document) → inherit it so the copy
+        // keeps the original's cover. Fall back to the built-in default when the
+        // source had a photo-only cover (TRIP-107).
+        cover_gradient: sourceTrip.cover_gradient || 'gradient_1',
         notes: sourceTrip.notes,
         details: copyDetails,
         is_pro_trip: false, // copy is not automatically pro

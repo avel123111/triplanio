@@ -8,9 +8,11 @@ import { useT } from '@/lib/i18n/I18nContext';
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 MB
 
 /**
- * Cover picker shared by TripFormDialog and the AI create wizard. Lets the
- * user pick one of 8 preset gradients or upload a photo to Supabase Storage.
- * Calls `onChange({ cover_image_url, cover_gradient })` with the new pair -  * choosing a gradient clears the uploaded photo and vice versa.
+ * Cover picker shared by the create flow (ManualPlanner) and trip Settings
+ * (SettingsLens). Lets the user pick one of the built-in gradients
+ * (TRIP_GRADIENTS) or upload a photo to Supabase Storage. Calls
+ * `onChange({ cover_image_url, cover_gradient })` with the new pair — choosing a
+ * gradient clears the uploaded photo and vice versa.
  */
 export default function TripCoverPicker({
   coverImageUrl = '',
