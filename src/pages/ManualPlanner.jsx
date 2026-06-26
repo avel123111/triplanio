@@ -20,7 +20,7 @@ import TripStartControl from '@/components/trip/TripStartControl';
 import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
-import { getGradientById } from '@/lib/trip-gradients';
+import { coverGradientCss, DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 import FlowProgress from '@/pages/create/FlowProgress';
 import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
@@ -706,14 +706,8 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
   const autoTitle = computeAutoTitle(home, cities, t);
   const displayTitle = tripTitle || autoTitle;
 
-  const gradient = cover?.cover_gradient ? getGradientById(cover.cover_gradient) : null;
   const hasPhoto = !!cover?.cover_image_url;
-  const hasGradient = !hasPhoto && !!gradient;
-  const heroBg = hasGradient
-    ? gradient.css
-    : !hasPhoto
-      ? 'linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)'
-      : 'var(--wash)';
+  const heroBg = hasPhoto ? 'var(--wash)' : coverGradientCss(cover?.cover_gradient);
 
   if (savedOk) {
     return (
@@ -745,12 +739,6 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
         <div style={{ height: 120, background: heroBg, position: 'relative' }}>
           {hasPhoto && (
             <img src={cover.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-          )}
-          {!hasPhoto && !hasGradient && (
-            <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.5 }}>
-              <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.5)" />
-              <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.3)" />
-            </svg>
           )}
           <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad-soft)' }} />
           <div style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
@@ -1138,7 +1126,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           .from('trips')
           .update({
             cover_image_url: finalCoverUrl,
-            cover_gradient: cover.cover_gradient || null,
+            // Invariant: every trip keeps a built-in gradient (photo renders on
+            // top when present). Never persist null → no legacy/procedural cover.
+            cover_gradient: cover.cover_gradient || DEFAULT_GRADIENT_ID,
           })
           .eq('id', trip.id);
         if (coverErr) console.error('Failed to set cover:', coverErr);

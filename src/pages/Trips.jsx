@@ -9,7 +9,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
-import { getGradientById } from '@/lib/trip-gradients';
+import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
 import StatsMap from '@/components/views/StatsMap';
@@ -23,12 +23,6 @@ import { useActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import AppHeader from '@/components/AppHeader';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-function strHue(str = '') {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
-  return Math.abs(h) % 360;
-}
-
 function scopeLabel(t, visits = []) {
   // Same deduped transit set that backs the city COUNT (uniqueTransitCities) —
   // so the card's city list and every "N городов" number can never disagree.
@@ -50,8 +44,6 @@ function scopeLabel(t, visits = []) {
 function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, participants = []) {
   return {
     ...trip,
-    coverHue:  strHue(trip.id),
-    accentHue: strHue(trip.title || ''),
     days:      formatTripRange(visits, '-'),
     scope:     scopeLabel(t, visits),
     role,
@@ -64,18 +56,12 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, par
 }
 
 // ─── Cover background helper ────────────────────────────────────────────────
+// Photo (when present) is rendered as a separate <img> overlay → return null so
+// the cover element has no background behind it; otherwise the trip's gradient
+// (always one of our built-in set, default-backed).
 function coverBg(trip) {
-  const gradient = trip.cover_gradient ? getGradientById(trip.cover_gradient) : null;
-  if (trip.cover_image_url) return null; // photo rendered separately
-  if (gradient) return gradient.css;
-  // Procedural fallback based on trip id / title hue
-  const hue    = trip.coverHue ?? 210;
-  const accent = trip.accentHue ?? 18;
-  const isDark = document.documentElement.dataset.theme === 'dark';
-  return `linear-gradient(to bottom left,
-    hsl(${hue}, 60%, ${isDark ? 30 : 68}%) 0%,
-    hsl(${(hue + accent) % 360}, 55%, ${isDark ? 22 : 58}%) 60%,
-    hsl(${accent}, 70%, ${isDark ? 32 : 62}%) 100%)`;
+  if (trip.cover_image_url) return null;
+  return coverGradientCss(trip.cover_gradient);
 }
 
 // ─── Avatar stack — uses the same Avatar component as MembersLens/OverviewLens
@@ -586,8 +572,6 @@ export default function Trips() {
     const diff = best.startMs - now;
     return {
       ...best.tr,
-      coverHue:  strHue(best.tr.id),
-      accentHue: strHue(best.tr.title || ''),
       scope:     scopeLabel(t, best.visits),
       countdown: {
         d: Math.floor(diff / 864e5),
