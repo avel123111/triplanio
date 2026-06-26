@@ -8,6 +8,7 @@ import { Icon } from '@/design/icons';
 import { Dialog } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
+import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 
 /**
  * Global "create / copy trip" flow.
@@ -120,7 +121,9 @@ export function CreateTripProvider({ children }) {
         try { serverMsg = (await error.context.json())?.error || null; } catch { /* ignore */ }
       }
       if (error || data?.error) throw new Error(serverMsg || error?.message || 'copy failed');
-      qc.invalidateQueries({ queryKey: ['trips', user?.id] });
+      // Copying adds an active trip — drop the limit gate cache too, not just the
+      // list, so the next create attempt doesn't read a stale (under-cap) count.
+      invalidateActiveTripsLimit(qc);
       toast({ description: t('trip.copy_done'), variant: 'success' });
       if (data?.tripId) nav(`/trip/${data.tripId}`);
     } catch (e) {
