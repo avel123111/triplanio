@@ -3585,10 +3585,15 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    future fields) without per-class upkeep. Non-text controls (checkbox/radio/
    file/range/color) are excluded — they never trigger focus-zoom. We deliberately
    do NOT clamp the viewport meta (maximum-scale/user-scalable) so pinch-zoom and
-   accessibility stay intact. */
+   accessibility stay intact.
+   `!important` is intentional: "no mobile field below 16px" is a hard a11y/UX
+   invariant that must beat ANY inline style={{fontSize}} or higher-specificity
+   rule — otherwise off-canon fields keep slipping through and zooming. No field
+   in the app is intentionally >16px on mobile, so clamping to exactly 16px is
+   safe. */
 @media (max-width: 640px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
-  textarea, select { font-size: 16px; }
+  textarea, select { font-size: 16px !important; }
   /* View-modal footer actions (Delete / Edit) share the row evenly instead of
      crowding. Scoped away from the edit dialog footer (.lp-f--edit), which has
      its own layout (icon-only delete + grow-to-fill save). */
