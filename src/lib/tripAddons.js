@@ -1,3 +1,4 @@
+// @ts-check
 // Trip-level addons toggle.
 // Addons are stored on Trip.details.addons as { budget, hotels_selection, telegram_assistant, chat }.
 // All addons default to OFF for both new and existing trips.

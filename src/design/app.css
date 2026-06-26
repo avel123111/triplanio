@@ -3579,9 +3579,16 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .ev-dlg .field__label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
 
 /* iOS Safari auto-zooms the viewport when a focused field has font-size < 16px.
-   Force 16px on small screens so opening any sheet/modal field never zooms. */
+   Canonical anti-zoom guard (TRIP-92): one element-level rule forces 16px on
+   EVERY editable field on phones — covers .input/.select/.textarea AND any
+   off-canon field (.auth-input on login, .s22f-field price filters, .dl-search,
+   future fields) without per-class upkeep. Non-text controls (checkbox/radio/
+   file/range/color) are excluded — they never trigger focus-zoom. We deliberately
+   do NOT clamp the viewport meta (maximum-scale/user-scalable) so pinch-zoom and
+   accessibility stay intact. */
 @media (max-width: 640px) {
-  .input, .select, .textarea { font-size: 16px; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
+  textarea, select { font-size: 16px; }
   /* View-modal footer actions (Delete / Edit) share the row evenly instead of
      crowding. Scoped away from the edit dialog footer (.lp-f--edit), which has
      its own layout (icon-only delete + grow-to-fill save). */
