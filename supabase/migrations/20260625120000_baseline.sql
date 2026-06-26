@@ -10,7 +10,7 @@
 -- Содержит:
 --   • схему public целиком — таблицы, sequences, 52 функции, 14 триггеров, 6 вью (security_invoker, топопорядок),
 --     RLS + 42 политики, индексы, FK/constraints, grants;
---   • наши storage-объекты (в самом конце файла) — бакеты avatars/trips + 12 RLS-политик storage.objects.
+--   • наши storage-объекты (в самом конце файла) — бакеты avatars/trips + 6 RLS-политик storage.objects.
 -- НЕ содержит:
 --   • платформенные схемы auth/storage DDL — их создаёт сам Supabase-стек (включение → коллизия «already exists»);
 --   • storage.protect_delete() и триггеры protect_* — это платформенный механизм storage, не наш код.
@@ -4565,8 +4565,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 -- Guard на to_regclass('storage.buckets'): если на момент прогона миграций storage-схема ещё не поднята
 -- стеком — блок тихо пропускается (бакеты создаст storage-сервис). Политики применяются через EXECUTE,
 -- идемпотентно (DROP POLICY IF EXISTS перед CREATE).
--- ПРИМЕЧАНИЕ (тех-долг): политики trip-covers_* и documents_* ссылаются на bucket_id, которых нет среди
--- бакетов (есть только avatars, trips) — зеркалируем prod как есть; чистка — отдельной задачей.
+-- Только живые политики двух наших бакетов (avatars ×3, trips ×3 = 6). Мёртвые политики для
+-- несуществующих бакетов trip-covers/documents удалены на живых БД миграцией 20260626190000.
 DO $do$
 BEGIN
   IF to_regclass('storage.buckets') IS NULL THEN
@@ -4586,15 +4586,6 @@ BEGIN
 
   -- --- Policies on storage.objects (idempotent) ---
 
-  EXECUTE $p$ DROP POLICY IF EXISTS "Authenticated upload trip covers" ON storage.objects $p$;
-  EXECUTE $p$ CREATE POLICY "Authenticated upload trip covers" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'trip-covers'::text) $p$;
-
-  EXECUTE $p$ DROP POLICY IF EXISTS "Owner delete trip covers" ON storage.objects $p$;
-  EXECUTE $p$ CREATE POLICY "Owner delete trip covers" ON storage.objects FOR DELETE TO authenticated USING ((bucket_id = 'trip-covers'::text) AND (auth.uid() = owner)) $p$;
-
-  EXECUTE $p$ DROP POLICY IF EXISTS "Public read trip covers" ON storage.objects $p$;
-  EXECUTE $p$ CREATE POLICY "Public read trip covers" ON storage.objects FOR SELECT TO public USING (bucket_id = 'trip-covers'::text) $p$;
-
   EXECUTE $p$ DROP POLICY IF EXISTS "avatars_insert" ON storage.objects $p$;
   EXECUTE $p$ CREATE POLICY "avatars_insert" ON storage.objects FOR INSERT TO public WITH CHECK ((bucket_id = 'avatars'::text) AND (auth.uid() IS NOT NULL)) $p$;
 
@@ -4603,15 +4594,6 @@ BEGIN
 
   EXECUTE $p$ DROP POLICY IF EXISTS "avatars_update" ON storage.objects $p$;
   EXECUTE $p$ CREATE POLICY "avatars_update" ON storage.objects FOR UPDATE TO public USING ((bucket_id = 'avatars'::text) AND (auth.uid() IS NOT NULL)) $p$;
-
-  EXECUTE $p$ DROP POLICY IF EXISTS "documents_delete" ON storage.objects $p$;
-  EXECUTE $p$ CREATE POLICY "documents_delete" ON storage.objects FOR DELETE TO public USING ((bucket_id = 'documents'::text) AND (auth.uid() IS NOT NULL)) $p$;
-
-  EXECUTE $p$ DROP POLICY IF EXISTS "documents_insert" ON storage.objects $p$;
-  EXECUTE $p$ CREATE POLICY "documents_insert" ON storage.objects FOR INSERT TO public WITH CHECK ((bucket_id = 'documents'::text) AND (auth.uid() IS NOT NULL)) $p$;
-
-  EXECUTE $p$ DROP POLICY IF EXISTS "documents_select" ON storage.objects $p$;
-  EXECUTE $p$ CREATE POLICY "documents_select" ON storage.objects FOR SELECT TO public USING ((bucket_id = 'documents'::text) AND (auth.uid() IS NOT NULL)) $p$;
 
   EXECUTE $p$ DROP POLICY IF EXISTS "trips_delete" ON storage.objects $p$;
   EXECUTE $p$ CREATE POLICY "trips_delete" ON storage.objects FOR DELETE TO public USING ((bucket_id = 'trips'::text) AND (auth.uid() IS NOT NULL)) $p$;
