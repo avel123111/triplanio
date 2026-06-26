@@ -163,7 +163,7 @@
   height: 20px;
   display: flex; align-items: center;
   padding: 0 9px;
-  font-size: 9px; font-weight: 800;
+  font-size: var(--fs-nano); font-weight: 800;
   color: rgba(255,255,255,.92);
   letter-spacing: .05em; text-transform: uppercase;
   white-space: nowrap; overflow: hidden;
@@ -182,7 +182,7 @@
   flex: 1; height: 100%;
   display: flex; align-items: center;
   padding: 0 6px;
-  font-size: 9px; font-weight: 800;
+  font-size: var(--fs-nano); font-weight: 800;
   color: rgba(255,255,255,.9);
   letter-spacing: .04em; text-transform: uppercase;
   overflow: hidden; white-space: nowrap; min-width: 0;
@@ -305,7 +305,7 @@
 .ncal-wdc-city {
   display: inline-flex; align-items: center;
   padding: 3px 9px; border-radius: var(--r-pill);
-  font-size: 9px; font-weight: 800; margin-top: 8px;
+  font-size: var(--fs-nano); font-weight: 800; margin-top: 8px;
   letter-spacing: .04em; text-transform: uppercase;
 }
 /* Multiple city badges row */
@@ -395,7 +395,7 @@
 
 /* ── All-day event in agenda view ──────────────────────────────── */
 .ncal-aev.ev-allday .atm {
-  font-size: 9px;
+  font-size: var(--fs-nano);
   opacity: .55;
 }
 
@@ -474,9 +474,9 @@
   .ncal-dn-wrap { padding: 0 4px 3px; }
   .ncal-ev     { padding: 2px 4px; border-radius: 5px; }
   .ncal-ev .tm { display: none; }
-  .ncal-ev .t  { font-size: 9px; line-height: 1.2; }
+  .ncal-ev .t  { font-size: var(--fs-nano); line-height: 1.2; }
   .ncal-evl    { padding: 0 3px; gap: 2px; }
-  .ncal-more   { padding: 1px 6px; font-size: 9px; }
+  .ncal-more   { padding: 1px 6px; font-size: var(--fs-nano); }
 
   /* Week cards: horizontal scroll */
   .ncal-wcols {
@@ -487,14 +487,14 @@
   .ncal-wdc-cbar    { height: 4px; }
   .ncal-wdc-h       { padding: 10px 10px 8px; }
   .ncal-wdc-num     { font-size: var(--fs-h3); }
-  .ncal-wdc-city    { font-size: 8px; padding: 2px 7px; margin-top: 6px; }
+  .ncal-wdc-city    { font-size: var(--fs-nano); padding: 2px 7px; margin-top: 6px; }
   .ncal-wdc-b       { padding: 7px 8px 10px; gap: 4px; }
   .ncal-aev         { padding: 5px 7px 5px 9px; border-radius: 8px; }
   .ncal-aev .atl    { font-size: var(--fs-nano); }
 
   /* Legend */
   .ncal-legend     { gap: 8px; margin-top: 18px; }
-  .ncal-legend-lbl { width: 52px; font-size: 9px; }
+  .ncal-legend-lbl { width: 52px; font-size: var(--fs-nano); }
   .ncal-leg        { font-size: var(--fs-micro); gap: 5px; }
 }
 
