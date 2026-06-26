@@ -529,6 +529,11 @@ export default function TripStructureEdit() {
   const myMember = (content?.members || []).find((m) => m.user_id === user?.id);
   const myRole = myMember?.role || (trip?.created_by === user?.id ? 'owner' : 'viewer');
   const isOwner = myRole === 'owner';
+  // The /edit route is reachable by direct URL — a viewer has no edit rights, so
+  // guard it here with the SAME shared "no access" stub used for shellError above
+  // (role is resolved only after content loads, so this can't flash). Server-side
+  // RLS hardening for direct REST writes is tracked as a separate task.
+  if (myRole === 'viewer') return <TripAccessError onBack={() => nav(`/trip/${tripId}`)} />;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
   // A transfer row is flagged (orange "не совпадает") when it has ANY conflict -   // date mismatch (D2), non-adjacent (D5) or dangling (D6).
