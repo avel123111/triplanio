@@ -1,9 +1,10 @@
 # PR gate for Triplanio (TRIP-73, Ф2).
 #
 # Runs the reusable `checks` workflow on every PR into dev/main. Mark the
-# "Frontend (lint / test / build)" check as REQUIRED in GitHub → Settings →
-# Branches → branch protection so it blocks merge. (Typecheck + Deno checks are
-# intentionally non-blocking for now — see checks.yml.)
+# "Frontend (lint / test / build)", "Typecheck (tsc)" and "Deno typecheck
+# (edge functions)" checks as REQUIRED in GitHub → Settings → Branches → branch
+# protection so they block merge. All three are blocking as of TRIP-93/TRIP-94
+# (see checks.yml).
 name: CI
 
 on:

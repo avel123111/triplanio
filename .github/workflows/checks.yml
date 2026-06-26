@@ -4,9 +4,8 @@
 #   - ci.yml              (on pull_request — blocks merge)
 #   - supabase-deploy.yml (on push to dev/main — gates the deploy via `needs:`)
 #
-# Jobs split into BLOCKING (green today) and NON-BLOCKING (pre-existing baseline
-# debt — kept informational so the first PR doesn't go red and freeze all
-# merges, per the plan: baseline → fix → only then flip to blocking).
+# All three jobs are BLOCKING (the baseline debt that kept typecheck + deno
+# informational under TRIP-73 has since been cleared — TRIP-93 / TRIP-94).
 #
 #   BLOCKING (verified green on dev, 25.06.2026 — Node 22):
 #     - frontend  : npm ci → lint → test → build
@@ -20,17 +19,14 @@
 #                   tripAddons,useTripAccess}.js). Add `// @ts-check` to a file to
 #                   bring it under real type enforcement; breaking its types fails
 #                   THIS gate. Grow coverage file-by-file, no big-bang TS migration.
-#
-# NON-BLOCKING jobs report GREEN with a warning annotation (step-level
-# continue-on-error) so the PR isn't a misleading red — they run, but their
-# known pre-existing baseline doesn't block merge. Flip to blocking later by
-# dropping continue-on-error + the annotate step and marking them required.
-#     - deno      : deno check on edge functions — 14 pre-existing errors
-#                   (getTripDetails ×10, getActiveTrips/getFxRates/
-#                   checkSubscriptionStatus ×3, getUserPlan ×1). The frontend
-#                   toolchain never type-checks functions (jsconfig is src-only;
-#                   eslint matches src/** .js only; functions are .ts) — see
-#                   risk A. esbuild on deploy catches syntax, NOT types.
+#     - deno      : deno check on edge functions — green since TRIP-94 (the 14
+#                   pre-existing type errors are fixed; getTripDetails ×10,
+#                   getActiveTrips/getFxRates/checkSubscriptionStatus ×3,
+#                   getUserPlan ×1). The frontend toolchain never type-checks
+#                   functions (jsconfig is src-only; eslint matches src/** .js
+#                   only; functions are .ts) — see risk A. esbuild on deploy
+#                   catches syntax, NOT types, so this is the only type gate for
+#                   functions.
 #
 # Node 22: the project's `npm test` uses `node --test "src/**/*.test.js"` whose
 # glob is expanded by Node's test runner only on Node 21+ (Node 20 fails with
@@ -77,7 +73,7 @@ jobs:
         run: npm run typecheck
 
   deno:
-    name: Deno typecheck (edge functions) — non-blocking until baseline fixed
+    name: Deno typecheck (edge functions)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -92,16 +88,9 @@ jobs:
           restore-keys: |
             deno-${{ runner.os }}-
       - name: Type-check edge functions
-        id: denocheck
-        # Step-level continue-on-error: job stays GREEN, failure surfaces as a
-        # warning annotation below. 14 pre-existing errors (getTripDetails ×10,
-        # getActiveTrips/getFxRates/checkSubscriptionStatus ×3, getUserPlan ×1).
+        # BLOCKING since TRIP-94 (the 14 baseline type errors are fixed). A new
+        # edge-function type error now fails the gate.
         # --node-modules-dir=none forces Deno's own cache for npm:/URL imports
         # (the repo-root package.json would otherwise push Deno into node_modules
         # mode and fail to resolve npm:stripe etc.). --no-lock keeps CI lock-free.
-        # TRIP-73: to make blocking once fixed, drop continue-on-error + annotate.
-        continue-on-error: true
         run: deno check --no-lock --node-modules-dir=none $(find supabase/functions -name '*.ts')
-      - name: Annotate deno baseline (non-blocking)
-        if: steps.denocheck.outcome == 'failure'
-        run: echo "::warning title=Deno baseline (non-blocking)::deno check has known pre-existing edge-function type errors — see the Type-check step log. Does not block merge."

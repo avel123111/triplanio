@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
 
       return Response.json({
         plan: 'pro',
-        subscriptionEnd: userData.subscription_end_date,
+        subscriptionEnd: userData?.subscription_end_date ?? null,
         subscriptionType: latest?.type || null,
         // Scheduled cancellation (UI "won't renew" state). Status stays 'active'
         // verbatim; the flag lives in cancel_at_period_end (set by the webhook).
