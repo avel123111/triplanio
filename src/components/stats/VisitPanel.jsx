@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { pointType, TONE } from '@/lib/travel-stats';
-import { getGradientById } from '@/lib/trip-gradients';
+import { coverGradientCss } from '@/lib/trip-gradients';
 import { useSheetSwipe } from '@/lib/useSheetSwipe';
 import { Icon } from '@/design/icons';
 
@@ -77,11 +77,10 @@ function groupVisits(visits = []) {
 
 // Trip swatch in the trip-link: the cover PHOTO if uploaded, else the gradient.
 function TripDot({ trip }) {
-  const grad = trip?.cover_gradient ? getGradientById(trip.cover_gradient) : null;
   const photo = trip?.cover_image_url;
   const style = photo
     ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: grad ? grad.css : 'var(--primary)' };
+    : { background: coverGradientCss(trip?.cover_gradient) };
   return <span className="d" style={style} />;
 }
 

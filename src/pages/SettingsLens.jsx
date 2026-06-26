@@ -26,6 +26,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { telegram as tgBrand } from '@/lib/externalBrands';
 import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
+import { DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
 // `addon` is the key persisted under trip.details.addons (matches TripView lens ids
@@ -504,7 +505,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       description: description.trim() || null,
       notes: notes || null,
       cover_image_url: coverImageUrl || null,
-      cover_gradient: coverGradient || null,
+      // Invariant: keep a built-in gradient even when a photo is set (photo just
+      // renders on top). Never persist null → no legacy/procedural fallback.
+      cover_gradient: coverGradient || DEFAULT_GRADIENT_ID,
     };
     // trips RLS is owner-only → write via edge function so admins can save too.
     const { data, error } = await supabase.functions.invoke('updateTripSettings', {
