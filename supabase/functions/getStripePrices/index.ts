@@ -10,13 +10,14 @@
  * per Supabase project (live in prod, test in dev).
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { isTestStripeKey, productsForEnv } from '../_shared/stripeCatalog.ts';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {

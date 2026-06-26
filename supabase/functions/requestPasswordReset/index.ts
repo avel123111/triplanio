@@ -15,17 +15,20 @@
  *   { code: 'send_failed' }       — transient/Supabase throttle; UI shows generic retry
  *
  * verify_jwt = false: called by anonymous (logged-out) users.
- * NOTE: revealing account existence is an enumeration oracle — the per-email
- * limit here bounds abuse on the normal flow; add Auth CAPTCHA for full cover.
+ * NOTE: revealing account existence is an enumeration oracle. Bounded by TWO
+ * axes (TRIP-67): a per-IP limit (`pwd_reset_ip`: 10/min + 60/hour) cuts bulk
+ * probing of non-existent addresses; the per-email cap (`pwd_reset_email`:
+ * 5/hour) protects a real user's inbox from reset-email spam. Add Auth CAPTCHA
+ * for full cover at GA.
  */
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+import { ipRateLimited, underLimit, recordHit } from '../_shared/rateLimit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-const WINDOW_MS = 60 * 60 * 1000; // rolling 1 hour
-const MAX_PER_WINDOW = 5;
+const RESET_MAX_PER_HOUR = 5; // successful sends per rolling hour, per email
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FALLBACK_REDIRECT = 'https://www.triplanio.com/reset-password';
 
@@ -39,6 +42,7 @@ function isThrottle(err: any): boolean {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -48,7 +52,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid email' }, { status: 400, headers: corsHeaders });
     }
 
-    // 1) Existence check (service-role only RPC over auth.users).
+    // 1) Per-IP throttle BEFORE the existence check — bounds bulk enumeration
+    // of non-existent addresses (which the email cap below does NOT cover).
+    if (await ipRateLimited(req, 'pwd_reset_ip')) {
+      return Response.json({ code: 'rate_limited' }, { headers: corsHeaders });
+    }
+
+    // 2) Existence check (service-role only RPC over auth.users).
     const { data: stData, error: stErr } = await supabaseAdmin.rpc('auth_email_status', { p_email: norm });
     if (stErr) throw stErr;
     const st = Array.isArray(stData) ? stData[0] : stData;
@@ -56,19 +66,13 @@ Deno.serve(async (req) => {
       return Response.json({ code: 'account_not_found' }, { headers: corsHeaders });
     }
 
-    // 2) Our cap: 5 SUCCESSFUL sends per rolling hour, per email.
-    const sinceIso = new Date(Date.now() - WINDOW_MS).toISOString();
-    const { count, error: cntErr } = await supabaseAdmin
-      .from('password_reset_attempts')
-      .select('id', { count: 'exact', head: true })
-      .eq('email', norm)
-      .gte('created_at', sinceIso);
-    if (cntErr) throw cntErr;
-    if ((count ?? 0) >= MAX_PER_WINDOW) {
+    // 3) Per-email cap: 5 SUCCESSFUL sends per rolling hour (anti inbox-spam).
+    // Recorded only after a delivered email (see recordHit below).
+    if (!(await underLimit('pwd_reset_email', norm, RESET_MAX_PER_HOUR, 3600))) {
       return Response.json({ code: 'rate_limited' }, { headers: corsHeaders });
     }
 
-    // 3) Send via Supabase Auth SMTP (existing recovery template), like the client did.
+    // 4) Send via Supabase Auth SMTP (existing recovery template), like the client did.
     const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
     const redirect = safeRedirect(redirectTo) ? (redirectTo as string) : FALLBACK_REDIRECT;
     const { error: sendErr } = await anon.auth.resetPasswordForEmail(norm, { redirectTo: redirect });
@@ -82,11 +86,8 @@ Deno.serve(async (req) => {
       return Response.json({ code: 'send_failed' }, { headers: corsHeaders });
     }
 
-    // Count only delivered emails toward the 5/hour cap.
-    const { error: insErr } = await supabaseAdmin
-      .from('password_reset_attempts')
-      .insert({ email: norm });
-    if (insErr) throw insErr;
+    // Count only delivered emails toward the 5/hour-per-email cap.
+    await recordHit('pwd_reset_email', norm);
 
     return Response.json({ code: 'reset_sent' }, { headers: corsHeaders });
   } catch (err) {

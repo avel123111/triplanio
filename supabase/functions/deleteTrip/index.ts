@@ -23,7 +23,7 @@
  * DB-path collector was pure overlap and was removed — TRIP-13.)
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
 
@@ -48,6 +48,7 @@ async function purgeBucketByPrefix(prefix: string): Promise<void> {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {

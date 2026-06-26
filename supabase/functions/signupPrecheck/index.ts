@@ -12,17 +12,20 @@
  *
  * verify_jwt = false: called by anonymous (logged-out) users.
  * NOTE: this endpoint reveals whether an email is registered (product decision).
- * It is an enumeration oracle by design — protect with Auth CAPTCHA at/ before GA.
+ * It is an enumeration oracle by design — bounded by a per-IP rate limit (TRIP-67,
+ * `signup_precheck_ip`: 10/min + 60/hour). Add Auth CAPTCHA for full cover at GA.
  */
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
+import { ipRateLimited } from '../_shared/rateLimit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -30,6 +33,13 @@ Deno.serve(async (req) => {
     const norm = String(email ?? '').trim().toLowerCase();
     if (!norm || !EMAIL_RE.test(norm)) {
       return Response.json({ error: 'Invalid email' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Per-IP throttle BEFORE the existence check — this endpoint is an
+    // enumeration oracle, so bound bulk probing at the door (status 200 +
+    // code so the client reads it via functions.invoke `data`, not `error`).
+    if (await ipRateLimited(req, 'signup_precheck_ip')) {
+      return Response.json({ code: 'rate_limited' }, { headers: corsHeaders });
     }
 
     const { data, error } = await supabaseAdmin.rpc('auth_email_status', { p_email: norm });

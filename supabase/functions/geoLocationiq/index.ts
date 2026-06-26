@@ -29,7 +29,7 @@
  * batch, booking-address resolve) via `p_min`.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { getRequestUser, supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 
@@ -269,6 +269,7 @@ function bestCoords(rows: unknown[]): { lat: number; lng: number } | null {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
