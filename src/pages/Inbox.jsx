@@ -190,14 +190,22 @@ function InboxEmpty({ onCollection }) {
       title={t('notif.inbox_empty')}
       body={t('notif.inbox_empty_lead')}
       action={
-        <div style={{ width: '100%', maxWidth: 460, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 16 }}>
-            {rows.map((r, i) => (
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+          {/* Responsive grid: 3-up on desktop, collapses to a single column on narrow
+              screens via auto-fit (no media query / no new CSS class). */}
+          <div style={{
+            width: '100%',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+            gap: 12,
+          }}>
+            {rows.map((r) => (
               <div
                 key={r.icon}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '11px 6px',
-                  borderBottom: i < rows.length - 1 ? '1px solid var(--line-2)' : 'none',
+                  display: 'flex', alignItems: 'flex-start', gap: 12,
+                  padding: '14px 16px', textAlign: 'left',
+                  border: '1px solid var(--line)', borderRadius: 12, background: 'var(--surface)',
                 }}
               >
                 <span style={{
@@ -207,14 +215,14 @@ function InboxEmpty({ onCollection }) {
                 }}>
                   <Icon name={r.icon} size={16} />
                 </span>
-                <span style={{ textAlign: 'left' }}>
+                <span>
                   <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>{r.title}</div>
-                  <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', marginTop: 1, lineHeight: 1.35 }}>{r.sub}</div>
+                  <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', marginTop: 2, lineHeight: 1.35 }}>{r.sub}</div>
                 </span>
               </div>
             ))}
           </div>
-          <Btn variant="primary" icon="plus" block onClick={onCollection}>{t('notif.to_collection')}</Btn>
+          <Btn variant="primary" icon="plus" onClick={onCollection}>{t('notif.to_collection')}</Btn>
         </div>
       }
     />
