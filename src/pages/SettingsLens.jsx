@@ -700,16 +700,16 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           so it looks identical to the right-menu plate, just horizontal. */}
       <Card>
         {proResolved && !hasPro && (
-          <div className="pro-up" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <div className="pro-up pro-up--inline" style={{ marginBottom: 16 }}>
             <div className="pi"><Icon name="crown" size={17} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="pu-body">
               <div className="pt">{t('trip_menu.free_trip_title')}</div>
               <p style={{ margin: 0 }}>{t('trip.pro_locked_lenses')}</p>
             </div>
             {isOwner ? (
               <Btn variant="pro" size="sm" icon="pro" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
             ) : (
-              <button className="lockmsg" style={{ width: 'auto' }} onClick={() => setUpsell({ open: true, mode: 'info', feature: '' })}>
+              <button className="lockmsg" onClick={() => setUpsell({ open: true, mode: 'info', feature: '' })}>
                 <Icon name="lock" size={14} />
                 {t('trip.pro_by_owner')}
               </button>
