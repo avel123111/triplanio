@@ -60,6 +60,6 @@ Deno.serve(async (req) => {
     }, { headers: corsHeaders });
   } catch (error) {
     console.error('getActiveTrips error:', error);
-    return Response.json({ error: String(error?.message || error) }, { status: 500, headers: corsHeaders });
+    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500, headers: corsHeaders });
   }
 });
