@@ -11,6 +11,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { normalizeStay22, buildStay22Params, STAY22_KEY } from '@/lib/stay22-normalize';
 import { cityNameEn } from '@/lib/geo';
+import { countryNameEn } from '@/lib/countryNamesEn';
 
 export { normalizeStay22, buildStay22Params, STAY22_KEY };
 
@@ -48,8 +49,11 @@ export function useStay22Accommodations({ visit, currency, lang, page = 1, filte
     placeholderData: keepPreviousData, // keep the previous page visible while the next loads
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      // Resolve (and persist) the English city name, then prefer address search.
-      const address = await ensureCityNameEn(visit);
+      // Resolve (and persist) the English city name + country → qualify the address
+      // so Stay22 doesn't resolve "Cairo" to Cairo, IL instead of Cairo, Egypt.
+      const cityEn = await ensureCityNameEn(visit);
+      const cntryEn = visit?.country_code ? countryNameEn(visit.country_code) : null;
+      const address = cityEn ? [cityEn, cntryEn].filter(Boolean).join(', ') : null;
       const body = address ? { ...params, address } : params;
       const { data, error } = await supabase.functions.invoke('stay22Accommodations', { body });
       if (error) throw error;
