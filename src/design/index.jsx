@@ -191,7 +191,8 @@ export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 export const TRIP = {
   id: "iberia-summer",
   title: "Иберия летом",
-  cover: "linear-gradient(135deg, #2167e2 0%, #5a8ff0 50%, #c9603a 100%)",
+  cover_gradient: "gradient_16",   // Spectrum — used by showcase cards
+  cover_image_url: null,
   start: "12 июля",
   end: "23 июля",
   year: 2026,
@@ -210,11 +211,11 @@ export const TRIP = {
 };
 
 export const TRIPS = [
-  { ...TRIP, days: "12 → 23 июл · 2026", scope: "3 города · Португалия, Испания", role: "owner", pro: true, status: "future", coverHue: 210, accentHue: 18 },
-  { id: "japan", title: "Япония по сакуре", days: "5 → 18 апр · 2026", scope: "5 городов · Япония", role: "admin", pro: true, status: "future", coverHue: 330, accentHue: 200 },
-  { id: "balkans", title: "Балканский круг", days: "Без дат", scope: "7 городов · 4 страны", role: "owner", pro: false, status: "draft", coverHue: 150, accentHue: 35 },
-  { id: "tbilisi", title: "Тбилиси на выходные", days: "21 → 24 фев · 2026", scope: "1 город · Грузия", role: "viewer", pro: false, status: "future" },
-  { id: "morocco", title: "Марокко с детьми", days: "Сент 2025", scope: "4 города · Марокко", role: "owner", pro: true, status: "past", coverHue: 25, accentHue: 200 },
+  { ...TRIP, days: "12 → 23 июл · 2026", scope: "3 города · Португалия, Испания", role: "owner", pro: true, status: "future" },
+  { id: "japan", title: "Япония по сакуре", days: "5 → 18 апр · 2026", scope: "5 городов · Япония", role: "admin", pro: true, status: "future", cover_gradient: "gradient_13", cover_image_url: null },
+  { id: "balkans", title: "Балканский круг", days: "Без дат", scope: "7 городов · 4 страны", role: "owner", pro: false, status: "draft", cover_gradient: "gradient_9", cover_image_url: null },
+  { id: "tbilisi", title: "Тбилиси на выходные", days: "21 → 24 фев · 2026", scope: "1 город · Грузия", role: "viewer", pro: false, status: "future", cover_gradient: "gradient_1", cover_image_url: null },
+  { id: "morocco", title: "Марокко с детьми", days: "Сент 2025", scope: "4 города · Марокко", role: "owner", pro: true, status: "past", cover_gradient: "gradient_10", cover_image_url: null },
 ];
 
 // ----- DismissibleSeverity -----
