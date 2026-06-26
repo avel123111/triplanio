@@ -234,8 +234,8 @@ export default function ForkPartnerModal({
     return (
       <div className="lp lp--wide" style={{ '--ev-soft': meta.colorSoft, '--ev-ink': meta.color }}>
         <div className="lp-h lp-h--ev">
-          <button className="lp-back" onClick={() => onOpenChange(false)} title={t('fork.cancel')}><ArrowLeft className="w-4 h-4" /></button>
-          <span className="lp-ic" style={{ background: meta.colorSoft, color: meta.color }}><ManualIcon className="w-4 h-4" /></span>
+          <button className="lp-back" onClick={() => onOpenChange(false)} title={t('fork.cancel')}><ArrowLeft size={16} /></button>
+          <span className="lp-ic" style={{ background: meta.colorSoft, color: meta.color }}><ManualIcon size={16} /></span>
           <div className="lp-ti"><b>{t(meta.titleKey)}</b></div>
         </div>
         <div className="lp-b scrollbar-thin">{body}</div>

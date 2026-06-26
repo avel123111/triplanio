@@ -293,7 +293,7 @@ function ServiceBody({ entity, accent }) {
     <>
       <Section title={t('service.car_pickup')} accent={accent}>
         <div className="kv-grid">
-          <KV label={t('event.pickup_where')}><div className="leading-snug">{d.pickup_address}</div></KV>
+          <KV label={t('event.pickup_where')}><div style={{ lineHeight: 1.375 }}>{d.pickup_address}</div></KV>
           <KV label={t('admin.notifications.when')}>{fmtDT(pickupDisplay)}</KV>
         </div>
       </Section>
@@ -303,7 +303,7 @@ function ServiceBody({ entity, accent }) {
             {sameLocation ? (
               <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{t('event.return_same')}</span>
             ) : (
-              <div className="leading-snug">{d.dropoff_address}</div>
+              <div style={{ lineHeight: 1.375 }}>{d.dropoff_address}</div>
             )}
           </KV>
           <KV label={t('admin.notifications.when')}>{fmtDT(dropoffDisplay)}</KV>

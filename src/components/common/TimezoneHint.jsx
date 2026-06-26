@@ -24,14 +24,14 @@ export default function TimezoneHint({ tz, variant = 'under' }) {
   // every screen width (view dialogs).
   if (variant === 'inline') {
     return (
-      <span className="basis-full text-xs text-muted-foreground">
+      <span style={{ flexBasis: '100%', fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>
         {t('common.tz_detected', { tz })}
       </span>
     );
   }
 
   return (
-    <p className="mt-1 text-xs text-muted-foreground">
+    <p style={{ marginTop: 4, fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>
       {t('common.tz_detected', { tz })}
     </p>
   );
