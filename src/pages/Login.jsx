@@ -333,6 +333,7 @@ export default function Login() {
       body: { email, redirectTo: window.location.origin + postLoginPath() },
     });
     if (preErr) { setError(t('auth.err_generic')); setIsLoading(false); return; }
+    if (pre?.code === 'rate_limited') { setError(t('auth.err_rate_limited')); setIsLoading(false); return; }
     if (pre?.code === 'email_exists') { setError(t('auth.err_email_exists')); setIsLoading(false); return; }
     if (pre?.code === 'confirmation_resent') {
       // Account exists but was never confirmed — the server re-sent the link.

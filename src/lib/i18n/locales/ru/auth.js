@@ -12,6 +12,7 @@ export default {
   'auth.err_oauth_only': 'Этот адрес привязан ко входу через Google или Apple. Войди через соцсеть.',
   'auth.err_account_not_found': 'Аккаунт с таким адресом не найден. Проверь email или зарегистрируйся.',
   'auth.err_reset_rate_limited': 'Слишком много попыток восстановления. Попробуй снова через час.',
+  'auth.err_rate_limited': 'Слишком много попыток. Попробуй позже.',
   'auth.err_generic': 'Что-то пошло не так. Попробуй ещё раз.',
   'auth.login_eyebrow': 'Вход в аккаунт',
   'auth.login_title': 'С возвращением',

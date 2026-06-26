@@ -7,13 +7,8 @@
 // NOTE: the real free-tier enforcement lives in the create_trip RPC. This endpoint
 // only drives the upsell dialog, so on ANY error we fail OPEN (activeCount 0)
 // rather than falsely blocking the user.
+import { corsFor } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -29,6 +24,7 @@ async function getUser(req: Request) {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const user = await getUser(req);

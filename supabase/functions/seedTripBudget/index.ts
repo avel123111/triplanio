@@ -11,7 +11,7 @@
  *   Custom  (kind: 'custom'): shopping, entertainment, fees, other
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 
 const SYSTEM_CATEGORIES = [
@@ -29,6 +29,7 @@ const CUSTOM_CATEGORIES = [
 ];
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {

@@ -1,4 +1,4 @@
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 
@@ -6,6 +6,7 @@ const BOT_EMAIL = 'info@triplanio.com';
 const BOT_NAME  = 'Triplanio';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') {
     return Response.json({ error: 'Method not allowed' }, { status: 405, headers: corsHeaders });

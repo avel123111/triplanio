@@ -7,13 +7,14 @@
  * Creates a pending TripMember, a Notification, and sends an invite email (best-effort).
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerAdmin } from '../_shared/tripAccess.ts';
 import { renderInviteTemplate, renderInviteNotification } from '../_shared/emailTemplate.ts';
 import { sendEmail } from '../_shared/sendEmail.ts';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {

@@ -12,6 +12,7 @@ export default {
   'auth.err_oauth_only': 'This email uses Google or Apple sign-in. Use the social button to sign in.',
   'auth.err_account_not_found': 'We couldn’t find an account with that email. Check it or sign up.',
   'auth.err_reset_rate_limited': 'Too many reset requests. Please try again in an hour.',
+  'auth.err_rate_limited': 'Too many attempts. Please try again later.',
   'auth.err_generic': 'Something went wrong. Please try again.',
   'auth.login_eyebrow': 'Sign in',
   'auth.login_title': 'Welcome back',

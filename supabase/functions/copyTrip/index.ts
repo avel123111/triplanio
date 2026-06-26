@@ -17,12 +17,13 @@
  * All child records are re-created with new IDs and caller as created_by.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { PRO_ONLY_ADDONS } from '../_shared/proAddons.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {

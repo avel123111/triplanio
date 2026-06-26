@@ -2,14 +2,9 @@
 // Returns trip (ownership stripped) + visits/hotels/transfers/activities/carRentals,
 // plus a minimal `owner` identity and the active `members` list (display name +
 // avatar + role ONLY — never user_id/email) for the shared-trip reader UI.
+import { corsFor } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { captureEdgeError } from '../_shared/sentry.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
 
 // AI assistant account — a trip_member for chat, never shown as a human traveler.
 const TRIPLANIO_BOT_EMAIL = 'info@triplanio.com';
@@ -29,6 +24,7 @@ type UserRow = { id: string; full_name: string | null; avatar_url: string | null
 type MemberRow = { user_id: string | null; user_full_name: string | null; role: string | null; status: string | null };
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const { tripId, token } = await req.json().catch(() => ({}));

@@ -17,13 +17,14 @@
  *
  * Returns 200 { ok: true } | { ok: false, code: 'FORBIDDEN' | 'PRO_REQUIRED' }.
  */
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { PRO_ADDON_SET } from '../_shared/proAddons.ts';
 
 const ALLOWED_COLS = ['title', 'description', 'cover_image_url', 'cover_gradient', 'notes'];
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
