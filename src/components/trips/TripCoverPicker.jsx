@@ -4,6 +4,7 @@ import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, DRAFT_PREFIX, tripStoragePath } from '@/lib/storage';
 import { TRIP_GRADIENTS, getGradientById } from '@/lib/trip-gradients';
 import { useT } from '@/lib/i18n/I18nContext';
+import './TripCoverPicker.css';
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 MB
 
@@ -72,23 +73,18 @@ export default function TripCoverPicker({
       : undefined;
 
   return (
-    <div className="space-y-3">
+    <div className="tcp">
       {showPreview && (
-        <div
-          className="relative w-full h-[120px] rounded-lg overflow-hidden border bg-muted"
-          style={previewStyle}
-        >
+        <div className="tcp__preview" style={previewStyle}>
           {coverImageUrl ? (
-            <img src={coverImageUrl} alt="" className="w-full h-full object-cover" />
+            <img src={coverImageUrl} alt="" className="tcp__img" />
           ) : !gradient ? (
-            <div className="w-full h-full flex items-center justify-center text-3xl opacity-30">
-              🌍
-            </div>
+            <div className="tcp__ph">🌍</div>
           ) : null}
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="tcp__swatches">
         {TRIP_GRADIENTS.map((g) => {
           const active = !coverImageUrl && coverGradient === g.id;
           return (
@@ -97,14 +93,10 @@ export default function TripCoverPicker({
               type="button"
               onClick={() => handlePickGradient(g.id)}
               title={g.name}
-              className={`relative w-10 h-10 rounded-full transition-transform ${
-                active ? 'ring-2 ring-white ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105'
-              }`}
+              className={`tcp__sw${active ? ' is-active' : ''}`}
               style={{ background: g.preview }}
             >
-              {active && (
-                <Check className="absolute inset-0 m-auto w-4 h-4 text-white drop-shadow" />
-              )}
+              {active && <Check className="tcp__check" size={16} />}
             </button>
           );
         })}
@@ -113,12 +105,12 @@ export default function TripCoverPicker({
           type="button"
           onClick={handlePickFile}
           disabled={uploading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border bg-background hover:bg-secondary text-sm disabled:opacity-50"
+          className="tcp__upload"
         >
           {uploading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <Loader2 className="spin" size={14} />
           ) : (
-            <Upload className="w-3.5 h-3.5" />
+            <Upload size={14} />
           )}
           {uploading ? t('trip.form_uploading') : t('trip.form_upload_image')}
         </button>
@@ -127,11 +119,11 @@ export default function TripCoverPicker({
           type="file"
           accept="image/*"
           onChange={handleUpload}
-          className="hidden"
+          className="tcp__file"
         />
       </div>
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="tcp__err">{error}</p>}
     </div>
   );
 }

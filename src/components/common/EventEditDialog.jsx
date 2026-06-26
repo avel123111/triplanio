@@ -2212,7 +2212,6 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         onUploadingChange={setUploading}
         tripId={tripId}
         bare
-        iconColor="text-violet-600 dark:text-violet-300"
       />
       <div>
         <Label>{t('event.notes')}</Label>
@@ -2474,7 +2473,6 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         onUploadingChange={setUploading}
         tripId={tripId}
         bare
-        iconColor="text-emerald-700 dark:text-emerald-300"
       />
       <div>
         <Label>{t('event.notes')}</Label>
