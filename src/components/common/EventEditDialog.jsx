@@ -127,7 +127,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
 import { validateEntity, transferAiCityAdvisories } from '@/lib/validation';
 import { FieldError, IssuesPanel, fieldHasError } from '@/components/common/ValidationUI';
-import { detectPlatformFromUrl, BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
+import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { tzFromCoords } from '@/lib/timezone';
@@ -1497,9 +1497,8 @@ function SectionHeader({ children }) {
 
 function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const _platform = detectPlatformFromUrl(form.booking_url);
-  const platformInfo = _platform ? BOOKING_PLATFORMS[_platform] : null;
-  const platformLogo = platformLogoUrl(_platform, form.booking_url);
+  const platformLogo = faviconUrl(form.booking_url);
+  const platformLabel = hostnameFromUrl(form.booking_url);
   const color = TYPE_META.hotel.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -1625,17 +1624,15 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
               />
             </div>
           </AiField>
-          {platformInfo && (
+          {form.booking_url && (
             <div className="eed-bkmeta">
               <span className="eed-bkpill">
                 {platformLogo && <img src={platformLogo} alt="" className="eed-bkpill__logo" />}
-                {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
+                {platformLabel}
               </span>
-              {form.booking_url && (
-                <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="eed-bkopen">
-                  <ExternalLink size={12} />{t('common.open')}
-                </a>
-              )}
+              <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="eed-bkopen">
+                <ExternalLink size={12} />{t('common.open')}
+              </a>
             </div>
           )}
         </div>
@@ -1681,9 +1678,8 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
 
 function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const _platform = detectPlatformFromUrl(form.booking_url);
-  const platformInfo = _platform ? BOOKING_PLATFORMS[_platform] : null;
-  const platformLogo = platformLogoUrl(_platform, form.booking_url);
+  const platformLogo = faviconUrl(form.booking_url);
+  const platformLabel = hostnameFromUrl(form.booking_url);
   const color = TYPE_META.transfer.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -1829,17 +1825,15 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
               />
             </div>
           </AiField>
-          {platformInfo && (
+          {form.booking_url && (
             <div className="eed-bkmeta">
               <span className="eed-bkpill">
                 {platformLogo && <img src={platformLogo} alt="" className="eed-bkpill__logo" />}
-                {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
+                {platformLabel}
               </span>
-              {form.booking_url && (
-                <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="eed-bkopen">
-                  <ExternalLink size={12} />{t('common.open')}
-                </a>
-              )}
+              <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="eed-bkopen">
+                <ExternalLink size={12} />{t('common.open')}
+              </a>
             </div>
           )}
         </div>
@@ -2322,9 +2316,8 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, isE
 
 function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const _platform = detectPlatformFromUrl(form.booking_url);
-  const platformInfo = _platform ? BOOKING_PLATFORMS[_platform] : null;
-  const platformLogo = platformLogoUrl(_platform, form.booking_url);
+  const platformLogo = faviconUrl(form.booking_url);
+  const platformLabel = hostnameFromUrl(form.booking_url);
   const color = TYPE_META.service.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -2441,17 +2434,15 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
               className={platformLogo ? 'pl-9' : ''}
             />
           </div>
-          {platformInfo && (
+          {form.booking_url && (
             <div className="eed-bkmeta">
               <span className="eed-bkpill">
                 {platformLogo && <img src={platformLogo} alt="" className="eed-bkpill__logo" />}
-                {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
+                {platformLabel}
               </span>
-              {form.booking_url && (
-                <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="eed-bkopen">
-                  <ExternalLink size={12} />{t('common.open')}
-                </a>
-              )}
+              <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="eed-bkopen">
+                <ExternalLink size={12} />{t('common.open')}
+              </a>
             </div>
           )}
         </div>

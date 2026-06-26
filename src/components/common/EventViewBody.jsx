@@ -23,7 +23,7 @@ import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate } from '@/lib/trip-data';
-import { BOOKING_PLATFORMS, platformLogoUrl, detectPlatformFromUrl } from '@/lib/booking-platforms';
+import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import {
   Map as MapIcon, Calendar, FileText,
   BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
@@ -338,10 +338,10 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
   const price = kind === 'service' ? (entity.price ?? entity.details?.price) : entity.price;
 
   const bookingUrl = kind === 'service' ? entity.details?.booking_url : entity.booking_url;
-  // Platform is derived from the booking URL on the fly (no stored column) — TRIP-75.
-  const bookingPlatform = detectPlatformFromUrl(bookingUrl);
-  const platformInfo = bookingPlatform ? BOOKING_PLATFORMS[bookingPlatform] : null;
-  const platformLogo = platformLogoUrl(bookingPlatform, bookingUrl);
+  // Favicon + host label are derived from the booking URL on the fly (no stored
+  // column, no platform directory) — the favicon works for any domain.
+  const platformLogo = faviconUrl(bookingUrl);
+  const platformLabel = hostnameFromUrl(bookingUrl);
 
   const metaItems = [];
   if (kind === 'hotel') {
@@ -381,7 +381,7 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
 
   return {
     theme, themeLabel, title, cur, price, priceText,
-    bookingUrl, bookingPlatform, platformInfo, platformLogo, mapAddress, metaItems,
+    bookingUrl, platformLabel, platformLogo, mapAddress, metaItems,
   };
 }
 

@@ -6,7 +6,7 @@
 // we fall back to the platform name (e.g. just "Booking.com") to avoid a crash.
 
 import { DateTime } from 'luxon';
-import { platformLogoUrl } from '@/lib/booking-platforms';
+import { faviconUrl } from '@/lib/booking-platforms';
 import { countryNameEn } from '@/lib/countryNamesEn';
 import { sortVisits } from '@/lib/validation';
 
@@ -146,7 +146,7 @@ export function hotelPlatforms(visit, t, lang) {
       key: 'booking',
       label: bookOn(t, 'Booking.com'),
       hint: cityQuery,
-      logo: platformLogoUrl('booking'),
+      logo: faviconUrl('booking.com'),
       url: `https://www.booking.com/searchresults.html?${new URLSearchParams({
         ss: cityQuery, lang: 'en-us', group_adults: '2', no_rooms: '1', group_children: '0',
         ...(checkin && { checkin }), ...(checkout && { checkout }),
@@ -156,7 +156,7 @@ export function hotelPlatforms(visit, t, lang) {
       key: 'airbnb',
       label: bookOn(t, 'Airbnb'),
       hint: cityQuery,
-      logo: platformLogoUrl('airbnb'),
+      logo: faviconUrl('airbnb.com'),
       url: `https://www.airbnb.com/s/${airbnbSlug}/homes?${new URLSearchParams({
         adults: '2', ...(checkin && { checkin }), ...(checkout && { checkout }),
       }).toString()}`,
@@ -255,14 +255,14 @@ export function insurancePlatforms(t) {
       key: 'safetywing',
       label: bookOn(t, 'SafetyWing'),
       hint: t ? t('service.insurance_safetywing_hint') : 'Nomad insurance · from $45/mo',
-      logo: platformLogoUrl('safetywing'),
+      logo: faviconUrl('safetywing.com'),
       url: 'https://safetywing.com/nomad-insurance/',
     },
     {
       key: 'ektatraveling',
       label: bookOn(t, 'Ekta Traveling'),
       hint: t ? t('service.insurance_ektatraveling_hint') : 'Travel & medical insurance',
-      logo: platformLogoUrl('ektatraveling', 'ektatraveling.com'),
+      logo: faviconUrl('ektatraveling.com'),
       url: 'https://ektatraveling.tpx.lt/ej8OjLU3',
       provider: 'travelpayouts',
     },
@@ -290,21 +290,21 @@ export function transferPlatforms(fromVisit, toVisit, t, lang) {
       key: 'skyscanner',
       label: findFlightsOn(t, 'Skyscanner'),
       hint: `${from} → ${to}`,
-      logo: platformLogoUrl('skyscanner'),
+      logo: faviconUrl('skyscanner.com'),
       url: `https://www.skyscanner.com/transport/flights/${encodeURIComponent(from)}/${encodeURIComponent(to)}/`,
     },
     {
       key: 'omio',
       label: findTicketsOn(t, 'Omio'),
       hint: `${from} → ${to}`,
-      logo: platformLogoUrl('omio'),
+      logo: faviconUrl('omio.com'),
       url: `https://www.omio.com/search-frontend/results/${encodeURIComponent(from)}/${encodeURIComponent(to)}`,
     },
     {
       key: 'kiwi',
       label: findOn(t, 'Kiwi.com'),
       hint: `${from} → ${to}`,
-      logo: platformLogoUrl('kiwi'),
+      logo: faviconUrl('kiwi.com'),
       url: `https://www.kiwi.com/en/search/results/${encodeURIComponent(from)}/${encodeURIComponent(to)}`,
     },
     // RU-only partner (.ru site via TravelPayouts). provider=travelpayouts.
