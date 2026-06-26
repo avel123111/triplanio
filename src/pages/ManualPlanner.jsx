@@ -226,7 +226,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }
           onFocus={() => results.length > 0 && setOpen(true)}
           onBlur={handleBlur}
           placeholder={placeholder || t('planner.city_search_ph')}
-          style={{ paddingLeft: 36, paddingRight: loading ? 36 : 12, fontSize: 'var(--fs-strong)' }}
+          style={{ paddingLeft: 36, paddingRight: loading ? 36 : 12 }}
           autoFocus={autoFocus}
         />
         {loading && (

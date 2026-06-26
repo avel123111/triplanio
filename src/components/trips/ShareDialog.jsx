@@ -51,7 +51,7 @@ export default function ShareDialog({ trip, open, onOpenChange }) {
     >
       <div className="muted" style={{ fontSize: 'var(--fs-base)', marginBottom: 18 }}>{t('trip.share_desc')}</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1, fontSize: 'var(--fs-meta)' }} onClick={(e) => e.target.select()} />
+        <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1 }} onClick={(e) => e.target.select()} />
         {loading ? (
           <Btn variant="primary" disabled>
             <span className="spin-mini" style={{
