@@ -17,6 +17,21 @@ import { isActiveTripCapReached } from '@/lib/limits';
  *          isBlocked = free user already at the cap. While loading, isBlocked is
  *          false so screens don't flash a blocker before the count arrives.
  */
+/**
+ * Single invalidation point for everything that changes a user's active-trip
+ * count: create, copy, delete. Drops the free-tier gate cache
+ * (['active-trips-limit'] — keyed by userId, so invalidate by prefix) plus the
+ * trips list. Call this after ANY mutation that adds/removes an owned trip, so
+ * the create dialog and the planner's full-screen guard can never read a stale
+ * count (staleTime 30s) and disagree with the server.
+ *
+ * @param {import('@tanstack/react-query').QueryClient} [qc]
+ */
+export function invalidateActiveTripsLimit(qc) {
+  qc?.invalidateQueries({ queryKey: ['active-trips-limit'] });
+  qc?.invalidateQueries({ queryKey: ['trips'] });
+}
+
 export function useActiveTripsLimit(userId) {
   const q = useQuery({
     queryKey: ['active-trips-limit', userId],

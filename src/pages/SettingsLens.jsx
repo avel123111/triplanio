@@ -15,6 +15,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
+import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, Severity, Toggle } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
@@ -617,12 +618,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
       return;
     }
-    // Deleting an owned trip lowers the active-trip count, so drop the cached
-    // free-tier gate (['active-trips-limit'], keyed by userId — invalidate by
-    // prefix) and the trips list. Without this the planner reads the stale count
-    // (staleTime 30s) and flashes the full-screen limit guard until refresh.
-    queryClient?.invalidateQueries({ queryKey: ['active-trips-limit'] });
-    queryClient?.invalidateQueries({ queryKey: ['trips'] });
+    // Deleting an owned trip lowers the active-trip count — drop the gate cache
+    // so the planner can't read a stale count and flash the limit guard.
+    invalidateActiveTripsLimit(queryClient);
     nav('/trips');
   }
 
