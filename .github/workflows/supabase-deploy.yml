@@ -51,8 +51,8 @@ jobs:
       functions: ${{ steps.f.outputs.functions }}
       migrations: ${{ steps.f.outputs.migrations }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v4
         id: f
         with:
           filters: |
@@ -68,7 +68,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect.outputs.functions == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Resolve target project
         id: target
@@ -79,7 +79,7 @@ jobs:
             *) echo "::error::Unsupported branch '${{ github.ref_name }}'"; exit 1 ;;
           esac
 
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v2
         with:
           version: latest
 
@@ -132,9 +132,9 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect.outputs.migrations == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v2
         with:
           version: latest
 
