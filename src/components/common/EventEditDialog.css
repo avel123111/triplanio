@@ -31,9 +31,9 @@
 .input.eed-in--logo { padding-left: 36px; }                                /* was pl-9 */
 /* platform meta row — was: mt-1.5 flex items-center gap-2 */
 .eed-bkmeta { margin-top: 6px; display: flex; align-items: center; gap: 8px; }
-/* platform pill — was: inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium
-   (colour still comes from the injected platformInfo.color class — handled in Этап 2) */
-.eed-bkpill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 4px; font-size: var(--fs-meta); font-weight: 500; }
+/* platform pill — was: inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium.
+   URL-detected brand-colour tint removed — neutral surface-2 background, favicon is the brand signal. */
+.eed-bkpill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 4px; font-size: var(--fs-meta); font-weight: 500; background: var(--surface-2); color: var(--ink-2); }
 .eed-bkpill__logo { width: 14px; height: 14px; border-radius: calc(var(--radius) - 8px); }   /* was w-3.5 h-3.5 rounded-sm */
 /* open link — was: text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 */
 .eed-bkopen { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-meta); color: var(--muted); text-decoration: none; }

@@ -1,29 +1,31 @@
-// Detect booking platform from URL domain
-// Each platform has a brand color and a domain used to fetch favicon
+// Detect booking platform from URL domain. Each platform carries a label + a
+// domain used to fetch the favicon. (Brand colour tints were removed — the
+// URL-detected pill now uses a neutral default background; the favicon is the
+// only brand signal.)
 export const BOOKING_PLATFORMS = {
-  booking:  { label: 'Booking.com', color: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',   domain: 'booking.com' },
-  airbnb:   { label: 'Airbnb',      color: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',   domain: 'airbnb.com' },
-  hotels:   { label: 'Hotels.com',  color: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',       domain: 'hotels.com' },
-  expedia:  { label: 'Expedia',     color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300', domain: 'expedia.com' },
-  agoda:    { label: 'Agoda',       color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300', domain: 'agoda.com' },
-  trivago:  { label: 'Trivago',     color: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300', domain: 'trivago.com' },
-  vrbo:     { label: 'Vrbo',        color: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300',   domain: 'vrbo.com' },
-  rentalcars: { label: 'Rentalcars', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300', domain: 'rentalcars.com' },
-  sixt:       { label: 'Sixt',       color: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300', domain: 'sixt.com' },
-  hertz:      { label: 'Hertz',      color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300', domain: 'hertz.com' },
-  europcar:   { label: 'Europcar',   color: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',     domain: 'europcar.com' },
-  avis:       { label: 'Avis',       color: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',             domain: 'avis.com' },
-  enterprise: { label: 'Enterprise', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300', domain: 'enterprise.com' },
-  discovercars: { label: 'DiscoverCars', color: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',     domain: 'discovercars.com' },
-  kayak:      { label: 'KAYAK',      color: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300', domain: 'kayak.com' },
-  kiwi:       { label: 'Kiwi.com',   color: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',             domain: 'kiwi.com' },
-  skyscanner: { label: 'Skyscanner', color: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300',             domain: 'skyscanner.com' },
-  omio:       { label: 'Omio',       color: 'bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300',         domain: 'omio.com' },
-  airalo:      { label: 'Airalo',       color: 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300',    domain: 'airalo.com' },
-  yesim:       { label: 'Yesim',        color: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300',            domain: 'yesim.app' },
-  safetywing:  { label: 'SafetyWing',   color: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',             domain: 'safetywing.com' },
-  worldnomads: { label: 'World Nomads', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300', domain: 'worldnomads.com' },
-  other:    { label: 'Посмотреть бронирование', labelKey: 'event.view_booking', color: 'bg-secondary text-foreground',                         domain: null },
+  booking:  { label: 'Booking.com', domain: 'booking.com' },
+  airbnb:   { label: 'Airbnb',      domain: 'airbnb.com' },
+  hotels:   { label: 'Hotels.com',  domain: 'hotels.com' },
+  expedia:  { label: 'Expedia',     domain: 'expedia.com' },
+  agoda:    { label: 'Agoda',       domain: 'agoda.com' },
+  trivago:  { label: 'Trivago',     domain: 'trivago.com' },
+  vrbo:     { label: 'Vrbo',        domain: 'vrbo.com' },
+  rentalcars: { label: 'Rentalcars', domain: 'rentalcars.com' },
+  sixt:       { label: 'Sixt',       domain: 'sixt.com' },
+  hertz:      { label: 'Hertz',      domain: 'hertz.com' },
+  europcar:   { label: 'Europcar',   domain: 'europcar.com' },
+  avis:       { label: 'Avis',       domain: 'avis.com' },
+  enterprise: { label: 'Enterprise', domain: 'enterprise.com' },
+  discovercars: { label: 'DiscoverCars', domain: 'discovercars.com' },
+  kayak:      { label: 'KAYAK',      domain: 'kayak.com' },
+  kiwi:       { label: 'Kiwi.com',   domain: 'kiwi.com' },
+  skyscanner: { label: 'Skyscanner', domain: 'skyscanner.com' },
+  omio:       { label: 'Omio',       domain: 'omio.com' },
+  airalo:      { label: 'Airalo',       domain: 'airalo.com' },
+  yesim:       { label: 'Yesim',        domain: 'yesim.app' },
+  safetywing:  { label: 'SafetyWing',   domain: 'safetywing.com' },
+  worldnomads: { label: 'World Nomads', domain: 'worldnomads.com' },
+  other:    { label: 'Посмотреть бронирование', labelKey: 'event.view_booking', domain: null },
 };
 
 /**

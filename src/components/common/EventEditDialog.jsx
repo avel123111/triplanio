@@ -1627,7 +1627,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
           </AiField>
           {platformInfo && (
             <div className="eed-bkmeta">
-              <span className={`eed-bkpill ${platformInfo.color}`}>
+              <span className="eed-bkpill">
                 {platformLogo && <img src={platformLogo} alt="" className="eed-bkpill__logo" />}
                 {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
               </span>
@@ -1831,7 +1831,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           </AiField>
           {platformInfo && (
             <div className="eed-bkmeta">
-              <span className={`eed-bkpill ${platformInfo.color}`}>
+              <span className="eed-bkpill">
                 {platformLogo && <img src={platformLogo} alt="" className="eed-bkpill__logo" />}
                 {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
               </span>
@@ -2443,7 +2443,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
           </div>
           {platformInfo && (
             <div className="eed-bkmeta">
-              <span className={`eed-bkpill ${platformInfo.color}`}>
+              <span className="eed-bkpill">
                 {platformLogo && <img src={platformLogo} alt="" className="eed-bkpill__logo" />}
                 {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
               </span>

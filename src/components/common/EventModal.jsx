@@ -138,11 +138,11 @@ export default function EventModal(props) {
                       className="bk-link"
                     >
                       {platformLogo ? (
-                        <span className="pb" style={{ background: platformInfo?.color || 'var(--surface-2)', overflow: 'hidden' }}>
+                        <span className="pb" style={{ background: 'var(--surface-2)', overflow: 'hidden' }}>
                           <img src={platformLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </span>
                       ) : platformInfo ? (
-                        <span className="pb" style={{ background: platformInfo.color || 'var(--muted)' }}>
+                        <span className="pb" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}>
                           {(platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label || '?').charAt(0)}
                         </span>
                       ) : null}
