@@ -617,6 +617,12 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
       return;
     }
+    // Deleting an owned trip lowers the active-trip count, so drop the cached
+    // free-tier gate (['active-trips-limit'], keyed by userId — invalidate by
+    // prefix) and the trips list. Without this the planner reads the stale count
+    // (staleTime 30s) and flashes the full-screen limit guard until refresh.
+    queryClient?.invalidateQueries({ queryKey: ['active-trips-limit'] });
+    queryClient?.invalidateQueries({ queryKey: ['trips'] });
     nav('/trips');
   }
 
