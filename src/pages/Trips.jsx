@@ -41,20 +41,21 @@ function scopeLabel(t, visits = []) {
  *
  * "Shared" = trip has ≥2 participants (owner + at least 1 accepted member).
  */
-function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, participants = []) {
+function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, participants = [], serverPro = undefined) {
   return {
     ...trip,
     days:      formatTripRange(visits, '-'),
     scope:     scopeLabel(t, visits),
     role,
-    // Owner-aware Pro badge (TRIP-63 №3): a trip is Pro either via a one-time
-    // per-trip purchase (is_pro_trip) OR because its owner has an active
-    // subscription. We resolve the subscription case cheaply, with NO extra
-    // request: when the current user IS the owner (role==='owner') their own
-    // account Pro (isPro) makes the trip Pro. A trip owned by someone else whose
-    // subscription unlocks it is a rare case left to a follow-up (would need a
-    // server-side owner-aware predicate to avoid an edge call per card).
-    pro:       !!trip.is_pro_trip || (role === 'owner' && isPro),
+    // Owner-aware Pro badge (TRIP-121). Effective Pro = is_pro_trip OR the trip
+    // OWNER has an active subscription — true for EVERY trip the user sees, incl.
+    // foreign trips made Pro by their owner's sub. The server computes it once in
+    // get_user_travel_stats via the canonical is_trip_pro() predicate (the client
+    // can't see a foreign owner's billing), exposed per trip as `serverPro`.
+    // Fallback (older RPC build with no is_pro field): the client predicate —
+    // own trips only (is_pro_trip OR I'm the owner with an active sub) — so a
+    // stale deploy degrades gracefully instead of dropping all badges.
+    pro:       typeof serverPro === 'boolean' ? serverPro : (!!trip.is_pro_trip || (role === 'owner' && isPro)),
     userIsPro: isPro,
     status:    isTripInPast(visits) ? 'past' : 'active',
     isShared:  participants.length >= 2,
@@ -560,7 +561,7 @@ export default function Trips() {
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
   const shownNorm = shown.map(tr =>
-    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [])
+    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [], travelStats?.trips?.[tr.id]?.is_pro)
   );
 
   // ── Next upcoming trip (nearest future start) for the rail card ──────────────
