@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
@@ -8,7 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ru, es, enUS } from 'date-fns/locale';
 import { Icon } from '@/design/icons';
-import { Btn, EmptyState } from '@/design/index';
+import { Btn, EmptyState, Popover, PopoverContent, PopoverTrigger } from '@/design/index';
 
 const DATE_LOCALES = { ru, es, en: enUS };
 

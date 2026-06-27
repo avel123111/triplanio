@@ -17,14 +17,12 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Dialog, Field, Severity, Toggle } from '../design/index';
+import { Avatar, Badge, Btn, Card, Dialog, Field, Severity, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { useToast } from '@/components/ui/use-toast';
 import { telegram as tgBrand } from '@/lib/externalBrands';
-import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 

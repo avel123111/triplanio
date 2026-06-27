@@ -1,7 +1,6 @@
 import React from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Icon } from '@/design/icons';
-import { Btn } from '@/design/index';
+import { Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
