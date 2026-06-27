@@ -11,7 +11,7 @@ const ToastProvider = React.forwardRef(({ ...props }, ref) => (
 ToastProvider.displayName = "ToastProvider";
 
 const ToastViewport = React.forwardRef(({ ...props }, ref) => (
-  <div ref={ref} className="hidden" {...props} />
+  <div ref={ref} style={{ display: "none" }} {...props} />
 ));
 ToastViewport.displayName = "ToastViewport";
 

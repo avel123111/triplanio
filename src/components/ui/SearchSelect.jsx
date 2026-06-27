@@ -63,7 +63,7 @@ export default function SearchSelect({
       <span style={current ? undefined : { color: 'var(--muted-2)' }}>
         {current ? (renderValue ? renderValue(current) : getKey(current)) : placeholder}
       </span>
-      <ChevronDown className="w-3.5 h-3.5 opacity-50" />
+      <ChevronDown size={14} style={{ opacity: 0.5 }} />
     </button>
   );
 
@@ -117,7 +117,7 @@ export default function SearchSelect({
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{trigger()}</PopoverTrigger>
       <PopoverContent
-        className="p-0"
+        className="pop-flush"
         align="start"
         style={{ width }}
         onWheel={(e) => e.stopPropagation()}
