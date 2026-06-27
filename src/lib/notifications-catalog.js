@@ -243,9 +243,3 @@ export const NOTIFICATIONS = [
     comment: 'Includes activity title, city, address. Text formatted by n8n; getPendingReminders passes user_locale (en/es depend on n8n templates).',
   },
 ];
-
-export const CHANNELS = {
-  inapp:    { label: 'In-app',   icon: 'Bell',         color: 'text-blue-600 bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300' },
-  email:    { label: 'Email',    icon: 'Mail',         color: 'text-amber-700 bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300' },
-  telegram: { label: 'Telegram', icon: 'Send',         color: 'text-emerald-700 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300' },
-};
