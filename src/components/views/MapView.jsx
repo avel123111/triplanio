@@ -132,6 +132,7 @@ export default function MapView({
   const containerRef = useRef(null);
   const markersRef = useRef([]);
   const hotelMarkersRef = useRef([]);
+  const prevHideRouteRef = useRef(false);
   const fittedSigRef = useRef('');
 
   const [projection, setProjection] = useState('mercator');
@@ -395,11 +396,13 @@ export default function MapView({
     // Hotel-pick overlay: the trip route is suppressed entirely — drop every city
     // marker + route line (the hotel badges + their own camera fit take over in the
     // effect below). Leaving the route up would clutter the badge overlay.
+    // NB: fittedSigRef is left untouched so that, on the way BACK, the rebuilt route
+    // is NOT instant-fitted here — the focus effect's eased fit owns the camera and
+    // the return animates like every other panel close.
     if (hideRoute) {
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
       clearRouteLines(map);
-      fittedSigRef.current = '';
       return undefined;
     }
 
@@ -469,8 +472,24 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    hotelMarkersRef.current.forEach((m) => m.remove());
+    // Leaving the overlay (hideRoute true→false): fade the badges out before
+    // removing them so the route fading back in reads as a smooth transition, not
+    // a hard cut. Swapping badges WITHIN the overlay (pagination) removes instantly.
+    const leavingOverlay = prevHideRouteRef.current && !hideRoute;
+    hotelMarkersRef.current.forEach((m) => {
+      const el = m.getElement();
+      if (leavingOverlay && el.animate) {
+        const anim = el.animate(
+          [{ opacity: 1 }, { opacity: 0, transform: 'scale(.82)' }],
+          { duration: 200, easing: 'ease-out' },
+        );
+        anim.finished.then(() => m.remove(), () => m.remove());
+      } else {
+        m.remove();
+      }
+    });
     hotelMarkersRef.current = [];
+    prevHideRouteRef.current = hideRoute;
     if (!hideRoute || !hotelPins2 || hotelPins2.length === 0) return undefined;
 
     const pts = [];

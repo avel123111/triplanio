@@ -126,10 +126,10 @@ export default function Stay22HotelList({
     ? `${fmtShort(meta.checkin, locale)} – ${fmtShort(meta.checkout, locale)}${meta.nights ? ` · ${t('fork.stay22_nights', { count: meta.nights })}` : ''}`
     : '';
 
-  const onCardClick = (h) => {
-    onSelect?.(h.id);
-    logClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22' });
-  };
+  // Symmetric with the map badge: clicking a card SELECTS it (no navigation);
+  // the trip only opens the supplier site via the explicit "Book" button.
+  const onSelectCard = (h) => onSelect?.(h.id);
+  const onBook = (h) => logClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22' });
 
   return (
     <div className="s22">
@@ -260,12 +260,14 @@ export default function Stay22HotelList({
         <>
           <div className="s22-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
             {hotels.map((h) => (
-              <a
+              <div
                 key={h.id}
                 ref={(n) => { if (n) cardRefs.current.set(String(h.id), n); else cardRefs.current.delete(String(h.id)); }}
                 className={`s22-card${String(selectedId) === String(h.id) ? ' is-sel' : ''}${String(hoveredId) === String(h.id) ? ' is-hover' : ''}`}
-                href={h.link} target="_blank" rel="noreferrer"
-                onClick={() => onCardClick(h)}
+                role="button"
+                tabIndex={0}
+                onClick={() => onSelectCard(h)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectCard(h); } }}
                 onMouseEnter={() => onHover?.(h.id)}
                 onMouseLeave={() => onHover?.(null)}
               >
@@ -295,10 +297,14 @@ export default function Stay22HotelList({
                         {meta.nights ? <span>{t('fork.stay22_for_nights', { count: meta.nights })}</span> : null}
                       </span>
                     ) : <span />}
-                    <span className="btn btn--primary btn--sm">{t('fork.stay22_book')}<ExternalLink size={13} /></span>
+                    <a
+                      className="btn btn--primary btn--sm"
+                      href={h.link} target="_blank" rel="noreferrer"
+                      onClick={(e) => { e.stopPropagation(); onBook(h); }}
+                    >{t('fork.stay22_book')}<ExternalLink size={13} /></a>
                   </div>
                 </div>
-              </a>
+              </div>
             ))}
           </div>
 
@@ -394,7 +400,8 @@ export default function Stay22HotelList({
         .s22-state b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); color: var(--ink); }
         .s22-state p { margin: 0; font-size: var(--fs-meta); color: var(--muted); max-width: 28ch; }
         .s22-retry { margin-top: 6px; }
-        .s22-card { display: flex; gap: 13px; padding: 11px; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
+        .s22-card { display: flex; gap: 13px; padding: 11px; cursor: pointer; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
+        .s22-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
         .s22-card--sk { cursor: default; }
         @media (hover: hover) and (pointer: fine) { .s22-card:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); } }
         .s22-card:active { transform: scale(.99); }
