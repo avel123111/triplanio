@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
-import { supabase } from '@/api/supabaseClient';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
+import { invokeGetTripDetails, tripErrorKind } from '@/lib/invokeTripFn';
+import TripLoadError from '@/components/trips/TripLoadError';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
 import { useRouteDnD } from '@/lib/useRouteDnD';
@@ -240,14 +241,18 @@ export default function TripStructureEdit() {
 
   const { data: shell, isLoading: loadingShell, error: shellError } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
-    queryFn: async () => { const { data, error } = await supabase.functions.invoke('getTripDetails', { body: { tripId, include: ['shell'] } }); if (error) throw error; return data; },
+    // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
+    // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
+    queryFn: () => invokeGetTripDetails({ tripId, include: ['shell'] }),
     enabled: !!tripId,
+    retry: false,
     staleTime: 30000, // reuse TripView's cached shell on entry → no reload flicker
   });
   const { data: content, isLoading: loadingContent } = useQuery({
     queryKey: TRIP_CONTENT_KEY(tripId),
-    queryFn: async () => { const { data, error } = await supabase.functions.invoke('getTripDetails', { body: { tripId, include: ['content'] } }); if (error) throw error; return data; },
+    queryFn: () => invokeGetTripDetails({ tripId, include: ['content'] }),
     enabled: !!tripId && !loadingShell,
+    retry: false,
   });
 
   // Build the draft SYNCHRONOUSLY during render (not in an effect) the moment
@@ -502,8 +507,16 @@ export default function TripStructureEdit() {
   // The map is always shown beside the itinerary now (the old "hide map" toggle
   // was removed); on phones it's hidden via CSS (.ts-col-right), so no toggle.
 
-  // Trip can't be loaded for this user (403 / not a member / deleted) → the same
-  // full-screen "no access" stub TripView shows, not a bespoke editor banner.
+  // TRIP-56: distinguish the trip-load failure instead of one catch-all "no
+  // access". 'auth' = session gone after refresh+retry → /login; 'temporary' =
+  // 500/network → retry screen; 'access' (403/404) → the "no access" stub.
+  // Mirrors TripView's gate (shared invokeGetTripDetails/tripErrorKind helper).
+  const shellErrKind = tripErrorKind(shellError);
+  useEffect(() => {
+    if (shellErrKind === 'auth') nav('/login', { replace: true });
+  }, [shellErrKind, nav]);
+  if (shellErrKind === 'auth') return <>{headerEl}</>;
+  if (shellErrKind === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   if (shellError) return <TripAccessError onBack={() => nav('/trips')} />;
   // shell/content are cached (shared with TripView) so the editor paints instantly.
   if (loadingShell || loadingContent || !draft) {
