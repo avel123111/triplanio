@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/design/icons';
-import { Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
+import { Badge, Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { isActiveTripCapReached } from '@/lib/limits';
@@ -100,7 +100,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           {/* Hero */}
           <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
             background: 'linear-gradient(110deg, var(--brand-ink) 0%, var(--brand) 55%, color-mix(in srgb, var(--brand) 55%, white) 120%)', color: 'white' }}>
-            <span className="badge badge--pro" style={{ marginBottom: 10, display: 'inline-flex' }}>Pro</span>
+            <Badge variant="pro" icon="pro" style={{ marginBottom: 10 }}>Pro</Badge>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 6 }}>
               {t('sub.limit_hero_title')}
             </div>

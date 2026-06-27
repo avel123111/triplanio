@@ -206,9 +206,7 @@ const TripCard = ({ trip, onClick }) => {
         {/* top-right badges */}
         <div className="tc__tags">
           {trip.pro && (
-            <span className="badge badge--pro">
-              <Icon name="crown" /> Pro
-            </span>
+            <Badge variant="pro" icon="pro">Pro</Badge>
           )}
         </div>
 

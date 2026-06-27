@@ -98,7 +98,6 @@
   --pro:       #E6A21E;
   --pro-soft:  rgba(230,162,30,.13);
   --pro-soft-2:rgba(230,162,30,.22);
-  --pro-soft-12: var(--pro-soft-2);
   --pro-ink:   #936215;
   --pro-fg:    #4A2D05;
   --pro-gradient: linear-gradient(135deg,#FBD06A 0%,#EBA02E 55%,#E08A36 100%);
