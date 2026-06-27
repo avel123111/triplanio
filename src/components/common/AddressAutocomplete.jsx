@@ -164,6 +164,11 @@ export default function AddressAutocomplete({
           sideOffset={4}
           className="aa-pop"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          // Keep the suggestion list scrollable on touch devices: contain the
+          // gesture to .aa-pop so it never chains to the page / Radix dismiss
+          // layer (mirrors the canonical SearchSelect popover).
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
         >
           <ul className="aa-list">
             {predictions.map((p, i) => (

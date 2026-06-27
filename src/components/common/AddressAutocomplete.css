@@ -6,7 +6,9 @@
 
 /* popover list — overrides the .pop base (de-Tailwinded in Этап 3): trigger-width,
    scrollable, no padding. Co-located CSS loads after app.css so this wins by source order. */
-.aa-pop { padding: 0; width: var(--radix-popover-trigger-width); max-height: 288px; overflow-y: auto; background: var(--surface); color: var(--ink); }
+/* overscroll-behavior:contain + -webkit-overflow-scrolling keep the list
+   natively scrollable on touch/iOS (same pattern as .vp-b / .ss-list). */
+.aa-pop { padding: 0; width: var(--radix-popover-trigger-width); max-height: 288px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--surface); color: var(--ink); }
 .aa-list { padding: 4px 0; }                                              /* py-1 */
 
 /* option row — was: w-full text-left px-3 py-2 flex items-start gap-2 text-sm text-foreground hover:bg-secondary */
