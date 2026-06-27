@@ -269,7 +269,8 @@ export function insurancePlatforms(t) {
   ];
 }
 
-// TRANSFER: Skyscanner (flights) + Omio (multi-modal) + Kiwi (+ Aviasales for ru UI)
+// TRANSFER: Skyscanner + Omio (no active affiliate program → homepage links,
+// provider NULL) + Aviasales + Яндекс Путешествия (both ru UI, travelpayouts).
 export function transferPlatforms(fromVisit, toVisit, t, lang) {
   const from = fromVisit?.city_name || '';
   const to = toVisit?.city_name || '';
@@ -286,28 +287,21 @@ export function transferPlatforms(fromVisit, toVisit, t, lang) {
     ? `https://www.aviasales.ru/search/${fromIata}${ddmm(flightDate)}${toIata}1`
     : 'https://www.aviasales.ru/';
   return [
+    // Skyscanner / Omio: affiliate program inactive → plain homepage links, no
+    // route deep-link (so no from→to hint) and provider omitted → logged NULL.
     {
       key: 'skyscanner',
       label: findFlightsOn(t, 'Skyscanner'),
-      hint: `${from} → ${to}`,
       logo: faviconUrl('skyscanner.com'),
-      url: `https://www.skyscanner.com/transport/flights/${encodeURIComponent(from)}/${encodeURIComponent(to)}/`,
+      url: 'https://skyscanner.com/',
     },
     {
       key: 'omio',
       label: findTicketsOn(t, 'Omio'),
-      hint: `${from} → ${to}`,
-      logo: faviconUrl('omio.com'),
-      url: `https://www.omio.com/search-frontend/results/${encodeURIComponent(from)}/${encodeURIComponent(to)}`,
+      logo: 'https://img.wway.io/travelpayouts/brands/icon/91@svg',
+      url: 'https://www.omio.com/',
     },
-    {
-      key: 'kiwi',
-      label: findOn(t, 'Kiwi.com'),
-      hint: `${from} → ${to}`,
-      logo: faviconUrl('kiwi.com'),
-      url: `https://www.kiwi.com/en/search/results/${encodeURIComponent(from)}/${encodeURIComponent(to)}`,
-    },
-    // RU-only partner (.ru site via TravelPayouts). provider=travelpayouts.
+    // RU-only partners (.ru via TravelPayouts). provider=travelpayouts.
     ...(lang === 'ru' ? [
       {
         key: 'aviasales',
@@ -315,6 +309,16 @@ export function transferPlatforms(fromVisit, toVisit, t, lang) {
         hint: `${from} → ${to}`,
         logo: 'https://img.wway.io/travelpayouts/brands/icon/100@svg',
         url: tpLink(100, 4114, aviasalesUrl),
+        provider: 'travelpayouts',
+      },
+      {
+        // Reuses the hotels' yandextravel key/logo (icon 193). Static tpx.lt
+        // referral link (no route deep-link) → keep the from→to hint as context.
+        key: 'yandextravel',
+        label: findTicketsOn(t, 'Яндекс Путешествия'),
+        hint: `${from} → ${to}`,
+        logo: 'https://img.wway.io/travelpayouts/brands/icon/193@svg',
+        url: 'https://yandex.tpx.lt/dovrPB5u?erid=2Vtzqw6eae5',
         provider: 'travelpayouts',
       },
     ] : []),
