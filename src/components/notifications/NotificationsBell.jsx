@@ -119,9 +119,7 @@ export default function NotificationsBell({ triggerClassName }) {
         <button
           type="button"
           aria-label={t('notif.title')}
-          className={triggerClassName
-            ? `relative ${triggerClassName}`
-            : 'relative inline-flex items-center justify-center h-10 w-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition'}
+          className={`relative ${triggerClassName || 'icon-btn'}`}
         >
           <Icon name="bell" size={17} />
           {unread > 0 && (
