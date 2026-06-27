@@ -3699,6 +3699,34 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   .tmk.is-sel .tmk__pulse { animation: none; }
 }
 
+/* ─── Hotel badge marker (editor hotel-pick overlay, TRIP-140) ────────────────
+   A pill [supplier logo][price] shown on the map while the hotel fork panel is
+   open. Same toggle-from-outside pattern as .tmk: .is-sel / .is-hover are set on
+   the root, but the scale/elevation sit on the inner .s22mk__core (Mapbox owns
+   the root's inline transform). Colours bind to the design tokens. */
+.s22mk { position: relative; display: inline-grid; place-items: center; line-height: 1; cursor: pointer; }
+.s22mk__core {
+  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px 0 5px;
+  background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: 999px;
+  box-shadow: 0 3px 10px -3px rgba(20,24,40,.28), 0 1px 2px rgba(20,24,40,.16);
+  color: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 12px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  transition: transform .16s var(--ease-spring), box-shadow .18s, border-color .16s, background .16s;
+}
+.s22mk--logo .s22mk__core { padding: 0; width: 26px; height: 26px; justify-content: center; }
+.s22mk__logo { width: 18px; height: 18px; border-radius: 5px; flex: none; object-fit: cover; display: block; }
+.s22mk__price { padding-right: 1px; }
+@media (hover: hover) and (pointer: fine) {
+  .s22mk:hover .s22mk__core { border-color: var(--brand); transform: translateY(-1px) scale(1.04); }
+}
+.s22mk.is-hover .s22mk__core { border-color: var(--brand); transform: translateY(-1px) scale(1.06); box-shadow: 0 8px 20px -5px rgba(20,24,40,.34), 0 2px 5px rgba(20,24,40,.2); }
+.s22mk.is-sel .s22mk__core {
+  background: var(--brand); border-color: var(--brand); color: #fff; transform: scale(1.1);
+  box-shadow: 0 10px 24px rgba(20,24,40,.32), 0 2px 6px rgba(20,24,40,.2);
+}
+.s22mk.is-sel .s22mk__logo { box-shadow: 0 0 0 1.5px rgba(255,255,255,.7); }
+@media (prefers-reduced-motion: reduce) { .s22mk__core { transition: none; } }
+
 /* ─── Trips home + statistics: greeting, stat-bar, map hero, rail ─────────────
    Ф4 of the travel-stats redesign. New classes (none overlap existing ones).
    Colours/spacing/shadows all bind to the existing Lumo tokens. Mobile reflow

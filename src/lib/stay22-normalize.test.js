@@ -4,14 +4,18 @@ import assert from 'node:assert/strict';
 import { normalizeStay22, buildStay22Params, ensureNextDay } from './stay22-normalize.js';
 
 const SAMPLE = {
-  meta: { pageSize: 10, count: 2, page: 1, hasMore: true, total: 32, currency: 'USD', checkin: '2026-10-05', checkout: '2026-10-10', nights: 5 },
+  meta: { pageSize: 10, count: 3, page: 1, hasMore: true, total: 32, currency: 'USD', checkin: '2026-10-05', checkout: '2026-10-10', nights: 5 },
   results: [
     {
       id: '32497041.0000',
       url: 'https://www.stay22.com/allez/roam/usds_32497041.0000?aid=triplanio',
-      suppliers: { booking: { id: '15771687', link: 'https://www.stay22.com/allez/booking/15771687', media: { logoSquare: 'https://r2.stay22.com/2025_booking.png' }, price: { total: 328 } } },
+      // Multi-supplier: expedia listed first → it becomes the primary supplier.
+      suppliers: {
+        expedia: { id: 'e1', link: 'https://www.stay22.com/allez/expedia/e1', media: { logoSquare: 'https://r2.stay22.com/expedia.png' }, price: { total: 328 } },
+        booking: { id: '15771687', link: 'https://www.stay22.com/allez/booking/15771687', media: { logoSquare: 'https://r2.stay22.com/2025_booking.png' }, price: { total: 340 } },
+      },
       name: 'C&H Aravaca Garden', type: 'Accommodation',
-      location: { address: 'Calle Burgohondo, 8, Madrid, 28023, Spain' },
+      location: { address: 'Calle Burgohondo, 8, Madrid, 28023, Spain', coordinates: [-3.7038, 40.4168] },
       rating: { value: 7, hotelStars: 3, count: 60 },
       media: { thumbnail: 'https://example/thumb.jpg' },
     },
@@ -20,21 +24,24 @@ const SAMPLE = {
       url: 'https://www.stay22.com/allez/roam/noreview',
       suppliers: { booking: { id: '1', link: 'https://x', media: { logoSquare: 'l' } } }, // no price
       name: 'No Reviews Place', type: 'Accommodation',
-      location: { address: 'Somewhere' },
+      location: { address: 'Somewhere' }, // no coordinates
       rating: { value: 0, hotelStars: null, count: 0 },
       media: { thumbnail: '' },
     },
   ],
 };
 
-test('normalizeStay22: maps price, currency, url, rating, stars', () => {
+test('normalizeStay22: maps price, currency, link, rating, stars, coords (supplier-agnostic)', () => {
   const { hotels, meta } = normalizeStay22(SAMPLE);
   assert.equal(hotels.length, 2);
   const a = hotels[0];
-  assert.equal(a.price, 328);
+  assert.equal(a.price, 328); // primary supplier (expedia, listed first) price
   assert.equal(a.currency, 'USD');
-  assert.equal(a.url, 'https://www.stay22.com/allez/roam/usds_32497041.0000?aid=triplanio');
-  assert.equal(a.bookingLogo, 'https://r2.stay22.com/2025_booking.png');
+  assert.equal(a.supplierKey, 'expedia');
+  assert.equal(a.supplierLogo, 'https://r2.stay22.com/expedia.png');
+  assert.equal(a.link, 'https://www.stay22.com/allez/expedia/e1'); // supplier link, not roam url
+  assert.equal(a.lat, 40.4168);
+  assert.equal(a.lng, -3.7038);
   assert.equal(a.ratingValue, 7);
   assert.equal(a.ratingCount, 60);
   assert.equal(a.stars, 3);
@@ -43,13 +50,16 @@ test('normalizeStay22: maps price, currency, url, rating, stars', () => {
   assert.equal(meta.hasMore, true);
 });
 
-test('normalizeStay22: hides price and rating when absent / zero reviews', () => {
+test('normalizeStay22: hides price/rating when absent, lat/lng null without coordinates', () => {
   const { hotels } = normalizeStay22(SAMPLE);
   const b = hotels[1];
   assert.equal(b.price, null);
   assert.equal(b.ratingValue, null);
   assert.equal(b.ratingCount, null);
   assert.equal(b.stars, null);
+  assert.equal(b.supplierKey, 'booking');
+  assert.equal(b.lat, null);
+  assert.equal(b.lng, null);
 });
 
 test('normalizeStay22: empty/garbage input is safe', () => {

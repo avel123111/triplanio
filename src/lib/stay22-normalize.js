@@ -16,21 +16,50 @@ export function dateOnly(v) {
   return String(v).slice(0, 10);
 }
 
-// Map one Stay22 result to the flat shape the card renders. Booking is the only
-// provider we request, so we read prices/links from `suppliers.booking`.
+// Extract [lng, lat] from a Stay22 result's location. The v2 payload carries
+// `location.coordinates`; we accept both the GeoJSON array form ([lng, lat]) and
+// an object form ({ lat/latitude, lng/lon/longitude }) so a future shape change
+// doesn't silently drop every badge. Returns { lat, lng } or null when absent.
+function readCoords(loc) {
+  const c = loc?.coordinates ?? loc;
+  if (!c) return null;
+  if (Array.isArray(c)) {
+    const [lng, lat] = c; // GeoJSON order is [lng, lat]
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+  }
+  const lat = c.lat ?? c.latitude;
+  const lng = c.lng ?? c.lon ?? c.longitude;
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+}
+
+// Map one Stay22 result to the flat shape the card + map badge render.
+// Supplier-agnostic: we no longer pin provider=booking, so a result may carry any
+// supplier (booking, expedia, vrbo…). The PRIMARY supplier is the first entry of
+// `suppliers` — its logo/price/link drive both the card and the badge. Determinism
+// (cheapest / top-rated) is a separate, later concern.
 function mapResult(r, currency) {
-  const booking = r?.suppliers?.booking || null;
+  const suppliers = r?.suppliers || {};
+  const supplierKey = Object.keys(suppliers)[0] || null;
+  const sup = supplierKey ? suppliers[supplierKey] : null;
   const rating = r?.rating || {};
-  const priceTotal = booking?.price?.total;
+  const priceTotal = sup?.price?.total;
+  const coords = readCoords(r?.location);
   return {
     id: r?.id,
     name: r?.name || '',
-    // Click link → roam page (per product decision), carries aid=triplanio.
-    url: r?.url || booking?.link || '',
+    // Which network this stay is bookable through (booking/expedia/…). Used for
+    // the click log's `partner` and as the supplier-logo alt text.
+    supplierKey,
+    // Direct allez link to the primary supplier (NOT the roam aggregator page),
+    // carries aid=triplanio. Falls back to the roam url if a supplier link is absent.
+    link: sup?.link || r?.url || '',
     thumbnail: r?.media?.thumbnail || '',
-    bookingLogo: booking?.media?.logoSquare || '',
+    supplierLogo: sup?.media?.logoSquare || '',
     address: r?.location?.address || '',
-    // rating.value is a 0–10 (Booking) score; hide when there are no reviews.
+    // Coordinates for the map badge; null → the result shows in the list only.
+    lat: coords?.lat ?? null,
+    lng: coords?.lng ?? null,
+    // rating.value is a 0–10 score; hide when there are no reviews.
     ratingValue: typeof rating.value === 'number' && rating.value > 0 && rating.count > 0 ? rating.value : null,
     ratingCount: rating.count > 0 ? rating.count : null,
     stars: rating.hotelStars || null,
@@ -75,7 +104,7 @@ export function filterParams(filters) {
 
 // Build the edge-function payload from a city-visit node + trip context.
 // Returns null when coordinates are missing (hook stays disabled).
-export function buildStay22Params({ visit, currency, lang, page, filters }) {
+export function buildStay22Params({ visit, currency, lang, page, pageSize, filters }) {
   const lat = visit?.latitude;
   const lng = visit?.longitude;
   if (lat == null || lng == null) return null;
@@ -89,12 +118,13 @@ export function buildStay22Params({ visit, currency, lang, page, filters }) {
     ...(currency && { currency }),
     ...(lang && { lang }),
     page: page && page > 0 ? page : 1,
+    ...(pageSize && pageSize > 0 && { pageSize }),
     ...filterParams(filters),
   };
 }
 
-// Stable cache key — includes filters so applying/resetting refetches.
-export const STAY22_KEY = (visit, currency, lang, page, filters) => [
+// Stable cache key — includes pageSize + filters so changing either refetches.
+export const STAY22_KEY = (visit, currency, lang, page, filters, pageSize) => [
   'stay22',
   visit?.id || `${visit?.latitude},${visit?.longitude}`,
   dateOnly(visit?.start_date),
@@ -102,5 +132,6 @@ export const STAY22_KEY = (visit, currency, lang, page, filters) => [
   currency || '',
   lang || '',
   page || 1,
+  pageSize || 0,
   JSON.stringify(filterParams(filters)),
 ];
