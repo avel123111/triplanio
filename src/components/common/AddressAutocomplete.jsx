@@ -1,31 +1,26 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { supabase } from '@/api/supabaseClient';
-import { Popover, PopoverContent, PopoverTrigger } from '@/design/index';
-import { Loader2, MapPin } from 'lucide-react';
+import { Icon } from '@/design/icons';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import GeoAttribution from '@/components/common/GeoAttribution';
-import './AddressAutocomplete.css';
+import Autocomplete from '@/components/common/Autocomplete';
 
 /**
- * LocationIQ-powered address autocomplete (proxied via the `geoLocationiq` edge
- * function). LocationIQ autocomplete returns coordinates inline, so there is no
- * second "details" round-trip and no Google session token — selecting a result
- * resolves the place immediately. Falls back to plain text input on errors (so
- * users can always type freely).
+ * AddressAutocomplete — address picker (LocationIQ via the `geoLocationiq` edge
+ * proxy). A thin facade over the canonical <Autocomplete> engine: it owns only
+ * the address data contract (LocationIQ place → coords inline, no details call,
+ * no session token), while the field + dropdown + scroll + hover come from the
+ * shared engine, identical to the city pickers (CitySearch / ManualPlanner).
  *
- * Props mirror <Input>:
- *   value, onChange (string -> void), placeholder, className, etc.
- *
+ * Props mirror <Input>: value, onChange (string -> void), placeholder, disabled.
  * Additional:
- *   onPlaceSelected?: ({ formatted_address, name, latitude, longitude, place_id, description }) => void
- *   language?: 'ru' | 'en' | 'es' - overrides the user's app language (rarely needed)
+ *   onPlaceSelected?: ({ formatted_address, name, latitude, longitude, place_id, description, address_components }) => void
+ *   language?: 'ru' | 'en' | 'es' — overrides the user's app language (rarely needed)
  *
- * Attribution: LocationIQ data is OpenStreetMap (ODbL). On the Free plan a
- * "Search by LocationIQ" backlink + OSM attribution are required near the search.
+ * Attribution (LocationIQ Free / OSM ODbL) renders in the dropdown footer via the
+ * engine's <GeoAttribution>.
  */
 
-// Normalize one LocationIQ autocomplete result into the shape the list renders
-// and consumers expect (coords inline — no details call needed).
+// Normalize one LocationIQ autocomplete result (coords inline — no details call).
 function normalizeLiq(item) {
   const dn = item.display_name || '';
   const main = item.address?.name || dn.split(',')[0] || dn;
@@ -47,152 +42,53 @@ export default function AddressAutocomplete({
   onPlaceSelected,
   language,
   placeholder,
-  className,
   disabled,
-  ...rest
 }) {
-  // Use the app's current language so place predictions come back localized.
   const { lang: appLang } = useI18n();
-  const effectiveLang = language || appLang || 'en';
-  const [predictions, setPredictions] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [highlighted, setHighlighted] = useState(-1);
-  const debounceRef = useRef(null);
-  const lastQueryRef = useRef('');
-  const inputRef = useRef(null);
 
-  const fetchPredictions = async (q) => {
-    if (!q || q.trim().length < 2) {
-      setPredictions([]);
-      setOpen(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('geoLocationiq', {
-        body: { action: 'autocomplete', q: q.trim(), lang: effectiveLang, limit: 8 },
-      });
-      // Ignore stale responses
-      if (lastQueryRef.current !== q) return;
-      if (error) {
-        setPredictions([]);
-        setOpen(false);
-        return;
-      }
-      const list = (data?.results || []).map(normalizeLiq);
-      setPredictions(list);
-      setOpen(list.length > 0);
-      setHighlighted(-1);
-    } catch {
-      setPredictions([]);
-      setOpen(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChange = (e) => {
-    const v = e.target.value;
-    onChange?.(v);
-    lastQueryRef.current = v;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchPredictions(v), 250);
-  };
-
-  const selectPrediction = (p) => {
-    setOpen(false);
-    setPredictions([]);
-    onChange?.(p.description);
-    // LocationIQ autocomplete already carries coords — resolve immediately,
-    // no details round-trip. Timezone is computed by the caller from coords.
-    onPlaceSelected?.({
-      formatted_address: p.description,
-      name: p.main_text,
-      latitude: p.latitude,
-      longitude: p.longitude,
-      address_components: p.address,
-      place_id: p.place_id,
-      description: p.description,
+  const search = async (q, engineLang) => {
+    const effectiveLang = language || engineLang || appLang || 'en';
+    const { data, error } = await supabase.functions.invoke('geoLocationiq', {
+      body: { action: 'autocomplete', q, lang: effectiveLang, limit: 8 },
     });
+    if (error) return [];
+    return (data?.results || []).map(normalizeLiq);
   };
-
-  const handleKeyDown = (e) => {
-    if (!open || predictions.length === 0) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHighlighted((i) => Math.min(predictions.length - 1, i + 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHighlighted((i) => Math.max(0, i - 1));
-    } else if (e.key === 'Enter' && highlighted >= 0) {
-      e.preventDefault();
-      selectPrediction(predictions[highlighted]);
-    } else if (e.key === 'Escape') {
-      setOpen(false);
-    }
-  };
-
-  useEffect(() => () => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-  }, []);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div className="aa-wrap">
-          <input
-            ref={inputRef}
-            value={value || ''}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            onFocus={() => { if (predictions.length > 0) setOpen(true); }}
-            placeholder={placeholder}
-            className={`input ${className || ''}`}
-            disabled={disabled}
-            autoComplete="off"
-            {...rest}
-          />
-          {loading && (
-            <Loader2 className="aa-spin" size={14} />
-          )}
-        </div>
-      </PopoverTrigger>
-      {predictions.length > 0 && (
-        <PopoverContent
-          align="start"
-          sideOffset={4}
-          className="aa-pop"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          // Keep the suggestion list scrollable on touch devices: contain the
-          // gesture to .aa-pop so it never chains to the page / Radix dismiss
-          // layer (mirrors the canonical SearchSelect popover).
-          onWheel={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
-        >
-          <ul className="aa-list">
-            {predictions.map((p, i) => (
-              <li key={p.place_id}>
-                <button
-                  type="button"
-                  onClick={() => selectPrediction(p)}
-                  onMouseEnter={() => setHighlighted(i)}
-                  className={`aa-opt ${highlighted === i ? 'is-active' : ''}`}
-                >
-                  <MapPin className="aa-opt__icon" size={14} />
-                  <div className="aa-opt__body">
-                    <div className="aa-opt__main">{p.main_text || p.description}</div>
-                    {p.secondary_text && (
-                      <div className="aa-opt__sec">{p.secondary_text}</div>
-                    )}
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <GeoAttribution />
-        </PopoverContent>
+    <Autocomplete
+      inputValue={value}
+      onInputChange={(v) => onChange?.(v)}
+      search={search}
+      getKey={(p) => p.place_id}
+      onPick={(p) => {
+        onChange?.(p.description);
+        // LocationIQ autocomplete already carries coords — resolve immediately,
+        // no details round-trip. Timezone is computed by the caller from coords.
+        onPlaceSelected?.({
+          formatted_address: p.description,
+          name: p.main_text,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          address_components: p.address,
+          place_id: p.place_id,
+          description: p.description,
+        });
+      }}
+      renderRow={(p) => (
+        <>
+          <Icon name="pin" size={16} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.main_text || p.description}</span>
+            {p.secondary_text && (
+              <span style={{ display: 'block', fontSize: 'var(--fs-meta)', fontWeight: 600, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.secondary_text}</span>
+            )}
+          </span>
+        </>
       )}
-    </Popover>
+      placeholder={placeholder}
+      disabled={disabled}
+      icon="pin"
+    />
   );
 }

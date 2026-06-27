@@ -8,7 +8,7 @@ const PopoverTrigger = PopoverPrimitive.Trigger
 const PopoverAnchor = PopoverPrimitive.Anchor
 
 // Base visuals live in `.pop` (design/app.css, Lumo tokens). Callers pass their
-// own class for size/padding overrides (.bell-dd-pop, .aa-pop, .pop-flush, …).
+// own class for size/padding overrides (.bell-dd-pop, .pop-flush, …).
 const PopoverContent = React.forwardRef(({ className, align = "center", sideOffset = 4, style, ...props }, ref) => (
   <PopoverPrimitive.Portal>
     <PopoverPrimitive.Content

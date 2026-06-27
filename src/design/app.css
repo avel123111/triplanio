@@ -616,9 +616,6 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .dz-lift:hover { transform: none; } }
 .dz-xbtn { background: transparent; transition: background .12s var(--ease-out); }
 .dz-xbtn:hover { background: var(--wash); }
-/* Row/menu-item background hover (base transparent lives here so :hover wins). */
-.dz-rowhover { background: transparent; transition: background .12s var(--ease-out); }
-.dz-rowhover:hover { background: var(--wash); }
 /* Border-only hover (list rows). */
 .dz-bord { border: 1px solid var(--line); transition: border-color .14s var(--ease-out); }
 .dz-bord:hover { border-color: var(--line-hover); }
@@ -1235,8 +1232,6 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 .flow-lp-b { padding: 20px; position: relative; }
-/* City autocomplete dropdown (CityPicker). */
-.flow-city-dd { max-height: 260px; }
 /* Step title: 32px in the half-width panel (the 40px page-h1 dwarfed the column);
    on phones a fluid clamp instead of the global hard 26px !important shrink.
    Scoped to the create-flow panel so the global h1 is untouched. */
