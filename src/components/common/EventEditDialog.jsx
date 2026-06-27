@@ -140,6 +140,42 @@ const withScheme = (u) => {
   const s = String(u).trim();
   return /^https?:\/\//i.test(s) ? s : `https://${s}`;
 };
+
+// Shared "Booking URL" field: input with a favicon overlay (derived from the
+// URL's domain — works for any site) + a pill (favicon + host) and an "Open"
+// link. Used by hotel / transfer / activity-service branches (one source,
+// no copy-paste).
+function BookingUrlField({ value, onChange, aiActive, t }) {
+  const logo = faviconUrl(value);
+  const label = hostnameFromUrl(value);
+  return (
+    <div>
+      <Label>{t('event.booking_url')}</Label>
+      <AiField active={aiActive}>
+        <div className="eed-inwrap">
+          {logo && <img src={logo} alt="" className="eed-inlogo" />}
+          <Input
+            value={value}
+            onChange={onChange}
+            placeholder="https://..."
+            className={logo ? 'eed-in--logo' : ''}
+          />
+        </div>
+      </AiField>
+      {value && (
+        <div className="eed-bkmeta">
+          <span className="eed-bkpill">
+            {logo && <img src={logo} alt="" className="eed-bkpill__logo" />}
+            {label}
+          </span>
+          <a href={withScheme(value)} target="_blank" rel="noreferrer" className="eed-bkopen">
+            <ExternalLink size={12} />{t('common.open')}
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
 import { useToast } from '@/components/ui/use-toast';
 import { useI18nFormat, useI18n } from '@/lib/i18n/I18nContext';
 
@@ -1497,8 +1533,6 @@ function SectionHeader({ children }) {
 
 function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const platformLogo = faviconUrl(form.booking_url);
-  const platformLabel = hostnameFromUrl(form.booking_url);
   const color = TYPE_META.hotel.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -1609,33 +1643,12 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
 
       <SectionHeader color={color}>{t('event.booking_section')}</SectionHeader>
       <div className="fld-grid">
-        <div>
-          <Label>{t('event.booking_url')}</Label>
-          <AiField active={aiFields.has('booking_url')}>
-            <div className="eed-inwrap">
-              {platformLogo && (
-                <img src={platformLogo} alt="" className="eed-inlogo" />
-              )}
-              <Input
-                value={form.booking_url}
-                onChange={(e) => setField('booking_url', e.target.value)}
-                placeholder="https://..."
-                className={platformLogo ? 'eed-in--logo' : ''}
-              />
-            </div>
-          </AiField>
-          {form.booking_url && (
-            <div className="eed-bkmeta">
-              <span className="eed-bkpill">
-                {platformLogo && <img src={platformLogo} alt="" className="eed-bkpill__logo" />}
-                {platformLabel}
-              </span>
-              <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="eed-bkopen">
-                <ExternalLink size={12} />{t('common.open')}
-              </a>
-            </div>
-          )}
-        </div>
+        <BookingUrlField
+          value={form.booking_url}
+          onChange={(e) => setField('booking_url', e.target.value)}
+          aiActive={aiFields.has('booking_url')}
+          t={t}
+        />
         <div>
           <Label>{t('event.booking_ref')}</Label>
           <AiField active={aiFields.has('booking_reference')}>
@@ -1678,8 +1691,6 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
 
 function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const platformLogo = faviconUrl(form.booking_url);
-  const platformLabel = hostnameFromUrl(form.booking_url);
   const color = TYPE_META.transfer.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -1810,33 +1821,12 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         </div>
       </div>
       <div className="fld-grid">
-        <div>
-          <Label>{t('event.booking_url')}</Label>
-          <AiField active={aiFields.has('booking_url')}>
-            <div className="eed-inwrap">
-              {platformLogo && (
-                <img src={platformLogo} alt="" className="eed-inlogo" />
-              )}
-              <Input
-                value={form.booking_url}
-                onChange={(e) => setField('booking_url', e.target.value)}
-                placeholder="https://..."
-                className={platformLogo ? 'eed-in--logo' : ''}
-              />
-            </div>
-          </AiField>
-          {form.booking_url && (
-            <div className="eed-bkmeta">
-              <span className="eed-bkpill">
-                {platformLogo && <img src={platformLogo} alt="" className="eed-bkpill__logo" />}
-                {platformLabel}
-              </span>
-              <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="eed-bkopen">
-                <ExternalLink size={12} />{t('common.open')}
-              </a>
-            </div>
-          )}
-        </div>
+        <BookingUrlField
+          value={form.booking_url}
+          onChange={(e) => setField('booking_url', e.target.value)}
+          aiActive={aiFields.has('booking_url')}
+          t={t}
+        />
         <div>
           <Label>{t('event.booking_ref')}</Label>
           <AiField active={aiFields.has('booking_reference')}>
@@ -2316,8 +2306,6 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, isE
 
 function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const platformLogo = faviconUrl(form.booking_url);
-  const platformLabel = hostnameFromUrl(form.booking_url);
   const color = TYPE_META.service.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -2421,31 +2409,12 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         </div>
       </div>
       <div className="fld-grid">
-        <div>
-          <Label>{t('event.booking_url')}</Label>
-          <div className="eed-inwrap">
-            {platformLogo && (
-              <img src={platformLogo} alt="" className="eed-inlogo" />
-            )}
-            <Input
-              value={form.booking_url}
-              onChange={(e) => setField('booking_url', e.target.value)}
-              placeholder="https://..."
-              className={platformLogo ? 'pl-9' : ''}
-            />
-          </div>
-          {form.booking_url && (
-            <div className="eed-bkmeta">
-              <span className="eed-bkpill">
-                {platformLogo && <img src={platformLogo} alt="" className="eed-bkpill__logo" />}
-                {platformLabel}
-              </span>
-              <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="eed-bkopen">
-                <ExternalLink size={12} />{t('common.open')}
-              </a>
-            </div>
-          )}
-        </div>
+        <BookingUrlField
+          value={form.booking_url}
+          onChange={(e) => setField('booking_url', e.target.value)}
+          aiActive={aiFields.has('booking_url')}
+          t={t}
+        />
         <div>
           <Label>{t('event.booking_ref')}</Label>
           <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
