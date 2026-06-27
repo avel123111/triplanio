@@ -74,7 +74,7 @@ export default {
   'settings.members_loading': 'Participants are not loaded yet',
   'settings.leave_trip': 'Leave the trip',
   'settings.leave_btn': 'Leave',
-  'settings.leave_desc': 'You will stop seeing the trip. The owner can invite you again.',
+  'settings.leave_desc': 'You will stop seeing the trip. Your personal documents in it will be permanently deleted. The owner can invite you again.',
   'settings.readonly_banner_title': 'View only',
   'settings.readonly_banner_desc': "You don't have permission to change settings — only the owner and admins can. You can only leave the trip.",
   'settings.leave_owner_blocked': 'Transfer ownership to another participant before leaving',

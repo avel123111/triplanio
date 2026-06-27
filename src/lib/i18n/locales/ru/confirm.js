@@ -14,7 +14,7 @@ export default {
   'confirm.remove_member.title': 'Убрать участника?',
   'confirm.remove_member.body': '{name} потеряет доступ к путешествию',
   'confirm.leave_trip.title': 'Выйти из путешествия?',
-  'confirm.leave_trip.body': 'Ты потеряешь доступ. Вернуться можно только по новому приглашению',
+  'confirm.leave_trip.body': 'Ты потеряешь доступ, а твои личные документы в этом путешествии будут удалены безвозвратно. Вернуться можно только по новому приглашению.',
   'confirm.delete_pro_trip.title': 'Вы удаляете Pro-путешествие',
   'confirm.delete_pro_trip.body': 'Это Pro-путешествие - разовый апгрейд, который вы оплатили, сгорит. Удалить?',
   'confirm.delete_city.title': 'Удалить город?',
