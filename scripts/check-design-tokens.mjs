@@ -22,7 +22,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const COLOR_ENFORCED = false; // ← flip to true after the Lumo colour migration
+const COLOR_ENFORCED = true; // Lumo colour pass landed (TRIP-53): raw colour now fails CI
 
 const ROOT = 'src';
 
@@ -42,6 +42,17 @@ const COLOR_WHITELIST = [
   'src/components/chat/TriplanioAvatar.jsx',            // SVG illustration fills
   'src/components/AppErrorBoundary.jsx',                // crash screen — must not depend on tokens/CSS
   'src/components/views/StaySectionExpandable.jsx',     // pending colour pass (deferred w/ timeline)
+  // — Added with the Lumo colour finale (TRIP-53): raw-by-nature sources —
+  'src/lib/trip-gradients.js',                          // trip-cover gradient presets (colour data)
+  'src/lib/budget/category-colors.js',                 // category token↔hex source map (token defs)
+  'src/lib/map/mapTokens.js',                          // Mapbox paint fallbacks (need concrete hex)
+  'src/lib/notifications-catalog.js',                  // static dev reference catalog (not rendered)
+  'src/components/site/SiteChrome.jsx',                // brand logo + country-flag SVGs
+  'src/pages/Login.jsx',                               // Google + Triplanio logo SVGs
+  // — Isolated standalone pages with embedded styles; pending a dedicated Lumo colour pass —
+  'src/pages/Landing/LandingPage.jsx',                 // marketing page: demo visuals + brand icons
+  'src/pages/JoinTrip.jsx',                            // standalone join page (embedded <style>)
+  'src/pages/PublicTrip.css',                          // public read-only page styles
 ];
 
 // Files allowed to contain raw FONT SIZES.
@@ -84,8 +95,18 @@ for (const file of walk(ROOT)) {
     // colour
     if (!COLOR_WHITELIST.includes(file)) {
       const isTokenDef = /--[a-z0-9-]+\s*:/.test(line); // skip token definitions
-      if (!isTokenDef && RE.hex.test(line))        color.push(`${loc}  ${line.trim().slice(0, 90)}`);
-      if (!isCss && RE.paletteCls.test(line))      color.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      // Pure white / black are theme-neutral (white text on a brand surface,
+      // black scrims) — they don't fragment the palette the way a raw brand/
+      // accent hex does, so they're allowed. Flag a line only if it carries a
+      // NON-neutral hex.
+      // Per-line escape hatch for legit raw colour (data-viz palettes, map
+      // backdrops) inside otherwise token-clean active files — annotate the
+      // line with `design-token-exempt` instead of whitelisting the whole file.
+      const exempt = line.includes('design-token-exempt');
+      const hexes = line.match(/#[0-9a-fA-F]{3,8}\b/g) || [];
+      const nonNeutralHex = hexes.some((h) => !/^#(fff|ffffff|000|000000)$/i.test(h));
+      if (!exempt && !isTokenDef && nonNeutralHex)            color.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      if (!exempt && !isCss && RE.paletteCls.test(line))      color.push(`${loc}  ${line.trim().slice(0, 90)}`);
     }
   });
 }

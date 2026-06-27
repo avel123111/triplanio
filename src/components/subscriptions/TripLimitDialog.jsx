@@ -100,7 +100,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
         <div style={{ padding: 20, overflowY: 'auto', maxHeight: 'calc(90vh - 32px)', WebkitOverflowScrolling: 'touch' }}>
           {/* Hero */}
           <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
-            background: 'linear-gradient(110deg, var(--brand-ink, #1b3a8f) 0%, var(--brand, #2167e2) 55%, #6aa0ff 120%)', color: 'white' }}>
+            background: 'linear-gradient(110deg, var(--brand-ink) 0%, var(--brand) 55%, color-mix(in srgb, var(--brand) 55%, white) 120%)', color: 'white' }}>
             <span className="badge badge--pro" style={{ marginBottom: 10, display: 'inline-flex' }}>Pro</span>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 6 }}>
               {t('sub.limit_hero_title')}

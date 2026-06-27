@@ -1801,7 +1801,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 'var(--fs-base)' }}>
             <Moon size={16} /> {t('event.overnight_label')}
           </span>
-          <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+          <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
         </span>
       </label>
 
@@ -2089,7 +2089,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 'var(--fs-base)' }}>
                       <Moon size={16} /> {t('event.overnight_label')}
                     </span>
-                    <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+                    <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
                   </span>
                 </label>
               </div>

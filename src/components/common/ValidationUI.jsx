@@ -93,8 +93,8 @@ export function IssuesPanel({ issues = [], className = '', style = {} }) {
     <div className={className} style={{ display: 'flex', flexDirection: 'column', gap: 6, ...style }}>
       {list.map((it, i) => {
         const isErr = it.level === 'error';
-        const stripe = isErr ? 'var(--danger, #e74c3c)' : 'var(--warning, #c9a81a)';
-        const bg = isErr ? 'var(--danger-soft, #fde8e8)' : 'var(--warning-soft, #fff3cd)';
+        const stripe = isErr ? 'var(--danger)' : 'var(--warning)';
+        const bg = isErr ? 'var(--danger-soft)' : 'var(--warning-soft)';
         return (
           <button
             key={`${it.code}-${i}`}
@@ -120,11 +120,11 @@ export function IssuesPanel({ issues = [], className = '', style = {} }) {
 // Entity-attributed rows: event-type icon in event color + entity name + rule.
 // Resolves which entity an issue belongs to so it's clear at a glance.
 const ENTITY_META = {
-  hotel: { Icon: BedDouble, color: 'var(--ev-hotel, #2f7d6b)', soft: 'var(--ev-hotel-soft, rgba(47,125,107,.14))' },
-  activity: { Icon: Ticket, color: 'var(--ev-activity, #7a4ee2)', soft: 'var(--ev-activity-soft, rgba(122,78,226,.14))' },
-  transfer: { Icon: Plane, color: 'var(--ev-transfer, #5b6cff)', soft: 'var(--ev-transfer-soft, rgba(91,108,255,.14))' },
-  service: { Icon: Car, color: 'var(--ev-service, #c9603a)', soft: 'var(--ev-service-soft, rgba(201,96,58,.14))' },
-  city: { Icon: MapPin, color: 'var(--brand, #3b5bdb)', soft: 'var(--brand-soft, rgba(59,91,219,.12))' },
+  hotel: { Icon: BedDouble, color: 'var(--ev-hotel)', soft: 'var(--ev-hotel-soft)' },
+  activity: { Icon: Ticket, color: 'var(--ev-activity)', soft: 'var(--ev-activity-soft)' },
+  transfer: { Icon: Plane, color: 'var(--ev-transfer)', soft: 'var(--ev-transfer-soft)' },
+  service: { Icon: Car, color: 'var(--ev-service)', soft: 'var(--ev-service-soft)' },
+  city: { Icon: MapPin, color: 'var(--brand)', soft: 'var(--brand-soft)' },
 };
 
 // Resolve an issue to its display: { Icon, color, soft, title, sub }.
@@ -184,7 +184,7 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
         <div style={{ borderTop: '1px solid var(--line-2)' }}>
           {list.map((it, i) => {
             const d = describeIssue(it, ctx, t);
-            const stripe = it.level === 'error' ? 'var(--danger, #e74c3c)' : d.color;
+            const stripe = it.level === 'error' ? 'var(--danger)' : d.color;
             return (
               <button
                 key={`${it.code}-${it.entityId || it.fromId || i}`}
