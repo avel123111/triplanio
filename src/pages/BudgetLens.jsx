@@ -31,8 +31,7 @@ import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colo
 import { getActiveLocale } from '@/lib/i18n/format';
 import { countTripMembers } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, fmtDate } from '../design/index';
-import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
+import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, fmtDate, CurrencyCombobox } from '../design/index';
 import SourceViewLoader from '@/components/budget/SourceViewLoader';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';

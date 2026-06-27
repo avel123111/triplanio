@@ -15,11 +15,10 @@ import { useChatId, useUnreadChatCount, chatParticipants, pluralPeople } from '@
 import { useI18n } from '@/lib/i18n/I18nContext';
 import TriplanioAvatar from './TriplanioAvatar';
 import ChatMarkdown from './ChatMarkdown';
-import { Avatar, EmptyState } from '@/design/index';
+import { Avatar, EmptyState, Sheet } from '@/design/index';
 import { displayName } from '@/lib/displayName';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Sheet } from '@/components/ui/Sheet';
 
 const MSGS_KEY = (cid) => ['chat-widget-msgs', cid];
 

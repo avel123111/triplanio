@@ -12,4 +12,6 @@ export default {
   'nav.admin_panel': 'Panel de administración',
   'nav.toggle_theme': 'Cambiar tema',
   'nav.account': 'Cuenta',
+  'nav.aria_primary': 'Principal',
+  'nav.aria_social': 'Redes sociales',
 };

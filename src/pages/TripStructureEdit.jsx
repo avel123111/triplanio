@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
-import { supabase } from '@/api/supabaseClient';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
+import { invokeGetTripDetails, tripErrorKind } from '@/lib/invokeTripFn';
+import TripLoadError from '@/components/trips/TripLoadError';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
 import { useRouteDnD } from '@/lib/useRouteDnD';
@@ -13,7 +14,7 @@ import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount } from '@/lib/trip-cities';
 import { formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Btn, Skeleton } from '../design/index';
+import { Btn, Skeleton, useToast, ActionMenu } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -23,9 +24,7 @@ import CityPanel from '@/components/common/CityPanel';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
-import { useToast } from '@/components/ui/use-toast';
 import AppHeader from '@/components/AppHeader';
-import { ActionMenu } from '@/components/ui/ActionMenu';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
@@ -45,7 +44,7 @@ import TripStartControl from '@/components/trip/TripStartControl';
 // (add_city / remove_city / reorder_cities / set_city_nights). Live Google map.
 // =====================================================================
 const TKIND = { plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { icon: 'train', labelKey: 'transfer.train' }, bus: { icon: 'bus', labelKey: 'transfer.bus' }, car: { icon: 'car', labelKey: 'event.tk_car' }, ferry: { icon: 'ferry', labelKey: 'transfer.ferry' } };
-const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9'];
+const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9']; // design-token-exempt: data-viz city-marker palette (distinct hues hashed by key — no token equivalent)
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM') : '-'; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
@@ -242,14 +241,18 @@ export default function TripStructureEdit() {
 
   const { data: shell, isLoading: loadingShell, error: shellError } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
-    queryFn: async () => { const { data, error } = await supabase.functions.invoke('getTripDetails', { body: { tripId, include: ['shell'] } }); if (error) throw error; return data; },
+    // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
+    // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
+    queryFn: () => invokeGetTripDetails({ tripId, include: ['shell'] }),
     enabled: !!tripId,
+    retry: false,
     staleTime: 30000, // reuse TripView's cached shell on entry → no reload flicker
   });
   const { data: content, isLoading: loadingContent } = useQuery({
     queryKey: TRIP_CONTENT_KEY(tripId),
-    queryFn: async () => { const { data, error } = await supabase.functions.invoke('getTripDetails', { body: { tripId, include: ['content'] } }); if (error) throw error; return data; },
+    queryFn: () => invokeGetTripDetails({ tripId, include: ['content'] }),
     enabled: !!tripId && !loadingShell,
+    retry: false,
   });
 
   // Build the draft SYNCHRONOUSLY during render (not in an effect) the moment
@@ -504,8 +507,16 @@ export default function TripStructureEdit() {
   // The map is always shown beside the itinerary now (the old "hide map" toggle
   // was removed); on phones it's hidden via CSS (.ts-col-right), so no toggle.
 
-  // Trip can't be loaded for this user (403 / not a member / deleted) → the same
-  // full-screen "no access" stub TripView shows, not a bespoke editor banner.
+  // TRIP-56: distinguish the trip-load failure instead of one catch-all "no
+  // access". 'auth' = session gone after refresh+retry → /login; 'temporary' =
+  // 500/network → retry screen; 'access' (403/404) → the "no access" stub.
+  // Mirrors TripView's gate (shared invokeGetTripDetails/tripErrorKind helper).
+  const shellErrKind = tripErrorKind(shellError);
+  useEffect(() => {
+    if (shellErrKind === 'auth') nav('/login', { replace: true });
+  }, [shellErrKind, nav]);
+  if (shellErrKind === 'auth') return <>{headerEl}</>;
+  if (shellErrKind === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   if (shellError) return <TripAccessError onBack={() => nav('/trips')} />;
   // shell/content are cached (shared with TripView) so the editor paints instantly.
   if (loadingShell || loadingContent || !draft) {

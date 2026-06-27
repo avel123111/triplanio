@@ -9,11 +9,17 @@ import React from 'react';
 export default function AiField({ active, children, className = '' }) {
   if (!active) return <div className={className}>{children}</div>;
   return (
-    <div className={`relative ai-filled ${className}`}>
+    <div className={`ai-filled ${className}`} style={{ position: 'relative' }}>
       {children}
       <span
-        className="absolute -top-2 right-2 z-10 leading-none text-white pointer-events-none"
         style={{
+          position: 'absolute',
+          top: -8,
+          right: 8,
+          zIndex: 10,
+          lineHeight: 1,
+          pointerEvents: 'none',
+          color: '#fff',
           background: 'var(--ai)',
           fontSize: '9.5px',
           fontWeight: 700,

@@ -14,8 +14,7 @@
  */
 import React, { useState } from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Btn } from '@/design/index';
+import { Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
 import { normalizeExternalUrl } from '@/lib/booking-platforms';
 import {
   Edit2, Trash2, ExternalLink, MapPin, X,

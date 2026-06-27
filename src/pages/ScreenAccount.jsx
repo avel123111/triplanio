@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Toggle, Severity,
+  Badge, Btn, Toggle, Severity, SearchSelect, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -11,7 +11,6 @@ import { useTheme } from '@/lib/ThemeContext';
 import { isProActive } from '@/lib/subscription';
 import { supabase } from '@/api/supabaseClient';
 import AppHeader from '@/components/AppHeader';
-import SearchSelect from '@/components/ui/SearchSelect';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { avatarGradient } from '@/lib/avatarRamp';
 import '../design/app.css';
@@ -345,9 +344,9 @@ export default function ScreenAccount() {
   const [notifyUpdates, setNotifyUpdates] = useState(true);
 
   // ── UI ─────────────────────────────────────────────────────────────────────
+  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [savedFlash, setSavedFlash] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [activeSec, setActiveSec] = useState('profile');
   const openUpgrade = () => nav('/pro?hidePerTrip=1');
@@ -363,11 +362,25 @@ export default function ScreenAccount() {
   const localeMap = { ru: 'ru-RU', en: 'en-US', es: 'es-ES' };
   const locale = localeMap[lang] || 'ru-RU';
 
-  const avatarName = fullName || user?.email || '?';
+  // Hero identity (name + avatar gradient/initials) reflects the SAVED profile,
+  // not the in-progress edit — the draft lives in the input only and is applied
+  // on Save (checkUserAuth then refreshes `user`).
+  const avatarName = user?.full_name || user?.email || '?';
   const avatarInitials = avatarName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
   const avatarBgStyle = avatarUrl
     ? { backgroundImage: `url(${avatarUrl})` }
     : { background: avatarGradient(avatarName) };
+
+  // Save stays disabled until something actually changed (mirrors trip Settings).
+  // Avatar is deliberately NOT part of this: upload/remove persist immediately
+  // on their own (DB write + checkUserAuth), so the Save button never governs the
+  // avatar — including it here made the button blink active→inactive for the
+  // moment between the optimistic setAvatarUrl and `user` refreshing. Save only
+  // governs the name + notify toggles.
+  const profileDirty =
+    fullName      !== (user?.full_name || '') ||
+    notifyInvites !== (user?.notify_email_invites !== false) ||
+    notifyUpdates !== (user?.notify_email_updates !== false);
 
   // ── Seed form from user profile ────────────────────────────────────────────
   useEffect(() => {
@@ -429,8 +442,7 @@ export default function ScreenAccount() {
         .eq('id', user.id);
       if (error) throw error;
       await checkUserAuth?.();
-      setSavedFlash(true);
-      setTimeout(() => setSavedFlash(false), 1500);
+      toast({ description: t('settings.saved'), variant: 'success' });
     } catch (e) {
       console.error('save profile error:', e);
       setErrorMsg(t('account.err_save') + (e.message || String(e)));
@@ -634,7 +646,7 @@ export default function ScreenAccount() {
                 >
                   {!avatarUrl && avatarInitials}
                   {uploadingAvatar
-                    ? <span className="ov" style={{ opacity: 1 }}><div style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /></span>
+                    ? <span className="ov" style={{ opacity: 1 }}><div className="spin" style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', borderRadius: '50%' }} /></span>
                     : <span className="ov"><Icon name="cam" size={18} /></span>}
                 </div>
                 <input
@@ -645,7 +657,7 @@ export default function ScreenAccount() {
                   onChange={e => handleAvatarUpload(e.target.files?.[0])}
                 />
                 <div className="acct-hero__id">
-                  <div className="acct-hero__name">{fullName || user.email}</div>
+                  <div className="acct-hero__name">{user.full_name || user.email}</div>
                   <div className="acct-hero__mail">{user.email}</div>
                   <div className="acct-hero__actions">
                     <Btn variant="secondary" size="sm" icon="cam" onClick={() => avatarInputRef.current?.click()}>{t('common.upload')}</Btn>
@@ -664,12 +676,11 @@ export default function ScreenAccount() {
                   <label className="acct-flabel" htmlFor="acct-mail">E-mail <Badge variant="quiet">{t('account.readonly')}</Badge></label>
                   <input id="acct-mail" className="input" value={user.email} readOnly />
                 </div>
-                <Btn variant="primary" icon={saving ? undefined : 'check'} disabled={saving} onClick={handleSave}>
+                <Btn variant="primary" icon="check" loading={saving} disabled={!profileDirty} onClick={handleSave}>
                   {saving ? t('auth.saving') : t('common.save')}
                 </Btn>
               </div>
             </div>
-            {savedFlash && <div style={{ marginTop: 8 }}><Badge variant="success" icon="check">{t('settings.saved')}</Badge></div>}
           </section>
 
           {/* ░░ SUBSCRIPTION ░░ */}
@@ -852,7 +863,7 @@ export default function ScreenAccount() {
                 <Severity level="warning" title={t('account.cancel_sub_first')}>
                   {t('account.delete_blocked_desc')}
                   <div style={{ marginTop: 8 }}>
-                    <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={handleManageSubscription}>
+                    <Btn variant="ghost" size="sm" icon="external" loading={portalLoading} onClick={handleManageSubscription}>
                       {portalLoading ? t('account.opening') : t('account.open_billing_portal')}
                     </Btn>
                   </div>
@@ -864,7 +875,7 @@ export default function ScreenAccount() {
                   {t('account.confirm_delete_desc_1')} <b>{t('account.delete_word')}</b> {t('account.confirm_delete_desc_2')}
                   <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <input className="input" placeholder={t('account.delete_word')} value={deleteInput} onChange={e => setDeleteInput(e.target.value)} style={{ flex: 1, minWidth: 150 }} />
-                    <Btn variant="danger-solid" size="sm" disabled={deleteInput !== t('account.delete_word') || deletingAccount} onClick={performDeleteAccount}>
+                    <Btn variant="danger-solid" size="sm" loading={deletingAccount} disabled={deleteInput !== t('account.delete_word')} onClick={performDeleteAccount}>
                       {deletingAccount ? t('account.deleting') : t('account.delete_forever')}
                     </Btn>
                     <Btn variant="ghost" size="sm" onClick={() => setDeleteState(null)}>{t('common.cancel')}</Btn>

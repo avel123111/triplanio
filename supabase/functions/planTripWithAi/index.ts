@@ -14,6 +14,13 @@ import { corsFor } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { aiFlowLimited } from '../_shared/rateLimit.ts';
+
+// TRIP-111: лимит генераций ИИ-планировщика. Вешается на САМ вызов генерации
+// (не на сохранение трипа), поэтому закрывает и delete+recreate, и спам без
+// сохранения. 10 генераций в час на пользователя.
+const PLANNER_RATE_LIMIT = 10;
+const PLANNER_RATE_WINDOW = 3600;
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -41,6 +48,15 @@ Deno.serve(async (req) => {
 
     const { sessionId, prompt, language } = await req.json();
     if (!prompt) return Response.json({ error: 'prompt required' }, { status: 400, headers: corsHeaders });
+
+    // Rate-limit ПЕРЕД дорогим LLM-вызовом (TRIP-111). Общий примитив
+    // rate_limit_hits (bucket=ai_trip_planner, key=user_id).
+    if (await aiFlowLimited('ai_trip_planner', user.id, PLANNER_RATE_LIMIT, PLANNER_RATE_WINDOW)) {
+      return Response.json(
+        { error: 'Rate limit exceeded', code: 'RATE_LIMITED' },
+        { status: 429, headers: corsHeaders },
+      );
+    }
 
     const n8nSecret = Deno.env.get('N8N_SECRET');
     if (!n8nSecret) return Response.json({ error: 'N8N_SECRET not configured' }, { status: 500, headers: corsHeaders });

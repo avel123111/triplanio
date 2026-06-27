@@ -14,11 +14,9 @@
  *
  * Visual reference: EVENTS_SERVICES_REDESIGN_LUMO design system.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
-import AiField from '@/components/ui/AiField';
+import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, useToast } from '@/design/index';
 import {
   Loader2, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
@@ -52,57 +50,29 @@ function Checkbox({ checked, onCheckedChange, className = '' }) {
   );
 }
 
-// City autocomplete for layover (waypoint) cities - resolves a full city object
+// City autocomplete for layover (waypoint) cities — resolves a full city object
 // (coords + IANA timezone) so the saved waypoint city_visit has real geo data.
+// Thin facade over the shared <Autocomplete> engine (identical field/dropdown/
+// scroll/hover as every other city & address picker).
 function CityPicker({ value, onPick, placeholder }) {
   const { t } = useI18nFormat();
-  const { lang } = useI18n();
   const [q, setQ] = useState(value?.city_name || '');
-  const [results, setResults] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const tRef = useRef(null);
   useEffect(() => { setQ(value?.city_name || ''); }, [value?.city_name]);
-  const run = (query) => {
-    clearTimeout(tRef.current);
-    if (query.trim().length < 2) { setResults([]); setOpen(false); return; }
-    setLoading(true);
-    tRef.current = setTimeout(async () => {
-      try { const r = await searchCities(query.trim(), lang); setResults(r || []); setOpen((r || []).length > 0); }
-      catch { setResults([]); setOpen(false); }
-      finally { setLoading(false); }
-    }, 300);
-  };
-  const pick = async (c) => {
-    setOpen(false); setResults([]); setQ(c.city_name); setLoading(true);
-    const tz = tzFromCoords(c.latitude, c.longitude);
-    setLoading(false);
-    onPick({ city_name: c.city_name, country: c.country, country_code: c.country_code, latitude: c.latitude, longitude: c.longitude, timezone: tz, external_city_id: c.external_city_id });
-  };
   return (
-    <div style={{ position: 'relative' }}>
-      <input
-        className="input"
-        value={q}
-        placeholder={placeholder || t('event.layover_city_ph')}
-        onChange={(e) => { setQ(e.target.value); if (value) onPick(null); run(e.target.value); }}
-        onFocus={() => results.length > 0 && setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 180)}
-        autoComplete="off"
-      />
-      {loading && <Loader2 className="spin" size={14} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />}
-      {open && results.length > 0 && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 250, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', maxHeight: 240, overflowY: 'auto' }}>
-          {results.map((c) => (
-            <button key={c.external_city_id || c.city_name} type="button" onMouseDown={() => pick(c)}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', borderBottom: '1px solid var(--line-2)', background: 'transparent', cursor: 'pointer' }}>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{c.city_name}</div>
-              <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name || c.country}</div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <Autocomplete
+      inputValue={q}
+      onInputChange={(val) => { setQ(val); if (value) onPick(null); }}
+      search={(query, lang) => searchCities(query, lang)}
+      getKey={(c) => c.external_city_id || c.city_name}
+      onPick={(c) => {
+        setQ(c.city_name);
+        onPick({ city_name: c.city_name, country: c.country, country_code: c.country_code, latitude: c.latitude, longitude: c.longitude, timezone: tzFromCoords(c.latitude, c.longitude), external_city_id: c.external_city_id });
+      }}
+      renderRow={cityOptionRow}
+      placeholder={placeholder || t('event.layover_city_ph')}
+      icon="pin"
+      iconActive={!!value}
+    />
   );
 }
 
@@ -176,13 +146,14 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
     </div>
   );
 }
-import { useToast } from '@/components/ui/use-toast';
 import { useI18nFormat, useI18n } from '@/lib/i18n/I18nContext';
 
 import DateTimeInput from '@/components/common/DateTimeInput';
 import TimezoneHint from '@/components/common/TimezoneHint';
 import DocumentsField from '@/components/common/DocumentsField';
 import AddressAutocomplete from '@/components/common/AddressAutocomplete';
+import Autocomplete from '@/components/common/Autocomplete';
+import cityOptionRow from '@/components/common/cityOptionRow';
 import EventAiBlock from '@/components/common/EventAiBlock';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 
@@ -1801,7 +1772,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 'var(--fs-base)' }}>
             <Moon size={16} /> {t('event.overnight_label')}
           </span>
-          <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+          <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
         </span>
       </label>
 
@@ -2089,7 +2060,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 'var(--fs-base)' }}>
                       <Moon size={16} /> {t('event.overnight_label')}
                     </span>
-                    <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+                    <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
                   </span>
                 </label>
               </div>

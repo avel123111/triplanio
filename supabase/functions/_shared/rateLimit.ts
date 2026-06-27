@@ -3,7 +3,9 @@
  *
  * Backed by the single `rate_limit_hits` table + `rate_limit_check` /
  * `rate_limit_record` RPCs (service-role only). Used by the anonymous auth
- * endpoints (signupPrecheck / requestPasswordReset) to bound email enumeration.
+ * endpoints (signupPrecheck / requestPasswordReset) to bound email enumeration,
+ * and by the AI flows (TRIP-111) to bound LLM cost abuse — same table, new
+ * buckets. The table/RPCs are generic (arbitrary bucket+key), NOT auth-specific.
  *
  * Design: limits are best-effort and FAIL OPEN — a limiter/DB hiccup must never
  * lock a legitimate user out of login or password reset. The goal is to make
@@ -79,5 +81,27 @@ export async function ipRateLimited(req: Request, bucket: string): Promise<boole
   const okHour = await underLimit(bucket, ip, 60, 3600);
   if (!okMinute || !okHour) return true;
   await recordHit(bucket, ip);
+  return false;
+}
+
+/**
+ * AI-флоу abuse limit (TRIP-111). Один вызов = check-then-record на общем
+ * примитиве rate_limit_hits:
+ *   bucket — флоу ('ai_trip_planner' | 'ai_inapp_chat' | 'ai_trip_parser' | 'ai_tg_chatbot');
+ *   key    — user_id / trip_id / telegram_chat_id.
+ * Возвращает true, если запрос НАДО заблокировать (лимит за окно выбран). Под
+ * лимитом — фиксирует попытку и возвращает false. Заблокированные вызовы не
+ * фиксируются (счётчик не раздувается). Best-effort fail-open (см. underLimit).
+ */
+export async function aiFlowLimited(
+  bucket: string,
+  key: string,
+  max: number,
+  windowSeconds: number,
+): Promise<boolean> {
+  if (!key) return false;
+  const ok = await underLimit(bucket, key, max, windowSeconds);
+  if (!ok) return true;
+  await recordHit(bucket, key);
   return false;
 }
