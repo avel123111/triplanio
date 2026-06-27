@@ -304,9 +304,12 @@ export default function TripStructureEdit() {
   const stayQuery = useStay22Accommodations({
     visit: hotelPickVisit, currency: stayCurrency, lang, page: stayPage, pageSize: 100, filters: stayApplied, enabled: isHotelPick,
   });
-  // Map pins: only stays that carry coordinates, with a preformatted price label.
+  // Map pins: only stays that carry coordinates, with a compact price label (the
+  // badge is tiny — long amounts like 252 400 ₽ are shortened to "252K"). While
+  // the query shows a PREVIOUS city's data (isPlaceholderData, keepPreviousData),
+  // emit no pins so the camera doesn't fit to the old city while the new one loads.
   const hotelPins = useMemo(() => {
-    if (!isHotelPick) return null;
+    if (!isHotelPick || stayQuery.isPlaceholderData) return isHotelPick ? [] : null;
     const list = stayQuery.data?.hotels || [];
     const cur = stayQuery.data?.meta?.currency || stayCurrency;
     return list
@@ -314,9 +317,9 @@ export default function TripStructureEdit() {
       .map((h) => ({
         id: h.id, name: h.name, lat: h.lat, lng: h.lng,
         supplierLogo: h.supplierLogo,
-        priceLabel: h.price != null ? fmtMoney(h.price, h.currency || cur) : null,
+        priceLabel: h.price != null ? fmtMoney(h.price, h.currency || cur, { compact: true }) : null,
       }));
-  }, [isHotelPick, stayQuery.data, stayCurrency, fmtMoney]);
+  }, [isHotelPick, stayQuery.data, stayQuery.isPlaceholderData, stayCurrency, fmtMoney]);
   // Bundle handed to the presentational hotel list (through ForkPartnerModal).
   const stay22Bundle = isHotelPick ? {
     data: stayQuery.data, isLoading: stayQuery.isLoading, isFetching: stayQuery.isFetching,
