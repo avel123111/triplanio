@@ -49,13 +49,8 @@ export default function ProUpsellModal({
 
             {/* ── Header ── */}
             <div className="dlg__head">
-              {/* .mi--pro equivalent: Pro-gradient tile + crown, color inline for SVG currentColor */}
-              <div style={{
-                width: 36, height: 36, borderRadius: 9,
-                background: 'var(--pro-gradient)', color: '#fff',
-                display: 'grid', placeItems: 'center', flexShrink: 0,
-                boxShadow: '0 4px 10px -4px var(--pro)',
-              }}>
+              {/* Shared gold Pro-tile — same .pi class as the upgrade plates. */}
+              <div className="pi">
                 <Icon name="crown" size={17} />
               </div>
               <h2>
