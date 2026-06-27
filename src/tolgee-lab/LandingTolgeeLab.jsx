@@ -140,14 +140,39 @@ function LangBar() {
   );
 }
 
+// DEV-only: surface any render error on screen instead of a blank white page.
+class LabErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <pre style={{padding:24,whiteSpace:'pre-wrap',color:'#b91c1c',fontFamily:'monospace',fontSize:13}}>
+          TOLGEE LAB crashed:{'\n\n'}{String(this.state.error?.stack || this.state.error)}
+        </pre>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function LandingTolgeeLab() {
   useLandingCss();
   return (
-    <TolgeeProvider tolgee={tolgee} fallback={<div style={{padding:40}}>Loading Tolgee…</div>}>
-      <LangBar/>
-      <main>
-        <Hero/>
-      </main>
-    </TolgeeProvider>
+    <div data-tolgee-lab>
+      {/* Visible marker rendered OUTSIDE TolgeeProvider — if you see only this
+          bar, the route works and the failure is inside Tolgee. */}
+      <div style={{position:'fixed',bottom:0,left:0,zIndex:60,background:'#111',color:'#0f0',font:'12px monospace',padding:'4px 8px'}}>
+        tolgee-lab mounted
+      </div>
+      <LabErrorBoundary>
+        <TolgeeProvider tolgee={tolgee} fallback={<div style={{padding:40,fontFamily:'monospace'}}>Loading Tolgee…</div>}>
+          <LangBar/>
+          <main>
+            <Hero/>
+          </main>
+        </TolgeeProvider>
+      </LabErrorBoundary>
+    </div>
   );
 }
