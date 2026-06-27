@@ -23,7 +23,7 @@
       "args": ["tolgee-mcp"],
       "env": {
         "TOLGEE_API_KEY": "${TOLGEE_API_KEY}",
-        "TOLGEE_API_URL": "https://app.tolgee.io"
+        "TOLGEE_API_URL": "https://tolgee.triplanio.com"
       }
     }
   }
