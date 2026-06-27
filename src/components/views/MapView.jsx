@@ -92,9 +92,11 @@ export default function MapView({
   // Falsy/empty → no override (the whole-route auto-fit stays in charge); when
   // it clears after a focus, the camera eases back to the full route.
   focus = null,
-  // Duration (ms) of the single-city focus flyTo. Default 700; the public
-  // shared-trip reader passes a larger value for a slower, calmer camera.
-  focusDuration = 700,
+  // Duration (ms) of the single-city focus flyTo. Default 805 — a deliberately
+  // ~15% calmer camera across every non-public map (editor/stats/overview/etc).
+  // The public shared-trip reader runs its own reveal mechanics (revealActiveId)
+  // and never reaches this focus effect, so its tempo is untouched.
+  focusDuration = 805,
   // Optional progressive reveal (public shared-trip reader). When `revealActiveId`
   // is set, the route is NOT drawn whole: only the legs UP TO the active city are
   // painted and markers past it are hidden. When the active city ADVANCES to the
@@ -378,12 +380,12 @@ export default function MapView({
       if (focus.length === 1) {
         map.flyTo({ center: focus[0], zoom: 9.5, duration: focusDuration, essential: true });
       } else {
-        fitToPoints(map, focus, { padding: 110, maxZoom: 9, animate: true });
+        fitToPoints(map, focus, { padding: 110, maxZoom: 9, duration: 750 });
       }
     } else if (hadFocusRef.current) {
       hadFocusRef.current = false;
       if (ordered.length > 0) {
-        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: true });
+        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, duration: 750 });
       }
     }
   }, [ready, focusSig, revealActiveId]);
@@ -457,7 +459,7 @@ export default function MapView({
     // BUT don't override an active parent focus (e.g. landing straight on a city/
     // transfer via a create-intent) — the focus effect owns the camera then.
     if (ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
-      fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: fittedSigRef.current !== '' });
+      fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, duration: fittedSigRef.current !== '' ? (revealActiveId == null ? 750 : 650) : 0 });
       fittedSigRef.current = visitsSignature;
     }
 
@@ -472,16 +474,17 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    // Leaving the overlay (hideRoute true→false): fade the badges out before
-    // removing them so the route fading back in reads as a smooth transition, not
-    // a hard cut. Swapping badges WITHIN the overlay (pagination) removes instantly.
+    // Leaving the overlay (hideRoute true→false): dissolve the badges (opacity
+    // only — NEVER transform: Mapbox owns the marker root's inline translate, so
+    // animating transform would yank the badge to the origin) then remove. Swapping
+    // badges WITHIN the overlay (pagination) removes instantly.
     const leavingOverlay = prevHideRouteRef.current && !hideRoute;
     hotelMarkersRef.current.forEach((m) => {
       const el = m.getElement();
       if (leavingOverlay && el.animate) {
         const anim = el.animate(
-          [{ opacity: 1 }, { opacity: 0, transform: 'scale(.82)' }],
-          { duration: 200, easing: 'ease-out' },
+          [{ opacity: 1 }, { opacity: 0 }],
+          { duration: 150, easing: 'ease-out' },
         );
         anim.finished.then(() => m.remove(), () => m.remove());
       } else {
@@ -508,7 +511,7 @@ export default function MapView({
       hotelMarkersRef.current.push(marker);
       pts.push([h.lng, h.lat]);
     });
-    if (pts.length) fitToPoints(map, pts, { padding: 80, maxZoom: 15, animate: true });
+    if (pts.length) fitToPoints(map, pts, { padding: 80, maxZoom: 15, duration: 750 });
     return undefined;
   }, [ready, hideRoute, hotelPinsSig]);
 
