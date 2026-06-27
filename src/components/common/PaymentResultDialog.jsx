@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from '@/design/icons';
-import { Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
+import { Badge, Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
 /**
@@ -67,9 +67,7 @@ export default function PaymentResultDialog({
 
               {/* Success: plan chip */}
               {chip && (
-                <span className="badge badge--pro" style={{ marginBottom: 6 }}>
-                  <Icon name="pro" size={12} /> {chip}
-                </span>
+                <Badge variant="pro" icon="pro" style={{ marginBottom: 6 }}>{chip}</Badge>
               )}
 
               {/* Fail: help note */}
