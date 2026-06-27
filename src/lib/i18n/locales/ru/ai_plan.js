@@ -33,6 +33,7 @@ export default {
   'ai_plan.error_save': 'Не удалось сохранить путешествие. Попробуй снова.',
   'ai_plan.error_plan_title': 'Планирование не удалось',
   'ai_plan.error_plan_desc': 'Не удалось создать путешествие. Попробуй снова.',
+  'ai_plan.error_rate_limited': 'Слишком много запросов к ИИ. Попробуй через несколько минут.',
   
   // Default values
   'ai_plan.default_trip_title': 'Путешествие от ИИ',

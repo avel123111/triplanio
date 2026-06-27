@@ -298,6 +298,15 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       const realId = created?.id;
       supabase.functions
         .invoke('callTriplanioAi', { body: { chat_id: chatId, user_message: content } })
+        .then(({ data, error }) => {
+          // TRIP-111: при отказе гейта (Pro / rate-limit) edge возвращает
+          // { ok:false } и сам постит реплику бота в чат. В любом случае гасим
+          // индикатор «Triplanio печатает» — иначе он висит вечно (invoke не
+          // бросает на не-2xx, а на ok:false ответа-бота из n8n не будет).
+          if (error || data?.ok === false) {
+            if (realId) setFailedAiIds((prev) => new Set([...prev, realId]));
+          }
+        })
         .catch((err) => {
           console.error('callTriplanioAi failed', err);
           if (realId) setFailedAiIds((prev) => new Set([...prev, realId]));

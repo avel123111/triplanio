@@ -40,6 +40,8 @@ export default {
   'event.ai_max_files': 'Можно загрузить максимум {max} файлов',
   'event.ai_upload_error': 'Не удалось загрузить файл',
   'event.ai_parse_error': 'Не удалось распознать документ. Попробуй ещё раз или выбери другой файл.',
+  'event.ai_rate_limited': 'Слишком много распознаваний. Попробуй через несколько минут.',
+  'event.ai_pro_required': 'Распознавание броней доступно на Pro-подписке.',
   'event.view_booking': 'Посмотреть бронирование',
   'event.show_on_map': 'Показать на карте',
   'event.delete_q': 'Удалить {label}?',
