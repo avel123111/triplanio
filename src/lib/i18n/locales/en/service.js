@@ -90,4 +90,6 @@ export default {
   'service.insurance_choice_manual_hint': "If you've already arranged insurance",
   'service.insurance_safetywing_hint': 'Nomad insurance · partner pricing',
   'service.insurance_ektatraveling_hint': 'Travel & medical insurance',
+  'service.insurance_sravni_hint': 'Compare insurance',
+  'service.insurance_tripinsurance_hint': 'Travel insurance',
 };

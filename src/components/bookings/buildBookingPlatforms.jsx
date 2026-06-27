@@ -262,25 +262,47 @@ export function esimPlatforms(visits, t) {
   ];
 }
 
-// INSURANCE: SafetyWing (nomad health insurance) + Ekta Traveling (affiliate)
-// SafetyWing is still a direct URL (affiliate TBD); Ekta Traveling is an active affiliate link.
-export function insurancePlatforms(t) {
+// INSURANCE: SafetyWing + Ekta Traveling (both static homepage links, no active
+// affiliate tracking → provider NULL) + Sravni.ru & Tripinsurance.ru for the ru
+// UI (static *.tpx.lt referral links, provider=travelpayouts). Logos are the
+// partners' own brand assets (SafetyWing/Ekta) or TravelPayouts SVG icons (RU).
+export function insurancePlatforms(t, lang) {
   return [
     {
       key: 'safetywing',
       label: bookOn(t, 'SafetyWing'),
       hint: t ? t('service.insurance_safetywing_hint') : 'Nomad insurance · from $45/mo',
-      logo: faviconUrl('safetywing.com'),
-      url: 'https://safetywing.com/nomad-insurance/',
+      logo: 'https://s3-eu-west-1.amazonaws.com/tpd/logos/5b026ad311a7aa000198b534/0x0.png',
+      url: 'https://safetywing.com/',
+      // No provider → logged as NULL (no active affiliate link).
     },
     {
       key: 'ektatraveling',
       label: bookOn(t, 'Ekta Traveling'),
       hint: t ? t('service.insurance_ektatraveling_hint') : 'Travel & medical insurance',
-      logo: faviconUrl('ektatraveling.com'),
-      url: 'https://ektatraveling.tpx.lt/ej8OjLU3',
-      provider: 'travelpayouts',
+      logo: 'https://content.flexlinks.com/sharedimages/ProgramSquareLogo/233032.png',
+      url: 'https://ektatraveling.com/',
+      // No provider → logged as NULL (static homepage link).
     },
+    // RU-only partners (.ru via TravelPayouts). provider=travelpayouts.
+    ...(lang === 'ru' ? [
+      {
+        key: 'sravni',
+        label: bookOn(t, 'Сравни.ру'),
+        hint: t ? t('service.insurance_sravni_hint') : 'Compare insurance',
+        logo: 'https://img.wway.io/travelpayouts/brands/icon/49@svg',
+        url: 'https://sravni.tpx.lt/CqRGyRjC?erid=2VtzqvjtkhF',
+        provider: 'travelpayouts',
+      },
+      {
+        key: 'tripinsurance',
+        label: bookOn(t, 'Tripinsurance'),
+        hint: t ? t('service.insurance_tripinsurance_hint') : 'Travel insurance',
+        logo: 'https://img.wway.io/travelpayouts/brands/icon/55@svg',
+        url: 'https://tripinsurance.tpx.lt/JKNaa6My?erid=2VtzqvmNjyb',
+        provider: 'travelpayouts',
+      },
+    ] : []),
   ];
 }
 
