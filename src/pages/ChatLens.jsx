@@ -98,7 +98,7 @@ function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl, isDeleted }) {
           <ChatMarkdown
             text={text}
             mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
-            linkClassName={isMe ? 'underline' : 'underline text-primary'}
+            linkClassName={isMe ? 'cm-a' : 'cm-a cm-a--brand'}
           />
         </div>
         {isMe && !grouped && (

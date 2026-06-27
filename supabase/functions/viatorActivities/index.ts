@@ -20,7 +20,7 @@
  * Returns: { activities: [...], meta: { total, page, hasMore } }.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 
 const VIATOR_BASE = Deno.env.get('VIATOR_BASE') || 'https://api.viator.com/partner';
@@ -46,6 +46,7 @@ function pickImage(images: any[]): string | null {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {

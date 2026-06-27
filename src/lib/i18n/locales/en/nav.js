@@ -12,4 +12,6 @@ export default {
   'nav.admin_panel': 'Admin panel',
   'nav.toggle_theme': 'Toggle theme',
   'nav.account': 'Account',
+  'nav.aria_primary': 'Primary',
+  'nav.aria_social': 'Social',
 };

@@ -3,8 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { useToast } from '@/components/ui/use-toast';
-import { Dialog, Btn, Field } from '@/design/index';
+import { Dialog, Btn, Field, useToast } from '@/design/index';
 import { countryFlag } from '@/lib/geo';
 import CitySearch from '@/components/cities/CitySearch';
 

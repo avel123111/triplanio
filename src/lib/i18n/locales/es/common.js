@@ -66,4 +66,5 @@ export default {
   'common.link': 'Enlace',
   'common.done': 'Listo',
   'common.deleted_user': 'Cuenta eliminada',
+  'common.menu': 'Menú',
 };

@@ -1,7 +1,7 @@
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
-import { checkRateLimit, retryMinutes } from '../_shared/rateLimit.ts';
+import { aiFlowLimited } from '../_shared/rateLimit.ts';
 
 const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/group-chat';
 
@@ -15,16 +15,16 @@ const CHAT_RATE_WINDOW = 3600;
 type Lang = 'ru' | 'en' | 'es';
 
 // Бот отвечает в чат на родном языке вызвавшего (как и обычный ответ ассистента).
-const MSG: Record<'pro' | 'rate', Record<Lang, (mins: number) => string>> = {
+const MSG: Record<'pro' | 'rate', Record<Lang, string>> = {
   pro: {
-    ru: () => 'ИИ-ассистент доступен на Pro-подписке.',
-    en: () => 'The AI assistant is available on a Pro subscription.',
-    es: () => 'El asistente de IA está disponible con la suscripción Pro.',
+    ru: 'ИИ-ассистент доступен на Pro-подписке.',
+    en: 'The AI assistant is available on a Pro subscription.',
+    es: 'El asistente de IA está disponible con la suscripción Pro.',
   },
   rate: {
-    ru: (m) => `Слишком много обращений к ИИ-ассистенту. Попробуй через ~${m} мин.`,
-    en: (m) => `Too many requests to the AI assistant. Try again in ~${m} min.`,
-    es: (m) => `Demasiadas solicitudes al asistente de IA. Inténtalo en ~${m} min.`,
+    ru: 'Слишком много обращений к ИИ-ассистенту. Попробуй через несколько минут.',
+    en: 'Too many requests to the AI assistant. Try again in a few minutes.',
+    es: 'Demasiadas solicitudes al asistente de IA. Inténtalo de nuevo en unos minutos.',
   },
 };
 
@@ -53,6 +53,7 @@ async function postBotMessage(chatId: string, tripId: string, text: string) {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -104,15 +105,15 @@ Deno.serve(async (req) => {
     }
     const chatAddonOn = Boolean(trip.details?.addons?.chat);
     if (!tripPro || !chatAddonOn) {
-      await postBotMessage(chat_id, chat.trip_id, MSG.pro[lang](0));
+      await postBotMessage(chat_id, chat.trip_id, MSG.pro[lang]);
       return Response.json({ ok: false, code: 'PRO_REQUIRED' }, { headers: corsHeaders });
     }
 
     // ── Rate-limit (TRIP-111): 30/час на трип, ПЕРЕД дорогим LLM-вызовом ──
-    const rl = await checkRateLimit(supabaseAdmin, 'trip', chat.trip_id, 'inapp_group_chat', CHAT_RATE_LIMIT, CHAT_RATE_WINDOW);
-    if (!rl.allowed) {
-      await postBotMessage(chat_id, chat.trip_id, MSG.rate[lang](retryMinutes(rl.retryAfter)));
-      return Response.json({ ok: false, code: 'RATE_LIMITED', retry_after: rl.retryAfter }, { headers: corsHeaders });
+    // Общий примитив rate_limit_hits (bucket=ai_inapp_chat, key=trip_id).
+    if (await aiFlowLimited('ai_inapp_chat', chat.trip_id, CHAT_RATE_LIMIT, CHAT_RATE_WINDOW)) {
+      await postBotMessage(chat_id, chat.trip_id, MSG.rate[lang]);
+      return Response.json({ ok: false, code: 'RATE_LIMITED' }, { headers: corsHeaders });
     }
 
     const { data: recentMessages } = await supabaseAdmin

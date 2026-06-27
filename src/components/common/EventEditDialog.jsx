@@ -14,11 +14,9 @@
  *
  * Visual reference: EVENTS_SERVICES_REDESIGN_LUMO design system.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
-import AiField from '@/components/ui/AiField';
+import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, useToast } from '@/design/index';
 import {
   Loader2, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
@@ -52,57 +50,29 @@ function Checkbox({ checked, onCheckedChange, className = '' }) {
   );
 }
 
-// City autocomplete for layover (waypoint) cities - resolves a full city object
+// City autocomplete for layover (waypoint) cities — resolves a full city object
 // (coords + IANA timezone) so the saved waypoint city_visit has real geo data.
+// Thin facade over the shared <Autocomplete> engine (identical field/dropdown/
+// scroll/hover as every other city & address picker).
 function CityPicker({ value, onPick, placeholder }) {
   const { t } = useI18nFormat();
-  const { lang } = useI18n();
   const [q, setQ] = useState(value?.city_name || '');
-  const [results, setResults] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const tRef = useRef(null);
   useEffect(() => { setQ(value?.city_name || ''); }, [value?.city_name]);
-  const run = (query) => {
-    clearTimeout(tRef.current);
-    if (query.trim().length < 2) { setResults([]); setOpen(false); return; }
-    setLoading(true);
-    tRef.current = setTimeout(async () => {
-      try { const r = await searchCities(query.trim(), lang); setResults(r || []); setOpen((r || []).length > 0); }
-      catch { setResults([]); setOpen(false); }
-      finally { setLoading(false); }
-    }, 300);
-  };
-  const pick = async (c) => {
-    setOpen(false); setResults([]); setQ(c.city_name); setLoading(true);
-    const tz = tzFromCoords(c.latitude, c.longitude);
-    setLoading(false);
-    onPick({ city_name: c.city_name, country: c.country, country_code: c.country_code, latitude: c.latitude, longitude: c.longitude, timezone: tz, external_city_id: c.external_city_id });
-  };
   return (
-    <div style={{ position: 'relative' }}>
-      <input
-        className="input"
-        value={q}
-        placeholder={placeholder || t('event.layover_city_ph')}
-        onChange={(e) => { setQ(e.target.value); if (value) onPick(null); run(e.target.value); }}
-        onFocus={() => results.length > 0 && setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 180)}
-        autoComplete="off"
-      />
-      {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />}
-      {open && results.length > 0 && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 250, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', maxHeight: 240, overflowY: 'auto' }}>
-          {results.map((c) => (
-            <button key={c.external_city_id || c.city_name} type="button" onMouseDown={() => pick(c)}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', borderBottom: '1px solid var(--line-2)', background: 'transparent', cursor: 'pointer' }}>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{c.city_name}</div>
-              <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name || c.country}</div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <Autocomplete
+      inputValue={q}
+      onInputChange={(val) => { setQ(val); if (value) onPick(null); }}
+      search={(query, lang) => searchCities(query, lang)}
+      getKey={(c) => c.external_city_id || c.city_name}
+      onPick={(c) => {
+        setQ(c.city_name);
+        onPick({ city_name: c.city_name, country: c.country, country_code: c.country_code, latitude: c.latitude, longitude: c.longitude, timezone: tzFromCoords(c.latitude, c.longitude), external_city_id: c.external_city_id });
+      }}
+      renderRow={cityOptionRow}
+      placeholder={placeholder || t('event.layover_city_ph')}
+      icon="pin"
+      iconActive={!!value}
+    />
   );
 }
 
@@ -127,10 +97,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localToUtc, utcToLocalInput } from '@/lib/time';
 import { validateEntity, transferAiCityAdvisories } from '@/lib/validation';
 import { FieldError, IssuesPanel, fieldHasError } from '@/components/common/ValidationUI';
-import { detectPlatformFromUrl, BOOKING_PLATFORMS, platformLogoUrl } from '@/lib/booking-platforms';
+import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { tzFromCoords } from '@/lib/timezone';
+import './EventEditDialog.css';
 
 // Ensure a user-entered URL like "booking.com" opens absolutely (otherwise the
 // browser treats it as relative and prepends the current app path → /trip/.../booking.com).
@@ -139,13 +110,50 @@ const withScheme = (u) => {
   const s = String(u).trim();
   return /^https?:\/\//i.test(s) ? s : `https://${s}`;
 };
-import { useToast } from '@/components/ui/use-toast';
+
+// Shared "Booking URL" field: input with a favicon overlay (derived from the
+// URL's domain — works for any site) + a pill (favicon + host) and an "Open"
+// link. Used by hotel / transfer / activity-service branches (one source,
+// no copy-paste).
+function BookingUrlField({ value, onChange, aiActive, t }) {
+  const logo = faviconUrl(value);
+  const label = hostnameFromUrl(value);
+  return (
+    <div>
+      <Label>{t('event.booking_url')}</Label>
+      <AiField active={aiActive}>
+        <div className="eed-inwrap">
+          {logo && <img src={logo} alt="" className="eed-inlogo" />}
+          <Input
+            value={value}
+            onChange={onChange}
+            placeholder="https://..."
+            className={logo ? 'eed-in--logo' : ''}
+          />
+        </div>
+      </AiField>
+      {value && (
+        <div className="eed-bkmeta">
+          <span className="eed-bkpill">
+            {logo && <img src={logo} alt="" className="eed-bkpill__logo" />}
+            {label}
+          </span>
+          <a href={withScheme(value)} target="_blank" rel="noreferrer" className="eed-bkopen">
+            <ExternalLink size={12} />{t('common.open')}
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
 import { useI18nFormat, useI18n } from '@/lib/i18n/I18nContext';
 
 import DateTimeInput from '@/components/common/DateTimeInput';
 import TimezoneHint from '@/components/common/TimezoneHint';
 import DocumentsField from '@/components/common/DocumentsField';
 import AddressAutocomplete from '@/components/common/AddressAutocomplete';
+import Autocomplete from '@/components/common/Autocomplete';
+import cityOptionRow from '@/components/common/cityOptionRow';
 import EventAiBlock from '@/components/common/EventAiBlock';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 
@@ -1197,8 +1205,8 @@ export default function EventEditDialog({
                   onClick={() => deleteMut.mutate()}
                   disabled={deleteMut.isPending}
                 >
-                  {deleteMut.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />{t('common.delete')}
+                  {deleteMut.isPending && <Loader2 className="spin" size={12} style={{ marginRight: 6 }} />}
+                  <Trash2 size={14} style={{ marginRight: 6 }} />{t('common.delete')}
                 </button>
               </>
             ) : (
@@ -1211,7 +1219,7 @@ export default function EventEditDialog({
                     aria-label={t('common.delete')}
                     title={t('common.delete')}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 size={16} />
                   </button>
                 )}
                 <button className="btn btn--secondary" onClick={() => onOpenChange(false)}>{t('common.cancel')}</button>
@@ -1222,7 +1230,7 @@ export default function EventEditDialog({
                   aria-disabled={!canSave}
                   style={{ '--bg': meta.color, opacity: canSave ? 1 : 0.6 }}
                 >
-                  {saveMut.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+                  {saveMut.isPending && <Loader2 className="spin" size={12} style={{ marginRight: 6 }} />}
                   {isEdit ? t('common.save') : t('event.create')}
                 </button>
               </>
@@ -1496,15 +1504,12 @@ function SectionHeader({ children }) {
 
 function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const _platform = detectPlatformFromUrl(form.booking_url);
-  const platformInfo = _platform ? BOOKING_PLATFORMS[_platform] : null;
-  const platformLogo = platformLogoUrl(_platform, form.booking_url);
   const color = TYPE_META.hotel.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
     <>
       <SectionHeader color={color}>{t('event.hotel_about')}</SectionHeader>
-      <div className="space-y-3">
+      <div className="eed-stack">
         <div data-vfield="name" className={inv('name')}>
           <Label>{t('event.name_req')}</Label>
           <AiField active={aiFields.has('name')}>
@@ -1531,27 +1536,25 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
 
       <SectionHeader color={color}>{t('event.checkin_checkout')}</SectionHeader>
       <div className="fld-grid">
-        <div className={`min-w-0 ${inv('checkIn')}`} data-vfield="checkIn">
+        <div className={`eed-minw0 ${inv('checkIn')}`} data-vfield="checkIn">
           <Label>{t('event.checkin_req')}</Label>
           <AiField active={aiFields.has('checkInLocal')}>
             <DateTimeInput
               value={form.checkInLocal}
               onChange={(v) => setField('checkInLocal', v)}
               onTimeMissingChange={(v) => setTime('checkIn', v)}
-              className="w-full"
             />
           </AiField>
           <TimezoneHint tz={tz} />
           <FieldError issues={issues} field="checkIn" />
         </div>
-        <div className={`min-w-0 ${inv('checkOut')}`} data-vfield="checkOut">
+        <div className={`eed-minw0 ${inv('checkOut')}`} data-vfield="checkOut">
           <Label>{t('event.checkout_req')}</Label>
           <AiField active={aiFields.has('checkOutLocal')}>
             <DateTimeInput
               value={form.checkOutLocal}
               onChange={(v) => setField('checkOutLocal', v)}
               onTimeMissingChange={(v) => setTime('checkOut', v)}
-              className="w-full"
             />
           </AiField>
           <TimezoneHint tz={tz} />
@@ -1560,7 +1563,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
       </div>
 
       <SectionHeader color={color}>{t('event.finance_cancel')}</SectionHeader>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+      <div className="eed-grid3">
         <div>
           <Label>{t('event.price')}</Label>
           <AiField active={aiFields.has('price')}>
@@ -1586,14 +1589,14 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
         </div>
       </div>
       <AiField active={aiFields.has('free_cancellation')}>
-        <div className="rounded-lg border bg-secondary/30 p-3">
-          <label className="flex items-start gap-2 cursor-pointer">
+        <div className="eed-fcbox">
+          <label className="eed-fclabel">
             <Checkbox checked={form.free_cancellation} onCheckedChange={(v) => setField('free_cancellation', !!v)} />
-            <div className="flex-1">
-              <div className="text-sm font-medium">{t('event.free_cancel_have')}</div>
-              <div className="text-xs text-muted-foreground">{t('event.free_cancel_hint')}</div>
+            <div className="eed-fcbody">
+              <div className="eed-fctitle">{t('event.free_cancel_have')}</div>
+              <div className="eed-fchint">{t('event.free_cancel_hint')}</div>
               {form.free_cancellation && (
-                <div className="mt-2">
+                <div className="eed-fcdate">
                   <AiField active={aiFields.has('free_cancellation_until_local')}>
                     <DateTimeInput
                       value={form.free_cancellation_until_local}
@@ -1611,35 +1614,12 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
 
       <SectionHeader color={color}>{t('event.booking_section')}</SectionHeader>
       <div className="fld-grid">
-        <div>
-          <Label>{t('event.booking_url')}</Label>
-          <AiField active={aiFields.has('booking_url')}>
-            <div className="relative">
-              {platformLogo && (
-                <img src={platformLogo} alt="" className="w-5 h-5 absolute left-2.5 top-1/2 -translate-y-1/2 rounded-sm" />
-              )}
-              <Input
-                value={form.booking_url}
-                onChange={(e) => setField('booking_url', e.target.value)}
-                placeholder="https://..."
-                className={platformLogo ? 'pl-9' : ''}
-              />
-            </div>
-          </AiField>
-          {platformInfo && (
-            <div className="mt-1.5 flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${platformInfo.color}`}>
-                {platformLogo && <img src={platformLogo} alt="" className="w-3.5 h-3.5 rounded-sm" />}
-                {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
-              </span>
-              {form.booking_url && (
-                <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
-                  <ExternalLink className="w-3 h-3" />{t('common.open')}
-                </a>
-              )}
-            </div>
-          )}
-        </div>
+        <BookingUrlField
+          value={form.booking_url}
+          onChange={(e) => setField('booking_url', e.target.value)}
+          aiActive={aiFields.has('booking_url')}
+          t={t}
+        />
         <div>
           <Label>{t('event.booking_ref')}</Label>
           <AiField active={aiFields.has('booking_reference')}>
@@ -1682,9 +1662,6 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
 
 function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const _platform = detectPlatformFromUrl(form.booking_url);
-  const platformInfo = _platform ? BOOKING_PLATFORMS[_platform] : null;
-  const platformLogo = platformLogoUrl(_platform, form.booking_url);
   const color = TYPE_META.transfer.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -1696,7 +1673,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       ) : (
       <>
       <SectionHeader color={color}>{t('event.transport_kind')}</SectionHeader>
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
+      <div className="eed-typegrid">
         {TRANSPORT_KINDS.map((k) => {
           const active = form.transport_type === k.id;
           const Ic = k.Icon;
@@ -1715,7 +1692,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
                 fontWeight: 500, fontSize: 'var(--fs-micro)',
               }}
             >
-              <Ic className="w-4 h-4" />
+              <Ic size={16} />
               {t(k.labelKey)}
             </button>
           );
@@ -1725,7 +1702,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       <SectionHeader color={color}>{t('event.from_to')}</SectionHeader>
       <div className="fld-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold" style={{ color }}>{t('event.from')}</div>
+          <div className="eed-fromto" style={{ color }}>{t('event.from')}</div>
           <div>
             <Label>{t('event.addr_station')}</Label>
             <AiField active={aiFields.has('from_address')}>
@@ -1748,7 +1725,6 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
                 value={form.startLocal}
                 onChange={(v) => setField('startLocal', v)}
                 onTimeMissingChange={(v) => setTime('start', v)}
-                className="w-full"
               />
             </AiField>
             <TimezoneHint tz={startTz} />
@@ -1756,7 +1732,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          <div className="text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold" style={{ color }}>{t('event.to')}</div>
+          <div className="eed-fromto" style={{ color }}>{t('event.to')}</div>
           <div>
             <Label>{t('event.addr_station')}</Label>
             <AiField active={aiFields.has('to_address')}>
@@ -1779,7 +1755,6 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
                 value={form.endLocal}
                 onChange={(v) => setField('endLocal', v)}
                 onTimeMissingChange={(v) => setTime('end', v)}
-                className="w-full"
               />
             </AiField>
             <TimezoneHint tz={endTz} />
@@ -1795,9 +1770,9 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         <Checkbox checked={!!form.day_change} onCheckedChange={(v) => setField('day_change', !!v)} />
         <span style={{ minWidth: 0 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 'var(--fs-base)' }}>
-            <Moon className="w-4 h-4" /> {t('event.overnight_label')}
+            <Moon size={16} /> {t('event.overnight_label')}
           </span>
-          <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+          <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
         </span>
       </label>
 
@@ -1817,35 +1792,12 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         </div>
       </div>
       <div className="fld-grid">
-        <div>
-          <Label>{t('event.booking_url')}</Label>
-          <AiField active={aiFields.has('booking_url')}>
-            <div className="relative">
-              {platformLogo && (
-                <img src={platformLogo} alt="" className="w-5 h-5 absolute left-2.5 top-1/2 -translate-y-1/2 rounded-sm" />
-              )}
-              <Input
-                value={form.booking_url}
-                onChange={(e) => setField('booking_url', e.target.value)}
-                placeholder="https://..."
-                className={platformLogo ? 'pl-9' : ''}
-              />
-            </div>
-          </AiField>
-          {platformInfo && (
-            <div className="mt-1.5 flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${platformInfo.color}`}>
-                {platformLogo && <img src={platformLogo} alt="" className="w-3.5 h-3.5 rounded-sm" />}
-                {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
-              </span>
-              {form.booking_url && (
-                <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
-                  <ExternalLink className="w-3 h-3" />{t('common.open')}
-                </a>
-              )}
-            </div>
-          )}
-        </div>
+        <BookingUrlField
+          value={form.booking_url}
+          onChange={(e) => setField('booking_url', e.target.value)}
+          aiActive={aiFields.has('booking_url')}
+          t={t}
+        />
         <div>
           <Label>{t('event.booking_ref')}</Label>
           <AiField active={aiFields.has('booking_reference')}>
@@ -1950,13 +1902,13 @@ const fmtDur = (m, t) => {
 function SegTransportGrid({ value, onChange, color }) {
   const { t } = useI18nFormat();
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
+    <div className="eed-typegrid">
       {TRANSPORT_KINDS.map((k) => {
         const active = value === k.id; const Ic = k.Icon;
         return (
           <button key={k.id} type="button" onClick={() => onChange(k.id)}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line-2)'), color: active ? color : 'var(--ink)', borderRadius: 10, cursor: 'pointer', fontWeight: 500, fontSize: 'var(--fs-micro)' }}>
-            <Ic className="w-4 h-4" />{t(k.labelKey)}
+            <Ic size={16} />{t(k.labelKey)}
           </button>
         );
       })}
@@ -2039,22 +1991,22 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                 <button type="button" onClick={() => toggleOpen(seg, i)}
                   style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0, minWidth: 0 }}>
                   <span style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: TYPE_META.transfer.soft, color, display: 'grid', placeItems: 'center' }}>
-                    <TIcon className="w-4 h-4" />
+                    <TIcon size={16} />
                   </span>
                   <span style={{ minWidth: 0, flex: 1 }}>
                     <span className="eyebrow" style={{ color, display: 'block' }}>{t('event.segment_n', { n: i + 1 })} · {t(tk.labelKey)}</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--fs-strong)', fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fromName}</span>
-                      <ArrowRight className="w-3 h-3" style={{ color: 'var(--muted)', flexShrink: 0 }} />
+                      <ArrowRight size={12} style={{ color: 'var(--muted)', flexShrink: 0 }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{toName}</span>
                     </span>
                   </span>
                   <span className="muted" style={{ fontSize: 'var(--fs-micro)', flexShrink: 0 }}>{open ? t('event.collapse') : t('event.expand')}</span>
-                  <ChevronDown className="w-4 h-4" style={{ color: 'var(--muted)', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
+                  <ChevronDown size={16} style={{ color: 'var(--muted)', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
                 </button>
                 {N > 2 && (
                   <button type="button" className="btn btn--quiet btn--sm" onClick={() => removeSegment(i)} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 size={14} />
                   </button>
                 )}
               </div>
@@ -2072,7 +2024,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                       <input className="input" value={fromName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_from_route_title')} />
                     </div>
                     {cardField(<><Label>{t('event.addr_station')}</Label><AiField active={aiOn(seg, 'from_address')}><AddressAutocomplete value={seg.from_address} onChange={(v) => patchSeg(i, { from_address: v })} placeholder={t('event.addr_ph')} /></AiField></>)}
-                    {cardField(<div className={inv(`seg${i}.start`)} data-vfield={`seg${i}.start`}><Label>{t('event.departure_req')}</Label><AiField active={aiOn(seg, 'startLocal')}><DateTimeInput value={seg.startLocal} onChange={(v) => patchSeg(i, { startLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-dep`, v)} className="w-full" /></AiField><FieldError issues={issues} field={`seg${i}.start`} /></div>)}
+                    {cardField(<div className={inv(`seg${i}.start`)} data-vfield={`seg${i}.start`}><Label>{t('event.departure_req')}</Label><AiField active={aiOn(seg, 'startLocal')}><DateTimeInput value={seg.startLocal} onChange={(v) => patchSeg(i, { startLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-dep`, v)} /></AiField><FieldError issues={issues} field={`seg${i}.start`} /></div>)}
                   </div>
                   <div style={{ padding: 14, background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--line-2)' }}>
                     <div className="eyebrow" style={{ marginBottom: 8, color }}>{t('event.to')}</div>
@@ -2090,7 +2042,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                       )}
                     </div>
                     {cardField(<><Label>{t('event.addr_station')}</Label><AiField active={aiOn(seg, 'to_address')}><AddressAutocomplete value={seg.to_address} onChange={(v) => patchSeg(i, { to_address: v })} placeholder={t('event.addr_ph')} /></AiField></>)}
-                    {cardField(<div className={inv(`seg${i}.end`)} data-vfield={`seg${i}.end`}><Label>{t('event.arrival_req')}</Label><AiField active={aiOn(seg, 'endLocal')}><DateTimeInput value={seg.endLocal} onChange={(v) => patchSeg(i, { endLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-arr`, v)} className="w-full" /></AiField><FieldError issues={issues} field={`seg${i}.end`} /></div>)}
+                    {cardField(<div className={inv(`seg${i}.end`)} data-vfield={`seg${i}.end`}><Label>{t('event.arrival_req')}</Label><AiField active={aiOn(seg, 'endLocal')}><DateTimeInput value={seg.endLocal} onChange={(v) => patchSeg(i, { endLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-arr`, v)} /></AiField><FieldError issues={issues} field={`seg${i}.end`} /></div>)}
                   </div>
                 </div>
 
@@ -2106,9 +2058,9 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                   <Checkbox checked={!!seg.day_change} onCheckedChange={(v) => patchSeg(i, { day_change: !!v })} />
                   <span style={{ minWidth: 0 }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 'var(--fs-base)' }}>
-                      <Moon className="w-4 h-4" /> {t('event.overnight_label')}
+                      <Moon size={16} /> {t('event.overnight_label')}
                     </span>
-                    <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted, #888)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+                    <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
                   </span>
                 </label>
               </div>
@@ -2118,7 +2070,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
                 <span style={{ width: 1, height: 14, background: 'var(--line)', marginLeft: 16 }} />
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color, fontSize: 'var(--fs-meta)', fontWeight: 600 }}>
-                  <Repeat className="w-3 h-3" style={{ flexShrink: 0 }} />
+                  <Repeat size={12} style={{ flexShrink: 0 }} />
                   {t('event.layover_in', { city: '' }).replace(/\s*$/, '')}&nbsp;<span style={{ fontWeight: 700 }}>{layCity}</span>
                   {layDate && <span className="num" style={{ fontWeight: 600, opacity: 0.7 }}>· {layDate}</span>}
                   {layDur && <span className="num" style={{ fontWeight: 600, opacity: 0.7 }}>· {layDur}</span>}
@@ -2175,7 +2127,6 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
             value={form.startLocal}
             onChange={(v) => setField('startLocal', v)}
             onTimeMissingChange={(v) => setTime('start', v)}
-            className="w-full"
           />
           <TimezoneHint tz={tz} />
           <FieldError issues={issues} field="start" />
@@ -2186,7 +2137,6 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
             value={form.endLocal}
             onChange={(v) => setField('endLocal', v)}
             onTimeMissingChange={(v) => setTime('end', v)}
-            className="w-full"
           />
           <TimezoneHint tz={tz} />
           <FieldError issues={issues} field="end" />
@@ -2212,7 +2162,6 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         onUploadingChange={setUploading}
         tripId={tripId}
         bare
-        iconColor="text-violet-600 dark:text-violet-300"
       />
       <div>
         <Label>{t('event.notes')}</Label>
@@ -2328,9 +2277,6 @@ function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, isE
 
 function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
-  const _platform = detectPlatformFromUrl(form.booking_url);
-  const platformInfo = _platform ? BOOKING_PLATFORMS[_platform] : null;
-  const platformLogo = platformLogoUrl(_platform, form.booking_url);
   const color = TYPE_META.service.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -2434,33 +2380,12 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         </div>
       </div>
       <div className="fld-grid">
-        <div>
-          <Label>{t('event.booking_url')}</Label>
-          <div className="relative">
-            {platformLogo && (
-              <img src={platformLogo} alt="" className="w-5 h-5 absolute left-2.5 top-1/2 -translate-y-1/2 rounded-sm" />
-            )}
-            <Input
-              value={form.booking_url}
-              onChange={(e) => setField('booking_url', e.target.value)}
-              placeholder="https://..."
-              className={platformLogo ? 'pl-9' : ''}
-            />
-          </div>
-          {platformInfo && (
-            <div className="mt-1.5 flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${platformInfo.color}`}>
-                {platformLogo && <img src={platformLogo} alt="" className="w-3.5 h-3.5 rounded-sm" />}
-                {platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label}
-              </span>
-              {form.booking_url && (
-                <a href={withScheme(form.booking_url)} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
-                  <ExternalLink className="w-3 h-3" />{t('common.open')}
-                </a>
-              )}
-            </div>
-          )}
-        </div>
+        <BookingUrlField
+          value={form.booking_url}
+          onChange={(e) => setField('booking_url', e.target.value)}
+          aiActive={aiFields.has('booking_url')}
+          t={t}
+        />
         <div>
           <Label>{t('event.booking_ref')}</Label>
           <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
@@ -2474,7 +2399,6 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         onUploadingChange={setUploading}
         tripId={tripId}
         bare
-        iconColor="text-emerald-700 dark:text-emerald-300"
       />
       <div>
         <Label>{t('event.notes')}</Label>

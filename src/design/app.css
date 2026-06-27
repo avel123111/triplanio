@@ -98,7 +98,6 @@
   --pro:       #E6A21E;
   --pro-soft:  rgba(230,162,30,.13);
   --pro-soft-2:rgba(230,162,30,.22);
-  --pro-soft-12: var(--pro-soft-2);
   --pro-ink:   #936215;
   --pro-fg:    #4A2D05;
   --pro-gradient: linear-gradient(135deg,#FBD06A 0%,#EBA02E 55%,#E08A36 100%);
@@ -617,9 +616,6 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .dz-lift:hover { transform: none; } }
 .dz-xbtn { background: transparent; transition: background .12s var(--ease-out); }
 .dz-xbtn:hover { background: var(--wash); }
-/* Row/menu-item background hover (base transparent lives here so :hover wins). */
-.dz-rowhover { background: transparent; transition: background .12s var(--ease-out); }
-.dz-rowhover:hover { background: var(--wash); }
 /* Border-only hover (list rows). */
 .dz-bord { border: 1px solid var(--line); transition: border-color .14s var(--ease-out); }
 .dz-bord:hover { border-color: var(--line-hover); }
@@ -724,16 +720,18 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   border-radius: 14px;
   padding: 13px;
 }
-/* .ph = icon + title row; .pi = gold icon tile; .pt = title text */
+/* .ph = icon + title row; .pi = gold icon tile; .pt = title text.
+   .pi is de-scoped from .pro-up so the same gold Pro-tile is reusable outside
+   the plate (e.g. ProUpsellModal head) — single source for the tile. */
 .pro-up .ph { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
-.pro-up .pi {
+.pi {
   width: 34px; height: 34px; border-radius: 11px;
   background: var(--pro-gradient);
   display: grid; place-items: center;
   flex: none; box-shadow: 0 4px 12px -4px var(--pro);
   color: #fff; /* ensure currentColor = white for SVG stroke */
 }
-.pro-up .pi svg { width: 18px; height: 18px; }
+.pi svg { width: 18px; height: 18px; }
 .pro-up .pt {
   font-family: var(--font-display); font-weight: 600;
   font-size: var(--fs-strong); /* 15px, matches design */
@@ -1234,8 +1232,6 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Positioned so the city dropdown (portaled into THIS scroller on desktop as
    position:absolute) resolves its coords against it and scrolls WITH content. */
 .flow-lp-b { padding: 20px; position: relative; }
-/* City autocomplete dropdown (CityPicker). */
-.flow-city-dd { max-height: 260px; }
 /* Step title: 32px in the half-width panel (the 40px page-h1 dwarfed the column);
    on phones a fluid clamp instead of the global hard 26px !important shrink.
    Scoped to the create-flow panel so the global h1 is untouched. */
@@ -1783,7 +1779,23 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    here (the old absolute-positioned `.bell-dd` shell was removed as dead code).
    ────────────────────────────────────────────────────────────────────────── */
 
+/* ── Popover base (.pop) — de-Tailwinded Radix PopoverContent shell (TRIP-53 Этап 3).
+   Was the Tailwind string `w-72 rounded-md border bg-popover p-4 shadow-md … animate-in/zoom-in`
+   baked into ui/popover.jsx. Now a single Lumo-token class; consumers below override
+   size/padding with a plain class (no more [data-state] specificity hack needed). ── */
+.pop {
+  background: var(--popover); color: var(--popover-ink);
+  border: 1px solid var(--line); border-radius: var(--r-card);
+  box-shadow: var(--shadow-pop); padding: 14px; outline: none;
+  animation: popIn .14s var(--ease-out);
+}
+@keyframes popIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+/* Flush variant — list-style popovers that own their padding (SearchSelect). */
+.pop-flush { padding: 0; }
+
 /* Bell popover — head / list / foot (Lumo: rounded prow rows in a padded list) */
+/* Shell overrides the .pop base: full-width-capped, clipped, larger radius, no padding. */
+.bell-dd-pop { padding: 0; width: 360px; max-width: calc(100vw - 16px); overflow: hidden; border-radius: 16px; }
 .bell-dd__head { padding: 14px 16px 11px; display: flex; align-items: center; gap: 10px; }
 /* Title takes the slack and truncates so the action pill always fits on one line. */
 .bell-dd__head > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3435,6 +3447,14 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* inline border-spinner (parsing) */
 .ai-spin{display:inline-block;width:14px;height:14px;border:2px solid var(--ai);border-right-color:transparent;border-radius:50%;animation:aispin .8s linear infinite;flex:none;}
 @keyframes aispin{to{transform:rotate(360deg);}}
+/* generic spinner utility (replaces Tailwind animate-spin on lucide icons) */
+.spin{animation:aispin 1s linear infinite;}
+/* canonical in-button spinner (Lumo design system B1 · loading state) — a
+   currentColor border-circle that replaces the leading icon while <Btn loading> */
+.btn .spin{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:aispin .7s linear infinite;flex:none;}
+/* app-level loading spinner (was Tailwind fixed inset-0 + bordered circle) */
+.app-loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+.app-spinner{width:32px;height:32px;border:4px solid var(--line);border-top-color:var(--ink);border-radius:var(--r-pill);animation:aispin 1s linear infinite;}
 /* locked / parsed state tints */
 .ai-blk.locked{border-color:var(--line-strong);background:var(--surface-2);}
 .ai-blk.locked .ai-blk-ic{filter:saturate(.55);}
@@ -3585,10 +3605,15 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    future fields) without per-class upkeep. Non-text controls (checkbox/radio/
    file/range/color) are excluded — they never trigger focus-zoom. We deliberately
    do NOT clamp the viewport meta (maximum-scale/user-scalable) so pinch-zoom and
-   accessibility stay intact. */
+   accessibility stay intact.
+   `!important` is intentional: "no mobile field below 16px" is a hard a11y/UX
+   invariant that must beat ANY inline style={{fontSize}} or higher-specificity
+   rule — otherwise off-canon fields keep slipping through and zooming. No field
+   in the app is intentionally >16px on mobile, so clamping to exactly 16px is
+   safe. */
 @media (max-width: 640px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
-  textarea, select { font-size: 16px; }
+  textarea, select { font-size: 16px !important; }
   /* View-modal footer actions (Delete / Edit) share the row evenly instead of
      crowding. Scoped away from the edit dialog footer (.lp-f--edit), which has
      its own layout (icon-only delete + grow-to-fill save). */

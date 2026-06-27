@@ -20,11 +20,12 @@
  * to an authorized user is rejected, never served data.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -94,7 +95,10 @@ Deno.serve(async (req) => {
     const tasks: Promise<{ data: unknown[] | null; error: unknown }>[] = [];
     const slots: Record<string, number> = {};
 
-    const add = (key: string, query: ReturnType<typeof supabaseAdmin.from>) => {
+    // query is any builder link in the PostgREST chain (.select().eq()… →
+    // PostgrestFilterBuilder), all of which are thenable. Typed as PromiseLike
+    // so every call site (a FilterBuilder, not the bare QueryBuilder) is accepted.
+    const add = (key: string, query: PromiseLike<unknown>) => {
       slots[key] = tasks.length;
       tasks.push(query as unknown as Promise<{ data: unknown[] | null; error: unknown }>);
     };

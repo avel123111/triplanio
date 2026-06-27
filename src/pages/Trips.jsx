@@ -9,7 +9,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
-import { getGradientById } from '@/lib/trip-gradients';
+import { coverGradientCss } from '@/lib/trip-gradients';
 import { uniqueTransitCities } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
 import StatsMap from '@/components/views/StatsMap';
@@ -23,12 +23,6 @@ import { useActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import AppHeader from '@/components/AppHeader';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-function strHue(str = '') {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
-  return Math.abs(h) % 360;
-}
-
 function scopeLabel(t, visits = []) {
   // Same deduped transit set that backs the city COUNT (uniqueTransitCities) —
   // so the card's city list and every "N городов" number can never disagree.
@@ -47,15 +41,21 @@ function scopeLabel(t, visits = []) {
  *
  * "Shared" = trip has ≥2 participants (owner + at least 1 accepted member).
  */
-function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, participants = []) {
+function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, participants = [], serverPro = undefined) {
   return {
     ...trip,
-    coverHue:  strHue(trip.id),
-    accentHue: strHue(trip.title || ''),
     days:      formatTripRange(visits, '-'),
     scope:     scopeLabel(t, visits),
     role,
-    pro:       !!trip.is_pro_trip,
+    // Owner-aware Pro badge (TRIP-121). Effective Pro = is_pro_trip OR the trip
+    // OWNER has an active subscription — true for EVERY trip the user sees, incl.
+    // foreign trips made Pro by their owner's sub. The server computes it once in
+    // get_user_travel_stats via the canonical is_trip_pro() predicate (the client
+    // can't see a foreign owner's billing), exposed per trip as `serverPro`.
+    // Fallback (older RPC build with no is_pro field): the client predicate —
+    // own trips only (is_pro_trip OR I'm the owner with an active sub) — so a
+    // stale deploy degrades gracefully instead of dropping all badges.
+    pro:       typeof serverPro === 'boolean' ? serverPro : (!!trip.is_pro_trip || (role === 'owner' && isPro)),
     userIsPro: isPro,
     status:    isTripInPast(visits) ? 'past' : 'active',
     isShared:  participants.length >= 2,
@@ -64,18 +64,12 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, par
 }
 
 // ─── Cover background helper ────────────────────────────────────────────────
+// Photo (when present) is rendered as a separate <img> overlay → return null so
+// the cover element has no background behind it; otherwise the trip's gradient
+// (always one of our built-in set, default-backed).
 function coverBg(trip) {
-  const gradient = trip.cover_gradient ? getGradientById(trip.cover_gradient) : null;
-  if (trip.cover_image_url) return null; // photo rendered separately
-  if (gradient) return gradient.css;
-  // Procedural fallback based on trip id / title hue
-  const hue    = trip.coverHue ?? 210;
-  const accent = trip.accentHue ?? 18;
-  const isDark = document.documentElement.dataset.theme === 'dark';
-  return `linear-gradient(to bottom left,
-    hsl(${hue}, 60%, ${isDark ? 30 : 68}%) 0%,
-    hsl(${(hue + accent) % 360}, 55%, ${isDark ? 22 : 58}%) 60%,
-    hsl(${accent}, 70%, ${isDark ? 32 : 62}%) 100%)`;
+  if (trip.cover_image_url) return null;
+  return coverGradientCss(trip.cover_gradient);
 }
 
 // ─── Avatar stack — uses the same Avatar component as MembersLens/OverviewLens
@@ -212,9 +206,7 @@ const TripCard = ({ trip, onClick }) => {
         {/* top-right badges */}
         <div className="tc__tags">
           {trip.pro && (
-            <span className="badge badge--pro">
-              <Icon name="crown" /> Pro
-            </span>
+            <Badge variant="pro" icon="pro">Pro</Badge>
           )}
         </div>
 
@@ -567,7 +559,7 @@ export default function Trips() {
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
   const shownNorm = shown.map(tr =>
-    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [])
+    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [], travelStats?.trips?.[tr.id]?.is_pro)
   );
 
   // ── Next upcoming trip (nearest future start) for the rail card ──────────────
@@ -586,8 +578,6 @@ export default function Trips() {
     const diff = best.startMs - now;
     return {
       ...best.tr,
-      coverHue:  strHue(best.tr.id),
-      accentHue: strHue(best.tr.title || ''),
       scope:     scopeLabel(t, best.visits),
       countdown: {
         d: Math.floor(diff / 864e5),

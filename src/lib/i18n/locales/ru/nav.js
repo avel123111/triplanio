@@ -12,4 +12,6 @@ export default {
   'nav.admin_panel': 'Админ-панель',
   'nav.toggle_theme': 'Сменить тему',
   'nav.account': 'Аккаунт',
+  'nav.aria_primary': 'Основная навигация',
+  'nav.aria_social': 'Соцсети',
 };

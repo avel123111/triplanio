@@ -15,16 +15,16 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
+import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Card, Dialog, Field, Severity, Toggle } from '../design/index';
+import { Avatar, Badge, Btn, Card, Dialog, Field, Severity, Toggle, useToast, CurrencyCombobox } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import ProUpsellModal from '@/components/common/ProUpsellModal';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { useToast } from '@/components/ui/use-toast';
 import { telegram as tgBrand } from '@/lib/externalBrands';
-import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
+import { DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
 // `addon` is the key persisted under trip.details.addons (matches TripView lens ids
@@ -61,7 +61,7 @@ function featuresFromTrip(trip) {
 // Addon widget card (Lumo DS §D1 `.addon-card`). Icon + switch on top, title +
 // description below, optional upgrade CTA in the foot. The accent colour is
 // passed through the `--ac` custom property.
-function FeatureCard({ feat, on, onChange, hasPro }) {
+function FeatureCard({ feat, on, onChange, hasPro, busy }) {
   const { t } = useI18n();
   const proLocked = feat.pro && !hasPro;
   const cls = 'addon-card'
@@ -78,7 +78,7 @@ function FeatureCard({ feat, on, onChange, hasPro }) {
             : (
               <div className="addon-card__status">
                 {feat.pro && hasPro && <Badge variant="success" icon="check">{t('settings.feat_available')}</Badge>}
-                <Toggle on={on} onChange={onChange} />
+                <Toggle on={on} busy={busy} onChange={onChange} />
               </div>
             )}
       </div>
@@ -286,9 +286,11 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
 
 function TelegramSection({ tripId }) {
   const { t } = useI18n();
+  const { toast } = useToast();
   const [accounts, setAccounts] = useState(null); // null = loading
   const [connectOpen, setConnectOpen] = useState(false);
   const [unlinkState, setUnlinkState] = useState(null); // null | { account }
+  const [busyId, setBusyId] = useState(null); // integration id with an in-flight toggle/disconnect
 
   const load = React.useCallback(async () => {
     const { data, error } = await supabase.functions.invoke('telegramGetIntegration', { body: { tripId } });
@@ -301,20 +303,28 @@ function TelegramSection({ tripId }) {
     a.telegram_first_name || (a.telegram_username ? `@${a.telegram_username}` : t('telegram.unknown_user'));
   const handle = (a) => (a.telegram_username ? `@${a.telegram_username}` : '');
 
+  // Not optimistic: an optimistic flip here misleads (the bot keeps/stops
+  // notifying based on the server state). Show a spinner on the row and only
+  // reflect the new state once the edge call confirms it.
   const toggle = async (a) => {
-    setAccounts(list => list.map(x => x.id === a.id ? { ...x, is_active: !x.is_active } : x)); // optimistic
+    if (busyId) return;
+    setBusyId(a.id);
     const { error } = await supabase.functions.invoke('telegramSetActive', {
       body: { tripId, integrationId: a.id, isActive: !a.is_active },
     });
-    if (error) load();
+    if (error) toast({ description: t('settings.save_error', { message: error?.message || t('members.error_generic') }), variant: 'destructive' });
+    else setAccounts(list => list.map(x => x.id === a.id ? { ...x, is_active: !x.is_active } : x));
+    setBusyId(null);
   };
 
   const doRemove = async (a) => {
-    setAccounts(list => list.filter(x => x.id !== a.id)); // optimistic
+    setBusyId(a.id);
     const { error } = await supabase.functions.invoke('telegramDisconnect', {
       body: { tripId, integrationId: a.id },
     });
-    if (error) load();
+    if (error) toast({ description: t('settings.save_error', { message: error?.message || t('members.error_generic') }), variant: 'destructive' });
+    else setAccounts(list => list.filter(x => x.id !== a.id));
+    setBusyId(null);
   };
   const remove = (a) => setUnlinkState({ account: a });
   const openConnect = () => setConnectOpen(true);
@@ -352,8 +362,8 @@ function TelegramSection({ tripId }) {
             <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{displayName(a)}</div>
             {handle(a) && <div className="muted mono" style={{ fontSize: 'var(--fs-micro)' }}>{handle(a)}</div>}
           </div>
-          <Toggle on={!!a.is_active} onChange={() => toggle(a)} />
-          <Btn variant="quiet" size="sm" icon="trash" onClick={() => remove(a)} />
+          <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
+          <Btn variant="quiet" size="sm" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
         </div>
       ))}
       <Btn variant="ghost" icon="plus" onClick={openConnect}>
@@ -411,6 +421,10 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const [coverGradient, setCoverGradient] = useState(trip?.cover_gradient || '');
   const [currency, setCurrency] = useState(trip?.details?.main_currency || trip?.main_currency || 'EUR');
   const [saving,  setSaving]  = useState(false);
+  // Which display/feature toggle is mid-flight (key string or feature id) — drives
+  // the in-knob spinner and blocks re-entry. Toggles persist before they flip
+  // (no optimism), so this is the only "in progress" signal the user gets.
+  const [busyToggle, setBusyToggle] = useState(null);
   const { toast } = useToast();
 
   const hasPro = isPro; // trip-level Pro (owner sub OR is_pro_trip), passed from TripView
@@ -424,7 +438,11 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   const [bookingWarnings, setBookingWarnings] = useState(() => trip?.details?.display?.booking_warnings !== false);
   const [chatWidget, setChatWidget] = useState(() => trip?.details?.display?.chat_widget !== false);
   const [upsell, setUpsell] = useState({ open: false, mode: 'upgrade', feature: '' });
-  const openUpgrade = () => nav(`/pro?tripId=${tripId}&hidePerTrip=1`);
+  // Owner upgrade from Settings shows the SAME 3 offers as the sidebar / AI-block
+  // (per-trip + monthly + yearly). No hidePerTrip here: Pro.jsx already hides the
+  // per-trip offer for non-owners (tripOwner check), so the flag only created an
+  // owner-vs-owner inconsistency between Settings and the sidebar (TRIP-63 №2).
+  const openUpgrade = () => nav(`/pro?tripId=${tripId}`);
 
   // Seed local state when the trip first loads or when switching to a different
   // trip. Keyed on trip.id (NOT the trip object): react-query hands back a fresh
@@ -458,17 +476,19 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   // function (trips RLS is owner-only). Architecture note: `display` is an
   // extensible bag - adding another visibility flag later is just another key.
   async function toggleBookingWarnings() {
+    if (busyToggle) return;
     const next = !bookingWarnings;
-    setBookingWarnings(next); // optimistic
+    setBusyToggle('booking_warnings');
     const { data, error } = await supabase.functions.invoke('updateTripSettings', {
       body: { tripId, display: { booking_warnings: next } },
     });
     if (error || !data?.ok) {
-      setBookingWarnings(!next); // revert
       toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
-      return;
+    } else {
+      setBookingWarnings(next); // reflect only after the server confirms
+      queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     }
-    queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+    setBusyToggle(null);
   }
 
   // Trip-level toggle for the floating chat widget (the dock button shown on
@@ -477,17 +497,19 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   // NOTE: the actual widget is ALSO gated by the `chat` addon in TripView, so
   // turning the addon off hides the widget regardless of this flag.
   async function toggleChatWidget() {
+    if (busyToggle) return;
     const next = !chatWidget;
-    setChatWidget(next); // optimistic
+    setBusyToggle('chat_widget');
     const { data, error } = await supabase.functions.invoke('updateTripSettings', {
       body: { tripId, display: { chat_widget: next } },
     });
     if (error || !data?.ok) {
-      setChatWidget(!next); // revert
       toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
-      return;
+    } else {
+      setChatWidget(next); // reflect only after the server confirms
+      queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
     }
-    queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+    setBusyToggle(null);
   }
 
   // Save identity settings: title, description, notes, cover (gradient/image)
@@ -503,7 +525,9 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       description: description.trim() || null,
       notes: notes || null,
       cover_image_url: coverImageUrl || null,
-      cover_gradient: coverGradient || null,
+      // Invariant: keep a built-in gradient even when a photo is set (photo just
+      // renders on top). Never persist null → no legacy/procedural fallback.
+      cover_gradient: coverGradient || DEFAULT_GRADIENT_ID,
     };
     // trips RLS is owner-only → write via edge function so admins can save too.
     const { data, error } = await supabase.functions.invoke('updateTripSettings', {
@@ -536,6 +560,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
   async function toggleFeature(id, pro) {
     const feat = FEATURES.find(f => f.id === id);
     if (feat?.locked) return;
+    if (busyToggle) return;
     if (pro && !hasPro) {
       // Trip is not Pro. Only the owner can upgrade it → owner sees the upgrade
       // path; a non-owner (admin) is told to ask the owner instead of being sent
@@ -546,78 +571,94 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     const newVal = !features[id];
     const prevAddons = trip?.details?.addons || {};
     const nextAddons = { ...prevAddons, [feat.addon]: newVal };
-    setFeatures(s => ({ ...s, [id]: newVal }));  // optimistic (settings screen)
-    // Patch the shell cache optimistically too, so the side-menu lenses and the
-    // chat widget (which read trip.details.addons from the shell query, not from
-    // this component's local state) flip instantly instead of after the
-    // getTripDetails round-trip lands (was a multi-second lag).
+    setBusyToggle(id);
+    // No optimism: a feature flip drives gating (chat widget, lenses) — flipping
+    // before the server confirms misleads. The toggle shows a spinner instead.
     const patchAddons = (addons) => queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>
       old?.trip ? { ...old, trip: { ...old.trip, details: { ...(old.trip.details || {}), addons } } } : old);
-    patchAddons(nextAddons);
     // trips RLS is owner-only → write via edge function (owner+admin, pro-gated).
     const { data, error } = await supabase.functions.invoke('updateTripSettings', {
       body: { tripId, addons: nextAddons },
     });
     if (error || !data?.ok) {
-      setFeatures(s => ({ ...s, [id]: !newVal }));  // revert
-      patchAddons(prevAddons);                       // revert cache
       if (data?.code === 'PRO_REQUIRED') {
         setUpsell({ open: true, mode: isOwner ? 'upgrade' : 'info', feature: feat ? t(feat.labelKey) : '' });
       } else {
         toast({ description: t('settings.save_error', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' });
       }
+      setBusyToggle(null);
       return;
     }
+    setFeatures(s => ({ ...s, [id]: newVal }));  // reflect only after server confirms
+    patchAddons(nextAddons);                      // sync the shell cache (lenses/widget)
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
+    setBusyToggle(null);
   }
 
-  // Leave trip
+  // Leave trip — runs through the async confirm so the confirm button shows a
+  // spinner while removeTripMember is in flight (the edge call is not instant).
   async function leaveTrip() {
-    if (!(await confirm({ title: t('settings.leave_confirm'), variant: 'destructive' }))) return;
     const myMember = members.find(m => m.user_id === user?.id && m.status === 'active');
     if (!myMember) { toast({ description: t('settings.leave_not_found'), variant: 'destructive' }); return; }
-    // Only leave (navigate away) once the backend actually removed the row.
-    // removeTripMember now returns a non-2xx with the reason on failure, so we
-    // must read the response - navigating on a silent failure left the user
-    // still in the trip ("выход" перебрасывал на /trips, но не выходил).
-    const { data, error } = await supabase.functions.invoke('removeTripMember', {
-      body: { member_id: myMember.id },
+    await confirm({
+      title: t('settings.leave_confirm'),
+      variant: 'destructive',
+      onConfirm: async () => {
+        // Only leave (navigate away) once the backend actually removed the row.
+        // removeTripMember now returns a non-2xx with the reason on failure, so we
+        // must read the response - navigating on a silent failure left the user
+        // still in the trip ("выход" перебрасывал на /trips, но не выходил).
+        const { data, error } = await supabase.functions.invoke('removeTripMember', {
+          body: { member_id: myMember.id },
+        });
+        if (error || !data?.ok) {
+          let msg = error?.message || t('settings.leave_error');
+          try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
+          toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
+          return;
+        }
+        nav('/trips');
+      },
     });
-    if (error || !data?.ok) {
-      let msg = error?.message || t('settings.leave_error');
-      try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
-      toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
-      return;
-    }
-    nav('/trips');
   }
 
   // Delete trip (owner only). Routed through the deleteTrip edge function so
   // Telegram teardown + Storage purge run before the irreversible DELETE.
   async function deleteTrip() {
     if (!(await confirm({ title: t('settings.delete_confirm1'), variant: 'destructive' }))) return;
-    if (!(await confirm({ title: t('settings.delete_confirm2'), variant: 'destructive' }))) return;
+
+    // The actual irreversible delete; attached to the LAST confirm shown so its
+    // button carries the spinner while deleteTrip (Telegram teardown + Storage
+    // purge + DELETE) runs.
+    const runDelete = async () => {
+      const { data, error } = await supabase.functions.invoke('deleteTrip', { body: { tripId } });
+      if (error || !data?.ok) {
+        let msg = data?.error || error?.message || '';
+        try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
+        toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
+        return;
+      }
+      // Deleting an owned trip lowers the active-trip count — drop the gate cache
+      // so the planner can't read a stale count and flash the limit guard.
+      invalidateActiveTripsLimit(queryClient);
+      nav('/trips');
+    };
 
     // 3rd confirm — ONLY for a trip carrying a one-time Pro purchase
     // (is_pro_trip), which burns on delete. NOT shown when Pro comes from an
     // account-level subscription (that survives the trip being deleted), so we
     // key off is_pro_trip, not the merged isPro flag.
     if (isProTrip) {
-      if (!(await confirm({
+      if (!(await confirm({ title: t('settings.delete_confirm2'), variant: 'destructive' }))) return;
+      await confirm({
         title: t('confirm.delete_pro_trip.title'),
         description: t('confirm.delete_pro_trip.body'),
         variant: 'destructive',
-      }))) return;
+        onConfirm: runDelete,
+      });
+    } else {
+      await confirm({ title: t('settings.delete_confirm2'), variant: 'destructive', onConfirm: runDelete });
     }
-
-    const { data, error } = await supabase.functions.invoke('deleteTrip', { body: { tripId } });
-    if (error || !data?.ok) {
-      let msg = data?.error || error?.message || '';
-      try { const body = await error?.context?.json?.(); if (body?.error) msg = body.error; } catch { /* ignore */ }
-      toast({ description: t('settings.save_error2', { message: msg }), variant: 'destructive' });
-      return;
-    }
-    nav('/trips');
   }
 
   const approvers    = members.filter(m => ['owner', 'admin'].includes(m.role) && m.status === 'active');
@@ -684,9 +725,22 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
         </fieldset>
       </Card>
 
-      {/* Management cards (features, integrations, warnings, approvers) are
-          owner/admin controls — hidden for a read-only viewer. */}
-      {!readOnly && (<>
+      {/* Management cards (features, integrations, warnings, approvers) stay
+          VISIBLE for a read-only viewer (TRIP-63 №5) but disabled: a native
+          <fieldset disabled> switches off every control inside (toggles, inputs,
+          file pickers and buttons are all native), and opacity + pointer-events
+          mute the block visually — the SAME proven pattern as the identity
+          fieldset above. The viewer now SEES the budget addon exists (just can't
+          flip it), so the budget-lock modal's "Open settings" CTA is no longer a
+          dead end. Only "Leave trip" (Danger zone, OUTSIDE this fieldset) stays
+          interactive. flex+gap mirrors the .settings-lens spacing so wrapping the
+          cards doesn't collapse the 16px gaps. */}
+      <fieldset
+        disabled={readOnly}
+        style={{ border: 0, margin: 0, padding: 0, minWidth: 0,
+          display: 'flex', flexDirection: 'column', gap: 16,
+          ...(readOnly ? { opacity: 0.65, pointerEvents: 'none' } : {}) }}
+      >
       {/* ── Features: addon widget cards (Lumo DS §D1), full width ──
           The Pro upgrade banner lives INSIDE this panel, above the heading
           (matches the approved prototype). Shown on the same condition as the
@@ -724,6 +778,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             .filter(f => SHOW_HOTEL_VOTING || f.addon !== 'hotels_selection')
             .map(f => (
               <FeatureCard key={f.id} feat={f} on={features[f.id]} hasPro={hasPro}
+                busy={busyToggle === f.id}
                 onChange={() => toggleFeature(f.id, f.pro)} />
             ))}
         </div>
@@ -743,7 +798,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                     {t('settings.chat_widget_desc')}
                   </div>
                 </div>
-                <Toggle on={chatWidget} onChange={toggleChatWidget} />
+                <Toggle on={chatWidget} busy={busyToggle === 'chat_widget'} onChange={toggleChatWidget} />
               </div>
 
               <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -771,7 +826,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                 <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 800 }}>{t('settings.warn_bookings_title')}</div>
                 <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{t('settings.warn_bookings_desc')}</div>
               </div>
-              <Toggle on={bookingWarnings} onChange={toggleBookingWarnings} />
+              <Toggle on={bookingWarnings} busy={busyToggle === 'booking_warnings'} onChange={toggleBookingWarnings} />
             </div>
           </Card>
         </div>
@@ -798,7 +853,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           )}
         </div>
       </div>
-      </>)}
+      </fieldset>
 
       {/* ── Danger zone (full width) ── */}
       <Card title={t('settings.danger_zone')} style={{ borderColor: 'var(--danger-soft)' }}>

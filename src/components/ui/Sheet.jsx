@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { useSheetSwipe } from '@/lib/useSheetSwipe';
+import { useT } from '@/lib/i18n/I18nContext';
 
 /**
  * C6 · Sheet — canonical mobile bottom-sheet (Lumo `.sheet`).
@@ -15,6 +16,7 @@ import { useSheetSwipe } from '@/lib/useSheetSwipe';
  *   </Sheet>
  */
 export function Sheet({ open, onOpenChange, title, children, className = '', bodyClassName = '', titleText }) {
+  const t = useT();
   const { elRef, gripProps } = useSheetSwipe(() => onOpenChange?.(false));
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -28,11 +30,11 @@ export function Sheet({ open, onOpenChange, title, children, className = '', bod
           {title ? (
             <div className="sheet-h">
               <Dialog.Title asChild><h3>{title}</h3></Dialog.Title>
-              <Dialog.Close className="close" aria-label="Close"><X size={16} /></Dialog.Close>
+              <Dialog.Close className="close" aria-label={t('common.close')}><X size={16} /></Dialog.Close>
             </div>
           ) : (
-            <Dialog.Title className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-              {titleText || 'Menu'}
+            <Dialog.Title style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+              {titleText || t('common.menu')}
             </Dialog.Title>
           )}
           <div className={'sheet-b' + (bodyClassName ? ' ' + bodyClassName : '')}>{children}</div>

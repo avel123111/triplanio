@@ -10,21 +10,17 @@
  * POST body: { sessionId: string, prompt: string, language?: string }
  */
 
+import { corsFor } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
-import { checkRateLimit } from '../_shared/rateLimit.ts';
+import { aiFlowLimited } from '../_shared/rateLimit.ts';
 
 // TRIP-111: лимит генераций ИИ-планировщика. Вешается на САМ вызов генерации
 // (не на сохранение трипа), поэтому закрывает и delete+recreate, и спам без
 // сохранения. 10 генераций в час на пользователя.
 const PLANNER_RATE_LIMIT = 10;
 const PLANNER_RATE_WINDOW = 3600;
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -43,6 +39,7 @@ async function getRequestUser(req: Request) {
 const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/ai-trip-planner';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -52,11 +49,11 @@ Deno.serve(async (req) => {
     const { sessionId, prompt, language } = await req.json();
     if (!prompt) return Response.json({ error: 'prompt required' }, { status: 400, headers: corsHeaders });
 
-    // Rate-limit ПЕРЕД дорогим LLM-вызовом (TRIP-111).
-    const rl = await checkRateLimit(supabaseAdmin, 'user', user.id, 'trip_planner', PLANNER_RATE_LIMIT, PLANNER_RATE_WINDOW);
-    if (!rl.allowed) {
+    // Rate-limit ПЕРЕД дорогим LLM-вызовом (TRIP-111). Общий примитив
+    // rate_limit_hits (bucket=ai_trip_planner, key=user_id).
+    if (await aiFlowLimited('ai_trip_planner', user.id, PLANNER_RATE_LIMIT, PLANNER_RATE_WINDOW)) {
       return Response.json(
-        { error: 'Rate limit exceeded', code: 'RATE_LIMITED', retry_after: rl.retryAfter },
+        { error: 'Rate limit exceeded', code: 'RATE_LIMITED' },
         { status: 429, headers: corsHeaders },
       );
     }

@@ -1,54 +1,107 @@
 /**
- * rateLimit — тонкая обёртка над SQL-функцией check_and_bump_rate_limit
- * (миграция 20260627162140_ai_rate_limits). Единый серверный примитив для
- * всех AI-флоу (TRIP-111): planTripWithAi / parseBookingWithAi / callTriplanioAi
- * / aiGate (TG-бот). Пороги задаются на месте вызова (аргументы), вся логика
- * окна — в SQL.
+ * Shared rate-limit primitive (TRIP-67).
  *
- * fail-open: при ошибке RPC (транзиентный сбой БД) НЕ блокируем юзера —
- * лучше пропустить вызов, чем положить фичу из-за глюка счётчика. Стоимость
- * единичного «проскочившего» вызова мала; ошибка логируется.
+ * Backed by the single `rate_limit_hits` table + `rate_limit_check` /
+ * `rate_limit_record` RPCs (service-role only). Used by the anonymous auth
+ * endpoints (signupPrecheck / requestPasswordReset) to bound email enumeration,
+ * and by the AI flows (TRIP-111) to bound LLM cost abuse — same table, new
+ * buckets. The table/RPCs are generic (arbitrary bucket+key), NOT auth-specific.
+ *
+ * Design: limits are best-effort and FAIL OPEN — a limiter/DB hiccup must never
+ * lock a legitimate user out of login or password reset. The goal is to make
+ * bulk enumeration impractical, not to be a hard gate.
  */
-import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { supabaseAdmin } from './supabaseAdmin.ts';
 
-export type RateLimitDecision = {
-  allowed: boolean;
-  remaining: number;
-  retryAfter: number; // секунд до конца окна
-};
-
-export type RateSubject = 'user' | 'trip' | 'chat';
-
-export async function checkRateLimit(
-  admin: SupabaseClient,
-  subjectType: RateSubject,
-  subjectId: string,
-  flow: string,
-  limit: number,
-  windowSeconds: number,
-): Promise<RateLimitDecision> {
-  const { data, error } = await admin.rpc('check_and_bump_rate_limit', {
-    p_subject_type: subjectType,
-    p_subject_id: subjectId,
-    p_flow: flow,
-    p_limit: limit,
-    p_window_seconds: windowSeconds,
-  });
-
-  if (error) {
-    console.error('check_and_bump_rate_limit rpc error:', error.message, { flow, subjectType });
-    return { allowed: true, remaining: limit, retryAfter: 0 }; // fail-open
-  }
-
-  const row = Array.isArray(data) ? data[0] : data;
-  return {
-    allowed: !!row?.allowed,
-    remaining: row?.remaining ?? 0,
-    retryAfter: row?.retry_after ?? windowSeconds,
-  };
+/**
+ * Classify a Supabase Auth send error as a throttle situation, so the UI can
+ * tell a SHORT wait from a LONG one instead of always saying "try in an hour":
+ *   'soon' — the ~60s minimum interval between emails ("...only after N seconds")
+ *   'hour' — an hourly / volume cap (a genuinely long wait)
+ *   null   — not a throttle (a real send failure → generic retry)
+ */
+export function supabaseThrottleKind(err: unknown): 'soon' | 'hour' | null {
+  const e = err as { status?: number; code?: number | string; message?: string } | null;
+  const status = e?.status ?? e?.code;
+  const m = String(e?.message ?? '').toLowerCase();
+  const throttled = status === 429 || /rate|frequenc|seconds|too many|limit/.test(m);
+  if (!throttled) return null;
+  return /second/.test(m) ? 'soon' : 'hour';
 }
 
-/** Минуты до конца окна, округлённые вверх (для текста «попробуй через ~N мин»). */
-export function retryMinutes(retryAfterSeconds: number): number {
-  return Math.max(1, Math.ceil((retryAfterSeconds || 0) / 60));
+/** Best-effort client IP from the edge proxy headers (first hop of XFF). */
+export function clientIp(req: Request): string | null {
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) {
+    const first = xff.split(',')[0].trim();
+    if (first) return first;
+  }
+  return req.headers.get('x-real-ip')?.trim() || null;
+}
+
+/** True when (bucket,key) is still UNDER `max` within the rolling window. */
+export async function underLimit(
+  bucket: string,
+  key: string,
+  max: number,
+  windowSeconds: number,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc('rate_limit_check', {
+    p_bucket: bucket,
+    p_key: key,
+    p_max: max,
+    p_window_seconds: windowSeconds,
+  });
+  if (error) {
+    console.error('rate_limit_check failed', bucket, error.message);
+    return true; // fail open
+  }
+  return data === true;
+}
+
+/** Record one hit for (bucket,key). Never throws. */
+export async function recordHit(bucket: string, key: string): Promise<void> {
+  const { error } = await supabaseAdmin.rpc('rate_limit_record', {
+    p_bucket: bucket,
+    p_key: key,
+  });
+  if (error) console.error('rate_limit_record failed', bucket, error.message);
+}
+
+/**
+ * Enforce the standard per-IP abuse limit (10/min AND 60/hour) for `bucket`.
+ * Returns true when the request should be BLOCKED (rate-limited). Returns false
+ * (allowed) and records the hit when under the limit, OR when the IP is unknown
+ * — best-effort, we never block a request we can't key by IP.
+ */
+export async function ipRateLimited(req: Request, bucket: string): Promise<boolean> {
+  const ip = clientIp(req);
+  if (!ip) return false;
+  const okMinute = await underLimit(bucket, ip, 10, 60);
+  const okHour = await underLimit(bucket, ip, 60, 3600);
+  if (!okMinute || !okHour) return true;
+  await recordHit(bucket, ip);
+  return false;
+}
+
+/**
+ * AI-флоу abuse limit (TRIP-111). Один вызов = check-then-record на общем
+ * примитиве rate_limit_hits:
+ *   bucket — флоу ('ai_trip_planner' | 'ai_inapp_chat' | 'ai_trip_parser' | 'ai_tg_chatbot');
+ *   key    — user_id / trip_id / telegram_chat_id.
+ * Возвращает true, если запрос НАДО заблокировать (лимит за окно выбран). Под
+ * лимитом — фиксирует попытку и возвращает false. Заблокированные вызовы не
+ * фиксируются (счётчик не раздувается). Best-effort fail-open (см. underLimit).
+ */
+export async function aiFlowLimited(
+  bucket: string,
+  key: string,
+  max: number,
+  windowSeconds: number,
+): Promise<boolean> {
+  if (!key) return false;
+  const ok = await underLimit(bucket, key, max, windowSeconds);
+  if (!ok) return true;
+  await recordHit(bucket, key);
+  return false;
 }

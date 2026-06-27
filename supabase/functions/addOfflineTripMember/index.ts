@@ -2,13 +2,8 @@
 // Adds a non-registered ("offline") participant to a trip — a name-only member
 // with no email/login. Caller must be the trip owner or an active admin/owner.
 // Body: { tripId: string, name: string }
+import { corsFor } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -35,6 +30,7 @@ async function isAdmin(tripId: string, userId: string) {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const user = await getUser(req);

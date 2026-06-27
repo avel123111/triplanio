@@ -166,7 +166,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         .va-card--sk { cursor: default; }
         @media (hover: hover) and (pointer: fine) { .va-card:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); } }
         .va-card:active { transform: scale(.99); }
-        .va-thumb { position: relative; width: 96px; height: 96px; flex: none; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #b6e0c8, var(--ev-activity) 120%); }
+        .va-thumb { position: relative; width: 96px; height: 96px; flex: none; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--ev-activity) 45%, white), var(--ev-activity) 120%); }
         .va-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; position: relative; z-index: 1; }
         .va-ph { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.85); z-index: 0; }
         .va-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }

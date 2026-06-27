@@ -6,7 +6,7 @@
  * Returns the caller's subscription plan and metadata.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
@@ -37,6 +37,7 @@ async function readActualPrice(stripeSubscriptionId: string | null) {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -96,7 +97,7 @@ Deno.serve(async (req) => {
 
       return Response.json({
         plan: 'pro',
-        subscriptionEnd: userData.subscription_end_date,
+        subscriptionEnd: userData?.subscription_end_date ?? null,
         subscriptionType: latest?.type || null,
         // Scheduled cancellation (UI "won't renew" state). Status stays 'active'
         // verbatim; the flag lives in cancel_at_period_end (set by the webhook).

@@ -90,4 +90,6 @@ export default {
   'service.insurance_choice_manual_hint': 'Si el seguro ya está contratado',
   'service.insurance_safetywing_hint': 'Seguro nómada · precios del socio',
   'service.insurance_ektatraveling_hint': 'Seguro de viaje y médico',
+  'service.insurance_sravni_hint': 'Comparar seguros',
+  'service.insurance_tripinsurance_hint': 'Seguro de viaje',
 };

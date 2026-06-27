@@ -12,7 +12,7 @@
  * Identity is (trip_id, telegram_chat_id) — many chats per trip, many trips per chat.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
@@ -49,6 +49,7 @@ const T: Record<Lang, {
 };
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const denied = requireN8nSecret(req);

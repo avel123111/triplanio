@@ -130,7 +130,7 @@ export function SiteHeader({ lang, setLang, navBase = '', brandHref = '#top' }) 
             <span className="brand__mark"><TriplanioMark /></span>
             <span>Triplanio</span>
           </a>
-          <nav className="nav" aria-label="Primary">
+          <nav className="nav" aria-label={t('nav.aria_primary')}>
             {NAV.map(n => <a key={n.hash} href={navHref(n.hash)}>{t(n.tkey)}</a>)}
           </nav>
           <div className="header__right">
@@ -197,7 +197,7 @@ export function SiteFooter({ lang, setLang, navBase = '', brandHref = '#top' }) 
         </div>
         <div className="footer__bottom">
           <span>{t('landing.footer.copy')}</span>
-          <div className="footer__social" aria-label="Social">
+          <div className="footer__social" aria-label={t('nav.aria_social')}>
             <a href="#" aria-label="Twitter / X"><Icon name="twitter" size={16}/></a>
             <a href="#" aria-label="Instagram"><Icon name="instagram" size={16} color="#E4405F"/></a>
           </div>

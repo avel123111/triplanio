@@ -7,34 +7,35 @@
  * отвечает готовым текстом и НЕ идёт в Gemini.
  *
  * Здесь — только rate-limit (30 сообщений в час на telegram_chat_id) через
- * общий примитив check_and_bump_rate_limit. Pro отдельно НЕ проверяем: при
- * потере Pro привязка Telegram сносится откатом (revokeLostProFeatures →
+ * общий примитив rate_limit_hits (aiFlowLimited). Pro отдельно НЕ проверяем:
+ * при потере Pro привязка Telegram сносится откатом (revokeLostProFeatures →
  * disconnectTripTelegram), поэтому «есть привязка ⇒ трип Pro» — инвариант.
  * Отсечка непривязанных чатов до Gemini — отдельная задача TRIP-132.
  *
  * Auth: Bearer <N8N_SECRET> (verify_jwt=false в config.toml).
  *
  * POST body: { chat_id: string | number, language_code?: string }
- * Ответ:     { allow: boolean, message?: string, retry_after?: number }
+ * Ответ:     { allow: boolean, message?: string }
  *            message локализован здесь (ru/en/es) — n8n шлёт {{ $json.message }}.
  */
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { type Lang, resolveLang } from '../_shared/tgLang.ts';
-import { checkRateLimit, retryMinutes } from '../_shared/rateLimit.ts';
+import { aiFlowLimited } from '../_shared/rateLimit.ts';
 
 const BOT_RATE_LIMIT = 30;
 const BOT_RATE_WINDOW = 3600;
 
-const RATE_MSG: Record<Lang, (mins: number) => string> = {
-  ru: (m) => `Слишком много сообщений. Попробуй через ~${m} мин.`,
-  en: (m) => `Too many messages. Try again in ~${m} min.`,
-  es: (m) => `Demasiados mensajes. Inténtalo en ~${m} min.`,
+const RATE_MSG: Record<Lang, string> = {
+  ru: 'Слишком много сообщений. Попробуй через несколько минут.',
+  en: 'Too many messages. Try again in a few minutes.',
+  es: 'Demasiados mensajes. Inténtalo de nuevo en unos minutos.',
 };
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const denied = requireN8nSecret(req);
@@ -47,8 +48,8 @@ Deno.serve(async (req) => {
     }
     const chatId = String(chat_id);
 
-    const rl = await checkRateLimit(supabaseAdmin, 'chat', chatId, 'tg_chatbot', BOT_RATE_LIMIT, BOT_RATE_WINDOW);
-    if (rl.allowed) {
+    // 30/час на чат. Общий примитив rate_limit_hits (bucket=ai_tg_chatbot, key=chat_id).
+    if (!(await aiFlowLimited('ai_tg_chatbot', chatId, BOT_RATE_LIMIT, BOT_RATE_WINDOW))) {
       return Response.json({ allow: true }, { headers: corsHeaders });
     }
 
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
     const lang = await resolveLang(integration?.user_id, language_code);
 
     return Response.json(
-      { allow: false, retry_after: rl.retryAfter, message: RATE_MSG[lang](retryMinutes(rl.retryAfter)) },
+      { allow: false, message: RATE_MSG[lang] },
       { headers: corsHeaders },
     );
   } catch (err) {

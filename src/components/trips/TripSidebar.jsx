@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { Btn } from '@/design/index';
-import { Sheet } from '@/components/ui/Sheet';
+import { Btn, Sheet } from '@/design/index';
 import { LENS_ITEMS, MGMT_ITEMS, isLensVisible, EDIT_ITEM, canEditStructure } from '@/lib/tripMenu';
 import { useUnreadChatCount } from '@/lib/chat';
 

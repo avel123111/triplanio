@@ -41,10 +41,6 @@ export default {
   'view.booking_choice_default_title': 'Выбери способ',
   'view.booking_choice_default_manual': 'Добавить вручную',
   // ForkPartnerModal
-  'fork.eyebrow_one': 'Или подобрать у партнёра',
-  'fork.eyebrow_many': 'Или подобрать: {count} {variants}',
-  'fork.variants_few': 'варианта',
-  'fork.variants_many': 'вариантов',
   'fork.open_form': 'Открыть форму',
   'fork.info': 'Партнёр откроется в новой вкладке. Когда забронируешь, вернёшься, и Triplanio автоматически подхватит данные брони.',
   'fork.manual_sub_hotel': 'Уже бронировал, есть данные на руках. Загрузи подтверждение, и ИИ распознает детали.',

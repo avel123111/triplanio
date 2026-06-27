@@ -19,7 +19,7 @@
  * Nothing is persisted — the side-panel fetches on open and renders client-side.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 
 const STAY22_BASE = 'https://api.stay22.com/v2/accommodations';
@@ -28,6 +28,7 @@ const CAMPAIGN = 'fork_api_sidepanel';
 const PAGE_SIZE = 10;
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {

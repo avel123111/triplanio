@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
 import { Icon } from '@/design/icons';
-import { Dialog } from '@/design/index';
+import { Dialog, useToast } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import TripLimitDialog from '@/components/subscriptions/TripLimitDialog';
+import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 
 /**
  * Global "create / copy trip" flow.
@@ -120,7 +120,9 @@ export function CreateTripProvider({ children }) {
         try { serverMsg = (await error.context.json())?.error || null; } catch { /* ignore */ }
       }
       if (error || data?.error) throw new Error(serverMsg || error?.message || 'copy failed');
-      qc.invalidateQueries({ queryKey: ['trips', user?.id] });
+      // Copying adds an active trip — drop the limit gate cache too, not just the
+      // list, so the next create attempt doesn't read a stale (under-cap) count.
+      invalidateActiveTripsLimit(qc);
       toast({ description: t('trip.copy_done'), variant: 'success' });
       if (data?.tripId) nav(`/trip/${data.tripId}`);
     } catch (e) {
@@ -162,6 +164,24 @@ export function CreateTripProvider({ children }) {
         onOpenChange={(o) => { setLimitOpen(o); if (!o) setPending(null); }}
         onProceed={proceed}
       />
+
+      {/* Copy runs after the limit gate closes (and for most users no gate shows
+          at all), so the `copying` flag had no visible surface — this blocking
+          progress overlay is the in-flight feedback until copyTrip navigates. */}
+      {copying && (
+        <div
+          className="dlg-backdrop"
+          style={{ zIndex: 400, display: 'grid', placeItems: 'center' }}
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div className="dlg dlg--sm" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: 28, textAlign: 'center' }}>
+            <div className="app-spinner" />
+            <div style={{ fontWeight: 600 }}>{t('trip.copying')}</div>
+          </div>
+        </div>
+      )}
     </CreateTripContext.Provider>
   );
 }

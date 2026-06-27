@@ -361,7 +361,7 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         .s22-card--sk { cursor: default; }
         @media (hover: hover) and (pointer: fine) { .s22-card:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); } }
         .s22-card:active { transform: scale(.99); }
-        .s22-thumb { position: relative; width: 96px; height: 96px; flex: none; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #9db4d6, var(--ev-hotel) 120%); }
+        .s22-thumb { position: relative; width: 96px; height: 96px; flex: none; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--ev-hotel) 45%, white), var(--ev-hotel) 120%); }
         .s22-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; position: relative; z-index: 1; }
         .s22-ph { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.85); z-index: 0; }
         .s22-supplier { position: absolute !important; left: 5px; bottom: 5px; z-index: 2; width: 22px !important; height: 22px !important; border-radius: 6px; background: var(--surface); box-shadow: 0 2px 6px rgba(0,0,0,.35); }
