@@ -1783,11 +1783,23 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    here (the old absolute-positioned `.bell-dd` shell was removed as dead code).
    ────────────────────────────────────────────────────────────────────────── */
 
+/* ── Popover base (.pop) — de-Tailwinded Radix PopoverContent shell (TRIP-53 Этап 3).
+   Was the Tailwind string `w-72 rounded-md border bg-popover p-4 shadow-md … animate-in/zoom-in`
+   baked into ui/popover.jsx. Now a single Lumo-token class; consumers below override
+   size/padding with a plain class (no more [data-state] specificity hack needed). ── */
+.pop {
+  background: var(--popover); color: var(--popover-ink);
+  border: 1px solid var(--line); border-radius: var(--r-card);
+  box-shadow: var(--shadow-pop); padding: 14px; outline: none;
+  animation: popIn .14s var(--ease-out);
+}
+@keyframes popIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+/* Flush variant — list-style popovers that own their padding (SearchSelect). */
+.pop-flush { padding: 0; }
+
 /* Bell popover — head / list / foot (Lumo: rounded prow rows in a padded list) */
-/* popover shell — was Tailwind: p-0 w-[360px] max-w-[calc(100vw-16px)] overflow-hidden rounded-2xl.
-   [data-state] boosts specificity so it wins over the Radix PopoverContent base (w-72/p-4),
-   which tailwind-merge no longer dedupes now that this is a plain class (until ui/popover is de-Tailwinded in Этап 3). */
-.bell-dd-pop[data-state] { padding: 0; width: 360px; max-width: calc(100vw - 16px); overflow: hidden; border-radius: 16px; }
+/* Shell overrides the .pop base: full-width-capped, clipped, larger radius, no padding. */
+.bell-dd-pop { padding: 0; width: 360px; max-width: calc(100vw - 16px); overflow: hidden; border-radius: 16px; }
 .bell-dd__head { padding: 14px 16px 11px; display: flex; align-items: center; gap: 10px; }
 /* Title takes the slack and truncates so the action pill always fits on one line. */
 .bell-dd__head > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

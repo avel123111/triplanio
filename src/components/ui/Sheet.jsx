@@ -31,7 +31,7 @@ export function Sheet({ open, onOpenChange, title, children, className = '', bod
               <Dialog.Close className="close" aria-label="Close"><X size={16} /></Dialog.Close>
             </div>
           ) : (
-            <Dialog.Title className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+            <Dialog.Title style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
               {titleText || 'Menu'}
             </Dialog.Title>
           )}
