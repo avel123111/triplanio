@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Loader2, MapPin } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import GeoAttribution from '@/components/common/GeoAttribution';
+import './AddressAutocomplete.css';
 
 /**
  * LocationIQ-powered address autocomplete (proxied via the `geoLocationiq` edge
@@ -139,7 +140,7 @@ export default function AddressAutocomplete({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className="relative">
+        <div className="aa-wrap">
           <input
             ref={inputRef}
             value={value || ''}
@@ -153,7 +154,7 @@ export default function AddressAutocomplete({
             {...rest}
           />
           {loading && (
-            <Loader2 className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
+            <Loader2 className="aa-spin" size={14} />
           )}
         </div>
       </PopoverTrigger>
@@ -161,25 +162,23 @@ export default function AddressAutocomplete({
         <PopoverContent
           align="start"
           sideOffset={4}
-          className="p-0 w-[--radix-popover-trigger-width] max-h-72 overflow-y-auto bg-popover text-popover-foreground"
+          className="aa-pop"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <ul className="py-1">
+          <ul className="aa-list">
             {predictions.map((p, i) => (
               <li key={p.place_id}>
                 <button
                   type="button"
                   onClick={() => selectPrediction(p)}
                   onMouseEnter={() => setHighlighted(i)}
-                  className={`w-full text-left px-3 py-2 flex items-start gap-2 text-sm text-foreground hover:bg-secondary ${
-                    highlighted === i ? 'bg-secondary' : ''
-                  }`}
+                  className={`aa-opt ${highlighted === i ? 'is-active' : ''}`}
                 >
-                  <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate text-foreground">{p.main_text || p.description}</div>
+                  <MapPin className="aa-opt__icon" size={14} />
+                  <div className="aa-opt__body">
+                    <div className="aa-opt__main">{p.main_text || p.description}</div>
                     {p.secondary_text && (
-                      <div className="text-xs text-muted-foreground truncate">{p.secondary_text}</div>
+                      <div className="aa-opt__sec">{p.secondary_text}</div>
                     )}
                   </div>
                 </button>

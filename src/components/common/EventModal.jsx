@@ -77,7 +77,7 @@ export default function EventModal(props) {
   const { docs, uploading, uploadFiles } = useEntityDocs(kind, entity, canEdit);
 
   if (!entity || !kind || !vm) return null;
-  const { theme, themeLabel, title, priceText, bookingUrl, mapAddress, platformInfo, platformLogo } = vm;
+  const { theme, themeLabel, title, priceText, bookingUrl, mapAddress, platformLabel, platformLogo } = vm;
   const eyebrow = getEyebrowText(kind, entity, t, visit, fromVisit, toVisit, themeLabel);
 
   return (
@@ -138,12 +138,12 @@ export default function EventModal(props) {
                       className="bk-link"
                     >
                       {platformLogo ? (
-                        <span className="pb" style={{ background: platformInfo?.color || 'var(--surface-2)', overflow: 'hidden' }}>
+                        <span className="pb" style={{ background: 'var(--surface-2)', overflow: 'hidden' }}>
                           <img src={platformLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </span>
-                      ) : platformInfo ? (
-                        <span className="pb" style={{ background: platformInfo.color || 'var(--muted)' }}>
-                          {(platformInfo.labelKey ? t(platformInfo.labelKey) : platformInfo.label || '?').charAt(0)}
+                      ) : platformLabel ? (
+                        <span className="pb" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}>
+                          {(platformLabel || '?').charAt(0).toUpperCase()}
                         </span>
                       ) : null}
                       {t('event.view_booking')}
