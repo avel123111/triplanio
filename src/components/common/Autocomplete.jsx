@@ -65,6 +65,7 @@ export default function Autocomplete({
   const timerRef = useRef(null);
   const lastQueryRef = useRef('');
   const wrapRef = useRef(null);
+  const listRef = useRef(null);
   // Read inside the debounce timer so a mid-debounce language switch isn't stale.
   const langRef = useRef(lang);
   useEffect(() => { langRef.current = lang; }, [lang]);
@@ -176,8 +177,19 @@ export default function Autocomplete({
     }
   };
 
-  // Delay close so a tap outside resolves after a row's pointerdown selection.
-  const handleBlur = () => setTimeout(() => setOpen(false), 200);
+  // Close on a pointer-down OUTSIDE the field and the list — NOT on input blur.
+  // Selection lands on the row's onClick (a real tap), so a touch-drag inside the
+  // list scrolls instead of selecting, and the drag never closes the dropdown.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDocDown = (e) => {
+      if (wrapRef.current?.contains(e.target)) return;
+      if (listRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('pointerdown', onDocDown, true);
+    return () => document.removeEventListener('pointerdown', onDocDown, true);
+  }, [open]);
 
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
@@ -195,7 +207,6 @@ export default function Autocomplete({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onFocus={() => results.length > 0 && setOpen(true)}
-          onBlur={handleBlur}
           placeholder={placeholder}
           disabled={disabled}
           autoFocus={autoFocus}
@@ -214,6 +225,7 @@ export default function Autocomplete({
       </div>
       {open && results.length > 0 && box && createPortal(
         <div
+          ref={listRef}
           id={`${uid}-list`}
           role="listbox"
           className="menu"
@@ -235,10 +247,13 @@ export default function Autocomplete({
               className="mi"
               data-highlighted={highlighted === i ? '' : undefined}
               onMouseEnter={() => setHighlighted(i)}
-              // pointerdown + preventDefault lands the pick before the input
-              // blurs (no focus shift) — reliable on touch incl. Android, and
-              // removes the blur/close race entirely.
-              onPointerDown={(e) => { e.preventDefault(); pick(r); }}
+              // Keep the input focused on tap (no keyboard flicker / iOS double-tap).
+              // mousedown does NOT fire on a touch-drag, so this never blocks scroll.
+              onMouseDown={(e) => e.preventDefault()}
+              // Select on a real tap/click only — a touch-drag scrolls the list and
+              // fires no click, so the user can scroll before choosing. Closing is
+              // handled by the outside-pointerdown effect, not blur.
+              onClick={() => pick(r)}
             >
               {renderRow(r)}
             </button>

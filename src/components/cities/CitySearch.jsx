@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { searchCities, countryFlag } from '@/lib/geo';
+import { searchCities } from '@/lib/geo';
 import { useT } from '@/lib/i18n/I18nContext';
 import Autocomplete from '@/components/common/Autocomplete';
+import cityOptionRow from '@/components/common/cityOptionRow';
 
 /**
  * CitySearch — city picker (LocationIQ via the geoLocationiq edge proxy). A thin
@@ -23,15 +24,7 @@ export default function CitySearch({ onSelect }) {
       search={(query, lang) => searchCities(query, lang)}
       getKey={(c) => c.external_city_id}
       onPick={(c) => { onSelect(c); setQ(''); }}
-      renderRow={(c) => (
-        <>
-          <span style={{ fontSize: 'var(--fs-h4)', lineHeight: 1, flex: 'none' }}>{countryFlag(c.country_code)}</span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.city_name}</span>
-            <span style={{ display: 'block', fontSize: 'var(--fs-meta)', fontWeight: 600, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name}</span>
-          </span>
-        </>
-      )}
+      renderRow={cityOptionRow}
       placeholder={t('visit.search_city')}
       autoFocus
     />

@@ -25,6 +25,7 @@ import PanelAi from '@/pages/create/PanelAi';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import Autocomplete from '@/components/common/Autocomplete';
+import cityOptionRow from '@/components/common/cityOptionRow';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 import '../design/app.css';
 
@@ -131,15 +132,7 @@ function CityPicker({ value, onChange, placeholder, autoFocus }) {
         setQ(city.city_name);
         onChange({ ...city, timezone: tzFromCoords(city.latitude, city.longitude) });
       }}
-      renderRow={(c) => (
-        <>
-          <span style={{ fontSize: 'var(--fs-h4)', lineHeight: 1, flex: 'none' }}>{countryFlag(c.country_code)}</span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.city_name}</span>
-            <span style={{ display: 'block', fontSize: 'var(--fs-meta)', fontWeight: 600, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name}</span>
-          </span>
-        </>
-      )}
+      renderRow={cityOptionRow}
       placeholder={placeholder || t('planner.city_search_ph')}
       autoFocus={autoFocus}
       icon="pin"
