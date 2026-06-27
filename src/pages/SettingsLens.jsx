@@ -602,6 +602,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (!myMember) { toast({ description: t('settings.leave_not_found'), variant: 'destructive' }); return; }
     await confirm({
       title: t('settings.leave_confirm'),
+      description: t('confirm.leave_trip.body'),
       variant: 'destructive',
       onConfirm: async () => {
         // Only leave (navigate away) once the backend actually removed the row.
