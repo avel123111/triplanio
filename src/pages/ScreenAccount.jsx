@@ -362,11 +362,23 @@ export default function ScreenAccount() {
   const localeMap = { ru: 'ru-RU', en: 'en-US', es: 'es-ES' };
   const locale = localeMap[lang] || 'ru-RU';
 
-  const avatarName = fullName || user?.email || '?';
+  // Hero identity (name + avatar gradient/initials) reflects the SAVED profile,
+  // not the in-progress edit — the draft lives in the input only and is applied
+  // on Save (checkUserAuth then refreshes `user`).
+  const avatarName = user?.full_name || user?.email || '?';
   const avatarInitials = avatarName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
   const avatarBgStyle = avatarUrl
     ? { backgroundImage: `url(${avatarUrl})` }
     : { background: avatarGradient(avatarName) };
+
+  // Save stays disabled until something actually changed (mirrors trip Settings).
+  // Avatar upload/remove persist on their own + refresh `user`, so they don't
+  // leave a phantom-dirty form; the name + notify toggles are what Save governs.
+  const profileDirty =
+    fullName      !== (user?.full_name || '') ||
+    avatarUrl     !== (user?.avatar_url || '') ||
+    notifyInvites !== (user?.notify_email_invites !== false) ||
+    notifyUpdates !== (user?.notify_email_updates !== false);
 
   // ── Seed form from user profile ────────────────────────────────────────────
   useEffect(() => {
@@ -633,7 +645,7 @@ export default function ScreenAccount() {
                 >
                   {!avatarUrl && avatarInitials}
                   {uploadingAvatar
-                    ? <span className="ov" style={{ opacity: 1 }}><div style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /></span>
+                    ? <span className="ov" style={{ opacity: 1 }}><div className="spin" style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,.4)', borderTopColor: '#fff', borderRadius: '50%' }} /></span>
                     : <span className="ov"><Icon name="cam" size={18} /></span>}
                 </div>
                 <input
@@ -644,7 +656,7 @@ export default function ScreenAccount() {
                   onChange={e => handleAvatarUpload(e.target.files?.[0])}
                 />
                 <div className="acct-hero__id">
-                  <div className="acct-hero__name">{fullName || user.email}</div>
+                  <div className="acct-hero__name">{user.full_name || user.email}</div>
                   <div className="acct-hero__mail">{user.email}</div>
                   <div className="acct-hero__actions">
                     <Btn variant="secondary" size="sm" icon="cam" onClick={() => avatarInputRef.current?.click()}>{t('common.upload')}</Btn>
@@ -663,7 +675,7 @@ export default function ScreenAccount() {
                   <label className="acct-flabel" htmlFor="acct-mail">E-mail <Badge variant="quiet">{t('account.readonly')}</Badge></label>
                   <input id="acct-mail" className="input" value={user.email} readOnly />
                 </div>
-                <Btn variant="primary" icon="check" loading={saving} onClick={handleSave}>
+                <Btn variant="primary" icon="check" loading={saving} disabled={!profileDirty} onClick={handleSave}>
                   {saving ? t('auth.saving') : t('common.save')}
                 </Btn>
               </div>

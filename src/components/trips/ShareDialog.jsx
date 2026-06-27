@@ -52,21 +52,9 @@ export default function ShareDialog({ trip, open, onOpenChange }) {
       <div className="muted" style={{ fontSize: 'var(--fs-base)', marginBottom: 18 }}>{t('trip.share_desc')}</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input className="input" readOnly value={loading ? '' : shareUrl} placeholder={loading ? t('share.generating') : ''} style={{ flex: 1 }} onClick={(e) => e.target.select()} />
-        {loading ? (
-          <Btn variant="primary" disabled>
-            <span className="spin-mini" style={{
-              display: 'inline-block', width: 14, height: 14,
-              border: '2px solid currentColor', borderRightColor: 'transparent',
-              borderRadius: '50%', animation: 'spin .7s linear infinite',
-              marginRight: 6, verticalAlign: -2,
-            }} />
-            {t('share.generating')}
-          </Btn>
-        ) : (
-          <Btn variant="primary" icon="check" onClick={copyLink} disabled={!shareUrl}>
-            {copied ? t('trip.link_copied') : t('share.copy')}
-          </Btn>
-        )}
+        <Btn variant="primary" icon="check" loading={loading} onClick={copyLink} disabled={!shareUrl}>
+          {loading ? t('share.generating') : (copied ? t('trip.link_copied') : t('share.copy'))}
+        </Btn>
       </div>
       {error && <div style={{ marginTop: 10 }}><Severity level="error">{error}</Severity></div>}
     </Dialog>

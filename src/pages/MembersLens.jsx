@@ -184,8 +184,8 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
               placeholder={linkLoading ? t('share.generating') : ''}
               readOnly style={{ flex: 1 }}
               onClick={(e) => e.target.select()} />
-            <Btn variant="primary" icon="copy" onClick={copyLink} disabled={linkLoading || !linkUrl}>
-              {copied ? t('common.copied') : t('share.copy')}
+            <Btn variant="primary" icon="copy" loading={linkLoading} onClick={copyLink} disabled={!linkUrl}>
+              {linkLoading ? t('share.generating') : (copied ? t('common.copied') : t('share.copy'))}
             </Btn>
           </div>
           {linkErr && <div style={{ marginTop: 8 }}><Severity level="error">{linkErr}</Severity></div>}
