@@ -86,6 +86,7 @@ const PARTNER_NAME = {
   booking: 'Booking.com', expedia: 'Expedia', skyscanner: 'Skyscanner', omio: 'Omio',
   getrentacar: 'GetRentacar', economybookings: 'EconomyBookings', airalo: 'Airalo', yesim: 'Yesim',
   safetywing: 'SafetyWing', ektatraveling: 'Ekta Traveling',
+  sravni: 'Сравни.ру', tripinsurance: 'Tripinsurance',
   aviasales: 'Aviasales', ostrovok: 'Островок', yandextravel: 'Яндекс Путешествия',
   viator: 'Viator', getyourguide: 'GetYourGuide', tripster: 'Tripster', sputnik8: 'Sputnik8',
 };
@@ -119,7 +120,7 @@ export default function ForkPartnerModal({
     if (type === 'transfer') return transferPlatforms(fromVisit, toVisit, t, lang);
     if (type === 'car_rental') return carRentalPlatforms(trip, t);
     if (type === 'esim') return esimPlatforms(visits, t);
-    if (type === 'insurance') return insurancePlatforms(t);
+    if (type === 'insurance') return insurancePlatforms(t, lang);
     if (type === 'activity') return activityPlatforms(visit, t, lang);
     return [];
   }, [type, visit, fromVisit, toVisit, visits, trip, t, lang]);
