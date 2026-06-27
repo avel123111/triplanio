@@ -19,7 +19,7 @@
       }
     },
     "tolgee": {
-      "command": "uvx",
+      "command": "/data/.local/bin/uvx",
       "args": ["tolgee-mcp"],
       "env": {
         "TOLGEE_API_KEY": "${TOLGEE_API_KEY}",
