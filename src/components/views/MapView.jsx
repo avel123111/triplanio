@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
-import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight } from '@/lib/map/routeLines';
-import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers';
+import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
+import { groupByLocation, createMarkerEl, createHotelBadgeEl, iconForKinds } from '@/lib/map/markers';
 import MapControls from '@/lib/map/MapControls';
 import { countryFlag } from '@/lib/geo';
 import { sortVisits } from '@/lib/validation';
@@ -114,10 +114,24 @@ export default function MapView({
   // public shared-trip reader, mirroring the stats map). Defaults to the normal
   // styled basemap.
   basemapTheme = 'default',
+  // ── Hotel-pick overlay (editor fork panel, TRIP-140) ──────────────────────
+  // Off by default; only the editor's open hotel panel flips these on, so every
+  // other surface (sharing the map singleton) is untouched. When `hideRoute` is
+  // true the whole trip route — city markers, lines, the selected-leg highlight
+  // and the auto-fit — is suppressed and `hotelPins` are drawn as supplier badges
+  // instead. selected/hovered ids + click/hover callbacks wire the badges to the
+  // list both ways.
+  hideRoute = false,
+  hotelPins = null,
+  selectedHotelId = null,
+  hoveredHotelId = null,
+  onHotelClick,
+  onHotelHover,
   children,
 }) {
   const containerRef = useRef(null);
   const markersRef = useRef([]);
+  const hotelMarkersRef = useRef([]);
   const fittedSigRef = useRef('');
 
   const [projection, setProjection] = useState('mercator');
@@ -140,6 +154,21 @@ export default function MapView({
   // Keep the latest onCityClick without forcing the draw effect to re-run.
   const onCityClickRef = useRef(onCityClick);
   useEffect(() => { onCityClickRef.current = onCityClick; }, [onCityClick]);
+
+  // Same for the hotel-badge callbacks (stable across renders → badges aren't
+  // rebuilt just because the parent passes a fresh closure).
+  const onHotelClickRef = useRef(onHotelClick);
+  const onHotelHoverRef = useRef(onHotelHover);
+  useEffect(() => { onHotelClickRef.current = onHotelClick; }, [onHotelClick]);
+  useEffect(() => { onHotelHoverRef.current = onHotelHover; }, [onHotelHover]);
+
+  // Stable signature of the hotel pins so the badge-build effect only re-runs when
+  // the actual pin set/price/logo changes, not on every parent render.
+  const hotelPins2 = Array.isArray(hotelPins) ? hotelPins : null;
+  const hotelPinsSig = useMemo(
+    () => (hotelPins2 ? hotelPins2.map((h) => `${h.id}:${h.lat},${h.lng}:${h.priceLabel || ''}:${h.supplierLogo || ''}`).join('|') : ''),
+    [hotelPins2],
+  );
 
   const ordered = useMemo(() => {
     const all = sortVisits(visits).filter((v) => v.latitude && v.longitude);
@@ -209,6 +238,8 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
+    // Hotel-pick overlay owns the map: don't draw the trip route at all.
+    if (hideRoute) { cancelAnimationFrame(rafRef.current); pumpingRef.current = false; clearRouteLines(map); return undefined; }
 
     const paint = () => {
       const s = revealStateRef.current;
@@ -318,11 +349,14 @@ export default function MapView({
     // equal index — make sure the static draw is correct.
     if (!pumpingRef.current) settle(reachedRef.current < 0 ? 0 : reachedRef.current);
     return undefined;
-  }, [ready, revealing, revealActiveIdx, legs, lineSig, orderIndexById, ordered]);
+  }, [ready, revealing, revealActiveIdx, legs, lineSig, orderIndexById, ordered, hideRoute]);
 
   // Abort any in-flight reveal pump on unmount (the scroll effect intentionally
   // does NOT cancel on every re-render, so the queue can run across re-renders).
   useEffect(() => () => { genRef.current += 1; cancelAnimationFrame(rafRef.current); }, []);
+
+  // Remove any hotel badges on unmount (useMapSurface only owns markersRef).
+  useEffect(() => () => { hotelMarkersRef.current.forEach((m) => m.remove()); hotelMarkersRef.current = []; }, []);
 
   // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
@@ -357,6 +391,17 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
+
+    // Hotel-pick overlay: the trip route is suppressed entirely — drop every city
+    // marker + route line (the hotel badges + their own camera fit take over in the
+    // effect below). Leaving the route up would clutter the badge overlay.
+    if (hideRoute) {
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      clearRouteLines(map);
+      fittedSigRef.current = '';
+      return undefined;
+    }
 
     // Markers - clear previous, then group visits that share a location.
     markersRef.current.forEach((m) => m.remove());
@@ -414,7 +459,57 @@ export default function MapView({
     }
 
     return undefined;
-  }, [ready, ordered, transfers, visitsSignature]);
+  }, [ready, ordered, transfers, visitsSignature, hideRoute]);
+
+  // --- Hotel-pick overlay badges (TRIP-140) ---------------------------------
+  // Build one supplier badge per pin (logo + price), wired to the list via the
+  // click/hover callbacks. Re-runs only when the pin set actually changes
+  // (hotelPinsSig), and fits the camera to the badges once they're placed. When
+  // `hideRoute` is off (or there are no pins) it just clears any stale badges.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return undefined;
+    hotelMarkersRef.current.forEach((m) => m.remove());
+    hotelMarkersRef.current = [];
+    if (!hideRoute || !hotelPins2 || hotelPins2.length === 0) return undefined;
+
+    const pts = [];
+    hotelPins2.forEach((h) => {
+      if (h.lat == null || h.lng == null) return; // coordinate-less stays: list only
+      const el = createHotelBadgeEl(
+        { supplierLogo: h.supplierLogo, priceLabel: h.priceLabel },
+        {
+          title: h.name,
+          onClick: () => onHotelClickRef.current?.(h.id),
+          onHover: (entering) => onHotelHoverRef.current?.(entering ? h.id : null),
+        },
+      );
+      el.dataset.hotelId = String(h.id);
+      const marker = new mapboxgl.Marker({ element: el }).setLngLat([h.lng, h.lat]).addTo(map);
+      hotelMarkersRef.current.push(marker);
+      pts.push([h.lng, h.lat]);
+    });
+    if (pts.length) fitToPoints(map, pts, { padding: 80, maxZoom: 15, animate: true });
+    return undefined;
+  }, [ready, hideRoute, hotelPinsSig]);
+
+  // Hotel badge selection + hover highlight — toggled on the existing badge
+  // elements (no rebuild) plus a raised z-index so the active badge sits above the
+  // stack. Mirrors the city-marker selection effect above.
+  useEffect(() => {
+    if (!ready) return;
+    const sel = selectedHotelId != null ? String(selectedHotelId) : null;
+    const hov = hoveredHotelId != null ? String(hoveredHotelId) : null;
+    hotelMarkersRef.current.forEach((m) => {
+      const el = m.getElement();
+      const id = el.dataset.hotelId;
+      const isSel = sel != null && id === sel;
+      const isHov = !isSel && hov != null && id === hov;
+      el.classList.toggle('is-sel', isSel);
+      el.classList.toggle('is-hover', isHov);
+      el.style.zIndex = isSel ? '3' : isHov ? '2' : '';
+    });
+  }, [ready, selectedHotelId, hoveredHotelId, hotelPinsSig]);
 
   // Selection + hover highlight — toggled on the existing marker elements (no
   // rebuild, so hovering a list is cheap). Re-runs after a marker rebuild too
@@ -450,7 +545,7 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    if (!selectedLegKey) { clearRouteHighlight(map); return undefined; }
+    if (hideRoute || !selectedLegKey) { clearRouteHighlight(map); return undefined; }
     const sep = selectedLegKey.indexOf('__');
     const fromId = sep === -1 ? '' : selectedLegKey.slice(0, sep);
     const toId = sep === -1 ? '' : selectedLegKey.slice(sep + 2);
@@ -459,7 +554,7 @@ export default function MapView({
     if (!from || !to) { clearRouteHighlight(map); return undefined; }
     drawRouteHighlight(map, { from, to, kind: transferKindByPair.get(selectedLegKey) });
     return undefined;
-  }, [ready, selectedLegKey, ordered, transferKindByPair, visitsSignature]);
+  }, [ready, selectedLegKey, ordered, transferKindByPair, visitsSignature, hideRoute]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>

@@ -29,7 +29,8 @@ import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
-import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
+import { useStay22Accommodations } from '@/lib/stay22';
 import TripSidebar from '@/components/trips/TripSidebar';
 import TripAccessError from '@/components/trips/TripAccessError';
 import ShareDialog from '@/components/trips/ShareDialog';
@@ -141,6 +142,7 @@ export default function TripStructureEdit() {
   const { tripId } = useParams();
   const t = useT();
   const { lang } = useI18n();
+  const { fmtMoney } = useI18nFormat();
   const nav = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -279,6 +281,53 @@ export default function TripStructureEdit() {
     return [...others, previewTransfer];
   }, [liveTransfers, previewTransfer]);
   useEffect(() => { if (!(leftPanel?.type === 'create' && leftPanel.kind === 'transfer')) setPreviewTransfer(null); }, [leftPanel]);
+
+  // ── Hotel-pick map badges (TRIP-140) ───────────────────────────────────────
+  // While the hotel "fork" panel is open the map swaps the trip route for live
+  // Stay22 badges. The SINGLE query + paging + committed filters + hovered/selected
+  // live HERE (the common ancestor of MapView and the panel) so one pool feeds both
+  // the list (now presentational) and the map badges. Desktop-only by design — the
+  // editor map is hidden on phones via CSS.
+  const hotelPickVisit = leftPanel?.type === 'pick' && leftPanel.kind === 'hotel' ? leftPanel.visit : null;
+  const isHotelPick = !!hotelPickVisit;
+  const [stayPage, setStayPage] = useState(1);
+  const [stayApplied, setStayApplied] = useState(null);
+  const [stayHoveredId, setStayHoveredId] = useState(null);
+  const [staySelectedId, setStaySelectedId] = useState(null);
+  // Reset the lifted state whenever the target city changes / the panel closes.
+  const hotelPickVisitId = hotelPickVisit?.id || null;
+  useEffect(() => {
+    setStayPage(1); setStayApplied(null); setStayHoveredId(null); setStaySelectedId(null);
+  }, [hotelPickVisitId]);
+
+  const stayCurrency = trip?.details?.main_currency || 'EUR';
+  const stayQuery = useStay22Accommodations({
+    visit: hotelPickVisit, currency: stayCurrency, lang, page: stayPage, pageSize: 100, filters: stayApplied, enabled: isHotelPick,
+  });
+  // Map pins: only stays that carry coordinates, with a preformatted price label.
+  const hotelPins = useMemo(() => {
+    if (!isHotelPick) return null;
+    const list = stayQuery.data?.hotels || [];
+    const cur = stayQuery.data?.meta?.currency || stayCurrency;
+    return list
+      .filter((h) => h.lat != null && h.lng != null)
+      .map((h) => ({
+        id: h.id, name: h.name, lat: h.lat, lng: h.lng,
+        supplierLogo: h.supplierLogo,
+        priceLabel: h.price != null ? fmtMoney(h.price, h.currency || cur) : null,
+      }));
+  }, [isHotelPick, stayQuery.data, stayCurrency, fmtMoney]);
+  // Bundle handed to the presentational hotel list (through ForkPartnerModal).
+  const stay22Bundle = isHotelPick ? {
+    data: stayQuery.data, isLoading: stayQuery.isLoading, isFetching: stayQuery.isFetching,
+    isError: stayQuery.isError, refetch: stayQuery.refetch,
+    page: stayPage, onPageChange: setStayPage,
+    applied: stayApplied,
+    onApply: (snap) => { setStayApplied(snap); setStayPage(1); },
+    onResetAll: () => { setStayApplied(null); setStayPage(1); },
+    hoveredId: stayHoveredId, selectedId: staySelectedId,
+    onHover: setStayHoveredId, onSelect: setStaySelectedId,
+  } : null;
   // Unified engine: validateTrip emits codes; primaryIssues collapses to <=1 per
   // entity (anti-pile). Adapt to the shape this screen already consumes
   // (resolved message + cityId/hotelId/activityId/transferId aliases + 'warn' level).
@@ -610,6 +659,7 @@ export default function TripStructureEdit() {
       <ForkPartnerModal
         open variant="panel" type={leftPanel.kind} tripId={tripId} trip={trip}
         visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
+        stay22={stay22Bundle}
         onManual={() => setLeftPanel({ type: 'create', kind: leftPanel.kind, visit: leftPanel.visit, fromVisit: leftPanel.fromVisit, toVisit: leftPanel.toVisit })}
         onOpenChange={(o) => { if (!o) closeLeftPanel(); }}
       />
@@ -930,6 +980,12 @@ export default function TripStructureEdit() {
               selectedVisitId={selectedNodeId}
               hoveredVisitId={hoveredNodeId}
               selectedLegKey={selectedLegKey}
+              hideRoute={isHotelPick}
+              hotelPins={hotelPins}
+              selectedHotelId={staySelectedId}
+              hoveredHotelId={stayHoveredId}
+              onHotelClick={setStaySelectedId}
+              onHotelHover={setStayHoveredId}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
