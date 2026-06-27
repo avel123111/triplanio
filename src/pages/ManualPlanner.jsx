@@ -1021,7 +1021,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       const { data, error: fnErr } = await supabase.functions.invoke('planTripWithAi', {
         body: { sessionId, prompt: promptText, language: lang || 'ru' },
       });
-      if (fnErr) throw fnErr;
+      if (fnErr) {
+        // TRIP-111: серверный rate-limit генераций → понятное сообщение вместо
+        // общего «не удалось». supabase.functions.invoke кладёт Response в .context.
+        if (fnErr?.context?.status === 429) throw new Error(t('ai_plan.error_rate_limited'));
+        throw fnErr;
+      }
       return data;
     },
     onMutate: () => { setAiState('generating'); setError(null); },

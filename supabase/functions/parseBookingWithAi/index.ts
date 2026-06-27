@@ -18,6 +18,11 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
+import { checkRateLimit } from '../_shared/rateLimit.ts';
+
+// TRIP-111: распознавание броней — дорогой вызов (файлы + LLM). 10/час на юзера.
+const PARSER_RATE_LIMIT = 10;
+const PARSER_RATE_WINDOW = 3600;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,6 +82,15 @@ Deno.serve(async (req) => {
     }
     if (!tripPro) {
       return Response.json({ error: 'Pro required', code: 'PRO_REQUIRED' }, { status: 403, headers: corsHeaders });
+    }
+
+    // Rate-limit ПОСЛЕ Pro/membership-гейта, ПЕРЕД дорогим LLM-вызовом (TRIP-111).
+    const rl = await checkRateLimit(supabaseAdmin, 'user', user.id, 'trip_parser', PARSER_RATE_LIMIT, PARSER_RATE_WINDOW);
+    if (!rl.allowed) {
+      return Response.json(
+        { error: 'Rate limit exceeded', code: 'RATE_LIMITED', retry_after: rl.retryAfter },
+        { status: 429, headers: corsHeaders },
+      );
     }
 
     const n8nSecret = Deno.env.get('N8N_SECRET');

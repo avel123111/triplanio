@@ -16,13 +16,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { requireN8nSecret } from '../_shared/n8nAuth.ts';
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
-
-type Lang = 'ru' | 'en' | 'es';
-
-function pickLang(code?: string | null): Lang {
-  const c = (code || '').slice(0, 2).toLowerCase();
-  return c === 'ru' || c === 'es' || c === 'en' ? (c as Lang) : 'en';
-}
+import { type Lang, pickLang, resolveLang } from '../_shared/tgLang.ts';
 
 const T: Record<Lang, {
   linked: (title: string) => string;
@@ -53,15 +47,6 @@ const T: Record<Lang, {
     expired: '❌ El enlace ha caducado. Genera uno nuevo en los ajustes del viaje.',
   },
 };
-
-async function resolveLang(userId?: string | null, fallbackCode?: string | null): Promise<Lang> {
-  if (userId) {
-    const { data } = await supabaseAdmin.from('users').select('language').eq('id', userId).maybeSingle();
-    const l = data?.language;
-    if (l === 'ru' || l === 'en' || l === 'es') return l;
-  }
-  return pickLang(fallbackCode);
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });

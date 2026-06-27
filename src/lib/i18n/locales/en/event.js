@@ -40,6 +40,8 @@ export default {
   'event.ai_max_files': 'You can upload at most {max} files',
   'event.ai_upload_error': 'Could not upload the file',
   'event.ai_parse_error': "Couldn't read the document. Try again or choose another file.",
+  'event.ai_rate_limited': 'Too many scans. Please try again in a few minutes.',
+  'event.ai_pro_required': 'Booking scanning is available on a Pro subscription.',
   'event.view_booking': 'View booking',
   'event.show_on_map': 'Show on map',
   'event.delete_q': 'Delete {label}?',

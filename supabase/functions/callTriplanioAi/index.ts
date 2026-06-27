@@ -1,8 +1,56 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { signN8nJwt } from '../_shared/n8nAuth.ts';
+import { checkRateLimit, retryMinutes } from '../_shared/rateLimit.ts';
 
 const N8N_WEBHOOK_URL = 'https://n8n-production-d1214.up.railway.app/webhook/group-chat';
+
+const BOT_EMAIL = 'info@triplanio.com';
+const BOT_NAME = 'Triplanio';
+
+// TRIP-111: групповой ИИ-чат — Pro-фича. 30 обращений в час на трип (общий ресурс).
+const CHAT_RATE_LIMIT = 30;
+const CHAT_RATE_WINDOW = 3600;
+
+type Lang = 'ru' | 'en' | 'es';
+
+// Бот отвечает в чат на родном языке вызвавшего (как и обычный ответ ассистента).
+const MSG: Record<'pro' | 'rate', Record<Lang, (mins: number) => string>> = {
+  pro: {
+    ru: () => 'ИИ-ассистент доступен на Pro-подписке.',
+    en: () => 'The AI assistant is available on a Pro subscription.',
+    es: () => 'El asistente de IA está disponible con la suscripción Pro.',
+  },
+  rate: {
+    ru: (m) => `Слишком много обращений к ИИ-ассистенту. Попробуй через ~${m} мин.`,
+    en: (m) => `Too many requests to the AI assistant. Try again in ~${m} min.`,
+    es: (m) => `Demasiadas solicitudes al asistente de IA. Inténtalo en ~${m} min.`,
+  },
+};
+
+function pickLang(code?: string | null): Lang {
+  const c = (code || '').slice(0, 2).toLowerCase();
+  return c === 'ru' || c === 'es' || c === 'en' ? (c as Lang) : 'ru';
+}
+
+/** Вставляет реплику бота в чат — она же гасит индикатор «Triplanio печатает»
+ *  на фронте (последнее сообщение становится ботовским). */
+async function postBotMessage(chatId: string, tripId: string, text: string) {
+  const { data: botUser } = await supabaseAdmin
+    .from('users').select('id').eq('email', BOT_EMAIL).maybeSingle();
+  if (!botUser) {
+    console.error('callTriplanioAi: bot user not found, cannot post gate message');
+    return;
+  }
+  await supabaseAdmin.from('chat_messages').insert({
+    chat_id: chatId,
+    trip_id: tripId,
+    user_id: botUser.id,
+    user_full_name: BOT_NAME,
+    text,
+    created_by: botUser.id,
+  });
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -23,7 +71,7 @@ Deno.serve(async (req) => {
 
     const { data: trip } = await supabaseAdmin
       .from('trips')
-      .select('id,created_by')
+      .select('id,created_by,details')
       .eq('id', chat.trip_id)
       .single();
     if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
@@ -38,6 +86,33 @@ Deno.serve(async (req) => {
         .eq('status', 'active')
         .maybeSingle();
       if (!member) return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+    }
+
+    // Язык вызвавшего — для реплик бота при отказе.
+    const { data: caller } = await supabaseAdmin
+      .from('users').select('language').eq('id', user.id).maybeSingle();
+    const lang = pickLang(caller?.language);
+
+    // ── Pro/addon-гейт (TRIP-47) ──
+    // Групповой ИИ-чат — Pro-фича. Доступен ⇔ трип Pro (is_trip_pro: is_pro_trip
+    // ИЛИ активная подписка владельца) И включён аддон chat. Без гейта любой
+    // участник free-трипа дёргал платный n8n/LLM напрямую.
+    const { data: tripPro, error: proErr } = await supabaseAdmin.rpc('is_trip_pro', { p_trip_id: chat.trip_id });
+    if (proErr) {
+      console.error('is_trip_pro rpc error:', proErr);
+      return Response.json({ error: 'Pro check failed' }, { status: 500, headers: corsHeaders });
+    }
+    const chatAddonOn = Boolean(trip.details?.addons?.chat);
+    if (!tripPro || !chatAddonOn) {
+      await postBotMessage(chat_id, chat.trip_id, MSG.pro[lang](0));
+      return Response.json({ ok: false, code: 'PRO_REQUIRED' }, { headers: corsHeaders });
+    }
+
+    // ── Rate-limit (TRIP-111): 30/час на трип, ПЕРЕД дорогим LLM-вызовом ──
+    const rl = await checkRateLimit(supabaseAdmin, 'trip', chat.trip_id, 'inapp_group_chat', CHAT_RATE_LIMIT, CHAT_RATE_WINDOW);
+    if (!rl.allowed) {
+      await postBotMessage(chat_id, chat.trip_id, MSG.rate[lang](retryMinutes(rl.retryAfter)));
+      return Response.json({ ok: false, code: 'RATE_LIMITED', retry_after: rl.retryAfter }, { headers: corsHeaders });
     }
 
     const { data: recentMessages } = await supabaseAdmin

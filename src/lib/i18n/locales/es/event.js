@@ -40,6 +40,8 @@ export default {
   'event.ai_max_files': 'Puedes subir como máximo {max} archivos',
   'event.ai_upload_error': 'No se pudo subir el archivo',
   'event.ai_parse_error': 'No se pudo leer el documento. Inténtalo de nuevo o elige otro archivo.',
+  'event.ai_rate_limited': 'Demasiados reconocimientos. Inténtalo de nuevo en unos minutos.',
+  'event.ai_pro_required': 'El reconocimiento de reservas está disponible con la suscripción Pro.',
   'event.view_booking': 'Ver la reserva',
   'event.show_on_map': 'Ver en el mapa',
   'event.delete_q': '¿Eliminar {label}?',
