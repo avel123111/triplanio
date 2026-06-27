@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Icon } from '../design/icons';
 import {
-  Badge, Btn, Toggle, Severity, SearchSelect,
+  Badge, Btn, Toggle, Severity, SearchSelect, useToast,
 } from '../design/index';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -344,9 +344,9 @@ export default function ScreenAccount() {
   const [notifyUpdates, setNotifyUpdates] = useState(true);
 
   // ── UI ─────────────────────────────────────────────────────────────────────
+  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [savedFlash, setSavedFlash] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [activeSec, setActiveSec] = useState('profile');
   const openUpgrade = () => nav('/pro?hidePerTrip=1');
@@ -372,11 +372,13 @@ export default function ScreenAccount() {
     : { background: avatarGradient(avatarName) };
 
   // Save stays disabled until something actually changed (mirrors trip Settings).
-  // Avatar upload/remove persist on their own + refresh `user`, so they don't
-  // leave a phantom-dirty form; the name + notify toggles are what Save governs.
+  // Avatar is deliberately NOT part of this: upload/remove persist immediately
+  // on their own (DB write + checkUserAuth), so the Save button never governs the
+  // avatar — including it here made the button blink active→inactive for the
+  // moment between the optimistic setAvatarUrl and `user` refreshing. Save only
+  // governs the name + notify toggles.
   const profileDirty =
     fullName      !== (user?.full_name || '') ||
-    avatarUrl     !== (user?.avatar_url || '') ||
     notifyInvites !== (user?.notify_email_invites !== false) ||
     notifyUpdates !== (user?.notify_email_updates !== false);
 
@@ -440,8 +442,7 @@ export default function ScreenAccount() {
         .eq('id', user.id);
       if (error) throw error;
       await checkUserAuth?.();
-      setSavedFlash(true);
-      setTimeout(() => setSavedFlash(false), 1500);
+      toast({ description: t('settings.saved'), variant: 'success' });
     } catch (e) {
       console.error('save profile error:', e);
       setErrorMsg(t('account.err_save') + (e.message || String(e)));
@@ -680,7 +681,6 @@ export default function ScreenAccount() {
                 </Btn>
               </div>
             </div>
-            {savedFlash && <div style={{ marginTop: 8 }}><Badge variant="success" icon="check">{t('settings.saved')}</Badge></div>}
           </section>
 
           {/* ░░ SUBSCRIPTION ░░ */}
