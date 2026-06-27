@@ -115,24 +115,42 @@ export function activityPlatforms(visit, t, lang) {
   return list;
 }
 
-// HOTEL: Booking.com, Airbnb (+ Ostrovok, Yandex Travel for ru UI)
+// HOTEL: Booking.com, Expedia (+ Ostrovok, Yandex Travel for ru UI).
+// Booking + Expedia are affiliate deep-links attributed to the Stay22 channel
+// (provider='stay22', same name as the dynamic Stay22 list — see Stay22HotelList).
+// Deep-links need the English city + English country name; when either is missing
+// we fall back to the Stay22 smart-link (attribution preserved).
 export function hotelPlatforms(visit, t, lang) {
   const tz = visit?.timezone || 'UTC';
   const checkin = localDate(visit?.start_date, tz);
   const checkout = ensureNextDay(checkin, localDate(visit?.end_date, tz));
-  // Referral links use the canonical English city name (city_name_en) when
-  // available — Booking/Airbnb match better on English; falls back to the
-  // localized display name.
+  // Canonical English city (city_name_en) + English country (via ISO code).
   const cityEn = visit?.city_name_en || visit?.city_name || '';
-  const cityQuery = `${cityEn}${visit?.country ? ', ' + visit.country : ''}`;
+  const countryEn = countryNameEn(visit?.country_code);
+  const hasGeo = Boolean(cityEn && countryEn);
+  const cityQuery = hasGeo ? `${cityEn}, ${countryEn}` : '';
   const slugify = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
-  const airbnbSlug = [cityEn, visit?.country].filter(Boolean).map(slugify).filter(Boolean).join('--')
-    || encodeURIComponent(cityEn);
+
+  // Booking.com affiliate deep-link (affiliate_id/aid 1607597). ss = "City, Country"
+  // (en); dates appended when present. Fallback = Stay22 Booking smart-link.
+  const bookingUrl = hasGeo
+    ? `https://www.booking.com/searchresults.ru.html?${new URLSearchParams({
+        affiliate_id: '1607597', aid: '1607597', ss: cityQuery,
+        src: 'searchresults', ac_langcode: 'en',
+        ...(checkin && { checkin }), ...(checkout && { checkout }),
+      }).toString()}`
+    : 'https://booking.stay22.com/triplanio/60Is3HmgWd';
+
+  // Expedia affiliate deep-link (PHG). destination = "City Country" (en, %20-encoded);
+  // static affiliate params per the partner program. Fallback = Stay22 Expedia link.
+  const EXPEDIA_AFF = 'clickref=1100lDa8VoKr&affcid=ES.DIRECT.PHG.1011l45458.0&ref_id=1100lDa8VoKr&my_ad=AFF.ES.DIRECT.PHG.1011l45458.0&afflid=1100lDa8VoKr&affdtl=PHG.1100lDa8VoKr.&button_referral_source=other';
+  const expediaUrl = hasGeo
+    ? `https://www.expedia.com/Hotel-Search?destination=${encodeURIComponent(`${cityEn} ${countryEn}`)}${checkin ? `&startDate=${checkin}` : ''}${checkout ? `&endDate=${checkout}` : ''}&${EXPEDIA_AFF}`
+    : 'https://expedia.stay22.com/triplanio/wVI-072pZ1';
 
   // RU-market hotel partners (TravelPayouts): exact city via city_name_en slug +
   // country (en) + dates; fall back to the partner homepage when data is missing.
-  const countryEn = countryNameEn(visit?.country_code);
   const cityEnSlug = visit?.city_name_en ? slugify(visit.city_name_en).toLowerCase() : '';
   const ostrovokUrl = (countryEn && cityEnSlug)
     ? `https://ostrovok.ru/hotel/${countryEn}/${cityEnSlug}/${checkin && checkout ? `?dates=${dmyDot(checkin)}-${dmyDot(checkout)}` : ''}`
@@ -146,20 +164,17 @@ export function hotelPlatforms(visit, t, lang) {
       key: 'booking',
       label: bookOn(t, 'Booking.com'),
       hint: cityQuery,
-      logo: faviconUrl('booking.com'),
-      url: `https://www.booking.com/searchresults.html?${new URLSearchParams({
-        ss: cityQuery, lang: 'en-us', group_adults: '2', no_rooms: '1', group_children: '0',
-        ...(checkin && { checkin }), ...(checkout && { checkout }),
-      }).toString()}`,
+      logo: 'https://img.wway.io/travelpayouts/brands/icon/84@svg',
+      url: bookingUrl,
+      provider: 'stay22',
     },
     {
-      key: 'airbnb',
-      label: bookOn(t, 'Airbnb'),
+      key: 'expedia',
+      label: bookOn(t, 'Expedia'),
       hint: cityQuery,
-      logo: faviconUrl('airbnb.com'),
-      url: `https://www.airbnb.com/s/${airbnbSlug}/homes?${new URLSearchParams({
-        adults: '2', ...(checkin && { checkin }), ...(checkout && { checkout }),
-      }).toString()}`,
+      logo: 'https://img.wway.io/travelpayouts/brands/icon/594@svg',
+      url: expediaUrl,
+      provider: 'stay22',
     },
     // RU-only partners (.ru sites via TravelPayouts). provider=travelpayouts.
     ...(lang === 'ru' ? [
