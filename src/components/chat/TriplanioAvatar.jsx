@@ -1,5 +1,4 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
 
@@ -14,10 +13,11 @@ import { TRIPLANIO_BOT_USER_ID } from '@/lib/triplanio';
  *   - avatarUrl: optional pre-resolved URL - skips the lookup
  *   - className: extra classes for the outer element
  */
-const SIZE_CLASSES = {
-  xs: 'w-5 h-5',
-  sm: 'w-7 h-7',
-  md: 'w-9 h-9',
+// px sizes (were Tailwind w-5/w-7/w-9 = 20/28/36px)
+const SIZE_PX = {
+  xs: 20,
+  sm: 28,
+  md: 36,
 };
 
 const SVG_SIZE = {
@@ -41,24 +41,27 @@ export default function TriplanioAvatar({
   className = '',
 }) {
   const avatarUrl = useBotAvatar(tripId, providedAvatarUrl);
-  const sizeCls   = SIZE_CLASSES[size] || SIZE_CLASSES.sm;
-  const ringCls   = ring ? 'ring-2 ring-primary/30' : '';
+  const px        = SIZE_PX[size] || SIZE_PX.sm;
   const svgPx     = SVG_SIZE[size] || SVG_SIZE.sm;
+  // ring-2 ring-primary/30 → 2px soft primary ring via box-shadow
+  const ringStyle = ring ? { boxShadow: '0 0 0 2px var(--primary-ring)' } : null;
+  const baseStyle = { width: px, height: px, borderRadius: '9999px', flex: 'none' };
 
   if (avatarUrl) {
     return (
       <img
         src={avatarUrl}
         alt="Triplanio"
-        className={cn('rounded-full object-cover shrink-0', sizeCls, ringCls, className)}
+        className={className}
+        style={{ ...baseStyle, objectFit: 'cover', ...ringStyle }}
       />
     );
   }
 
   return (
     <div
-      className={cn('rounded-full flex items-center justify-center shrink-0', sizeCls, ringCls, className)}
-      style={{ background: 'var(--assistant-grad)' }}
+      className={className}
+      style={{ ...baseStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--assistant-grad)', ...ringStyle }}
       aria-label="Triplanio"
     >
       <svg width={svgPx} height={svgPx} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
