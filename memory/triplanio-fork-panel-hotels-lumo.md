@@ -15,7 +15,7 @@ metadata:
 
 Карточка отеля (форма из `stay22-normalize.js`): фото · бейдж Booking · название · ★stars + score-плашка 0–10 (стиль Booking, скруг 6/6/6/2) + label + кол-во отзывов · адрес с пином · цена + «за N ночей» · кнопка «Забронировать» (primary pill).
 
-ПУШБЕК Pavel'у: в коде партнёрки отелей = Booking + **Airbnb**, а не Expedia. Pavel выбрал в макете Booking + Expedia → для реальной интеграции later нужно добавить Expedia в `hotelPlatforms()` в `buildBookingPlatforms.jsx` (+ лого в booking-platforms).
+~~ПУШБЕК: в коде было Booking + Airbnb~~ → **РЕШЕНО TRIP-42 (2026-06-27, PR #193):** в коде теперь Booking + **Expedia** (Airbnb выпилен). Оба = affiliate deep-link (Booking affiliate_id/aid 1607597 `searchresults.ru.html`; Expedia PHG `Hotel-Search`) с fallback на Stay22 smart-link (`booking.stay22.com` / `expedia.stay22.com`) когда нет `city_name_en` или EN-страны (`countryNameEn(country_code)`). Лого = SVG TravelPayouts icon 84 / 594. Логирование обоих = `provider='stay22'`, `partner=booking`/`expedia` (как динамический список Stay22). RU-партнёры (Островок/Яндекс) не тронуты.
 
 Грабли макета (исправлено): `--wash:var(--surface-3)` объявлен на :root(html), а `[data-theme=dark]` висит на body → --wash резолвился в светлый surface-3. Фикс — продублировать `--wash:var(--surface-3)` внутри dark-блока (резолв в scope body).
 

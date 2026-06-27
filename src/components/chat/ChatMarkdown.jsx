@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { TRIPLANIO_MENTION_REGEX } from '@/lib/triplanio';
+import './ChatMarkdown.css';
 
 /**
  * Renders chat message text as GitHub-Flavored Markdown.
@@ -54,14 +55,14 @@ export default function ChatMarkdown({
   text,
   mentionStyle    = { color: 'var(--ai)', fontWeight: 700 },
   mentionClassName = '',
-  linkClassName   = 'underline',
+  linkClassName   = 'cm-a',
 }) {
   const source = useMemo(() => wrapMentions(text || ''), [text]);
 
   const rep = (children) => replaceSentinelInChildren(children, mentionStyle, mentionClassName);
 
   const components = useMemo(() => ({
-    p:          ({ children }) => <p className="m-0 break-words">{rep(children)}</p>,
+    p:          ({ children }) => <p className="cm-p">{rep(children)}</p>,
     a:          ({ children, href }) => (
       <a href={href} target="_blank" rel="noopener noreferrer" className={linkClassName}>
         {rep(children)}
@@ -69,17 +70,17 @@ export default function ChatMarkdown({
     ),
     code:       ({ inline, children, className }) => (
       inline
-        ? <code className="px-1 py-0.5 rounded bg-black/10 dark:bg-white/10 text-[0.85em] font-mono">{children}</code>
-        : <pre className="my-1 p-2 rounded bg-black/10 dark:bg-white/10 overflow-x-auto"><code className={className}>{children}</code></pre>
+        ? <code className="cm-code">{children}</code>
+        : <pre className="cm-pre"><code className={className}>{children}</code></pre>
     ),
-    ul:         ({ children }) => <ul className="list-disc ml-5 my-1 space-y-0.5">{rep(children)}</ul>,
-    ol:         ({ children }) => <ol className="list-decimal ml-5 my-1 space-y-0.5">{rep(children)}</ol>,
-    li:         ({ children }) => <li className="m-0">{rep(children)}</li>,
-    h1:         ({ children }) => <div className="font-semibold text-base mt-1 mb-0.5">{rep(children)}</div>,
-    h2:         ({ children }) => <div className="font-semibold text-base mt-1 mb-0.5">{rep(children)}</div>,
-    h3:         ({ children }) => <div className="font-semibold text-sm mt-1 mb-0.5">{rep(children)}</div>,
+    ul:         ({ children }) => <ul className="cm-ul">{rep(children)}</ul>,
+    ol:         ({ children }) => <ol className="cm-ol">{rep(children)}</ol>,
+    li:         ({ children }) => <li className="cm-li">{rep(children)}</li>,
+    h1:         ({ children }) => <div className="cm-h">{rep(children)}</div>,
+    h2:         ({ children }) => <div className="cm-h">{rep(children)}</div>,
+    h3:         ({ children }) => <div className="cm-h3">{rep(children)}</div>,
     blockquote: ({ children }) => (
-      <blockquote className="border-l-2 border-current/30 pl-2 my-1 opacity-80">{rep(children)}</blockquote>
+      <blockquote className="cm-quote">{rep(children)}</blockquote>
     ),
     strong: ({ children }) => <strong>{rep(children)}</strong>,
     em:     ({ children }) => <em>{rep(children)}</em>,

@@ -6,7 +6,7 @@
 // we fall back to the platform name (e.g. just "Booking.com") to avoid a crash.
 
 import { DateTime } from 'luxon';
-import { platformLogoUrl } from '@/lib/booking-platforms';
+import { faviconUrl } from '@/lib/booking-platforms';
 import { countryNameEn } from '@/lib/countryNamesEn';
 import { sortVisits } from '@/lib/validation';
 
@@ -115,24 +115,42 @@ export function activityPlatforms(visit, t, lang) {
   return list;
 }
 
-// HOTEL: Booking.com, Airbnb (+ Ostrovok, Yandex Travel for ru UI)
+// HOTEL: Booking.com, Expedia (+ Ostrovok, Yandex Travel for ru UI).
+// Booking + Expedia are affiliate deep-links attributed to the Stay22 channel
+// (provider='stay22', same name as the dynamic Stay22 list — see Stay22HotelList).
+// Deep-links need the English city + English country name; when either is missing
+// we fall back to the Stay22 smart-link (attribution preserved).
 export function hotelPlatforms(visit, t, lang) {
   const tz = visit?.timezone || 'UTC';
   const checkin = localDate(visit?.start_date, tz);
   const checkout = ensureNextDay(checkin, localDate(visit?.end_date, tz));
-  // Referral links use the canonical English city name (city_name_en) when
-  // available — Booking/Airbnb match better on English; falls back to the
-  // localized display name.
+  // Canonical English city (city_name_en) + English country (via ISO code).
   const cityEn = visit?.city_name_en || visit?.city_name || '';
-  const cityQuery = `${cityEn}${visit?.country ? ', ' + visit.country : ''}`;
+  const countryEn = countryNameEn(visit?.country_code);
+  const hasGeo = Boolean(cityEn && countryEn);
+  const cityQuery = hasGeo ? `${cityEn}, ${countryEn}` : '';
   const slugify = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
-  const airbnbSlug = [cityEn, visit?.country].filter(Boolean).map(slugify).filter(Boolean).join('--')
-    || encodeURIComponent(cityEn);
+
+  // Booking.com affiliate deep-link (affiliate_id/aid 1607597). ss = "City, Country"
+  // (en); dates appended when present. Fallback = Stay22 Booking smart-link.
+  const bookingUrl = hasGeo
+    ? `https://www.booking.com/searchresults.ru.html?${new URLSearchParams({
+        affiliate_id: '1607597', aid: '1607597', ss: cityQuery,
+        src: 'searchresults', ac_langcode: 'en',
+        ...(checkin && { checkin }), ...(checkout && { checkout }),
+      }).toString()}`
+    : 'https://booking.stay22.com/triplanio/60Is3HmgWd';
+
+  // Expedia affiliate deep-link (PHG). destination = "City Country" (en, %20-encoded);
+  // static affiliate params per the partner program. Fallback = Stay22 Expedia link.
+  const EXPEDIA_AFF = 'clickref=1100lDa8VoKr&affcid=ES.DIRECT.PHG.1011l45458.0&ref_id=1100lDa8VoKr&my_ad=AFF.ES.DIRECT.PHG.1011l45458.0&afflid=1100lDa8VoKr&affdtl=PHG.1100lDa8VoKr.&button_referral_source=other';
+  const expediaUrl = hasGeo
+    ? `https://www.expedia.com/Hotel-Search?destination=${encodeURIComponent(`${cityEn} ${countryEn}`)}${checkin ? `&startDate=${checkin}` : ''}${checkout ? `&endDate=${checkout}` : ''}&${EXPEDIA_AFF}`
+    : 'https://expedia.stay22.com/triplanio/wVI-072pZ1';
 
   // RU-market hotel partners (TravelPayouts): exact city via city_name_en slug +
   // country (en) + dates; fall back to the partner homepage when data is missing.
-  const countryEn = countryNameEn(visit?.country_code);
   const cityEnSlug = visit?.city_name_en ? slugify(visit.city_name_en).toLowerCase() : '';
   const ostrovokUrl = (countryEn && cityEnSlug)
     ? `https://ostrovok.ru/hotel/${countryEn}/${cityEnSlug}/${checkin && checkout ? `?dates=${dmyDot(checkin)}-${dmyDot(checkout)}` : ''}`
@@ -146,22 +164,17 @@ export function hotelPlatforms(visit, t, lang) {
       key: 'booking',
       label: bookOn(t, 'Booking.com'),
       hint: cityQuery,
-      logo: platformLogoUrl('booking'),
-      color: 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/40',
-      url: `https://www.booking.com/searchresults.html?${new URLSearchParams({
-        ss: cityQuery, lang: 'en-us', group_adults: '2', no_rooms: '1', group_children: '0',
-        ...(checkin && { checkin }), ...(checkout && { checkout }),
-      }).toString()}`,
+      logo: 'https://img.wway.io/travelpayouts/brands/icon/84@svg',
+      url: bookingUrl,
+      provider: 'stay22',
     },
     {
-      key: 'airbnb',
-      label: bookOn(t, 'Airbnb'),
+      key: 'expedia',
+      label: bookOn(t, 'Expedia'),
       hint: cityQuery,
-      logo: platformLogoUrl('airbnb'),
-      color: 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/40',
-      url: `https://www.airbnb.com/s/${airbnbSlug}/homes?${new URLSearchParams({
-        adults: '2', ...(checkin && { checkin }), ...(checkout && { checkout }),
-      }).toString()}`,
+      logo: 'https://img.wway.io/travelpayouts/brands/icon/594@svg',
+      url: expediaUrl,
+      provider: 'stay22',
     },
     // RU-only partners (.ru sites via TravelPayouts). provider=travelpayouts.
     ...(lang === 'ru' ? [
@@ -170,7 +183,6 @@ export function hotelPlatforms(visit, t, lang) {
         label: bookOn(t, 'Островок'),
         hint: cityQuery,
         logo: 'https://img.wway.io/travelpayouts/brands/icon/459@svg',
-        color: 'border-cyan-200 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-200 hover:bg-cyan-100 dark:hover:bg-cyan-900/40',
         url: tpLink(459, 7038, ostrovokUrl),
         provider: 'travelpayouts',
       },
@@ -179,7 +191,6 @@ export function hotelPlatforms(visit, t, lang) {
         label: bookOn(t, 'Яндекс Путешествия'),
         hint: cityQuery,
         logo: 'https://img.wway.io/travelpayouts/brands/icon/193@svg',
-        color: 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 hover:bg-red-100 dark:hover:bg-red-900/40',
         url: tpLink(193, 5916, yandexUrl),
         provider: 'travelpayouts',
       },
@@ -237,7 +248,6 @@ export function esimPlatforms(visits, t) {
       label: bookOn(t, 'Airalo'),
       hint: t ? t('service.esim_choice_airalo_hint') : 'eSIM for travel',
       logo: 'https://www.airalo.com/favicon.ico',
-      color: 'border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-200 hover:bg-violet-100 dark:hover:bg-violet-900/40',
       url: airaloUrl,
       provider: 'travelpayouts',
     },
@@ -246,38 +256,58 @@ export function esimPlatforms(visits, t) {
       label: bookOn(t, 'Yesim'),
       hint: t ? t('service.esim_choice_yesim_hint') : 'eSIM for travel',
       logo: 'https://yesim.app/favicon.ico',
-      color: 'border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-teal-900/40',
       url: yesimUrl,
       provider: 'travelpayouts',
     },
   ];
 }
 
-// INSURANCE: SafetyWing (nomad health insurance) + Ekta Traveling (affiliate)
-// SafetyWing is still a direct URL (affiliate TBD); Ekta Traveling is an active affiliate link.
-export function insurancePlatforms(t) {
+// INSURANCE: SafetyWing + Ekta Traveling (both static homepage links, no active
+// affiliate tracking → provider NULL) + Sravni.ru & Tripinsurance.ru for the ru
+// UI (static *.tpx.lt referral links, provider=travelpayouts). Logos are the
+// partners' own brand assets (SafetyWing/Ekta) or TravelPayouts SVG icons (RU).
+export function insurancePlatforms(t, lang) {
   return [
     {
       key: 'safetywing',
       label: bookOn(t, 'SafetyWing'),
       hint: t ? t('service.insurance_safetywing_hint') : 'Nomad insurance · from $45/mo',
-      logo: platformLogoUrl('safetywing'),
-      color: 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/40',
-      url: 'https://safetywing.com/nomad-insurance/',
+      logo: 'https://s3-eu-west-1.amazonaws.com/tpd/logos/5b026ad311a7aa000198b534/0x0.png',
+      url: 'https://safetywing.com/',
+      // No provider → logged as NULL (no active affiliate link).
     },
     {
       key: 'ektatraveling',
       label: bookOn(t, 'Ekta Traveling'),
       hint: t ? t('service.insurance_ektatraveling_hint') : 'Travel & medical insurance',
-      logo: platformLogoUrl('ektatraveling', 'ektatraveling.com'),
-      color: 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/40',
-      url: 'https://ektatraveling.tpx.lt/ej8OjLU3',
-      provider: 'travelpayouts',
+      logo: 'https://content.flexlinks.com/sharedimages/ProgramSquareLogo/233032.png',
+      url: 'https://ektatraveling.com/',
+      // No provider → logged as NULL (static homepage link).
     },
+    // RU-only partners (.ru via TravelPayouts). provider=travelpayouts.
+    ...(lang === 'ru' ? [
+      {
+        key: 'sravni',
+        label: bookOn(t, 'Сравни.ру'),
+        hint: t ? t('service.insurance_sravni_hint') : 'Compare insurance',
+        logo: 'https://img.wway.io/travelpayouts/brands/icon/49@svg',
+        url: 'https://sravni.tpx.lt/CqRGyRjC?erid=2VtzqvjtkhF',
+        provider: 'travelpayouts',
+      },
+      {
+        key: 'tripinsurance',
+        label: bookOn(t, 'Tripinsurance'),
+        hint: t ? t('service.insurance_tripinsurance_hint') : 'Travel insurance',
+        logo: 'https://img.wway.io/travelpayouts/brands/icon/55@svg',
+        url: 'https://tripinsurance.tpx.lt/JKNaa6My?erid=2VtzqvmNjyb',
+        provider: 'travelpayouts',
+      },
+    ] : []),
   ];
 }
 
-// TRANSFER: Skyscanner (flights) + Omio (multi-modal) + Kiwi (+ Aviasales for ru UI)
+// TRANSFER: Skyscanner + Omio (no active affiliate program → homepage links,
+// provider NULL) + Aviasales + Яндекс Путешествия (both ru UI, travelpayouts).
 export function transferPlatforms(fromVisit, toVisit, t, lang) {
   const from = fromVisit?.city_name || '';
   const to = toVisit?.city_name || '';
@@ -294,39 +324,38 @@ export function transferPlatforms(fromVisit, toVisit, t, lang) {
     ? `https://www.aviasales.ru/search/${fromIata}${ddmm(flightDate)}${toIata}1`
     : 'https://www.aviasales.ru/';
   return [
+    // Skyscanner / Omio: affiliate program inactive → plain homepage links, no
+    // route deep-link (so no from→to hint) and provider omitted → logged NULL.
     {
       key: 'skyscanner',
       label: findFlightsOn(t, 'Skyscanner'),
-      hint: `${from} → ${to}`,
-      logo: platformLogoUrl('skyscanner'),
-      color: 'border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-200 hover:bg-sky-100 dark:hover:bg-sky-900/40',
-      url: `https://www.skyscanner.com/transport/flights/${encodeURIComponent(from)}/${encodeURIComponent(to)}/`,
+      logo: faviconUrl('skyscanner.com'),
+      url: 'https://skyscanner.com/',
     },
     {
       key: 'omio',
       label: findTicketsOn(t, 'Omio'),
-      hint: `${from} → ${to}`,
-      logo: platformLogoUrl('omio'),
-      color: 'border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-950/40 text-pink-800 dark:text-pink-200 hover:bg-pink-100 dark:hover:bg-pink-900/40',
-      url: `https://www.omio.com/search-frontend/results/${encodeURIComponent(from)}/${encodeURIComponent(to)}`,
+      logo: 'https://img.wway.io/travelpayouts/brands/icon/91@svg',
+      url: 'https://www.omio.com/',
     },
-    {
-      key: 'kiwi',
-      label: findOn(t, 'Kiwi.com'),
-      hint: `${from} → ${to}`,
-      logo: platformLogoUrl('kiwi'),
-      color: 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 hover:bg-red-100 dark:hover:bg-red-900/40',
-      url: `https://www.kiwi.com/en/search/results/${encodeURIComponent(from)}/${encodeURIComponent(to)}`,
-    },
-    // RU-only partner (.ru site via TravelPayouts). provider=travelpayouts.
+    // RU-only partners (.ru via TravelPayouts). provider=travelpayouts.
     ...(lang === 'ru' ? [
       {
         key: 'aviasales',
         label: findFlightsOn(t, 'Aviasales'),
         hint: `${from} → ${to}`,
         logo: 'https://img.wway.io/travelpayouts/brands/icon/100@svg',
-        color: 'border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-200 hover:bg-sky-100 dark:hover:bg-sky-900/40',
         url: tpLink(100, 4114, aviasalesUrl),
+        provider: 'travelpayouts',
+      },
+      {
+        // Reuses the hotels' yandextravel key/logo (icon 193). Static tpx.lt
+        // referral link (no route deep-link) → keep the from→to hint as context.
+        key: 'yandextravel',
+        label: findTicketsOn(t, 'Яндекс Путешествия'),
+        hint: `${from} → ${to}`,
+        logo: 'https://img.wway.io/travelpayouts/brands/icon/193@svg',
+        url: 'https://yandex.tpx.lt/dovrPB5u?erid=2Vtzqw6eae5',
         provider: 'travelpayouts',
       },
     ] : []),

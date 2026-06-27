@@ -139,7 +139,7 @@ export default function NotificationsBell({ triggerClassName }) {
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} className="p-0 w-[360px] max-w-[calc(100vw-16px)] overflow-hidden rounded-2xl">
+      <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">
         <div className="bell-dd__head">
           <Icon name="bell" size={16} />
           <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', flex: 1 }}>{t('notif.title')}</div>

@@ -83,9 +83,10 @@ const CLICK_TYPE = {
 
 // Brand display name per partner key (bold title in the new partner card).
 const PARTNER_NAME = {
-  booking: 'Booking.com', airbnb: 'Airbnb', skyscanner: 'Skyscanner', omio: 'Omio', kiwi: 'Kiwi.com',
+  booking: 'Booking.com', expedia: 'Expedia', skyscanner: 'Skyscanner', omio: 'Omio',
   getrentacar: 'GetRentacar', economybookings: 'EconomyBookings', airalo: 'Airalo', yesim: 'Yesim',
   safetywing: 'SafetyWing', ektatraveling: 'Ekta Traveling',
+  sravni: 'Сравни.ру', tripinsurance: 'Tripinsurance',
   aviasales: 'Aviasales', ostrovok: 'Островок', yandextravel: 'Яндекс Путешествия',
   viator: 'Viator', getyourguide: 'GetYourGuide', tripster: 'Tripster', sputnik8: 'Sputnik8',
 };
@@ -119,7 +120,7 @@ export default function ForkPartnerModal({
     if (type === 'transfer') return transferPlatforms(fromVisit, toVisit, t, lang);
     if (type === 'car_rental') return carRentalPlatforms(trip, t);
     if (type === 'esim') return esimPlatforms(visits, t);
-    if (type === 'insurance') return insurancePlatforms(t);
+    if (type === 'insurance') return insurancePlatforms(t, lang);
     if (type === 'activity') return activityPlatforms(visit, t, lang);
     return [];
   }, [type, visit, fromVisit, toVisit, visits, trip, t, lang]);
@@ -234,8 +235,8 @@ export default function ForkPartnerModal({
     return (
       <div className="lp lp--wide" style={{ '--ev-soft': meta.colorSoft, '--ev-ink': meta.color }}>
         <div className="lp-h lp-h--ev">
-          <button className="lp-back" onClick={() => onOpenChange(false)} title={t('fork.cancel')}><ArrowLeft className="w-4 h-4" /></button>
-          <span className="lp-ic" style={{ background: meta.colorSoft, color: meta.color }}><ManualIcon className="w-4 h-4" /></span>
+          <button className="lp-back" onClick={() => onOpenChange(false)} title={t('fork.cancel')}><ArrowLeft size={16} /></button>
+          <span className="lp-ic" style={{ background: meta.colorSoft, color: meta.color }}><ManualIcon size={16} /></span>
           <div className="lp-ti"><b>{t(meta.titleKey)}</b></div>
         </div>
         <div className="lp-b scrollbar-thin">{body}</div>

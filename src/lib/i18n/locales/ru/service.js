@@ -96,4 +96,6 @@ export default {
   'service.insurance_choice_manual_hint': 'Если страховка уже оформлена',
   'service.insurance_safetywing_hint': 'Номадская страховка · цены у партнёра',
   'service.insurance_ektatraveling_hint': 'Тур- и медицинская страховка',
+  'service.insurance_sravni_hint': 'Сравнение страховок',
+  'service.insurance_tripinsurance_hint': 'Страхование путешествий',
 };

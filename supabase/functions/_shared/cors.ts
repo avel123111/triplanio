@@ -26,11 +26,15 @@ const STATIC_ALLOWED = new Set<string>([
   'http://localhost:3000',
 ]);
 
-// Vercel preview deployments for THIS project, e.g.
-//   https://triplanioapp-git-dev-avel123111-5277s-projects.vercel.app   (branch alias)
-//   https://triplanioapp-a1b2c3d4-avel123111-5277s-projects.vercel.app   (per-commit/PR)
+// Vercel preview deployments for THIS project. There are TWO URL shapes:
+//   - raw deployment URL (project slug `triplanio`, what the dashboard opens):
+//       https://triplanio-awdc1hnkn-avel123111-5277s-projects.vercel.app
+//   - branch/PR alias (prefixed `triplanioapp-git-…`):
+//       https://triplanioapp-git-dev-avel123111-5277s-projects.vercel.app
+// The `app` segment is therefore OPTIONAL — matching only `triplanioapp-` (the
+// original TRIP-67 regex) blocked every raw deployment preview.
 const VERCEL_PREVIEW_RE =
-  /^https:\/\/triplanioapp-[a-z0-9-]+-avel123111-5277s-projects\.vercel\.app$/;
+  /^https:\/\/triplanio(?:app)?-[a-z0-9-]+-avel123111-5277s-projects\.vercel\.app$/;
 
 export function isAllowedOrigin(origin: string | null | undefined): boolean {
   if (!origin) return false;

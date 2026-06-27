@@ -17,6 +17,14 @@
         "N8N_API_URL": "${N8N_API_URL}",
         "N8N_API_KEY": "${N8N_API_KEY}"
       }
+    },
+    "tolgee": {
+      "command": "/data/.local/bin/uvx",
+      "args": ["tolgee-mcp"],
+      "env": {
+        "TOLGEE_API_KEY": "${TOLGEE_API_KEY}",
+        "TOLGEE_API_URL": "https://tolgee.triplanio.com"
+      }
     }
   }
 }
