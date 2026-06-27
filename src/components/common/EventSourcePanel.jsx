@@ -13,11 +13,10 @@ import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, optimisticContentUpdate } from '@/lib/trip-data';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { Btn, Skeleton } from '@/design/index';
+import { Btn, Skeleton, useToast } from '@/design/index';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
 import { PanelShell, EventPanelBody, kindIcon } from '@/components/common/EventPanels';
-import { useToast } from '@/components/ui/use-toast';
 
 const TABLE_BY_KIND = { hotel: 'hotel_stays', transfer: 'transfers', activity: 'activities', service: 'trip_services' };
 const LABEL_KEY = { hotel: 'budget.cat_accommodation', activity: 'budget.source_activity', service: 'service.car_default_name' };

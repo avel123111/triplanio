@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/design/index';
 import { Loader2, MapPin } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import GeoAttribution from '@/components/common/GeoAttribution';

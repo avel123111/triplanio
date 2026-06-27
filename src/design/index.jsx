@@ -1,9 +1,31 @@
 import React from 'react';
-import { Dialog as UIDialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog as UIDialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from './icons';
 import { useT } from '@/lib/i18n/I18nContext';
 import { avatarGradient } from '@/lib/avatarRamp';
 import { fmtMoneyActive } from '@/lib/i18n/format';
+
+// =====================================================================
+// Primitive layer (Radix-backed) — single import surface.
+// These wrap @radix-ui/* + Lumo tokens and live under src/components/ui/*.
+// Re-exported here so every caller imports from '@/design' and the ui/*
+// folder stays an internal implementation detail (not a public surface).
+// The raw Radix dialog root is exposed as `DialogRoot` to avoid colliding
+// with the composed <Dialog> (title/icon/foot chrome) defined below.
+// =====================================================================
+export { UIDialog as DialogRoot, DialogContent, DialogTitle };
+export {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
+export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from '@/components/ui/popover';
+export { Sheet } from '@/components/ui/Sheet';
+export { ActionMenu } from '@/components/ui/ActionMenu';
+export { useToast, toast } from '@/components/ui/use-toast';
+export { Toaster } from '@/components/ui/toaster';
+export { default as SearchSelect } from '@/components/ui/SearchSelect';
+export { default as CurrencyCombobox } from '@/components/ui/CurrencyCombobox';
+export { default as AiField } from '@/components/ui/AiField';
 
 // =====================================================================
 // Shared components + mock data - converted from global scripts to ES modules

@@ -15,7 +15,7 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { parseNaive } from '@/lib/naive-time';

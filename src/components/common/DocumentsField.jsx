@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { Paperclip, Upload, X, Loader2, Plus } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
 import './DocumentsField.css';
 

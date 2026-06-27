@@ -17,7 +17,7 @@ import EventModal from '@/components/common/EventModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
 import { useT } from '@/lib/i18n/I18nContext';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/design/index';
 
 const TABLE_BY_KIND = {
   hotel: 'hotel_stays',

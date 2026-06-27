@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { ExternalLink, BedDouble, Plane, Car, ShieldCheck, Ticket, ArrowLeft, ChevronRight } from 'lucide-react';
 import { CardSim } from '@/design/icons';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Btn } from '@/design/index';
+import { Btn, DialogRoot as Dialog, DialogContent } from '@/design/index';
 import {
   hotelPlatforms,
   transferPlatforms,

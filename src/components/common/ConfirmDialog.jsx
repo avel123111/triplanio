@@ -1,16 +1,5 @@
 import React from 'react';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogFooter,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogAction,
-  AlertDialogCancel,
-} from '@/components/ui/alert-dialog';
-import Sheet from '@/components/ui/Sheet';
-import { Btn } from '@/design/index';
+import { Btn, AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel, Sheet } from '@/design/index';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useT } from '@/lib/i18n/I18nContext';
 

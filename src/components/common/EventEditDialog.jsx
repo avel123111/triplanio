@@ -16,9 +16,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
-import AiField from '@/components/ui/AiField';
+import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, useToast } from '@/design/index';
 import {
   Loader2, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
@@ -176,7 +174,6 @@ function BookingUrlField({ value, onChange, aiActive, t }) {
     </div>
   );
 }
-import { useToast } from '@/components/ui/use-toast';
 import { useI18nFormat, useI18n } from '@/lib/i18n/I18nContext';
 
 import DateTimeInput from '@/components/common/DateTimeInput';
