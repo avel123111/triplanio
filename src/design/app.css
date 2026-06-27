@@ -3452,6 +3452,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 @keyframes aispin{to{transform:rotate(360deg);}}
 /* generic spinner utility (replaces Tailwind animate-spin on lucide icons) */
 .spin{animation:aispin 1s linear infinite;}
+/* canonical in-button spinner (Lumo design system B1 · loading state) — a
+   currentColor border-circle that replaces the leading icon while <Btn loading> */
+.btn .spin{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:aispin .7s linear infinite;flex:none;}
 /* app-level loading spinner (was Tailwind fixed inset-0 + bordered circle) */
 .app-loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
 .app-spinner{width:32px;height:32px;border:4px solid var(--line);border-top-color:var(--ink);border-radius:var(--r-pill);animation:aispin 1s linear infinite;}

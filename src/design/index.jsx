@@ -110,19 +110,23 @@ export const Field = ({ label, hint, sub, ai, error, warning, children, required
 );
 
 // ----- Buttons -----
-export const Btn = ({ variant = "ghost", size, icon, iconRight, block, disabled, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
+// `loading` renders the canonical Lumo in-button spinner (.btn .spin) in place
+// of the leading icon, disables the button and flags aria-busy — the single
+// source of truth for "operation in flight" feedback across the app.
+export const Btn = ({ variant = "ghost", size, icon, iconRight, block, disabled, loading, children, onClick, className = "", ariaLabel, title, ariaPressed, style }) => (
   <button
     className={`btn btn--${variant} ${size ? "btn--" + size : ""} ${block ? "btn--block" : ""} ${className}`}
     onClick={onClick}
-    disabled={disabled}
+    disabled={disabled || loading}
+    aria-busy={loading || undefined}
     aria-label={ariaLabel}
     aria-pressed={ariaPressed}
     title={title}
     style={style}
   >
-    {icon && <Icon name={icon} size={16} />}
+    {loading ? <span className="spin" /> : (icon && <Icon name={icon} size={16} />)}
     {children}
-    {iconRight && <Icon name={iconRight} size={16} />}
+    {iconRight && !loading && <Icon name={iconRight} size={16} />}
   </button>
 );
 
@@ -183,15 +187,20 @@ export const Skeleton = ({ w = "100%", h = 14, r = 6, style }) => (
 );
 
 // ----- Toggle -----
-export const Toggle = ({ on, onChange, locked, label }) => (
+// `busy` shows an in-knob spinner and blocks interaction while the change is
+// being persisted server-side — toggles never report a state the backend
+// hasn't confirmed (no optimistic flips).
+export const Toggle = ({ on, onChange, locked, busy, label }) => (
   <button
-    onClick={() => !locked && onChange && onChange(!on)}
+    onClick={() => !locked && !busy && onChange && onChange(!on)}
+    disabled={busy || undefined}
+    aria-busy={busy || undefined}
     style={{
       width: 36, height: 21, padding: 0, border: "none",
       borderRadius: 999,
       background: locked ? "var(--wash)" : on ? "var(--brand)" : "var(--line)",
       position: "relative", flexShrink: 0,
-      opacity: locked ? 0.5 : 1, cursor: locked ? "not-allowed" : "pointer",
+      opacity: locked ? 0.5 : 1, cursor: (locked || busy) ? "not-allowed" : "pointer",
       transition: "background .15s ease",
     }}
     aria-label={label}
@@ -201,7 +210,10 @@ export const Toggle = ({ on, onChange, locked, label }) => (
       width: 17, height: 17, borderRadius: "50%",
       background: "white", boxShadow: "0 1px 2px rgba(0,0,0,.2)",
       transition: "left .15s ease",
-    }} />
+      display: "grid", placeItems: "center", color: on ? "var(--brand)" : "var(--muted)",
+    }}>
+      {busy && <span className="spin" style={{ width: 11, height: 11, border: "2px solid currentColor", borderRightColor: "transparent", borderRadius: "50%" }} />}
+    </span>
   </button>
 );
 

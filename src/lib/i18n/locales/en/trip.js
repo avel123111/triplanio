@@ -59,6 +59,7 @@ export default {
   'trip.delete': 'Delete',
   'trip.copy_confirm_title': 'Duplicate this trip?',
   'trip.copy_confirm_desc': 'A full copy will be created with all cities, hotels, activities and transfers. Trip members and Pro status are not copied.',
+  'trip.copying': 'Copying the trip…',
   'trip.copy_done': 'Trip copied',
   'trip.copy_error': 'Could not copy the trip',
   'trip.link_error': 'Could not get the link',
