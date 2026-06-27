@@ -3376,6 +3376,9 @@ CREATE POLICY "fx_rates_select" ON "public"."fx_rates" FOR SELECT USING (("auth"
 ALTER TABLE "public"."geocode_cache" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."geocode_queue" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."geocode_rate_bucket" ENABLE ROW LEVEL SECURITY;
 
 
@@ -3384,6 +3387,9 @@ ALTER TABLE "public"."hotel_stays" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "hotel_stays_all" ON "public"."hotel_stays" USING ("public"."is_trip_participant"("trip_id")) WITH CHECK ("public"."is_trip_participant"("trip_id"));
 
+
+
+ALTER TABLE "public"."n8n_chat_histories" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."notifications" ENABLE ROW LEVEL SECURITY;
