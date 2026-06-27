@@ -31,6 +31,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useStay22Accommodations } from '@/lib/stay22';
+import { usePartnerLogger } from '@/lib/partnerTracking';
 import TripSidebar from '@/components/trips/TripSidebar';
 import TripAccessError from '@/components/trips/TripAccessError';
 import ShareDialog from '@/components/trips/ShareDialog';
@@ -320,6 +321,15 @@ export default function TripStructureEdit() {
         priceLabel: h.price != null ? fmtMoney(h.price, h.currency || cur, { compact: true }) : null,
       }));
   }, [isHotelPick, stayQuery.data, stayQuery.isPlaceholderData, stayCurrency, fmtMoney]);
+  // Open a hotel's supplier link (used by the badge's "second click on the
+  // selected pin" — parity with the list card). Logged like a card open.
+  const logHotelClick = usePartnerLogger(tripId);
+  const openHotelLink = (id) => {
+    const h = (stayQuery.data?.hotels || []).find((x) => String(x.id) === String(id));
+    if (!h?.link) return;
+    logHotelClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22' });
+    window.open(h.link, '_blank', 'noopener,noreferrer');
+  };
   // Bundle handed to the presentational hotel list (through ForkPartnerModal).
   const stay22Bundle = isHotelPick ? {
     data: stayQuery.data, isLoading: stayQuery.isLoading, isFetching: stayQuery.isFetching,
@@ -987,7 +997,7 @@ export default function TripStructureEdit() {
               hotelPins={hotelPins}
               selectedHotelId={staySelectedId}
               hoveredHotelId={stayHoveredId}
-              onHotelClick={setStaySelectedId}
+              onHotelClick={(id) => { if (staySelectedId != null && String(staySelectedId) === String(id)) openHotelLink(id); else setStaySelectedId(id); }}
               onHotelHover={setStayHoveredId}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
