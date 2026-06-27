@@ -68,4 +68,5 @@ export default {
   'common.link': 'Link',
   'common.done': 'Done',
   'common.deleted_user': 'Deleted account',
+  'common.menu': 'Menu',
 };
