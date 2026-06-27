@@ -723,16 +723,18 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
   border-radius: 14px;
   padding: 13px;
 }
-/* .ph = icon + title row; .pi = gold icon tile; .pt = title text */
+/* .ph = icon + title row; .pi = gold icon tile; .pt = title text.
+   .pi is de-scoped from .pro-up so the same gold Pro-tile is reusable outside
+   the plate (e.g. ProUpsellModal head) — single source for the tile. */
 .pro-up .ph { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
-.pro-up .pi {
+.pi {
   width: 34px; height: 34px; border-radius: 11px;
   background: var(--pro-gradient);
   display: grid; place-items: center;
   flex: none; box-shadow: 0 4px 12px -4px var(--pro);
   color: #fff; /* ensure currentColor = white for SVG stroke */
 }
-.pro-up .pi svg { width: 18px; height: 18px; }
+.pi svg { width: 18px; height: 18px; }
 .pro-up .pt {
   font-family: var(--font-display); font-weight: 600;
   font-size: var(--fs-strong); /* 15px, matches design */
