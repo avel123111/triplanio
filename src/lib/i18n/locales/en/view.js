@@ -39,10 +39,6 @@ export default {
   'view.booking_choice_default_title': 'Choose a method',
   'view.booking_choice_default_manual': 'Add manually',
   // ForkPartnerModal
-  'fork.eyebrow_one': 'Or browse with a partner',
-  'fork.eyebrow_many': 'Or browse: {count} options',
-  'fork.variants_few': 'options',
-  'fork.variants_many': 'options',
   'fork.open_form': 'Open form',
   'fork.info': 'The partner opens in a new tab. When you book, come back. Triplanio will pick up the reservation details automatically.',
   'fork.manual_sub_hotel': 'Already booked? Upload the confirmation and AI will fill in the details.',

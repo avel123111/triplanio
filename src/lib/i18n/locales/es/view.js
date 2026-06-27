@@ -39,10 +39,6 @@ export default {
   'view.booking_choice_default_title': 'Elige un método',
   'view.booking_choice_default_manual': 'Añadir manualmente',
   // ForkPartnerModal
-  'fork.eyebrow_one': 'O explora con un socio',
-  'fork.eyebrow_many': 'O explora: {count} opciones',
-  'fork.variants_few': 'opciones',
-  'fork.variants_many': 'opciones',
   'fork.open_form': 'Abrir formulario',
   'fork.info': 'El socio se abrirá en una pestaña nueva. Cuando reserves, vuelve. Triplanio recogerá los datos automáticamente.',
   'fork.manual_sub_hotel': 'Ya reservé, tengo los datos. Sube el comprobante y la IA extraerá los detalles.',

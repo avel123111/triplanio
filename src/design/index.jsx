@@ -33,9 +33,10 @@ export { default as AiField } from '@/components/ui/AiField';
 
 // ----- Avatar ----- (colours: src/lib/avatarRamp.js — single source)
 export const Avatar = ({ name = "?", size, role, kind, photo, deleted, className = "", style: styleProp }) => {
+  const t = useT();
   const initials = name.split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
   if (deleted) {
-    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label="Deleted account"><Icon name="user" size={size === "lg" ? 18 : size === "xl" ? 26 : size === "sm" ? 12 : 15} /></div>;
+    return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--deleted ${className}`} style={styleProp} aria-label={t('common.deleted_user')}><Icon name="user" size={size === "lg" ? 18 : size === "xl" ? 26 : size === "sm" ? 12 : 15} /></div>;
   }
   if (kind === "ai") {
     return <div className={`avatar ${size ? "avatar--" + size : ""} avatar--ai ${className}`} style={styleProp}>AI</div>;
@@ -221,37 +222,6 @@ export const Toggle = ({ on, onChange, locked, busy, label }) => (
 // Canonical money formatter (locale-aware, decimals only when present).
 export const fmt = (n, cur = "EUR") => fmtMoneyActive(n, cur);
 
-// ----- Mock data: the trip -----
-export const TRIP = {
-  id: "iberia-summer",
-  title: "Иберия летом",
-  cover_gradient: "gradient_16",   // Spectrum — used by showcase cards
-  cover_image_url: null,
-  start: "12 июля",
-  end: "23 июля",
-  year: 2026,
-  duration: "12 дней",
-  cities: ["Лиссабон", "Порту", "Барселона"],
-  travelers: 4,
-  pro: true,
-  role: "owner",
-  budget: { spent: 4820, currency: "EUR", planned: 6800 },
-  members: [
-    { name: "Анна Лебедева", role: "owner", status: "active" },
-    { name: "Игорь Мейзинский", role: "admin", status: "active" },
-    { name: "Лена Краснова", role: "viewer", status: "active" },
-    { name: "Миша Петров", role: "admin", status: "pending" },
-  ],
-};
-
-export const TRIPS = [
-  { ...TRIP, days: "12 → 23 июл · 2026", scope: "3 города · Португалия, Испания", role: "owner", pro: true, status: "future" },
-  { id: "japan", title: "Япония по сакуре", days: "5 → 18 апр · 2026", scope: "5 городов · Япония", role: "admin", pro: true, status: "future", cover_gradient: "gradient_13", cover_image_url: null },
-  { id: "balkans", title: "Балканский круг", days: "Без дат", scope: "7 городов · 4 страны", role: "owner", pro: false, status: "draft", cover_gradient: "gradient_9", cover_image_url: null },
-  { id: "tbilisi", title: "Тбилиси на выходные", days: "21 → 24 фев · 2026", scope: "1 город · Грузия", role: "viewer", pro: false, status: "future", cover_gradient: "gradient_1", cover_image_url: null },
-  { id: "morocco", title: "Марокко с детьми", days: "Сент 2025", scope: "4 города · Марокко", role: "owner", pro: true, status: "past", cover_gradient: "gradient_10", cover_image_url: null },
-];
-
 // ----- DismissibleSeverity -----
 export const DismissibleSeverity = ({ level = "info", title, children, onDismiss, action, icon }) => {
   const t = useT();
@@ -299,33 +269,6 @@ export const RoleBadge = ({ role, size = "md", status }) => {
       <Icon name={m.icon} size={size === "sm" ? 10 : 11} />
       {t(`members.badge_${key}`)}{status === "pending" && ` · ${t('members.pending')}`}
     </span>
-  );
-};
-
-// ----- City photo helper - uses gradient placeholder by city -----
-const CITY_PHOTO = {
-  "Лиссабон":  { hue1: 195, hue2: 30,  emoji: "🌊", label: "Лиссабон · Альфама" },
-  "Порту":     { hue1: 30,  hue2: 200, emoji: "🍷", label: "Порту · Рибейра" },
-  "Барселона": { hue1: 25,  hue2: 200, emoji: "⛪", label: "Барселона · Эшампле" },
-  "Sintra":    { hue1: 280, hue2: 140, emoji: "🏰", label: "Sintra" },
-  "Москва":    { hue1: 20,  hue2: 220, emoji: "🏛", label: "Москва" },
-};
-
-export const CityPhoto = ({ city, h = 80, w = "100%", radius = 10 }) => {
-  const p = CITY_PHOTO[city] || { hue1: 210, hue2: 30, emoji: "📍", label: city };
-  const isDark = document.documentElement.dataset.theme === "dark";
-  return (
-    <div style={{
-      width: w, height: h, borderRadius: radius,
-      background: `linear-gradient(135deg, hsl(${p.hue1}, 55%, ${isDark ? 32 : 65}%) 0%, hsl(${(p.hue1 + p.hue2) / 2}, 50%, ${isDark ? 24 : 55}%) 60%, hsl(${p.hue2}, 60%, ${isDark ? 38 : 70}%) 100%)`,
-      position: "relative", overflow: "hidden", flexShrink: 0,
-    }}>
-      <svg viewBox="0 0 200 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.35 }}>
-        <path d="M0 60 Q 50 40 100 55 T 200 50 L 200 100 L 0 100 Z" fill="rgba(255,255,255,.5)" />
-        <path d="M0 75 Q 60 55 120 70 T 200 65 L 200 100 L 0 100 Z" fill="rgba(255,255,255,.3)" />
-      </svg>
-      <div style={{ position: "absolute", top: 6, left: 8, fontSize: 'var(--fs-h3)' }}>{p.emoji}</div>
-    </div>
   );
 };
 
@@ -524,66 +467,16 @@ export function weekdayLong(iso, loc) {
   return _WEEKDAYS_LONG[d.getDay()];
 }
 
-// ----- Mock event stream -----
-export const STREAM = [
-  { type: "hotel-deadline", id: "d1", date: "2026-07-09", time: "23:59", city: "Лиссабон", title: "Дедлайн бесплатной отмены · Memmo Alfama",
-    hotel: "Memmo Alfama", price: 880, cur: "EUR", note: "После - невозвратно. Решить сейчас, ехать ли." },
-  { type: "flight", id: "f0", date: "2026-07-12", time: "08:35", duration: "4ч 25м", title: "TAP TP 1245",
-    from: "SVO", to: "LIS", kind: "plane", carrier: "TAP Portugal", num: "TP 1245", price: 544, cur: "EUR",
-    platformUrl: "https://tap.com", depart_loc: "Шереметьево T-D", arrive_loc: "Лиссабон-Портела" },
-  { type: "hotel-checkin", id: "h1-in", date: "2026-07-12", time: "15:00", city: "Лиссабон", title: "Заезд · Memmo Alfama",
-    hotelId: "h1", hotel: "Memmo Alfama", address: "Travessa das Merceeiras 27", price: 880, cur: "EUR", nights: 4,
-    platformUrl: "https://booking.com/h/memmo", num: "BKN-72931" },
-  { type: "activity", id: "a1", date: "2026-07-13", time: "10:00", duration: "1ч", city: "Лиссабон",
-    title: "Завтрак · Pastéis de Belém", price: 24, cur: "EUR", category: "food", address: "R. de Belém 84-92" },
-  { type: "activity", id: "a2", date: "2026-07-13", time: "14:00", duration: "2ч 30м", city: "Лиссабон",
-    title: "Castelo de São Jorge", price: 30, cur: "EUR", category: "sight", address: "R. de Santa Cruz" },
-  { type: "activity", id: "a3", date: "2026-07-14", time: "10:00", duration: "8ч", city: "Sintra",
-    title: "Винный тур в Sintra", price: 145, cur: "EUR", category: "experience", address: "Sintra, Portugal · трансфер из отеля" },
-  { type: "hotel-checkout", id: "h1-out", date: "2026-07-16", time: "11:00", city: "Лиссабон", title: "Выезд · Memmo Alfama", hotelId: "h1" },
-  { type: "activity", id: "a-train-lunch", date: "2026-07-16", time: "13:00", duration: "1ч", city: "в пути",
-    title: "Обед перед поездом · Time Out Market", price: 28, cur: "EUR", category: "food", address: "Av. 24 de Julho, Lisboa" },
-  { type: "transfer", id: "t1", date: "2026-07-16", time: "14:25", duration: "3ч 15м", title: "CP IC 521",
-    from: "Lisboa Oriente", to: "Porto Campanhã", from_city: "Лиссабон", to_city: "Порту",
-    kind: "train", carrier: "Comboios CP", num: "IC 521", price: 36, cur: "EUR", platformUrl: "https://cp.pt" },
-  { type: "hotel-checkin", id: "h2-in", date: "2026-07-16", time: "18:30", city: "Порту",
-    title: "Заезд · Torel Avantgarde", hotelId: "h2", hotel: "Torel Avantgarde", address: "Rua da Restauração 336",
-    price: 720, cur: "EUR", nights: 3, platformUrl: "https://booking.com/h/torel", num: "BKN-72932" },
-  { type: "activity", id: "a4", date: "2026-07-17", time: "16:00", duration: "2ч", city: "Порту",
-    title: "Дегустация в погребе Sandeman", price: 65, cur: "EUR", category: "experience",
-    address: "Largo Miguel Bombarda, Vila Nova de Gaia" },
-  { type: "transfer-missing", id: "tm1", date: "2026-07-19", time: "?", from: "Порту", to: "Барселона",
-    title: "Нет переезда · добавить" },
-  { type: "hotel-checkout", id: "h2-out", date: "2026-07-19", time: "11:00", city: "Порту", title: "Выезд · Torel Avantgarde", hotelId: "h2" },
-  { type: "hotel-checkin", id: "h3-in", date: "2026-07-19", time: "16:00", city: "Барселона",
-    title: "Заезд · Cotton House", hotelId: "h3", hotel: "Cotton House", address: "Gran Via 670",
-    price: 1340, cur: "EUR", nights: 4, num: "-" },
-  { type: "car-pickup", id: "cp1", date: "2026-07-19", time: "17:30", city: "Барселона", title: "Получение авто · Sixt",
-    address: "Барселона аэропорт T1", platformUrl: "https://sixt.com" },
-  { type: "activity", id: "a5", date: "2026-07-20", time: "10:25", duration: "1ч 35м", city: "Барселона",
-    title: "Sagrada Família", price: 33, cur: "EUR", category: "sight", address: "C/ Mallorca 401" },
-  { type: "activity", id: "a6", date: "2026-07-21", city: "Барселона",
-    title: "Парк Гуэль", price: 18, cur: "EUR", category: "sight",
-    warning: "Не указано время - желательно поставить", address: "C/ Olot, 5" },
-  { type: "hotel-checkout", id: "h3-out", date: "2026-07-23", time: "12:00", city: "Барселона", title: "Выезд · Cotton House", hotelId: "h3" },
-  { type: "car-return", id: "cr1", date: "2026-07-23", time: "13:00", city: "Барселона", title: "Возврат авто · Sixt",
-    address: "Барселона аэропорт T1", platformUrl: "https://sixt.com" },
-  { type: "flight", id: "f1", date: "2026-07-23", time: "15:40", duration: "5ч 30м", title: "Lufthansa LH 1731",
-    from: "BCN", to: "SVO", from_city: "Барселона", to_city: "Москва",
-    kind: "plane", carrier: "Lufthansa", num: "LH 1731", price: 412, cur: "EUR",
-    platformUrl: "https://lufthansa.com" }
-];
-
 // ----- Transfer card helpers -----
 const TRANSFER_KIND_META = {
-  plane: { icon: "plane", label: "Перелёт", labelKey: "tse.tk_plane" },
-  train: { icon: "train", label: "Поезд", labelKey: "transfer.train" },
-  bus:   { icon: "bus",   label: "Автобус", labelKey: "transfer.bus" },
-  ferry: { icon: "ferry", label: "Паром", labelKey: "transfer.ferry" },
-  car:   { icon: "car",   label: "На авто", labelKey: "event.tk_car" },
-  walk:  { icon: "walk",  label: "Пешком", labelKey: "event.tk_walk" },
-  foot:  { icon: "walk",  label: "Пешком", labelKey: "event.tk_walk" },
-  bike:  { icon: "walk",  label: "Велосипед", labelKey: "transfer.bike" }
+  plane: { icon: "plane", labelKey: "tse.tk_plane" },
+  train: { icon: "train", labelKey: "transfer.train" },
+  bus:   { icon: "bus",   labelKey: "transfer.bus" },
+  ferry: { icon: "ferry", labelKey: "transfer.ferry" },
+  car:   { icon: "car",   labelKey: "event.tk_car" },
+  walk:  { icon: "walk",  labelKey: "event.tk_walk" },
+  foot:  { icon: "walk",  labelKey: "event.tk_walk" },
+  bike:  { icon: "walk",  labelKey: "transfer.bike" }
 };
 
 function _transferMeta(e) {
@@ -602,129 +495,25 @@ function _addDuration(time, dur) {
   return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`;
 }
 
-function TransferCardHub({ e, onClick }) {
-  const meta = _transferMeta(e);
-  const arriveTime = e.arrive_time || _addDuration(e.time, e.duration) || "-";
-  return (
-    <button onClick={onClick} className="dz-lift dz-lift--transfer" style={{
-      width: "100%", display: "grid", gridTemplateColumns: "auto 1fr auto 1fr auto", gap: 14,
-      alignItems: "center", padding: "14px 16px", background: "var(--surface)",
-      borderRadius: 12, cursor: "pointer", textAlign: "left"
-    }}>
-      <div style={{ width: 36, height: 36, borderRadius: 9, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
-        <Icon name={meta.icon} size={17} />
-      </div>
-      <div>
-        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-h3)', fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{e.time}</div>
-        <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginTop: 4 }}>{e.from}</div>
-        {e.depart_loc && <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{e.depart_loc}</div>}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 80 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
-          <div style={{ height: 1, flex: 1, borderTop: "1.5px dashed var(--ev-transfer)" }} />
-          <span className="muted num" style={{ fontSize: 'var(--fs-micro)', whiteSpace: "nowrap" }}>{e.duration}</span>
-          <div style={{ height: 1, flex: 1, borderTop: "1.5px dashed var(--ev-transfer)" }} />
-        </div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)', textAlign: "center" }}>
-          {e.carrier}{e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}
-        </div>
-      </div>
-      <div style={{ textAlign: "right" }}>
-        <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-h3)', fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{arriveTime}</div>
-        <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginTop: 4 }}>{e.to}</div>
-        {e.arrive_loc && <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{e.arrive_loc}</div>}
-      </div>
-      <div style={{ textAlign: "right", borderLeft: "1px solid var(--line-2)", paddingLeft: 14, minWidth: 80 }}>
-        {e.price && <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fmt(e.price, e.cur)}</div>}
-        {e.platformUrl && <div style={{ marginTop: 4 }}><PartnerPill url={e.platformUrl} /></div>}
-      </div>
-    </button>
-  );
-}
-
-function TransferCardStrip({ e, onClick }) {
-  const meta = _transferMeta(e);
-  return (
-    <button onClick={onClick} className="dz-lift dz-lift--transfer" style={{
-      width: "100%", display: "flex", alignItems: "center", gap: 14,
-      padding: "12px 14px", background: "var(--surface)",
-      borderRadius: 12, cursor: "pointer", textAlign: "left"
-    }}>
-      <div className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-h4)', fontWeight: 700, letterSpacing: "-0.01em", minWidth: 52, color: "var(--ink)" }}>{e.time || "-"}</div>
-      <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
-        <Icon name={meta.icon} size={15} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>{meta.label}</span>
-          <span className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
-            {e.from_city || e.from} <Icon name="arrowR" size={10} style={{ verticalAlign: -1, color: "var(--muted-2)" }} /> {e.to_city || e.to}
-          </span>
-        </div>
-        <div className="muted" style={{ fontSize: 'var(--fs-meta)', display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {e.duration && <span className="num">{e.duration}</span>}
-          {e.carrier && <span>· {e.carrier}{e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}</span>}
-          {e.platformUrl && <PartnerPill url={e.platformUrl} />}
-        </div>
-      </div>
-      {e.price && <span className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fmt(e.price, e.cur)}</span>}
-    </button>
-  );
-}
-
-function TransferCardStacked({ e, onClick }) {
-  const meta = _transferMeta(e);
-  const arriveTime = e.arrive_time || _addDuration(e.time, e.duration) || "-";
-  return (
-    <button onClick={onClick} className="dz-lift dz-lift--transfer" style={{
-      width: "100%", display: "flex", alignItems: "center", gap: 14,
-      padding: "14px 16px", background: "var(--surface)",
-      borderRadius: 12, cursor: "pointer", textAlign: "left"
-    }}>
-      <div style={{ width: 44, height: 44, borderRadius: 11, background: "var(--ev-transfer-soft)", color: "var(--ev-transfer)", display: "grid", placeItems: "center", flexShrink: 0 }}>
-        <Icon name={meta.icon} size={20} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="eyebrow" style={{ marginBottom: 4, color: "var(--ev-transfer)" }}>
-          {meta.label} · <span className="num">{e.duration}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-h3)', fontWeight: 700, letterSpacing: "-0.02em" }}>{e.time}</span>
-          <Icon name="arrowR" size={12} style={{ color: "var(--muted-2)" }} />
-          <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 'var(--fs-h3)', fontWeight: 700, letterSpacing: "-0.02em" }}>{arriveTime}</span>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600 }}>· {e.to_city || e.to}</span>
-        </div>
-        <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <span>из {e.from_city || e.from}</span>
-          {e.carrier && <span>· {e.carrier}{e.num && e.num !== "-" ? <> · <span className="num">{e.num}</span></> : null}</span>}
-          {e.platformUrl && <PartnerPill url={e.platformUrl} />}
-        </div>
-      </div>
-      {e.price && <div style={{ textAlign: "right", flexShrink: 0 }}><div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fmt(e.price, e.cur)}</div></div>}
-    </button>
-  );
-}
-
 // ── Per-event color / icon / label (shared by desktop + mobile renderers) ──────
 function _evMeta(e) {
   if (e.type === "flight" || e.type === "transfer") {
     const tm = _transferMeta(e);
-    return { c: "var(--ev-transfer)", soft: "var(--ev-transfer-soft)", icon: tm.icon, label: tm.label, labelKey: tm.labelKey };
+    return { c: "var(--ev-transfer)", soft: "var(--ev-transfer-soft)", icon: tm.icon, labelKey: tm.labelKey };
   }
   const MAP = {
-    "hotel-checkin":  { c: "var(--ev-hotel)",    soft: "var(--ev-hotel-soft)",    icon: "bed",     label: "Заезд", labelKey: "tse.checkin" },
-    "hotel-checkout": { c: "var(--ev-hotel)",    soft: "var(--ev-hotel-soft)",    icon: "bed",     label: "Выезд", labelKey: "tse.checkout" },
-    "hotel-deadline": { c: "var(--ev-deadline)", soft: "var(--ev-deadline-soft)", icon: "warning", label: "Дедлайн отмены", labelKey: "tl.deadline" },
-    "car-pickup":     { c: "var(--ev-car)",      soft: "var(--ev-car-soft)",      icon: "car",     label: "Получение авто", labelKey: "car.pickup_event" },
-    "car-return":     { c: "var(--ev-car)",      soft: "var(--ev-car-soft)",      icon: "car",     label: "Возврат авто", labelKey: "car.dropoff_event" },
+    "hotel-checkin":  { c: "var(--ev-hotel)",    soft: "var(--ev-hotel-soft)",    icon: "bed",     labelKey: "tse.checkin" },
+    "hotel-checkout": { c: "var(--ev-hotel)",    soft: "var(--ev-hotel-soft)",    icon: "bed",     labelKey: "tse.checkout" },
+    "hotel-deadline": { c: "var(--ev-deadline)", soft: "var(--ev-deadline-soft)", icon: "warning", labelKey: "tl.deadline" },
+    "car-pickup":     { c: "var(--ev-car)",      soft: "var(--ev-car-soft)",      icon: "car",     labelKey: "car.pickup_event" },
+    "car-return":     { c: "var(--ev-car)",      soft: "var(--ev-car-soft)",      icon: "car",     labelKey: "car.dropoff_event" },
     "activity": {
       c: "var(--ev-activity)", soft: "var(--ev-activity-soft)",
       icon: "ticket",
-      label: e.category === "food" ? "Еда" : e.category === "sight" ? "Достопримечательность" : "Активность",
       labelKey: e.category === "food" ? "tl.cat_food" : e.category === "sight" ? "tl.cat_sight" : "event.type_activity",
     },
   };
-  return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "ticket", label: "", labelKey: "" };
+  return MAP[e.type] || { c: "var(--ink)", soft: "var(--wash)", icon: "ticket", labelKey: "" };
 }
 
 // ── Mobile transfer row - stacked with a vertical departure→arrival scale ──────

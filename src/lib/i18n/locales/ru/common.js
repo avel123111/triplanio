@@ -68,4 +68,5 @@ export default {
   'common.link': 'Ссылка',
   'common.done': 'Готово',
   'common.deleted_user': 'Удалённый аккаунт',
+  'common.menu': 'Меню',
 };
