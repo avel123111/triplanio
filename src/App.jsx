@@ -26,13 +26,30 @@ import { ConfirmProvider } from '@/components/common/ConfirmProvider';
 import { MapProvider } from '@/lib/map/MapProvider';
 import MobileBottomNav, { MobileNavProvider } from '@/components/MobileBottomNav';
 import { CreateTripProvider } from '@/components/create/CreateTripProvider';
+import { lazy, Suspense } from 'react';
+
+// DEV-only in-context Tolgee lab (TRIP-127) — throwaway, never reached in prod.
+const LandingTolgeeLab = lazy(() => import('@/tolgee-lab/LandingTolgeeLab'));
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated } = useAuth();
   const location = useLocation();
 
-  // Public read-only trip page - no auth needed
   const path = location.pathname;
+
+  // DEV-only Tolgee in-context lab (TRIP-127). Bypasses all auth gating; gated on
+  // import.meta.env.DEV so it is never registered in a production build.
+  if (import.meta.env.DEV && path === '/tolgee-lab') {
+    return (
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/tolgee-lab" element={<LandingTolgeeLab />} />
+        </Routes>
+      </Suspense>
+    );
+  }
+
+  // Public read-only trip page - no auth needed
   if (path.startsWith('/public/trip/')) {
     return (
       <Routes>
