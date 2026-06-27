@@ -59,6 +59,7 @@ export default {
   'trip.delete': 'Eliminar',
   'trip.copy_confirm_title': '¿Duplicar este viaje?',
   'trip.copy_confirm_desc': 'Se creará una copia completa con todas las ciudades, hoteles, actividades y traslados. Los miembros del viaje y el estado Pro no se copian.',
+  'trip.copying': 'Copiando el viaje…',
   'trip.copy_done': 'Viaje copiado',
   'trip.copy_error': 'No se pudo copiar el viaje',
   'trip.link_error': 'No se pudo obtener el enlace',

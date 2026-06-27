@@ -23,6 +23,8 @@ export default function ConfirmDialog({
   cancelLabel,
   variant = 'default', // 'default' | 'destructive'
   singleButton = false,
+  asyncMode = false, // confirm runs an awaited action → show spinner, keep open
+  busy = false,
   onConfirm,
 }) {
   const t = useT();
@@ -46,12 +48,13 @@ export default function ConfirmDialog({
         )}
         <div className="dlg__foot" style={{ border: 'none', background: 'none', padding: '14px 0 4px' }}>
           {!singleButton && (
-            <Btn variant="ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenChange?.(false)}>
+            <Btn variant="ghost" disabled={busy} style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenChange?.(false)}>
               {finalCancelLabel}
             </Btn>
           )}
           <Btn
             variant={variant === 'destructive' ? 'danger-solid' : 'primary'}
+            loading={busy}
             style={{ flex: 1, justifyContent: 'center' }}
             onClick={() => onConfirm?.()}
           >
@@ -74,13 +77,26 @@ export default function ConfirmDialog({
           )}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          {!singleButton && <AlertDialogCancel>{finalCancelLabel}</AlertDialogCancel>}
-          <AlertDialogAction
-            onClick={() => onConfirm?.()}
-            variant={variant}
-          >
-            {finalConfirmLabel}
-          </AlertDialogAction>
+          {!singleButton && <AlertDialogCancel disabled={busy}>{finalCancelLabel}</AlertDialogCancel>}
+          {asyncMode ? (
+            // Plain Btn (not Radix Action) so the dialog does NOT auto-close on
+            // click — the provider keeps it open with a spinner until the
+            // awaited action resolves.
+            <Btn
+              variant={variant === 'destructive' ? 'danger-solid' : 'primary'}
+              loading={busy}
+              onClick={() => onConfirm?.()}
+            >
+              {finalConfirmLabel}
+            </Btn>
+          ) : (
+            <AlertDialogAction
+              onClick={() => onConfirm?.()}
+              variant={variant}
+            >
+              {finalConfirmLabel}
+            </AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

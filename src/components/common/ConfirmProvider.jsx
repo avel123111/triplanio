@@ -12,6 +12,16 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
  *   // info-only:
  *   await confirm({ title: t('…'), singleButton: true });
  *
+ *   // async action — the dialog keeps a spinner on the confirm button and stays
+ *   // open until the work resolves (Esc / overlay / cancel are locked meanwhile).
+ *   // Use this whenever the confirmed action calls a slow edge function so the
+ *   // user gets in-flight feedback instead of a silently-closing dialog:
+ *   await confirm({ title: t('…'), variant: 'destructive', onConfirm: async () => {
+ *     const { error } = await supabase.functions.invoke('deleteTrip', { body });
+ *     if (error) { toast(…); return; }  // surface your own error; then it closes
+ *     nav('/trips');
+ *   }});
+ *
  * Resolves true on the action button, false on cancel / ESC / outside click.
  */
 const ConfirmContext = createContext(null);
@@ -19,6 +29,7 @@ const ConfirmContext = createContext(null);
 export function ConfirmProvider({ children }) {
   const [opts, setOpts] = useState({});
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const resolverRef = useRef(null);
 
   const confirm = useCallback((options = {}) => {
@@ -27,6 +38,7 @@ export function ConfirmProvider({ children }) {
       if (resolverRef.current) resolverRef.current(false);
       resolverRef.current = resolve;
       setOpts(options);
+      setBusy(false);
       setOpen(true);
     });
   }, []);
@@ -39,14 +51,27 @@ export function ConfirmProvider({ children }) {
   }, []);
 
   const handleOpenChange = useCallback((next) => {
+    if (busy) return; // lock cancel / ESC / outside-click while an async action runs
     setOpen(next);
     if (!next) settle(false); // cancel / ESC / outside click
-  }, [settle]);
+  }, [settle, busy]);
 
-  const handleConfirm = useCallback(() => {
-    settle(true);
-    setOpen(false);
-  }, [settle]);
+  const handleConfirm = useCallback(async () => {
+    const action = opts.onConfirm;
+    if (typeof action === 'function') {
+      // Async mode: keep the dialog open with a spinner until the work settles.
+      // The action owns its own error reporting; we close regardless afterwards.
+      setBusy(true);
+      try { await action(); }
+      catch { /* caller surfaces its own error toast */ }
+      finally { setBusy(false); }
+      setOpen(false);
+      settle(true);
+    } else {
+      settle(true);
+      setOpen(false);
+    }
+  }, [opts, settle]);
 
   return (
     <ConfirmContext.Provider value={confirm}>
@@ -60,6 +85,8 @@ export function ConfirmProvider({ children }) {
         cancelLabel={opts.cancelLabel}
         variant={opts.variant || 'default'}
         singleButton={opts.singleButton}
+        asyncMode={typeof opts.onConfirm === 'function'}
+        busy={busy}
         onConfirm={handleConfirm}
       />
     </ConfirmContext.Provider>

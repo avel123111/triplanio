@@ -663,7 +663,7 @@ export default function ScreenAccount() {
                   <label className="acct-flabel" htmlFor="acct-mail">E-mail <Badge variant="quiet">{t('account.readonly')}</Badge></label>
                   <input id="acct-mail" className="input" value={user.email} readOnly />
                 </div>
-                <Btn variant="primary" icon={saving ? undefined : 'check'} disabled={saving} onClick={handleSave}>
+                <Btn variant="primary" icon="check" loading={saving} onClick={handleSave}>
                   {saving ? t('auth.saving') : t('common.save')}
                 </Btn>
               </div>
@@ -851,7 +851,7 @@ export default function ScreenAccount() {
                 <Severity level="warning" title={t('account.cancel_sub_first')}>
                   {t('account.delete_blocked_desc')}
                   <div style={{ marginTop: 8 }}>
-                    <Btn variant="ghost" size="sm" icon="external" disabled={portalLoading} onClick={handleManageSubscription}>
+                    <Btn variant="ghost" size="sm" icon="external" loading={portalLoading} onClick={handleManageSubscription}>
                       {portalLoading ? t('account.opening') : t('account.open_billing_portal')}
                     </Btn>
                   </div>
@@ -863,7 +863,7 @@ export default function ScreenAccount() {
                   {t('account.confirm_delete_desc_1')} <b>{t('account.delete_word')}</b> {t('account.confirm_delete_desc_2')}
                   <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <input className="input" placeholder={t('account.delete_word')} value={deleteInput} onChange={e => setDeleteInput(e.target.value)} style={{ flex: 1, minWidth: 150 }} />
-                    <Btn variant="danger-solid" size="sm" disabled={deleteInput !== t('account.delete_word') || deletingAccount} onClick={performDeleteAccount}>
+                    <Btn variant="danger-solid" size="sm" loading={deletingAccount} disabled={deleteInput !== t('account.delete_word')} onClick={performDeleteAccount}>
                       {deletingAccount ? t('account.deleting') : t('account.delete_forever')}
                     </Btn>
                     <Btn variant="ghost" size="sm" onClick={() => setDeleteState(null)}>{t('common.cancel')}</Btn>

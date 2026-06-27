@@ -164,6 +164,24 @@ export function CreateTripProvider({ children }) {
         onOpenChange={(o) => { setLimitOpen(o); if (!o) setPending(null); }}
         onProceed={proceed}
       />
+
+      {/* Copy runs after the limit gate closes (and for most users no gate shows
+          at all), so the `copying` flag had no visible surface — this blocking
+          progress overlay is the in-flight feedback until copyTrip navigates. */}
+      {copying && (
+        <div
+          className="dlg-backdrop"
+          style={{ zIndex: 400, display: 'grid', placeItems: 'center' }}
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div className="dlg dlg--sm" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: 28, textAlign: 'center' }}>
+            <div className="app-spinner" />
+            <div style={{ fontWeight: 600 }}>{t('trip.copying')}</div>
+          </div>
+        </div>
+      )}
     </CreateTripContext.Provider>
   );
 }
