@@ -39,3 +39,28 @@ export async function saveProviderCustomerId(
             { onConflict: 'provider,provider_customer_id', ignoreDuplicates: true });
   if (error) console.error('saveProviderCustomerId failed (non-fatal):', error.message);
 }
+
+/**
+ * Customer id юзера, создавая его у провайдера при ПЕРВОМ обращении (lazy).
+ * В чекаут не уходим без него: вызывающий получает гарантированный cus_….
+ * Идемпотентно по двум осям:
+ *  - наша БД: строка уже есть → в провайдера не ходим;
+ *  - провайдер: создание со стабильным ключом → параллельные вкладки дают ОДИН
+ *    cus_… (детерминизм тела чекаута для нативной идемпотентности).
+ * Бросает, если создание у провайдера не удалось (намеренно — без customer в
+ * Stripe не идём).
+ */
+export async function ensureProviderCustomerId(
+  admin: SupabaseClient,
+  createCustomer: (userId: string, email: string | null) => Promise<string>,
+  userId: string,
+  email: string | null,
+  provider = 'stripe',
+): Promise<string> {
+  const existing = await getProviderCustomerId(admin, userId, provider);
+  if (existing) return existing;
+  const created = await createCustomer(userId, email);
+  await saveProviderCustomerId(admin, userId, created, provider);
+  // Параллельная вкладка могла записать раньше — берём канон (самую раннюю строку).
+  return (await getProviderCustomerId(admin, userId, provider)) ?? created;
+}
