@@ -35,6 +35,7 @@ import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
 import { uniqueCityCount } from '@/lib/trip-cities';
+import { resolveMyRole } from '@/lib/members';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -864,14 +865,10 @@ export default function TripView() {
   const budgetCategories = contentData?.budgetCategories || [];
   const budgetExpenses   = contentData?.budgetExpenses   || [];
 
-  // Resolve current user's role in this trip.
-  // created_by is the SOLE source of ownership — the creator is never a
-  // trip_members row (create_trip writes none). So created_by must WIN over any
-  // trip_members.role: a stray member row for the creator (e.g. invited+accepted
-  // before the guard existed) must not demote the owner to viewer. Mirrors the
-  // canonical precedence in useTripAccess.js (TRIP-143).
-  const myMember = members.find(m => m.user_id === user?.id);
-  const myRole   = trip?.created_by === user?.id ? 'owner' : (myMember?.role || 'viewer');
+  // Resolve current user's role in this trip via the shared rule: created_by is
+  // the SOLE source of ownership and wins over any stray trip_members row
+  // (TRIP-143). Same helper as the structure editor so the two can't drift.
+  const myRole = resolveMyRole(members, trip, user);
 
   const stream = useMemo(
     () => buildEventStream(t, hotels, activities, transfers, visits, services),

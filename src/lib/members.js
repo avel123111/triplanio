@@ -22,6 +22,18 @@ export function withOwnerRow(members = [], ownerId = '', owner = {}) {
   return rest;
 }
 
+// resolveMyRole — the current user's effective role in a trip ('owner' | 'admin'
+// | 'viewer'). trips.created_by is the SOLE source of ownership and ALWAYS wins
+// over any trip_members row: a stray member row for the creator must never
+// demote them (this is what showed the owner as a viewer and blocked /edit with
+// "no access"). Mirrors the precedence in useTripAccess.js. Single source so the
+// trip view and the structure editor can't drift (TRIP-143).
+export function resolveMyRole(members = [], trip = null, user = null) {
+  if (trip?.created_by && user?.id && trip.created_by === user.id) return 'owner';
+  const mine = (members || []).find((m) => m.user_id === user?.id);
+  return mine?.role || 'viewer';
+}
+
 // countTripMembers — how many people are actually "on" a trip, for the
 // "N members" subtitle and the per-person budget split. It counts:
 //   • the trip OWNER (always, even when they have no trip_members row —
