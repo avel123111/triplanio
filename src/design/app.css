@@ -3727,32 +3727,13 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .s22mk.is-sel .s22mk__logo { box-shadow: 0 0 0 1.5px rgba(255,255,255,.7); }
 @media (prefers-reduced-motion: reduce) { .s22mk__core { transition: none; } }
 
-/* ─── Cluster bubble marker (hotel-pick overlay clustering, TRIP-141) ──────────
-   A rounded [count · от $X] bubble standing in for many badges at a far zoom.
-   Sibling of .s22mk: same toggle-from-outside + inner-core-scale pattern, but a
-   brand-filled disc so a cluster reads as "many", distinct from a single badge.
-   Clicking zooms in (handled in MapView). Hover lifts; no selected state (a
-   bubble is never the final selection — Способ A zooms it open first). */
-.s22cl { position: relative; display: inline-grid; place-items: center; line-height: 1; cursor: pointer; }
-.s22cl__core {
-  display: inline-flex; align-items: baseline; gap: 5px; min-width: 30px; height: 30px; padding: 0 11px;
-  justify-content: center;
-  background: var(--brand); border: 2px solid var(--surface); border-radius: 999px;
-  box-shadow: 0 4px 12px -2px rgba(20,24,40,.34), 0 1px 3px rgba(20,24,40,.2);
-  color: #fff; font-family: var(--font-display); font-variant-numeric: tabular-nums; white-space: nowrap;
-  transition: transform .16s var(--ease-spring), box-shadow .18s;
-}
-.s22cl--bare .s22cl__core { padding: 0; width: 30px; }
-.s22cl__count { font-weight: 800; font-size: 13px; }
-.s22cl__price { font-weight: 600; font-size: 10.5px; opacity: .85; }
-@media (hover: hover) and (pointer: fine) {
-  .s22cl:hover .s22cl__core { transform: translateY(-1px) scale(1.06); }
-}
-.s22cl.is-hover .s22cl__core {
-  transform: translateY(-1px) scale(1.1);
-  box-shadow: 0 9px 22px -4px rgba(20,24,40,.4), 0 2px 6px rgba(20,24,40,.24);
-}
-@media (prefers-reduced-motion: reduce) { .s22cl__core { transition: none; } }
+/* ─── Cluster bubble = the hotel badge shell, count-only (TRIP-141) ────────────
+   Reuses .s22mk / .s22mk__core (surface, border, shadow, hover lift, is-hover) so
+   a cluster is visibly a sibling of a single badge, just a compact disc with the
+   leaf count (the number in brand to read as "many"). No selected state — a bubble
+   is never the final selection (Способ A / spiderfy resolve to a real badge). */
+.s22mk--cluster .s22mk__core { min-width: 26px; height: 26px; padding: 0 7px; justify-content: center; }
+.s22mk__count { color: var(--brand); font-weight: 800; }
 
 /* ─── Partner result card (shared: Stay22 hotels + Viator activities) ─────────
    ONE shell for both fork partner lists so the identical elements stay identical
