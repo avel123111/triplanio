@@ -181,6 +181,7 @@ export default function Pro() {
                 <div
                   key={i}
                   className="plan-card-skel"
+                  style={{ '--card-delay': `${0.04 + i * 0.09}s` }}
                 >
                   <Skeleton w="55%" h={20} />
                   <div style={{ marginTop: 8 }}><Skeleton w="75%" h={11} /></div>
@@ -202,7 +203,6 @@ export default function Pro() {
                       p.popular ? 'plan-card--featured' : '',
                       selected ? 'plan-card--selected' : '',
                     ].filter(Boolean).join(' ')}
-                    style={{ '--card-delay': `${0.04 + i * 0.09}s` }}
                     role="radio"
                     aria-checked={selected}
                     aria-label={p.title}
