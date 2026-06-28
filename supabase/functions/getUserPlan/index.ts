@@ -11,6 +11,7 @@ import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { reconcileEntitlement } from '../_shared/reconcileEntitlement.ts';
+import { PRODUCT_TO_PLAN, type ProductCode } from '../_shared/payments/catalog.ts';
 
 // Reads the EXACT amount the caller is billed from their live Stripe subscription
 // (the price line item), not the public catalog price — so a user on a legacy /
@@ -80,30 +81,28 @@ Deno.serve(async (req) => {
     const hasProSubscription = isProRpc === true;
 
     if (hasProSubscription) {
-      // Find active TripSubscription record — surfaces plan type & cancellation state
+      // Активная подписка из реестра — отдаёт тип плана и состояние отмены.
       const { data: subs } = await supabaseAdmin
-        .from('trip_subscriptions')
-        .select('*')
-        .eq('user_id', user.id);
+        .from('subscription')
+        .select('product_code, provider_subscription_id, cancel_at_period_end, status, created_at')
+        .eq('user_id', user.id)
+        .in('product_code', ['account_pro_monthly', 'account_pro_yearly'])
+        .in('status', ['active', 'trialing', 'past_due'])
+        .order('created_at', { ascending: false });
 
-      const recurring = (subs ?? [])
-        .filter((s) => s.type === 'pro_monthly' || s.type === 'pro_yearly')
-        .sort((a, b) =>
-          new Date(b.start_date || 0).getTime() - new Date(a.start_date || 0).getTime()
-        );
-      const latest = recurring[0] || null;
+      const latest = (subs ?? [])[0] || null;
+      // product_code → plan_type ('pro_monthly'/'pro_yearly') для совместимости с фронтом.
+      const subscriptionType = latest ? PRODUCT_TO_PLAN[latest.product_code as ProductCode] : null;
 
-      const actualPrice = await readActualPrice(latest?.stripe_subscription_id || null);
+      const actualPrice = await readActualPrice(latest?.provider_subscription_id || null);
 
       return Response.json({
         plan: 'pro',
         subscriptionEnd: userData?.subscription_end_date ?? null,
-        subscriptionType: latest?.type || null,
-        // Scheduled cancellation (UI "won't renew" state). Status stays 'active'
-        // verbatim; the flag lives in cancel_at_period_end (set by the webhook).
+        subscriptionType,
+        // Scheduled cancellation (UI "won't renew"). Status stays verbatim; flag in cancel_at_period_end.
         cancelled: latest?.cancel_at_period_end === true,
-        stripeSubscriptionId: latest?.stripe_subscription_id || null,
-        // Exact billed amount from Stripe (minor units), e.g. { amount: 500, currency: 'EUR', interval: 'month' }.
+        stripeSubscriptionId: latest?.provider_subscription_id || null,
         actualPrice,
         email: user.email,
       }, { headers: corsHeaders });

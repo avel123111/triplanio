@@ -65,3 +65,13 @@ export async function providerProductIdForCode(
   const rows = await getActiveProviderProducts(provider, env);
   return rows.find((r) => r.product_code === code)?.provider_product_id ?? null;
 }
+
+/** id продукта провайдера → наш product_code для текущего env (или null). */
+export async function productCodeForProviderProductId(
+  provider: string,
+  env: ProviderEnv,
+  providerProductId: string,
+): Promise<ProductCode | null> {
+  const rows = await getActiveProviderProducts(provider, env);
+  return rows.find((r) => r.provider_product_id === providerProductId)?.product_code ?? null;
+}

@@ -50,21 +50,21 @@ Deno.serve(async (req) => {
       .from('users').select('stripe_customer_id').eq('id', user.id).single();
     customerId = (urow?.stripe_customer_id as string) || null;
 
-    // Fallback: resolve the customer through the most recent recurring subscription.
+    // Fallback: resolve the customer через последнюю recurring подписку реестра.
     if (!customerId) {
       const { data: subs } = await supabaseAdmin
-        .from('trip_subscriptions')
-        .select('stripe_subscription_id, start_date')
+        .from('subscription')
+        .select('provider_subscription_id, created_at')
         .eq('user_id', user.id)
-        .in('type', ['pro_monthly', 'pro_yearly'])
-        .not('stripe_subscription_id', 'is', null)
-        .order('start_date', { ascending: false })
+        .in('product_code', ['account_pro_monthly', 'account_pro_yearly'])
+        .not('provider_subscription_id', 'is', null)
+        .order('created_at', { ascending: false })
         .limit(5);
-      const latest = (subs ?? []).find((s) => s.stripe_subscription_id);
-      if (!latest?.stripe_subscription_id) {
+      const latest = (subs ?? []).find((s) => s.provider_subscription_id);
+      if (!latest?.provider_subscription_id) {
         return Response.json({ error: 'No active subscription found' }, { status: 404, headers: corsHeaders });
       }
-      const subscription = await stripe.subscriptions.retrieve(latest.stripe_subscription_id);
+      const subscription = await stripe.subscriptions.retrieve(latest.provider_subscription_id);
       customerId = (subscription.customer as string) || null;
     }
 
