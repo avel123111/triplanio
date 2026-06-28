@@ -47,6 +47,23 @@ export function expansionZoom(index, clusterId, maxZoom = CLUSTER_MAX_ZOOM) {
   return Math.min(index.getClusterExpansionZoom(clusterId), maxZoom);
 }
 
+// The lowest integer zoom at which `hotelId` stops being clustered (becomes its
+// own point), or maxZoom if its pins are coincident (caller spiderfies there).
+// Lets a list→map selection fly to the stay in ONE smooth zoom instead of stepping
+// through each expansion level. Cheap: a handful of getClusters over a tiny bbox
+// around the point (pool is capped at a few hundred). No animation/side effects.
+export function isolationZoom(index, hotelId, lngLat, { maxZoom = CLUSTER_MAX_ZOOM, minZoom = 0 } = {}) {
+  const [lng, lat] = lngLat;
+  const eps = 0.02; // ~2 km box — wide enough to catch the enclosing cluster's centroid
+  const bbox = [lng - eps, lat - eps, lng + eps, lat + eps];
+  const id = String(hotelId);
+  for (let z = Math.max(0, Math.floor(minZoom)); z <= maxZoom; z++) {
+    const solo = index.getClusters(bbox, z).some((c) => !c.properties.cluster && String(c.properties.hotelId) === id);
+    if (solo) return z;
+  }
+  return maxZoom;
+}
+
 // Fan a cluster's leaves into a ring around its centre so coincident pins become
 // individually clickable. Positions are computed in screen space (deterministic
 // angles, no randomness) and unprojected back to lng/lat, so they recompute stably
