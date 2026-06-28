@@ -23,6 +23,7 @@ import { captureEdgeError, reportPaymentAnomaly } from '../_shared/sentry.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv, PLAN_TO_PRODUCT, type ProductCode, type PlanType } from '../_shared/payments/catalog.ts';
+import { saveProviderCustomerId } from '../_shared/payments/customer.ts';
 import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from '../_shared/revokeLostProFeatures.ts';
 
 const ENTITLING = ['active', 'trialing', 'past_due'];
@@ -59,18 +60,10 @@ async function recomputeTrip(tripId: string | null | undefined) {
   }
 }
 
-// Сохраняем платёжную идентичность: provider_customer (канон) + users.stripe_customer_id
-// (кэш для reconcile-эвристики). Best-effort. Не перезатираем существующий id.
-async function saveCustomer(userId: string | null | undefined, customerId: unknown) {
-  if (!userId || typeof customerId !== 'string' || !customerId) return;
-  const { error: e1 } = await supabaseAdmin
-    .from('provider_customer')
-    .upsert({ user_id: userId, provider: 'stripe', provider_customer_id: customerId },
-            { onConflict: 'provider,provider_customer_id', ignoreDuplicates: true });
-  if (e1) console.error('saveCustomer provider_customer failed (non-fatal):', e1.message);
-  const { error: e2 } = await supabaseAdmin
-    .from('users').update({ stripe_customer_id: customerId }).eq('id', userId).is('stripe_customer_id', null);
-  if (e2) console.error('saveCustomer users cache failed (non-fatal):', e2.message);
+// Платёжная идентичность — provider_customer (канон; колонка users.stripe_customer_id
+// дропнута). Best-effort, идемпотентно.
+function saveCustomer(userId: string | null | undefined, customerId: unknown) {
+  return saveProviderCustomerId(supabaseAdmin, userId, customerId);
 }
 
 // invoice.subscription переехал под parent.subscription_details на новых версиях API.

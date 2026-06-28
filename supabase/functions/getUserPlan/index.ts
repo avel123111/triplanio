@@ -12,6 +12,7 @@ import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { reconcileEntitlement } from '../_shared/reconcileEntitlement.ts';
 import { PRODUCT_TO_PLAN, type ProductCode } from '../_shared/payments/catalog.ts';
+import { getProviderCustomerId } from '../_shared/payments/customer.ts';
 
 // Reads the EXACT amount the caller is billed from their live Stripe subscription
 // (the price line item), not the public catalog price — so a user on a legacy /
@@ -48,7 +49,7 @@ Deno.serve(async (req) => {
     // Read subscription fields from users table
     let { data: userData } = await supabaseAdmin
       .from('users')
-      .select('subscription_status, subscription_end_date, email, stripe_customer_id')
+      .select('subscription_status, subscription_end_date, email')
       .eq('id', user.id)
       .single();
 
@@ -62,13 +63,14 @@ Deno.serve(async (req) => {
     // id) or a healthy pro row (future end). Throttled to ≤1 Stripe call / 10 min.
     const endPast =
       !userData?.subscription_end_date || new Date(userData.subscription_end_date) <= now;
+    // stuck-FREE проверяем наличие provider_customer ТОЛЬКО когда не pro (иначе не нужно).
     const needsReconcile =
       (userData?.subscription_status === 'pro' && endPast) ||
-      (userData?.subscription_status !== 'pro' && !!userData?.stripe_customer_id);
+      (userData?.subscription_status !== 'pro' && (await getProviderCustomerId(supabaseAdmin, user.id)) !== null);
     if (needsReconcile && await reconcileEntitlement(supabaseAdmin, user.id)) {
       ({ data: userData } = await supabaseAdmin
         .from('users')
-        .select('subscription_status, subscription_end_date, email, stripe_customer_id')
+        .select('subscription_status, subscription_end_date, email')
         .eq('id', user.id)
         .single());
     }

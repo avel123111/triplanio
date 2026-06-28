@@ -17,6 +17,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { getPeriodEndUnix, unixToIso } from './getPeriodEnd.ts';
 import { planTypeForProduct, isTestStripeKey } from './stripeCatalog.ts';
 import { PLAN_TO_PRODUCT } from './payments/catalog.ts';
+import { getProviderCustomerId } from './payments/customer.ts';
 import { reportPaymentAnomaly } from './sentry.ts';
 import { revokeLostProFeaturesForUser } from './revokeLostProFeatures.ts';
 
@@ -28,12 +29,15 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
 
   // ---- Throttle ----
   const { data: u } = await admin
-    .from('users').select('entitlement_synced_at, stripe_customer_id').eq('id', userId).single();
+    .from('users').select('entitlement_synced_at').eq('id', userId).single();
   const last = u?.entitlement_synced_at ? new Date(u.entitlement_synced_at).getTime() : 0;
   if (Number.isFinite(last) && Date.now() - last < THROTTLE_MIN * 60 * 1000) return false;
 
   const key = Deno.env.get('STRIPE_SECRET_KEY');
   if (!key) return false;
+
+  // Платёжная идентичность — из provider_customer (колонка users.stripe_customer_id дропнута).
+  const customerId = await getProviderCustomerId(admin, userId);
 
   // Помечаем синк сразу — медленный/падающий Stripe всё равно троттлит следующее чтение.
   await admin.from('users').update({ entitlement_synced_at: new Date().toISOString() }).eq('id', userId);
@@ -62,12 +66,12 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
         console.error('reconcileEntitlement: retrieve failed', r.provider_subscription_id, (e as Error).message);
       }
     }
-  } else if (u?.stripe_customer_id) {
+  } else if (customerId) {
     // stuck-FREE: строк нет, но есть customer → потерянная активация. Находим живые
     // подписки и материализуем строку (bounded throttle выше).
     try {
       const isTestEnv = isTestStripeKey(key);
-      const subs = await stripe.subscriptions.list({ customer: u.stripe_customer_id as string, status: 'all', limit: 10 });
+      const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 });
       const recovered: string[] = [];
       for (const sub of subs.data) {
         const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;

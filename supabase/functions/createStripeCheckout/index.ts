@@ -24,6 +24,7 @@ import { captureEdgeError } from '../_shared/sentry.ts';
 import { VALID_PLANS, type PlanType } from '../_shared/stripeCatalog.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv, PLAN_TO_PRODUCT } from '../_shared/payments/catalog.ts';
+import { getProviderCustomerId } from '../_shared/payments/customer.ts';
 
 const ENTITLING = ['active', 'trialing', 'past_due'];
 
@@ -57,10 +58,8 @@ Deno.serve(async (req) => {
     const env = stripeEnv(stripeKey);
     const adapter = new StripeAdapter(stripeKey, env);
 
-    // Сохранённый Stripe customer (CK-6: не плодим Customer'ов).
-    const { data: urow } = await supabaseAdmin
-      .from('users').select('stripe_customer_id').eq('id', user.id).single();
-    const existingCustomerId = (urow?.stripe_customer_id as string) || null;
+    // Сохранённый Stripe customer (CK-6: не плодим Customer'ов) — из provider_customer.
+    const existingCustomerId = await getProviderCustomerId(supabaseAdmin, user.id);
 
     // ---------- Предчек активного права ----------
     if (planType === 'pro_trip') {
