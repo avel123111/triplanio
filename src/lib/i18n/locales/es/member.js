@@ -37,6 +37,7 @@ export default {
   'members.promote_subtitle': 'Convertir en participante en línea',
   'members.invalid_email': 'Email no válido',
   'members.error_generic': 'Error',
+  'members.err_invite_owner': 'Esta persona es la propietaria del viaje: ya tiene acceso completo.',
   'member.status_pending': 'Pendiente',
   'member.status_declined': 'Rechazó',
   'member.role_admin_desc': 'Admin: editarlo todo',
