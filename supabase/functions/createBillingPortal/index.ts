@@ -9,8 +9,10 @@
 
 import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
+import { stripeEnv } from '../_shared/payments/catalog.ts';
+import { getProviderCustomerId } from '../_shared/payments/customer.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -41,16 +43,12 @@ Deno.serve(async (req) => {
       console.error('STRIPE_SECRET_KEY missing');
       return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
     }
-    const stripe = new Stripe(stripeKey);
+    const adapter = new StripeAdapter(stripeKey, stripeEnv(stripeKey));
 
-    // Fast path (Ф3): use the stored customer id (populated lazily by the webhook).
-    // Avoids a Stripe round-trip through the subscription object.
-    let customerId: string | null = null;
-    const { data: urow } = await supabaseAdmin
-      .from('users').select('stripe_customer_id').eq('id', user.id).single();
-    customerId = (urow?.stripe_customer_id as string) || null;
+    // Fast path: customer id из provider_customer (канон). Избегает round-trip к Stripe.
+    let customerId = await getProviderCustomerId(supabaseAdmin, user.id);
 
-    // Fallback: resolve the customer через последнюю recurring подписку реестра.
+    // Fallback: резолвим customer через последнюю recurring подписку реестра.
     if (!customerId) {
       const { data: subs } = await supabaseAdmin
         .from('subscription')
@@ -64,7 +62,7 @@ Deno.serve(async (req) => {
       if (!latest?.provider_subscription_id) {
         return Response.json({ error: 'No active subscription found' }, { status: 404, headers: corsHeaders });
       }
-      const subscription = await stripe.subscriptions.retrieve(latest.provider_subscription_id);
+      const subscription = await adapter.fetchSubscription(latest.provider_subscription_id);
       customerId = (subscription.customer as string) || null;
     }
 
@@ -72,12 +70,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No Stripe customer linked to this subscription' }, { status: 404, headers: corsHeaders });
     }
 
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: returnUrl,
-    });
-
-    return Response.json({ url: portalSession.url }, { headers: corsHeaders });
+    const { url } = await adapter.createPortalSession(customerId, returnUrl);
+    return Response.json({ url }, { headers: corsHeaders });
 
   } catch (error) {
     await captureEdgeError(error, 'createBillingPortal');
