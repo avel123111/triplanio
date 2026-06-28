@@ -1,19 +1,22 @@
 /**
  * createStripeCheckout (Ф2b — платёжный фундамент)
  *
- * POST body: { tripId?, planType: 'pro_trip'|'pro_monthly'|'pro_yearly', returnPath? }
+ * POST body: { tripId?, planType: 'pro_trip'|'pro_monthly'|'pro_yearly' }
  *
- * Двойная оплата закрывается ЗДЕСЬ (корень TRIP-32):
+ * Двойная оплата закрывается ЗДЕСЬ (корень TRIP-32) НАТИВНОЙ идемпотентностью
+ * Stripe — без своей дедуп-машинерии:
  *  - Предчек активного права: уже есть active покупка трипа / энтайтлинг-подписка
  *    → не начинаем оплату (409 → биллинг-портал).
- *  - Схлопывание двух почти одновременных вкладок: ≤90с назад создавали сессию
- *    для того же логического ключа → отдаём ту же ссылку (дедуп в НАШЕЙ БД,
- *    outbound_idempotency). Stripe idempotency-ключ — РАНДОМНЫЙ (стабильный ломал
- *    нормальный ретрай Stripe-400 «same key, different params»).
- *  - self-heal протухшего customer id → ретрай по email.
+ *  - Ленивый ОБЯЗАТЕЛЬНЫЙ Customer: на первом чекауте get-or-create cus_… и
+ *    сохраняем в provider_customer ДО похода в Checkout; всегда шлём customer:id
+ *    (никогда email) — тело запроса перестаёт «прыгать».
+ *  - СТАБИЛЬНЫЙ Stripe idempotency-ключ (`checkout:<user>:<product>[:<trip>]:<cus>`)
+ *    + детерминированное тело (фикс. success/cancel URL без returnPath, customer:id) →
+ *    две вкладки (даже одновременно, даже новый юзер) → Stripe отдаёт ТУ ЖЕ сессию →
+ *    одно списание. Свой outbound_idempotency/90с/рандом-ключ — выпилены.
  *
- * Снято: list 10 сессий, окно 10 мин, CHECKOUT_PROCESSING, expire брошенных,
- * SUPPORTED_LOCALES/locale (шлём auto).
+ * landing-path детерминирован сервером из (planType, tripId): подписка → /settings,
+ * pro_trip → /trip/<id>. returnPath клиента больше НЕ принимаем (ломал детерминизм).
  *
  * Каталог/цена — из БД через StripeAdapter (provider_price + default_price).
  */
@@ -25,7 +28,7 @@ import { captureEdgeError } from '../_shared/sentry.ts';
 import { VALID_PLANS, type PlanType } from '../_shared/stripeCatalog.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv, PLAN_TO_PRODUCT } from '../_shared/payments/catalog.ts';
-import { getProviderCustomerId } from '../_shared/payments/customer.ts';
+import { ensureProviderCustomerId, saveProviderCustomerId } from '../_shared/payments/customer.ts';
 
 const ENTITLING = ['active', 'trialing', 'past_due'];
 
@@ -37,7 +40,7 @@ Deno.serve(async (req) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
-    const { tripId, planType, returnPath } = await req.json();
+    const { tripId, planType } = await req.json();
     if (!VALID_PLANS.includes(planType)) {
       return Response.json({ error: 'Invalid plan type' }, { status: 400, headers: corsHeaders });
     }
@@ -59,10 +62,7 @@ Deno.serve(async (req) => {
     const env = stripeEnv(stripeKey);
     const adapter = new StripeAdapter(stripeKey, env);
 
-    // Сохранённый Stripe customer (CK-6: не плодим Customer'ов) — из provider_customer.
-    const existingCustomerId = await getProviderCustomerId(supabaseAdmin, user.id);
-
-    // ---------- Предчек активного права ----------
+    // ---------- Предчек активного права (до создания Customer) ----------
     if (planType === 'pro_trip') {
       if (!tripId) return Response.json({ error: 'tripId required for pro_trip' }, { status: 400, headers: corsHeaders });
       const { data: trip } = await supabaseAdmin
@@ -94,74 +94,58 @@ Deno.serve(async (req) => {
     }
     const price = await adapter.resolvePriceForProduct(providerProductId);
 
+    // ---------- Ленивый ОБЯЗАТЕЛЬНЫЙ Customer ----------
+    // Нет cus_… → создаём (стабильный idem-ключ → одна вкладка-победитель) и
+    // сохраняем; в Checkout идём только с готовым customer:id. Провал → 500.
+    const customerId = await ensureProviderCustomerId(
+      supabaseAdmin,
+      (uid, email) => adapter.createCustomer(uid, email, `customer:${uid}`),
+      user.id,
+      user.email ?? null,
+    );
+
     const mode = planType === 'pro_trip' ? 'payment' : 'subscription';
-    const safeReturn = (returnPath && returnPath.startsWith('/')) ? returnPath : '/';
-    const sep = safeReturn.includes('?') ? '&' : '?';
+    // landing-path детерминирован сервером (returnPath клиента не принимаем).
+    const landingPath = planType === 'pro_trip' ? `/trip/${tripId}` : '/settings';
     const ctxParam = planType === 'pro_trip' ? `&kind=trip&pt=${tripId}` : '&kind=sub';
 
-    // Логический ключ НАШЕЙ идемпотентности (провайдер-агностично). Подписка —
-    // аккаунт-уровень (trip НЕ кладём); pro_trip — trip-scoped.
-    const idemKey = planType === 'pro_trip'
-      ? `checkout:${user.id}:${productCode}:${tripId}`
-      : `checkout:${user.id}:${productCode}`;
-    const COLLAPSE_MS = 90 * 1000; // окно схлопывания двух вкладок одной покупки
+    const buildParams = (custId: string): Stripe.Checkout.SessionCreateParams => ({
+      payment_method_types: ['card'],
+      line_items: [{ price: price.price_id, quantity: 1 }],
+      mode,
+      locale: 'auto',
+      success_url: `${publicAppUrl}${landingPath}?stripe_status=success&session_id={CHECKOUT_SESSION_ID}${ctxParam}`,
+      cancel_url: `${publicAppUrl}${landingPath}?stripe_status=cancel${ctxParam}`,
+      client_reference_id: user.id,
+      customer: custId,
+      metadata: { user_id: user.id, user_email: user.email!, trip_id: tripId || '', plan_type: planType },
+      ...(mode === 'subscription'
+        ? { subscription_data: { metadata: { user_id: user.id, plan_type: planType } } }
+        : {}),
+    });
 
-    const buildParams = (useCustomerId: boolean): Stripe.Checkout.SessionCreateParams => {
-      const useExisting = useCustomerId && !!existingCustomerId;
-      return {
-        payment_method_types: ['card'],
-        line_items: [{ price: price.price_id, quantity: 1 }],
-        mode,
-        locale: 'auto',
-        success_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=success&session_id={CHECKOUT_SESSION_ID}${ctxParam}`,
-        cancel_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=cancel${ctxParam}`,
-        client_reference_id: user.id,
-        ...(useExisting ? { customer: existingCustomerId! } : { customer_email: user.email! }),
-        // pro_trip = payment-mode, который по умолчанию НЕ создаёт Stripe Customer
-        // (session.customer=null → вебхук не сохранял provider_customer). Просим
-        // Stripe создавать Customer всегда (когда не передаём существующего) —
-        // унифицирует идентичность с подпиской.
-        ...(mode === 'payment' && !useExisting ? { customer_creation: 'always' as const } : {}),
-        metadata: { user_id: user.id, user_email: user.email!, trip_id: tripId || '', plan_type: planType, return_path: safeReturn },
-        ...(mode === 'subscription'
-          ? { subscription_data: { metadata: { user_id: user.id, plan_type: planType } } }
-          : {}),
-      };
-    };
-
-    // Схлопывание двух почти одновременных вкладок одной покупки: если ≤90с назад
-    // уже создали сессию для этого же логического ключа — отдаём ту же ссылку.
-    // Stripe idempotency-ключ при этом РАНДОМНЫЙ: стабильный ломался Stripe-400
-    // «same key, different params» при любом отличии тела (email→customer после
-    // первой покупки, другой returnPath/locale). Дедуп держим в НАШЕЙ БД.
-    const { data: prior } = await supabaseAdmin
-      .from('outbound_idempotency')
-      .select('response, updated_at')
-      .eq('idempotency_key', idemKey)
-      .maybeSingle();
-    const priorUrl = (prior?.response as { url?: string } | null)?.url;
-    if (priorUrl && prior?.updated_at && (Date.now() - new Date(prior.updated_at).getTime() < COLLAPSE_MS)) {
-      return Response.json({ url: priorUrl }, { headers: corsHeaders });
-    }
+    // СТАБИЛЬНЫЙ Stripe idempotency-ключ. customerId в ключе: при протухшем customer
+    // (см. ниже) ключ меняется вместе с телом — нет Stripe-400 «same key, diff params».
+    const idemKeyFor = (custId: string) => planType === 'pro_trip'
+      ? `checkout:${user.id}:${productCode}:${tripId}:${custId}`
+      : `checkout:${user.id}:${productCode}:${custId}`;
 
     let session: Stripe.Checkout.Session;
     try {
-      session = await adapter.createCheckout(buildParams(true), crypto.randomUUID());
+      session = await adapter.createCheckout(buildParams(customerId), idemKeyFor(customerId));
     } catch (e) {
-      // Протухший сохранённый customer id → ретрай по email.
       const err = e as { code?: string; message?: string };
-      if (existingCustomerId && (err.code === 'resource_missing' || /no such customer/i.test(err.message || ''))) {
-        console.error('createStripeCheckout: stale customer id, retrying by email');
-        session = await adapter.createCheckout(buildParams(false), crypto.randomUUID());
-      } else {
-        throw e;
-      }
+      const stale = err.code === 'resource_missing' || /no such customer/i.test(err.message || '');
+      if (!stale) throw e;
+      // Сохранённый customer протух (удалён в Stripe). Выкидываем строку и создаём
+      // НОВЫЙ с уникальным ключом (стабильный реплеил бы тот же удалённый), повторяем раз.
+      console.error('createStripeCheckout: stale customer, recreating');
+      await supabaseAdmin.from('provider_customer')
+        .delete().eq('user_id', user.id).eq('provider_customer_id', customerId);
+      const freshId = await adapter.createCustomer(user.id, user.email ?? null, `customer:${user.id}:${crypto.randomUUID()}`);
+      await saveProviderCustomerId(supabaseAdmin, user.id, freshId);
+      session = await adapter.createCheckout(buildParams(freshId), idemKeyFor(freshId));
     }
-
-    await supabaseAdmin.from('outbound_idempotency').upsert({
-      idempotency_key: idemKey, user_id: user.id, operation: 'checkout',
-      status: 'completed', response: { url: session.url }, updated_at: new Date().toISOString(),
-    }, { onConflict: 'idempotency_key' });
 
     return Response.json({ url: session.url }, { headers: corsHeaders });
 

@@ -17,7 +17,7 @@ export default function Pro() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { t, lang, fmtMoney } = useI18nFormat();
+  const { t, fmtMoney } = useI18nFormat();
   const { isDark, toggle: toggleTheme } = useTheme();
   const isPro = isProActive(user);
 
@@ -72,10 +72,10 @@ export default function Pro() {
       try { isIframe = window.self !== window.top; } catch { isIframe = true; }
       if (isIframe) { setErrorMsg(t('sub.iframe_alert')); setLoading(false); return; }
 
-      // pro_trip returns to the trip itself (not the profile) — the result modal is
-      // global and opens on any route; subscriptions return to settings.
-      const returnPath = (planType === 'pro_trip' && tripId) ? `/trip/${tripId}` : '/settings';
-      const response = await supabase.functions.invoke('createStripeCheckout', { body: { tripId, planType, returnPath, locale: lang } });
+      // landing-path (pro_trip → /trip/<id>, sub → /settings) деривируется НА СЕРВЕРЕ
+      // из (planType, tripId) — returnPath клиента не шлём (ломал детерминизм тела под
+      // нативную идемпотентность Stripe). Result-модалка глобальная, откроется на любом роуте.
+      const response = await supabase.functions.invoke('createStripeCheckout', { body: { tripId, planType } });
       if (response.error) throw response.error;
       if (response.data?.url) { window.location.href = response.data.url; return; }
       setLoading(false);

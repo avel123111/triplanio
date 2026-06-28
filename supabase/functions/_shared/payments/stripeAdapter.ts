@@ -77,12 +77,25 @@ export class StripeAdapter implements PaymentAdapter {
     return this.stripe.checkout.sessions.retrieve(id);
   }
 
-  /** Checkout-сессия со СТАБИЛЬНЫМ idempotencyKey (наш дедуп). */
+  /** Checkout-сессия со СТАБИЛЬНЫМ idempotencyKey (нативный дедуп Stripe). */
   createCheckout(
     params: Stripe.Checkout.SessionCreateParams,
     idempotencyKey: string,
   ): Promise<Stripe.Checkout.Session> {
     return this.stripe.checkout.sessions.create(params, { idempotencyKey });
+  }
+
+  /**
+   * Создать Customer. idempotencyKey СТАБИЛЬНЫЙ (`customer:<user>`) → две
+   * одновременные вкладки получают ОДИН cus_… (детерминизм тела чекаута, нужно
+   * для нативной идемпотентности). Тело неизменно (email+metadata).
+   */
+  async createCustomer(userId: string, email: string | null, idempotencyKey: string): Promise<string> {
+    const c = await this.stripe.customers.create(
+      { ...(email ? { email } : {}), metadata: { user_id: userId } },
+      { idempotencyKey },
+    );
+    return c.id;
   }
 
   async createPortalSession(customerId: string, returnUrl: string): Promise<{ url: string }> {
