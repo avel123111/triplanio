@@ -92,7 +92,7 @@ export default function MembersSummaryCard({
               m.user_full_name ||
               (m.user_id && user?.id && m.user_id === user.id ? user.full_name : '') ||
               '';
-            const name = displayName(m.invite_email, resolved);
+            const name = displayName(m.invite_email || profile?.email, resolved);
             const isOffline = m.status === 'offline';
             const isPending = m.status === 'pending' || m.status === 'invited';
 
