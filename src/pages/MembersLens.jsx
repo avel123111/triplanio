@@ -15,7 +15,7 @@ import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton, ActionMenu, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { edgeErrorMessage } from '@/lib/edgeError';
+import { edgeErrorMessage, parseEdgeError } from '@/lib/edgeError';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
@@ -104,7 +104,11 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       body: { trip_id: tripId, email: trimmed, role },
     });
     setSaving(false);
-    if (error || data?.error) { setErr(await edgeErrorMessage(error, data, t('members.error_generic'))); return; }
+    if (error || data?.error) {
+      const { code, message } = await parseEdgeError(error, data, t('members.error_generic'));
+      setErr(code === 'invite_owner' ? t('members.err_invite_owner') : (message || t('members.error_generic')));
+      return;
+    }
     // Promoting an offline placeholder → remove it now that a real invite exists.
     if (promoteMember?.id) {
       await supabase.functions.invoke('removeTripMember', { body: { member_id: promoteMember.id } });
@@ -349,8 +353,12 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   // user_full_name with the email - leave it empty so the profile resolver
   // (or the auth user's own name when they are the owner) wins the fallback.
   const ownerId = trip?.created_by || '';
-  const allMembers = [...members];
-  const hasOwner = allMembers.some(m => m.user_id === ownerId || m.role === 'owner');
+  // The creator is never a real trip_members row — ownership lives in
+  // trips.created_by. Drop any stray member row for the creator (e.g. an
+  // invited+accepted owner from before the guard) so they're never shown as a
+  // viewer/admin and the synthetic owner row below is the single owner (TRIP-143).
+  const allMembers = members.filter(m => !ownerId || m.user_id !== ownerId);
+  const hasOwner = allMembers.some(m => m.role === 'owner');
   if (!hasOwner && ownerId) {
     const isMeOwner = user?.id && ownerId === user.id;
     allMembers.unshift({

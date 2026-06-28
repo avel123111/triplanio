@@ -79,6 +79,7 @@ export default {
   'fork.f_apply': 'Apply',
   'fork.f_reset_all': 'Reset all',
   'fork.stay22_count': '{n} options',
+  'fork.stay22_count_plus': '{n}+ options',
   'fork.stay22_reviews': '· {n} reviews',
   'fork.stay22_for_nights': 'for {count} nights',
   'view.empty_day': 'Nothing planned for this day',

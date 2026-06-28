@@ -10,6 +10,8 @@ export default {
   'account.switch_yearly': 'Перейти на годовой · {price}/год',
   'account.opening': 'Открываем…',
   'account.billing_portal': 'Биллинг-портал',
+  'account.details_unavailable': 'Не удалось загрузить детали подписки',
+  'account.details_retry': 'Повторить',
   'account.after_cancel_access': 'После отмены доступ сохраняется до конца оплаченного периода',
   'account.pro_yearly_sub': 'Pro · годовая · экономия 33%',
   'account.active': 'Активна',

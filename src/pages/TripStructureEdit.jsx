@@ -30,7 +30,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
-import { useStay22Accommodations } from '@/lib/stay22';
+import { useStay22Pool } from '@/lib/stay22';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import TripSidebar from '@/components/trips/TripSidebar';
 import TripAccessError from '@/components/trips/TripAccessError';
@@ -302,13 +302,16 @@ export default function TripStructureEdit() {
   }, [hotelPickVisitId]);
 
   const stayCurrency = trip?.details?.main_currency || 'EUR';
-  const stayQuery = useStay22Accommodations({
-    visit: hotelPickVisit, currency: stayCurrency, lang, page: stayPage, pageSize: 100, filters: stayApplied, enabled: isHotelPick,
+  // TRIP-141: one whole-city pool (all pages, progressive) feeds BOTH the list
+  // (client pagination) and the map (client clustering). No page/pageSize here —
+  // the pool spans every page; stayPage below is a CLIENT page over that pool.
+  const stayQuery = useStay22Pool({
+    visit: hotelPickVisit, currency: stayCurrency, lang, filters: stayApplied, enabled: isHotelPick,
   });
   // Map pins: only stays that carry coordinates, with a compact price label (the
-  // badge is tiny — long amounts like 252 400 ₽ are shortened to "252K"). While
-  // the query shows a PREVIOUS city's data (isPlaceholderData, keepPreviousData),
-  // emit no pins so the camera doesn't fit to the old city while the new one loads.
+  // badge is tiny — long amounts like 252 400 ₽ are shortened to "252K"). While the
+  // pool shows a PREVIOUS city (isPlaceholderData, keepPreviousData), emit no pins
+  // so the camera doesn't fit to the old city while the new one loads.
   const hotelPins = useMemo(() => {
     if (!isHotelPick || stayQuery.isPlaceholderData) return isHotelPick ? [] : null;
     const list = stayQuery.data?.hotels || [];
@@ -332,12 +335,16 @@ export default function TripStructureEdit() {
   };
   // Bundle handed to the presentational hotel list (through ForkPartnerModal).
   const stay22Bundle = isHotelPick ? {
-    data: stayQuery.data, isLoading: stayQuery.isLoading, isFetching: stayQuery.isFetching,
+    data: stayQuery.data, isLoading: stayQuery.isLoading,
+    // Dim the list only on a city/filter switch (placeholder) or first load — NOT
+    // while the background tail pages stream in (the pool just grows under it).
+    isFetching: stayQuery.isPlaceholderData || stayQuery.isLoading,
     isError: stayQuery.isError, refetch: stayQuery.refetch,
     page: stayPage, onPageChange: setStayPage,
     applied: stayApplied,
-    onApply: (snap) => { setStayApplied(snap); setStayPage(1); },
-    onResetAll: () => { setStayApplied(null); setStayPage(1); },
+    // Filter changes reload the pool → drop any stale selection/hover + reset page.
+    onApply: (snap) => { setStayApplied(snap); setStayPage(1); setStaySelectedId(null); setStayHoveredId(null); },
+    onResetAll: () => { setStayApplied(null); setStayPage(1); setStaySelectedId(null); setStayHoveredId(null); },
     hoveredId: stayHoveredId, selectedId: staySelectedId,
     onHover: setStayHoveredId, onSelect: setStaySelectedId,
   } : null;

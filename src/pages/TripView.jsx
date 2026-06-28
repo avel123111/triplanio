@@ -864,9 +864,14 @@ export default function TripView() {
   const budgetCategories = contentData?.budgetCategories || [];
   const budgetExpenses   = contentData?.budgetExpenses   || [];
 
-  // Resolve current user's role in this trip
+  // Resolve current user's role in this trip.
+  // created_by is the SOLE source of ownership — the creator is never a
+  // trip_members row (create_trip writes none). So created_by must WIN over any
+  // trip_members.role: a stray member row for the creator (e.g. invited+accepted
+  // before the guard existed) must not demote the owner to viewer. Mirrors the
+  // canonical precedence in useTripAccess.js (TRIP-143).
   const myMember = members.find(m => m.user_id === user?.id);
-  const myRole   = myMember?.role || (trip?.created_by === user?.id ? 'owner' : 'viewer');
+  const myRole   = trip?.created_by === user?.id ? 'owner' : (myMember?.role || 'viewer');
 
   const stream = useMemo(
     () => buildEventStream(t, hotels, activities, transfers, visits, services),

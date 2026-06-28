@@ -37,6 +37,7 @@ export default {
   'members.promote_subtitle': 'Превратить в онлайн-участника',
   'members.invalid_email': 'Некорректный email',
   'members.error_generic': 'Ошибка',
+  'members.err_invite_owner': 'Это владелец путешествия — у него уже есть полный доступ.',
   'member.status_pending': 'Ожидает',
   'member.status_declined': 'Отклонил',
   'member.role_admin_desc': 'Админ: редактирование всего',

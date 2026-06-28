@@ -253,21 +253,6 @@ function directoryRow(h: { city_id: number; name_en: string; country_code: strin
   };
 }
 
-// Pick the most relevant row's coords from a LocationIQ result array (highest
-// importance with finite lat/lon). Used only to seed the directory (learn_city).
-function bestCoords(rows: unknown[]): { lat: number; lng: number } | null {
-  let best: { lat: number; lng: number } | null = null;
-  let bestImp = -Infinity;
-  for (const d of (rows || []) as Array<{ lat?: unknown; lon?: unknown; importance?: unknown }>) {
-    const lat = parseFloat(String(d?.lat));
-    const lng = parseFloat(String(d?.lon));
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-    const imp = Number(d?.importance) || 0;
-    if (imp > bestImp) { bestImp = imp; best = { lat, lng }; }
-  }
-  return best;
-}
-
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -328,20 +313,10 @@ Deno.serve(async (req) => {
         if (memo.has(key)) { out.push(memo.get(key)!); continue; }
         const item = await resolveBatchItem(normKey(cq), cLang, prio, { q: cq, limit: lim }, apiKey, deadline);
         if (item.failed) degraded = true; // rate budget spent OR upstream error after retries
-        // (#4) Self-heal: a fresh successful resolve of a city the directory did
-        // not have → promote it so the next lookup hits the directory. Gated on a
-        // name_en + country_code from the caller; fire-and-forget.
-        if (!item.failed && item.results.length && c?.name_en && c?.country_code) {
-          const best = bestCoords(item.results);
-          if (best) {
-            supabaseAdmin.rpc('learn_city', {
-              p_name_en: c.name_en,
-              p_country_code: c.country_code,
-              p_lat: best.lat,
-              p_lng: best.lng,
-            }).then(() => {}, () => {});
-          }
-        }
+        // NOTE: we intentionally do NOT write geocoded misses back into `cities`
+        // (TRIP-135). The directory is a curated seed/ETL-only dimension; runtime
+        // flows never grow it. A miss simply resolves coords for this request and
+        // the visit keeps a NULL city_id until a curated row covers it.
         memo.set(key, item.results);
         out.push(item.results);
       }

@@ -3727,6 +3727,14 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .s22mk.is-sel .s22mk__logo { box-shadow: 0 0 0 1.5px rgba(255,255,255,.7); }
 @media (prefers-reduced-motion: reduce) { .s22mk__core { transition: none; } }
 
+/* ─── Cluster bubble = the hotel badge shell, count-only (TRIP-141) ────────────
+   Reuses .s22mk / .s22mk__core (surface, border, shadow, hover lift, is-hover) so
+   a cluster is visibly a sibling of a single badge, just a compact disc with the
+   leaf count (the number in brand to read as "many"). No selected state — a bubble
+   is never the final selection (Способ A / spiderfy resolve to a real badge). */
+.s22mk--cluster .s22mk__core { min-width: 26px; height: 26px; padding: 0 7px; justify-content: center; }
+.s22mk__count { color: var(--brand); font-weight: 800; }
+
 /* ─── Partner result card (shared: Stay22 hotels + Viator activities) ─────────
    ONE shell for both fork partner lists so the identical elements stay identical
    (TRIP-140 unification). Per-list body content (rating/price/address) keeps its

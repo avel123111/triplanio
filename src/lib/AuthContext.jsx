@@ -88,6 +88,33 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Background convergence of the cached `users` row (TRIP-135). isProActive(user)
+  // — the client Pro verdict behind the badge + feature gates — reads THIS cached
+  // copy, which is refreshed only by checkUserAuth, NOT by the entitlement webhook.
+  // So after a background subscription change (cancel/renew/expiry) the cached row
+  // lags until the next explicit refresh, while server-live reads (trip badges via
+  // get_user_travel_stats) flip immediately → a visible desync (Pro badge gone from
+  // trips, but the account still shows Pro) until a manual page reload.
+  // Fix: silently re-sync the row on window focus (throttled), the same moment
+  // react-query refetches its own focus-stale queries — so all client reads of Pro
+  // converge together. Silent → no isLoadingAuth flash / app remount.
+  useEffect(() => {
+    let lastSync = 0;
+    const resync = () => {
+      if (document.visibilityState === 'hidden') return;
+      const now = Date.now();
+      if (now - lastSync < 30_000) return; // throttle: at most once / 30s
+      lastSync = now;
+      checkUserAuth().catch(() => { /* non-fatal — reconcile-on-read covers it */ });
+    };
+    window.addEventListener('focus', resync);
+    document.addEventListener('visibilitychange', resync);
+    return () => {
+      window.removeEventListener('focus', resync);
+      document.removeEventListener('visibilitychange', resync);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const loadUserProfile = async (authUser, { silent = false } = {}) => {
     // Prevent concurrent loads for the same user
     if (loadingForRef.current === authUser.id) return;

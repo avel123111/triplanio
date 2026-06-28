@@ -81,6 +81,7 @@ export default {
   'fork.f_apply': 'Применить',
   'fork.f_reset_all': 'Сбросить всё',
   'fork.stay22_count': '{n} вариантов',
+  'fork.stay22_count_plus': '{n}+ вариантов',
   'fork.stay22_reviews': '· {n} отзывов',
   'fork.stay22_for_nights': 'за {count} ночей',
   'view.empty_day': 'На этот день ничего не запланировано',

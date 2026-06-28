@@ -19,6 +19,9 @@ import PartnerResultCard from '@/components/bookings/PartnerResultCard';
 // min/max are per-night price in USD (Stay22 semantics).
 
 const SKELETON_COUNT = 4;
+// Client-side page size over the single pool (TRIP-141): we never mount all 300
+// cards at once — one slice renders at a time and its images stay lazy.
+const CLIENT_PAGE_SIZE = 20;
 const BASE_GUESTS = { adults: 2, children: 0, rooms: 1 };
 const BASE_FILTERS = { ...BASE_GUESTS, min: '', max: '' };
 
@@ -82,20 +85,33 @@ export default function Stay22HotelList({
     return () => document.removeEventListener('mousedown', onDoc);
   }, [popOpen]);
 
-  const hotels = data?.hotels || [];
+  // The pool is the whole city (TRIP-141): paginate it on the CLIENT so the map
+  // (clustered) and the list (paged) read from one source of truth.
+  const pool = data?.hotels || [];
   const meta = data?.meta || {};
-  const totalPages = meta.total ? Math.max(1, Math.ceil(meta.total / (meta.pageSize || 10))) : null;
-  const pages = useMemo(() => (totalPages ? pageWindow(page, totalPages) : []), [page, totalPages]);
+  const totalPages = Math.max(1, Math.ceil(pool.length / CLIENT_PAGE_SIZE));
+  const hotels = useMemo(() => pool.slice((page - 1) * CLIENT_PAGE_SIZE, page * CLIENT_PAGE_SIZE), [pool, page]);
+  const pages = useMemo(() => pageWindow(page, totalPages), [page, totalPages]);
 
-  const showSkeletons = isLoading && hotels.length === 0;
+  const showSkeletons = isLoading && pool.length === 0;
+  const countLabel = meta.total != null
+    ? (meta.truncated ? t('fork.stay22_count_plus', { n: meta.total }) : t('fork.stay22_count', { n: meta.total }))
+    : '';
 
-  // Scroll the matching card into view when a map badge is clicked (selectedId).
+  // Selecting a stay from the map: jump to the client page that holds it, then
+  // scroll its card into view (it may live on another page than the one shown).
   const cardRefs = useRef(new Map());
   useEffect(() => {
     if (selectedId == null) return;
+    const idx = pool.findIndex((h) => String(h.id) === String(selectedId));
+    if (idx < 0) return;
+    const targetPage = Math.floor(idx / CLIENT_PAGE_SIZE) + 1;
+    if (targetPage !== page) { onPageChange?.(targetPage); return; } // re-runs post-change → scrolls below
     const node = cardRefs.current.get(String(selectedId));
-    if (node) node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [selectedId]);
+    // Center the selected card in the scroll viewport (clamps naturally for the
+    // first/last cards) instead of leaving it flush at the top/bottom edge.
+    if (node) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [selectedId, page, pool, onPageChange]);
 
   const guestsLabel = () => {
     const p = [t('fork.f_adults', { n: pending.adults })];
@@ -107,6 +123,12 @@ export default function Stay22HotelList({
   const priceTouched = pending.min !== '' || pending.max !== '';
   const dirty = guestsTouched || priceTouched;
 
+  // Pager navigation clears any map selection first: otherwise the "scroll the
+  // selected card into view" effect keeps yanking the list back to the selected
+  // hotel's page and pagination appears stuck (TRIP-141 bugfix). The auto-scroll
+  // effect calls onPageChange directly (it's navigating TO the selection), so it
+  // must NOT go through here.
+  const gotoPage = (p) => { onSelect?.(null); onPageChange(p); };
   const apply = () => { onApply({ ...pending }); setPopOpen(false); };
   const resetAll = () => { setPending({ ...BASE_FILTERS }); onResetAll(); setPopOpen(false); };
   const setG = (k, v) => setPending((s) => ({ ...s, [k]: v }));
@@ -220,7 +242,7 @@ export default function Stay22HotelList({
             <span className="s22-sub">{t('fork.stay22_source')}{dateLine ? ` · ${dateLine}` : ''}</span>
           </div>
         </div>
-        {meta.total != null && <span className="s22-count">{t('fork.stay22_count', { n: meta.total })}</span>}
+        {countLabel && <span className="s22-count">{countLabel}</span>}
       </div>
 
       {/* ===== States ===== */}
@@ -257,7 +279,7 @@ export default function Stay22HotelList({
         </div>
       )}
 
-      {!isError && hotels.length > 0 && (
+      {!isError && pool.length > 0 && (
         <>
           <div className="s22-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
             {hotels.map((h) => (
@@ -299,15 +321,13 @@ export default function Stay22HotelList({
             ))}
           </div>
 
-          {(totalPages ? totalPages > 1 : meta.hasMore || page > 1) && (
+          {totalPages > 1 && (
             <div className="s22-pager">
-              <button className="s22-pg" disabled={page <= 1 || isFetching} onClick={() => onPageChange(Math.max(1, page - 1))} aria-label={t('fork.stay22_prev')}><ChevronLeft size={16} /></button>
-              {totalPages
-                ? pages.map((p, i) => (p === '…'
-                    ? <span key={`g${i}`} className="s22-gap">…</span>
-                    : <button key={p} className={`s22-pg ${p === page ? 's22-pg--on' : ''}`} disabled={isFetching} onClick={() => onPageChange(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))
-                : <span className="s22-pg s22-pg--on">{page}</span>}
-              <button className="s22-pg" disabled={(totalPages ? page >= totalPages : !meta.hasMore) || isFetching} onClick={() => onPageChange(page + 1)} aria-label={t('fork.stay22_next')}><ChevronRight size={16} /></button>
+              <button className="s22-pg" disabled={page <= 1} onClick={() => gotoPage(Math.max(1, page - 1))} aria-label={t('fork.stay22_prev')}><ChevronLeft size={16} /></button>
+              {pages.map((p, i) => (p === '…'
+                ? <span key={`g${i}`} className="s22-gap">…</span>
+                : <button key={p} className={`s22-pg ${p === page ? 's22-pg--on' : ''}`} onClick={() => gotoPage(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))}
+              <button className="s22-pg" disabled={page >= totalPages} onClick={() => gotoPage(page + 1)} aria-label={t('fork.stay22_next')}><ChevronRight size={16} /></button>
             </div>
           )}
         </>

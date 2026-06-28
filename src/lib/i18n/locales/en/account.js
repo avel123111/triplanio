@@ -10,6 +10,8 @@ export default {
   'account.switch_yearly': 'Switch to yearly · {price}/yr',
   'account.opening': 'Opening…',
   'account.billing_portal': 'Billing portal',
+  'account.details_unavailable': 'Couldn’t load subscription details',
+  'account.details_retry': 'Retry',
   'account.after_cancel_access': 'After cancellation, access stays until the end of the paid period',
   'account.pro_yearly_sub': 'Pro · yearly · save 33%',
   'account.active': 'Active',

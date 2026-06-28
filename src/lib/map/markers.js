@@ -136,6 +136,26 @@ export function createHotelBadgeEl({ supplierLogo, priceLabel } = {}, { onClick,
   return el;
 }
 
+// Cluster bubble marker for the hotel-pick overlay (TRIP-141). When a city has
+// 150–300 stays the map shows supercluster bubbles instead of hundreds of badges:
+// a compact disc carrying just the leaf COUNT. REUSES the hotel badge shell
+// (.s22mk / .s22mk__core) via the .s22mk--cluster modifier — same surface, border,
+// shadow, hover lift and outside-toggled .is-hover, so the two never drift apart.
+// Clicking a bubble zooms into it. opts: { onClick, onHover, title }.
+export function createClusterBubbleEl(count, { onClick, onHover, title } = {}) {
+  const el = document.createElement('div');
+  el.className = 's22mk s22mk--cluster is-clickable';
+  if (title) el.title = title;
+  el.innerHTML = `<span class="s22mk__core"><span class="s22mk__count">${count ?? ''}</span></span>`;
+
+  if (onClick) el.addEventListener('click', onClick);
+  if (onHover) {
+    el.addEventListener('mouseenter', () => onHover(true));
+    el.addEventListener('mouseleave', () => onHover(false));
+  }
+  return el;
+}
+
 // Mini marker for the stats / home travel map — a small coloured dot (~11px),
 // deliberately NOT the trip Ring pin: these screens show an unordered set of
 // lifetime visits over a country fill, so the pins must be tiny and unobtrusive.
