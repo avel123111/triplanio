@@ -8,7 +8,7 @@ import {
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
-import { isProActive } from '@/lib/subscription';
+import { useProStatus } from '@/lib/useProStatus';
 import { supabase } from '@/api/supabaseClient';
 import AppHeader from '@/components/AppHeader';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
@@ -26,9 +26,16 @@ const LANGS = [
   { code: 'es', native: 'Español', flag: 'ES', sub: 'Spanish' },
 ];
 
-// getUserPlan response → one of: 'no-sub' | 'with-sub' | 'annual' | 'cancelled'
-function derivePlanState(plan) {
-  if (!plan || plan.plan === 'free') return 'no-sub';
+// Plan face for the plaque. The Pro/Free VERDICT comes from `isPro` (the cached
+// users row, same source as the badge + gates) — NEVER from getUserPlan, so a
+// getUserPlan failure can't silently downgrade a Pro user to "Free" (TRIP-135).
+// getUserPlan only refines the Pro face (monthly / yearly / cancelled). When the
+// verdict is Pro but the billing details aren't available yet (loading or error),
+// we show a 'pro-pending' face — a Pro plaque with a retry, not "Free".
+// → 'no-sub' | 'pro-pending' | 'with-sub' | 'annual' | 'cancelled'
+function derivePlanState(isPro, plan) {
+  if (!isPro) return 'no-sub';
+  if (!plan || plan.plan !== 'pro') return 'pro-pending';
   if (plan.cancelled) return 'cancelled';
   if (plan.subscriptionType === 'pro_yearly') return 'annual';
   return 'with-sub';
@@ -43,7 +50,7 @@ function fmtDate(iso, locale) {
 
 // ─── Subscription module (4 plan faces) ───────────────────────────────────────
 
-function SubscriptionModule({ planState, plan, planLoading, awaitingWebhook, portalLoading, onUpgrade, onManage, locale, prices }) {
+function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awaitingWebhook, portalLoading, onUpgrade, onManage, onRetryDetails, locale, prices }) {
   const { t, fmtMoney } = useI18nFormat();
   // Tariff amounts come from Stripe in minor units; format in the active locale,
   // currency from Stripe (fallback usd = the products' real currency).
@@ -66,16 +73,8 @@ function SubscriptionModule({ planState, plan, planLoading, awaitingWebhook, por
   const actualMonthlyEq = (actual && actual.amount != null && actual.interval === 'year')
     ? money(Math.round(actual.amount / 12), actual.currency) : null;
 
-  if (planLoading) {
-    return (
-      <div className="card">
-        <div style={{ height: 90, display: 'grid', placeItems: 'center' }}>
-          <div style={{ width: 22, height: 22, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        </div>
-      </div>
-    );
-  }
-
+  // Free is a VERDICT (not a getUserPlan result), so it renders instantly — no
+  // spinner gating on the details fetch.
   if (planState === 'no-sub') {
     return (
       <div className="card">
@@ -91,6 +90,39 @@ function SubscriptionModule({ planState, plan, planLoading, awaitingWebhook, por
                 {t('account.go_to_pro')}
               </Btn>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Verdict is Pro, but billing details aren't available yet (loading or error).
+  // NEVER fall back to "Free" — show a Pro plaque; spinner while loading, retry on
+  // error.
+  if (planState === 'pro-pending') {
+    return (
+      <div className="card">
+        <div className="acct-plan">
+          <div className="acct-plan__face acct-plan__face--mo">
+            <span className="blob" aria-hidden="true" />
+            <div className="acct-plan__k">{t('account.plan_current')}</div>
+            <div className="acct-plan__v">Pro</div>
+          </div>
+          <div className="acct-plan__side">
+            {detailsError ? (
+              <>
+                <div className="acct-plan__line">{t('account.details_unavailable')}</div>
+                <div className="acct-plan__acts">
+                  <Btn variant="soft" size="sm" icon="refresh" disabled={detailsLoading} onClick={onRetryDetails}>
+                    {t('account.details_retry')}
+                  </Btn>
+                </div>
+              </>
+            ) : (
+              <div style={{ height: 40, display: 'grid', placeItems: 'center start' }}>
+                <div style={{ width: 18, height: 18, border: '2px solid var(--line)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -332,9 +364,12 @@ export default function ScreenAccount() {
 
   const avatarInputRef = useRef(null);
 
-  // ── Plan ───────────────────────────────────────────────────────────────────
-  const [plan, setPlan] = useState(null);
-  const [planLoading, setPlanLoading] = useState(true);
+  // ── Plan (unified Pro status, TRIP-135) ──────────────────────────────────────
+  // ONE source: verdict (isPro) from the cached users row — same as the Pro badge
+  // and gates — plus billing details (plan) + freshness/reconcile, all from the
+  // shared hook. The plaque can no longer contradict the badge, and a getUserPlan
+  // failure degrades only the details (retry), never the verdict.
+  const { isPro, plan, detailsLoading, detailsError, refetchDetails } = useProStatus();
   const [prices, setPrices] = useState(null);
 
   // ── Profile form ───────────────────────────────────────────────────────────
@@ -357,7 +392,7 @@ export default function ScreenAccount() {
   const [deleteInput, setDeleteInput] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
 
-  const planState = derivePlanState(plan);
+  const planState = derivePlanState(isPro, plan);
 
   const localeMap = { ru: 'ru-RU', en: 'en-US', es: 'es-ES' };
   const locale = localeMap[lang] || 'ru-RU';
@@ -389,14 +424,14 @@ export default function ScreenAccount() {
     setAvatarUrl(user.avatar_url || '');
     setNotifyInvites(user.notify_email_invites !== false);
     setNotifyUpdates(user.notify_email_updates !== false);
-    loadPlan();
   }, [user]); // eslint-disable-line
 
   // Stripe-return polling + user refresh is owned globally by StripeReturnModals
-  // (single handler). It keeps `stripe_status` in the URL until the webhook
-  // flips Pro, then refreshes AuthContext.user — which re-seeds `plan` here via
-  // the [user] effect above. We only read that URL flag (below) to disable the
-  // upgrade button meanwhile, so a double-tap can't trigger a second checkout.
+  // (single handler). It keeps `stripe_status` in the URL until the webhook flips
+  // Pro, then refreshes AuthContext.user (→ isPro flips) AND invalidates the
+  // ['my-pro-status'] query that useProStatus reads (→ billing details refresh).
+  // We only read that URL flag (below) to disable the upgrade button meanwhile,
+  // so a double-tap can't trigger a second checkout.
 
   // ── Scroll-spy: highlight the nav item for the section in view ──────────────
   useEffect(() => {
@@ -408,17 +443,9 @@ export default function ScreenAccount() {
     }, { rootMargin: '-20% 0px -70% 0px' });
     els.forEach(el => obs.observe(el));
     return () => obs.disconnect();
-  }, [user, planLoading]);
+  }, [user, detailsLoading]);
 
   // ── API ────────────────────────────────────────────────────────────────────
-  const loadPlan = async () => {
-    try {
-      const { data } = await supabase.functions.invoke('getUserPlan');
-      setPlan(data ?? null);
-    } catch (e) { console.error('getUserPlan error:', e); }
-    finally { setPlanLoading(false); }
-  };
-
   useEffect(() => {
     let cancelled = false;
     supabase.functions.invoke('getStripePrices', { body: {} })
@@ -519,7 +546,10 @@ export default function ScreenAccount() {
   };
 
   const handleDeleteAccount = () => {
-    const hasActiveSub = plan?.plan === 'pro' && !plan?.cancelled;
+    // Block when the user is Pro and the sub isn't already cancelled. Verdict from
+    // the unified source; if details are unknown we still block on the verdict (safe
+    // direction). deleteMyAccount enforces this server-side regardless.
+    const hasActiveSub = isPro && !plan?.cancelled;
     setDeleteState(hasActiveSub ? 'blocked' : 'confirm');
     setDeleteInput('');
   };
@@ -563,16 +593,17 @@ export default function ScreenAccount() {
     );
   }
 
-  const isPro = isProActive(user);
   // Checkout just returned and the webhook hasn't flipped Pro yet: StripeReturnModals
   // holds `stripe_status` in the URL while it polls. Disable the upgrade button in
   // this window so a second tap can't start another checkout (no own poller).
+  // isPro comes from useProStatus (the unified verdict) above.
   const awaitingWebhook = searchParams?.get('stripe_status') === 'success' && !isPro;
   const isDark = theme === 'dark';
 
   const planBadge =
     planState === 'with-sub' ? <Badge variant="pro" icon="pro">{t('account.badge_pro_sub')}</Badge>
     : planState === 'annual' ? <Badge variant="pro" icon="pro">{t('account.badge_pro_yearly')}</Badge>
+    : planState === 'pro-pending' ? <Badge variant="pro" icon="pro">Pro</Badge>
     : planState === 'cancelled' ? <Badge variant="quiet" icon="warning">{t('account.badge_pro_cancelled')}</Badge>
     : null;
 
@@ -689,13 +720,15 @@ export default function ScreenAccount() {
             <SubscriptionModule
               planState={planState}
               plan={plan}
-              planLoading={planLoading}
+              detailsLoading={detailsLoading}
+              detailsError={detailsError}
               awaitingWebhook={awaitingWebhook}
               portalLoading={portalLoading}
               locale={locale}
               prices={prices}
               onUpgrade={openUpgrade}
               onManage={handleManageSubscription}
+              onRetryDetails={refetchDetails}
             />
           </section>
 
