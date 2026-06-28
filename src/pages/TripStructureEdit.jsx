@@ -342,8 +342,9 @@ export default function TripStructureEdit() {
     isError: stayQuery.isError, refetch: stayQuery.refetch,
     page: stayPage, onPageChange: setStayPage,
     applied: stayApplied,
-    onApply: (snap) => { setStayApplied(snap); setStayPage(1); },
-    onResetAll: () => { setStayApplied(null); setStayPage(1); },
+    // Filter changes reload the pool → drop any stale selection/hover + reset page.
+    onApply: (snap) => { setStayApplied(snap); setStayPage(1); setStaySelectedId(null); setStayHoveredId(null); },
+    onResetAll: () => { setStayApplied(null); setStayPage(1); setStaySelectedId(null); setStayHoveredId(null); },
     hoveredId: stayHoveredId, selectedId: staySelectedId,
     onHover: setStayHoveredId, onSelect: setStaySelectedId,
   } : null;

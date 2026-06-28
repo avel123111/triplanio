@@ -123,6 +123,12 @@ export default function Stay22HotelList({
   const priceTouched = pending.min !== '' || pending.max !== '';
   const dirty = guestsTouched || priceTouched;
 
+  // Pager navigation clears any map selection first: otherwise the "scroll the
+  // selected card into view" effect keeps yanking the list back to the selected
+  // hotel's page and pagination appears stuck (TRIP-141 bugfix). The auto-scroll
+  // effect calls onPageChange directly (it's navigating TO the selection), so it
+  // must NOT go through here.
+  const gotoPage = (p) => { onSelect?.(null); onPageChange(p); };
   const apply = () => { onApply({ ...pending }); setPopOpen(false); };
   const resetAll = () => { setPending({ ...BASE_FILTERS }); onResetAll(); setPopOpen(false); };
   const setG = (k, v) => setPending((s) => ({ ...s, [k]: v }));
@@ -317,11 +323,11 @@ export default function Stay22HotelList({
 
           {totalPages > 1 && (
             <div className="s22-pager">
-              <button className="s22-pg" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))} aria-label={t('fork.stay22_prev')}><ChevronLeft size={16} /></button>
+              <button className="s22-pg" disabled={page <= 1} onClick={() => gotoPage(Math.max(1, page - 1))} aria-label={t('fork.stay22_prev')}><ChevronLeft size={16} /></button>
               {pages.map((p, i) => (p === '…'
                 ? <span key={`g${i}`} className="s22-gap">…</span>
-                : <button key={p} className={`s22-pg ${p === page ? 's22-pg--on' : ''}`} onClick={() => onPageChange(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))}
-              <button className="s22-pg" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} aria-label={t('fork.stay22_next')}><ChevronRight size={16} /></button>
+                : <button key={p} className={`s22-pg ${p === page ? 's22-pg--on' : ''}`} onClick={() => gotoPage(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))}
+              <button className="s22-pg" disabled={page >= totalPages} onClick={() => gotoPage(page + 1)} aria-label={t('fork.stay22_next')}><ChevronRight size={16} /></button>
             </div>
           )}
         </>
