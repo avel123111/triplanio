@@ -24,6 +24,7 @@ import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Field, Severity, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
+import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -500,7 +501,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
           </>
         ) : (
           <>
-            <Avatar name={user?.full_name || '?'} size="sm" />
+            <Avatar name={displayName(user?.email, user?.full_name)} size="sm" />
             <span className="dl-card__foot-who">{t('doc.only_you')}</span>
           </>
         )}
