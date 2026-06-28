@@ -33,7 +33,6 @@ export default {
   'sub.iframe_alert': 'Checkout must be opened in a new tab (not inside an iframe)',
   'sub.upgrade_error': 'Error: {message}',
   'sub.already_active_msg': 'You already have an active subscription. Open Settings to manage your plan.',
-  'sub.recent_pending_msg': 'A recent payment is still being processed. Please wait a few seconds, your plan will update automatically.',
   'sub.activating_pro': 'Activating your Pro plan…',
   'sub.processing': 'Processing…',
   'sub.choose_plan': 'Choose plan',

@@ -92,11 +92,6 @@ export default function Pro() {
         setLoading(false);
         return;
       }
-      if (code === 'CHECKOUT_PROCESSING') {
-        setErrorMsg(t('sub.recent_pending_msg'));
-        setLoading(false);
-        return;
-      }
       setErrorMsg(t('sub.upgrade_error', { message: message || error.message }));
       setLoading(false);
     }
