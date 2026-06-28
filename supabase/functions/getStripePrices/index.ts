@@ -13,9 +13,8 @@
 import { corsFor } from '../_shared/cors.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
-import { isTestStripeKey, productsForEnv } from '../_shared/stripeCatalog.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
-import { getActiveProviderProducts, stripeEnv, PLAN_TO_PRODUCT, PRODUCT_TO_PLAN, type ProviderProductRow } from '../_shared/payments/catalog.ts';
+import { getActiveProviderProducts, stripeEnv, PRODUCT_TO_PLAN } from '../_shared/payments/catalog.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -33,17 +32,11 @@ Deno.serve(async (req) => {
     const env = stripeEnv(stripeKey);
     const adapter = new StripeAdapter(stripeKey, env);
 
-    // Каталог из БД (product / provider_price). Переходный фолбэк на stripeCatalog.ts,
-    // пока каталог не наполнен миграцией Ф1 — уйдёт в Ф5. Фолбэк логируем, чтобы
-    // «пустой каталог» был заметен, а не молча скрыт.
-    let catalog: ProviderProductRow[] = await getActiveProviderProducts('stripe', env);
+    // Каталог из БД (product / provider_price) — единственный источник. Пусто =
+    // реальный мисконфиг (миграция Ф1 сидирует обе среды): логируем и отдаём {}.
+    const catalog = await getActiveProviderProducts('stripe', env);
     if (catalog.length === 0) {
-      console.warn('getStripePrices: DB catalog empty — falling back to stripeCatalog.ts');
-      const map = productsForEnv(isTestStripeKey(stripeKey));
-      catalog = (Object.entries(map) as [keyof typeof map, string][]).map(([plan, pid]) => ({
-        product_code: PLAN_TO_PRODUCT[plan],
-        provider_product_id: pid,
-      }));
+      console.warn(`getStripePrices: DB catalog empty for env=${env} (seed migration not applied?)`);
     }
 
     const entries = await Promise.all(
