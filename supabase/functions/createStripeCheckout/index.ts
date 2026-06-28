@@ -25,9 +25,8 @@ import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
-import { VALID_PLANS, type PlanType } from '../_shared/stripeCatalog.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
-import { stripeEnv, PLAN_TO_PRODUCT } from '../_shared/payments/catalog.ts';
+import { stripeEnv, PLAN_TO_PRODUCT, VALID_PLANS, type PlanType } from '../_shared/payments/catalog.ts';
 import { ensureProviderCustomerId, saveProviderCustomerId } from '../_shared/payments/customer.ts';
 
 const ENTITLING = ['active', 'trialing', 'past_due'];

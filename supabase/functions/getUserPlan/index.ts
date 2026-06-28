@@ -10,9 +10,8 @@ import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
-import { reconcileEntitlement } from '../_shared/reconcileEntitlement.ts';
+import { reconcileEntitlement, needsEntitlementReconcile } from '../_shared/reconcileEntitlement.ts';
 import { PRODUCT_TO_PLAN, type ProductCode } from '../_shared/payments/catalog.ts';
-import { getProviderCustomerId } from '../_shared/payments/customer.ts';
 
 // Reads the EXACT amount the caller is billed from their live Stripe subscription
 // (the price line item), not the public catalog price — so a user on a legacy /
@@ -53,20 +52,12 @@ Deno.serve(async (req) => {
       .eq('id', user.id)
       .single();
 
-    const now = new Date();
-
-    // recompute-on-read (Ф3): self-heal a wrong cache via a throttled reconcile.
-    //  • stuck-PRO  — cache says pro but the end date is past/missing (lost renewal).
-    //  • stuck-FREE — cache says free but the user has a Stripe customer id (a lost
-    //    ACTIVATION webhook); reconcile discovers the live sub and restores Pro.
-    // Cheap in the common case: never fires for a never-paid free user (no customer
-    // id) or a healthy pro row (future end). Throttled to ≤1 Stripe call / 10 min.
-    const endPast =
-      !userData?.subscription_end_date || new Date(userData.subscription_end_date) <= now;
-    // stuck-FREE проверяем наличие provider_customer ТОЛЬКО когда не pro (иначе не нужно).
-    const needsReconcile =
-      (userData?.subscription_status === 'pro' && endPast) ||
-      (userData?.subscription_status !== 'pro' && (await getProviderCustomerId(supabaseAdmin, user.id)) !== null);
+    // recompute-on-read (Ф3): self-heal a wrong cache via a throttled reconcile
+    // (stuck-PRO / stuck-FREE). Cheap in the common case: never fires for a
+    // never-paid free user (no customer id) or a healthy pro row (future end).
+    // Throttled to ≤1 Stripe call / 10 min. Предикат — единый (O1).
+    const needsReconcile = await needsEntitlementReconcile(
+      supabaseAdmin, user.id, userData?.subscription_status, userData?.subscription_end_date);
     if (needsReconcile && await reconcileEntitlement(supabaseAdmin, user.id)) {
       ({ data: userData } = await supabaseAdmin
         .from('users')

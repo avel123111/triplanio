@@ -15,14 +15,30 @@
 import Stripe from 'npm:stripe@17.0.0';
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { getPeriodEndUnix, unixToIso } from './getPeriodEnd.ts';
-import { planTypeForProduct, isTestStripeKey } from './stripeCatalog.ts';
-import { PLAN_TO_PRODUCT } from './payments/catalog.ts';
+import { PLAN_TO_PRODUCT, PRODUCT_TO_PLAN, stripeEnv, getActiveProviderProducts, type ProductCode } from './payments/catalog.ts';
 import { getProviderCustomerId } from './payments/customer.ts';
 import { reportPaymentAnomaly } from './sentry.ts';
 import { revokeLostProFeaturesForUser } from './revokeLostProFeatures.ts';
 
 const THROTTLE_MIN = 10;
 const ENTITLING = ['active', 'trialing', 'past_due'];
+
+/**
+ * Нужен ли recompute-on-read для юзера (единый предикат, O1 — был продублирован в
+ * getUserPlan + checkSubscriptionStatus ×2). Два перекоса:
+ *   • stuck-PRO  — кэш 'pro', но end протух/пуст (потерянное продление);
+ *   • stuck-FREE — кэш не 'pro', но есть provider_customer (потерянная активация).
+ * Проверку наличия customer делаем ТОЛЬКО в ветке не-pro (иначе она не нужна).
+ */
+export async function needsEntitlementReconcile(
+  admin: SupabaseClient,
+  userId: string,
+  status: string | null | undefined,
+  endDate: string | null | undefined,
+): Promise<boolean> {
+  if (status === 'pro') return !endDate || new Date(endDate) <= new Date();
+  return (await getProviderCustomerId(admin, userId)) !== null;
+}
 
 export async function reconcileEntitlement(admin: SupabaseClient, userId: string): Promise<boolean> {
   if (!userId) return false;
@@ -70,14 +86,19 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
     // stuck-FREE: строк нет, но есть customer → потерянная активация. Находим живые
     // подписки и материализуем строку (bounded throttle выше).
     try {
-      const isTestEnv = isTestStripeKey(key);
+      const env = stripeEnv(key);
+      // product_id → product_code из каталога БД (один запрос на весь список).
+      const codeByProduct = new Map<string, ProductCode>(
+        (await getActiveProviderProducts('stripe', env)).map((r) => [r.provider_product_id, r.product_code] as [string, ProductCode]),
+      );
       const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 });
       const recovered: string[] = [];
       for (const sub of subs.data) {
         const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
         const productId = typeof price?.product === 'string'
           ? price.product : ((price?.product as { id?: string } | undefined)?.id ?? null);
-        const planType = (productId ? planTypeForProduct(productId, isTestEnv) : null)
+        const code = productId ? codeByProduct.get(productId) ?? null : null;
+        const planType = (code ? PRODUCT_TO_PLAN[code] : null)
           ?? ((sub.metadata?.plan_type as string | undefined) ?? null);
         if (planType !== 'pro_monthly' && planType !== 'pro_yearly') continue;
         const productCode = PLAN_TO_PRODUCT[planType];

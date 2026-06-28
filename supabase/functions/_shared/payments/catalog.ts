@@ -1,17 +1,25 @@
 /**
  * catalog — чтение внутреннего каталога продуктов из БД (таблицы product /
- * provider_price). Заменяет хардкод product-id из stripeCatalog.ts.
+ * provider_price). ЕДИНСТВЕННЫЙ источник каталога (хардкод product-id из
+ * stripeCatalog.ts удалён — он дублировал эти же строки).
  *
  * Каталог провайдер-нейтрален. Различие test/live несёт колонка provider_env;
  * рантайм выбирает строки по режиму секретного ключа (stripeEnv).
  */
 
 import { supabaseAdmin } from '../supabaseAdmin.ts';
-import { isTestStripeKey } from '../stripeCatalog.ts';
 import type { ProviderEnv } from './types.ts';
 
+// Поддерживаемые plan_type (переходный словарь фронта/edge до полного перехода
+// на product_code, Ф5). Источник истины — один, здесь.
+export const VALID_PLANS = ['pro_trip', 'pro_monthly', 'pro_yearly'] as const;
+export type PlanType = typeof VALID_PLANS[number];
 export type ProductCode = 'trip_pro_lifetime' | 'account_pro_monthly' | 'account_pro_yearly';
-export type PlanType = 'pro_trip' | 'pro_monthly' | 'pro_yearly';
+
+/** True когда секретный ключ Stripe — тестовый (`sk_test_…`). */
+export function isTestStripeKey(key: string): boolean {
+  return key.includes('_test_');
+}
 
 // Переходный мост: фронт/edge ещё говорят на plan_type, каталог — на product_code.
 // Уйдёт в Ф5, когда все перейдут на product_code.
