@@ -148,7 +148,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         {/* sr-only a11y title — visible h2 is inside dlg__head */}
-        <DialogTitle className="sr-only">{t('doc.dialog_new')}</DialogTitle>
+        <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('doc.dialog_new')}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="dlg__head">
@@ -335,7 +335,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle className="sr-only">{doc.title}</DialogTitle>
+        <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{doc.title}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="dlg__head">
