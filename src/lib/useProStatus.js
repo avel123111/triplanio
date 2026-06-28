@@ -28,17 +28,20 @@
 // StripeReturnModals after checkout — so all consumers share ONE background
 // revalidation instead of each firing getUserPlan.
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { isProActive } from '@/lib/subscription';
 
 export function useProStatus() {
   const { user, checkUserAuth } = useAuth();
+  const qc = useQueryClient();
 
   const q = useQuery({
     queryKey: ['my-pro-status'],
     enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
+    // Match the trip-badge cadence (['travel-stats'] uses 30s) so the account
+    // plaque can't lag minutes behind the trip cards after a background sub change.
+    staleTime: 30 * 1000,
     gcTime: 30 * 60 * 1000,
     // A transient getUserPlan failure must not be treated as "free" — retry a
     // couple of times; the verdict is read from the cache regardless.
@@ -48,10 +51,12 @@ export function useProStatus() {
       const { data, error } = await supabase.functions.invoke('getUserPlan');
       if (error) throw error;
       // Authoritative verdict AFTER the server reconcile. If it disagrees with the
-      // cached row the client reads, refresh the row so isProActive(user) converges.
+      // cached row the client reads, refresh the row so isProActive(user) converges,
+      // and nudge the trip-badge cache so the whole UI flips together (not piecemeal).
       const serverPro = data?.plan === 'pro';
       if (serverPro !== isProActive(user)) {
         try { await checkUserAuth(); } catch { /* non-fatal — next read reconciles */ }
+        qc.invalidateQueries({ queryKey: ['travel-stats'] });
       }
       return data ?? null;
     },
