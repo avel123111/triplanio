@@ -84,7 +84,6 @@ export default {
   'fork.stay22_count_plus': '{n}+ вариантов',
   'fork.stay22_reviews': '· {n} отзывов',
   'fork.stay22_for_nights': 'за {count} ночей',
-  'fork.cluster_from': 'от {price}',
   'view.empty_day': 'На этот день ничего не запланировано',
   'view.today': 'Сегодня',
   'view.add_event': 'Добавить',

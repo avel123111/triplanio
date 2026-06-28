@@ -138,19 +138,15 @@ export function createHotelBadgeEl({ supplierLogo, priceLabel } = {}, { onClick,
 
 // Cluster bubble marker for the hotel-pick overlay (TRIP-141). When a city has
 // 150–300 stays the map shows supercluster bubbles instead of hundreds of badges:
-// a rounded pill carrying the leaf COUNT and (optionally) the cheapest "от $X" in
-// that cluster. Built like createHotelBadgeEl — the consumer toggles .is-hover on
-// the root (no rebuild) while the scale lives on the inner .s22cl__core (Mapbox
-// owns the root's inline transform). Clicking a bubble zooms into it.
-// cluster: { count, priceLabel } — priceLabel is preformatted ("от $80") or falsy.
-// opts: { onClick, onHover, title } — onHover(entering:boolean) fires on the pill.
-export function createClusterBubbleEl({ count, priceLabel } = {}, { onClick, onHover, title } = {}) {
+// a compact disc carrying just the leaf COUNT. REUSES the hotel badge shell
+// (.s22mk / .s22mk__core) via the .s22mk--cluster modifier — same surface, border,
+// shadow, hover lift and outside-toggled .is-hover, so the two never drift apart.
+// Clicking a bubble zooms into it. opts: { onClick, onHover, title }.
+export function createClusterBubbleEl(count, { onClick, onHover, title } = {}) {
   const el = document.createElement('div');
-  el.className = 's22cl is-clickable';
+  el.className = 's22mk s22mk--cluster is-clickable';
   if (title) el.title = title;
-  if (!priceLabel) el.classList.add('s22cl--bare');
-  const price = priceLabel ? `<span class="s22cl__price">${priceLabel}</span>` : '';
-  el.innerHTML = `<span class="s22cl__core"><span class="s22cl__count">${count ?? ''}</span>${price}</span>`;
+  el.innerHTML = `<span class="s22mk__core"><span class="s22mk__count">${count ?? ''}</span></span>`;
 
   if (onClick) el.addEventListener('click', onClick);
   if (onHover) {

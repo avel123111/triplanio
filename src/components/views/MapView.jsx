@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Supercluster from 'supercluster';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, iconForKinds } from '@/lib/map/markers';
+import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, spiderfyLayout } from '@/lib/map/cluster';
 import MapControls from '@/lib/map/MapControls';
 import { countryFlag } from '@/lib/geo';
 import { sortVisits } from '@/lib/validation';
@@ -133,10 +133,6 @@ export default function MapView({
   hoveredHotelId = null,
   onHotelClick,
   onHotelHover,
-  // Formats a cluster's cheapest price (number) → label ("от $80") for the bubble.
-  // Provided by the parent (it owns the money formatter + locale). Falsy ⇒ bubbles
-  // show the count alone.
-  formatClusterPrice = null,
   children,
 }) {
   const containerRef = useRef(null);
@@ -158,8 +154,6 @@ export default function MapView({
   const lastSelActedRef = useRef(null);
   const selectedHotelIdRef = useRef(null);
   const hoveredHotelIdRef = useRef(null);
-  const formatClusterPriceRef = useRef(formatClusterPrice);
-  useEffect(() => { formatClusterPriceRef.current = formatClusterPrice; }, [formatClusterPrice]);
   useEffect(() => { selectedHotelIdRef.current = selectedHotelId != null ? String(selectedHotelId) : null; }, [selectedHotelId]);
   useEffect(() => { hoveredHotelIdRef.current = hoveredHotelId != null ? String(hoveredHotelId) : null; }, [hoveredHotelId]);
 
@@ -195,13 +189,12 @@ export default function MapView({
   // when the actual pin set/price/logo changes, not on every parent render.
   const hotelPins2 = Array.isArray(hotelPins) ? hotelPins : null;
   const hotelPinsSig = useMemo(
-    () => (hotelPins2 ? hotelPins2.map((h) => `${h.id}:${h.lat},${h.lng}:${h.price ?? ''}:${h.priceLabel || ''}:${h.supplierLogo || ''}`).join('|') : ''),
+    () => (hotelPins2 ? hotelPins2.map((h) => `${h.id}:${h.lat},${h.lng}:${h.priceLabel || ''}:${h.supplierLogo || ''}`).join('|') : ''),
     [hotelPins2],
   );
 
-  // Supercluster index over the WHOLE pool — built once per pool/filters change.
-  // The cheapest price per cluster is aggregated at build time (map/reduce) so the
-  // bubble's "от $X" costs nothing per viewport recompute. Stays without coords are
+  // Reusable cluster index over the WHOLE pool — built once per pool/filters change
+  // (src/lib/map/cluster.js, shareable by any map surface). Stays without coords are
   // excluded (list-only). Keyed on hotelPinsSig (hotelPins2 is a fresh array each
   // render); eslint can't see that the sig captures the data it reads.
   const clusterIndex = useMemo(() => {
@@ -210,18 +203,11 @@ export default function MapView({
       .filter((h) => h.lat != null && h.lng != null)
       .map((h) => ({
         type: 'Feature',
-        properties: { hotelId: h.id, price: typeof h.price === 'number' ? h.price : null },
+        properties: { hotelId: h.id },
         geometry: { type: 'Point', coordinates: [Number(h.lng), Number(h.lat)] },
       }));
     if (features.length === 0) return null;
-    const idx = new Supercluster({
-      radius: 64,
-      maxZoom: 18,
-      map: (props) => ({ minPrice: props.price != null ? props.price : Infinity }),
-      reduce: (acc, props) => { if (props.minPrice < acc.minPrice) acc.minPrice = props.minPrice; },
-    });
-    idx.load(features);
-    return idx;
+    return buildClusterIndex(features);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hotelPinsSig]);
 
@@ -585,72 +571,70 @@ export default function MapView({
       return undefined;
     }
 
-    // Rebuild the DOM markers for the current viewport from the cluster index.
+    // Rebuild the DOM markers for the current (padded) viewport from the index.
     const renderViewport = () => {
-      const b = map.getBounds();
-      const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
-      const zoom = Math.round(map.getZoom());
-      const features = clusterIndex.getClusters(bbox, zoom);
+      const features = queryViewport(clusterIndex, map);
 
       hotelMarkersRef.current.forEach((m) => m.remove());
       hotelMarkersRef.current = [];
       const index = new globalThis.Map();
 
+      // One supplier badge (wired to the list both ways) for a single stay.
+      const addBadge = (id, lngLat) => {
+        const pin = hotelPinById.get(String(id));
+        const el = createHotelBadgeEl(
+          { supplierLogo: pin?.supplierLogo, priceLabel: pin?.priceLabel },
+          {
+            title: pin?.name,
+            onClick: () => onHotelClickRef.current?.(id),
+            onHover: (entering) => onHotelHoverRef.current?.(entering ? id : null),
+          },
+        );
+        el.dataset.hotelId = String(id);
+        hotelMarkersRef.current.push(new mapboxgl.Marker({ element: el }).setLngLat(lngLat).addTo(map));
+        index.set(String(id), { kind: 'badge', el });
+      };
+
       features.forEach((f) => {
         const [lng, lat] = f.geometry.coordinates;
         const p = f.properties;
-        if (p.cluster) {
-          const clusterId = p.cluster_id;
-          const fmt = formatClusterPriceRef.current;
-          const priceLabel = (p.minPrice != null && p.minPrice !== Infinity && fmt) ? fmt(p.minPrice) : null;
-          const el = createClusterBubbleEl(
-            { count: p.point_count, priceLabel },
-            { onClick: () => {
-              const ez = Math.min(clusterIndex.getClusterExpansionZoom(clusterId), 18);
-              map.flyTo({ center: [lng, lat], zoom: ez, duration: 600, essential: true });
-            } },
-          );
-          const marker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
-          hotelMarkersRef.current.push(marker);
-          // Map every leaf id to this bubble (§4 index) for list↔map hover/select.
-          clusterIndex.getLeaves(clusterId, Infinity).forEach((leaf) => {
-            index.set(String(leaf.properties.hotelId), { kind: 'cluster', el, clusterId });
-          });
-        } else {
-          const id = String(p.hotelId);
-          const pin = hotelPinById.get(id);
-          const el = createHotelBadgeEl(
-            { supplierLogo: pin?.supplierLogo, priceLabel: pin?.priceLabel },
-            {
-              title: pin?.name,
-              onClick: () => onHotelClickRef.current?.(p.hotelId),
-              onHover: (entering) => onHotelHoverRef.current?.(entering ? p.hotelId : null),
-            },
-          );
-          el.dataset.hotelId = id;
-          const marker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
-          hotelMarkersRef.current.push(marker);
-          index.set(id, { kind: 'badge', el });
+        if (!p.cluster) { addBadge(p.hotelId, [lng, lat]); return; }
+        const clusterId = p.cluster_id;
+        // Coincident pins no zoom can split → fan them into a ring of real badges
+        // (each individually selectable) instead of an undivable bubble.
+        if (isIrreducible(clusterIndex, clusterId)) {
+          spiderfyLayout(map, [lng, lat], clusterIndex.getLeaves(clusterId, Infinity))
+            .forEach(({ leaf, lngLat }) => addBadge(leaf.properties.hotelId, lngLat));
+          return;
         }
+        // Otherwise a count bubble; clicking zooms to where the cluster splits.
+        const el = createClusterBubbleEl(p.point_count, {
+          onClick: () => map.flyTo({ center: [lng, lat], zoom: expansionZoom(clusterIndex, clusterId), duration: 600, essential: true }),
+        });
+        hotelMarkersRef.current.push(new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map));
+        // Map every leaf id to this bubble (§4 index) for list↔map hover/select.
+        clusterIndex.getLeaves(clusterId, Infinity).forEach((leaf) => {
+          index.set(String(leaf.properties.hotelId), { kind: 'cluster', el, clusterId });
+        });
       });
 
       hotelRenderRef.current = index;
       applyHotelHighlight();
 
       // Способ A doniryvanie: keep zooming toward a pending selection until it
-      // surfaces as its own badge (or it can't separate further — coincident pins).
+      // surfaces as its own badge (singleton or spiderfied leaf), then finish.
       const pendId = pendingSelectRef.current;
       if (pendId != null) {
         const e = index.get(String(pendId));
         if (!e || e.kind === 'badge') {
-          pendingSelectRef.current = null; // arrived (badge highlighted by applyHotelHighlight) or gone
+          pendingSelectRef.current = null; // arrived (highlighted by applyHotelHighlight) or gone
         } else {
           const pin = hotelPinById.get(String(pendId));
-          const ez = Math.min(clusterIndex.getClusterExpansionZoom(e.clusterId), 20);
+          const ez = expansionZoom(clusterIndex, e.clusterId);
           if (pin && ez > map.getZoom() + 0.01) {
             map.flyTo({ center: [pin.lng, pin.lat], zoom: ez, duration: 500, essential: true });
           } else {
-            pendingSelectRef.current = null; // can't split further — leave the bubble cued
+            pendingSelectRef.current = null; // safety: irreducible clusters spiderfy, so this is unreachable
           }
         }
       }
@@ -697,7 +681,7 @@ export default function MapView({
       // sane zoom so the next recompute can place it.
       pendingSelectRef.current = sel;
       const targetZoom = e && e.kind === 'cluster'
-        ? Math.min(clusterIndex.getClusterExpansionZoom(e.clusterId), 20)
+        ? expansionZoom(clusterIndex, e.clusterId)
         : Math.max(map.getZoom(), 12);
       map.flyTo({ center: [pin.lng, pin.lat], zoom: targetZoom, duration: 600, essential: true });
     } else {

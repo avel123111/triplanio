@@ -82,7 +82,6 @@ export default {
   'fork.stay22_count_plus': '{n}+ options',
   'fork.stay22_reviews': '· {n} reviews',
   'fork.stay22_for_nights': 'for {count} nights',
-  'fork.cluster_from': 'from {price}',
   'view.empty_day': 'Nothing planned for this day',
   'view.today': 'Today',
   'view.add_event': 'Add',

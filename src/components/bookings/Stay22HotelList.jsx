@@ -108,7 +108,9 @@ export default function Stay22HotelList({
     const targetPage = Math.floor(idx / CLIENT_PAGE_SIZE) + 1;
     if (targetPage !== page) { onPageChange?.(targetPage); return; } // re-runs post-change → scrolls below
     const node = cardRefs.current.get(String(selectedId));
-    if (node) node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    // Center the selected card in the scroll viewport (clamps naturally for the
+    // first/last cards) instead of leaving it flush at the top/bottom edge.
+    if (node) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [selectedId, page, pool, onPageChange]);
 
   const guestsLabel = () => {
