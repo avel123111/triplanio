@@ -224,14 +224,16 @@ Deno.serve(async (req) => {
             // Новая подписка. Есть ли уже энтайтлинг у юзера → дубль.
             const isDup = await hasOtherEntitlingSub(user_id, subId);
             if (isDup) await reportPaymentAnomaly('sub_double_paid', { user_id, sub_id: subId, session_id: session.id }, 'error');
-            await ensureWrite('subscription insert', supabaseAdmin.from('subscription').insert({
+            // upsert по provider_subscription_id — гонко-безопасно: конкурентная
+            // доставка invoice.paid для той же подписки станет апдейтом, не 500.
+            await ensureWrite('subscription upsert (checkout)', supabaseAdmin.from('subscription').upsert({
               user_id, product_code: productCode, provider: 'stripe',
               provider_subscription_id: subId, provider_ref: session.id,
               status: isDup ? 'duplicate' : status, needs_review: isDup,
               current_period_end: periodEndIso, cancel_at_period_end: cancelAtPeriodEnd,
               amount: session.amount_total, currency: session.currency || 'usd',
               billing_interval: productCode === 'account_pro_monthly' ? 'month' : 'year',
-            }));
+            }, { onConflict: 'provider_subscription_id' }));
             if (!isDup) {
               await saveCustomer(user_id, session.customer);
               await recomputeUser(user_id);
@@ -267,13 +269,15 @@ Deno.serve(async (req) => {
           }).eq('id', existing.id));
         } else {
           const isDup = await hasOtherEntitlingSub(resolved.userId, subId);
-          await ensureWrite('invoice.paid insert', supabaseAdmin.from('subscription').insert({
+          // upsert: гонка checkout.session.completed ↔ invoice.paid для той же
+          // подписки больше не даёт unique-violation/500 (была причина 500 на dev).
+          await ensureWrite('invoice.paid upsert', supabaseAdmin.from('subscription').upsert({
             user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
             provider_subscription_id: subId, status: isDup ? 'duplicate' : sub.status, needs_review: isDup,
             current_period_end: periodEndIso, cancel_at_period_end: sub.cancel_at_period_end === true,
             currency: invoice.currency || 'usd',
             billing_interval: resolved.productCode === 'account_pro_monthly' ? 'month' : 'year',
-          }));
+          }, { onConflict: 'provider_subscription_id' }));
           if (isDup) await reportPaymentAnomaly('sub_double_paid', { user_id: resolved.userId, sub_id: subId, ctx: 'invoice.paid' }, 'error');
         }
         await recomputeUser(resolved.userId);
@@ -296,13 +300,13 @@ Deno.serve(async (req) => {
             ...(nextAttemptIso ? { provider_meta: { next_payment_attempt: nextAttemptIso } } : {}),
           }).eq('id', existing.id));
         } else {
-          await ensureWrite('invoice.payment_failed insert', supabaseAdmin.from('subscription').insert({
+          await ensureWrite('invoice.payment_failed upsert', supabaseAdmin.from('subscription').upsert({
             user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
             provider_subscription_id: subId, status: 'past_due', collection_state: 'past_due',
             currency: invoice.currency || 'usd',
             billing_interval: resolved.productCode === 'account_pro_monthly' ? 'month' : 'year',
             ...(nextAttemptIso ? { provider_meta: { next_payment_attempt: nextAttemptIso } } : {}),
-          }));
+          }, { onConflict: 'provider_subscription_id' }));
         }
         await recomputeUser(resolved.userId);
         try {
@@ -333,13 +337,16 @@ Deno.serve(async (req) => {
             provider_meta: { next_payment_attempt: nextAttemptIso },
           }).eq('id', existing.id));
         } else {
-          await ensureWrite('invoice.updated insert', supabaseAdmin.from('subscription').insert({
+          // ignoreDuplicates: если racer уже создал строку этой подписки — НЕ
+          // перетираем её статус (invoice.updated не владеет статусом); grace-дата
+          // до-приедет следующим invoice.updated/failed.
+          await ensureWrite('invoice.updated upsert', supabaseAdmin.from('subscription').upsert({
             user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
             provider_subscription_id: subId, status: 'past_due', collection_state: 'past_due',
             currency: invoice.currency || 'usd',
             billing_interval: resolved.productCode === 'account_pro_monthly' ? 'month' : 'year',
             provider_meta: { next_payment_attempt: nextAttemptIso },
-          }));
+          }, { onConflict: 'provider_subscription_id', ignoreDuplicates: true }));
         }
         await recomputeUser(resolved.userId);
         break;

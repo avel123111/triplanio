@@ -99,9 +99,14 @@ Deno.serve(async (req) => {
     const sep = safeReturn.includes('?') ? '&' : '?';
     const ctxParam = planType === 'pro_trip' ? `&kind=trip&pt=${tripId}` : '&kind=sub';
 
-    // НАШ стабильный ключ: (user, product, trip). Две вкладки → один ключ → одна
-    // сессия Stripe. self-heal по email — отдельный суффикс (другое тело).
-    const baseKey = `checkout:${user.id}:${productCode}:${tripId || '-'}`;
+    // НАШ стабильный ключ. Подписка — АККАУНТ-уровень: trip в ключ НЕ кладём,
+    // иначе тот же месячный чекаут со страницы Pro (без трипа) и из пейволла в
+    // контексте трипа дал бы два ключа → две сессии → дыра двойной оплаты. Trip
+    // Pro — trip-scoped, trip обязателен в ключе. Две вкладки → один ключ → одна
+    // сессия Stripe; self-heal по email — отдельный суффикс (другое тело).
+    const baseKey = planType === 'pro_trip'
+      ? `checkout:${user.id}:${productCode}:${tripId}`
+      : `checkout:${user.id}:${productCode}`;
 
     const buildParams = (useCustomerId: boolean): Stripe.Checkout.SessionCreateParams => ({
       payment_method_types: ['card'],
