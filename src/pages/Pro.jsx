@@ -25,6 +25,12 @@ export default function Pro() {
   // pro_trip may only be bought by the trip OWNER. If a non-owner lands here with
   // a tripId (e.g. a leaked link from a shared trip), hide the per-trip plan —
   // they can still buy a subscription, but can't buy Pro for someone else's trip.
+  // Every in-app CTA that carries a tripId is already owner-gated, so the owner is
+  // the only realistic visitor: show pro_trip OPTIMISTICALLY while ownership is
+  // still unknown (null) and only drop it once the check explicitly returns false.
+  // This avoids a late "third card pops in" reflow for the common (owner) path;
+  // the rare leaked-URL non-owner sees a single one-time 3→2 collapse instead, and
+  // the actual purchase is blocked server-side regardless.
   const [tripOwner, setTripOwner] = useState(null); // null = unknown
   useEffect(() => {
     if (!tripId) return;
@@ -34,10 +40,12 @@ export default function Pro() {
       .catch(() => { if (!cancelled) setTripOwner(false); });
     return () => { cancelled = true; };
   }, [tripId]);
-  const hidePerTrip = searchParams.get('hidePerTrip') === '1' || !tripId || tripOwner !== true;
+  const hidePerTrip = searchParams.get('hidePerTrip') === '1' || !tripId || tripOwner === false;
 
   const [prices, setPrices] = useState(null);
-  const [pricesLoading, setPricesLoading] = useState(false);
+  // Start in the loading state: prices are always fetched on mount, so the very
+  // first paint should already show skeletons (not a one-frame flash of "-" cards).
+  const [pricesLoading, setPricesLoading] = useState(true);
   const [picked, setPicked] = useState('pro_monthly');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -173,7 +181,6 @@ export default function Pro() {
                 <div
                   key={i}
                   className="plan-card-skel"
-                  style={{ '--card-delay': `${0.04 + i * 0.09}s` }}
                 >
                   <Skeleton w="55%" h={20} />
                   <div style={{ marginTop: 8 }}><Skeleton w="75%" h={11} /></div>
