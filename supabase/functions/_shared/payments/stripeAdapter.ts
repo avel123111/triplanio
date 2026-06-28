@@ -73,6 +73,10 @@ export class StripeAdapter implements PaymentAdapter {
     return this.stripe.invoices.retrieve(id);
   }
 
+  fetchCheckoutSession(id: string): Promise<Stripe.Checkout.Session> {
+    return this.stripe.checkout.sessions.retrieve(id);
+  }
+
   /** Checkout-сессия со СТАБИЛЬНЫМ idempotencyKey (наш дедуп). */
   createCheckout(
     params: Stripe.Checkout.SessionCreateParams,

@@ -175,6 +175,14 @@ Deno.serve(async (req) => {
             .from('purchase').select('id').eq('provider_ref', session.id).limit(1);
           if (same && same.length > 0) break;
 
+          // Refetch истины из Stripe (ТЗ §1.3): не доверяем телу — берём актуальную
+          // сессию и НЕ начисляем, если она не оплачена (payment_status != 'paid').
+          const fresh = await adapter.fetchCheckoutSession(session.id);
+          if (fresh.payment_status !== 'paid') {
+            await reportPaymentAnomaly('pro_trip_unpaid_completed', { trip_id, session_id: session.id, user_id, payment_status: fresh.payment_status }, 'error');
+            break;
+          }
+
           // Уже есть active покупка трипа → второй РАЗНЫЙ платёж (две вкладки):
           // пишем duplicate + needs_review + Sentry, прав не задваиваем.
           const { data: act } = await supabaseAdmin
@@ -186,13 +194,14 @@ Deno.serve(async (req) => {
           }
           await ensureWrite('purchase insert', supabaseAdmin.from('purchase').insert({
             user_id, trip_id, product_code: 'trip_pro_lifetime', provider: 'stripe',
-            provider_charge_id: session.payment_intent || null, provider_ref: session.id,
+            provider_charge_id: (typeof fresh.payment_intent === 'string' ? fresh.payment_intent : null),
+            provider_ref: session.id,
             status: isDup ? 'duplicate' : 'active', needs_review: isDup,
-            amount: session.amount_total, currency: session.currency || 'usd',
+            amount: fresh.amount_total, currency: fresh.currency || 'usd',
             purchased_at: new Date().toISOString(),
           }));
           if (!isDup) await recomputeTrip(trip_id);
-          await saveCustomer(user_id, session.customer);
+          await saveCustomer(user_id, fresh.customer);
 
         } else if ((productCode === 'account_pro_monthly' || productCode === 'account_pro_yearly') && user_id) {
           const subId = typeof session.subscription === 'string' ? session.subscription : null;
@@ -287,20 +296,20 @@ Deno.serve(async (req) => {
         if (!resolved) break;
         await saveCustomer(resolved.userId, invoice.customer);
         const nextAttemptIso = invoice.next_payment_attempt ? unixToIso(invoice.next_payment_attempt) : null;
-        if (existing) {
-          await ensureWrite('invoice.payment_failed update', supabaseAdmin.from('subscription').update({
-            status: 'past_due', collection_state: 'past_due',
-            ...(nextAttemptIso ? { provider_meta: { next_payment_attempt: nextAttemptIso } } : {}),
-          }).eq('id', existing.id));
-        } else {
-          await ensureWrite('invoice.payment_failed upsert', supabaseAdmin.from('subscription').upsert({
-            user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
-            provider_subscription_id: subId, status: 'past_due', collection_state: 'past_due',
-            currency: invoice.currency || 'usd',
-            billing_interval: resolved.productCode === 'account_pro_monthly' ? 'month' : 'year',
-            ...(nextAttemptIso ? { provider_meta: { next_payment_attempt: nextAttemptIso } } : {}),
-          }, { onConflict: 'provider_subscription_id' }));
-        }
+        // Refetch истины (ТЗ §1.3): статус подписки берём из Stripe verbatim
+        // (active в smart-retry / unpaid / canceled при исчерпании дённинга),
+        // collection_state='past_due' и grace — из контекста инвойса.
+        const sub = await adapter.fetchSubscription(subId);
+        const periodEndIso = unixToIso(getPeriodEndUnix(sub));
+        await ensureWrite('invoice.payment_failed upsert', supabaseAdmin.from('subscription').upsert({
+          user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
+          provider_subscription_id: subId, status: sub.status, collection_state: 'past_due',
+          cancel_at_period_end: sub.cancel_at_period_end === true,
+          ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
+          currency: invoice.currency || 'usd',
+          billing_interval: resolved.productCode === 'account_pro_monthly' ? 'month' : 'year',
+          ...(nextAttemptIso ? { provider_meta: { next_payment_attempt: nextAttemptIso } } : {}),
+        }, { onConflict: 'provider_subscription_id' }));
         await recomputeUser(resolved.userId);
         try {
           await supabaseAdmin.from('notifications').insert({
@@ -325,22 +334,18 @@ Deno.serve(async (req) => {
         const resolved = await resolveRecurringUser(adapter, subId, existing, 'invoice.updated');
         if (!resolved) break;
         await saveCustomer(resolved.userId, invoice.customer);
-        if (existing) {
-          await ensureWrite('invoice.updated update', supabaseAdmin.from('subscription').update({
-            provider_meta: { next_payment_attempt: nextAttemptIso },
-          }).eq('id', existing.id));
-        } else {
-          // ignoreDuplicates: если racer уже создал строку этой подписки — НЕ
-          // перетираем её статус (invoice.updated не владеет статусом); grace-дата
-          // до-приедет следующим invoice.updated/failed.
-          await ensureWrite('invoice.updated upsert', supabaseAdmin.from('subscription').upsert({
-            user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
-            provider_subscription_id: subId, status: 'past_due', collection_state: 'past_due',
-            currency: invoice.currency || 'usd',
-            billing_interval: resolved.productCode === 'account_pro_monthly' ? 'month' : 'year',
-            provider_meta: { next_payment_attempt: nextAttemptIso },
-          }, { onConflict: 'provider_subscription_id', ignoreDuplicates: true }));
-        }
+        // Refetch истины (ТЗ §1.3): статус из Stripe verbatim + grace-дата из инвойса.
+        const sub = await adapter.fetchSubscription(subId);
+        const periodEndIso = unixToIso(getPeriodEndUnix(sub));
+        await ensureWrite('invoice.updated upsert', supabaseAdmin.from('subscription').upsert({
+          user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
+          provider_subscription_id: subId, status: sub.status, collection_state: 'past_due',
+          cancel_at_period_end: sub.cancel_at_period_end === true,
+          ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
+          currency: invoice.currency || 'usd',
+          billing_interval: resolved.productCode === 'account_pro_monthly' ? 'month' : 'year',
+          provider_meta: { next_payment_attempt: nextAttemptIso },
+        }, { onConflict: 'provider_subscription_id' }));
         await recomputeUser(resolved.userId);
         break;
       }
