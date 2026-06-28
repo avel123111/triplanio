@@ -123,15 +123,46 @@ export function buildStay22Params({ visit, currency, lang, page, pageSize, filte
   };
 }
 
-// Stable cache key — includes pageSize + filters so changing either refetches.
-export const STAY22_KEY = (visit, currency, lang, page, filters, pageSize) => [
-  'stay22',
+// ── v2 pool (TRIP-141): all-pages load + single client pool ──────────────────
+// How many Stay22 pages we burst-load (pageSize=100 each) and the hard cap on the
+// pooled stays. Page 1 paints instantly; pages 2..POOL_PAGES load in one parallel
+// background burst and are appended. The cap covers cities with 150/250 stays;
+// past it we keep the first POOL_MAX (Stay22 orders by relevance) and drop the rest.
+export const POOL_PAGES = 3;
+export const POOL_MAX = 300;
+
+// Merge already-normalized hotel pages into one pool: dedup by id (the FIRST page
+// to carry an id wins — earlier Stay22 pages rank higher, so the kept entry is the
+// more relevant one) and cap at POOL_MAX. Input is an array of hotel arrays; an
+// entry may be undefined while its page is still loading (progressive). Returns
+// { hotels, truncated } where truncated=true means the cap dropped real stays.
+export function mergePool(pages) {
+  const seen = new Set();
+  const hotels = [];
+  let truncated = false;
+  for (const page of pages || []) {
+    if (!Array.isArray(page)) continue;
+    for (const h of page) {
+      if (!h || h.id == null) continue;
+      const key = String(h.id);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (hotels.length >= POOL_MAX) { truncated = true; continue; }
+      hotels.push(h);
+    }
+  }
+  return { hotels, truncated };
+}
+
+// Stable cache key for the whole-city pool. Page-independent (the pool spans every
+// page) — only visit + dates + currency/lang + filters change it, so flipping the
+// filters reloads all pages while panning/paging the result reuses the cache.
+export const STAY22_POOL_KEY = (visit, currency, lang, filters) => [
+  'stay22-pool',
   visit?.id || `${visit?.latitude},${visit?.longitude}`,
   dateOnly(visit?.start_date),
   dateOnly(visit?.end_date),
   currency || '',
   lang || '',
-  page || 1,
-  pageSize || 0,
   JSON.stringify(filterParams(filters)),
 ];

@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Supercluster from 'supercluster';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
-import { groupByLocation, createMarkerEl, createHotelBadgeEl, iconForKinds } from '@/lib/map/markers';
+import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, iconForKinds } from '@/lib/map/markers';
 import MapControls from '@/lib/map/MapControls';
 import { countryFlag } from '@/lib/geo';
 import { sortVisits } from '@/lib/validation';
@@ -116,19 +117,26 @@ export default function MapView({
   // public shared-trip reader, mirroring the stats map). Defaults to the normal
   // styled basemap.
   basemapTheme = 'default',
-  // ── Hotel-pick overlay (editor fork panel, TRIP-140) ──────────────────────
+  // ── Hotel-pick overlay (editor fork panel, TRIP-140 + clustering TRIP-141) ──
   // Off by default; only the editor's open hotel panel flips these on, so every
   // other surface (sharing the map singleton) is untouched. When `hideRoute` is
   // true the whole trip route — city markers, lines, the selected-leg highlight
-  // and the auto-fit — is suppressed and `hotelPins` are drawn as supplier badges
-  // instead. selected/hovered ids + click/hover callbacks wire the badges to the
-  // list both ways.
+  // and the auto-fit — is suppressed and `hotelPins` (the WHOLE city pool) are
+  // CLIENT-CLUSTERED (supercluster) into DOM bubbles (count + cheapest "от $X")
+  // and single supplier badges, recomputed per viewport on move/zoom. selected/
+  // hovered ids + click/hover callbacks wire the badges to the list both ways;
+  // selecting a stay buried in a cluster zooms the cluster open until the stay
+  // surfaces as its own badge (Способ A).
   hideRoute = false,
   hotelPins = null,
   selectedHotelId = null,
   hoveredHotelId = null,
   onHotelClick,
   onHotelHover,
+  // Formats a cluster's cheapest price (number) → label ("от $80") for the bubble.
+  // Provided by the parent (it owns the money formatter + locale). Falsy ⇒ bubbles
+  // show the count alone.
+  formatClusterPrice = null,
   children,
 }) {
   const containerRef = useRef(null);
@@ -136,6 +144,24 @@ export default function MapView({
   const hotelMarkersRef = useRef([]);
   const prevHideRouteRef = useRef(false);
   const fittedSigRef = useRef('');
+  // Clustering state (TRIP-141), all imperative so move/zoom never re-renders:
+  //   hotelRenderRef    — id → { kind:'badge'|'cluster', el, clusterId } for the
+  //                       CURRENT viewport (powers list↔map hover/select)
+  //   hotelMoveHandlerRef — the moveend listener currently attached (so we detach it)
+  //   hadHotelPinsRef   — fit-to-pool happened for this city (don't re-fit on growth)
+  //   pendingSelectRef  — a stay we're zooming toward (Способ A doniryvanie)
+  //   selectedHotelIdRef / hoveredHotelIdRef — latest ids for the imperative render
+  const hotelRenderRef = useRef(new globalThis.Map());
+  const hotelMoveHandlerRef = useRef(null);
+  const hadHotelPinsRef = useRef(false);
+  const pendingSelectRef = useRef(null);
+  const lastSelActedRef = useRef(null);
+  const selectedHotelIdRef = useRef(null);
+  const hoveredHotelIdRef = useRef(null);
+  const formatClusterPriceRef = useRef(formatClusterPrice);
+  useEffect(() => { formatClusterPriceRef.current = formatClusterPrice; }, [formatClusterPrice]);
+  useEffect(() => { selectedHotelIdRef.current = selectedHotelId != null ? String(selectedHotelId) : null; }, [selectedHotelId]);
+  useEffect(() => { hoveredHotelIdRef.current = hoveredHotelId != null ? String(hoveredHotelId) : null; }, [hoveredHotelId]);
 
   const [projection, setProjection] = useState('mercator');
   // Internal toggles (driven by the on-map control buttons). Seeded from props and
@@ -165,13 +191,70 @@ export default function MapView({
   useEffect(() => { onHotelClickRef.current = onHotelClick; }, [onHotelClick]);
   useEffect(() => { onHotelHoverRef.current = onHotelHover; }, [onHotelHover]);
 
-  // Stable signature of the hotel pins so the badge-build effect only re-runs when
-  // the actual pin set/price/logo changes, not on every parent render.
+  // Stable signature of the hotel pins so the cluster/build effects only re-run
+  // when the actual pin set/price/logo changes, not on every parent render.
   const hotelPins2 = Array.isArray(hotelPins) ? hotelPins : null;
   const hotelPinsSig = useMemo(
-    () => (hotelPins2 ? hotelPins2.map((h) => `${h.id}:${h.lat},${h.lng}:${h.priceLabel || ''}:${h.supplierLogo || ''}`).join('|') : ''),
+    () => (hotelPins2 ? hotelPins2.map((h) => `${h.id}:${h.lat},${h.lng}:${h.price ?? ''}:${h.priceLabel || ''}:${h.supplierLogo || ''}`).join('|') : ''),
     [hotelPins2],
   );
+
+  // Supercluster index over the WHOLE pool — built once per pool/filters change.
+  // The cheapest price per cluster is aggregated at build time (map/reduce) so the
+  // bubble's "от $X" costs nothing per viewport recompute. Stays without coords are
+  // excluded (list-only). Keyed on hotelPinsSig (hotelPins2 is a fresh array each
+  // render); eslint can't see that the sig captures the data it reads.
+  const clusterIndex = useMemo(() => {
+    if (!hotelPins2 || hotelPins2.length === 0) return null;
+    const features = hotelPins2
+      .filter((h) => h.lat != null && h.lng != null)
+      .map((h) => ({
+        type: 'Feature',
+        properties: { hotelId: h.id, price: typeof h.price === 'number' ? h.price : null },
+        geometry: { type: 'Point', coordinates: [Number(h.lng), Number(h.lat)] },
+      }));
+    if (features.length === 0) return null;
+    const idx = new Supercluster({
+      radius: 64,
+      maxZoom: 18,
+      map: (props) => ({ minPrice: props.price != null ? props.price : Infinity }),
+      reduce: (acc, props) => { if (props.minPrice < acc.minPrice) acc.minPrice = props.minPrice; },
+    });
+    idx.load(features);
+    return idx;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotelPinsSig]);
+
+  // id → pin lookup (coords/logo/price/name) for the imperative cluster render +
+  // Способ A flyTo. Same sig key as the index.
+  const hotelPinById = useMemo(() => {
+    const m = new globalThis.Map();
+    (hotelPins2 || []).forEach((h) => m.set(String(h.id), h));
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotelPinsSig]);
+
+  // Visual-only highlight pass: toggles .is-sel / .is-hover (+ z-index) on the
+  // CURRENT viewport elements from the latest selected/hovered ids. A stay inside a
+  // cluster lights up its bubble (a bubble is never the final selection — Способ A
+  // zooms it open first). Reads refs so move/zoom can call it without re-rendering.
+  const applyHotelHighlight = useCallback(() => {
+    const index = hotelRenderRef.current;
+    const sel = selectedHotelIdRef.current;
+    const hov = hoveredHotelIdRef.current;
+    index.forEach((entry) => { entry.el.classList.remove('is-sel', 'is-hover'); entry.el.style.zIndex = ''; });
+    if (hov) {
+      const e = index.get(hov);
+      if (e) { e.el.classList.add('is-hover'); if (e.kind === 'badge') e.el.style.zIndex = '2'; }
+    }
+    if (sel) {
+      const e = index.get(sel);
+      if (e) {
+        if (e.kind === 'badge') { e.el.classList.remove('is-hover'); e.el.classList.add('is-sel'); e.el.style.zIndex = '3'; }
+        else { e.el.classList.add('is-hover'); } // selected but still clustered → cue the bubble
+      }
+    }
+  }, []);
 
   const ordered = useMemo(() => {
     const all = sortVisits(visits).filter((v) => v.latitude && v.longitude);
@@ -466,72 +549,161 @@ export default function MapView({
     return undefined;
   }, [ready, ordered, transfers, visitsSignature, hideRoute]);
 
-  // --- Hotel-pick overlay badges (TRIP-140) ---------------------------------
-  // Build one supplier badge per pin (logo + price), wired to the list via the
-  // click/hover callbacks. Re-runs only when the pin set actually changes
-  // (hotelPinsSig), and fits the camera to the badges once they're placed. When
-  // `hideRoute` is off (or there are no pins) it just clears any stale badges.
+  // --- Hotel-pick overlay clustering (TRIP-141) -----------------------------
+  // Owns the hotel markers while the overlay is open: builds a moveend listener
+  // that recomputes the visible clusters/badges for the current viewport, fits the
+  // camera to the pool once per city, and tears everything down (with a dissolve)
+  // when the overlay closes. Re-runs when the pool changes (hotelPinsSig) so the
+  // background tail pages appear progressively without a camera jump.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    // Leaving the overlay (hideRoute true→false): dissolve the badges (opacity
-    // only — NEVER transform: Mapbox owns the marker root's inline translate, so
-    // animating transform would yank the badge to the origin) then remove. Swapping
-    // badges WITHIN the overlay (pagination) removes instantly.
+
+    // Leaving the overlay (hideRoute true→false): dissolve current markers (opacity
+    // only — NEVER transform: Mapbox owns the marker root's inline translate). A
+    // pool change WITHIN the overlay removes instantly.
     const leavingOverlay = prevHideRouteRef.current && !hideRoute;
-    hotelMarkersRef.current.forEach((m) => {
-      const el = m.getElement();
-      if (leavingOverlay && el.animate) {
-        const anim = el.animate(
-          [{ opacity: 1 }, { opacity: 0 }],
-          { duration: 150, easing: 'ease-out' },
-        );
-        anim.finished.then(() => m.remove(), () => m.remove());
-      } else {
-        m.remove();
-      }
-    });
-    hotelMarkersRef.current = [];
+    const teardown = () => {
+      hotelMarkersRef.current.forEach((m) => {
+        const el = m.getElement();
+        if (leavingOverlay && el.animate) {
+          const anim = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: 'ease-out' });
+          anim.finished.then(() => m.remove(), () => m.remove());
+        } else { m.remove(); }
+      });
+      hotelMarkersRef.current = [];
+    };
+    if (hotelMoveHandlerRef.current) { map.off('moveend', hotelMoveHandlerRef.current); hotelMoveHandlerRef.current = null; }
+    teardown();
     prevHideRouteRef.current = hideRoute;
-    if (!hideRoute || !hotelPins2 || hotelPins2.length === 0) return undefined;
 
-    const pts = [];
-    hotelPins2.forEach((h) => {
-      if (h.lat == null || h.lng == null) return; // coordinate-less stays: list only
-      const el = createHotelBadgeEl(
-        { supplierLogo: h.supplierLogo, priceLabel: h.priceLabel },
-        {
-          title: h.name,
-          onClick: () => onHotelClickRef.current?.(h.id),
-          onHover: (entering) => onHotelHoverRef.current?.(entering ? h.id : null),
-        },
-      );
-      el.dataset.hotelId = String(h.id);
-      const marker = new mapboxgl.Marker({ element: el }).setLngLat([h.lng, h.lat]).addTo(map);
-      hotelMarkersRef.current.push(marker);
-      pts.push([h.lng, h.lat]);
-    });
-    if (pts.length) fitToPoints(map, pts, { padding: 80, maxZoom: 15, duration: 750 });
-    return undefined;
-  }, [ready, hideRoute, hotelPinsSig]);
+    if (!hideRoute || !clusterIndex) {
+      hadHotelPinsRef.current = false;
+      hotelRenderRef.current = new globalThis.Map();
+      pendingSelectRef.current = null;
+      lastSelActedRef.current = null;
+      return undefined;
+    }
 
-  // Hotel badge selection + hover highlight — toggled on the existing badge
-  // elements (no rebuild) plus a raised z-index so the active badge sits above the
-  // stack. Mirrors the city-marker selection effect above.
+    // Rebuild the DOM markers for the current viewport from the cluster index.
+    const renderViewport = () => {
+      const b = map.getBounds();
+      const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      const zoom = Math.round(map.getZoom());
+      const features = clusterIndex.getClusters(bbox, zoom);
+
+      hotelMarkersRef.current.forEach((m) => m.remove());
+      hotelMarkersRef.current = [];
+      const index = new globalThis.Map();
+
+      features.forEach((f) => {
+        const [lng, lat] = f.geometry.coordinates;
+        const p = f.properties;
+        if (p.cluster) {
+          const clusterId = p.cluster_id;
+          const fmt = formatClusterPriceRef.current;
+          const priceLabel = (p.minPrice != null && p.minPrice !== Infinity && fmt) ? fmt(p.minPrice) : null;
+          const el = createClusterBubbleEl(
+            { count: p.point_count, priceLabel },
+            { onClick: () => {
+              const ez = Math.min(clusterIndex.getClusterExpansionZoom(clusterId), 18);
+              map.flyTo({ center: [lng, lat], zoom: ez, duration: 600, essential: true });
+            } },
+          );
+          const marker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+          hotelMarkersRef.current.push(marker);
+          // Map every leaf id to this bubble (§4 index) for list↔map hover/select.
+          clusterIndex.getLeaves(clusterId, Infinity).forEach((leaf) => {
+            index.set(String(leaf.properties.hotelId), { kind: 'cluster', el, clusterId });
+          });
+        } else {
+          const id = String(p.hotelId);
+          const pin = hotelPinById.get(id);
+          const el = createHotelBadgeEl(
+            { supplierLogo: pin?.supplierLogo, priceLabel: pin?.priceLabel },
+            {
+              title: pin?.name,
+              onClick: () => onHotelClickRef.current?.(p.hotelId),
+              onHover: (entering) => onHotelHoverRef.current?.(entering ? p.hotelId : null),
+            },
+          );
+          el.dataset.hotelId = id;
+          const marker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+          hotelMarkersRef.current.push(marker);
+          index.set(id, { kind: 'badge', el });
+        }
+      });
+
+      hotelRenderRef.current = index;
+      applyHotelHighlight();
+
+      // Способ A doniryvanie: keep zooming toward a pending selection until it
+      // surfaces as its own badge (or it can't separate further — coincident pins).
+      const pendId = pendingSelectRef.current;
+      if (pendId != null) {
+        const e = index.get(String(pendId));
+        if (!e || e.kind === 'badge') {
+          pendingSelectRef.current = null; // arrived (badge highlighted by applyHotelHighlight) or gone
+        } else {
+          const pin = hotelPinById.get(String(pendId));
+          const ez = Math.min(clusterIndex.getClusterExpansionZoom(e.clusterId), 20);
+          if (pin && ez > map.getZoom() + 0.01) {
+            map.flyTo({ center: [pin.lng, pin.lat], zoom: ez, duration: 500, essential: true });
+          } else {
+            pendingSelectRef.current = null; // can't split further — leave the bubble cued
+          }
+        }
+      }
+    };
+
+    hotelMoveHandlerRef.current = renderViewport;
+    map.on('moveend', renderViewport);
+
+    // First paint for this city → fit the camera to the WHOLE pool once. Later pool
+    // growth (tail pages) must NOT jump the camera, so guard with hadHotelPinsRef.
+    if (!hadHotelPinsRef.current) {
+      hadHotelPinsRef.current = true;
+      const pts = (hotelPins2 || []).filter((h) => h.lat != null && h.lng != null).map((h) => [h.lng, h.lat]);
+      if (pts.length) fitToPoints(map, pts, { padding: 80, maxZoom: 15, duration: 750 });
+    }
+    renderViewport();
+
+    return () => {
+      if (hotelMoveHandlerRef.current) { map.off('moveend', hotelMoveHandlerRef.current); hotelMoveHandlerRef.current = null; }
+    };
+  }, [ready, hideRoute, hotelPinsSig, clusterIndex, hotelPinById, applyHotelHighlight]);
+
+  // Hotel selection + hover highlight (no rebuild) + Способ A. Hover/selection just
+  // re-toggle classes; a NEW selection that lands inside a cluster kicks off the
+  // zoom-open handshake (flyTo expansion zoom → pendingSelectRef → renderViewport
+  // finishes the dive on moveend). Guarded by lastSelActedRef so pool growth /
+  // hover changes don't re-fire the flyTo for an unchanged selection.
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !hideRoute) return;
+    applyHotelHighlight();
     const sel = selectedHotelId != null ? String(selectedHotelId) : null;
-    const hov = hoveredHotelId != null ? String(hoveredHotelId) : null;
-    hotelMarkersRef.current.forEach((m) => {
-      const el = m.getElement();
-      const id = el.dataset.hotelId;
-      const isSel = sel != null && id === sel;
-      const isHov = !isSel && hov != null && id === hov;
-      el.classList.toggle('is-sel', isSel);
-      el.classList.toggle('is-hover', isHov);
-      el.style.zIndex = isSel ? '3' : isHov ? '2' : '';
-    });
-  }, [ready, selectedHotelId, hoveredHotelId, hotelPinsSig]);
+    if (sel == null) { pendingSelectRef.current = null; lastSelActedRef.current = null; return; }
+    if (sel === lastSelActedRef.current) return; // unchanged selection — don't re-fly
+    lastSelActedRef.current = sel;
+    const e = hotelRenderRef.current.get(sel);
+    const pin = hotelPinById.get(sel);
+    const map = mapRef.current;
+    if (e && e.kind === 'badge') {
+      pendingSelectRef.current = null; // already a visible badge — applyHotelHighlight styled it, don't move the camera
+    } else if (map && pin && clusterIndex) {
+      // Clustered, or selected from the list while OFF the current viewport: fly
+      // toward the stay and let renderViewport finish the dive (Способ A). A known
+      // cluster uses its exact expansion zoom; an off-screen stay just centers at a
+      // sane zoom so the next recompute can place it.
+      pendingSelectRef.current = sel;
+      const targetZoom = e && e.kind === 'cluster'
+        ? Math.min(clusterIndex.getClusterExpansionZoom(e.clusterId), 20)
+        : Math.max(map.getZoom(), 12);
+      map.flyTo({ center: [pin.lng, pin.lat], zoom: targetZoom, duration: 600, essential: true });
+    } else {
+      pendingSelectRef.current = null;
+    }
+  }, [ready, hideRoute, selectedHotelId, hoveredHotelId, hotelPinsSig, clusterIndex, hotelPinById, applyHotelHighlight]);
 
   // Selection + hover highlight — toggled on the existing marker elements (no
   // rebuild, so hovering a list is cheap). Re-runs after a marker rebuild too

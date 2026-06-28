@@ -1,7 +1,7 @@
 // Unit tests for Stay22 mapping + param building. Run: npm test (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeStay22, buildStay22Params, ensureNextDay } from './stay22-normalize.js';
+import { normalizeStay22, buildStay22Params, ensureNextDay, mergePool, POOL_MAX } from './stay22-normalize.js';
 
 const SAMPLE = {
   meta: { pageSize: 10, count: 3, page: 1, hasMore: true, total: 32, currency: 'USD', checkin: '2026-10-05', checkout: '2026-10-10', nights: 5 },
@@ -89,4 +89,26 @@ test('ensureNextDay: forces checkout strictly after checkin', () => {
   assert.equal(ensureNextDay('2026-10-05', '2026-10-05'), '2026-10-06');
   assert.equal(ensureNextDay('2026-10-05', ''), '2026-10-06');
   assert.equal(ensureNextDay('2026-10-05', '2026-10-10'), '2026-10-10');
+});
+
+test('mergePool: dedups by id across pages, first occurrence wins, preserves order', () => {
+  const p1 = [{ id: 'a', price: 1 }, { id: 'b', price: 2 }];
+  const p2 = [{ id: 'b', price: 999 }, { id: 'c', price: 3 }]; // 'b' repeats
+  const { hotels, truncated } = mergePool([p1, p2]);
+  assert.deepEqual(hotels.map((h) => h.id), ['a', 'b', 'c']);
+  assert.equal(hotels[1].price, 2); // first 'b' kept, not the later duplicate
+  assert.equal(truncated, false);
+});
+
+test('mergePool: skips loading (undefined) pages and id-less / null entries', () => {
+  const p1 = [{ id: 'a' }, null, { name: 'no id' }];
+  const { hotels } = mergePool([p1, undefined]);
+  assert.deepEqual(hotels.map((h) => h.id), ['a']);
+});
+
+test('mergePool: caps at POOL_MAX and flags truncated', () => {
+  const big = Array.from({ length: POOL_MAX + 25 }, (_, i) => ({ id: `h${i}` }));
+  const { hotels, truncated } = mergePool([big]);
+  assert.equal(hotels.length, POOL_MAX);
+  assert.equal(truncated, true);
 });

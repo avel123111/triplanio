@@ -30,7 +30,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
 import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
-import { useStay22Accommodations } from '@/lib/stay22';
+import { useStay22Pool } from '@/lib/stay22';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import TripSidebar from '@/components/trips/TripSidebar';
 import TripAccessError from '@/components/trips/TripAccessError';
@@ -302,13 +302,18 @@ export default function TripStructureEdit() {
   }, [hotelPickVisitId]);
 
   const stayCurrency = trip?.details?.main_currency || 'EUR';
-  const stayQuery = useStay22Accommodations({
-    visit: hotelPickVisit, currency: stayCurrency, lang, page: stayPage, pageSize: 100, filters: stayApplied, enabled: isHotelPick,
+  // TRIP-141: one whole-city pool (all pages, progressive) feeds BOTH the list
+  // (client pagination) and the map (client clustering). No page/pageSize here —
+  // the pool spans every page; stayPage below is a CLIENT page over that pool.
+  const stayQuery = useStay22Pool({
+    visit: hotelPickVisit, currency: stayCurrency, lang, filters: stayApplied, enabled: isHotelPick,
   });
+  const stayMetaCur = stayQuery.data?.meta?.currency || stayCurrency;
   // Map pins: only stays that carry coordinates, with a compact price label (the
-  // badge is tiny — long amounts like 252 400 ₽ are shortened to "252K"). While
-  // the query shows a PREVIOUS city's data (isPlaceholderData, keepPreviousData),
-  // emit no pins so the camera doesn't fit to the old city while the new one loads.
+  // badge is tiny — long amounts like 252 400 ₽ are shortened to "252K") and the
+  // raw price so the cluster index can aggregate the cheapest "от $X". While the
+  // pool shows a PREVIOUS city (isPlaceholderData, keepPreviousData), emit no pins
+  // so the camera doesn't fit to the old city while the new one loads.
   const hotelPins = useMemo(() => {
     if (!isHotelPick || stayQuery.isPlaceholderData) return isHotelPick ? [] : null;
     const list = stayQuery.data?.hotels || [];
@@ -318,9 +323,13 @@ export default function TripStructureEdit() {
       .map((h) => ({
         id: h.id, name: h.name, lat: h.lat, lng: h.lng,
         supplierLogo: h.supplierLogo,
+        price: h.price != null ? h.price : null,
         priceLabel: h.price != null ? fmtMoney(h.price, h.currency || cur, { compact: true }) : null,
       }));
   }, [isHotelPick, stayQuery.data, stayQuery.isPlaceholderData, stayCurrency, fmtMoney]);
+  // Cluster bubble's cheapest-price label ("от $80"). New function identity each
+  // render is fine — MapView reads it through a ref and never rebuilds on it.
+  const formatClusterPrice = (price) => t('fork.cluster_from', { price: fmtMoney(price, stayMetaCur, { compact: true }) });
   // Open a hotel's supplier link (used by the badge's "second click on the
   // selected pin" — parity with the list card). Logged like a card open.
   const logHotelClick = usePartnerLogger(tripId);
@@ -332,7 +341,10 @@ export default function TripStructureEdit() {
   };
   // Bundle handed to the presentational hotel list (through ForkPartnerModal).
   const stay22Bundle = isHotelPick ? {
-    data: stayQuery.data, isLoading: stayQuery.isLoading, isFetching: stayQuery.isFetching,
+    data: stayQuery.data, isLoading: stayQuery.isLoading,
+    // Dim the list only on a city/filter switch (placeholder) or first load — NOT
+    // while the background tail pages stream in (the pool just grows under it).
+    isFetching: stayQuery.isPlaceholderData || stayQuery.isLoading,
     isError: stayQuery.isError, refetch: stayQuery.refetch,
     page: stayPage, onPageChange: setStayPage,
     applied: stayApplied,
@@ -995,6 +1007,7 @@ export default function TripStructureEdit() {
               selectedLegKey={selectedLegKey}
               hideRoute={isHotelPick}
               hotelPins={hotelPins}
+              formatClusterPrice={formatClusterPrice}
               selectedHotelId={staySelectedId}
               hoveredHotelId={stayHoveredId}
               onHotelClick={(id) => { if (staySelectedId != null && String(staySelectedId) === String(id)) openHotelLink(id); else setStaySelectedId(id); }}
