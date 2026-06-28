@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
+import { calmFit } from '@/lib/map/camera';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { createMiniMarkerEl, groupByLocation } from '@/lib/map/markers';
 import { dominantTone } from '@/lib/travel-stats';
@@ -135,7 +136,11 @@ export default function StatsMap({
     }
 
     if (drawable.length > 0 && fittedSigRef.current !== pointsSig) {
-      fitToPoints(map, drawable.map((p) => [+p.lng, +p.lat]), { padding: 56, maxZoom: 6, animate: fittedSigRef.current !== '' });
+      const pts = drawable.map((p) => [+p.lng, +p.lat]);
+      // First fit after load snaps; later changes glide with the shared adaptive
+      // calm tempo (same as every other non-public map).
+      if (fittedSigRef.current === '') fitToPoints(map, pts, { padding: 56, maxZoom: 6, duration: 0 });
+      else calmFit(map, pts, { padding: 56, maxZoom: 6 });
       fittedSigRef.current = pointsSig;
     }
     return undefined;

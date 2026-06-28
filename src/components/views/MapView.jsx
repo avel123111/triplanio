@@ -4,6 +4,7 @@ import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, iconForKinds } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
+import { calmFlyTo, calmFit } from '@/lib/map/camera';
 import MapControls from '@/lib/map/MapControls';
 import { countryFlag } from '@/lib/geo';
 import { sortVisits } from '@/lib/validation';
@@ -31,13 +32,6 @@ function revealLegDuration(from, to) {
 // Final camera zoom when the reveal settles on a city — deliberately pulled back
 // on this reader map (a city sits in its region, not filling the frame).
 const REVEAL_CITY_ZOOM = 5.6;
-
-// Calm camera tempo for every NON-public map (editor/stats/overview/planner…).
-// TRIP-141: zooms were feeling snappy again — slow them, both directions (fly in +
-// fit back), from one place. The public shared-trip reader runs its own reveal
-// mechanics (revealActiveId) and is deliberately left untouched.
-const CALM_FLY_MS = 950; // single-target flyTo (focus a city / cluster / hotel)
-const CALM_FIT_MS = 900; // fit to multiple points (whole route / hotel pool)
 
 // Apply marker visibility (and a one-shot pop on first appearance) for a reveal
 // state. `markerMax` = highest ordered-index allowed to show; revealing=false ⇒
@@ -100,16 +94,11 @@ export default function MapView({
   // Falsy/empty → no override (the whole-route auto-fit stays in charge); when
   // it clears after a focus, the camera eases back to the full route.
   focus = null,
-  // Duration (ms) of the single-city focus flyTo. Defaults to the calm non-public
-  // tempo (CALM_FLY_MS). The public shared-trip reader runs its own reveal
-  // mechanics (revealActiveId) and never reaches this focus effect, so its tempo
-  // is untouched.
-  focusDuration = CALM_FLY_MS,
   // Optional progressive reveal (public shared-trip reader). When `revealActiveId`
   // is set, the route is NOT drawn whole: only the legs UP TO the active city are
   // painted and markers past it are hidden. When the active city ADVANCES to the
-  // next one, the connecting leg is animated growing 0→1 over `focusDuration` —
-  // in lockstep with the camera flyTo — and the next marker appears once the line
+  // next one, the connecting leg is animated growing 0→1 over the reveal leg
+  // duration — in lockstep with the camera flyTo — and the next marker appears once the line
   // arrives. While the reader sits on a city, the leg toward the NEXT city is not
   // drawn at all (no pre-drawn future legs). `revealActiveId == null` ⇒ the whole
   // route + all markers draw normally (default — every other surface).
@@ -455,14 +444,14 @@ export default function MapView({
     if (focusSig) {
       hadFocusRef.current = true;
       if (focus.length === 1) {
-        map.flyTo({ center: focus[0], zoom: 9.5, duration: focusDuration, essential: true });
+        calmFlyTo(map, { center: focus[0], zoom: 9.5 });
       } else {
-        fitToPoints(map, focus, { padding: 110, maxZoom: 9, duration: CALM_FIT_MS });
+        calmFit(map, focus, { padding: 110, maxZoom: 9 });
       }
     } else if (hadFocusRef.current) {
       hadFocusRef.current = false;
       if (ordered.length > 0) {
-        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, duration: CALM_FIT_MS });
+        calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8 });
       }
     }
   }, [ready, focusSig, revealActiveId]);
@@ -536,7 +525,14 @@ export default function MapView({
     // BUT don't override an active parent focus (e.g. landing straight on a city/
     // transfer via a create-intent) — the focus effect owns the camera then.
     if (ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
-      fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, duration: fittedSigRef.current !== '' ? (revealActiveId == null ? CALM_FIT_MS : 650) : 0 });
+      const pts = ordered.map((v) => [v.longitude, v.latitude]);
+      if (fittedSigRef.current === '') {
+        fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 }); // first frame after load: snap
+      } else if (revealActiveId == null) {
+        calmFit(map, pts, { padding: 60, maxZoom: 8 }); // non-public: adaptive calm tempo
+      } else {
+        fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 650 }); // public reveal: its own tempo
+      }
       fittedSigRef.current = visitsSignature;
     }
 
@@ -626,7 +622,7 @@ export default function MapView({
         }
         // Otherwise a count bubble; clicking zooms (calmly) to where it splits.
         const el = createClusterBubbleEl(p.point_count, {
-          onClick: () => map.flyTo({ center: [lng, lat], zoom: expansionZoom(clusterIndex, clusterId), duration: CALM_FLY_MS, essential: true }),
+          onClick: () => calmFlyTo(map, { center: [lng, lat], zoom: expansionZoom(clusterIndex, clusterId) }),
         });
         hotelMarkersRef.current.push(new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map));
         // Map every leaf id to this bubble (§4 index) for list↔map hover/select.
@@ -658,7 +654,7 @@ export default function MapView({
     if (!hadHotelPinsRef.current) {
       hadHotelPinsRef.current = true;
       const pts = (hotelPins2 || []).filter((h) => h.lat != null && h.lng != null).map((h) => [h.lng, h.lat]);
-      if (pts.length) fitToPoints(map, pts, { padding: 80, maxZoom: 15, duration: CALM_FIT_MS });
+      if (pts.length) calmFit(map, pts, { padding: 80, maxZoom: 15 });
     }
     renderViewport();
 
@@ -693,7 +689,7 @@ export default function MapView({
     } else if (map && pin && clusterIndex) {
       pendingSelectRef.current = sel;
       const targetZoom = isolationZoom(clusterIndex, sel, [pin.lng, pin.lat], { minZoom: map.getZoom() });
-      map.flyTo({ center: [pin.lng, pin.lat], zoom: targetZoom, duration: CALM_FLY_MS, essential: true });
+      calmFlyTo(map, { center: [pin.lng, pin.lat], zoom: targetZoom });
     } else {
       pendingSelectRef.current = null;
     }
