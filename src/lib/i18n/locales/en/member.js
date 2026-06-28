@@ -37,6 +37,7 @@ export default {
   'members.promote_subtitle': 'Convert to online member',
   'members.invalid_email': 'Invalid email',
   'members.error_generic': 'Error',
+  'members.err_invite_owner': 'This person is the trip owner — they already have full access.',
   'member.status_pending': 'Pending',
   'member.status_declined': 'Declined',
   'member.role_admin_desc': 'Admin: edit everything',
