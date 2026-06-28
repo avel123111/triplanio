@@ -39,12 +39,14 @@ async function ensureCityNameEn(visit) {
  * @param {string} args.currency trip currency (EUR/USD)
  * @param {string} args.lang     user locale (en/es/ru)
  * @param {number} args.page     1-based page
+ * @param {number} args.pageSize  results per page (default server-side: 10; the
+ *                                map-badge overlay requests up to 100)
  * @param {boolean} args.enabled fetch only while the panel is open
  */
-export function useStay22Accommodations({ visit, currency, lang, page = 1, filters, enabled = true }) {
-  const params = buildStay22Params({ visit, currency, lang, page, filters });
+export function useStay22Accommodations({ visit, currency, lang, page = 1, pageSize, filters, enabled = true }) {
+  const params = buildStay22Params({ visit, currency, lang, page, pageSize, filters });
   return useQuery({
-    queryKey: STAY22_KEY(visit, currency, lang, page, filters),
+    queryKey: STAY22_KEY(visit, currency, lang, page, filters, pageSize),
     enabled: !!enabled && !!params,
     placeholderData: keepPreviousData, // keep the previous page visible while the next loads
     staleTime: 5 * 60 * 1000,

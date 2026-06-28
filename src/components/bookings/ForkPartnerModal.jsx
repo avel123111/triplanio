@@ -108,6 +108,10 @@ export default function ForkPartnerModal({
   // 'dialog' (default) = modal overlay; 'panel' = render inline in the trip
   // editor's left column (same content, PanelShell-style chrome + back button).
   variant = 'dialog',
+  // TRIP-140: lifted Stay22 state + handlers, forwarded as-is to the (now
+  // presentational) hotel list so the same query/pool drives the map badges.
+  // Only present for the hotel panel; null/undefined elsewhere.
+  stay22,
 }) {
   const { t, lang } = useI18nFormat();
   const logClick = usePartnerLogger(tripId);
@@ -188,9 +192,10 @@ export default function ForkPartnerModal({
         )}
       </div>
 
-      {/* Live Stay22 stays — hotel fork, panel only. Fetched on open, FE-only. */}
-      {type === 'hotel' && variant === 'panel' && (
-        <Stay22HotelList visit={visit} currency={tripCurrency} lang={lang} tripId={tripId} />
+      {/* Live Stay22 stays — hotel fork, panel only. Query/state lifted to the
+          editor (TRIP-140); this list is presentational. FE-only. */}
+      {type === 'hotel' && variant === 'panel' && stay22 && (
+        <Stay22HotelList {...stay22} currency={tripCurrency} tripId={tripId} />
       )}
 
       {/* Live Viator activities — activity fork, panel only. Fetched on open, FE-only. */}

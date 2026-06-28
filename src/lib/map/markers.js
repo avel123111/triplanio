@@ -102,6 +102,40 @@ export function createMarkerEl(labels, { onClick, title, icon } = {}) {
   return el;
 }
 
+// Hotel badge marker for the editor's hotel-pick overlay (TRIP-140). A pill that
+// pairs the primary supplier's square logo with its price; price-less stays render
+// the logo alone. Built like createMarkerEl: the consumer toggles .is-sel /
+// .is-hover on the returned element (no rebuild on hover) and the visual scale +
+// elevation live on the inner .s22mk__core so Mapbox's own inline transform on the
+// root .s22mk (positioning) is never clobbered. Stacking order (a badge raised
+// above its neighbours on hover/select) is set imperatively by the consumer via
+// el.style.zIndex, mirroring the way MapView toggles classes.
+// hotel: { supplierLogo, priceLabel }  — priceLabel is preformatted (locale money)
+//   or falsy → logo-only badge.
+// opts: { onClick, onHover, title } — onHover(entering:boolean) fires on the pill.
+export function createHotelBadgeEl({ supplierLogo, priceLabel } = {}, { onClick, onHover, title } = {}) {
+  const el = document.createElement('div');
+  el.className = 's22mk is-clickable';
+  if (title) el.title = title;
+
+  const logo = supplierLogo
+    ? `<img class="s22mk__logo" src="${supplierLogo}" alt="" loading="lazy" />`
+    : '';
+  const price = priceLabel
+    ? `<span class="s22mk__price">${priceLabel}</span>`
+    : '';
+  // logo-only badges get a modifier so the pill stays round rather than stretched.
+  if (!priceLabel) el.classList.add('s22mk--logo');
+  el.innerHTML = `<span class="s22mk__core">${logo}${price}</span>`;
+
+  if (onClick) el.addEventListener('click', onClick);
+  if (onHover) {
+    el.addEventListener('mouseenter', () => onHover(true));
+    el.addEventListener('mouseleave', () => onHover(false));
+  }
+  return el;
+}
+
 // Mini marker for the stats / home travel map — a small coloured dot (~11px),
 // deliberately NOT the trip Ring pin: these screens show an unordered set of
 // lifetime visits over a country fill, so the pins must be tiny and unobtrusive.

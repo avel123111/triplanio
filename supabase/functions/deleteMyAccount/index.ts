@@ -19,6 +19,7 @@
 
 import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
+import { collectPrivateDocFiles, purgeCollectedDocFiles } from '../_shared/personalDocsTeardown.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -28,6 +29,18 @@ Deno.serve(async (req) => {
     const user = await getRequestUser(req);
     if (!user) {
       return Response.json({ code: 'unauthorized' }, { status: 401, headers: corsHeaders });
+    }
+
+    // Collect the user's PRIVATE document files BEFORE the RPC deletes the rows —
+    // the RPC has no Storage access, so the edge must remember the paths first
+    // and remove the orphaned files after a successful anonymize (TRIP-44). Routed
+    // through the single _shared/personalDocsTeardown source. Best-effort: a
+    // failure here must never block account deletion.
+    let collectedDocs: { paths: string[]; tripIds: string[]; docIds: string[] } = { paths: [], tripIds: [], docIds: [] };
+    try {
+      collectedDocs = await collectPrivateDocFiles(supabaseAdmin, user.id);
+    } catch (e) {
+      console.error('deleteMyAccount: collect personal doc files failed', e);
     }
 
     const { data, error: rpcError } = await supabaseAdmin.rpc('anonymize_my_account', {
@@ -50,6 +63,15 @@ Deno.serve(async (req) => {
     if (code !== 'ok') {
       console.error('anonymize_my_account unexpected code:', code);
       return Response.json({ code: 'delete_failed' }, { status: 500, headers: corsHeaders });
+    }
+
+    // RPC removed the rows; now sweep the orphaned Storage files (Storage-guard
+    // skips any path a surviving row still references). Best-effort — the account
+    // is already anonymized, so never turn an orphan file into a 500.
+    try {
+      await purgeCollectedDocFiles(supabaseAdmin, collectedDocs);
+    } catch (e) {
+      console.error('deleteMyAccount: purge personal doc files failed', e);
     }
 
     return Response.json({ code: 'ok' }, { headers: corsHeaders });

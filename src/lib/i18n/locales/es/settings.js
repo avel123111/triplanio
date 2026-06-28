@@ -74,7 +74,7 @@ export default {
   'settings.members_loading': 'Los participantes aún no se han cargado',
   'settings.leave_trip': 'Salir del viaje',
   'settings.leave_btn': 'Salir',
-  'settings.leave_desc': 'Dejarás de ver el viaje. El propietario podrá invitarte de nuevo.',
+  'settings.leave_desc': 'Dejarás de ver el viaje. Tus documentos personales en él se eliminarán de forma permanente. El propietario podrá invitarte de nuevo.',
   'settings.readonly_banner_title': 'Solo lectura',
   'settings.readonly_banner_desc': 'No tienes permiso para cambiar la configuración — solo el propietario y los administradores pueden. Solo puedes salir del viaje.',
   'settings.leave_owner_blocked': 'Transfiere la propiedad a otro participante antes de salir',

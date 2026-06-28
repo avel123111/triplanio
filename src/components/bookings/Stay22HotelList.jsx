@@ -1,21 +1,26 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
-  MapPin, ExternalLink, ChevronLeft, ChevronRight, ChevronDown,
+  MapPin, ChevronLeft, ChevronRight, ChevronDown,
   Users, Search, RotateCcw, Minus, Plus, X, Hotel, AlertTriangle,
 } from 'lucide-react';
 import { Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
-import { useStay22Accommodations } from '@/lib/stay22';
+import PartnerResultCard from '@/components/bookings/PartnerResultCard';
 
 // Live Stay22 stays for the hotel fork panel (Lumo redesign v3 + filters).
-// Rendered under the partner block, hotel + panel only. Fetches on open via the
-// stay22Accommodations edge function; nothing persisted. Filters (guests, rooms,
-// price min/max) trigger a new request on "Поиск"; reset returns to the base
-// request. min/max are per-night price in USD (Stay22 semantics).
+// Rendered under the partner block, hotel + panel only.
+//
+// PRESENTATIONAL (TRIP-140): the single Stay22 query + page + committed filters +
+// hovered/selected state are lifted to TripStructureEdit (so the same pool feeds
+// the map badges). This component only renders the result and reports user intent
+// upward via callbacks; the only local state is the filter popover's draft buffer
+// (`pending`) and its open flag — pure UI that never touches the query directly.
+// min/max are per-night price in USD (Stay22 semantics).
 
 const SKELETON_COUNT = 4;
 const BASE_GUESTS = { adults: 2, children: 0, rooms: 1 };
+const BASE_FILTERS = { ...BASE_GUESTS, min: '', max: '' };
 
 function fmtShort(dateStr, locale) {
   if (!dateStr) return '';
@@ -46,16 +51,29 @@ function Stepper({ value, min, onChange, label }) {
   );
 }
 
-export default function Stay22HotelList({ visit, currency, lang, tripId }) {
+export default function Stay22HotelList({
+  // Query result + paging + committed filters (lifted to TripStructureEdit).
+  data, isLoading, isFetching, isError, refetch,
+  page, onPageChange,
+  applied, onApply, onResetAll,
+  // Two-way map↔list sync.
+  hoveredId, selectedId, onHover, onSelect,
+  // Formatting / click logging context.
+  currency, tripId,
+}) {
   const { t, locale, fmtMoney } = useI18nFormat();
   const logClick = usePartnerLogger(tripId);
 
-  const [page, setPage] = useState(1);
-  // pending = currently edited filters; applied = what the query uses.
-  const [pending, setPending] = useState({ ...BASE_GUESTS, min: '', max: '' });
-  const [applied, setApplied] = useState(null);
+  // Local-only: the filter popover draft buffer (seeded from the committed
+  // filters) + its open flag. Committing "Поиск" hands the snapshot upward.
+  const seed = () => ({ ...BASE_FILTERS, ...(applied || {}) });
+  const appliedSig = JSON.stringify(applied || null);
+  const [pending, setPending] = useState(seed);
   const [popOpen, setPopOpen] = useState(false);
   const wrapRef = useRef(null);
+  // Re-seed the draft whenever the committed filters change from the outside
+  // (apply / reset / pill removal in the parent) so the popover stays in sync.
+  useEffect(() => { setPending(seed()); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [appliedSig]);
 
   useEffect(() => {
     if (!popOpen) return undefined;
@@ -64,16 +82,20 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [popOpen]);
 
-  const { data, isLoading, isFetching, isError, refetch } = useStay22Accommodations({
-    visit, currency, lang, page, filters: applied, enabled: true,
-  });
-
   const hotels = data?.hotels || [];
   const meta = data?.meta || {};
   const totalPages = meta.total ? Math.max(1, Math.ceil(meta.total / (meta.pageSize || 10))) : null;
   const pages = useMemo(() => (totalPages ? pageWindow(page, totalPages) : []), [page, totalPages]);
 
   const showSkeletons = isLoading && hotels.length === 0;
+
+  // Scroll the matching card into view when a map badge is clicked (selectedId).
+  const cardRefs = useRef(new Map());
+  useEffect(() => {
+    if (selectedId == null) return;
+    const node = cardRefs.current.get(String(selectedId));
+    if (node) node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [selectedId]);
 
   const guestsLabel = () => {
     const p = [t('fork.f_adults', { n: pending.adults })];
@@ -85,8 +107,8 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
   const priceTouched = pending.min !== '' || pending.max !== '';
   const dirty = guestsTouched || priceTouched;
 
-  const apply = () => { setApplied({ ...pending }); setPage(1); setPopOpen(false); };
-  const resetAll = () => { setPending({ ...BASE_GUESTS, min: '', max: '' }); setApplied(null); setPage(1); setPopOpen(false); };
+  const apply = () => { onApply({ ...pending }); setPopOpen(false); };
+  const resetAll = () => { setPending({ ...BASE_FILTERS }); onResetAll(); setPopOpen(false); };
   const setG = (k, v) => setPending((s) => ({ ...s, [k]: v }));
   const resetGuests = () => setPending((s) => ({ ...s, ...BASE_GUESTS }));
 
@@ -96,14 +118,19 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
     ? (applied.min && applied.max ? `$ ${applied.min} – ${applied.max}` : applied.min ? `$ ${t('fork.f_from')} ${applied.min}` : `$ ${t('fork.f_to')} ${applied.max}`)
     : '';
 
-  const removeGuests = () => { setPending((s) => ({ ...s, ...BASE_GUESTS })); setApplied((a) => ({ ...a, ...BASE_GUESTS })); setPage(1); };
-  const removePrice = () => { setPending((s) => ({ ...s, min: '', max: '' })); setApplied((a) => ({ ...a, min: '', max: '' })); setPage(1); };
+  // Pill removals operate on the committed filters and re-commit (the parent owns
+  // `applied`; the draft re-seeds via the appliedSig effect above).
+  const removeGuests = () => onApply({ ...(applied || {}), ...BASE_GUESTS });
+  const removePrice = () => onApply({ ...(applied || {}), min: '', max: '' });
 
   const dateLine = meta.checkin && meta.checkout
     ? `${fmtShort(meta.checkin, locale)} – ${fmtShort(meta.checkout, locale)}${meta.nights ? ` · ${t('fork.stay22_nights', { count: meta.nights })}` : ''}`
     : '';
 
-  const onCardClick = (h) => logClick({ partner: 'booking', type: 'hotel', link: h.url, provider: 'stay22' });
+  // Card click = select (no navigation); opening the supplier site (Book button
+  // or a second click on the already-selected card) is logged here. The shared
+  // interaction lives in PartnerResultCard so hotels + activities stay identical.
+  const onBook = (h) => logClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22' });
 
   return (
     <div className="s22">
@@ -184,12 +211,14 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         )}
       </div>
 
-      {/* ===== Header ===== */}
+      {/* ===== Header (neutral, supplier-agnostic — mirrors ViatorActivityList) ===== */}
       <div className="s22-head">
         <div className="s22-ti">
-          <img className="s22-logo" src="https://r2.stay22.com/2025_booking.png" alt="Booking.com" />
-          <b>{t('fork.stay22_title')}</b>
-          {dateLine && <span className="s22-dates">{dateLine}</span>}
+          <span className="s22-logo"><Hotel size={15} /></span>
+          <div className="s22-tiwrap">
+            <b>{t('fork.stay22_title')}</b>
+            <span className="s22-sub">{t('fork.stay22_source')}{dateLine ? ` · ${dateLine}` : ''}</span>
+          </div>
         </div>
         {meta.total != null && <span className="s22-count">{t('fork.stay22_count', { n: meta.total })}</span>}
       </div>
@@ -198,9 +227,9 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
       {showSkeletons && (
         <div className="s22-list" aria-hidden="true">
           {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-            <div className="s22-card s22-card--sk" key={i}>
+            <div className="pcard pcard--sk" key={i}>
               <Skeleton w={96} h={96} r={12} />
-              <div className="s22-body">
+              <div className="pcard__body">
                 <Skeleton w="80%" h={14} />
                 <Skeleton w="55%" h={12} style={{ marginTop: 8 }} />
                 <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
@@ -232,49 +261,53 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         <>
           <div className="s22-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
             {hotels.map((h) => (
-              <a key={h.id} className="s22-card" href={h.url} target="_blank" rel="noreferrer" onClick={() => onCardClick(h)}>
-                <div className="s22-thumb">
-                  <div className="s22-ph"><Hotel size={22} /></div>
-                  {h.thumbnail && <img src={h.thumbnail} alt={h.name} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
-                  {h.bookingLogo && <img className="s22-supplier" src={h.bookingLogo} alt="Booking.com" />}
-                </div>
-                <div className="s22-body">
-                  <div className="s22-name">{h.name}</div>
-                  {(h.stars || h.ratingValue != null) && (
-                    <div className="s22-rate">
-                      {h.stars ? <span className="s22-stars">{'★'.repeat(h.stars)}</span> : null}
-                      {h.ratingValue != null && (
-                        <span className="s22-score">
-                          <span className="s22-sc">{h.ratingValue.toFixed(1)}</span>
-                          {h.ratingCount ? <span className="s22-cnt">{t('fork.stay22_reviews', { n: h.ratingCount })}</span> : null}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {h.address && <div className="s22-addr"><MapPin size={13} /><span>{h.address}</span></div>}
-                  <div className="s22-foot">
-                    {h.price != null ? (
-                      <span className="s22-price">
-                        <b>{fmtMoney(h.price, h.currency || meta.currency)}</b>
-                        {meta.nights ? <span>{t('fork.stay22_for_nights', { count: meta.nights })}</span> : null}
+              <PartnerResultCard
+                key={h.id}
+                ref={(n) => { if (n) cardRefs.current.set(String(h.id), n); else cardRefs.current.delete(String(h.id)); }}
+                id={h.id}
+                name={h.name}
+                accent="var(--ev-hotel)"
+                icon={<Hotel size={22} />}
+                image={h.thumbnail}
+                thumbOverlay={h.supplierLogo ? <img className="pcard__supplier" src={h.supplierLogo} alt={h.supplierKey || ''} /> : null}
+                rating={(h.stars || h.ratingValue != null) ? (
+                  <div className="s22-rate">
+                    {h.stars ? <span className="s22-stars">{'★'.repeat(h.stars)}</span> : null}
+                    {h.ratingValue != null && (
+                      <span className="s22-score">
+                        <span className="s22-sc">{h.ratingValue.toFixed(1)}</span>
+                        {h.ratingCount ? <span className="s22-cnt">{t('fork.stay22_reviews', { n: h.ratingCount })}</span> : null}
                       </span>
-                    ) : <span />}
-                    <span className="btn btn--primary btn--sm">{t('fork.stay22_book')}<ExternalLink size={13} /></span>
+                    )}
                   </div>
-                </div>
-              </a>
+                ) : null}
+                subline={h.address ? <div className="s22-addr"><MapPin size={13} /><span>{h.address}</span></div> : null}
+                price={h.price != null ? (
+                  <span className="s22-price">
+                    <b>{fmtMoney(h.price, h.currency || meta.currency)}</b>
+                    {meta.nights ? <span>{t('fork.stay22_for_nights', { count: meta.nights })}</span> : null}
+                  </span>
+                ) : null}
+                link={h.link}
+                bookLabel={t('fork.stay22_book')}
+                selected={String(selectedId) === String(h.id)}
+                hovered={String(hoveredId) === String(h.id)}
+                onSelect={(id) => onSelect?.(id)}
+                onHover={onHover}
+                onOpen={() => onBook(h)}
+              />
             ))}
           </div>
 
           {(totalPages ? totalPages > 1 : meta.hasMore || page > 1) && (
             <div className="s22-pager">
-              <button className="s22-pg" disabled={page <= 1 || isFetching} onClick={() => setPage((p) => Math.max(1, p - 1))} aria-label={t('fork.stay22_prev')}><ChevronLeft size={16} /></button>
+              <button className="s22-pg" disabled={page <= 1 || isFetching} onClick={() => onPageChange(Math.max(1, page - 1))} aria-label={t('fork.stay22_prev')}><ChevronLeft size={16} /></button>
               {totalPages
                 ? pages.map((p, i) => (p === '…'
                     ? <span key={`g${i}`} className="s22-gap">…</span>
-                    : <button key={p} className={`s22-pg ${p === page ? 's22-pg--on' : ''}`} disabled={isFetching} onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))
+                    : <button key={p} className={`s22-pg ${p === page ? 's22-pg--on' : ''}`} disabled={isFetching} onClick={() => onPageChange(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))
                 : <span className="s22-pg s22-pg--on">{page}</span>}
-              <button className="s22-pg" disabled={(totalPages ? page >= totalPages : !meta.hasMore) || isFetching} onClick={() => setPage((p) => p + 1)} aria-label={t('fork.stay22_next')}><ChevronRight size={16} /></button>
+              <button className="s22-pg" disabled={(totalPages ? page >= totalPages : !meta.hasMore) || isFetching} onClick={() => onPageChange(page + 1)} aria-label={t('fork.stay22_next')}><ChevronRight size={16} /></button>
             </div>
           )}
         </>
@@ -338,12 +371,13 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
           .s22f-actions .btn { flex: 1; }
         }
 
-        /* ---- header ---- */
-        .s22-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-        .s22-ti { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
+        /* ---- header (neutral icon + title + subtitle, like .va-head) ---- */
+        .s22-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+        .s22-ti { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
         .s22-ti b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-strong); color: var(--ink); }
-        .s22-logo { width: 20px; height: 20px; border-radius: 5px; flex: none; align-self: center; box-shadow: var(--sh-1); }
-        .s22-dates { font-size: var(--fs-meta); color: var(--muted); font-variant-numeric: tabular-nums; }
+        .s22-tiwrap { display: flex; flex-direction: column; min-width: 0; }
+        .s22-sub { font-size: var(--fs-nano); color: var(--muted-2); margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .s22-logo { width: 24px; height: 24px; border-radius: 6px; flex: none; display: grid; place-items: center; background: var(--ev-hotel-soft); color: var(--ev-hotel); }
         .s22-count { font-size: var(--fs-meta); color: var(--muted); font-weight: 700; white-space: nowrap; }
 
         /* ---- list + cards ---- */
@@ -357,16 +391,8 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         .s22-state b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); color: var(--ink); }
         .s22-state p { margin: 0; font-size: var(--fs-meta); color: var(--muted); max-width: 28ch; }
         .s22-retry { margin-top: 6px; }
-        .s22-card { display: flex; gap: 13px; padding: 11px; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
-        .s22-card--sk { cursor: default; }
-        @media (hover: hover) and (pointer: fine) { .s22-card:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); } }
-        .s22-card:active { transform: scale(.99); }
-        .s22-thumb { position: relative; width: 96px; height: 96px; flex: none; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--ev-hotel) 45%, white), var(--ev-hotel) 120%); }
-        .s22-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; position: relative; z-index: 1; }
-        .s22-ph { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.85); z-index: 0; }
-        .s22-supplier { position: absolute !important; left: 5px; bottom: 5px; z-index: 2; width: 22px !important; height: 22px !important; border-radius: 6px; background: var(--surface); box-shadow: 0 2px 6px rgba(0,0,0,.35); }
-        .s22-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-        .s22-name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); line-height: 1.28; color: var(--ink); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
+           the hotel-specific body content keeps its own classes below. */
         .s22-rate { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
         .s22-stars { color: var(--pro); letter-spacing: .5px; font-size: 11px; }
         .s22-score { display: inline-flex; align-items: center; gap: 6px; }
@@ -375,11 +401,9 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         .s22-addr { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: var(--fs-micro); color: var(--muted); overflow: hidden; }
         .s22-addr svg { flex: none; color: var(--muted-2); }
         .s22-addr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .s22-foot { margin-top: auto; padding-top: 9px; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
         .s22-price { display: flex; flex-direction: column; line-height: 1.15; }
         .s22-price b { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-strong); color: var(--ink); font-variant-numeric: tabular-nums; }
         .s22-price span { font-size: var(--fs-nano); color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
-        .s22-foot .btn { flex: none; }
 
         /* ---- pager ---- */
         .s22-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
@@ -391,10 +415,9 @@ export default function Stay22HotelList({ visit, currency, lang, tripId }) {
         .s22-gap { color: var(--muted-2); padding: 0 2px; }
 
         @media (prefers-reduced-motion: reduce) {
-          .s22-card, .s22-pg, .s22f-chip, .s22f-step button { transition: none; }
-          .s22-card:active, .s22f-chip:active { transform: none; }
+          .s22-pg, .s22f-chip, .s22f-step button { transition: none; }
+          .s22f-chip:active { transform: none; }
         }
-        @media (max-width: 560px) { .s22-thumb { width: 84px; height: 84px; } }
       `}</style>
     </div>
   );

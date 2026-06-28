@@ -323,6 +323,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
   async function leaveTrip(member) {
     await confirm({
       title: t('settings.leave_confirm'),
+      description: t('confirm.leave_trip.body'),
       variant: 'destructive',
       onConfirm: async () => {
         const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: member.id } });
