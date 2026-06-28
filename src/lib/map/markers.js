@@ -136,6 +136,30 @@ export function createHotelBadgeEl({ supplierLogo, priceLabel } = {}, { onClick,
   return el;
 }
 
+// Cluster bubble marker for the hotel-pick overlay (TRIP-141). When a city has
+// 150–300 stays the map shows supercluster bubbles instead of hundreds of badges:
+// a rounded pill carrying the leaf COUNT and (optionally) the cheapest "от $X" in
+// that cluster. Built like createHotelBadgeEl — the consumer toggles .is-hover on
+// the root (no rebuild) while the scale lives on the inner .s22cl__core (Mapbox
+// owns the root's inline transform). Clicking a bubble zooms into it.
+// cluster: { count, priceLabel } — priceLabel is preformatted ("от $80") or falsy.
+// opts: { onClick, onHover, title } — onHover(entering:boolean) fires on the pill.
+export function createClusterBubbleEl({ count, priceLabel } = {}, { onClick, onHover, title } = {}) {
+  const el = document.createElement('div');
+  el.className = 's22cl is-clickable';
+  if (title) el.title = title;
+  if (!priceLabel) el.classList.add('s22cl--bare');
+  const price = priceLabel ? `<span class="s22cl__price">${priceLabel}</span>` : '';
+  el.innerHTML = `<span class="s22cl__core"><span class="s22cl__count">${count ?? ''}</span>${price}</span>`;
+
+  if (onClick) el.addEventListener('click', onClick);
+  if (onHover) {
+    el.addEventListener('mouseenter', () => onHover(true));
+    el.addEventListener('mouseleave', () => onHover(false));
+  }
+  return el;
+}
+
 // Mini marker for the stats / home travel map — a small coloured dot (~11px),
 // deliberately NOT the trip Ring pin: these screens show an unordered set of
 // lifetime visits over a country fill, so the pins must be tiny and unobtrusive.

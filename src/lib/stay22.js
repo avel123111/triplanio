@@ -7,13 +7,24 @@
 // Pure mapping/param helpers live in ./stay22-normalize.js so they can be
 // unit-tested without React/supabase.
 
+import { useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
-import { normalizeStay22, buildStay22Params, STAY22_KEY } from '@/lib/stay22-normalize';
+import {
+  normalizeStay22, buildStay22Params, STAY22_POOL_KEY,
+  mergePool, POOL_PAGES,
+} from '@/lib/stay22-normalize';
 import { cityNameEn } from '@/lib/geo';
 import { countryNameEn } from '@/lib/countryNamesEn';
 
-export { normalizeStay22, buildStay22Params, STAY22_KEY };
+export { normalizeStay22, buildStay22Params };
+
+// Stay22 recommends a client cache of ~60 min; we keep prices reasonably fresh
+// (5 min stale) but hold the pool in cache for the whole editor session so
+// reopening the same city doesn't refire 3 requests.
+const POOL_STALE_MS = 5 * 60 * 1000;
+const POOL_GC_MS = 30 * 60 * 1000;
+const POOL_PAGE_SIZE = 100;
 
 // Lazily resolve + persist the city's English name (city_name_en) the first time
 // the hotel panel opens for a city. New cities get the column filled on demand;
@@ -32,35 +43,94 @@ async function ensureCityNameEn(visit) {
   return en;
 }
 
-/**
- * React Query hook for the hotel fork panel.
- * @param {object} args
- * @param {object} args.visit    city-visit node (needs latitude/longitude, start_date, end_date)
- * @param {string} args.currency trip currency (EUR/USD)
- * @param {string} args.lang     user locale (en/es/ru)
- * @param {number} args.page     1-based page
- * @param {number} args.pageSize  results per page (default server-side: 10; the
- *                                map-badge overlay requests up to 100)
- * @param {boolean} args.enabled fetch only while the panel is open
- */
-export function useStay22Accommodations({ visit, currency, lang, page = 1, pageSize, filters, enabled = true }) {
+// Fetch + normalize one Stay22 page. Resolves (and persists) the English city
+// name + country so Stay22 doesn't resolve "Cairo" to Cairo, IL instead of Cairo,
+// Egypt. Returns the normalized { hotels, meta }. Shared by every page request.
+async function fetchStay22Page(visit, { currency, lang, page, pageSize, filters }) {
   const params = buildStay22Params({ visit, currency, lang, page, pageSize, filters });
-  return useQuery({
-    queryKey: STAY22_KEY(visit, currency, lang, page, filters, pageSize),
-    enabled: !!enabled && !!params,
-    placeholderData: keepPreviousData, // keep the previous page visible while the next loads
-    staleTime: 5 * 60 * 1000,
+  if (!params) return normalizeStay22(null);
+  const cityEn = await ensureCityNameEn(visit);
+  const cntryEn = visit?.country_code ? countryNameEn(visit.country_code) : null;
+  const address = cityEn ? [cityEn, cntryEn].filter(Boolean).join(', ') : null;
+  const body = address ? { ...params, address } : params;
+  const { data, error } = await supabase.functions.invoke('stay22Accommodations', { body });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return normalizeStay22(data);
+}
+
+/**
+ * Whole-city pool hook for the hotel fork panel (TRIP-141).
+ *
+ * Loads ALL pages of a city's stays (capped at POOL_PAGES × POOL_PAGE_SIZE) into
+ * one client pool — the single source of truth for both the list (client
+ * pagination) and the map (client clustering). Progressive: page 1 paints
+ * instantly; pages 2..POOL_PAGES load in ONE parallel background burst and are
+ * merged in (dedup by id). Cached for the session, keyed by visit + filters, so
+ * changing the filters reloads everything but paging/panning reuses the cache.
+ *
+ * @param {object}  args.visit    city-visit node (needs latitude/longitude, dates)
+ * @param {string}  args.currency trip currency (EUR/USD)
+ * @param {string}  args.lang     user locale (en/es/ru)
+ * @param {object}  args.filters  committed guests/price filters (or null)
+ * @param {boolean} args.enabled  fetch only while the panel is open
+ * @returns {{ data:{hotels,meta}, isLoading, isFetching, isError, isPlaceholderData,
+ *            tailLoading, truncated, refetch }}
+ */
+export function useStay22Pool({ visit, currency, lang, filters, enabled = true }) {
+  const canFetch = !!buildStay22Params({ visit, currency, lang, page: 1, pageSize: POOL_PAGE_SIZE, filters });
+  const poolKey = STAY22_POOL_KEY(visit, currency, lang, filters);
+
+  // Page 1 — the fast first paint. keepPreviousData holds the prior city's pool
+  // visible while a new city loads (consumers gate on isPlaceholderData).
+  const page1 = useQuery({
+    queryKey: [...poolKey, 'p1'],
+    enabled: !!enabled && canFetch,
+    placeholderData: keepPreviousData,
+    staleTime: POOL_STALE_MS,
+    gcTime: POOL_GC_MS,
+    queryFn: () => fetchStay22Page(visit, { currency, lang, page: 1, pageSize: POOL_PAGE_SIZE, filters }),
+  });
+
+  // Only chase the tail once page 1 (for THIS city) reports more pages exist.
+  const hasMore = !page1.isPlaceholderData && !!page1.data?.meta?.hasMore;
+
+  // Tail — pages 2..POOL_PAGES in one parallel burst. We don't know the exact page
+  // count up front (meta.total is unreliable), so we optimistically request every
+  // remaining page at once; a page past the end just returns [] and merges away.
+  const tail = useQuery({
+    queryKey: [...poolKey, 'tail'],
+    enabled: !!enabled && canFetch && hasMore,
+    staleTime: POOL_STALE_MS,
+    gcTime: POOL_GC_MS,
     queryFn: async () => {
-      // Resolve (and persist) the English city name + country → qualify the address
-      // so Stay22 doesn't resolve "Cairo" to Cairo, IL instead of Cairo, Egypt.
-      const cityEn = await ensureCityNameEn(visit);
-      const cntryEn = visit?.country_code ? countryNameEn(visit.country_code) : null;
-      const address = cityEn ? [cityEn, cntryEn].filter(Boolean).join(', ') : null;
-      const body = address ? { ...params, address } : params;
-      const { data, error } = await supabase.functions.invoke('stay22Accommodations', { body });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return normalizeStay22(data);
+      const reqs = [];
+      for (let p = 2; p <= POOL_PAGES; p++) {
+        reqs.push(fetchStay22Page(visit, { currency, lang, page: p, pageSize: POOL_PAGE_SIZE, filters }));
+      }
+      return Promise.all(reqs); // [{hotels,meta}, …]
     },
   });
+
+  const placeholder = page1.isPlaceholderData;
+  const data = useMemo(() => {
+    // While page 1 shows a PREVIOUS city (placeholder), don't blend in this city's
+    // tail — emit page 1's (stale) pool alone so list + map stay on one city.
+    const pages = [page1.data?.hotels];
+    if (!placeholder && Array.isArray(tail.data)) pages.push(...tail.data.map((r) => r?.hotels));
+    const { hotels, truncated } = mergePool(pages);
+    const meta = { ...(page1.data?.meta || {}), total: hotels.length, truncated };
+    return { hotels, meta };
+  }, [page1.data, tail.data, placeholder]);
+
+  return {
+    data,
+    isLoading: page1.isLoading,
+    isFetching: page1.isFetching || tail.isFetching,
+    isError: page1.isError, // tail failures degrade to page-1-only, never blank the panel
+    isPlaceholderData: placeholder,
+    tailLoading: hasMore && tail.isFetching,
+    truncated: data.meta.truncated,
+    refetch: () => { page1.refetch(); if (hasMore) tail.refetch(); },
+  };
 }
