@@ -4,15 +4,16 @@
  * POST body: { tripId?, planType: 'pro_trip'|'pro_monthly'|'pro_yearly', returnPath? }
  *
  * Двойная оплата закрывается ЗДЕСЬ (корень TRIP-32):
- *  - НАШ стабильный idempotency-ключ из (user, product, trip) → две вкладки/два
- *    устройства/дабл-клик получают ОДНУ checkout-сессию (Stripe возвращает ту же
- *    по тому же ключу). Запись интента — в outbound_idempotency.
  *  - Предчек активного права: уже есть active покупка трипа / энтайтлинг-подписка
  *    → не начинаем оплату (409 → биллинг-портал).
- *  - self-heal протухшего customer id: своя суффикс-ветка ключа (другое тело).
+ *  - Схлопывание двух почти одновременных вкладок: ≤90с назад создавали сессию
+ *    для того же логического ключа → отдаём ту же ссылку (дедуп в НАШЕЙ БД,
+ *    outbound_idempotency). Stripe idempotency-ключ — РАНДОМНЫЙ (стабильный ломал
+ *    нормальный ретрай Stripe-400 «same key, different params»).
+ *  - self-heal протухшего customer id → ретрай по email.
  *
- * Снято (было нужно только из-за случайного ключа): list 10 сессий, окно 10 мин,
- * CHECKOUT_PROCESSING, expire брошенных, SUPPORTED_LOCALES/locale (шлём auto).
+ * Снято: list 10 сессий, окно 10 мин, CHECKOUT_PROCESSING, expire брошенных,
+ * SUPPORTED_LOCALES/locale (шлём auto).
  *
  * Каталог/цена — из БД через StripeAdapter (provider_price + default_price).
  */
@@ -98,52 +99,69 @@ Deno.serve(async (req) => {
     const sep = safeReturn.includes('?') ? '&' : '?';
     const ctxParam = planType === 'pro_trip' ? `&kind=trip&pt=${tripId}` : '&kind=sub';
 
-    // НАШ стабильный ключ. Подписка — АККАУНТ-уровень: trip в ключ НЕ кладём,
-    // иначе тот же месячный чекаут со страницы Pro (без трипа) и из пейволла в
-    // контексте трипа дал бы два ключа → две сессии → дыра двойной оплаты. Trip
-    // Pro — trip-scoped, trip обязателен в ключе. Две вкладки → один ключ → одна
-    // сессия Stripe; self-heal по email — отдельный суффикс (другое тело).
-    const baseKey = planType === 'pro_trip'
+    // Логический ключ НАШЕЙ идемпотентности (провайдер-агностично). Подписка —
+    // аккаунт-уровень (trip НЕ кладём); pro_trip — trip-scoped.
+    const idemKey = planType === 'pro_trip'
       ? `checkout:${user.id}:${productCode}:${tripId}`
       : `checkout:${user.id}:${productCode}`;
+    const COLLAPSE_MS = 90 * 1000; // окно схлопывания двух вкладок одной покупки
 
-    const buildParams = (useCustomerId: boolean): Stripe.Checkout.SessionCreateParams => ({
-      payment_method_types: ['card'],
-      line_items: [{ price: price.price_id, quantity: 1 }],
-      mode,
-      locale: 'auto',
-      success_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=success&session_id={CHECKOUT_SESSION_ID}${ctxParam}`,
-      cancel_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=cancel${ctxParam}`,
-      client_reference_id: user.id,
-      ...(useCustomerId && existingCustomerId ? { customer: existingCustomerId } : { customer_email: user.email! }),
-      metadata: { user_id: user.id, user_email: user.email!, trip_id: tripId || '', plan_type: planType, return_path: safeReturn },
-      ...(mode === 'subscription'
-        ? { subscription_data: { metadata: { user_id: user.id, plan_type: planType } } }
-        : {}),
-    });
+    const buildParams = (useCustomerId: boolean): Stripe.Checkout.SessionCreateParams => {
+      const useExisting = useCustomerId && !!existingCustomerId;
+      return {
+        payment_method_types: ['card'],
+        line_items: [{ price: price.price_id, quantity: 1 }],
+        mode,
+        locale: 'auto',
+        success_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=success&session_id={CHECKOUT_SESSION_ID}${ctxParam}`,
+        cancel_url: `${publicAppUrl}${safeReturn}${sep}stripe_status=cancel${ctxParam}`,
+        client_reference_id: user.id,
+        ...(useExisting ? { customer: existingCustomerId! } : { customer_email: user.email! }),
+        // pro_trip = payment-mode, который по умолчанию НЕ создаёт Stripe Customer
+        // (session.customer=null → вебхук не сохранял provider_customer). Просим
+        // Stripe создавать Customer всегда (когда не передаём существующего) —
+        // унифицирует идентичность с подпиской.
+        ...(mode === 'payment' && !useExisting ? { customer_creation: 'always' as const } : {}),
+        metadata: { user_id: user.id, user_email: user.email!, trip_id: tripId || '', plan_type: planType, return_path: safeReturn },
+        ...(mode === 'subscription'
+          ? { subscription_data: { metadata: { user_id: user.id, plan_type: planType } } }
+          : {}),
+      };
+    };
 
-    // Запись интента (провайдер-агностичная идемпотентность исходящего вызова).
-    await supabaseAdmin.from('outbound_idempotency')
-      .upsert({ idempotency_key: baseKey, user_id: user.id, operation: 'checkout', status: 'pending' },
-              { onConflict: 'idempotency_key', ignoreDuplicates: true });
+    // Схлопывание двух почти одновременных вкладок одной покупки: если ≤90с назад
+    // уже создали сессию для этого же логического ключа — отдаём ту же ссылку.
+    // Stripe idempotency-ключ при этом РАНДОМНЫЙ: стабильный ломался Stripe-400
+    // «same key, different params» при любом отличии тела (email→customer после
+    // первой покупки, другой returnPath/locale). Дедуп держим в НАШЕЙ БД.
+    const { data: prior } = await supabaseAdmin
+      .from('outbound_idempotency')
+      .select('response, updated_at')
+      .eq('idempotency_key', idemKey)
+      .maybeSingle();
+    const priorUrl = (prior?.response as { url?: string } | null)?.url;
+    if (priorUrl && prior?.updated_at && (Date.now() - new Date(prior.updated_at).getTime() < COLLAPSE_MS)) {
+      return Response.json({ url: priorUrl }, { headers: corsHeaders });
+    }
 
     let session: Stripe.Checkout.Session;
     try {
-      session = await adapter.createCheckout(buildParams(true), baseKey);
+      session = await adapter.createCheckout(buildParams(true), crypto.randomUUID());
     } catch (e) {
-      // Протухший сохранённый customer id → ретрай по email (своим ключом).
+      // Протухший сохранённый customer id → ретрай по email.
       const err = e as { code?: string; message?: string };
       if (existingCustomerId && (err.code === 'resource_missing' || /no such customer/i.test(err.message || ''))) {
-        console.error('createStripeCheckout: stale stripe_customer_id, retrying by email');
-        session = await adapter.createCheckout(buildParams(false), `${baseKey}:byemail`);
+        console.error('createStripeCheckout: stale customer id, retrying by email');
+        session = await adapter.createCheckout(buildParams(false), crypto.randomUUID());
       } else {
         throw e;
       }
     }
 
-    await supabaseAdmin.from('outbound_idempotency')
-      .update({ status: 'completed', response: { url: session.url } })
-      .eq('idempotency_key', baseKey);
+    await supabaseAdmin.from('outbound_idempotency').upsert({
+      idempotency_key: idemKey, user_id: user.id, operation: 'checkout',
+      status: 'completed', response: { url: session.url }, updated_at: new Date().toISOString(),
+    }, { onConflict: 'idempotency_key' });
 
     return Response.json({ url: session.url }, { headers: corsHeaders });
 

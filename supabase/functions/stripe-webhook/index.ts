@@ -78,7 +78,7 @@ function invoiceSubId(invoice: Stripe.Invoice): string | null {
 async function findSubRow(subId: string) {
   const { data } = await supabaseAdmin
     .from('subscription')
-    .select('id, user_id, product_code, status')
+    .select('id, user_id, product_code, status, provider_event_at')
     .eq('provider_subscription_id', subId)
     .limit(1);
   return data && data.length > 0 ? data[0] : null;
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
     // доставки → не реобрабатываем, 200.
     const { error: insertEventErr } = await supabaseAdmin
       .from('webhook_event')
-      .insert({ provider: 'stripe', provider_event_id: event.id, type: event.type, status: 'processing', signature_valid: true });
+      .insert({ provider: 'stripe', provider_event_id: event.id, type: event.type, status: 'processing', signature_valid: true, payload: event });
     if (insertEventErr) {
       const code = (insertEventErr as { code?: string }).code;
       if (code === '23505') {
@@ -346,11 +346,18 @@ Deno.serve(async (req) => {
       }
 
       case 'customer.subscription.updated': {
-        const sub = event.data.object as Stripe.Subscription;
-        const existing = await findSubRow(sub.id);
+        const subObj = event.data.object as Stripe.Subscription;
+        const existing = await findSubRow(subObj.id);
         if (existing) {
+          // Ordering-guard (ТЗ §5.2): пропускаем устаревшие/переставленные события.
+          // Сравнение по эпохам (строковое сравнение ISO↔pg-формата некорректно).
+          const evtAtIso = unixToIso(event.created);
+          if (existing.provider_event_at
+              && event.created * 1000 <= new Date(existing.provider_event_at as string).getTime()) break;
+          // Refetch истины из Stripe (ТЗ §1.3): не доверяем телу события (могло
+          // прийти не по порядку). Это и чинит «отменил, а показывает активной».
+          const sub = await adapter.fetchSubscription(subObj.id);
           const periodEndIso = unixToIso(getPeriodEndUnix(sub));
-          // Маппим live-price → product_code, чтобы смена плана в портале обновляла тип.
           const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
           const productId = typeof price?.product === 'string'
             ? price.product : ((price?.product as { id?: string } | undefined)?.id ?? null);
@@ -359,6 +366,7 @@ Deno.serve(async (req) => {
             status: sub.status, cancel_at_period_end: sub.cancel_at_period_end === true,
             ...(productCode ? { product_code: productCode, billing_interval: productCode === 'account_pro_monthly' ? 'month' : 'year' } : {}),
             ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
+            ...(evtAtIso ? { provider_event_at: evtAtIso } : {}),
           }).eq('id', existing.id));
           await recomputeUser(existing.user_id);
         }
@@ -366,11 +374,17 @@ Deno.serve(async (req) => {
       }
 
       case 'customer.subscription.deleted': {
-        const sub = event.data.object as Stripe.Subscription;
-        const existing = await findSubRow(sub.id);
+        const subObj = event.data.object as Stripe.Subscription;
+        const existing = await findSubRow(subObj.id);
         if (existing) {
+          const evtAtIso = unixToIso(event.created);
+          if (existing.provider_event_at
+              && event.created * 1000 <= new Date(existing.provider_event_at as string).getTime()) break;
           await ensureWrite('subscription.deleted', supabaseAdmin.from('subscription')
-            .update({ status: 'canceled', canceled_at: new Date().toISOString() }).eq('id', existing.id));
+            .update({
+              status: 'canceled', canceled_at: new Date().toISOString(),
+              ...(evtAtIso ? { provider_event_at: evtAtIso } : {}),
+            }).eq('id', existing.id));
           await recomputeUser(existing.user_id);
         }
         break;
