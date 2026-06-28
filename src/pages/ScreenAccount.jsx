@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useProStatus } from '@/lib/useProStatus';
+import { displayName } from '@/lib/displayName';
 import { supabase } from '@/api/supabaseClient';
 import AppHeader from '@/components/AppHeader';
 import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
@@ -400,7 +401,7 @@ export default function ScreenAccount() {
   // Hero identity (name + avatar gradient/initials) reflects the SAVED profile,
   // not the in-progress edit — the draft lives in the input only and is applied
   // on Save (checkUserAuth then refreshes `user`).
-  const avatarName = user?.full_name || user?.email || '?';
+  const avatarName = displayName(user?.email, user?.full_name);
   const avatarInitials = avatarName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
   const avatarBgStyle = avatarUrl
     ? { backgroundImage: `url(${avatarUrl})` }
@@ -688,7 +689,7 @@ export default function ScreenAccount() {
                   onChange={e => handleAvatarUpload(e.target.files?.[0])}
                 />
                 <div className="acct-hero__id">
-                  <div className="acct-hero__name">{user.full_name || user.email}</div>
+                  <div className="acct-hero__name">{displayName(user.email, user.full_name)}</div>
                   <div className="acct-hero__mail">{user.email}</div>
                   <div className="acct-hero__actions">
                     <Btn variant="secondary" size="sm" icon="cam" onClick={() => avatarInputRef.current?.click()}>{t('common.upload')}</Btn>

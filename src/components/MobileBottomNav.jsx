@@ -19,6 +19,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/design/icons';
 import { Avatar } from '@/design/index';
 import { useAuth } from '@/lib/AuthContext';
+import { displayName } from '@/lib/displayName';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 
@@ -76,7 +77,7 @@ export default function MobileBottomNav() {
 
   const onTrip = /^\/trip\/[^/]+\/?$/.test(path);
   const avatarEl = (
-    <Avatar className="mbnav__avatar" name={user?.full_name || user?.email || '?'} photo={user?.avatar_url} size="sm" />
+    <Avatar className="mbnav__avatar" name={displayName(user?.email, user?.full_name)} photo={user?.avatar_url} size="sm" />
   );
 
   if (onTrip) {

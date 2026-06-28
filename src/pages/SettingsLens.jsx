@@ -15,6 +15,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_SHELL_KEY } from '@/lib/trip-data';
+import { displayName } from '@/lib/displayName';
 import { invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Card, Dialog, Field, Severity, Toggle, useToast, CurrencyCombobox } from '../design/index';
@@ -388,7 +389,7 @@ function ApproverRow({ member, profile, locked }) {
   const { t } = useI18n();
   const [on, setOn] = useState(false);
   const isDeleted = !!profile?.is_deleted;
-  const name = isDeleted ? t('common.deleted_user') : (profile?.full_name || member.user_full_name || member.invite_email || '-');
+  const name = isDeleted ? t('common.deleted_user') : displayName(member.invite_email || profile?.email, profile?.full_name || member.user_full_name);
   const roleLabel = member.role === 'owner' ? t('members.role_owner') : member.role === 'admin' ? t('trips.role_admin') : t('trips.role_viewer');
 
   return (

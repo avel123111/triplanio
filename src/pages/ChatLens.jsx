@@ -141,7 +141,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const [showMention, setShowMention] = useState(false);
   const [failedAiIds, setFailedAiIds] = useState(() => new Set());
 
-  const myName = user?.user_metadata?.full_name || user?.full_name || user?.email || t('member.you_self');
+  const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
 
   // ── Resolve chatId for this trip ──
   const { data: chatId } = useQuery({

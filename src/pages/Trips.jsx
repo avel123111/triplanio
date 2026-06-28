@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange, computeTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
+import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '../design/icons';
@@ -82,7 +83,7 @@ const AvatarStack = ({ members, maxShow = 3, white = false }) => {
       {shown.map((m, i) => (
         <Avatar
           key={m.user_id ?? i}
-          name={m.full_name || m.email || '?'}
+          name={displayName(m.email, m.full_name)}
           photo={m.avatar_url || ''}
           deleted={m.is_deleted}
           size="sm"
@@ -424,7 +425,7 @@ export default function Trips() {
   // Single source for the free-limit banner — same getActiveTrips → active_owned_trips() as the create/copy gate.
   const { activeCount: srvActiveCount, isBlocked: limitReached } = useActiveTripsLimit(user?.id);
   const scheme = isDark ? 'DARK' : 'LIGHT';
-  const displayName = user?.full_name || user?.email?.split('@')[0] || '';
+  const greetName = displayName(user?.email, user?.full_name);
 
   // ── Fetch trips ─────────────────────────────────────────────────────────────
   const { data: allTrips = [], isLoading } = useQuery({
@@ -613,7 +614,7 @@ export default function Trips() {
             first-load skeleton is up). */}
         {!(isLoadingData && allTrips.length === 0) && (
           <>
-            <Greeting greeting={t('stats.greeting', { name: displayName })} name={displayName} avatarName={user?.full_name || user?.email || '?'} photo={user?.avatar_url} sub={subText} />
+            <Greeting greeting={t('stats.greeting', { name: greetName })} name={greetName} avatarName={greetName} photo={user?.avatar_url} sub={subText} />
             <StatHero
               points={statsPoints}
               home={home}

@@ -46,7 +46,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   const taRef = useRef(null);
   const ovRef = useRef(null);
 
-  const myName = user?.user_metadata?.full_name || user?.full_name || user?.email || '';
+  const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
   const unread = useUnreadChatCount(tripId);
   const { data: chatId } = useChatId(tripId);
 
