@@ -70,9 +70,13 @@ public.search_gazetteer(q text, lang text default 'en', lim int default 10)
 name→asciiname, `country_code`, `lat/lng`, `time_zone`) берём **из газеттира**
 (чинит координатный мусор и кривой name_en = заодно TRIP-58). Схлоп дублей —
 группировкой по `geonameid` (структурный фикс TRIP-69, ложных слияний ≈0).
-`unique(geonameid)` после заливки. Визиты осиротают (FK снят) → перерезолв Phase 5.
-Прокси-замер matcher на dev (source='viator' 1334 — трудное подмножество): 73%
-name+10км, схлоп 2.
+**Разделение по правилу 12:** постоянная схема (`unique(geonameid)` partial) — через
+МИГРАЦИЮ (CI/CD); перезалив строк + транзиентные staging — руками (данные, TRIP-69).
+FK `city_visits_city_id_fkey` **НЕ дропаем** — снимаем ссылки `update city_id=null`
++ `delete from cities` (TRUNCATE запрещён под FK; FK цел = ноль мутаций схемы);
+визиты перерезолвим в Phase 5. Staging-таблицы дропаем в конце (PART 3) — без
+untracked-схемы. Прокси-замер matcher на dev (source='viator' 1334 — трудное
+подмножество): 73% name+10км, схлоп 2.
 
 ## Снимок на визите `city_visits` (Phase 2, аддитивно)
 - `+ geonameid bigint NULL` — ключ идентичности v2.
