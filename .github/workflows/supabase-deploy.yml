@@ -298,10 +298,10 @@ jobs:
           Commit: ${{ github.sha }}
           By: ${{ github.actor }}
 
-          gate    $(glyph "$GATE")
-          migrate $(glyph "$MIGRATE")   (db push)
-          deploy  $(glyph "$DEPLOY")   (functions)
-          vercel  $(glyph "$VERCEL")   (frontend)
+          $(glyph "$GATE") gate
+          $(glyph "$MIGRATE") migrate (db push)
+          $(glyph "$DEPLOY") deploy (functions)
+          $(glyph "$VERCEL") vercel (frontend)
 
           Run: $RUN_URL"
 
