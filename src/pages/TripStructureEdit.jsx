@@ -504,6 +504,7 @@ export default function TripStructureEdit() {
     const node = {
       id: 'tmp-' + Math.random().toString(36).slice(2), kind,
       city_name: city.city_name, country: city.country || null, country_code: city.country_code || null,
+      geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
       nights: provNights, gap: 0, start_date: provStart, end_date: provEnd,
@@ -523,6 +524,7 @@ export default function TripStructureEdit() {
     const tmpId = node.id; // swap this tmp- id for the real uuid the moment add_city returns
     runAction(() => rpcAddCity(tripId, {
       city_name: city.city_name, kind,
+      geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
       country: city.country || null, country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,

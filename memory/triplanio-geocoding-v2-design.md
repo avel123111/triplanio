@@ -118,11 +118,19 @@ untracked-схемы. Прокси-замер matcher на dev (source='viator' 
   вручную; канон-поля из газеттира; `unique(geonameid)`; IATA не тащим; визиты
   осиротают; пост-свап валидация аффилиат-целостности (деньги, правило 13).
   Артефакты: `scripts/import-viator-destinations.mjs` + `scripts/cities-rebuild.sql`.
-- **Phase 4** — фронт `src/lib/geo.js` + UI на RPC: `searchCities`→search_gazetteer
-  (ManualPlanner:186, EventEditDialog:71, CitySearch:24); `resolveCities`→RPC
-  (ManualPlanner:971, EventEditDialog:938); на выборе пишем geonameid+name_i18n+
-  city_name_en+коорд; партнёрские билдеры по geonameid. reverse-клик и
-  geocodeAddress пока на LocationIQ. Reuse обёрток geo.js + CitySearch.
+- **Phase 4 (КОД готов, PR в dev 2026-06-29)** — фронт+бэк на RPC, аффилиат
+  **late-binding по geonameid** (решение Pavel: связь по значению, не по `city_id`
+  — город, добавленный в `cities` позже, подхватывается старыми визитами без
+  бэкфилла; `city_id` НЕ нужен как ключ аффилиата, разреженную `cities` FK по
+  geonameid не покрыть — джойн без FK). Сделано: `geo.js` `searchCities`/
+  `resolveCities`→`search_gazetteer` RPC (LocationIQ выпилен из города; reverse/
+  адрес остаются на LocationIQ); `search_gazetteer` +`name_i18n` в выдаче (миграция,
+  фронт берёт `name_i18n[lang]` и запекает снимок); все city-write пути пишут
+  `geonameid`+`name_i18n` (ManualPlanner create, `add_city` RPC редактора,
+  `add_layover_transfer` waypoints, copyTrip); аффилиат по geonameid: `viator.js`
+  `.eq('geonameid')`, `getTripDetails` добирает `cities` по geonameid (late-bind,
+  чисто читающая правка security-fn), `buildBookingPlatforms` не тронут. Дисплей
+  городов пока остаётся `city_name` (кросс-локальный показ из `name_i18n` = TRIP-65).
 - **Phase 5** — бэкфилл существующих `city_visits` (перерезолв geonameid по
   name_en+country/коорд). Скрипт, гоняет Pavel.
 - **Phase 6** — cutover + чистка: выпил LocationIQ из пути поиска/резолва города
