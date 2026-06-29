@@ -33,7 +33,6 @@ export default {
   'sub.iframe_alert': 'El pago debe abrirse en una pestaña nueva (no dentro de un iframe)',
   'sub.upgrade_error': 'Error: {message}',
   'sub.already_active_msg': 'Ya tienes una suscripción activa. Abre Ajustes para gestionar tu plan.',
-  'sub.recent_pending_msg': 'Un pago reciente aún se está procesando. Espera unos segundos, tu plan se actualizará automáticamente.',
   'sub.activating_pro': 'Activando tu plan Pro…',
   'sub.processing': 'Procesando…',
   'sub.choose_plan': 'Elegir plan',

@@ -4,6 +4,7 @@ import { Avatar } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
+import { withOwnerRow } from '@/lib/members';
 
 // Members summary widget (Lumo .wdg + .mrow). Shared by the trip Overview and
 // the timeline rail. Owns member ordering + profile resolution so the "who's
@@ -31,17 +32,14 @@ export default function MembersSummaryCard({
 
   const orderedMembers = useMemo(() => {
     const ownerId = trip?.created_by || user?.id || '';
-    const all = members.filter((m) => m.status !== 'declined');
-    if (ownerId && !all.some((m) => m.role === 'owner' || m.user_id === ownerId)) {
-      const isMeOwner = user?.id && ownerId === user.id;
-      all.unshift({
-        id: '__owner__',
-        user_id: ownerId,
-        user_full_name: isMeOwner ? user?.full_name || '' : '',
-        role: 'owner',
-        status: 'active',
-      });
-    }
+    const isMeOwner = !!user?.id && ownerId === user.id;
+    // Shared owner rule: drop any stray creator row and prepend one owner so the
+    // creator is never shown as a viewer in this widget (TRIP-143).
+    const all = withOwnerRow(
+      members.filter((m) => m.status !== 'declined'),
+      ownerId,
+      { user_full_name: isMeOwner ? user?.full_name || '' : '' },
+    );
     const rank = (m) => {
       if (m.role === 'owner') return 0;
       if (m.status === 'pending' || m.status === 'invited') return 4;
@@ -94,7 +92,7 @@ export default function MembersSummaryCard({
               m.user_full_name ||
               (m.user_id && user?.id && m.user_id === user.id ? user.full_name : '') ||
               '';
-            const name = displayName(m.invite_email, resolved);
+            const name = displayName(m.invite_email || profile?.email, resolved);
             const isOffline = m.status === 'offline';
             const isPending = m.status === 'pending' || m.status === 'invited';
 

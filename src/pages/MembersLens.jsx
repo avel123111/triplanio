@@ -13,13 +13,12 @@ import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { displayName } from '@/lib/displayName';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton } from '../design/index';
+import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton, ActionMenu, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { edgeErrorMessage } from '@/lib/edgeError';
+import { edgeErrorMessage, parseEdgeError } from '@/lib/edgeError';
+import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import { ActionMenu } from '@/components/ui/ActionMenu';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useToast } from '@/components/ui/use-toast';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 
 // ─── role helpers ─────────────────────────────────────────────────────────────
@@ -106,7 +105,11 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
       body: { trip_id: tripId, email: trimmed, role },
     });
     setSaving(false);
-    if (error || data?.error) { setErr(await edgeErrorMessage(error, data, t('members.error_generic'))); return; }
+    if (error || data?.error) {
+      const { code, message } = await parseEdgeError(error, data, t('members.error_generic'));
+      setErr(code === 'invite_owner' ? t('members.err_invite_owner') : (message || t('members.error_generic')));
+      return;
+    }
     // Promoting an offline placeholder → remove it now that a real invite exists.
     if (promoteMember?.id) {
       await supabase.functions.invoke('removeTripMember', { body: { member_id: promoteMember.id } });
@@ -132,8 +135,8 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
     <Dialog title={t('member.invite_to_trip')} icon="users" size="" open={open} onOpenChange={onOpenChange}
       foot={<>
         <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
-        {tab === 'email' && <Btn variant="primary" icon="send" onClick={() => v.attemptSubmit(inviteByEmail)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
-        {tab === 'offline' && <Btn variant="primary" icon="user" onClick={() => v.attemptSubmit(addOffline)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.adding') : t('members.add')}</Btn>}
+        {tab === 'email' && <Btn variant="primary" icon="send" loading={saving} onClick={() => v.attemptSubmit(inviteByEmail)} aria-disabled={!v.canSubmit}>{saving ? t('member.sending') : t('members.send_invite')}</Btn>}
+        {tab === 'offline' && <Btn variant="primary" icon="user" loading={saving} onClick={() => v.attemptSubmit(addOffline)} aria-disabled={!v.canSubmit}>{saving ? t('member.adding') : t('members.add')}</Btn>}
       </>}>
       <div className="tweaks__seg" style={{ marginBottom: 14, display: 'flex' }}>
         <button className={tab === 'email' ? 'active' : ''} onClick={() => setTab('email')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
@@ -186,8 +189,8 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
               placeholder={linkLoading ? t('share.generating') : ''}
               readOnly style={{ flex: 1 }}
               onClick={(e) => e.target.select()} />
-            <Btn variant="primary" icon="copy" onClick={copyLink} disabled={linkLoading || !linkUrl}>
-              {copied ? t('common.copied') : t('share.copy')}
+            <Btn variant="primary" icon="copy" loading={linkLoading} onClick={copyLink} disabled={!linkUrl}>
+              {linkLoading ? t('share.generating') : (copied ? t('common.copied') : t('share.copy'))}
             </Btn>
           </div>
           {linkErr && <div style={{ marginTop: 8 }}><Severity level="error">{linkErr}</Severity></div>}
@@ -217,7 +220,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
 
 // ─── ChangeRoleDialog ─────────────────────────────────────────────────────────
 
-function ChangeRoleDialog({ member, tripId, onSaved, open, onOpenChange }) {
+function ChangeRoleDialog({ member, email, tripId, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const [role, setRole] = useState(member.role || 'viewer');
@@ -240,10 +243,10 @@ function ChangeRoleDialog({ member, tripId, onSaved, open, onOpenChange }) {
     <Dialog title={t('members.change_role')} icon="edit" size="sm" open={open} onOpenChange={onOpenChange}
       foot={<>
         <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
-        <Btn variant="primary" onClick={save} disabled={saving}>{saving ? t('member.saving') : t('trip.form_save')}</Btn>
+        <Btn variant="primary" loading={saving} onClick={save}>{saving ? t('member.saving') : t('trip.form_save')}</Btn>
       </>}>
       <div style={{ marginBottom: 14, fontSize: 'var(--fs-base)', color: 'var(--muted)' }}>
-        {member.user_full_name || member.invite_email}
+        {displayName(email || member.invite_email, member.user_full_name)}
       </div>
       <Field label={t('member.role_label')}>
         <select className="select" value={role} onChange={e => setRole(e.target.value)}>
@@ -283,8 +286,13 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     queryClient?.invalidateQueries({ queryKey: TRIP_SHELL_KEY(tripId) });
   }
 
+  // Resend fires from the row's "…" menu, which closes on select — a menu item
+  // can't host a spinner, so the row shows the busy state (mbrow--busy) instead.
   async function resend(memberId) {
-    await supabase.functions.invoke('resendTripInvite', { body: { member_id: memberId } });
+    setRemoving(memberId);
+    const { data, error } = await supabase.functions.invoke('resendTripInvite', { body: { member_id: memberId } });
+    setRemoving(null);
+    if (error || data?.error) { toast({ description: await edgeErrorMessage(error, data, t('member.err_send_invite')), variant: 'destructive' }); return; }
   }
 
   // Re-invite a member who declined: restart the invite flow on the SAME row.
@@ -300,25 +308,34 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     refresh();
   }
 
+  // Confirmed via the async confirm so the dialog's button spins while
+  // removeTripMember runs (the kebab menu can't host a spinner; the dialog can).
   async function removeMember(memberId) {
-    if (!(await confirm({ title: t('member.remove_confirm'), variant: 'destructive' }))) return;
-    setRemoving(memberId);
-    const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });
-    setRemoving(null);
-    if (error || !data?.ok) { toast({ description: await edgeErrorMessage(error, data, t('member.err_remove')), variant: 'destructive' }); return; }
-    refresh();
+    await confirm({
+      title: t('member.remove_confirm'),
+      variant: 'destructive',
+      onConfirm: async () => {
+        const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: memberId } });
+        if (error || !data?.ok) { toast({ description: await edgeErrorMessage(error, data, t('member.err_remove')), variant: 'destructive' }); return; }
+        refresh();
+      },
+    });
   }
 
   // Leaving the trip = self-removal. removeTripMember allows a member to remove
   // their own row (isSelf path). Once gone the user loses access, so navigate
   // back to the trips collection rather than refreshing the now-forbidden lens.
   async function leaveTrip(member) {
-    if (!(await confirm({ title: t('settings.leave_confirm'), variant: 'destructive' }))) return;
-    setRemoving(member.id);
-    const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: member.id } });
-    setRemoving(null);
-    if (error || !data?.ok) { toast({ description: await edgeErrorMessage(error, data, t('settings.leave_error')), variant: 'destructive' }); return; }
-    nav('/trips');
+    await confirm({
+      title: t('settings.leave_confirm'),
+      description: t('confirm.leave_trip.body'),
+      variant: 'destructive',
+      onConfirm: async () => {
+        const { data, error } = await supabase.functions.invoke('removeTripMember', { body: { member_id: member.id } });
+        if (error || !data?.ok) { toast({ description: await edgeErrorMessage(error, data, t('settings.leave_error')), variant: 'destructive' }); return; }
+        nav('/trips');
+      },
+    });
   }
 
   // Invite lives inline in the body (the "invite more" banner at the end of the
@@ -333,23 +350,18 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     );
   }
 
-  // Add trip owner as first "member" if not already in list. Don't seed
-  // user_full_name with the email - leave it empty so the profile resolver
-  // (or the auth user's own name when they are the owner) wins the fallback.
+  // Shared owner rule (withOwnerRow): the creator is never a real trip_members
+  // row — ownership lives in trips.created_by. Drop any stray member row for the
+  // creator (e.g. an invited+accepted owner from before the guard) and prepend a
+  // single synthetic owner. Don't seed user_full_name with the email — leave it
+  // empty so the profile resolver (or the auth user's own name when they are the
+  // owner) wins the fallback (TRIP-143).
   const ownerId = trip?.created_by || '';
-  const allMembers = [...members];
-  const hasOwner = allMembers.some(m => m.user_id === ownerId || m.role === 'owner');
-  if (!hasOwner && ownerId) {
-    const isMeOwner = user?.id && ownerId === user.id;
-    allMembers.unshift({
-      id: '__owner__',
-      trip_id: tripId,
-      user_id: ownerId,
-      user_full_name: isMeOwner ? (user?.full_name || '') : '',
-      role: 'owner',
-      status: 'active',
-    });
-  }
+  const isMeOwner = !!user?.id && ownerId === user.id;
+  const allMembers = withOwnerRow(members, ownerId, {
+    trip_id: tripId,
+    user_full_name: isMeOwner ? (user?.full_name || '') : '',
+  });
 
   return (
     <>
@@ -373,7 +385,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
           const realName = profile?.full_name || m.user_full_name
             || (m.user_id && user?.id && m.user_id === user.id ? user.full_name : '')
             || '';
-          const name = displayName(m.invite_email, realName);
+          const name = displayName(m.invite_email || profile?.email, realName);
           const hasRealName = !!realName;
           // Email line: invite_email for invited members, else the resolved
           // account email (covers the owner, who has no trip_members row).
@@ -427,7 +439,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                       : [
                           m.status === 'pending' && { icon: 'send', label: t('members.resend'), onSelect: () => resend(m.id) },
                           m.status === 'declined' && { icon: 'send', label: t('member.invite_again'), onSelect: () => reinvite(m) },
-                          m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => setRoleState({ member: m }) },
+                          m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => setRoleState({ member: m, email: m.invite_email || profile?.email }) },
                           { icon: 'trash', label: m.status === 'pending' ? t('member.cancel_invite') : t('members.remove'), danger: true, onSelect: () => removeMember(m.id) },
                         ]
                     }
@@ -455,7 +467,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
 
       <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} tripId={tripId} onSaved={refresh} />
       {promoteState && <InviteDialog open={!!promoteState} onOpenChange={(o) => { if (!o) setPromoteState(null); }} tripId={tripId} promoteMember={promoteState.member} onSaved={refresh} />}
-      {roleState && <ChangeRoleDialog open={!!roleState} onOpenChange={(o) => { if (!o) setRoleState(null); }} member={roleState.member} tripId={tripId} onSaved={refresh} />}
+      {roleState && <ChangeRoleDialog open={!!roleState} onOpenChange={(o) => { if (!o) setRoleState(null); }} member={roleState.member} email={roleState.email} tripId={tripId} onSaved={refresh} />}
     </>
   );
 }

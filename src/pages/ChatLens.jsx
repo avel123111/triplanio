@@ -98,7 +98,7 @@ function Msg({ who, isMe, isAi, text, time, grouped, avatarUrl, isDeleted }) {
           <ChatMarkdown
             text={text}
             mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
-            linkClassName={isMe ? 'underline' : 'underline text-primary'}
+            linkClassName={isMe ? 'cm-a' : 'cm-a cm-a--brand'}
           />
         </div>
         {isMe && !grouped && (
@@ -141,7 +141,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const [showMention, setShowMention] = useState(false);
   const [failedAiIds, setFailedAiIds] = useState(() => new Set());
 
-  const myName = user?.user_metadata?.full_name || user?.full_name || user?.email || t('member.you_self');
+  const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
 
   // ── Resolve chatId for this trip ──
   const { data: chatId } = useQuery({
@@ -169,14 +169,15 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const profiles = useUserProfiles(profileIds, tripId);
   const nameFor = (userId) => {
     let real = profiles[userId]?.full_name;
-    let email = '';
+    let email = profiles[userId]?.email || '';
     if (!real) {
       const mm = members.find(m => m.user_id === userId);
       real = mm?.user_full_name || '';
-      email = mm?.invite_email || '';
+      email = email || mm?.invite_email || '';
     }
     if (!real && user?.id && userId === user.id) {
       real = user.full_name || '';
+      email = email || user.email || '';
     }
     return displayName(email, real);
   };
@@ -298,6 +299,15 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
       const realId = created?.id;
       supabase.functions
         .invoke('callTriplanioAi', { body: { chat_id: chatId, user_message: content } })
+        .then(({ data, error }) => {
+          // TRIP-111: при отказе гейта (Pro / rate-limit) edge возвращает
+          // { ok:false } и сам постит реплику бота в чат. В любом случае гасим
+          // индикатор «Triplanio печатает» — иначе он висит вечно (invoke не
+          // бросает на не-2xx, а на ok:false ответа-бота из n8n не будет).
+          if (error || data?.ok === false) {
+            if (realId) setFailedAiIds((prev) => new Set([...prev, realId]));
+          }
+        })
         .catch((err) => {
           console.error('callTriplanioAi failed', err);
           if (realId) setFailedAiIds((prev) => new Set([...prev, realId]));

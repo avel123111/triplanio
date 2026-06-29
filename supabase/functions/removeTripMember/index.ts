@@ -7,13 +7,15 @@
  * Owner role cannot be removed.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerAdmin } from '../_shared/tripAccess.ts';
 import { disconnectTripTelegram } from '../_shared/telegramTeardown.ts';
+import { purgePrivateDocsForMember } from '../_shared/personalDocsTeardown.ts';
 import { renderMemberLeftNotification, renderMemberRemovedNotification } from '../_shared/emailTemplate.ts';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -39,6 +41,24 @@ Deno.serve(async (req) => {
 
     if (!callerIsAdmin && !isSelf) {
       return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+    }
+
+    // Purge the leaving/removed member's PRIVATE documents (rows + Storage files)
+    // for this trip — they lose access and can no longer delete their own private
+    // docs, and surviving members must not keep reading them via raw REST. Routed
+    // through the single _shared/personalDocsTeardown source so self-leave (M2)
+    // and admin-remove (M3) never drift. Shared docs stay (trip content).
+    // Best-effort: a Storage hiccup must never block the leave (it's swallowed and
+    // logged inside the helper). Offline members have user_id null → no-op.
+    if (member.user_id) {
+      try {
+        await purgePrivateDocsForMember(supabaseAdmin, {
+          tripId: member.trip_id,
+          userId: member.user_id,
+        });
+      } catch (e) {
+        console.error('removeTripMember: personal docs purge failed', e);
+      }
     }
 
     // Notifications reference trip_members via trip_member_id. The prod FK is

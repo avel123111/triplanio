@@ -10,6 +10,8 @@ export default {
   'account.switch_yearly': 'Cambiar a anual · {price}/año',
   'account.opening': 'Abriendo…',
   'account.billing_portal': 'Portal de facturación',
+  'account.details_unavailable': 'No se pudieron cargar los detalles de la suscripción',
+  'account.details_retry': 'Reintentar',
   'account.after_cancel_access': 'Tras cancelar, el acceso se mantiene hasta el final del periodo pagado',
   'account.pro_yearly_sub': 'Pro · anual · ahorra 33%',
   'account.active': 'Activa',

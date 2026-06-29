@@ -114,7 +114,13 @@ export default function EventAiBlock({
       //    n8n (prompts and schemas live inside the n8n workflow).
       const body = { kind, fileUrls, text: text.trim(), trip_id: tripId };
       const { data: invoked, error: invokeErr } = await supabase.functions.invoke('parseBookingWithAi', { body });
-      if (invokeErr) throw invokeErr;
+      if (invokeErr) {
+        // TRIP-111: серверный гейт — отдельные сообщения для лимита и Pro.
+        const status = invokeErr?.context?.status;
+        if (status === 429) { setError(t('event.ai_rate_limited')); setState('uploaded'); return; }
+        if (status === 403) { setError(t('event.ai_pro_required')); setState('uploaded'); return; }
+        throw invokeErr;
+      }
       if (invoked?.error) throw new Error(invoked.error);
 
       const result = extractBookingPayload(invoked);

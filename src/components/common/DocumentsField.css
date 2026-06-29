@@ -1,0 +1,26 @@
+/* DocumentsField — ported off Tailwind onto Lumo tokens (TRIP-53 / ретайр Tailwind, Этап 1).
+   Row (.docrow/.di) and dropzone (.upload) classes live in app.css and are reused. */
+
+/* card wrapper (non-bare) — was: rounded-xl border bg-card p-4 */
+.docfield { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 16px; }
+
+/* header row — was: flex items-center justify-between mb-2 gap-2 */
+.docfield__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+
+/* title cluster — was: flex items-center gap-2 text-sm font-semibold min-w-0 */
+.docfield__title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--fs-base); font-weight: 600; color: var(--ink); }
+.docfield__title .ico { flex: none; }
+.docfield__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* was truncate */
+/* count — was: text-xs text-muted-foreground font-normal */
+.docfield__count { font-size: var(--fs-meta); color: var(--muted); font-weight: 400; }
+
+/* doc list — was: flex flex-col gap-1.5 mb-2 */
+.docfield__list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+
+/* doc link inside .docrow b — was: block truncate */
+.docrow__link { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* remove button — was: shrink-0 grid place-items-center (sizing kept inline) */
+.docrow__rm { flex: none; display: grid; place-items: center; border: 0; background: none; cursor: pointer; }
+
+.docfield__file { display: none; }                                       /* was hidden */

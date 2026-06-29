@@ -5,32 +5,34 @@
 // persisted: the panel fetches on open and React Query caches the result.
 //
 // The Viator destinationId lives on the cities table (cities.viator_dest_id),
-// joined to the visit via city_visits.city_id. We resolve it client-side with a
-// cheap cities lookup (RLS: cities is world-readable) and cache it per city_id —
-// so getTripDetails (a security-sensitive trip-read fn) doesn't need changing.
+// resolved by the visit's GeoNames identity (city_visits.geonameid → cities.geonameid,
+// TRIP-146 v2). Late-binding by value: cities is a sparse affiliate directory, so a
+// city added to it later is picked up by existing visits with no backfill. Resolved
+// client-side with a cheap cities lookup (RLS: cities is world-readable) and cached
+// per geonameid — so getTripDetails doesn't need a join change here.
 
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 
-// city_id -> viator_dest_id (or null). Resolved once per city per session.
+// geonameid -> viator_dest_id (or null). Resolved once per city per session.
 const destCache = new Map();
 async function resolveViatorDestId(visit) {
-  const cityId = visit?.city_id;
-  if (!cityId) return null;
-  if (destCache.has(cityId)) return destCache.get(cityId);
+  const gid = visit?.geonameid;
+  if (!gid) return null;
+  if (destCache.has(gid)) return destCache.get(gid);
   const { data } = await supabase
     .from('cities')
     .select('viator_dest_id')
-    .eq('id', cityId)
+    .eq('geonameid', gid)
     .maybeSingle();
   const id = data?.viator_dest_id || null;
-  destCache.set(cityId, id);
+  destCache.set(gid, id);
   return id;
 }
 
 export const VIATOR_KEY = (visit, currency, lang, page) => [
   'viator',
-  visit?.city_id || null,
+  visit?.geonameid || null,
   (visit?.start_date || '').slice(0, 10),
   (visit?.end_date || '').slice(0, 10),
   currency || '',
@@ -41,7 +43,7 @@ export const VIATOR_KEY = (visit, currency, lang, page) => [
 /**
  * React Query hook for the activity fork panel.
  * @param {object} args
- * @param {object} args.visit    city-visit node (needs city_id, start_date, end_date)
+ * @param {object} args.visit    city-visit node (needs geonameid, start_date, end_date)
  * @param {string} args.currency trip currency (EUR/USD)
  * @param {string} args.lang     user locale (en/es/ru)
  * @param {number} args.page     1-based page
@@ -50,7 +52,7 @@ export const VIATOR_KEY = (visit, currency, lang, page) => [
 export function useViatorActivities({ visit, currency, lang, page = 1, enabled = true }) {
   return useQuery({
     queryKey: VIATOR_KEY(visit, currency, lang, page),
-    enabled: !!enabled && !!visit?.city_id,
+    enabled: !!enabled && !!visit?.geonameid,
     placeholderData: keepPreviousData, // keep the previous page visible while loading
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {

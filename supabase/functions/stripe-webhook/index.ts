@@ -1,44 +1,33 @@
 /**
- * stripe-webhook
+ * stripe-webhook (Ф2b — платёжный фундамент)
  *
- * Single-writer entitlement (Ф2/Ф3): each event writes the trip_subscriptions
- * ledger, then recompute_user_entitlement() derives users.subscription_*. NO
- * direct writes to users.subscription_* here — this kills the old double-write/
- * drift. pro_trip stays per-trip via trips.is_pro_trip.
+ * Single-writer entitlement: события пишут реестр purchase/subscription, затем
+ * recompute_user_entitlement / recompute_trip_entitlement выводят кэш
+ * (users.subscription_*, trips.is_pro_trip). НИКАКИХ прямых записей кэша.
  *
- * Lifecycle (Ф3): renewal (invoice.paid), dunning (invoice.payment_failed), and
- * grace-date refresh (invoice.updated → next_payment_attempt under Stripe
- * automations) are handled here. stripe_customer_id is captured lazily.
+ * Идемпотентность входа — таблица webhook_event (provider, provider_event_id).
+ * Дубль платежа — ЕДИНАЯ механика для purchase и subscription: вторая
+ * энтайтлинг-строка не начисляется, ложится status='duplicate' + needs_review +
+ * Sentry. Никаких авто-возвратов/авто-отмен.
  *
- * Security:
- * - Signature verified with this project's STRIPE_WEBHOOK_SECRET (one Stripe mode
- *   per Supabase project: live in prod, test in dev).
- * - Idempotency: processed events recorded in stripe_events; duplicates skipped.
- * - No JWT (Stripe sends its own signature). verify_jwt MUST stay false (canon-10).
+ * Адрес/имя функции не менялись (тот же Stripe endpoint). verify_jwt MUST stay
+ * false (canon-10). Вся Stripe-специфика — за StripeAdapter.
  *
- * Status model: Stripe subscription status stored verbatim
- * (active/trialing/past_due/canceled/unpaid/…); scheduled cancellation = status
- * stays 'active' + cancel_at_period_end=true. recompute treats active/trialing/
- * past_due as Pro. pro_trip / charge-derived rows use active/refunded/disputed.
- *
- * Write integrity: every entitlement-affecting DB write goes through ensureWrite()
- * — on a Postgres error it reports to Sentry AND throws, so the event is NOT
- * recorded and Stripe retries. A swallowed write error here is exactly what hid
- * the 0052 ON CONFLICT bug (user stayed `free` after paying, silently).
+ * Write integrity: ensureWrite() — ошибка записи права → Sentry + throw, событие
+ * НЕ помечается processed, Stripe ретраит (хендлеры идемпотентны).
  */
 
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts';
-import Stripe from 'npm:stripe@17.0.0';
+import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError, reportPaymentAnomaly } from '../_shared/sentry.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
-import { planTypeForProduct, isTestStripeKey } from '../_shared/stripeCatalog.ts';
+import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
+import { stripeEnv, PLAN_TO_PRODUCT, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode, type PlanType } from '../_shared/payments/catalog.ts';
+import { saveProviderCustomerId } from '../_shared/payments/customer.ts';
 import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from '../_shared/revokeLostProFeatures.ts';
 
-// Critical write guard. Supabase query builders are thenable and resolve to
-// { data, error }. On error: report to Sentry and THROW, so the outer catch
-// returns 500, the event is not recorded, and Stripe retries (handlers are
-// upsert-idempotent, so a retry is safe). Use for entitlement-affecting writes
-// only — best-effort writes (notifications, customer-id) stay non-fatal.
+// Ошибка записи права → Sentry + throw (Stripe ретраит). Только для
+// энтайтлмент-критичных записей; best-effort (нотификации, customer id) — нет.
 async function ensureWrite(label: string, op: PromiseLike<{ error: unknown }>) {
   const { error } = await op;
   if (error) {
@@ -48,38 +37,41 @@ async function ensureWrite(label: string, op: PromiseLike<{ error: unknown }>) {
   }
 }
 
-// Single writer of the user-level cache. No-op without a user id. A failed RPC
-// would leave the cache stale (recompute-on-read heals it later), but that is a
-// silent drift — report + throw so Stripe retries and the cache is fixed now.
-async function recompute(userId: string | null | undefined) {
+// Ordering-guard (ТЗ §5.2): событие старше уже записанного provider_event_at —
+// устаревшее/переставленное, игнорируем. Сравнение по эпохам (строковое
+// сравнение ISO↔pg-формата некорректно). Был продублирован в .updated/.deleted.
+function isStaleEvent(eventCreatedUnix: number, existingEventAt: unknown): boolean {
+  return !!existingEventAt && eventCreatedUnix * 1000 <= new Date(existingEventAt as string).getTime();
+}
+
+async function recomputeUser(userId: string | null | undefined) {
   if (!userId) return;
   const { error } = await supabaseAdmin.rpc('recompute_user_entitlement', { p_user_id: userId });
   if (error) {
-    await captureEdgeError(new Error(`recompute_user_entitlement failed (user ${userId}): ${error.message}`), 'stripe-webhook');
+    await captureEdgeError(new Error(`recompute_user_entitlement (user ${userId}): ${error.message}`), 'stripe-webhook');
     throw new Error('recompute_user_entitlement failed');
   }
-  // After the entitlement cache settles, roll back Pro addons for any of this
-  // user's trips that just lost Pro (sub canceled/expired/refunded). Self-gating
-  // (SQL no-ops still-Pro trips) and best-effort — must not throw, or a healthy
-  // entitlement write would be retried by Stripe. Covers ALL recompute callers here.
+  // Кэш осел — откатываем Pro-аддоны трипов, потерявших Pro. Self-gating +
+  // best-effort (не бросает, иначе здоровую запись ретраил бы Stripe).
   await revokeLostProFeaturesForUser(supabaseAdmin, userId);
 }
 
-// Persist the Stripe customer id on first sight; never overwrite an existing one.
-// Best-effort (not entitlement-critical): a failure must not block the event.
-async function saveCustomerId(userId: string | null | undefined, customerId: unknown) {
-  if (!userId || typeof customerId !== 'string' || !customerId) return;
-  const { error } = await supabaseAdmin
-    .from('users')
-    .update({ stripe_customer_id: customerId })
-    .eq('id', userId)
-    .is('stripe_customer_id', null);
-  if (error) console.error('saveCustomerId failed (non-fatal):', error.message);
+async function recomputeTrip(tripId: string | null | undefined) {
+  if (!tripId) return;
+  const { error } = await supabaseAdmin.rpc('recompute_trip_entitlement', { p_trip_id: tripId });
+  if (error) {
+    await captureEdgeError(new Error(`recompute_trip_entitlement (trip ${tripId}): ${error.message}`), 'stripe-webhook');
+    throw new Error('recompute_trip_entitlement failed');
+  }
 }
 
-// Version-tolerant: invoice.subscription moved under parent.subscription_details
-// on newer (Basil) API versions. Read both shapes so invoice.* never silently
-// no-ops if the account is on a newer apiVersion.
+// Платёжная идентичность — provider_customer (канон; колонка users.stripe_customer_id
+// дропнута). Best-effort, идемпотентно.
+function saveCustomer(userId: string | null | undefined, customerId: unknown) {
+  return saveProviderCustomerId(supabaseAdmin, userId, customerId);
+}
+
+// invoice.subscription переехал под parent.subscription_details на новых версиях API.
 function invoiceSubId(invoice: Stripe.Invoice): string | null {
   const top = (invoice as unknown as { subscription?: unknown }).subscription;
   if (typeof top === 'string') return top;
@@ -88,76 +80,90 @@ function invoiceSubId(invoice: Stripe.Invoice): string | null {
   return typeof nested === 'string' ? nested : null;
 }
 
-// Find an existing recurring ledger row by Stripe subscription id.
 async function findSubRow(subId: string) {
   const { data } = await supabaseAdmin
-    .from('trip_subscriptions')
-    .select('id, user_id, type')
-    .eq('stripe_subscription_id', subId)
+    .from('subscription')
+    .select('id, user_id, product_code, status, provider_event_at')
+    .eq('provider_subscription_id', subId)
     .limit(1);
   return data && data.length > 0 ? data[0] : null;
 }
 
-// Resolve { userId, planType } for an invoice's subscription: prefer the existing
-// ledger row, else the subscription metadata set at checkout (subscription_data.
-// metadata). Reports to Sentry and returns null when neither yields a recurring
-// user/plan (an anomaly worth a human look).
+// Есть ли у юзера ДРУГАЯ энтайтлинг-подписка (для детекта дубля).
+async function hasOtherEntitlingSub(userId: string, exceptSubId: string | null): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from('subscription').select('provider_subscription_id').eq('user_id', userId).in('status', [...ENTITLING_STATUSES]);
+  return (data ?? []).some((r) => r.provider_subscription_id !== exceptSubId);
+}
+
+// { userId, productCode } для подписки: из существующей строки, иначе из metadata.
 async function resolveRecurringUser(
-  stripe: Stripe,
+  adapter: StripeAdapter,
   subId: string,
-  existing: { user_id?: string; type?: string } | null,
+  existing: { user_id?: string; product_code?: string } | null,
   ctx: string,
-): Promise<{ userId: string; planType: 'pro_monthly' | 'pro_yearly' } | null> {
+): Promise<{ userId: string; productCode: ProductCode } | null> {
   let userId = existing?.user_id ?? null;
-  let planType = existing?.type ?? null;
-  if (!userId || !planType) {
-    const sub = await stripe.subscriptions.retrieve(subId);
+  let productCode = (existing?.product_code as ProductCode | undefined) ?? null;
+  if (!userId || !productCode) {
+    const sub = await adapter.fetchSubscription(subId);
     userId = userId ?? ((sub.metadata?.user_id as string) || null);
-    planType = planType ?? ((sub.metadata?.plan_type as string) || null);
+    const planType = (sub.metadata?.plan_type as PlanType | undefined) ?? null;
+    productCode = productCode ?? (planType ? PLAN_TO_PRODUCT[planType] : null);
   }
-  if (!userId || (planType !== 'pro_monthly' && planType !== 'pro_yearly')) {
-    // Money-critical anomaly: a paid subscription event we can't attribute to a
-    // user/plan. Non-fatal (caller breaks) → error-level for alert routing.
+  if (!userId || (productCode !== 'account_pro_monthly' && productCode !== 'account_pro_yearly')) {
     await reportPaymentAnomaly('sub_unresolved_user', { ctx, sub_id: subId }, 'error');
     return null;
   }
-  return { userId, planType };
+  return { userId, productCode };
 }
 
 Deno.serve(async (req) => {
+  let eventId: string | null = null;
   try {
     const body = await req.text();
     const signature = req.headers.get('stripe-signature');
-
-    // ---------- Signature verification ----------
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')!;
+    const adapter = new StripeAdapter(stripeKey, stripeEnv(stripeKey));
 
+    // ---------- Проверка подписи ----------
     let event: Stripe.Event;
     try {
-      event = await stripe.webhooks.constructEventAsync(body, signature!, webhookSecret);
+      event = await adapter.verifyWebhook(body, signature!, webhookSecret);
     } catch (err) {
       console.error('Webhook signature verification failed:', (err as Error).message);
       await captureEdgeError(err, 'stripe-webhook:signature');
       return Response.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
+    eventId = event.id;
     console.log('Stripe webhook received:', event.type, event.id);
 
-    // ---------- Idempotency: skip already-processed events ----------
-    try {
-      const { data: existing } = await supabaseAdmin
-        .from('stripe_events')
-        .select('id')
-        .eq('event_id', event.id)
-        .limit(1);
-      if (existing && existing.length > 0) {
-        console.log('Duplicate event skipped:', event.id);
-        return Response.json({ received: true, duplicate: true });
+    // ---------- Идемпотентность входа (webhook_event) ----------
+    // Вставляем строку received; нарушение уникальности (provider, event_id) = дубль
+    // доставки → не реобрабатываем, 200.
+    const { error: insertEventErr } = await supabaseAdmin
+      .from('webhook_event')
+      .insert({ provider: 'stripe', provider_event_id: event.id, type: event.type, status: 'processing', signature_valid: true, payload: event });
+    if (insertEventErr) {
+      const code = (insertEventErr as { code?: string }).code;
+      if (code === '23505') {
+        // Строка уже есть. Скипаем ТОЛЬКО если прошлая попытка ДОшла до processed;
+        // если осталась processing/failed (краш на полпути) — переобрабатываем, иначе
+        // апдейт потеряется навсегда.
+        const { data: ex } = await supabaseAdmin
+          .from('webhook_event').select('status')
+          .eq('provider', 'stripe').eq('provider_event_id', event.id).limit(1);
+        if (ex && ex[0]?.status === 'processed') {
+          console.log('Duplicate (already processed) skipped:', event.id);
+          return Response.json({ received: true, duplicate: true });
+        }
+        console.log('Reprocessing previously-unfinished event:', event.id);
+      } else {
+        // Не смогли записать журнал — продолжаем (хендлеры идемпотентны), но логируем.
+        console.error('webhook_event insert failed (continuing):', (insertEventErr as { message?: string }).message);
       }
-    } catch (e) {
-      // Non-fatal: better to risk a duplicate (handlers are idempotent) than drop the event
-      console.error('Idempotency lookup failed (continuing):', (e as Error).message);
     }
 
     switch (event.type) {
@@ -165,268 +171,238 @@ Deno.serve(async (req) => {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const { user_id, trip_id, plan_type } = session.metadata || {};
-        console.log('Checkout completed for:', user_id, plan_type, 'trip:', trip_id);
+        const productCode: ProductCode | null = plan_type ? PLAN_TO_PRODUCT[plan_type as PlanType] ?? null : null;
+        console.log('Checkout completed:', user_id, plan_type, 'trip:', trip_id);
 
-        if (plan_type === 'pro_trip' && trip_id) {
-          // Idempotency by checkout id (PRIMARY, T7): this exact checkout already
-          // wrote a ledger row → a retry/redelivery that slipped past the event-id
-          // dedup (a failed stripe_events write, or Stripe reusing the checkout under
-          // a new event id). Silently no-op — recorded below; NO alert, no double
-          // count. Keying on stripe_checkout_id (not the derived is_pro_trip flag)
-          // is what makes a crash-retry distinguishable from a real second payment.
-          const { data: sameCheckout } = await supabaseAdmin
-            .from('trip_subscriptions').select('id').eq('stripe_checkout_id', session.id).limit(1);
-          if (sameCheckout && sameCheckout.length > 0) break;
+        if (productCode === 'trip_pro_lifetime' && trip_id && user_id) {
+          // Идемпотентность по checkout id (provider_ref): тот же чекаут уже записан → no-op.
+          const { data: same } = await supabaseAdmin
+            .from('purchase').select('id').eq('provider_ref', session.id).limit(1);
+          if (same && same.length > 0) break;
 
-          // Genuine second payment (TRIP-82): the checkout id is NEW (passed above) yet
-          // the trip is already Pro → a DIFFERENT checkout paid again (e.g. two tabs).
-          // Don't insert a 2nd ledger row / double-count — flag for a human (manual
-          // refund in Dashboard; no auto-refund). Money-critical → error-level.
-          const { data: tripRow } = await supabaseAdmin
-            .from('trips').select('is_pro_trip').eq('id', trip_id).single();
-          if (tripRow?.is_pro_trip) {
-            await reportPaymentAnomaly('pro_trip_double_paid', { trip_id, session_id: session.id, user_id }, 'error');
+          // Refetch истины из Stripe (ТЗ §1.3): не доверяем телу — берём актуальную
+          // сессию и НЕ начисляем, если она не оплачена (payment_status != 'paid').
+          const fresh = await adapter.fetchCheckoutSession(session.id);
+          if (fresh.payment_status !== 'paid') {
+            await reportPaymentAnomaly('pro_trip_unpaid_completed', { trip_id, session_id: session.id, user_id, payment_status: fresh.payment_status }, 'error');
             break;
           }
 
-          // Per-trip Pro. Anti-dup on the checkout id (uq_trip_subs_checkout).
-          await ensureWrite('pro_trip ledger upsert', supabaseAdmin
-            .from('trip_subscriptions')
-            .upsert({
-              user_id,
-              trip_id,
-              type: 'pro_trip',
-              stripe_checkout_id: session.id,
-              stripe_payment_intent_id: session.payment_intent || null,
-              status: 'active',
-              start_date: new Date().toISOString(),
-              amount_paid: session.amount_total,
-              currency: session.currency || 'usd',
-            }, { onConflict: 'stripe_checkout_id', ignoreDuplicates: true }));
-          await ensureWrite('pro_trip is_pro_trip set', supabaseAdmin
-            .from('trips').update({ is_pro_trip: true }).eq('id', trip_id));
-          // CK-6: persist the customer id on the FIRST purchase too (incl. pro_trip),
-          // so the next checkout reuses it instead of letting Stripe create a 2nd
-          // (guest) customer. Recurring branch already does this below.
-          await saveCustomerId(user_id, session.customer);
+          // Уже есть active покупка трипа → второй РАЗНЫЙ платёж (две вкладки):
+          // пишем duplicate + needs_review + Sentry, прав не задваиваем.
+          const { data: act } = await supabaseAdmin
+            .from('purchase').select('id').eq('trip_id', trip_id)
+            .eq('product_code', 'trip_pro_lifetime').eq('status', 'active').limit(1);
+          const isDup = !!(act && act.length > 0);
+          if (isDup) {
+            await reportPaymentAnomaly('pro_trip_double_paid', { trip_id, session_id: session.id, user_id }, 'error');
+          }
+          await ensureWrite('purchase insert', supabaseAdmin.from('purchase').insert({
+            user_id, trip_id, product_code: 'trip_pro_lifetime', provider: 'stripe',
+            provider_charge_id: (typeof fresh.payment_intent === 'string' ? fresh.payment_intent : null),
+            provider_ref: session.id,
+            status: isDup ? 'duplicate' : 'active', needs_review: isDup,
+            amount: fresh.amount_total, currency: fresh.currency || 'usd',
+            purchased_at: new Date().toISOString(),
+          }));
+          if (!isDup) await recomputeTrip(trip_id);
+          await saveCustomer(user_id, fresh.customer);
 
-        } else if (plan_type === 'pro_monthly' || plan_type === 'pro_yearly') {
-          // Recurring: pull the live subscription for real status / period / cancel flag.
+        } else if ((productCode === 'account_pro_monthly' || productCode === 'account_pro_yearly') && user_id) {
           const subId = typeof session.subscription === 'string' ? session.subscription : null;
           let status = 'active';
           let periodEndIso: string | null = null;
           let cancelAtPeriodEnd = false;
           if (subId) {
-            const sub = await stripe.subscriptions.retrieve(subId);
+            const sub = await adapter.fetchSubscription(subId);
             status = sub.status;
             periodEndIso = unixToIso(getPeriodEndUnix(sub));
             cancelAtPeriodEnd = sub.cancel_at_period_end === true;
           }
-          await ensureWrite('checkout recurring upsert', supabaseAdmin
-            .from('trip_subscriptions')
-            .upsert({
-              user_id,
-              type: plan_type,
-              stripe_subscription_id: subId,
-              stripe_checkout_id: session.id,
-              stripe_payment_intent_id: session.payment_intent || null,
-              status,
-              start_date: new Date().toISOString(),
-              current_period_end: periodEndIso,
-              end_date: periodEndIso, // legacy mirror for existing readers
-              cancel_at_period_end: cancelAtPeriodEnd,
-              amount_paid: session.amount_total,
-              currency: session.currency || 'usd',
-            }, { onConflict: 'stripe_subscription_id' }));
-          await saveCustomerId(user_id, session.customer);
-          await recompute(user_id);
-
-          // In-app confirmation (replay-safe: duplicate events are skipped above).
-          if (user_id) {
-            try {
-              await supabaseAdmin.from('notifications').insert({
-                user_id,
-                type: 'system',
-                i18n_title_key: 'notif.tpl_pro_activated_title',
-                i18n_message_key: 'notif.tpl_pro_activated_msg',
-                i18n_params: {},
-                title: 'Pro subscription activated',
-                message: 'Your payment was successful. Thank you!',
-                action_url: '/settings',
-                read: false,
-              });
-            } catch (e) {
-              console.error('Pro-activated notification failed (non-fatal):', (e as Error).message);
+          // Тот же sub уже записан → идемпотентный апдейт.
+          const existing = subId ? await findSubRow(subId) : null;
+          if (existing) {
+            await ensureWrite('subscription update (checkout)', supabaseAdmin.from('subscription').update({
+              status, cancel_at_period_end: cancelAtPeriodEnd,
+              ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
+            }).eq('id', existing.id));
+            await recomputeUser(user_id);
+          } else {
+            // Новая подписка. Есть ли уже энтайтлинг у юзера → дубль.
+            const isDup = await hasOtherEntitlingSub(user_id, subId);
+            if (isDup) await reportPaymentAnomaly('sub_double_paid', { user_id, sub_id: subId, session_id: session.id }, 'error');
+            // upsert по provider_subscription_id — гонко-безопасно: конкурентная
+            // доставка invoice.paid для той же подписки станет апдейтом, не 500.
+            await ensureWrite('subscription upsert (checkout)', supabaseAdmin.from('subscription').upsert({
+              user_id, product_code: productCode, provider: 'stripe',
+              provider_subscription_id: subId, provider_ref: session.id,
+              status: isDup ? 'duplicate' : status, needs_review: isDup,
+              current_period_end: periodEndIso, cancel_at_period_end: cancelAtPeriodEnd,
+              amount: session.amount_total, currency: session.currency || 'usd',
+              billing_interval: billingIntervalForProduct(productCode),
+            }, { onConflict: 'provider_subscription_id' }));
+            if (!isDup) {
+              await saveCustomer(user_id, session.customer);
+              await recomputeUser(user_id);
+              try {
+                await supabaseAdmin.from('notifications').insert({
+                  user_id, type: 'system',
+                  i18n_title_key: 'notif.tpl_pro_activated_title', i18n_message_key: 'notif.tpl_pro_activated_msg',
+                  i18n_params: {}, title: 'Pro subscription activated',
+                  message: 'Your payment was successful. Thank you!', action_url: '/settings', read: false,
+                });
+              } catch (e) { console.error('Pro-activated notification failed (non-fatal):', (e as Error).message); }
             }
           }
         }
         break;
       }
 
-      // ---- Renewal: a subscription invoice was paid → extend the period ----
+      // ---- Renewal: продление периода ----
       case 'invoice.paid': {
         const invoice = event.data.object as Stripe.Invoice;
         const subId = invoiceSubId(invoice);
         if (!subId) break;
         const existing = await findSubRow(subId);
-        const resolved = await resolveRecurringUser(stripe, subId, existing, 'invoice.paid');
+        const resolved = await resolveRecurringUser(adapter, subId, existing, 'invoice.paid');
         if (!resolved) break;
-        await saveCustomerId(resolved.userId, invoice.customer);
-        const sub = await stripe.subscriptions.retrieve(subId);
+        await saveCustomer(resolved.userId, invoice.customer);
+        const sub = await adapter.fetchSubscription(subId);
         const periodEndIso = unixToIso(getPeriodEndUnix(sub));
-        await ensureWrite('invoice.paid upsert', supabaseAdmin
-          .from('trip_subscriptions')
-          .upsert({
-            user_id: resolved.userId,
-            type: resolved.planType,
-            stripe_subscription_id: subId,
-            status: sub.status,               // 'active' on a healthy renewal (verbatim)
-            cancel_at_period_end: sub.cancel_at_period_end === true,
-            provider_meta: null,              // clear any stale past_due grace marker
-            ...(periodEndIso ? { current_period_end: periodEndIso, end_date: periodEndIso } : {}),
-            ...(existing ? {} : { start_date: new Date().toISOString(), currency: invoice.currency || 'usd' }),
-          }, { onConflict: 'stripe_subscription_id' }));
-        await recompute(resolved.userId);
+        if (existing) {
+          await ensureWrite('invoice.paid update', supabaseAdmin.from('subscription').update({
+            status: sub.status, cancel_at_period_end: sub.cancel_at_period_end === true, provider_meta: null,
+            ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
+          }).eq('id', existing.id));
+        } else {
+          const isDup = await hasOtherEntitlingSub(resolved.userId, subId);
+          // upsert: гонка checkout.session.completed ↔ invoice.paid для той же
+          // подписки больше не даёт unique-violation/500 (была причина 500 на dev).
+          await ensureWrite('invoice.paid upsert', supabaseAdmin.from('subscription').upsert({
+            user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
+            provider_subscription_id: subId, status: isDup ? 'duplicate' : sub.status, needs_review: isDup,
+            current_period_end: periodEndIso, cancel_at_period_end: sub.cancel_at_period_end === true,
+            currency: invoice.currency || 'usd',
+            billing_interval: billingIntervalForProduct(resolved.productCode),
+          }, { onConflict: 'provider_subscription_id' }));
+          if (isDup) await reportPaymentAnomaly('sub_double_paid', { user_id: resolved.userId, sub_id: subId, ctx: 'invoice.paid' }, 'error');
+        }
+        await recomputeUser(resolved.userId);
         break;
       }
 
-      // ---- Dunning: a subscription invoice failed → enter past_due grace ----
+      // ---- Dunning: оплата не прошла → past_due grace ----
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
         const subId = invoiceSubId(invoice);
         if (!subId) break;
         const existing = await findSubRow(subId);
-        const resolved = await resolveRecurringUser(stripe, subId, existing, 'invoice.payment_failed');
+        const resolved = await resolveRecurringUser(adapter, subId, existing, 'invoice.payment_failed');
         if (!resolved) break;
-        await saveCustomerId(resolved.userId, invoice.customer);
-        // Under automations next_payment_attempt is usually null here (it rides
-        // invoice.updated); recompute falls back to a short buffer until then.
+        await saveCustomer(resolved.userId, invoice.customer);
         const nextAttemptIso = invoice.next_payment_attempt ? unixToIso(invoice.next_payment_attempt) : null;
-        await ensureWrite('invoice.payment_failed upsert', supabaseAdmin
-          .from('trip_subscriptions')
-          .upsert({
-            user_id: resolved.userId,
-            type: resolved.planType,
-            stripe_subscription_id: subId,
-            status: 'past_due',
-            ...(nextAttemptIso ? { provider_meta: { next_payment_attempt: nextAttemptIso } } : {}),
-            ...(existing ? {} : { start_date: new Date().toISOString(), currency: invoice.currency || 'usd' }),
-          }, { onConflict: 'stripe_subscription_id' }));
-        await recompute(resolved.userId);
-
-        // Dunning notification — ask the user to update their card. Replay-safe.
+        // Refetch истины (ТЗ §1.3): статус подписки берём из Stripe verbatim
+        // (active в smart-retry / unpaid / canceled при исчерпании дённинга).
+        // Грейс держит recompute по provider_meta.next_payment_attempt (ниже).
+        const sub = await adapter.fetchSubscription(subId);
+        const periodEndIso = unixToIso(getPeriodEndUnix(sub));
+        await ensureWrite('invoice.payment_failed upsert', supabaseAdmin.from('subscription').upsert({
+          user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
+          provider_subscription_id: subId, status: sub.status,
+          cancel_at_period_end: sub.cancel_at_period_end === true,
+          ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
+          currency: invoice.currency || 'usd',
+          billing_interval: billingIntervalForProduct(resolved.productCode),
+          ...(nextAttemptIso ? { provider_meta: { next_payment_attempt: nextAttemptIso } } : {}),
+        }, { onConflict: 'provider_subscription_id' }));
+        await recomputeUser(resolved.userId);
         try {
           await supabaseAdmin.from('notifications').insert({
-            user_id: resolved.userId,
-            type: 'system',
-            i18n_title_key: 'notif.tpl_pro_payment_failed_title',
-            i18n_message_key: 'notif.tpl_pro_payment_failed_msg',
-            i18n_params: {},
-            title: 'Pro payment failed',
+            user_id: resolved.userId, type: 'system',
+            i18n_title_key: 'notif.tpl_pro_payment_failed_title', i18n_message_key: 'notif.tpl_pro_payment_failed_msg',
+            i18n_params: {}, title: 'Pro payment failed',
             message: 'We couldn\'t charge your subscription. Update your payment method to keep Pro.',
-            action_url: '/settings',
-            read: false,
+            action_url: '/settings', read: false,
           });
-        } catch (e) {
-          console.error('dunning notification failed (non-fatal):', (e as Error).message);
-        }
+        } catch (e) { console.error('dunning notification failed (non-fatal):', (e as Error).message); }
         break;
       }
 
-      // ---- Grace-date refresh: under Stripe automations the scheduled retry time
-      // (next_payment_attempt) arrives on invoice.updated, NOT payment_failed.
-      // Chatty event → act ONLY when it carries a next attempt. Status is owned by
-      // subscription.* / invoice.paid|failed; here we only move the grace date.
+      // ---- Grace-date refresh: next_payment_attempt приходит на invoice.updated ----
       case 'invoice.updated': {
         const invoice = event.data.object as Stripe.Invoice;
         const subId = invoiceSubId(invoice);
         if (!subId) break;
         const nextAttemptIso = invoice.next_payment_attempt ? unixToIso(invoice.next_payment_attempt) : null;
-        if (!nextAttemptIso) break; // healthy/active invoices have no scheduled retry
+        if (!nextAttemptIso) break;
         const existing = await findSubRow(subId);
-        const resolved = await resolveRecurringUser(stripe, subId, existing, 'invoice.updated');
+        const resolved = await resolveRecurringUser(adapter, subId, existing, 'invoice.updated');
         if (!resolved) break;
-        await saveCustomerId(resolved.userId, invoice.customer);
-        await ensureWrite('invoice.updated upsert', supabaseAdmin
-          .from('trip_subscriptions')
-          .upsert({
-            user_id: resolved.userId,
-            type: resolved.planType,
-            stripe_subscription_id: subId,
-            provider_meta: { next_payment_attempt: nextAttemptIso },
-            // Only assume past_due when reconstructing a missing row; never override
-            // an existing row's status from this event.
-            ...(existing ? {} : { status: 'past_due', start_date: new Date().toISOString(), currency: invoice.currency || 'usd' }),
-          }, { onConflict: 'stripe_subscription_id' }));
-        await recompute(resolved.userId);
+        await saveCustomer(resolved.userId, invoice.customer);
+        // Refetch истины (ТЗ §1.3): статус из Stripe verbatim + grace-дата из инвойса.
+        const sub = await adapter.fetchSubscription(subId);
+        const periodEndIso = unixToIso(getPeriodEndUnix(sub));
+        await ensureWrite('invoice.updated upsert', supabaseAdmin.from('subscription').upsert({
+          user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
+          provider_subscription_id: subId, status: sub.status,
+          cancel_at_period_end: sub.cancel_at_period_end === true,
+          ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
+          currency: invoice.currency || 'usd',
+          billing_interval: billingIntervalForProduct(resolved.productCode),
+          provider_meta: { next_payment_attempt: nextAttemptIso },
+        }, { onConflict: 'provider_subscription_id' }));
+        await recomputeUser(resolved.userId);
         break;
       }
 
       case 'customer.subscription.updated': {
-        const sub = event.data.object as Stripe.Subscription;
-        const { data: rows } = await supabaseAdmin
-          .from('trip_subscriptions')
-          .select('id, user_id')
-          .eq('stripe_subscription_id', sub.id)
-          .limit(1);
-        if (rows && rows.length > 0) {
+        const subObj = event.data.object as Stripe.Subscription;
+        const existing = await findSubRow(subObj.id);
+        if (existing) {
+          // Ordering-guard (ТЗ §5.2): пропускаем устаревшие/переставленные события.
+          if (isStaleEvent(event.created, existing.provider_event_at)) break;
+          const evtAtIso = unixToIso(event.created);
+          // Refetch истины из Stripe (ТЗ §1.3): не доверяем телу события (могло
+          // прийти не по порядку). Это и чинит «отменил, а показывает активной».
+          const sub = await adapter.fetchSubscription(subObj.id);
           const periodEndIso = unixToIso(getPeriodEndUnix(sub));
-          // Map the live price back to our plan type so a Billing-Portal plan
-          // switch (TRIP-53) updates type instead of freezing it. No resolvable
-          // product → leave type unchanged.
           const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
           const productId = typeof price?.product === 'string'
-            ? price.product
-            : ((price?.product as { id?: string } | undefined)?.id ?? null);
-          const planType = productId
-            ? planTypeForProduct(productId, isTestStripeKey(Deno.env.get('STRIPE_SECRET_KEY')!))
-            : null;
-          await ensureWrite('subscription.updated update', supabaseAdmin
-            .from('trip_subscriptions')
-            .update({
-              status: sub.status, // verbatim — scheduled cancel keeps 'active' + flag below
-              cancel_at_period_end: sub.cancel_at_period_end === true,
-              ...(planType ? { type: planType } : {}),
-              ...(periodEndIso ? { current_period_end: periodEndIso, end_date: periodEndIso } : {}),
-            })
-            .eq('id', rows[0].id));
-          await recompute(rows[0].user_id);
+            ? price.product : ((price?.product as { id?: string } | undefined)?.id ?? null);
+          const productCode = productId ? await adapter.productCodeForProviderProduct(productId) : null;
+          await ensureWrite('subscription.updated', supabaseAdmin.from('subscription').update({
+            status: sub.status, cancel_at_period_end: sub.cancel_at_period_end === true,
+            ...(productCode ? { product_code: productCode, billing_interval: billingIntervalForProduct(productCode) } : {}),
+            ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
+            ...(evtAtIso ? { provider_event_at: evtAtIso } : {}),
+          }).eq('id', existing.id));
+          await recomputeUser(existing.user_id);
         }
         break;
       }
 
       case 'customer.subscription.deleted': {
-        const sub = event.data.object as Stripe.Subscription;
-        const { data: rows } = await supabaseAdmin
-          .from('trip_subscriptions')
-          .select('id, user_id')
-          .eq('stripe_subscription_id', sub.id)
-          .limit(1);
-        if (rows && rows.length > 0) {
-          await ensureWrite('subscription.deleted update', supabaseAdmin
-            .from('trip_subscriptions')
-            .update({ status: 'canceled' })
-            .eq('id', rows[0].id));
-          await recompute(rows[0].user_id);
+        const subObj = event.data.object as Stripe.Subscription;
+        const existing = await findSubRow(subObj.id);
+        if (existing) {
+          if (isStaleEvent(event.created, existing.provider_event_at)) break;
+          const evtAtIso = unixToIso(event.created);
+          await ensureWrite('subscription.deleted', supabaseAdmin.from('subscription')
+            .update({
+              status: 'canceled', canceled_at: new Date().toISOString(),
+              ...(evtAtIso ? { provider_event_at: evtAtIso } : {}),
+            }).eq('id', existing.id));
+          await recomputeUser(existing.user_id);
         }
         break;
       }
 
-      // Refund / chargeback → revoke (T3, CK-1 fix). Two attribution paths:
-      //   1) payment_intent match — catches pro_trip (one-time; PI stored on the row).
-      //   2) subscription match — recurring rows have a NULL payment_intent, so we
-      //      resolve charge → invoice → subscription and match by stripe_subscription_id.
-      // A DISPUTE always revokes (status=disputed). A REFUND revokes only when FULL
-      // (partial refund leaves Pro). recompute() then derives users.subscription_*
-      // (refunded/disputed are not Pro); pro_trip clears is_pro_trip directly.
+      // ---- Refund / chargeback → снять право ----
       case 'charge.refunded':
       case 'charge.dispute.created': {
         const isDispute = event.type === 'charge.dispute.created';
         const newStatus = isDispute ? 'disputed' : 'refunded';
 
-        // Resolve the underlying charge + payment_intent. For charge.refunded the
-        // event object IS the charge; for charge.dispute.created it's a Dispute that
-        // references a charge.
         let charge: Stripe.Charge | null = null;
         let paymentIntentId: string | null = null;
         if (isDispute) {
@@ -434,7 +410,7 @@ Deno.serve(async (req) => {
           paymentIntentId = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : null;
           const chargeId = typeof dispute.charge === 'string' ? dispute.charge : null;
           if (chargeId) {
-            try { charge = await stripe.charges.retrieve(chargeId); }
+            try { charge = await adapter.fetchCharge(chargeId); }
             catch (e) { console.error('dispute charge lookup failed:', (e as Error).message); }
           }
         } else {
@@ -442,98 +418,69 @@ Deno.serve(async (req) => {
           paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
         }
 
-        // Partial refund must NOT revoke Pro (only a full refund does). Disputes always revoke.
+        // Частичный рефанд НЕ снимает Pro; диспут снимает всегда.
         if (!isDispute) {
           const fullyRefunded = charge?.refunded === true
             || (typeof charge?.amount === 'number' && typeof charge?.amount_refunded === 'number'
                 && charge.amount > 0 && charge.amount_refunded >= charge.amount);
-          if (!fullyRefunded) {
-            console.log('Partial refund — Pro not revoked (pi', paymentIntentId, ')');
-            break;
-          }
+          if (!fullyRefunded) { console.log('Partial refund — Pro not revoked'); break; }
         }
 
-        // Path 1: direct payment_intent match (pro_trip).
-        let row: { id: string; user_id: string; trip_id: string | null; type: string } | null = null;
+        // Путь 1: purchase по payment_intent (разовая pro_trip).
+        let row: { id: string; user_id: string; trip_id: string | null; kind: 'purchase' | 'subscription' } | null = null;
         if (paymentIntentId) {
           const { data, error } = await supabaseAdmin
-            .from('trip_subscriptions')
-            .select('id, user_id, trip_id, type')
-            .eq('stripe_payment_intent_id', paymentIntentId)
-            .limit(1);
-          if (error) {
-            await captureEdgeError(new Error(`refund PI lookup failed: ${error.message}`), 'stripe-webhook');
-            throw new Error('refund PI lookup failed');
-          }
-          row = data && data.length > 0 ? data[0] : null;
+            .from('purchase').select('id, user_id, trip_id').eq('provider_charge_id', paymentIntentId).limit(1);
+          if (error) { await captureEdgeError(new Error(`refund purchase lookup: ${error.message}`), 'stripe-webhook'); throw new Error('refund purchase lookup failed'); }
+          if (data && data.length > 0) row = { ...data[0], kind: 'purchase' };
         }
 
-        // Path 2: subscription refund/dispute — resolve charge → invoice → subscription.
+        // Путь 2: subscription по charge → invoice → subscription.
         if (!row && charge && typeof charge.invoice === 'string' && charge.invoice) {
           let subId: string | null = null;
-          try {
-            const invoice = await stripe.invoices.retrieve(charge.invoice);
-            subId = invoiceSubId(invoice);
-          } catch (e) {
-            console.error('refund invoice lookup failed:', (e as Error).message);
-          }
+          try { subId = invoiceSubId(await adapter.fetchInvoice(charge.invoice)); }
+          catch (e) { console.error('refund invoice lookup failed:', (e as Error).message); }
           if (subId) {
             const { data, error } = await supabaseAdmin
-              .from('trip_subscriptions')
-              .select('id, user_id, trip_id, type')
-              .eq('stripe_subscription_id', subId)
-              .limit(1);
-            if (error) {
-              await captureEdgeError(new Error(`refund sub lookup failed: ${error.message}`), 'stripe-webhook');
-              throw new Error('refund sub lookup failed');
-            }
-            row = data && data.length > 0 ? data[0] : null;
+              .from('subscription').select('id, user_id').eq('provider_subscription_id', subId).limit(1);
+            if (error) { await captureEdgeError(new Error(`refund sub lookup: ${error.message}`), 'stripe-webhook'); throw new Error('refund sub lookup failed'); }
+            if (data && data.length > 0) row = { id: data[0].id, user_id: data[0].user_id, trip_id: null, kind: 'subscription' };
           }
         }
 
         if (!row) {
-          // Refund/dispute we can't attribute to any ledger row — money-critical
-          // anomaly worth a look (T5 #6). Non-fatal: nothing to revoke here.
           await reportPaymentAnomaly('refund_no_ledger', { event_type: event.type, payment_intent: paymentIntentId }, 'error');
           break;
         }
 
-        await ensureWrite('refund/dispute status update', supabaseAdmin
-          .from('trip_subscriptions')
-          .update({ status: newStatus })
-          .eq('id', row.id));
-        if (row.type === 'pro_trip' && row.trip_id) {
-          await ensureWrite('refund is_pro_trip clear', supabaseAdmin
-            .from('trips').update({ is_pro_trip: false }).eq('id', row.trip_id));
-          // is_pro_trip just dropped — roll back this trip's Pro addons + TG bindings
-          // (no-op if the owner's subscription still keeps it Pro). Best-effort.
+        // refunded_at есть только у purchase; subscription такой колонки не имеет.
+        const patch: Record<string, unknown> = { status: newStatus };
+        if (!isDispute && row.kind === 'purchase') patch.refunded_at = new Date().toISOString();
+        await ensureWrite('refund/dispute status', supabaseAdmin.from(row.kind).update(patch).eq('id', row.id));
+        if (row.kind === 'purchase' && row.trip_id) {
+          await recomputeTrip(row.trip_id);
           await revokeLostProFeaturesForTrip(supabaseAdmin, row.trip_id);
           console.log('Pro-trip revoked after', event.type, '->', row.trip_id);
         } else {
-          await recompute(row.user_id);
+          await recomputeUser(row.user_id);
           console.log('Subscription revoked after', event.type, 'for user', row.user_id);
         }
         break;
       }
 
       default: {
-        // Event type outside our subscribed set (endpoint subscribes to 8). Not an
-        // error — info-level only, no alert. Surfaces drift in the Stripe endpoint
-        // config (a type we now receive but don't handle). Still recorded below.
         await reportPaymentAnomaly('unsupported_event', { event_type: event.type, event_id: event.id }, 'info');
         break;
       }
     }
 
-    // Record event AFTER successful processing — on error Stripe retries (no record yet).
+    // Помечаем событие processed ПОСЛЕ успешной обработки (на ошибке Stripe ретраит).
     try {
-      await supabaseAdmin.from('stripe_events').insert({
-        event_id: event.id,
-        type: event.type,
-        processed_at: new Date().toISOString(),
-      });
+      await supabaseAdmin.from('webhook_event')
+        .update({ status: 'processed', processed_at: new Date().toISOString() })
+        .eq('provider', 'stripe').eq('provider_event_id', event.id);
     } catch (e) {
-      console.error('Failed to record StripeEvent (non-fatal):', (e as Error).message);
+      console.error('Failed to mark webhook_event processed (non-fatal):', (e as Error).message);
     }
 
     return Response.json({ received: true });
@@ -541,9 +488,14 @@ Deno.serve(async (req) => {
   } catch (error) {
     await captureEdgeError(error, 'stripe-webhook');
     console.error('Webhook error:', error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : 'Internal error' },
-      { status: 500 },
-    );
+    // Пометить событие failed (наблюдаемость + будущий retry_failed_webhooks, Этап 2).
+    if (eventId) {
+      try {
+        await supabaseAdmin.from('webhook_event')
+          .update({ status: 'failed', last_error: error instanceof Error ? error.message : String(error) })
+          .eq('provider', 'stripe').eq('provider_event_id', eventId);
+      } catch { /* best-effort */ }
+    }
+    return Response.json({ error: error instanceof Error ? error.message : 'Internal error' }, { status: 500 });
   }
 });

@@ -81,6 +81,9 @@ export function localizeCurrencyName(code, lang) {
 
 // Format a money amount in a specific currency, using the active locale's
 // number formatting rules and the currency's symbol/grouping.
+// opts.compact (default false) switches to locale-aware compact notation
+// (252 400 → "252K" / "252 тыс.", 1 490 512 → "1,5M" / "1,5 млн") for tight
+// surfaces like map badges. Reusable across screens — pass { compact: true }.
 export function formatMoney(amount, currency, lang, opts = {}) {
   if (amount == null || isNaN(amount)) return '';
   const cc = String(currency || 'USD').toUpperCase();
@@ -88,8 +91,9 @@ export function formatMoney(amount, currency, lang, opts = {}) {
     return new Intl.NumberFormat(localeTag(lang), {
       style: 'currency',
       currency: cc,
-      maximumFractionDigits: opts.maxFraction ?? 2,
-      minimumFractionDigits: opts.minFraction ?? 0,
+      ...(opts.compact
+        ? { notation: 'compact', maximumFractionDigits: opts.maxFraction ?? 1 }
+        : { maximumFractionDigits: opts.maxFraction ?? 2, minimumFractionDigits: opts.minFraction ?? 0 }),
     }).format(amount);
   } catch {
     return `${amount} ${cc}`;

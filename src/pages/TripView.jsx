@@ -2,9 +2,10 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
+import { invokeGetTripDetails, tripErrorKind } from '@/lib/invokeTripFn';
+import TripLoadError from '@/components/trips/TripLoadError';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
@@ -14,15 +15,12 @@ import { isLensVisible } from '@/lib/tripMenu';
 import TripSidebar, { TripSidebarSheet } from '@/components/trips/TripSidebar';
 import AppHeader from '@/components/AppHeader';
 import { useMobileNav } from '@/components/MobileBottomNav';
-import { Sheet } from '@/components/ui/Sheet';
 import ShareDialog from '@/components/trips/ShareDialog';
 import { useTheme } from '@/lib/ThemeContext';
 import { Icon } from '../design/icons';
-import { Btn, Dialog, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow } from '../design/index';
+import { Btn, Dialog, EmptyState, Skeleton, fmtDate, weekdayLong, StreamEventRow, Sheet, useToast, ActionMenu } from '../design/index';
 import TripAccessError from '@/components/trips/TripAccessError';
 import { sortVisits, cityIdentity } from '@/lib/validation';
-import { useToast } from '@/components/ui/use-toast';
-import { ActionMenu } from '@/components/ui/ActionMenu';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
@@ -36,7 +34,8 @@ import DocsLens, { AddDocDialog } from './DocsLens';
 import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
-import { uniqueCityCount } from '@/lib/trip-cities';
+import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
+import { resolveMyRole } from '@/lib/members';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -760,7 +759,7 @@ function CityRail({ visits = [], scrollRef }) {
 // ─── TripView (main export) ───────────────────────────────────────────────────
 
 export default function TripView() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { tripId } = useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
@@ -838,31 +837,25 @@ export default function TripView() {
   // Fetch shell (trip + cityVisits)
   const { data: shellData, isLoading: loadingShell, error: shellError } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('getTripDetails', {
-        body: { tripId, include: ['shell'] },
-      });
-      if (error) throw error;
-      return data;
-    },
+    // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
+    // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
+    queryFn: () => invokeGetTripDetails({ tripId, include: ['shell'] }),
     enabled: !!tripId,
+    retry: false,
   });
 
   // Fetch content (hotels, activities, transfers) - only after shell resolves
   const { data: contentData, isLoading: loadingContent } = useQuery({
     queryKey: TRIP_CONTENT_KEY(tripId),
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('getTripDetails', {
-        body: { tripId, include: ['content', 'budget'] },
-      });
-      if (error) throw error;
-      return data;
-    },
+    // Same self-healing path — without it a 401 here silently rendered an empty
+    // trip (content error was swallowed); refresh+retry keeps the data (TRIP-56).
+    queryFn: () => invokeGetTripDetails({ tripId, include: ['content', 'budget'] }),
     enabled: !!tripId && !loadingShell,
+    retry: false,
   });
 
   const trip             = shellData?.trip;
-  const visits           = shellData?.cityVisits     || [];
+  const visits           = useMemo(() => localizeVisits(shellData?.cityVisits || [], lang), [shellData, lang]);
   const hotels           = contentData?.hotels       || [];
   const activities       = contentData?.activities   || [];
   const transfers        = contentData?.transfers    || [];
@@ -872,9 +865,10 @@ export default function TripView() {
   const budgetCategories = contentData?.budgetCategories || [];
   const budgetExpenses   = contentData?.budgetExpenses   || [];
 
-  // Resolve current user's role in this trip
-  const myMember = members.find(m => m.user_id === user?.id);
-  const myRole   = myMember?.role || (trip?.created_by === user?.id ? 'owner' : 'viewer');
+  // Resolve current user's role in this trip via the shared rule: created_by is
+  // the SOLE source of ownership and wins over any stray trip_members row
+  // (TRIP-143). Same helper as the structure editor so the two can't drift.
+  const myRole = resolveMyRole(members, trip, user);
 
   const stream = useMemo(
     () => buildEventStream(t, hotels, activities, transfers, visits, services),
@@ -933,7 +927,19 @@ export default function TripView() {
   const screenBodyRef = useRef(null);
   useEffect(() => { if (screenBodyRef.current) screenBodyRef.current.scrollTop = 0; }, [shownLens]);
 
+  // TRIP-56: map the trip-load failure to the right screen instead of one
+  // catch-all "no access". 'auth' = session truly gone after refresh+retry →
+  // send to /login (mirrors AuthContext's SIGNED_OUT redirect; same destination,
+  // harmless if both fire). 'temporary' = 500/network → retry screen. 'access'
+  // (403/404) → the existing "no access" stub.
+  const shellErrKind = tripErrorKind(shellError);
+  useEffect(() => {
+    if (shellErrKind === 'auth') nav('/login', { replace: true });
+  }, [shellErrKind, nav]);
+
   if (loadingShell) return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} />;
+  if (shellErrKind === 'auth') return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} />;
+  if (shellErrKind === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   if (shellError || (!loadingShell && !trip)) return <TripAccessError onBack={() => nav('/trips')} />;
 
   // ── Global trip header: cover, subtitle and the right-hand hero actions ──

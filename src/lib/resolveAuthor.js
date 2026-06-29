@@ -34,8 +34,8 @@ export function resolveAuthor({
   // 1) Live profile — reflects the current name/photo, and the anonymized state.
   const p = userId ? profiles?.[userId] : null;
   if (p?.is_deleted) return { name: deletedLabel || fallback, photo: null, deleted: true };
-  if (p && (p.full_name || p.avatar_url)) {
-    return { name: p.full_name || fallback, photo: p.avatar_url || null, deleted: false };
+  if (p && (p.full_name || p.avatar_url || p.email)) {
+    return { name: displayName(p.email, p.full_name) || fallback, photo: p.avatar_url || null, deleted: false };
   }
 
   // 2) Name snapshot on the content row — survives the author leaving the trip.
@@ -50,7 +50,7 @@ export function resolveAuthor({
 
   // 4) The viewer's own content — safe to attribute to self, never to others.
   if (userId && selfUser?.id && userId === selfUser.id) {
-    return { name: selfUser.full_name || fallback, photo: selfUser.avatar_url || null, deleted: false };
+    return { name: displayName(selfUser.email, selfUser.full_name) || fallback, photo: selfUser.avatar_url || null, deleted: false };
   }
 
   // 5) Nothing resolvable.

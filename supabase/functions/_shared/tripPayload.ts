@@ -19,7 +19,7 @@
  */
 
 import { supabaseAdmin } from './supabaseAdmin.ts';
-import { corsHeaders } from './cors.ts';
+import { corsFor } from './cors.ts';
 
 export interface TripData {
   trip: Record<string, unknown>;
@@ -49,7 +49,7 @@ export async function buildTripData(tripId: string): Promise<TripData | null> {
     { data: services },
     { data: members },
   ] = await Promise.all([
-    supabaseAdmin.from('city_visits').select('*, cities(*)').eq('trip_id', tripId),
+    supabaseAdmin.from('city_visits').select('*').eq('trip_id', tripId),
     supabaseAdmin.from('hotel_stays').select('*').eq('trip_id', tripId),
     supabaseAdmin.from('activities').select('*').eq('trip_id', tripId),
     supabaseAdmin.from('transfers').select('*').eq('trip_id', tripId),
@@ -57,9 +57,30 @@ export async function buildTripData(tripId: string): Promise<TripData | null> {
     supabaseAdmin.from('trip_members').select('*').eq('trip_id', tripId),
   ]);
 
+  // Attach the affiliate-directory row LATE-BOUND by GeoNames identity
+  // (visit.geonameid → cities.geonameid, TRIP-146), not the city_id FK embed:
+  // `cities` is sparse, so a city added later is picked up with no backfill.
+  // Shape unchanged for n8n/bot consumers (visit.cities = the directory row).
+  const cv = (cityVisits ?? []) as any[];
+  const gids = [...new Set(cv.map((v) => v?.geonameid).filter((g) => g != null))];
+  const dir: Record<string, any> = {};
+  if (gids.length) {
+    const { data: crows } = await supabaseAdmin
+      .from('cities').select('*').in('geonameid', gids as number[]);
+    for (const r of (crows ?? []) as any[]) dir[String(r.geonameid)] = r;
+  }
+  const cityVisitsOut = cv.map((v) => ({
+    ...v,
+    // city_name (the DB column) is dropped in TRIP-146; keep the field present
+    // for existing n8n/bot consumers (contract unchanged) as the English snapshot.
+    // name_i18n travels alongside for locale-aware rendering.
+    city_name: v?.name_i18n?.en ?? v?.city_name_en ?? null,
+    cities: v?.geonameid != null ? dir[String(v.geonameid)] ?? null : null,
+  }));
+
   return {
     trip,
-    cityVisits: cityVisits ?? [],
+    cityVisits: cityVisitsOut,
     hotels: hotels ?? [],
     activities: activities ?? [],
     transfers: transfers ?? [],
@@ -72,7 +93,7 @@ export async function buildTripData(tripId: string): Promise<TripData | null> {
 export async function fetchTripPayload(tripId: string): Promise<Response> {
   const data = await buildTripData(tripId);
   if (!data) {
-    return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
+    return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsFor() });
   }
-  return Response.json(data, { headers: corsHeaders });
+  return Response.json(data, { headers: corsFor() });
 }

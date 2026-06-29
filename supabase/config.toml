@@ -47,6 +47,11 @@ verify_jwt = false
 [functions.getPendingReminders]
 verify_jwt = false
 
+# aiGate — привратник TG-бота (TRIP-111). Вызывается только из n8n с
+# Bearer <N8N_SECRET> (requireN8nSecret), Telegram-апдейт мимо JWT.
+[functions.aiGate]
+verify_jwt = false
+
 [functions.getDailyReminders]
 verify_jwt = false
 

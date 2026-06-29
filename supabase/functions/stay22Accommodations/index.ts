@@ -12,22 +12,28 @@
  *   { lat, lng, radius?, checkin?, checkout?, currency?, lang?, page?,
  *     adults?, children? }
  *
- * Search is by coordinates (lat/lng). We pin provider=booking, aid=triplanio,
- * campaign=fork_api_sidepanel, pageSize=10, cluster=false. `rooms` is not sent.
+ * Search is by coordinates (lat/lng). We pin aid=triplanio,
+ * campaign=fork_api_sidepanel, cluster=false. `rooms` is not sent. We do NOT pin
+ * a provider: Stay22 returns each result's available suppliers (booking, expedia,
+ * vrbo…) and the client picks the first one (supplier-agnostic). `pageSize` is
+ * client-driven (default 10, clamped 1..100) so the map-badge overlay can request
+ * the full page in one go while the list paginates in lockstep (TRIP-140).
  *
  * Returns the Stay22 payload pass-through: { meta, _links, results }.
  * Nothing is persisted — the side-panel fetches on open and renders client-side.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 
 const STAY22_BASE = 'https://api.stay22.com/v2/accommodations';
 const AID = 'triplanio';
 const CAMPAIGN = 'fork_api_sidepanel';
-const PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 100;
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -38,16 +44,19 @@ Deno.serve(async (req) => {
     if (!apiKey) return Response.json({ error: 'STAY22_API_KEY not configured' }, { status: 500, headers: corsHeaders });
 
     const body = await req.json();
-    const { lat, lng, address, radius, checkin, checkout, currency, lang, page, adults, children, rooms, min, max } = body;
+    const { lat, lng, address, radius, checkin, checkout, currency, lang, page, pageSize, adults, children, rooms, min, max } = body;
 
     const hasCoords = lat !== undefined && lat !== null && lng !== undefined && lng !== null;
     if (!hasCoords && !address) {
       return Response.json({ error: 'lat/lng or address is required' }, { status: 400, headers: corsHeaders });
     }
 
+    // Client-driven page size, clamped to a sane range (the map overlay asks for
+    // the whole page at once; the list paginates with the same value).
+    const safePageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(pageSize) || DEFAULT_PAGE_SIZE));
+
     const params = new URLSearchParams({
-      provider: 'booking',
-      pageSize: String(PAGE_SIZE),
+      pageSize: String(safePageSize),
       page: String(page && page > 0 ? page : 1),
       aid: AID,
       campaign: CAMPAIGN,

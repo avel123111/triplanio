@@ -7,13 +7,14 @@
  * Creates a pending TripMember, a Notification, and sends an invite email (best-effort).
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerAdmin } from '../_shared/tripAccess.ts';
 import { renderInviteTemplate, renderInviteNotification } from '../_shared/emailTemplate.ts';
 import { sendEmail } from '../_shared/sendEmail.ts';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -72,6 +73,18 @@ Deno.serve(async (req) => {
       .limit(1);
     const invitedUser = invitedUsers?.[0] ?? null;
     const recipientLang = invitedUser?.language ?? 'en';
+
+    // The trip creator is the owner via trips.created_by and is NEVER a
+    // trip_members row (create_trip writes none). The `existing`-row check above
+    // therefore can't catch them, so guard explicitly: inviting the creator as a
+    // viewer/admin would create a stray member row that demotes the owner to
+    // that role inside the trip (TRIP-143).
+    if (invitedUser?.id && invitedUser.id === trip.created_by) {
+      return Response.json(
+        { error: 'Cannot invite the trip owner', code: 'invite_owner' },
+        { status: 400, headers: corsHeaders },
+      );
+    }
 
     // Fetch caller's profile: display name + language.
     // The EMAIL language follows the INVITER's app language (callerLang),

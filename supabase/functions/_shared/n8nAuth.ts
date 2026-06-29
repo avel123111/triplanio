@@ -15,7 +15,7 @@
  * requireN8nSecret() at the top of every such handler.
  */
 
-import { corsHeaders } from './cors.ts';
+import { corsFor } from './cors.ts';
 
 function b64url(input: Uint8Array | string): string {
   const bytes = typeof input === 'string' ? new TextEncoder().encode(input) : input;
@@ -63,13 +63,13 @@ export function requireN8nSecret(req: Request): Response | null {
   const expected = Deno.env.get('N8N_SECRET');
   if (!expected) {
     console.error('N8N_SECRET is not set');
-    return Response.json({ error: 'Server misconfigured' }, { status: 500, headers: corsHeaders });
+    return Response.json({ error: 'Server misconfigured' }, { status: 500, headers: corsFor() });
   }
 
   const auth = req.headers.get('authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
   if (!token || token !== expected) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsFor() });
   }
 
   return null;

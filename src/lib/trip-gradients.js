@@ -120,3 +120,22 @@ export function getGradientById(id) {
   if (!id) return null;
   return TRIP_GRADIENTS.find((g) => g.id === id) || null;
 }
+
+/**
+ * The default cover gradient. Every trip is born with one of these built-in
+ * gradients (DB default + create/copy flows), so `cover_gradient` is never
+ * null in practice. A photo (`cover_image_url`), when present, takes priority
+ * over the gradient at render time.
+ */
+export const DEFAULT_GRADIENT_ID = 'gradient_1';
+
+/**
+ * Single source of truth for the cover gradient CSS. Resolves the stored
+ * `cover_gradient` id to its `css`, falling back to the default gradient when
+ * the id is missing/unknown (legacy trips, copies). Never returns null — there
+ * are no ad-hoc/procedural cover gradients anymore.
+ */
+export function coverGradientCss(coverGradient) {
+  const g = getGradientById(coverGradient) || getGradientById(DEFAULT_GRADIENT_ID);
+  return g.css;
+}

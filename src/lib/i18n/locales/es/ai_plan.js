@@ -33,6 +33,7 @@ export default {
   'ai_plan.error_save': 'Error al guardar el viaje. Inténtalo de nuevo.',
   'ai_plan.error_plan_title': 'Error al planificar',
   'ai_plan.error_plan_desc': 'No se pudo generar el viaje. Inténtalo de nuevo.',
+  'ai_plan.error_rate_limited': 'Demasiadas solicitudes de IA. Inténtalo de nuevo en unos minutos.',
   
   // Default values
   'ai_plan.default_trip_title': 'Viaje generado por IA',

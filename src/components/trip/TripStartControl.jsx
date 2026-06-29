@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { DateTime } from 'luxon';
 import { Icon } from '../../design/icons';
 import StartCalendar from '@/components/create/StartCalendar';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Sheet } from '@/components/ui/Sheet';
+import { Popover, PopoverTrigger, PopoverContent, Sheet } from '@/design/index';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
 
 // ─── TripStartControl ─────────────────────────────────────────────────────────

@@ -16,6 +16,28 @@ function postLoginPath() {
   return '/trips';
 }
 
+// ── Send cooldown (persisted by email) ────────────────────────────────────────
+// The ~60s minimum interval Supabase enforces between auth emails to the same
+// address. Persisting it by email (not by screen) keeps the countdown honest
+// when the user leaves and returns to the form — otherwise the timer is plain
+// component state and looks "ready to send" again on re-entry.
+const SEND_COOLDOWN_MS = 60_000;
+const cooldownKey = (email) => `tpl_send_cooldown:${String(email || '').trim().toLowerCase()}`;
+
+function cooldownLeft(email) {
+  if (!email) return 0;
+  try {
+    const ts = Number(localStorage.getItem(cooldownKey(email))) || 0;
+    if (!ts) return 0;
+    return Math.max(0, Math.ceil((ts + SEND_COOLDOWN_MS - Date.now()) / 1000));
+  } catch { return 0; }
+}
+
+function startCooldown(email) {
+  if (!email) return;
+  try { localStorage.setItem(cooldownKey(email), String(Date.now())); } catch { /* ignore */ }
+}
+
 // ── Password strength scorer ──────────────────────────────────────────────────
 function scorePassword(pw) {
   if (!pw) return 0;
@@ -199,9 +221,13 @@ export default function Login() {
   useEffect(() => { setError(null); setShowPw(false); setShowPw2(false); }, [view]);
 
   // Resend cooldown — matches Supabase's ~60s minimum interval between auth
-  // emails to the same address. Start a 60s countdown whenever the "email sent"
-  // screen appears, then tick it down to 0.
-  useEffect(() => { if (view === 'reset-sent') setResendLeft(60); }, [view]);
+  // emails to the same address. Hydrated from storage (persisted by email) so it
+  // survives leaving and returning to the form: on the recovery form keyed by the
+  // typed email, on the "email sent" screen by the address we sent to.
+  useEffect(() => {
+    if (view === 'reset') setResendLeft(cooldownLeft(email));
+    else if (view === 'reset-sent') setResendLeft(cooldownLeft(sentEmail));
+  }, [view, email, sentEmail]);
   useEffect(() => {
     if (resendLeft <= 0) return undefined;
     const id = setTimeout(() => setResendLeft((s) => Math.max(0, s - 1)), 1000);
@@ -333,9 +359,12 @@ export default function Login() {
       body: { email, redirectTo: window.location.origin + postLoginPath() },
     });
     if (preErr) { setError(t('auth.err_generic')); setIsLoading(false); return; }
+    if (pre?.code === 'rate_limited') { setError(t('auth.err_rate_limited')); setIsLoading(false); return; }
+    if (pre?.code === 'retry_soon') { setError(t('auth.err_retry_soon')); setIsLoading(false); return; }
     if (pre?.code === 'email_exists') { setError(t('auth.err_email_exists')); setIsLoading(false); return; }
     if (pre?.code === 'confirmation_resent') {
       // Account exists but was never confirmed — the server re-sent the link.
+      startCooldown(email);
       setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); return;
     }
 
@@ -350,7 +379,7 @@ export default function Login() {
       },
     });
     if (error) { setError(error.message); setIsLoading(false); }
-    else { setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); }
+    else { startCooldown(email); setSentEmail(email); setResendFlow('signup'); goto('reset-sent'); setIsLoading(false); }
   };
 
   // Set a new password during a Supabase recovery session (reached via the
@@ -390,7 +419,12 @@ export default function Login() {
     if (invErr) { setError(t('auth.err_generic')); setIsLoading(false); return; }
     if (data?.code === 'account_not_found') { setError(t('auth.err_account_not_found')); setIsLoading(false); return; }
     if (data?.code === 'rate_limited') { setError(t('auth.err_reset_rate_limited')); setIsLoading(false); return; }
-    if (data?.code === 'reset_sent') { setSentEmail(email); setResendFlow('reset'); goto('reset-sent'); setIsLoading(false); return; }
+    if (data?.code === 'retry_soon') {
+      setError(t('auth.err_retry_soon'));
+      if (!cooldownLeft(email)) startCooldown(email);
+      setResendLeft(cooldownLeft(email)); setIsLoading(false); return;
+    }
+    if (data?.code === 'reset_sent') { startCooldown(email); setSentEmail(email); setResendFlow('reset'); goto('reset-sent'); setIsLoading(false); return; }
     // send_failed or any unexpected code → generic retry.
     setError(t('auth.err_generic')); setIsLoading(false);
   };
@@ -407,9 +441,14 @@ export default function Login() {
     setIsLoading(false);
     if (invErr) { setError(t('auth.err_generic')); return; }
     if (data?.code === 'rate_limited') { setError(t('auth.err_reset_rate_limited')); setResendLeft(60); return; }
+    if (data?.code === 'retry_soon') {
+      setError(t('auth.err_retry_soon'));
+      if (!cooldownLeft(sentEmail)) startCooldown(sentEmail);
+      setResendLeft(cooldownLeft(sentEmail) || 60); return;
+    }
     if (data?.code === 'account_not_found') { setError(t('auth.err_account_not_found')); return; }
     // success (reset_sent / confirmation_resent / ok) → restart the cooldown.
-    setResendLeft(60);
+    startCooldown(sentEmail); setResendLeft(60);
   };
 
   return (
@@ -588,8 +627,12 @@ export default function Login() {
                       onChange={e => setEmail(e.target.value)} disabled={isLoading} />
                   </div>
 
-                  <button type="submit" className="btn-primary" style={{ marginTop: 6 }} disabled={isLoading}>
-                    {isLoading ? t('common.loading') : t('auth.reset_submit')}<IconArrow />
+                  <button type="submit" className="btn-primary" style={{ marginTop: 6 }} disabled={isLoading || resendLeft > 0}>
+                    {isLoading
+                      ? t('common.loading')
+                      : resendLeft > 0
+                        ? t('auth.resend_in').replace('{s}', String(resendLeft))
+                        : t('auth.reset_submit')}<IconArrow />
                   </button>
                 </form>
 

@@ -17,12 +17,13 @@
  * All child records are re-created with new IDs and caller as created_by.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { PRO_ONLY_ADDONS } from '../_shared/proAddons.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { isCallerParticipant } from '../_shared/tripAccess.ts';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -78,6 +79,10 @@ Deno.serve(async (req) => {
         // The copy is born WITHOUT any documents (Pavel decision 2026-06-24):
         // the cover image is a Storage-backed document, so it is never copied.
         cover_image_url: null,
+        // The gradient is a plain id (not a document) → inherit it so the copy
+        // keeps the original's cover. Fall back to the built-in default when the
+        // source had a photo-only cover (TRIP-107).
+        cover_gradient: sourceTrip.cover_gradient || 'gradient_1',
         notes: sourceTrip.notes,
         details: copyDetails,
         is_pro_trip: false, // copy is not automatically pro
@@ -116,7 +121,9 @@ Deno.serve(async (req) => {
           .insert({
             trip_id: newTripId,
             external_city_id: cv.external_city_id,
-            city_name: cv.city_name,
+            geonameid: cv.geonameid,
+            name_i18n: cv.name_i18n,
+            city_name_en: cv.city_name_en,
             country: cv.country,
             country_code: cv.country_code,
             latitude: cv.latitude,

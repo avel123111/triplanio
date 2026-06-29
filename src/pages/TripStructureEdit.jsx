@@ -2,18 +2,20 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
-import { supabase } from '@/api/supabaseClient';
-import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
+import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
+import { invokeGetTripDetails, tripErrorKind } from '@/lib/invokeTripFn';
+import TripLoadError from '@/components/trips/TripLoadError';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
-import { uniqueCityCount } from '@/lib/trip-cities';
+import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
+import { resolveMyRole } from '@/lib/members';
 import { formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
-import { Btn, Skeleton } from '../design/index';
+import { Btn, Skeleton, useToast, ActionMenu } from '../design/index';
 import CitySearch from '@/components/cities/CitySearch';
 import { tzFromCoords } from '@/lib/timezone';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -23,17 +25,18 @@ import CityPanel from '@/components/common/CityPanel';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
-import { useToast } from '@/components/ui/use-toast';
 import AppHeader from '@/components/AppHeader';
-import { ActionMenu } from '@/components/ui/ActionMenu';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { isProActive, useTripProStatus } from '@/lib/subscription';
-import { useT, useI18n } from '@/lib/i18n/I18nContext';
+import { useT, useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
+import { useStay22Pool } from '@/lib/stay22';
+import { usePartnerLogger } from '@/lib/partnerTracking';
 import TripSidebar from '@/components/trips/TripSidebar';
 import TripAccessError from '@/components/trips/TripAccessError';
 import ShareDialog from '@/components/trips/ShareDialog';
+import ProUpsellModal from '@/components/common/ProUpsellModal';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import TripStartControl from '@/components/trip/TripStartControl';
 
@@ -44,7 +47,7 @@ import TripStartControl from '@/components/trip/TripStartControl';
 // (add_city / remove_city / reorder_cities / set_city_nights). Live Google map.
 // =====================================================================
 const TKIND = { plane: { icon: 'plane', labelKey: 'tse.tk_plane' }, train: { icon: 'train', labelKey: 'transfer.train' }, bus: { icon: 'bus', labelKey: 'transfer.bus' }, car: { icon: 'car', labelKey: 'event.tk_car' }, ferry: { icon: 'ferry', labelKey: 'transfer.ferry' } };
-const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9'];
+const PALETTE = ['#2167e2', '#1d7a4a', '#c9603a', '#9c4ad9', '#c98a1a', '#3d8aa8', '#a83e6a', '#1f8a5b', '#4a6cd9']; // design-token-exempt: data-viz city-marker palette (distinct hues hashed by key — no token equivalent)
 const toDT = (iso) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }) : null);
 const fmtD = (iso, loc = 'ru') => { const d = toDT(iso); return d ? d.setLocale(loc).toFormat('d MMM') : '-'; };
 const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y ? Math.max(0, Math.round(y.diff(x, 'days').days)) : null; };
@@ -96,8 +99,8 @@ function applyAdjacencyGaps(nodes, transfers = []) {
   });
 }
 
-function buildDraft(shell, transfers = []) {
-  const visits = sortVisits(shell?.cityVisits || []);
+function buildDraft(shell, transfers = [], lang) {
+  const visits = localizeVisits(sortVisits(shell?.cityVisits || []), lang);
   // nights = stored date span. gap (days between the previous checkout and this
   // check-in) now comes from the INCOMING transfer's day_change flag: an overnight
   // / day-change transfer means this city starts +1 day after the previous one.
@@ -141,6 +144,7 @@ export default function TripStructureEdit() {
   const { tripId } = useParams();
   const t = useT();
   const { lang } = useI18n();
+  const { fmtMoney } = useI18nFormat();
   const nav = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -177,6 +181,10 @@ export default function TripStructureEdit() {
   const [previewTransfer, setPreviewTransfer] = useState(null); // synthetic leg drawn on the map while creating a transfer
   const [sideOpen, setSideOpen] = useState(false); // mobile menu drawer
   const [shareOpen, setShareOpen] = useState(false);
+  // Pro "enabled by owner" info modal for non-owners (TRIP-63 №1) — mirrors
+  // TripView. A non-owner tapping the Pro lock must get the explanation, not a
+  // navigation to /pro (which would show them an upgrade they can't apply).
+  const [tripProInfoOpen, setTripProInfoOpen] = useState(false);
   const [hoveredNodeId, setHoveredNodeId] = useState(null); // itinerary row hovered → highlight its map marker
   // Drag / FLIP / keyboard reorder live in the shared useRouteDnD hook (also used by
   // the trip-creation flow). It's instantiated below — once `ordered`, `isAnchor`
@@ -237,21 +245,25 @@ export default function TripStructureEdit() {
 
   const { data: shell, isLoading: loadingShell, error: shellError } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
-    queryFn: async () => { const { data, error } = await supabase.functions.invoke('getTripDetails', { body: { tripId, include: ['shell'] } }); if (error) throw error; return data; },
+    // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
+    // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
+    queryFn: () => invokeGetTripDetails({ tripId, include: ['shell'] }),
     enabled: !!tripId,
+    retry: false,
     staleTime: 30000, // reuse TripView's cached shell on entry → no reload flicker
   });
   const { data: content, isLoading: loadingContent } = useQuery({
     queryKey: TRIP_CONTENT_KEY(tripId),
-    queryFn: async () => { const { data, error } = await supabase.functions.invoke('getTripDetails', { body: { tripId, include: ['content'] } }); if (error) throw error; return data; },
+    queryFn: () => invokeGetTripDetails({ tripId, include: ['content'] }),
     enabled: !!tripId && !loadingShell,
+    retry: false,
   });
 
   // Build the draft SYNCHRONOUSLY during render (not in an effect) the moment
   // shell+content are available — they're cached from TripView, so the editor
   // paints on the very first render with no skeleton frame (no entry flicker).
   if (draft === null && shell && content) {
-    setDraft(buildDraft(shell, content.transfers));
+    setDraft(buildDraft(shell, content.transfers, lang));
   }
 
   const trip = shell?.trip;
@@ -271,6 +283,72 @@ export default function TripStructureEdit() {
     return [...others, previewTransfer];
   }, [liveTransfers, previewTransfer]);
   useEffect(() => { if (!(leftPanel?.type === 'create' && leftPanel.kind === 'transfer')) setPreviewTransfer(null); }, [leftPanel]);
+
+  // ── Hotel-pick map badges (TRIP-140) ───────────────────────────────────────
+  // While the hotel "fork" panel is open the map swaps the trip route for live
+  // Stay22 badges. The SINGLE query + paging + committed filters + hovered/selected
+  // live HERE (the common ancestor of MapView and the panel) so one pool feeds both
+  // the list (now presentational) and the map badges. Desktop-only by design — the
+  // editor map is hidden on phones via CSS.
+  const hotelPickVisit = leftPanel?.type === 'pick' && leftPanel.kind === 'hotel' ? leftPanel.visit : null;
+  const isHotelPick = !!hotelPickVisit;
+  const [stayPage, setStayPage] = useState(1);
+  const [stayApplied, setStayApplied] = useState(null);
+  const [stayHoveredId, setStayHoveredId] = useState(null);
+  const [staySelectedId, setStaySelectedId] = useState(null);
+  // Reset the lifted state whenever the target city changes / the panel closes.
+  const hotelPickVisitId = hotelPickVisit?.id || null;
+  useEffect(() => {
+    setStayPage(1); setStayApplied(null); setStayHoveredId(null); setStaySelectedId(null);
+  }, [hotelPickVisitId]);
+
+  const stayCurrency = trip?.details?.main_currency || 'EUR';
+  // TRIP-141: one whole-city pool (all pages, progressive) feeds BOTH the list
+  // (client pagination) and the map (client clustering). No page/pageSize here —
+  // the pool spans every page; stayPage below is a CLIENT page over that pool.
+  const stayQuery = useStay22Pool({
+    visit: hotelPickVisit, currency: stayCurrency, lang, filters: stayApplied, enabled: isHotelPick,
+  });
+  // Map pins: only stays that carry coordinates, with a compact price label (the
+  // badge is tiny — long amounts like 252 400 ₽ are shortened to "252K"). While the
+  // pool shows a PREVIOUS city (isPlaceholderData, keepPreviousData), emit no pins
+  // so the camera doesn't fit to the old city while the new one loads.
+  const hotelPins = useMemo(() => {
+    if (!isHotelPick || stayQuery.isPlaceholderData) return isHotelPick ? [] : null;
+    const list = stayQuery.data?.hotels || [];
+    const cur = stayQuery.data?.meta?.currency || stayCurrency;
+    return list
+      .filter((h) => h.lat != null && h.lng != null)
+      .map((h) => ({
+        id: h.id, name: h.name, lat: h.lat, lng: h.lng,
+        supplierLogo: h.supplierLogo,
+        priceLabel: h.price != null ? fmtMoney(h.price, h.currency || cur, { compact: true }) : null,
+      }));
+  }, [isHotelPick, stayQuery.data, stayQuery.isPlaceholderData, stayCurrency, fmtMoney]);
+  // Open a hotel's supplier link (used by the badge's "second click on the
+  // selected pin" — parity with the list card). Logged like a card open.
+  const logHotelClick = usePartnerLogger(tripId);
+  const openHotelLink = (id) => {
+    const h = (stayQuery.data?.hotels || []).find((x) => String(x.id) === String(id));
+    if (!h?.link) return;
+    logHotelClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22' });
+    window.open(h.link, '_blank', 'noopener,noreferrer');
+  };
+  // Bundle handed to the presentational hotel list (through ForkPartnerModal).
+  const stay22Bundle = isHotelPick ? {
+    data: stayQuery.data, isLoading: stayQuery.isLoading,
+    // Dim the list only on a city/filter switch (placeholder) or first load — NOT
+    // while the background tail pages stream in (the pool just grows under it).
+    isFetching: stayQuery.isPlaceholderData || stayQuery.isLoading,
+    isError: stayQuery.isError, refetch: stayQuery.refetch,
+    page: stayPage, onPageChange: setStayPage,
+    applied: stayApplied,
+    // Filter changes reload the pool → drop any stale selection/hover + reset page.
+    onApply: (snap) => { setStayApplied(snap); setStayPage(1); setStaySelectedId(null); setStayHoveredId(null); },
+    onResetAll: () => { setStayApplied(null); setStayPage(1); setStaySelectedId(null); setStayHoveredId(null); },
+    hoveredId: stayHoveredId, selectedId: staySelectedId,
+    onHover: setStayHoveredId, onSelect: setStaySelectedId,
+  } : null;
   // Unified engine: validateTrip emits codes; primaryIssues collapses to <=1 per
   // entity (anti-pile). Adapt to the shape this screen already consumes
   // (resolved message + cityId/hotelId/activityId/transferId aliases + 'warn' level).
@@ -426,6 +504,7 @@ export default function TripStructureEdit() {
     const node = {
       id: 'tmp-' + Math.random().toString(36).slice(2), kind,
       city_name: city.city_name, country: city.country || null, country_code: city.country_code || null,
+      geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
       nights: provNights, gap: 0, start_date: provStart, end_date: provEnd,
@@ -444,7 +523,9 @@ export default function TripStructureEdit() {
     });
     const tmpId = node.id; // swap this tmp- id for the real uuid the moment add_city returns
     runAction(() => rpcAddCity(tripId, {
-      city_name: city.city_name, kind,
+      kind,
+      geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
+      city_name_en: city.city_name_en || null,
       country: city.country || null, country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
@@ -499,8 +580,16 @@ export default function TripStructureEdit() {
   // The map is always shown beside the itinerary now (the old "hide map" toggle
   // was removed); on phones it's hidden via CSS (.ts-col-right), so no toggle.
 
-  // Trip can't be loaded for this user (403 / not a member / deleted) → the same
-  // full-screen "no access" stub TripView shows, not a bespoke editor banner.
+  // TRIP-56: distinguish the trip-load failure instead of one catch-all "no
+  // access". 'auth' = session gone after refresh+retry → /login; 'temporary' =
+  // 500/network → retry screen; 'access' (403/404) → the "no access" stub.
+  // Mirrors TripView's gate (shared invokeGetTripDetails/tripErrorKind helper).
+  const shellErrKind = tripErrorKind(shellError);
+  useEffect(() => {
+    if (shellErrKind === 'auth') nav('/login', { replace: true });
+  }, [shellErrKind, nav]);
+  if (shellErrKind === 'auth') return <>{headerEl}</>;
+  if (shellErrKind === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   if (shellError) return <TripAccessError onBack={() => nav('/trips')} />;
   // shell/content are cached (shared with TripView) so the editor paints instantly.
   if (loadingShell || loadingContent || !draft) {
@@ -521,9 +610,15 @@ export default function TripStructureEdit() {
   const endDate = seq[seq.length - 1]?.end_date;
   const totalNights = nightsBetween(startDate, endDate);
   const membersCount = content?.members?.length || 0;
-  const myMember = (content?.members || []).find((m) => m.user_id === user?.id);
-  const myRole = myMember?.role || (trip?.created_by === user?.id ? 'owner' : 'viewer');
+  // Shared role rule: created_by wins over any trip_members row, so the creator
+  // is never blocked from their own editor with "no access" (TRIP-143).
+  const myRole = resolveMyRole(content?.members, trip, user);
   const isOwner = myRole === 'owner';
+  // The /edit route is reachable by direct URL — a viewer has no edit rights, so
+  // guard it here with the SAME shared "no access" stub used for shellError above
+  // (role is resolved only after content loads, so this can't flash). Server-side
+  // RLS hardening for direct REST writes is tracked as a separate task.
+  if (myRole === 'viewer') return <TripAccessError onBack={() => nav(`/trip/${tripId}`)} />;
   const cityConflicts = (id) => issues.filter((i) => i.cityId === id).length;
   const transferFor = (aId, bId) => liveTransfers.find((t) => t.from_city_visit_id === aId && t.to_city_visit_id === bId);
   // A transfer row is flagged (orange "не совпадает") when it has ANY conflict -   // date mismatch (D2), non-adjacent (D5) or dangling (D6).
@@ -589,6 +684,7 @@ export default function TripStructureEdit() {
       <ForkPartnerModal
         open variant="panel" type={leftPanel.kind} tripId={tripId} trip={trip}
         visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
+        stay22={stay22Bundle}
         onManual={() => setLeftPanel({ type: 'create', kind: leftPanel.kind, visit: leftPanel.visit, fromVisit: leftPanel.fromVisit, toVisit: leftPanel.toVisit })}
         onOpenChange={(o) => { if (!o) closeLeftPanel(); }}
       />
@@ -756,7 +852,7 @@ export default function TripStructureEdit() {
         onNavigate={(id) => { setSideOpen(false); leaveNow(`/trip/${tripId}?lens=${id}`); }}
         isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
         onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
-        onProInfo={() => nav(`/pro?tripId=${tripId}`)}
+        onProInfo={() => { setSideOpen(false); setTripProInfoOpen(true); }}
         onShare={() => setShareOpen(true)}
       />
     </div>
@@ -767,7 +863,7 @@ export default function TripStructureEdit() {
           onNavigate={(id) => leaveNow(`/trip/${tripId}?lens=${id}`)}
           isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
           onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
-          onProInfo={() => nav(`/pro?tripId=${tripId}`)}
+          onProInfo={() => setTripProInfoOpen(true)}
           onShare={() => setShareOpen(true)}
         />
       </div>
@@ -909,6 +1005,12 @@ export default function TripStructureEdit() {
               selectedVisitId={selectedNodeId}
               hoveredVisitId={hoveredNodeId}
               selectedLegKey={selectedLegKey}
+              hideRoute={isHotelPick}
+              hotelPins={hotelPins}
+              selectedHotelId={staySelectedId}
+              hoveredHotelId={stayHoveredId}
+              onHotelClick={(id) => { if (staySelectedId != null && String(staySelectedId) === String(id)) openHotelLink(id); else setStaySelectedId(id); }}
+              onHotelHover={setStayHoveredId}
               colorScheme={typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'DARK' : 'LIGHT'} />
           </div>
           {/* Warnings: a round FAB (chat-dock sized) with a count badge; click → list. */}
@@ -1002,6 +1104,16 @@ export default function TripStructureEdit() {
       `}</style>
       {/* Unsaved-changes guard when leaving the editor (menu / logo / back). */}
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} trip={trip} />
+
+      {/* TRIP-63 №1: reuse the shared Pro info modal (same as TripView) so a
+          non-owner who taps the "enabled by owner" lock gets an explanation
+          instead of being navigated to /pro. */}
+      <ProUpsellModal
+        open={tripProInfoOpen}
+        mode="info"
+        onOpenChange={setTripProInfoOpen}
+        ownerName={(content?.members || []).find(m => m.user_id === trip?.created_by)?.user_full_name || ''}
+      />
     </div>
   );
 }

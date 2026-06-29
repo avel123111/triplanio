@@ -33,6 +33,7 @@ export default {
   'ai_plan.error_save': 'Failed to save trip. Please try again.',
   'ai_plan.error_plan_title': 'Planning failed',
   'ai_plan.error_plan_desc': 'Could not generate trip. Please try again.',
+  'ai_plan.error_rate_limited': 'Too many AI requests. Please try again in a few minutes.',
   
   // Default values
   'ai_plan.default_trip_title': 'AI-generated trip',

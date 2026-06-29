@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
-import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight } from '@/lib/map/routeLines';
-import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers';
+import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
+import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, iconForKinds } from '@/lib/map/markers';
+import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
+import { calmFlyTo, calmFit } from '@/lib/map/camera';
 import MapControls from '@/lib/map/MapControls';
 import { countryFlag } from '@/lib/geo';
 import { sortVisits } from '@/lib/validation';
@@ -92,14 +94,11 @@ export default function MapView({
   // Falsy/empty → no override (the whole-route auto-fit stays in charge); when
   // it clears after a focus, the camera eases back to the full route.
   focus = null,
-  // Duration (ms) of the single-city focus flyTo. Default 700; the public
-  // shared-trip reader passes a larger value for a slower, calmer camera.
-  focusDuration = 700,
   // Optional progressive reveal (public shared-trip reader). When `revealActiveId`
   // is set, the route is NOT drawn whole: only the legs UP TO the active city are
   // painted and markers past it are hidden. When the active city ADVANCES to the
-  // next one, the connecting leg is animated growing 0→1 over `focusDuration` —
-  // in lockstep with the camera flyTo — and the next marker appears once the line
+  // next one, the connecting leg is animated growing 0→1 over the reveal leg
+  // duration — in lockstep with the camera flyTo — and the next marker appears once the line
   // arrives. While the reader sits on a city, the leg toward the NEXT city is not
   // drawn at all (no pre-drawn future legs). `revealActiveId == null` ⇒ the whole
   // route + all markers draw normally (default — every other surface).
@@ -114,11 +113,46 @@ export default function MapView({
   // public shared-trip reader, mirroring the stats map). Defaults to the normal
   // styled basemap.
   basemapTheme = 'default',
+  // ── Hotel-pick overlay (editor fork panel, TRIP-140 + clustering TRIP-141) ──
+  // Off by default; only the editor's open hotel panel flips these on, so every
+  // other surface (sharing the map singleton) is untouched. When `hideRoute` is
+  // true the whole trip route — city markers, lines, the selected-leg highlight
+  // and the auto-fit — is suppressed and `hotelPins` (the WHOLE city pool) are
+  // CLIENT-CLUSTERED (supercluster) into DOM bubbles (count + cheapest "от $X")
+  // and single supplier badges, recomputed per viewport on move/zoom. selected/
+  // hovered ids + click/hover callbacks wire the badges to the list both ways;
+  // selecting a stay buried in a cluster zooms the cluster open until the stay
+  // surfaces as its own badge (Способ A).
+  hideRoute = false,
+  hotelPins = null,
+  selectedHotelId = null,
+  hoveredHotelId = null,
+  onHotelClick,
+  onHotelHover,
   children,
 }) {
   const containerRef = useRef(null);
   const markersRef = useRef([]);
+  const hotelMarkersRef = useRef([]);
+  const prevHideRouteRef = useRef(false);
   const fittedSigRef = useRef('');
+  // Clustering state (TRIP-141), all imperative so move/zoom never re-renders:
+  //   hotelRenderRef    — id → { kind:'badge'|'cluster', el, clusterId } for the
+  //                       CURRENT viewport (powers list↔map hover/select)
+  //   hotelMoveHandlerRef — the moveend listener currently attached (so we detach it)
+  //   hadHotelPinsRef   — fit-to-pool happened for this city (don't re-fit on growth)
+  //   pendingSelectRef  — a stay we're zooming toward (Способ A doniryvanie)
+  //   selectedHotelIdRef / hoveredHotelIdRef — latest ids for the imperative render
+  const hotelRenderRef = useRef(new globalThis.Map());
+  const hotelMoveHandlerRef = useRef(null);
+  const lastViewSigRef = useRef('');
+  const hadHotelPinsRef = useRef(false);
+  const pendingSelectRef = useRef(null);
+  const lastSelActedRef = useRef(null);
+  const selectedHotelIdRef = useRef(null);
+  const hoveredHotelIdRef = useRef(null);
+  useEffect(() => { selectedHotelIdRef.current = selectedHotelId != null ? String(selectedHotelId) : null; }, [selectedHotelId]);
+  useEffect(() => { hoveredHotelIdRef.current = hoveredHotelId != null ? String(hoveredHotelId) : null; }, [hoveredHotelId]);
 
   const [projection, setProjection] = useState('mercator');
   // Internal toggles (driven by the on-map control buttons). Seeded from props and
@@ -140,6 +174,70 @@ export default function MapView({
   // Keep the latest onCityClick without forcing the draw effect to re-run.
   const onCityClickRef = useRef(onCityClick);
   useEffect(() => { onCityClickRef.current = onCityClick; }, [onCityClick]);
+
+  // Same for the hotel-badge callbacks (stable across renders → badges aren't
+  // rebuilt just because the parent passes a fresh closure).
+  const onHotelClickRef = useRef(onHotelClick);
+  const onHotelHoverRef = useRef(onHotelHover);
+  useEffect(() => { onHotelClickRef.current = onHotelClick; }, [onHotelClick]);
+  useEffect(() => { onHotelHoverRef.current = onHotelHover; }, [onHotelHover]);
+
+  // Stable signature of the hotel pins so the cluster/build effects only re-run
+  // when the actual pin set/price/logo changes, not on every parent render.
+  const hotelPins2 = Array.isArray(hotelPins) ? hotelPins : null;
+  const hotelPinsSig = useMemo(
+    () => (hotelPins2 ? hotelPins2.map((h) => `${h.id}:${h.lat},${h.lng}:${h.priceLabel || ''}:${h.supplierLogo || ''}`).join('|') : ''),
+    [hotelPins2],
+  );
+
+  // Reusable cluster index over the WHOLE pool — built once per pool/filters change
+  // (src/lib/map/cluster.js, shareable by any map surface). Stays without coords are
+  // excluded (list-only). Keyed on hotelPinsSig (hotelPins2 is a fresh array each
+  // render); eslint can't see that the sig captures the data it reads.
+  const clusterIndex = useMemo(() => {
+    if (!hotelPins2 || hotelPins2.length === 0) return null;
+    const features = hotelPins2
+      .filter((h) => h.lat != null && h.lng != null)
+      .map((h) => ({
+        type: 'Feature',
+        properties: { hotelId: h.id },
+        geometry: { type: 'Point', coordinates: [Number(h.lng), Number(h.lat)] },
+      }));
+    if (features.length === 0) return null;
+    return buildClusterIndex(features);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotelPinsSig]);
+
+  // id → pin lookup (coords/logo/price/name) for the imperative cluster render +
+  // Способ A flyTo. Same sig key as the index.
+  const hotelPinById = useMemo(() => {
+    const m = new globalThis.Map();
+    (hotelPins2 || []).forEach((h) => m.set(String(h.id), h));
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotelPinsSig]);
+
+  // Visual-only highlight pass: toggles .is-sel / .is-hover (+ z-index) on the
+  // CURRENT viewport elements from the latest selected/hovered ids. A stay inside a
+  // cluster lights up its bubble (a bubble is never the final selection — Способ A
+  // zooms it open first). Reads refs so move/zoom can call it without re-rendering.
+  const applyHotelHighlight = useCallback(() => {
+    const index = hotelRenderRef.current;
+    const sel = selectedHotelIdRef.current;
+    const hov = hoveredHotelIdRef.current;
+    index.forEach((entry) => { entry.el.classList.remove('is-sel', 'is-hover'); entry.el.style.zIndex = ''; });
+    if (hov) {
+      const e = index.get(hov);
+      if (e) { e.el.classList.add('is-hover'); if (e.kind === 'badge') e.el.style.zIndex = '2'; }
+    }
+    if (sel) {
+      const e = index.get(sel);
+      if (e) {
+        if (e.kind === 'badge') { e.el.classList.remove('is-hover'); e.el.classList.add('is-sel'); e.el.style.zIndex = '3'; }
+        else { e.el.classList.add('is-hover'); } // selected but still clustered → cue the bubble
+      }
+    }
+  }, []);
 
   const ordered = useMemo(() => {
     const all = sortVisits(visits).filter((v) => v.latitude && v.longitude);
@@ -209,6 +307,8 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
+    // Hotel-pick overlay owns the map: don't draw the trip route at all.
+    if (hideRoute) { cancelAnimationFrame(rafRef.current); pumpingRef.current = false; clearRouteLines(map); return undefined; }
 
     const paint = () => {
       const s = revealStateRef.current;
@@ -318,11 +418,14 @@ export default function MapView({
     // equal index — make sure the static draw is correct.
     if (!pumpingRef.current) settle(reachedRef.current < 0 ? 0 : reachedRef.current);
     return undefined;
-  }, [ready, revealing, revealActiveIdx, legs, lineSig, orderIndexById, ordered]);
+  }, [ready, revealing, revealActiveIdx, legs, lineSig, orderIndexById, ordered, hideRoute]);
 
   // Abort any in-flight reveal pump on unmount (the scroll effect intentionally
   // does NOT cancel on every re-render, so the queue can run across re-renders).
   useEffect(() => () => { genRef.current += 1; cancelAnimationFrame(rafRef.current); }, []);
+
+  // Remove any hotel badges on unmount (useMapSurface only owns markersRef).
+  useEffect(() => () => { hotelMarkersRef.current.forEach((m) => m.remove()); hotelMarkersRef.current = []; }, []);
 
   // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
@@ -341,14 +444,14 @@ export default function MapView({
     if (focusSig) {
       hadFocusRef.current = true;
       if (focus.length === 1) {
-        map.flyTo({ center: focus[0], zoom: 9.5, duration: focusDuration, essential: true });
+        calmFlyTo(map, { center: focus[0], zoom: 9.5 });
       } else {
-        fitToPoints(map, focus, { padding: 110, maxZoom: 9, animate: true });
+        calmFit(map, focus, { padding: 110, maxZoom: 9 });
       }
     } else if (hadFocusRef.current) {
       hadFocusRef.current = false;
       if (ordered.length > 0) {
-        fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: true });
+        calmFit(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8 });
       }
     }
   }, [ready, focusSig, revealActiveId]);
@@ -357,6 +460,19 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
+
+    // Hotel-pick overlay: the trip route is suppressed entirely — drop every city
+    // marker + route line (the hotel badges + their own camera fit take over in the
+    // effect below). Leaving the route up would clutter the badge overlay.
+    // NB: fittedSigRef is left untouched so that, on the way BACK, the rebuilt route
+    // is NOT instant-fitted here — the focus effect's eased fit owns the camera and
+    // the return animates like every other panel close.
+    if (hideRoute) {
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      clearRouteLines(map);
+      return undefined;
+    }
 
     // Markers - clear previous, then group visits that share a location.
     markersRef.current.forEach((m) => m.remove());
@@ -409,12 +525,175 @@ export default function MapView({
     // BUT don't override an active parent focus (e.g. landing straight on a city/
     // transfer via a create-intent) — the focus effect owns the camera then.
     if (ordered.length > 0 && fittedSigRef.current !== visitsSignature && !focusSig) {
-      fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 60, maxZoom: 8, animate: fittedSigRef.current !== '' });
+      const pts = ordered.map((v) => [v.longitude, v.latitude]);
+      if (fittedSigRef.current === '') {
+        fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 0 }); // first frame after load: snap
+      } else if (revealActiveId == null) {
+        calmFit(map, pts, { padding: 60, maxZoom: 8 }); // non-public: adaptive calm tempo
+      } else {
+        fitToPoints(map, pts, { padding: 60, maxZoom: 8, duration: 650 }); // public reveal: its own tempo
+      }
       fittedSigRef.current = visitsSignature;
     }
 
     return undefined;
-  }, [ready, ordered, transfers, visitsSignature]);
+  }, [ready, ordered, transfers, visitsSignature, hideRoute]);
+
+  // --- Hotel-pick overlay clustering (TRIP-141) -----------------------------
+  // Owns the hotel markers while the overlay is open: builds a moveend listener
+  // that recomputes the visible clusters/badges for the current viewport, fits the
+  // camera to the pool once per city, and tears everything down (with a dissolve)
+  // when the overlay closes. Re-runs when the pool changes (hotelPinsSig) so the
+  // background tail pages appear progressively without a camera jump.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return undefined;
+
+    // Leaving the overlay (hideRoute true→false): dissolve current markers (opacity
+    // only — NEVER transform: Mapbox owns the marker root's inline translate). A
+    // pool change WITHIN the overlay removes instantly.
+    const leavingOverlay = prevHideRouteRef.current && !hideRoute;
+    const teardown = () => {
+      hotelMarkersRef.current.forEach((m) => {
+        const el = m.getElement();
+        if (leavingOverlay && el.animate) {
+          const anim = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: 'ease-out' });
+          anim.finished.then(() => m.remove(), () => m.remove());
+        } else { m.remove(); }
+      });
+      hotelMarkersRef.current = [];
+    };
+    if (hotelMoveHandlerRef.current) {
+      map.off('move', hotelMoveHandlerRef.current.onMove);
+      map.off('moveend', hotelMoveHandlerRef.current.onMoveEnd);
+      hotelMoveHandlerRef.current = null;
+    }
+    teardown();
+    prevHideRouteRef.current = hideRoute;
+
+    if (!hideRoute || !clusterIndex) {
+      hadHotelPinsRef.current = false;
+      hotelRenderRef.current = new globalThis.Map();
+      pendingSelectRef.current = null;
+      lastSelActedRef.current = null;
+      return undefined;
+    }
+
+    // Rebuild the DOM markers for the current (padded) viewport from the index.
+    // `onMove` calls this only when the integer zoom changes (so clusters split
+    // smoothly DURING a single zoom animation — live declustering — without
+    // rebuilding on every pan frame); `onMoveEnd` always refreshes for the final
+    // position (handles panning).
+    const renderViewport = () => {
+      lastViewSigRef.current = Math.round(map.getZoom());
+      const features = queryViewport(clusterIndex, map);
+
+      hotelMarkersRef.current.forEach((m) => m.remove());
+      hotelMarkersRef.current = [];
+      const index = new globalThis.Map();
+
+      // One supplier badge (wired to the list both ways) for a single stay.
+      const addBadge = (id, lngLat) => {
+        const pin = hotelPinById.get(String(id));
+        const el = createHotelBadgeEl(
+          { supplierLogo: pin?.supplierLogo, priceLabel: pin?.priceLabel },
+          {
+            title: pin?.name,
+            onClick: () => onHotelClickRef.current?.(id),
+            onHover: (entering) => onHotelHoverRef.current?.(entering ? id : null),
+          },
+        );
+        el.dataset.hotelId = String(id);
+        hotelMarkersRef.current.push(new mapboxgl.Marker({ element: el }).setLngLat(lngLat).addTo(map));
+        index.set(String(id), { kind: 'badge', el });
+      };
+
+      features.forEach((f) => {
+        const [lng, lat] = f.geometry.coordinates;
+        const p = f.properties;
+        if (!p.cluster) { addBadge(p.hotelId, [lng, lat]); return; }
+        const clusterId = p.cluster_id;
+        // Coincident pins no zoom can split → fan them into a ring of real badges
+        // (each individually selectable) instead of an undivable bubble.
+        if (isIrreducible(clusterIndex, clusterId)) {
+          spiderfyLayout(map, [lng, lat], clusterIndex.getLeaves(clusterId, Infinity))
+            .forEach(({ leaf, lngLat }) => addBadge(leaf.properties.hotelId, lngLat));
+          return;
+        }
+        // Otherwise a count bubble; clicking zooms (calmly) to where it splits.
+        const el = createClusterBubbleEl(p.point_count, {
+          onClick: () => calmFlyTo(map, { center: [lng, lat], zoom: expansionZoom(clusterIndex, clusterId) }),
+        });
+        hotelMarkersRef.current.push(new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map));
+        // Map every leaf id to this bubble (§4 index) for list↔map hover/select.
+        clusterIndex.getLeaves(clusterId, Infinity).forEach((leaf) => {
+          index.set(String(leaf.properties.hotelId), { kind: 'cluster', el, clusterId });
+        });
+      });
+
+      hotelRenderRef.current = index;
+      applyHotelHighlight();
+      // Способ A finishes here: the select effect issues ONE smooth flyTo to the
+      // stay's isolation zoom; live declustering (above) surfaces it as a badge mid-
+      // animation, applyHotelHighlight styles it — just drop the pending flag.
+      if (pendingSelectRef.current != null) {
+        const e = index.get(String(pendingSelectRef.current));
+        if (!e || e.kind === 'badge') pendingSelectRef.current = null;
+      }
+    };
+
+    const onMove = () => { if (Math.round(map.getZoom()) !== lastViewSigRef.current) renderViewport(); };
+    const onMoveEnd = () => renderViewport();
+    hotelMoveHandlerRef.current = { onMove, onMoveEnd };
+    lastViewSigRef.current = '';
+    map.on('move', onMove);
+    map.on('moveend', onMoveEnd);
+
+    // First paint for this city → fit the camera to the WHOLE pool once. Later pool
+    // growth (tail pages) must NOT jump the camera, so guard with hadHotelPinsRef.
+    if (!hadHotelPinsRef.current) {
+      hadHotelPinsRef.current = true;
+      const pts = (hotelPins2 || []).filter((h) => h.lat != null && h.lng != null).map((h) => [h.lng, h.lat]);
+      if (pts.length) calmFit(map, pts, { padding: 80, maxZoom: 15 });
+    }
+    renderViewport();
+
+    return () => {
+      if (hotelMoveHandlerRef.current) {
+        map.off('move', hotelMoveHandlerRef.current.onMove);
+        map.off('moveend', hotelMoveHandlerRef.current.onMoveEnd);
+        hotelMoveHandlerRef.current = null;
+      }
+    };
+  }, [ready, hideRoute, hotelPinsSig, clusterIndex, hotelPinById, applyHotelHighlight]);
+
+  // Hotel selection + hover highlight (no rebuild) + Способ A. Hover/selection just
+  // re-toggle classes; a NEW selection buried in a cluster (or off the current
+  // viewport) flies in ONE smooth zoom to the stay's isolation zoom — the zoom at
+  // which it's its own pin. Live declustering (renderViewport on each integer-zoom
+  // step) splits the clusters smoothly during that single animation, and the
+  // pending flag resolves when the badge surfaces. Guarded by lastSelActedRef so
+  // pool growth / hover changes don't re-fire the flyTo for an unchanged selection.
+  useEffect(() => {
+    if (!ready || !hideRoute) return;
+    applyHotelHighlight();
+    const sel = selectedHotelId != null ? String(selectedHotelId) : null;
+    if (sel == null) { pendingSelectRef.current = null; lastSelActedRef.current = null; return; }
+    if (sel === lastSelActedRef.current) return; // unchanged selection — don't re-fly
+    lastSelActedRef.current = sel;
+    const e = hotelRenderRef.current.get(sel);
+    const pin = hotelPinById.get(sel);
+    const map = mapRef.current;
+    if (e && e.kind === 'badge') {
+      pendingSelectRef.current = null; // already a visible badge — applyHotelHighlight styled it, don't move the camera
+    } else if (map && pin && clusterIndex) {
+      pendingSelectRef.current = sel;
+      const targetZoom = isolationZoom(clusterIndex, sel, [pin.lng, pin.lat], { minZoom: map.getZoom() });
+      calmFlyTo(map, { center: [pin.lng, pin.lat], zoom: targetZoom });
+    } else {
+      pendingSelectRef.current = null;
+    }
+  }, [ready, hideRoute, selectedHotelId, hoveredHotelId, hotelPinsSig, clusterIndex, hotelPinById, applyHotelHighlight]);
 
   // Selection + hover highlight — toggled on the existing marker elements (no
   // rebuild, so hovering a list is cheap). Re-runs after a marker rebuild too
@@ -450,7 +729,7 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return undefined;
-    if (!selectedLegKey) { clearRouteHighlight(map); return undefined; }
+    if (hideRoute || !selectedLegKey) { clearRouteHighlight(map); return undefined; }
     const sep = selectedLegKey.indexOf('__');
     const fromId = sep === -1 ? '' : selectedLegKey.slice(0, sep);
     const toId = sep === -1 ? '' : selectedLegKey.slice(sep + 2);
@@ -459,7 +738,7 @@ export default function MapView({
     if (!from || !to) { clearRouteHighlight(map); return undefined; }
     drawRouteHighlight(map, { from, to, kind: transferKindByPair.get(selectedLegKey) });
     return undefined;
-  }, [ready, selectedLegKey, ordered, transferKindByPair, visitsSignature]);
+  }, [ready, selectedLegKey, ordered, transferKindByPair, visitsSignature, hideRoute]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>

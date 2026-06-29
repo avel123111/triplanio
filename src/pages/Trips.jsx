@@ -5,12 +5,13 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { isTripInPast, formatTripRange, computeTripRange } from '@/lib/trip-dates';
 import { isProActive } from '@/lib/subscription';
+import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
-import { getGradientById } from '@/lib/trip-gradients';
-import { uniqueTransitCities } from '@/lib/trip-cities';
+import { coverGradientCss } from '@/lib/trip-gradients';
+import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
 import StatsMap from '@/components/views/StatsMap';
 import {
@@ -23,12 +24,6 @@ import { useActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import AppHeader from '@/components/AppHeader';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-function strHue(str = '') {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
-  return Math.abs(h) % 360;
-}
-
 function scopeLabel(t, visits = []) {
   // Same deduped transit set that backs the city COUNT (uniqueTransitCities) —
   // so the card's city list and every "N городов" number can never disagree.
@@ -47,15 +42,21 @@ function scopeLabel(t, visits = []) {
  *
  * "Shared" = trip has ≥2 participants (owner + at least 1 accepted member).
  */
-function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, participants = []) {
+function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, participants = [], serverPro = undefined) {
   return {
     ...trip,
-    coverHue:  strHue(trip.id),
-    accentHue: strHue(trip.title || ''),
     days:      formatTripRange(visits, '-'),
     scope:     scopeLabel(t, visits),
     role,
-    pro:       !!trip.is_pro_trip,
+    // Owner-aware Pro badge (TRIP-121). Effective Pro = is_pro_trip OR the trip
+    // OWNER has an active subscription — true for EVERY trip the user sees, incl.
+    // foreign trips made Pro by their owner's sub. The server computes it once in
+    // get_user_travel_stats via the canonical is_trip_pro() predicate (the client
+    // can't see a foreign owner's billing), exposed per trip as `serverPro`.
+    // Fallback (older RPC build with no is_pro field): the client predicate —
+    // own trips only (is_pro_trip OR I'm the owner with an active sub) — so a
+    // stale deploy degrades gracefully instead of dropping all badges.
+    pro:       typeof serverPro === 'boolean' ? serverPro : (!!trip.is_pro_trip || (role === 'owner' && isPro)),
     userIsPro: isPro,
     status:    isTripInPast(visits) ? 'past' : 'active',
     isShared:  participants.length >= 2,
@@ -64,18 +65,12 @@ function normalizeTrip(t, trip, visits = [], role = 'member', isPro = false, par
 }
 
 // ─── Cover background helper ────────────────────────────────────────────────
+// Photo (when present) is rendered as a separate <img> overlay → return null so
+// the cover element has no background behind it; otherwise the trip's gradient
+// (always one of our built-in set, default-backed).
 function coverBg(trip) {
-  const gradient = trip.cover_gradient ? getGradientById(trip.cover_gradient) : null;
-  if (trip.cover_image_url) return null; // photo rendered separately
-  if (gradient) return gradient.css;
-  // Procedural fallback based on trip id / title hue
-  const hue    = trip.coverHue ?? 210;
-  const accent = trip.accentHue ?? 18;
-  const isDark = document.documentElement.dataset.theme === 'dark';
-  return `linear-gradient(to bottom left,
-    hsl(${hue}, 60%, ${isDark ? 30 : 68}%) 0%,
-    hsl(${(hue + accent) % 360}, 55%, ${isDark ? 22 : 58}%) 60%,
-    hsl(${accent}, 70%, ${isDark ? 32 : 62}%) 100%)`;
+  if (trip.cover_image_url) return null;
+  return coverGradientCss(trip.cover_gradient);
 }
 
 // ─── Avatar stack — uses the same Avatar component as MembersLens/OverviewLens
@@ -88,7 +83,7 @@ const AvatarStack = ({ members, maxShow = 3, white = false }) => {
       {shown.map((m, i) => (
         <Avatar
           key={m.user_id ?? i}
-          name={m.full_name || m.email || '?'}
+          name={displayName(m.email, m.full_name)}
           photo={m.avatar_url || ''}
           deleted={m.is_deleted}
           size="sm"
@@ -212,9 +207,7 @@ const TripCard = ({ trip, onClick }) => {
         {/* top-right badges */}
         <div className="tc__tags">
           {trip.pro && (
-            <span className="badge badge--pro">
-              <Icon name="crown" /> Pro
-            </span>
+            <Badge variant="pro" icon="pro">Pro</Badge>
           )}
         </div>
 
@@ -401,7 +394,7 @@ function TripSkeleton({ viewMode }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Trips() {
-  const { t }     = useI18n();
+  const { t, lang } = useI18n();
   const { user }  = useAuth();
   const nav       = useNavigate();
 
@@ -432,7 +425,7 @@ export default function Trips() {
   // Single source for the free-limit banner — same getActiveTrips → active_owned_trips() as the create/copy gate.
   const { activeCount: srvActiveCount, isBlocked: limitReached } = useActiveTripsLimit(user?.id);
   const scheme = isDark ? 'DARK' : 'LIGHT';
-  const displayName = user?.full_name || user?.email?.split('@')[0] || '';
+  const greetName = displayName(user?.email, user?.full_name);
 
   // ── Fetch trips ─────────────────────────────────────────────────────────────
   const { data: allTrips = [], isLoading } = useQuery({
@@ -471,7 +464,7 @@ export default function Trips() {
   });
   const statsLoaded    = travelStats !== undefined;
   const rpcTripVisits  = travelStats?.trip_visits || null; // null only on a pre-0044 RPC build
-  const statsPoints    = travelStats?.points || [];
+  const statsPoints    = useMemo(() => localizeVisits(travelStats?.points || [], lang), [travelStats, lang]);
   const transfersTotal = travelStats?.transfers_total || 0;
   const home  = useMemo(() => homeStats(statsPoints, transfersTotal), [statsPoints, transfersTotal]);
   const world = useMemo(() => worldExplored(statsPoints), [statsPoints]);
@@ -521,11 +514,12 @@ export default function Trips() {
   // the fallback query. Either way the shape is { trip_id: [visit rows] } and the
   // downstream helpers (isTripInPast / scopeLabel / computeTripRange) are unchanged.
   const visitsByTrip = useMemo(() => {
-    if (rpcTripVisits) return rpcTripVisits;
-    const m = {};
-    allVisits.forEach(v => { (m[v.trip_id] ||= []).push(v); });
-    return m;
-  }, [rpcTripVisits, allVisits]);
+    const base = rpcTripVisits || allVisits.reduce((m, v) => { (m[v.trip_id] ||= []).push(v); return m; }, {});
+    // Localize each trip's city names from the per-visit snapshot (TRIP-146).
+    const out = {};
+    for (const k in base) out[k] = localizeVisits(base[k], lang);
+    return out;
+  }, [rpcTripVisits, allVisits, lang]);
 
   // Derive current user's role from the participant profiles RPC result
   const getRoleFor = (trip) => {
@@ -567,7 +561,7 @@ export default function Trips() {
   const shown       = filterMode === 'active' ? activeTrips : pastTrips;
 
   const shownNorm = shown.map(tr =>
-    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [])
+    normalizeTrip(t, tr, visitsByTrip[tr.id] || [], getRoleFor(tr), isPro, participantsByTrip[tr.id] || [], travelStats?.trips?.[tr.id]?.is_pro)
   );
 
   // ── Next upcoming trip (nearest future start) for the rail card ──────────────
@@ -586,8 +580,6 @@ export default function Trips() {
     const diff = best.startMs - now;
     return {
       ...best.tr,
-      coverHue:  strHue(best.tr.id),
-      accentHue: strHue(best.tr.title || ''),
       scope:     scopeLabel(t, best.visits),
       countdown: {
         d: Math.floor(diff / 864e5),
@@ -623,7 +615,7 @@ export default function Trips() {
             first-load skeleton is up). */}
         {!(isLoadingData && allTrips.length === 0) && (
           <>
-            <Greeting greeting={t('stats.greeting', { name: displayName })} name={displayName} avatarName={user?.full_name || user?.email || '?'} photo={user?.avatar_url} sub={subText} />
+            <Greeting greeting={t('stats.greeting', { name: greetName })} name={greetName} avatarName={greetName} photo={user?.avatar_url} sub={subText} />
             <StatHero
               points={statsPoints}
               home={home}
