@@ -15,7 +15,8 @@
  *      twice — counts once. Identity is the GeoNames `geonameid` (TRIP-146): a
  *      stable, language-independent key that also fixes same-city-two-external-ids
  *      fragmentation for free. Legacy rows without a geonameid fall back to
- *      `name` (lowercased+trimmed) + `country_code`; raw `external_city_id` is
+ *      `name` (the English snapshot `name_i18n.en`, else the `city_name_en`
+ *      column) lowercased+trimmed + `country_code`; raw `external_city_id` is
  *      only a last resort for a nameless row (it is NOT the primary key: the same
  *      city can carry different external ids across two picks). Country identity
  *      is the ISO `country_code`.
@@ -24,14 +25,15 @@
 /**
  * Localized display name of a city visit (TRIP-146/TRIP-65). The per-visit
  * `name_i18n` snapshot (en/es/ru) is the source of truth; `city_name_en` is the
- * fallback when the active locale is absent, then any legacy in-memory `city_name`
- * (the dropped column) for objects built client-side before save.
+ * fallback when the active locale is absent. The `city_name` DB column was
+ * dropped in Phase 6, so it is NOT a source here — `city_name` survives only as
+ * the in-memory display slot that `localizeVisits` writes INTO (below).
  */
 export function cityLabel(v, lang) {
   if (!v) return '';
   const l = String(lang || 'en').slice(0, 2).toLowerCase();
   const i = v.name_i18n || {};
-  return i[l] || i.en || v.city_name_en || v.city_name || '';
+  return i[l] || i.en || v.city_name_en || '';
 }
 
 /**
@@ -39,13 +41,14 @@ export function cityLabel(v, lang) {
  * snapshot. Applied once at each data-load seam so every downstream consumer
  * (~all trip/stats screens) reads the localized name without per-site changes,
  * and switching UI language re-localizes live. Non-mutating; unchanged rows are
- * returned as-is.
+ * returned as-is. A visit with no resolvable label (empty `cityLabel`) keeps its
+ * existing `city_name` — we never overwrite a name with an empty string.
  */
 export function localizeVisits(visits, lang) {
   if (!Array.isArray(visits)) return [];
   return visits.map((v) => {
     const label = cityLabel(v, lang);
-    return v && label !== v.city_name ? { ...v, city_name: label } : v;
+    return v && label && label !== v.city_name ? { ...v, city_name: label } : v;
   });
 }
 
@@ -64,14 +67,15 @@ export function transitVisits(visits = []) {
  *   1. `gn:<geonameid>` — GeoNames identity, strongest + language-independent.
  *   2. `<name>|<cc>`    — legacy fallback for rows still missing a geonameid.
  *                         name = English snapshot first (stable across UI locale),
- *                         then city_name_en, then the localized city_name.
+ *                         then the `city_name_en` column. NOT `city_name` (that DB
+ *                         column was dropped in Phase 6; it is only a display slot).
  *   3. `id:<external_city_id>` — last resort for a nameless row.
  * Returns null when a visit has no usable identity (ignored by counts/labels).
  */
 export function cityKey(v) {
   if (!v) return null;
   if (v.geonameid != null && v.geonameid !== '') return `gn:${v.geonameid}`;
-  const name = String(v.name_i18n?.en || v.city_name_en || v.city_name || '')
+  const name = String(v.name_i18n?.en || v.city_name_en || '')
     .trim().toLowerCase();
   if (name) {
     const cc = (v.country_code || '').trim().toLowerCase();

@@ -38,8 +38,8 @@ test('same city + country with DIFFERENT external_city_id counts once', () => {
   // external ids. By "city + country" it is one city — header and trips card
   // must agree.
   const v = [
-    { id: 'm1', kind: 'transit', city_name: 'Москва', country_code: 'RU', external_city_id: '195713348' },
-    { id: 'm2', kind: 'transit', city_name: 'Москва', country_code: 'RU', external_city_id: '196017222' },
+    { id: 'm1', kind: 'transit', city_name_en: 'Moscow', country_code: 'RU', external_city_id: '195713348' },
+    { id: 'm2', kind: 'transit', city_name_en: 'Moscow', country_code: 'RU', external_city_id: '196017222' },
   ];
   assert.equal(uniqueCityCount(v), 1);
   assert.equal(uniqueTransitCities(v).length, 1);
@@ -54,8 +54,8 @@ test('uniqueTransitCities backs both count and label from one set', () => {
 
 test('dedup falls back to name+country_code when no external_city_id', () => {
   const v = [
-    { id: 'x1', kind: 'transit', city_name: 'Rome', country_code: 'IT' },
-    { id: 'x2', kind: 'transit', city_name: 'rome', country_code: 'IT' }, // same city, different case
+    { id: 'x1', kind: 'transit', city_name_en: 'Rome', country_code: 'IT' },
+    { id: 'x2', kind: 'transit', city_name_en: 'rome', country_code: 'IT' }, // same city, different case
   ];
   assert.equal(uniqueCityCount(v), 1);
   assert.equal(uniqueCountryCount(v), 1);
@@ -84,8 +84,8 @@ test('geonameid takes priority over name: different geonameid = different city',
 test('legacy rows without geonameid still dedup by name+country', () => {
   // Mixed: a geonameid-less pair falls back to name|cc (Phase 5 backfill tail).
   const v = [
-    { id: 'l1', kind: 'transit', city_name: 'Rome', country_code: 'IT' },
-    { id: 'l2', kind: 'transit', city_name: 'rome', country_code: 'IT' },
+    { id: 'l1', kind: 'transit', city_name_en: 'Rome', country_code: 'IT' },
+    { id: 'l2', kind: 'transit', city_name_en: 'rome', country_code: 'IT' },
   ];
   assert.equal(uniqueCityCount(v), 1);
 });
@@ -97,14 +97,16 @@ test('transitVisits / isTransitVisit filter correctly', () => {
   assert.equal(isTransitVisit(null), false);
 });
 
-test('cityLabel: localized snapshot first, then en, then city_name_en, then legacy', () => {
-  const v = { name_i18n: { en: 'Moscow', es: 'Moscú', ru: 'Москва' }, city_name_en: 'Moscow', city_name: 'Москва' };
+test('cityLabel: localized snapshot first, then en, then city_name_en', () => {
+  const v = { name_i18n: { en: 'Moscow', es: 'Moscú', ru: 'Москва' }, city_name_en: 'Moscow' };
   assert.equal(cityLabel(v, 'ru'), 'Москва');
   assert.equal(cityLabel(v, 'es'), 'Moscú');
   assert.equal(cityLabel(v, 'en'), 'Moscow');
   assert.equal(cityLabel(v, 'de'), 'Moscow');                       // no de -> en slot
   assert.equal(cityLabel({ name_i18n: {}, city_name_en: 'Rome' }, 'ru'), 'Rome'); // empty snapshot -> en col
-  assert.equal(cityLabel({ city_name: 'Legacy' }, 'ru'), 'Legacy'); // pre-save in-memory object
+  // Phase 6: the dropped `city_name` column is NOT a source — an object that
+  // carries ONLY a legacy city_name resolves to '' (no ghost fallback).
+  assert.equal(cityLabel({ city_name: 'Ghost' }, 'ru'), '');
   assert.equal(cityLabel(null, 'en'), '');
 });
 
@@ -114,6 +116,15 @@ test('localizeVisits: rewrites city_name from the snapshot, non-mutating', () =>
   assert.equal(out[0].city_name, 'Лиссабон');
   assert.equal(src[0].city_name, 'Lisbon'); // original untouched
   assert.deepEqual(localizeVisits(null, 'en'), []);
+});
+
+test('localizeVisits: empty label never overwrites an existing city_name', () => {
+  // A visit with no snapshot and no city_name_en yields an empty cityLabel —
+  // its existing in-memory display name must survive, not get blanked.
+  const src = [{ id: 'a', city_name: 'Kept' }];
+  const out = localizeVisits(src, 'ru');
+  assert.equal(out[0].city_name, 'Kept');
+  assert.equal(out[0], src[0]); // unchanged row returned as-is (no clone)
 });
 
 test('empty / invalid input -> 0', () => {
