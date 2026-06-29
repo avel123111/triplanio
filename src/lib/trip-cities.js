@@ -21,6 +21,34 @@
  *      is the ISO `country_code`.
  */
 
+/**
+ * Localized display name of a city visit (TRIP-146/TRIP-65). The per-visit
+ * `name_i18n` snapshot (en/es/ru) is the source of truth; `city_name_en` is the
+ * fallback when the active locale is absent, then any legacy in-memory `city_name`
+ * (the dropped column) for objects built client-side before save.
+ */
+export function cityLabel(v, lang) {
+  if (!v) return '';
+  const l = String(lang || 'en').slice(0, 2).toLowerCase();
+  const i = v.name_i18n || {};
+  return i[l] || i.en || v.city_name_en || v.city_name || '';
+}
+
+/**
+ * Map fetched visits so each carries a localized `city_name` derived from its
+ * snapshot. Applied once at each data-load seam so every downstream consumer
+ * (~all trip/stats screens) reads the localized name without per-site changes,
+ * and switching UI language re-localizes live. Non-mutating; unchanged rows are
+ * returned as-is.
+ */
+export function localizeVisits(visits, lang) {
+  if (!Array.isArray(visits)) return [];
+  return visits.map((v) => {
+    const label = cityLabel(v, lang);
+    return v && label !== v.city_name ? { ...v, city_name: label } : v;
+  });
+}
+
 /** A real destination: a city stay, not an anchor or a pass-through waypoint. */
 export function isTransitVisit(v) {
   return !!v && v.kind === 'transit';

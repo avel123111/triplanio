@@ -11,7 +11,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
-import { uniqueTransitCities } from '@/lib/trip-cities';
+import { uniqueTransitCities, localizeVisits } from '@/lib/trip-cities';
 import { homeStats, worldExplored } from '@/lib/travel-stats';
 import StatsMap from '@/components/views/StatsMap';
 import {
@@ -394,7 +394,7 @@ function TripSkeleton({ viewMode }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Trips() {
-  const { t }     = useI18n();
+  const { t, lang } = useI18n();
   const { user }  = useAuth();
   const nav       = useNavigate();
 
@@ -464,7 +464,7 @@ export default function Trips() {
   });
   const statsLoaded    = travelStats !== undefined;
   const rpcTripVisits  = travelStats?.trip_visits || null; // null only on a pre-0044 RPC build
-  const statsPoints    = travelStats?.points || [];
+  const statsPoints    = useMemo(() => localizeVisits(travelStats?.points || [], lang), [travelStats, lang]);
   const transfersTotal = travelStats?.transfers_total || 0;
   const home  = useMemo(() => homeStats(statsPoints, transfersTotal), [statsPoints, transfersTotal]);
   const world = useMemo(() => worldExplored(statsPoints), [statsPoints]);
@@ -514,11 +514,12 @@ export default function Trips() {
   // the fallback query. Either way the shape is { trip_id: [visit rows] } and the
   // downstream helpers (isTripInPast / scopeLabel / computeTripRange) are unchanged.
   const visitsByTrip = useMemo(() => {
-    if (rpcTripVisits) return rpcTripVisits;
-    const m = {};
-    allVisits.forEach(v => { (m[v.trip_id] ||= []).push(v); });
-    return m;
-  }, [rpcTripVisits, allVisits]);
+    const base = rpcTripVisits || allVisits.reduce((m, v) => { (m[v.trip_id] ||= []).push(v); return m; }, {});
+    // Localize each trip's city names from the per-visit snapshot (TRIP-146).
+    const out = {};
+    for (const k in base) out[k] = localizeVisits(base[k], lang);
+    return out;
+  }, [rpcTripVisits, allVisits, lang]);
 
   // Derive current user's role from the participant profiles RPC result
   const getRoleFor = (trip) => {

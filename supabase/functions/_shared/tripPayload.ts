@@ -70,7 +70,12 @@ export async function buildTripData(tripId: string): Promise<TripData | null> {
     for (const r of (crows ?? []) as any[]) dir[String(r.geonameid)] = r;
   }
   const cityVisitsOut = cv.map((v) => ({
-    ...v, cities: v?.geonameid != null ? dir[String(v.geonameid)] ?? null : null,
+    ...v,
+    // city_name (the DB column) is dropped in TRIP-146; keep the field present
+    // for existing n8n/bot consumers (contract unchanged) as the English snapshot.
+    // name_i18n travels alongside for locale-aware rendering.
+    city_name: v?.name_i18n?.en ?? v?.city_name_en ?? null,
+    cities: v?.geonameid != null ? dir[String(v.geonameid)] ?? null : null,
   }));
 
   return {
