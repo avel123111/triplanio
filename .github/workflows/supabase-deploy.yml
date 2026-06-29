@@ -251,28 +251,24 @@ jobs:
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
 
-      - name: Resolve Vercel environment
-        id: venv
+      # REMOTE build on Vercel (NOT --prebuilt / not `vercel build`). The project's
+      # env vars — including Sensitive/encrypted ones like VITE_SUPABASE_URL — are
+      # injected ONLY during a Vercel-side build. `vercel pull` cannot read Sensitive
+      # vars (they come down empty), so an off-platform `vercel build` would embed
+      # blank VITE_* into the bundle and ship a white screen. Building on Vercel is
+      # also exactly what the old Git integration did. Token/org/project come from
+      # the job env; running inside the checked-out repo associates the deploy with
+      # the dev/main git branch → the branch/custom domain (dev.triplanio.com /
+      # triplanio.com via --prod) follows.
+      - name: Deploy to Vercel (remote build)
         run: |
+          set -euo pipefail
           case "${{ github.ref_name }}" in
-            main) echo "env=production" >> "$GITHUB_OUTPUT"; echo "prod=--prod" >> "$GITHUB_OUTPUT" ;;
-            dev)  echo "env=preview"    >> "$GITHUB_OUTPUT"; echo "prod="       >> "$GITHUB_OUTPUT" ;;
+            main) PROD=--prod ;;
+            dev)  PROD= ;;
             *) echo "::error::Unsupported branch '${{ github.ref_name }}'"; exit 1 ;;
           esac
-
-      # Pull project settings + env vars (VITE_*) for the target environment, then
-      # build and deploy the prebuilt output. Token is read from $VERCEL_TOKEN.
-      # The deploy runs inside the checked-out repo on the dev/main branch, so
-      # Vercel associates it with that git branch → the branch/custom domain
-      # (dev.triplanio.com / triplanio.com) follows. Verify on first run.
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=${{ steps.venv.outputs.env }}
-
-      - name: Build
-        run: vercel build ${{ steps.venv.outputs.prod }}
-
-      - name: Deploy (prebuilt)
-        run: vercel deploy --prebuilt ${{ steps.venv.outputs.prod }}
+          vercel deploy $PROD --yes
 
   # 4. Visibility (TRIP-134 Ф1, extended Ф3): one Telegram ping per run — success
   # AND failure. Runs LAST, `if: always()`, so it fires even when an upstream job

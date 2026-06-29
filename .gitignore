@@ -43,3 +43,6 @@ dist_chk*/
 
 # Claude Code / Cyrus local (per-machine) settings
 .claude/settings.local.json
+
+# Vercel CLI local (pulled env / project link)
+.vercel
