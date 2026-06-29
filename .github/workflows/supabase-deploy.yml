@@ -28,7 +28,9 @@
 #
 # Requires repo secrets:
 #   SUPABASE_ACCESS_TOKEN              — Management API token (functions deploy + assert)
-#   SUPABASE_DB_URL_DEV / _PROD        — full Postgres URI per project (db push)
+#   SUPABASE_DB_URL_DEV / _PROD        — full Postgres URI per project (db push);
+#                                        MUST be the SESSION pooler (port 5432), not
+#                                        the transaction pooler (6543) — see db push step.
 #   VERCEL_TOKEN                       — Vercel token (account scope, project access)
 #   VERCEL_ORG_ID / VERCEL_PROJECT_ID  — from `.vercel/project.json` / Vercel settings
 #   TELEGRAM_OPS_BOT_TOKEN / _CHAT_ID  — ops bot for deploy notifications
@@ -87,9 +89,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Pinned (not `latest`): a CLI bump silently changed `db push`'s internal
+      # query to use named prepared statements, which collide on the transaction
+      # pooler (the 42P05 incident). Pin so CI behaviour can't drift under us.
       - uses: supabase/setup-cli@v2
         with:
-          version: latest
+          version: 2.108.0
 
       - uses: actions/setup-node@v5
         with:
@@ -146,24 +151,15 @@ jobs:
           # newer than the project's journal. Out-of-order is rejected on purpose
           # (caught earlier by PR guard 2a; surfaced here by notify if it slips).
           #
-          # Retry on transient pooler flakiness: `db push` over the Supabase
-          # transaction pooler intermittently dies with
-          #   ERROR: prepared statement "lrupscN_M" already exists (SQLSTATE 42P05)
-          # when it reuses a pooled server connection that still holds a prepared
-          # statement. The error happens during db push's internal "migration list"
-          # query (before applying), and db push only applies versions newer than the
-          # journal, so retrying with a fresh connection is SAFE and idempotent.
-          # DURABLE FIX (separate, by Pavel): point SUPABASE_DB_URL_* at the SESSION
-          # pooler (port 5432) / direct connection, not the TRANSACTION pooler (6543).
-          ok=0
-          for attempt in 1 2 3 4; do
-            if supabase db push --db-url "$URL" --yes; then ok=1; break; fi
-            echo "::warning::db push attempt $attempt failed (transient?); retrying in $((attempt*5))s…"
-            sleep $((attempt*5))
-          done
-          if [ "$ok" != 1 ]; then
-            echo "::error::db push failed after 4 attempts"; exit 1
-          fi
+          # SUPABASE_DB_URL_* MUST point at the SESSION pooler (port 5432) — NOT the
+          # TRANSACTION pooler (6543). The CLI's internal "migration list" query uses
+          # named prepared statements; over the transaction pooler they collide on a
+          # reused pooled backend with
+          #   ERROR: prepared statement "lrupsc_1_0" already exists (SQLSTATE 42P05)
+          # DETERMINISTICALLY (the re-stamp step's `migration list` primes the backend,
+          # then db push reuses it → fails every time — no retry can clear it). Session
+          # mode gives each connection its own backend, so prepared statements work.
+          supabase db push --db-url "$URL" --yes
 
   # 2. Edge functions — after migrations succeed (or are skipped).
   deploy:
@@ -190,7 +186,7 @@ jobs:
 
       - uses: supabase/setup-cli@v2
         with:
-          version: latest
+          version: 2.108.0
 
       - name: Deploy edge functions
         env:
