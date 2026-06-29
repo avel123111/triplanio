@@ -43,6 +43,19 @@ All from `github.com/affaan-m/ECC @ 71d22d0` (MIT). Standalone copies — intern
 `ecc:` cross-references between them may not resolve, but the methodology/body
 is intact.
 
+## code-simplifier (subagent, TRIP-147)
+
+Standalone subagent vendored into `.claude/agents/code-simplifier.md` (an agent,
+not a `SKILL.md`, so it lives on the guaranteed-loaded agents channel):
+
+| Agent | Source repo | Commit | License | File |
+|---|---|---|---|---|
+| code-simplifier | github.com/anthropics/claude-plugins-official | `ceb9b72` | Apache-2.0 | `plugins/code-simplifier/agents/code-simplifier.md` |
+
+Verbatim copy (only an inline provenance comment added after the frontmatter).
+It reads our own `CLAUDE.md` standards at runtime; the upstream body keeps its
+original TS-flavoured examples — do not hand-edit, re-vendor at the pinned commit.
+
 ## Caveat: does Cyrus load `.claude/skills/`?
 
 Cyrus docs explicitly list `CLAUDE.md`, `.claude/agents/`, `.claude/commands/`,
