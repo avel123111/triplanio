@@ -72,6 +72,43 @@ jobs:
         # the PR. Mark this check required in branch protection to enforce on merge.
         run: npm run typecheck
 
+  # PR-only guards (TRIP-134). Block a bad PR before it merges; they never touch
+  # runtime. Skipped on push (post-merge re-run of this gate) since they diff
+  # against the PR base. Each script: 0 ok, 1 violation, 2 internal error.
+  #   2a check-migration-numbering   — dup / out-of-order / hand-typed timestamps
+  #   2b check-destructive-migrations — DROP/RENAME/ALTER…DROP without opt-in marker
+  #   2c check-verify-jwt            — new externally-callable fn missing config.toml pin
+  #   2d check-i18n                  — duplicate keys + new hardcoded UI strings
+  guards:
+    name: PR guards (migrations / verify_jwt / i18n)
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # full history so we can diff against the base branch
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Fetch base branch
+        run: git fetch --no-tags origin "${{ github.base_ref }}"
+      - name: 2a — migration numbering
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-migration-numbering.mjs
+      - name: 2b — destructive migrations
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-destructive-migrations.mjs
+      - name: 2c — verify_jwt for new functions
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-verify-jwt.mjs
+      - name: 2d — i18n (dup keys + hardcoded strings)
+        if: ${{ !cancelled() }}
+        env: { BASE_REF: 'origin/${{ github.base_ref }}' }
+        run: node scripts/ci/check-i18n.mjs
+
   deno:
     name: Deno typecheck (edge functions)
     runs-on: ubuntu-latest
