@@ -2,7 +2,7 @@
 // Run: npm test  (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { uniqueCityCount, uniqueCountryCount, transitVisits, isTransitVisit, uniqueTransitCities } from './trip-cities.js';
+import { uniqueCityCount, uniqueCountryCount, transitVisits, isTransitVisit, uniqueTransitCities, cityLabel, localizeVisits } from './trip-cities.js';
 
 // A trip: home anchor (start) → Lisbon → Porto → a pass-through waypoint →
 // Madrid → back to Lisbon → home anchor (end). Anchors + waypoint must not
@@ -95,6 +95,25 @@ test('transitVisits / isTransitVisit filter correctly', () => {
   assert.equal(isTransitVisit({ kind: 'transit' }), true);
   assert.equal(isTransitVisit({ kind: 'start' }), false);
   assert.equal(isTransitVisit(null), false);
+});
+
+test('cityLabel: localized snapshot first, then en, then city_name_en, then legacy', () => {
+  const v = { name_i18n: { en: 'Moscow', es: 'Moscú', ru: 'Москва' }, city_name_en: 'Moscow', city_name: 'Москва' };
+  assert.equal(cityLabel(v, 'ru'), 'Москва');
+  assert.equal(cityLabel(v, 'es'), 'Moscú');
+  assert.equal(cityLabel(v, 'en'), 'Moscow');
+  assert.equal(cityLabel(v, 'de'), 'Moscow');                       // no de -> en slot
+  assert.equal(cityLabel({ name_i18n: {}, city_name_en: 'Rome' }, 'ru'), 'Rome'); // empty snapshot -> en col
+  assert.equal(cityLabel({ city_name: 'Legacy' }, 'ru'), 'Legacy'); // pre-save in-memory object
+  assert.equal(cityLabel(null, 'en'), '');
+});
+
+test('localizeVisits: rewrites city_name from the snapshot, non-mutating', () => {
+  const src = [{ id: 'a', name_i18n: { en: 'Lisbon', ru: 'Лиссабон' }, city_name: 'Lisbon' }];
+  const out = localizeVisits(src, 'ru');
+  assert.equal(out[0].city_name, 'Лиссабон');
+  assert.equal(src[0].city_name, 'Lisbon'); // original untouched
+  assert.deepEqual(localizeVisits(null, 'en'), []);
 });
 
 test('empty / invalid input -> 0', () => {

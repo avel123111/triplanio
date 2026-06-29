@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
             external_city_id: cv.external_city_id,
             geonameid: cv.geonameid,
             name_i18n: cv.name_i18n,
-            city_name: cv.city_name,
+            city_name_en: cv.city_name_en,
             country: cv.country,
             country_code: cv.country_code,
             latitude: cv.latitude,

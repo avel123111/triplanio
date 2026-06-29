@@ -34,7 +34,7 @@ import DocsLens, { AddDocDialog } from './DocsLens';
 import SettingsLens from './SettingsLens';
 import ChatLens from './ChatLens';
 import { budgetCategoryOptions } from '@/lib/budget/constants';
-import { uniqueCityCount } from '@/lib/trip-cities';
+import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole } from '@/lib/members';
 import ChatWidget from '@/components/chat/ChatWidget';
 import ScreenMap from '@/pages/ScreenMap';
@@ -759,7 +759,7 @@ function CityRail({ visits = [], scrollRef }) {
 // ─── TripView (main export) ───────────────────────────────────────────────────
 
 export default function TripView() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { tripId } = useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
@@ -855,7 +855,7 @@ export default function TripView() {
   });
 
   const trip             = shellData?.trip;
-  const visits           = shellData?.cityVisits     || [];
+  const visits           = useMemo(() => localizeVisits(shellData?.cityVisits || [], lang), [shellData, lang]);
   const hotels           = contentData?.hotels       || [];
   const activities       = contentData?.activities   || [];
   const transfers        = contentData?.transfers    || [];
