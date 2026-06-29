@@ -44,6 +44,9 @@ where gg.geonameid = g.geonameid;
 
 create index if not exists gaz_doc on geo_gazetteer_test using gin (doc);
 
+-- drop first: the return type gains country_code, and CREATE OR REPLACE cannot change
+-- an existing function's result type (42P13).
+drop function if exists public.search_gazetteer(text, text, int);
 create or replace function public.search_gazetteer(q text, lang text default 'en', lim int default 10)
 returns table (geonameid bigint, display text, subtitle text, country_code text,
                population bigint, feature_code text, lat double precision, lng double precision)
