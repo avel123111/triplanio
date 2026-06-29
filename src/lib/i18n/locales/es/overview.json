@@ -1,0 +1,12 @@
+{
+  "map_empty": "Añade ciudades para ver el mapa",
+  "map_title": "Mapa de la ruta",
+  "open": "Abrir",
+  "stat_cities": "Ciudades",
+  "stat_countries": "Países",
+  "stat_distance": "Distancia",
+  "stat_duration": "Duración",
+  "stat_transfers": "Trayectos",
+  "unit_days": "d",
+  "unit_nights": "n"
+}

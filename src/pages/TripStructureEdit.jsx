@@ -11,7 +11,7 @@ import { useRouteDnD } from '@/lib/useRouteDnD';
 import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
-import { uniqueCityCount } from '@/lib/trip-cities';
+import { uniqueCityCount, localizeVisits } from '@/lib/trip-cities';
 import { resolveMyRole } from '@/lib/members';
 import { formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
@@ -99,8 +99,8 @@ function applyAdjacencyGaps(nodes, transfers = []) {
   });
 }
 
-function buildDraft(shell, transfers = []) {
-  const visits = sortVisits(shell?.cityVisits || []);
+function buildDraft(shell, transfers = [], lang) {
+  const visits = localizeVisits(sortVisits(shell?.cityVisits || []), lang);
   // nights = stored date span. gap (days between the previous checkout and this
   // check-in) now comes from the INCOMING transfer's day_change flag: an overnight
   // / day-change transfer means this city starts +1 day after the previous one.
@@ -263,7 +263,7 @@ export default function TripStructureEdit() {
   // shell+content are available — they're cached from TripView, so the editor
   // paints on the very first render with no skeleton frame (no entry flicker).
   if (draft === null && shell && content) {
-    setDraft(buildDraft(shell, content.transfers));
+    setDraft(buildDraft(shell, content.transfers, lang));
   }
 
   const trip = shell?.trip;
@@ -523,8 +523,9 @@ export default function TripStructureEdit() {
     });
     const tmpId = node.id; // swap this tmp- id for the real uuid the moment add_city returns
     runAction(() => rpcAddCity(tripId, {
-      city_name: city.city_name, kind,
+      kind,
       geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
+      city_name_en: city.city_name_en || null,
       country: city.country || null, country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,

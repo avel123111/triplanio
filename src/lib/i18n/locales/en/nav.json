@@ -1,0 +1,17 @@
+{
+  "account": "Account",
+  "admin_panel": "Admin panel",
+  "aria_primary": "Primary",
+  "aria_social": "Social",
+  "back_to_trip": "Back to trip",
+  "budget": "Budget",
+  "edit_trip": "Edit",
+  "logout": "Log out",
+  "notifications": "Notifications",
+  "pro_badge": "Pro subscription",
+  "profile": "Profile",
+  "settings": "Settings",
+  "toggle_theme": "Toggle theme",
+  "trips": "Trips",
+  "view_trip": "View"
+}

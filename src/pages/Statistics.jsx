@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { isProActive } from '@/lib/subscription';
-import { cityKey } from '@/lib/trip-cities';
+import { cityKey, localizeVisits } from '@/lib/trip-cities';
 import { continentOf, COUNTRIES_PER_CONTINENT } from '@/lib/continents';
 import {
   statisticsBundle, availableYears, filterByYear, dominantTone, TONE, countVisitUnits,
@@ -70,7 +70,7 @@ function StatsScreenSkeleton() {
 }
 
 export default function Statistics() {
-  const { t, locale } = useI18n();
+  const { t, locale, lang } = useI18n();
   const { user } = useAuth();
   const { isDark, toggle: toggleTheme } = useTheme();
   const nav = useNavigate();
@@ -100,7 +100,7 @@ export default function Statistics() {
     staleTime: 30_000,
   });
   const showSkeleton = isLoading && !travelStats;
-  const allPoints = travelStats?.points || [];
+  const allPoints = useMemo(() => localizeVisits(travelStats?.points || [], lang), [travelStats, lang]);
   const trips = travelStats?.trips || {};
   const isEmpty = allPoints.length === 0;
 

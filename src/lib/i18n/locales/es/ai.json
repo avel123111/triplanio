@@ -1,0 +1,21 @@
+{
+  "add_more": "Añadir más (quedan {remaining})",
+  "analyze": "Analizar",
+  "analyzing_hotel": "La IA está analizando la reserva…",
+  "analyzing_transfer": "La IA está analizando el billete…",
+  "aria_close": "Cerrar",
+  "aria_delete": "Eliminar",
+  "drop_files": "Suelta archivos o haz clic",
+  "error_files": "No se pudieron reconocer los archivos",
+  "error_link": "No se pudo reconocer el enlace",
+  "formats_hint": "PDF, PNG, JPG • hasta 5MB • hasta {max} archivos",
+  "hotel_title": "Reconocer reserva",
+  "hotel_url_placeholder": "Pega un enlace de reserva (Booking, Airbnb…)",
+  "or": "o",
+  "recognize_files_few": "Reconocer {count} archivos",
+  "recognize_files_many": "Reconocer {count} archivos",
+  "recognize_files_one": "Reconocer {count} archivo",
+  "too_many_files": "Solo puedes subir un máximo de {max} archivos a la IA",
+  "transfer_title": "Reconocer billete / reserva",
+  "transfer_url_placeholder": "Pega un enlace de reserva (Aviasales, Trainline…)"
+}

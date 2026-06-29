@@ -1,50 +1,62 @@
-# Auto-deploy Supabase backend for Triplanio — edge functions (TRIP-73) + migrations (TRIP-68 Ф3).
+# Sequential deploy for Triplanio — backend (Supabase) THEN frontend (Vercel).
+# TRIP-73 (functions) + TRIP-68 Ф3 (migrations) + TRIP-134 Ф3 (sequential chain).
 #
-# Model: merge → dev  deploys to Supabase dev  (nydhzevdizkfaxdlikgc)
-#        merge → main deploys to Supabase prod (tizscxrpuopobgcxbekf)
+# Model: push → dev  deploys to Supabase dev  (nydhzevdizkfaxdlikgc) + Vercel (preview / dev domain)
+#        push → main deploys to Supabase prod (tizscxrpuopobgcxbekf) + Vercel (production)
 # Feature branches / Vercel previews never touch the backend.
 #
-# Two independent deploy jobs, each gated by what actually changed (detect job):
-#   - deploy  : edge functions (config-driven `functions deploy`, verify_jwt from config.toml)
-#   - migrate : `supabase db push` applies pending migrations from supabase/migrations/
-# A functions-only change never re-pushes migrations; a migrations-only change never
-# re-deploys all functions (avoids version churn).
+# WHY this workflow now owns the frontend deploy (TRIP-134 Ф3): Vercel's Git
+# auto-deploy for dev/main is disabled (Ignored Build Step exits 0 on dev/main,
+# 1 elsewhere → PR previews still build). The frontend is deployed HERE, by
+# token, AFTER the backend — so the frontend never ships ahead of its backend,
+# and the token-based deploy sidesteps the Vercel Hobby "non-owner commit" block.
 #
-# MIGRATIONS (TRIP-68): history was reconciled to a single baseline
-# (supabase/migrations/20260625120000_baseline.sql); repo == dev == prod journals.
-# Going forward: new migrations MUST be timestamped (`supabase migration new <name>`),
-# NEVER hand-numbered 00NN (that re-introduces the drift TRIP-68 fixed). `db push`
-# applies only files newer than what each project's journal already has.
+# Ordering (one shape for dev and main), via `needs` + result-aware `if`:
+#   gate + detect
+#     → migrate   (db push, STRICT — no --include-all)
+#       → deploy  (edge functions; never outruns its migration)
+#         → vercel (frontend; never ships before the backend)
+#           → notify (Telegram, success AND failure, if: always())
+# Front-only fast-path: if no supabase/** changed, migrate+deploy are skipped and
+# vercel runs straight after the gate. A failure anywhere upstream stops the chain
+# before vercel (frontend stays on the last good build) and notify reports it.
+#
+# MIGRATIONS (TRIP-68): history reconciled to a single baseline; repo == dev ==
+# prod journals. New migrations MUST be timestamped (`supabase migration new`),
+# never hand-numbered (CI guard 2a enforces this on PRs). `db push` applies only
+# files newer than each project's journal.
 #
 # Requires repo secrets:
-#   SUPABASE_ACCESS_TOKEN              — Management API token (functions deploy + assert), both projects
-#   SUPABASE_DB_URL_DEV / _PROD        — full Postgres connection URI per project (session pooler or direct),
-#                                        used by `db push`. Get from Dashboard → Settings → Database →
-#                                        Connection string (URI), password included.
+#   SUPABASE_ACCESS_TOKEN              — Management API token (functions deploy + assert)
+#   SUPABASE_DB_URL_DEV / _PROD        — full Postgres URI per project (db push);
+#                                        MUST be the SESSION pooler (port 5432), not
+#                                        the transaction pooler (6543) — see db push step.
+#   VERCEL_TOKEN                       — Vercel token (account scope, project access)
+#   VERCEL_ORG_ID / VERCEL_PROJECT_ID  — from `.vercel/project.json` / Vercel settings
+#   TELEGRAM_OPS_BOT_TOKEN / _CHAT_ID  — ops bot for deploy notifications
 # CI does not manage per-function secrets (STRIPE_*, N8N_SECRET, RESEND_API_KEY, TELEGRAM_*).
-name: Deploy Supabase (functions + migrations)
+name: Deploy (backend → frontend)
 
 on:
   push:
-    branches: [dev, main] # dev → Supabase dev; main → Supabase prod
-    paths:
-      - 'supabase/functions/**' # glob MUST cover _shared/** (fans out to consumers)
-      - 'supabase/config.toml'
-      - 'supabase/migrations/**'
-  # Manual run: redeploy functions + re-push migrations on the branch you run it from.
+    branches: [dev, main] # dev → Supabase dev + Vercel preview; main → prod + Vercel production
+    # No paths filter: the frontend deploy must run on EVERY dev/main push now
+    # that Vercel Git auto-deploy is off. The `detect` job decides whether the
+    # backend jobs (migrate/deploy) actually run.
+  # Manual run: redeploy backend + frontend on the branch you run it from.
   workflow_dispatch:
 
 # One deploy per branch at a time; never cancel a deploy mid-flight.
 concurrency:
-  group: supabase-deploy-${{ github.ref }}
+  group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  # Re-run the full gate on the merged branch before deploying.
+  # Re-run the full gate on the merged branch before deploying anything.
   gate:
     uses: ./.github/workflows/checks.yml
 
-  # Decide which deploy jobs need to run (path-based). workflow_dispatch runs both.
+  # Decide which backend jobs need to run (path-based). workflow_dispatch runs both.
   detect:
     runs-on: ubuntu-latest
     outputs:
@@ -62,10 +74,103 @@ jobs:
             migrations:
               - 'supabase/migrations/**'
 
+  # 1. Migrations first — a function must never outrun its migration.
+  migrate:
+    name: Apply migrations
+    needs: [gate, detect]
+    if: >-
+      ${{ !cancelled()
+          && needs.gate.result == 'success'
+          && needs.detect.result == 'success'
+          && (github.event_name == 'workflow_dispatch' || needs.detect.outputs.migrations == 'true') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # re-stamp step commits the rename back to dev (TRIP-134 Ф5)
+    steps:
+      - uses: actions/checkout@v5
+
+      # Pinned (not `latest`): a CLI bump silently changed `db push`'s internal
+      # query to use named prepared statements, which collide on the transaction
+      # pooler (the 42P05 incident). Pin so CI behaviour can't drift under us.
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.108.0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # TRIP-134 Ф5 — auto re-stamp out-of-order migrations, DEV ONLY. Closes the
+      # residual race guard 2a can't catch: two PRs pass 2a against the same
+      # journal snapshot; after the first merges the second is now <= the journal
+      # max → strict db push would reject it (the TRIP-121 incident). This renames
+      # only PENDING (not-yet-applied) files whose timestamp is <= the applied max,
+      # commits the rename back to dev with [skip ci], and lets the db push step
+      # below apply it in this same run. NEVER on main (renaming there = repo↔prod
+      # journal drift, TRIP-68) — there out-of-order stays a hard fail + alert.
+      - name: Auto re-stamp out-of-order migrations (dev only)
+        if: ${{ github.ref_name == 'dev' }}
+        env:
+          DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DB_URL_DEV" ]; then
+            echo "::error::Missing SUPABASE_DB_URL_DEV"; exit 1
+          fi
+          # `migration list` reports Local vs Remote(applied); the script parses it.
+          supabase migration list --db-url "$DB_URL_DEV" > /tmp/mlist.txt
+          node scripts/ci/restamp-out-of-order-migrations.mjs /tmp/mlist.txt
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am \
+              "chore(migrations): auto re-stamp out-of-order migration(s) [skip ci]" \
+              -m "TRIP-134 Ф5: a pending migration was <= the dev journal max (out-of-order); re-stamped to a fresh timestamp so strict db push applies it. [skip ci] avoids a redundant deploy; the rename is applied in this same run."
+            # Push the rename back to dev. If dev moved meanwhile the push is
+            # rejected → step fails → notify alerts (safe; rare, manual retry).
+            git push origin HEAD:dev
+          else
+            echo "re-stamp: nothing to do"
+          fi
+
+      - name: Apply pending migrations (db push)
+        env:
+          DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+          DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}
+        run: |
+          set -euo pipefail
+          case "${{ github.ref_name }}" in
+            dev)  URL="$DB_URL_DEV" ;;
+            main) URL="$DB_URL_PROD" ;;
+            *) echo "::error::Unsupported branch '${{ github.ref_name }}'"; exit 1 ;;
+          esac
+          if [ -z "$URL" ]; then
+            echo "::error::Missing DB URL secret for ${{ github.ref_name }} (SUPABASE_DB_URL_DEV/_PROD)"; exit 1
+          fi
+          # Non-interactive, STRICT (no --include-all): applies only migrations
+          # newer than the project's journal. Out-of-order is rejected on purpose
+          # (caught earlier by PR guard 2a; surfaced here by notify if it slips).
+          #
+          # SUPABASE_DB_URL_* MUST point at the SESSION pooler (port 5432) — NOT the
+          # TRANSACTION pooler (6543). The CLI's internal "migration list" query uses
+          # named prepared statements; over the transaction pooler they collide on a
+          # reused pooled backend with
+          #   ERROR: prepared statement "lrupsc_1_0" already exists (SQLSTATE 42P05)
+          # DETERMINISTICALLY (the re-stamp step's `migration list` primes the backend,
+          # then db push reuses it → fails every time — no retry can clear it). Session
+          # mode gives each connection its own backend, so prepared statements work.
+          supabase db push --db-url "$URL" --yes
+
+  # 2. Edge functions — after migrations succeed (or are skipped).
   deploy:
     name: Deploy functions
-    needs: [gate, detect]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect.outputs.functions == 'true' }}
+    needs: [gate, detect, migrate]
+    if: >-
+      ${{ !cancelled()
+          && needs.gate.result == 'success'
+          && needs.detect.result == 'success'
+          && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+          && (github.event_name == 'workflow_dispatch' || needs.detect.outputs.functions == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -81,7 +186,7 @@ jobs:
 
       - uses: supabase/setup-cli@v2
         with:
-          version: latest
+          version: 2.108.0
 
       - name: Deploy edge functions
         env:
@@ -126,33 +231,134 @@ jobs:
           done
           exit $fail
 
-  migrate:
-    name: Apply migrations
-    needs: [gate, detect]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.detect.outputs.migrations == 'true' }}
+  # 3. Frontend — strictly AFTER the backend. Runs on every dev/main push whose
+  # gate passed; skipped only if an upstream backend job FAILED (chain stops →
+  # frontend stays on the last good build). Front-only changes reach here with
+  # migrate+deploy skipped (fast-path).
+  vercel:
+    name: Deploy frontend (Vercel)
+    needs: [gate, detect, migrate, deploy]
+    if: >-
+      ${{ !cancelled()
+          && needs.gate.result == 'success'
+          && needs.detect.result == 'success'
+          && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+          && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') }}
     runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v5
-
-      - uses: supabase/setup-cli@v2
+      - uses: actions/setup-node@v5
         with:
-          version: latest
+          node-version: 22
 
-      - name: Apply pending migrations (db push)
-        env:
-          DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
-          DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}
+      - name: Guard required secrets
+        run: |
+          set -uo pipefail
+          if [ -z "${VERCEL_TOKEN}" ] || [ -z "${VERCEL_ORG_ID}" ] || [ -z "${VERCEL_PROJECT_ID}" ]; then
+            echo "::error::Missing VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID repo secrets"; exit 1
+          fi
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+
+      # REMOTE build on Vercel (NOT --prebuilt / not `vercel build`). The project's
+      # env vars — including Sensitive/encrypted ones like VITE_SUPABASE_URL — are
+      # injected ONLY during a Vercel-side build. `vercel pull` cannot read Sensitive
+      # vars (they come down empty), so an off-platform `vercel build` would embed
+      # blank VITE_* into the bundle and ship a white screen. Building on Vercel is
+      # also exactly what the old Git integration did. Token/org/project come from
+      # the job env; running inside the checked-out repo associates the deploy with
+      # the dev/main git branch → the branch/custom domain (dev.triplanio.com /
+      # triplanio.com via --prod) follows.
+      - name: Deploy to Vercel (remote build)
         run: |
           set -euo pipefail
           case "${{ github.ref_name }}" in
-            dev)  URL="$DB_URL_DEV" ;;
-            main) URL="$DB_URL_PROD" ;;
+            main) PROD=--prod ;;
+            dev)  PROD= ;;
             *) echo "::error::Unsupported branch '${{ github.ref_name }}'"; exit 1 ;;
           esac
-          if [ -z "$URL" ]; then
-            echo "::error::Missing DB URL secret for ${{ github.ref_name }} (SUPABASE_DB_URL_DEV/_PROD)"; exit 1
+          vercel deploy $PROD --yes
+
+  # 4. Visibility (TRIP-134 Ф1, extended Ф3): one Telegram ping per run — success
+  # AND failure. Runs LAST, `if: always()`, so it fires even when an upstream job
+  # failed or was skipped (the chain stops at the first failure → downstream
+  # skipped = terminal). Reports every job's result and points at the run.
+  #
+  # Dedicated OPS bot (NOT the production telegramWebhook bot). Until the secrets
+  # exist the step no-ops gracefully (never fails the pipeline):
+  #   TELEGRAM_OPS_BOT_TOKEN — ops bot token from @BotFather
+  #   TELEGRAM_OPS_CHAT_ID   — chat/channel id the ops bot posts to
+  notify:
+    name: Notify (Telegram)
+    needs: [gate, detect, migrate, deploy, vercel]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram notification
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_OPS_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_OPS_CHAT_ID }}
+          GATE: ${{ needs.gate.result }}
+          DETECT: ${{ needs.detect.result }}
+          MIGRATE: ${{ needs.migrate.result }}
+          DEPLOY: ${{ needs.deploy.result }}
+          VERCEL: ${{ needs.vercel.result }}
+        run: |
+          set -uo pipefail
+          if [ -z "$TOKEN" ] || [ -z "$CHAT_ID" ]; then
+            echo "::warning::TELEGRAM_OPS_BOT_TOKEN / TELEGRAM_OPS_CHAT_ID not set — skipping Telegram notification"
+            exit 0
           fi
-          # Non-interactive: applies only migrations newer than the project's journal.
-          # After TRIP-68 reconcile the journal holds the baseline, so this is a
-          # no-op until a new timestamped migration lands.
-          supabase db push --db-url "$URL" --yes
+
+          # Map branch → human target.
+          case "${{ github.ref_name }}" in
+            dev)  TARGET="dev (Supabase dev + Vercel preview)" ;;
+            main) TARGET="prod (Supabase prod + Vercel production)" ;;
+            *)    TARGET="${{ github.ref_name }}" ;;
+          esac
+
+          # Per-job glyph. A skipped job (path-filtered out, or chain stopped
+          # before it) is neutral — only failure/cancelled count as bad.
+          glyph() {
+            case "$1" in
+              success)   echo "✅" ;;
+              failure)   echo "❌" ;;
+              cancelled) echo "🚫" ;;
+              skipped|"") echo "➖" ;;
+              *)         echo "❓ $1" ;;
+            esac
+          }
+
+          # Overall: bad if any tracked job failed or was cancelled.
+          OVERALL="success"
+          for r in "$GATE" "$DETECT" "$MIGRATE" "$DEPLOY" "$VERCEL"; do
+            case "$r" in failure|cancelled) OVERALL="failure" ;; esac
+          done
+          if [ "$OVERALL" = "success" ]; then HEAD="✅ Deploy OK"; else HEAD="❌ Deploy FAILED"; fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          MSG="$HEAD — $TARGET
+          Branch: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+          By: ${{ github.actor }}
+
+          $(glyph "$GATE") gate
+          $(glyph "$MIGRATE") migrate (db push)
+          $(glyph "$DEPLOY") deploy (functions)
+          $(glyph "$VERCEL") vercel (frontend)
+
+          Run: $RUN_URL"
+
+          # Plain text (no parse_mode) — avoids Markdown/HTML escaping landmines.
+          curl -fsS -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT_ID}" \
+            --data-urlencode "text=${MSG}" \
+            --data-urlencode "disable_web_page_preview=true" \
+            >/dev/null \
+            && echo "Telegram notification sent ($OVERALL)" \
+            || echo "::warning::Telegram sendMessage failed (non-fatal)"

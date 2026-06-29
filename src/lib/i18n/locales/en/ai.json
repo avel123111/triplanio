@@ -1,0 +1,21 @@
+{
+  "add_more": "Add more ({remaining} left)",
+  "analyze": "Analyze",
+  "analyzing_hotel": "AI is analyzing the booking…",
+  "analyzing_transfer": "AI is analyzing the ticket…",
+  "aria_close": "Close",
+  "aria_delete": "Delete",
+  "drop_files": "Drop files or click",
+  "error_files": "Could not recognize the files",
+  "error_link": "Could not recognize the link",
+  "formats_hint": "PDF, PNG, JPG • up to 5MB • up to {max} files",
+  "hotel_title": "Recognize booking",
+  "hotel_url_placeholder": "Paste a booking link (Booking, Airbnb…)",
+  "or": "or",
+  "recognize_files_few": "Recognize {count} files",
+  "recognize_files_many": "Recognize {count} files",
+  "recognize_files_one": "Recognize {count} file",
+  "too_many_files": "You can upload at most {max} files to AI",
+  "transfer_title": "Recognize ticket / booking",
+  "transfer_url_placeholder": "Paste a booking link (Aviasales, Trainline…)"
+}

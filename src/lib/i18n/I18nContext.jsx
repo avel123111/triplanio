@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/api/supabaseClient';
-import { TRANSLATIONS, LANGUAGES, localeTag } from './translations';
+import { TRANSLATIONS } from './dictionary';
+import { LANGUAGES, localeTag } from './translations';
 import {
   applyLuxonLocale,
   formatDateTime,
@@ -19,6 +20,17 @@ const I18nContext = createContext({
   setUnits: () => {},
   t: (key) => key,
 });
+
+// Resolve a dotted `namespace.key` address against a namespaced locale dict
+// ({ namespace: { bareKey: value } }). Splits on the FIRST dot so bare keys may
+// themselves contain dots. Returns undefined when absent (caller falls back).
+function resolveKey(dict, key) {
+  if (!dict) return undefined;
+  const i = key.indexOf('.');
+  if (i <= 0) return dict[key]; // dotless address — no namespace
+  const ns = dict[key.slice(0, i)];
+  return ns ? ns[key.slice(i + 1)] : undefined;
+}
 
 const STORAGE_KEY = 'travel-planner-lang';
 const UNITS_STORAGE_KEY = 'travel-planner-units';
@@ -89,7 +101,10 @@ export function I18nProvider({ children }) {
 
   const t = useCallback((key, vars) => {
     const dict = TRANSLATIONS[lang] || TRANSLATIONS.ru;
-    let str = dict[key] || TRANSLATIONS.ru[key] || key;
+    // Keys are stored bare inside per-namespace dicts; the call-site address is
+    // `namespace.key`. Split on the FIRST dot to resolve. Fallback chain mirrors
+    // the previous flat lookup: active locale → ru → the key itself.
+    let str = resolveKey(dict, key) || resolveKey(TRANSLATIONS.ru, key) || key;
     if (vars && typeof str === 'string') {
       Object.entries(vars).forEach(([k, v]) => {
         str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));

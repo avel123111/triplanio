@@ -59,11 +59,17 @@ export function normalizePositions(visits) {
 // integer day gap.
 const calDay = (iso, tz) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }).setZone(tz || 'UTC').toISODate() : null);
 
-// Same city = same external_city_id; fallback to name+country_code (TZ E2).
-// Exported so the timeline's "no transfer" warning shares one identity rule
-// with the editor's E1/E2 (single source of truth).
-export const cityIdentity = (v) =>
-  v?.external_city_id || `${(v?.city_name || '').trim().toLowerCase()}|${(v?.country_code || '').trim().toLowerCase()}`;
+// Same city = same geonameid (TRIP-146); fallback to name+country_code, then
+// raw external_city_id (TZ E2). Exported so the timeline's "no transfer" warning
+// shares one identity rule with the editor's E1/E2 (single source of truth) —
+// mirrors trip-cities.cityKey priority. Name source is the snapshot/`city_name_en`,
+// NOT the dropped `city_name` column (Phase 6).
+export const cityIdentity = (v) => {
+  if (v?.geonameid != null && v.geonameid !== '') return `gn:${v.geonameid}`;
+  const name = String(v?.name_i18n?.en || v?.city_name_en || '').trim().toLowerCase();
+  if (name) return `${name}|${(v?.country_code || '').trim().toLowerCase()}`;
+  return v?.external_city_id ? `id:${v.external_city_id}` : '';
+};
 
 // City visit dates are DATE-ONLY (YYYY-MM-DD) — a calendar date, not an instant.
 // Compare as plain ISO date strings; never run them through setZone (that would

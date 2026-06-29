@@ -1354,10 +1354,10 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
     const c = segs[i].toCity;
     if (!c?.city_name) throw new Error(t('event.err_layover_city'));
     waypoints.push({
-      city_name: c.city_name,
       external_city_id: c.external_city_id || null,
       geonameid: c.geonameid ?? null,
       name_i18n: c.name_i18n || null,
+      city_name_en: c.city_name_en || null,
       country: c.country || null,
       country_code: c.country_code || null,
       latitude: c.latitude ?? null,
