@@ -75,6 +75,10 @@ export class StripeAdapter implements PaymentAdapter {
     return this.stripe.charges.retrieve(id);
   }
 
+  fetchPaymentIntent(id: string, opts?: Stripe.PaymentIntentRetrieveParams): Promise<Stripe.PaymentIntent> {
+    return this.stripe.paymentIntents.retrieve(id, opts);
+  }
+
   fetchInvoice(id: string): Promise<Stripe.Invoice> {
     return this.stripe.invoices.retrieve(id);
   }

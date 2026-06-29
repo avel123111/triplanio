@@ -19,7 +19,7 @@ import { PLAN_TO_PRODUCT, PRODUCT_TO_PLAN, stripeEnv, getActiveProviderProducts,
 import { StripeAdapter } from './payments/stripeAdapter.ts';
 import { getProviderCustomerId } from './payments/customer.ts';
 import { reportPaymentAnomaly } from './sentry.ts';
-import { revokeLostProFeaturesForUser } from './revokeLostProFeatures.ts';
+import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from './revokeLostProFeatures.ts';
 
 const THROTTLE_MIN = 10;
 
@@ -137,5 +137,69 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
 
   await admin.rpc('recompute_user_entitlement', { p_user_id: userId });
   await revokeLostProFeaturesForUser(admin, userId);
+  return true;
+}
+
+/**
+ * Ленивый reconcile разовой Trip Pro (симметрия подписочному выше). Закрывает
+ * асимметрию: для подписок потерянный вебхук само-лечился, а для pro_trip —
+ * нет, и потерянный refund/dispute оставлял трип Pro навсегда.
+ *
+ * Направление одно — stuck-PRO: trips.is_pro_trip=true, но активная покупка трипа
+ * по факту зарефанжена/диспутнута в Stripe (вебхук потерялся). stuck-FREE для
+ * pro_trip не делаем: после оплаты фронт сам поллит is_pro_trip, повторная покупка
+ * — отдельный платёж, материализовать «потерянную» покупку без checkout-id нечем.
+ *
+ * Троттл — purchase.synced_at (10 мин на трип, как users.entitlement_synced_at);
+ * общий ресурс: все участники, открывшие трип, делят одну сверку.
+ * Зовётся ТОЛЬКО когда is_pro_trip=true (иначе сверять нечего). Возвращает true,
+ * если реально сходил в Stripe (вызывающий перечитает is_pro_trip).
+ */
+export async function reconcileTripEntitlement(admin: SupabaseClient, tripId: string): Promise<boolean> {
+  if (!tripId) return false;
+
+  const { data: rows } = await admin
+    .from('purchase')
+    .select('id, provider_charge_id, synced_at')
+    .eq('trip_id', tripId)
+    .eq('product_code', 'trip_pro_lifetime')
+    .eq('status', 'active')
+    .limit(1);
+  const p = rows && rows.length > 0 ? rows[0] : null;
+  if (!p || !p.provider_charge_id) return false; // нечего/нечем сверять
+
+  // ---- Throttle ----
+  const last = p.synced_at ? new Date(p.synced_at as string).getTime() : 0;
+  if (Number.isFinite(last) && Date.now() - last < THROTTLE_MIN * 60 * 1000) return false;
+
+  const key = Deno.env.get('STRIPE_SECRET_KEY');
+  if (!key) return false;
+
+  // Помечаем синк сразу — медленный/падающий Stripe всё равно троттлит следующее чтение.
+  await admin.from('purchase').update({ synced_at: new Date().toISOString() }).eq('id', p.id);
+
+  const adapter = new StripeAdapter(key, stripeEnv(key));
+  try {
+    // provider_charge_id у pro_trip — payment_intent. Тянем его charge и смотрим
+    // полный рефанд / диспут (как вебхук: частичный рефанд Pro НЕ снимает).
+    const pi = await adapter.fetchPaymentIntent(p.provider_charge_id as string, { expand: ['latest_charge'] });
+    const charge = (typeof pi.latest_charge === 'object' ? pi.latest_charge : null) as Stripe.Charge | null;
+    if (!charge) return true;
+    const fullyRefunded = charge.refunded === true
+      || (typeof charge.amount === 'number' && typeof charge.amount_refunded === 'number'
+          && charge.amount > 0 && charge.amount_refunded >= charge.amount);
+    const disputed = charge.disputed === true;
+    if (fullyRefunded || disputed) {
+      await admin.from('purchase').update({
+        status: fullyRefunded ? 'refunded' : 'disputed',
+        ...(fullyRefunded ? { refunded_at: new Date().toISOString() } : {}),
+      }).eq('id', p.id);
+      await admin.rpc('recompute_trip_entitlement', { p_trip_id: tripId });
+      await revokeLostProFeaturesForTrip(admin, tripId);
+      await reportPaymentAnomaly('reconcile_revoked_trip', { trip_id: tripId, payment_intent: p.provider_charge_id }, 'warning');
+    }
+  } catch (e) {
+    console.error('reconcileTripEntitlement: payment_intent lookup failed', p.provider_charge_id, (e as Error).message);
+  }
   return true;
 }

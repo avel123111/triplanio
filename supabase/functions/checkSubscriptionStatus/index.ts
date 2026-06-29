@@ -6,7 +6,7 @@
 import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin as admin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
-import { reconcileEntitlement, needsEntitlementReconcile } from '../_shared/reconcileEntitlement.ts';
+import { reconcileEntitlement, needsEntitlementReconcile, reconcileTripEntitlement } from '../_shared/reconcileEntitlement.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -39,7 +39,16 @@ Deno.serve(async (req) => {
 
     const isOwner = trip.created_by === user.id;
 
-    if (trip.is_pro_trip) {
+    // recompute-on-read для разовой Trip Pro (симметрия подписочному пути ниже):
+    // потерянный refund/dispute-вебхук оставил бы is_pro_trip=true навсегда. Сверяем
+    // покупку со Stripe (throttled per-trip) ПЕРЕД тем как поверить флагу. Если
+    // сверка сходила в Stripe и сняла Pro — перечитываем флаг и идём в owner-путь.
+    let tripIsPro = trip.is_pro_trip === true;
+    if (tripIsPro && await reconcileTripEntitlement(admin, tripId)) {
+      const { data: fresh } = await admin.from('trips').select('is_pro_trip').eq('id', tripId).single();
+      tripIsPro = fresh?.is_pro_trip === true;
+    }
+    if (tripIsPro) {
       return Response.json({ isPro: true, isOwner, reason: 'trip' }, { headers: corsHeaders });
     }
 
