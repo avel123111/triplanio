@@ -9,8 +9,10 @@
 
 import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
+import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
+import { stripeEnv } from '../_shared/payments/catalog.ts';
+import { getProviderCustomerId, saveProviderCustomerId } from '../_shared/payments/customer.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -41,43 +43,40 @@ Deno.serve(async (req) => {
       console.error('STRIPE_SECRET_KEY missing');
       return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
     }
-    const stripe = new Stripe(stripeKey);
+    const adapter = new StripeAdapter(stripeKey, stripeEnv(stripeKey));
 
-    // Fast path (Ф3): use the stored customer id (populated lazily by the webhook).
-    // Avoids a Stripe round-trip through the subscription object.
-    let customerId: string | null = null;
-    const { data: urow } = await supabaseAdmin
-      .from('users').select('stripe_customer_id').eq('id', user.id).single();
-    customerId = (urow?.stripe_customer_id as string) || null;
+    // Fast path: customer id из provider_customer (канон). Избегает round-trip к Stripe.
+    let customerId = await getProviderCustomerId(supabaseAdmin, user.id);
 
-    // Fallback: resolve the customer through the most recent recurring subscription.
+    // Fallback (теперь почти не срабатывает): createStripeCheckout создаёт+сохраняет
+    // customer ДО чекаута, а вебхук сохраняет его на каждом событии — provider_customer
+    // у платившего юзера всегда заполнен. Оставлен как страховка для исторических строк:
+    // резолвим customer через последнюю recurring подписку реестра И записываем обратно,
+    // чтобы следующий заход шёл по fast-path (не дёргал Stripe каждый раз).
     if (!customerId) {
       const { data: subs } = await supabaseAdmin
-        .from('trip_subscriptions')
-        .select('stripe_subscription_id, start_date')
+        .from('subscription')
+        .select('provider_subscription_id, created_at')
         .eq('user_id', user.id)
-        .in('type', ['pro_monthly', 'pro_yearly'])
-        .not('stripe_subscription_id', 'is', null)
-        .order('start_date', { ascending: false })
+        .in('product_code', ['account_pro_monthly', 'account_pro_yearly'])
+        .not('provider_subscription_id', 'is', null)
+        .order('created_at', { ascending: false })
         .limit(5);
-      const latest = (subs ?? []).find((s) => s.stripe_subscription_id);
-      if (!latest?.stripe_subscription_id) {
+      const latest = (subs ?? []).find((s) => s.provider_subscription_id);
+      if (!latest?.provider_subscription_id) {
         return Response.json({ error: 'No active subscription found' }, { status: 404, headers: corsHeaders });
       }
-      const subscription = await stripe.subscriptions.retrieve(latest.stripe_subscription_id);
+      const subscription = await adapter.fetchSubscription(latest.provider_subscription_id);
       customerId = (subscription.customer as string) || null;
+      if (customerId) await saveProviderCustomerId(supabaseAdmin, user.id, customerId);
     }
 
     if (!customerId) {
       return Response.json({ error: 'No Stripe customer linked to this subscription' }, { status: 404, headers: corsHeaders });
     }
 
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: returnUrl,
-    });
-
-    return Response.json({ url: portalSession.url }, { headers: corsHeaders });
+    const { url } = await adapter.createPortalSession(customerId, returnUrl);
+    return Response.json({ url }, { headers: corsHeaders });
 
   } catch (error) {
     await captureEdgeError(error, 'createBillingPortal');

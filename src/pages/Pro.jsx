@@ -17,7 +17,7 @@ export default function Pro() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { t, lang, fmtMoney } = useI18nFormat();
+  const { t, fmtMoney } = useI18nFormat();
   const { isDark, toggle: toggleTheme } = useTheme();
   const isPro = isProActive(user);
 
@@ -25,6 +25,12 @@ export default function Pro() {
   // pro_trip may only be bought by the trip OWNER. If a non-owner lands here with
   // a tripId (e.g. a leaked link from a shared trip), hide the per-trip plan —
   // they can still buy a subscription, but can't buy Pro for someone else's trip.
+  // Every in-app CTA that carries a tripId is already owner-gated, so the owner is
+  // the only realistic visitor: show pro_trip OPTIMISTICALLY while ownership is
+  // still unknown (null) and only drop it once the check explicitly returns false.
+  // This avoids a late "third card pops in" reflow for the common (owner) path;
+  // the rare leaked-URL non-owner sees a single one-time 3→2 collapse instead, and
+  // the actual purchase is blocked server-side regardless.
   const [tripOwner, setTripOwner] = useState(null); // null = unknown
   useEffect(() => {
     if (!tripId) return;
@@ -34,10 +40,12 @@ export default function Pro() {
       .catch(() => { if (!cancelled) setTripOwner(false); });
     return () => { cancelled = true; };
   }, [tripId]);
-  const hidePerTrip = searchParams.get('hidePerTrip') === '1' || !tripId || tripOwner !== true;
+  const hidePerTrip = searchParams.get('hidePerTrip') === '1' || !tripId || tripOwner === false;
 
   const [prices, setPrices] = useState(null);
-  const [pricesLoading, setPricesLoading] = useState(false);
+  // Start in the loading state: prices are always fetched on mount, so the very
+  // first paint should already show skeletons (not a one-frame flash of "-" cards).
+  const [pricesLoading, setPricesLoading] = useState(true);
   const [picked, setPicked] = useState('pro_monthly');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -64,10 +72,10 @@ export default function Pro() {
       try { isIframe = window.self !== window.top; } catch { isIframe = true; }
       if (isIframe) { setErrorMsg(t('sub.iframe_alert')); setLoading(false); return; }
 
-      // pro_trip returns to the trip itself (not the profile) — the result modal is
-      // global and opens on any route; subscriptions return to settings.
-      const returnPath = (planType === 'pro_trip' && tripId) ? `/trip/${tripId}` : '/settings';
-      const response = await supabase.functions.invoke('createStripeCheckout', { body: { tripId, planType, returnPath, locale: lang } });
+      // landing-path (pro_trip → /trip/<id>, sub → /settings) деривируется НА СЕРВЕРЕ
+      // из (planType, tripId) — returnPath клиента не шлём (ломал детерминизм тела под
+      // нативную идемпотентность Stripe). Result-модалка глобальная, откроется на любом роуте.
+      const response = await supabase.functions.invoke('createStripeCheckout', { body: { tripId, planType } });
       if (response.error) throw response.error;
       if (response.data?.url) { window.location.href = response.data.url; return; }
       setLoading(false);
@@ -81,11 +89,6 @@ export default function Pro() {
           if (portal.data?.url) { window.location.href = portal.data.url; return; }
         } catch (e) { console.error('Billing portal fallback failed:', e); }
         setErrorMsg(t('sub.already_active_msg'));
-        setLoading(false);
-        return;
-      }
-      if (code === 'CHECKOUT_PROCESSING') {
-        setErrorMsg(t('sub.recent_pending_msg'));
         setLoading(false);
         return;
       }
@@ -195,7 +198,6 @@ export default function Pro() {
                       p.popular ? 'plan-card--featured' : '',
                       selected ? 'plan-card--selected' : '',
                     ].filter(Boolean).join(' ')}
-                    style={{ '--card-delay': `${0.04 + i * 0.09}s` }}
                     role="radio"
                     aria-checked={selected}
                     aria-label={p.title}

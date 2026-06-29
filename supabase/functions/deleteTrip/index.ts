@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     }
 
     // Step 4 — delete the trip (critical, last). FK cascades wipe all child
-    // tables; trip_subscriptions / partner_clicks are SET NULL (kept).
+    // tables; purchase / partner_clicks are SET NULL (kept for accounting).
     const { error: delErr } = await supabaseAdmin.from('trips').delete().eq('id', tripId);
     if (delErr) {
       console.error('deleteTrip: delete failed', delErr);

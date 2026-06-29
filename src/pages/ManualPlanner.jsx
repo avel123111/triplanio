@@ -189,10 +189,10 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
   const stopArm = (e) => e.stopPropagation();
   const pick = (picked) => {
     if (picked) {
-      onChange({ city_name: picked.city_name, country: picked.country, country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
+      onChange({ city_name: picked.city_name, city_name_en: picked.city_name_en, geonameid: picked.geonameid ?? null, name_i18n: picked.name_i18n || null, country: picked.country, country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
       setEditing(false);
     } else {
-      onChange({ city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
+      onChange({ city_name: '', city_name_en: '', geonameid: null, name_i18n: null, country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
     }
   };
 
@@ -799,6 +799,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     return {
       id: Date.now() + idx,
       external_city_id: best?.external_city_id || null,
+      geonameid: best?.geonameid ?? null,
+      name_i18n: best?.name_i18n || null,
       city_name: c.city_name || '',
       // English name kept for partner links (Stay22/Viator) and the directory:
       // prefer the AI's city_name_en, else the geocoder's canonical en name.
@@ -1023,6 +1025,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         visitsToInsert.push({
           trip_id: trip.id,
           external_city_id: home.external_city_id || null,
+          geonameid: home.geonameid ?? null,
+          name_i18n: home.name_i18n || null,
           city_name: home.city_name,
           city_name_en: home.city_name_en || null,
           country: home.country || null,
@@ -1047,6 +1051,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         visitsToInsert.push({
           trip_id: trip.id,
           external_city_id: c.external_city_id || null,
+          geonameid: c.geonameid ?? null,
+          name_i18n: c.name_i18n || null,
           city_name: c.city_name,
           city_name_en: c.city_name_en || null,
           country: c.country || null,
@@ -1068,6 +1074,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         visitsToInsert.push({
           trip_id: trip.id,
           external_city_id: effectiveReturn.external_city_id || null,
+          geonameid: effectiveReturn.geonameid ?? null,
+          name_i18n: effectiveReturn.name_i18n || null,
           city_name: effectiveReturn.city_name,
           city_name_en: effectiveReturn.city_name_en || null,
           country: effectiveReturn.country || null,

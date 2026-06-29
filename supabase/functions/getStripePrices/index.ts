@@ -12,9 +12,9 @@
 
 import { corsFor } from '../_shared/cors.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
-import Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
-import { isTestStripeKey, productsForEnv } from '../_shared/stripeCatalog.ts';
+import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
+import { getActiveProviderProducts, stripeEnv, PRODUCT_TO_PLAN } from '../_shared/payments/catalog.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -29,34 +29,27 @@ Deno.serve(async (req) => {
       console.error('STRIPE_SECRET_KEY missing');
       return Response.json({ error: 'Server misconfigured: Stripe key missing' }, { status: 500, headers: corsHeaders });
     }
-    const isTestEnv = isTestStripeKey(stripeKey);
+    const env = stripeEnv(stripeKey);
+    const adapter = new StripeAdapter(stripeKey, env);
 
-    const stripe = new Stripe(stripeKey);
-    const productIds = productsForEnv(isTestEnv);
+    // Каталог из БД (product / provider_price) — единственный источник. Пусто =
+    // реальный мисконфиг (миграция Ф1 сидирует обе среды): логируем и отдаём {}.
+    const catalog = await getActiveProviderProducts('stripe', env);
+    if (catalog.length === 0) {
+      console.warn(`getStripePrices: DB catalog empty for env=${env} (seed migration not applied?)`);
+    }
 
     const entries = await Promise.all(
-      Object.entries(productIds).map(async ([planType, productId]) => {
-        // Expand default_price for a single call — no hardcoded price IDs
-        const product = await stripe.products.retrieve(productId, {
-          expand: ['default_price'],
-        });
-        let price = product.default_price;
-        // Fallback: first active price if no default is set
-        if (!price || typeof price === 'string') {
-          const list = await stripe.prices.list({ product: productId, active: true, limit: 1 });
-          price = list.data[0];
-        }
-        if (!price) {
-          throw new Error(`Product ${productId} (${planType}) has no active prices in Stripe`);
-        }
-        const p = price as Stripe.Price;
+      catalog.map(async ({ product_code, provider_product_id }) => {
+        const planType = PRODUCT_TO_PLAN[product_code];
+        const price = await adapter.resolvePriceForProduct(provider_product_id);
         return [planType, {
           plan_type: planType,
-          price_id: p.id,
-          product_id: productId,
-          unit_amount: p.unit_amount,
-          currency: p.currency,
-          recurring_interval: p.recurring?.interval || null,
+          price_id: price.price_id,
+          product_id: provider_product_id,
+          unit_amount: price.unit_amount,
+          currency: price.currency,
+          recurring_interval: price.recurring_interval,
         }];
       })
     );

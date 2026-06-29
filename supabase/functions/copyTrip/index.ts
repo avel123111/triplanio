@@ -121,6 +121,8 @@ Deno.serve(async (req) => {
           .insert({
             trip_id: newTripId,
             external_city_id: cv.external_city_id,
+            geonameid: cv.geonameid,
+            name_i18n: cv.name_i18n,
             city_name: cv.city_name,
             country: cv.country,
             country_code: cv.country_code,

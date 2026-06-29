@@ -33,7 +33,6 @@ export default {
   'sub.iframe_alert': 'Для оплаты необходимо открыть приложение в новой вкладке (не в iframe)',
   'sub.upgrade_error': 'Ошибка: {message}',
   'sub.already_active_msg': 'У тебя уже есть активная подписка. Открой Настройки, чтобы изменить план.',
-  'sub.recent_pending_msg': 'Недавний платёж ещё обрабатывается. Подожди пару секунд, план обновится автоматически.',
   'sub.activating_pro': 'Активируем Pro-подписку…',
   'sub.processing': 'Обработка…',
   'sub.choose_plan': 'Выбрать план',

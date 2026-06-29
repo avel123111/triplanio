@@ -49,7 +49,7 @@ export async function buildTripData(tripId: string): Promise<TripData | null> {
     { data: services },
     { data: members },
   ] = await Promise.all([
-    supabaseAdmin.from('city_visits').select('*, cities(*)').eq('trip_id', tripId),
+    supabaseAdmin.from('city_visits').select('*').eq('trip_id', tripId),
     supabaseAdmin.from('hotel_stays').select('*').eq('trip_id', tripId),
     supabaseAdmin.from('activities').select('*').eq('trip_id', tripId),
     supabaseAdmin.from('transfers').select('*').eq('trip_id', tripId),
@@ -57,9 +57,25 @@ export async function buildTripData(tripId: string): Promise<TripData | null> {
     supabaseAdmin.from('trip_members').select('*').eq('trip_id', tripId),
   ]);
 
+  // Attach the affiliate-directory row LATE-BOUND by GeoNames identity
+  // (visit.geonameid → cities.geonameid, TRIP-146), not the city_id FK embed:
+  // `cities` is sparse, so a city added later is picked up with no backfill.
+  // Shape unchanged for n8n/bot consumers (visit.cities = the directory row).
+  const cv = (cityVisits ?? []) as any[];
+  const gids = [...new Set(cv.map((v) => v?.geonameid).filter((g) => g != null))];
+  const dir: Record<string, any> = {};
+  if (gids.length) {
+    const { data: crows } = await supabaseAdmin
+      .from('cities').select('*').in('geonameid', gids as number[]);
+    for (const r of (crows ?? []) as any[]) dir[String(r.geonameid)] = r;
+  }
+  const cityVisitsOut = cv.map((v) => ({
+    ...v, cities: v?.geonameid != null ? dir[String(v.geonameid)] ?? null : null,
+  }));
+
   return {
     trip,
-    cityVisits: cityVisits ?? [],
+    cityVisits: cityVisitsOut,
     hotels: hotels ?? [],
     activities: activities ?? [],
     transfers: transfers ?? [],

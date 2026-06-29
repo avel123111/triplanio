@@ -24,6 +24,7 @@ import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Field, Severity, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
+import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -148,7 +149,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         {/* sr-only a11y title — visible h2 is inside dlg__head */}
-        <DialogTitle className="sr-only">{t('doc.dialog_new')}</DialogTitle>
+        <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('doc.dialog_new')}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="dlg__head">
@@ -335,7 +336,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle className="sr-only">{doc.title}</DialogTitle>
+        <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{doc.title}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="dlg__head">
@@ -500,7 +501,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
           </>
         ) : (
           <>
-            <Avatar name={user?.full_name || '?'} size="sm" />
+            <Avatar name={displayName(user?.email, user?.full_name)} size="sm" />
             <span className="dl-card__foot-who">{t('doc.only_you')}</span>
           </>
         )}

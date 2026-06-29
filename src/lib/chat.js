@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
+import { withOwnerRow } from '@/lib/members';
 
 export const CHAT_MESSAGES_KEY = (tripId) => ['chat-messages', tripId];
 export const CHAT_READ_KEY     = (tripId, userId) => ['chat-read', tripId, userId];
@@ -42,11 +43,9 @@ export function useChatId(tripId, { enabled = true } = {}) {
 // missing. The AI assistant is shown separately and is NOT counted here.
 
 export function chatParticipants(members = [], ownerId = '') {
-  const list = (members || []).filter((m) => m.status === 'active');
-  if (ownerId && !list.some((m) => m.role === 'owner' || m.user_id === ownerId)) {
-    list.unshift({ id: '__owner__', user_id: ownerId, role: 'owner', status: 'active' });
-  }
-  return list;
+  // withOwnerRow drops any stray creator row and prepends a single owner, so the
+  // creator is never listed as a viewer in chat (TRIP-143).
+  return withOwnerRow((members || []).filter((m) => m.status === 'active'), ownerId);
 }
 
 // Locale-aware "N people" (ru few/many via Intl.PluralRules; en/es collapse to one/many).

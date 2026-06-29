@@ -12,6 +12,7 @@ import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import { sortVisits, validateTrip, primaryIssues } from '@/lib/validation';
 import { uniqueCityCount } from '@/lib/trip-cities';
+import { resolveMyRole } from '@/lib/members';
 import { formatTripRange } from '@/lib/trip-dates';
 import { Icon } from '../design/icons';
 import { Btn, Skeleton, useToast, ActionMenu } from '../design/index';
@@ -503,6 +504,7 @@ export default function TripStructureEdit() {
     const node = {
       id: 'tmp-' + Math.random().toString(36).slice(2), kind,
       city_name: city.city_name, country: city.country || null, country_code: city.country_code || null,
+      geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || 'UTC', external_city_id: city.external_city_id || null,
       nights: provNights, gap: 0, start_date: provStart, end_date: provEnd,
@@ -522,6 +524,7 @@ export default function TripStructureEdit() {
     const tmpId = node.id; // swap this tmp- id for the real uuid the moment add_city returns
     runAction(() => rpcAddCity(tripId, {
       city_name: city.city_name, kind,
+      geonameid: city.geonameid ?? null, name_i18n: city.name_i18n || null,
       country: city.country || null, country_code: city.country_code || null,
       latitude: city.latitude ?? null, longitude: city.longitude ?? null,
       timezone: city.timezone || null, external_city_id: city.external_city_id || null,
@@ -606,8 +609,9 @@ export default function TripStructureEdit() {
   const endDate = seq[seq.length - 1]?.end_date;
   const totalNights = nightsBetween(startDate, endDate);
   const membersCount = content?.members?.length || 0;
-  const myMember = (content?.members || []).find((m) => m.user_id === user?.id);
-  const myRole = myMember?.role || (trip?.created_by === user?.id ? 'owner' : 'viewer');
+  // Shared role rule: created_by wins over any trip_members row, so the creator
+  // is never blocked from their own editor with "no access" (TRIP-143).
+  const myRole = resolveMyRole(content?.members, trip, user);
   const isOwner = myRole === 'owner';
   // The /edit route is reachable by direct URL — a viewer has no edit rights, so
   // guard it here with the SAME shared "no access" stub used for shellError above

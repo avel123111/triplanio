@@ -16,6 +16,7 @@ import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, Dialog, EmptyState, Field, Severity, Skeleton, ActionMenu, useToast } from '../design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { edgeErrorMessage, parseEdgeError } from '@/lib/edgeError';
+import { withOwnerRow } from '@/lib/members';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
@@ -219,7 +220,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
 
 // ─── ChangeRoleDialog ─────────────────────────────────────────────────────────
 
-function ChangeRoleDialog({ member, tripId, onSaved, open, onOpenChange }) {
+function ChangeRoleDialog({ member, email, tripId, onSaved, open, onOpenChange }) {
   const { t } = useI18n();
   const close = () => onOpenChange?.(false);
   const [role, setRole] = useState(member.role || 'viewer');
@@ -245,7 +246,7 @@ function ChangeRoleDialog({ member, tripId, onSaved, open, onOpenChange }) {
         <Btn variant="primary" loading={saving} onClick={save}>{saving ? t('member.saving') : t('trip.form_save')}</Btn>
       </>}>
       <div style={{ marginBottom: 14, fontSize: 'var(--fs-base)', color: 'var(--muted)' }}>
-        {member.user_full_name || member.invite_email}
+        {displayName(email || member.invite_email, member.user_full_name)}
       </div>
       <Field label={t('member.role_label')}>
         <select className="select" value={role} onChange={e => setRole(e.target.value)}>
@@ -349,27 +350,18 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
     );
   }
 
-  // Add trip owner as first "member" if not already in list. Don't seed
-  // user_full_name with the email - leave it empty so the profile resolver
-  // (or the auth user's own name when they are the owner) wins the fallback.
+  // Shared owner rule (withOwnerRow): the creator is never a real trip_members
+  // row — ownership lives in trips.created_by. Drop any stray member row for the
+  // creator (e.g. an invited+accepted owner from before the guard) and prepend a
+  // single synthetic owner. Don't seed user_full_name with the email — leave it
+  // empty so the profile resolver (or the auth user's own name when they are the
+  // owner) wins the fallback (TRIP-143).
   const ownerId = trip?.created_by || '';
-  // The creator is never a real trip_members row — ownership lives in
-  // trips.created_by. Drop any stray member row for the creator (e.g. an
-  // invited+accepted owner from before the guard) so they're never shown as a
-  // viewer/admin and the synthetic owner row below is the single owner (TRIP-143).
-  const allMembers = members.filter(m => !ownerId || m.user_id !== ownerId);
-  const hasOwner = allMembers.some(m => m.role === 'owner');
-  if (!hasOwner && ownerId) {
-    const isMeOwner = user?.id && ownerId === user.id;
-    allMembers.unshift({
-      id: '__owner__',
-      trip_id: tripId,
-      user_id: ownerId,
-      user_full_name: isMeOwner ? (user?.full_name || '') : '',
-      role: 'owner',
-      status: 'active',
-    });
-  }
+  const isMeOwner = !!user?.id && ownerId === user.id;
+  const allMembers = withOwnerRow(members, ownerId, {
+    trip_id: tripId,
+    user_full_name: isMeOwner ? (user?.full_name || '') : '',
+  });
 
   return (
     <>
@@ -393,7 +385,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
           const realName = profile?.full_name || m.user_full_name
             || (m.user_id && user?.id && m.user_id === user.id ? user.full_name : '')
             || '';
-          const name = displayName(m.invite_email, realName);
+          const name = displayName(m.invite_email || profile?.email, realName);
           const hasRealName = !!realName;
           // Email line: invite_email for invited members, else the resolved
           // account email (covers the owner, who has no trip_members row).
@@ -447,7 +439,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
                       : [
                           m.status === 'pending' && { icon: 'send', label: t('members.resend'), onSelect: () => resend(m.id) },
                           m.status === 'declined' && { icon: 'send', label: t('member.invite_again'), onSelect: () => reinvite(m) },
-                          m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => setRoleState({ member: m }) },
+                          m.status === 'active' && { icon: 'edit', label: t('members.change_role'), onSelect: () => setRoleState({ member: m, email: m.invite_email || profile?.email }) },
                           { icon: 'trash', label: m.status === 'pending' ? t('member.cancel_invite') : t('members.remove'), danger: true, onSelect: () => removeMember(m.id) },
                         ]
                     }
@@ -475,7 +467,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
 
       <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} tripId={tripId} onSaved={refresh} />
       {promoteState && <InviteDialog open={!!promoteState} onOpenChange={(o) => { if (!o) setPromoteState(null); }} tripId={tripId} promoteMember={promoteState.member} onSaved={refresh} />}
-      {roleState && <ChangeRoleDialog open={!!roleState} onOpenChange={(o) => { if (!o) setRoleState(null); }} member={roleState.member} tripId={tripId} onSaved={refresh} />}
+      {roleState && <ChangeRoleDialog open={!!roleState} onOpenChange={(o) => { if (!o) setRoleState(null); }} member={roleState.member} email={roleState.email} tripId={tripId} onSaved={refresh} />}
     </>
   );
 }

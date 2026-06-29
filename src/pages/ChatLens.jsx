@@ -141,7 +141,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const [showMention, setShowMention] = useState(false);
   const [failedAiIds, setFailedAiIds] = useState(() => new Set());
 
-  const myName = user?.user_metadata?.full_name || user?.full_name || user?.email || t('member.you_self');
+  const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
 
   // ── Resolve chatId for this trip ──
   const { data: chatId } = useQuery({
@@ -169,14 +169,15 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
   const profiles = useUserProfiles(profileIds, tripId);
   const nameFor = (userId) => {
     let real = profiles[userId]?.full_name;
-    let email = '';
+    let email = profiles[userId]?.email || '';
     if (!real) {
       const mm = members.find(m => m.user_id === userId);
       real = mm?.user_full_name || '';
-      email = mm?.invite_email || '';
+      email = email || mm?.invite_email || '';
     }
     if (!real && user?.id && userId === user.id) {
       real = user.full_name || '';
+      email = email || user.email || '';
     }
     return displayName(email, real);
   };

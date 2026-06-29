@@ -46,7 +46,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   const taRef = useRef(null);
   const ovRef = useRef(null);
 
-  const myName = user?.user_metadata?.full_name || user?.full_name || user?.email || '';
+  const myName = displayName(user?.email, user?.user_metadata?.full_name || user?.full_name);
   const unread = useUnreadChatCount(tripId);
   const { data: chatId } = useChatId(tripId);
 
@@ -102,13 +102,16 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
   const profiles = useUserProfiles(profileIds, tripId);
   const nameFor = (userId) => {
     let real = profiles[userId]?.full_name;
-    let email = '';
+    let email = profiles[userId]?.email || '';
     if (!real) {
       const mm = members.find((m) => m.user_id === userId);
       real = mm?.user_full_name || '';
-      email = mm?.invite_email || '';
+      email = email || mm?.invite_email || '';
     }
-    if (!real && user?.id && userId === user.id) real = user.full_name || '';
+    if (!real && user?.id && userId === user.id) {
+      real = user.full_name || '';
+      email = email || user.email || '';
+    }
     return displayName(email, real);
   };
 

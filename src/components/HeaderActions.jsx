@@ -4,6 +4,7 @@ import { Icon } from '@/design/icons';
 import { Avatar } from '@/design/index';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
 import { useT } from '@/lib/i18n/I18nContext';
+import { displayName } from '@/lib/displayName';
 
 /**
  * Right-hand utility cluster of the unified <AppHeader>: theme toggle ·
@@ -31,12 +32,12 @@ export default function HeaderActions({ user, isPro, isDark, onToggleTheme }) {
       <NotificationsBell triggerClassName="icon-btn" />
       <button
         className="app-header__account"
-        title={user?.full_name || user?.email || t('nav.account')}
-        aria-label={user?.full_name || user?.email || t('nav.account')}
+        title={user?.email ? displayName(user.email, user.full_name) : t('nav.account')}
+        aria-label={user?.email ? displayName(user.email, user.full_name) : t('nav.account')}
         onClick={() => nav('/settings')}
         type="button"
       >
-        <Avatar className="app-header__avatar" name={user?.full_name || user?.email || '?'} photo={user?.avatar_url} size="sm" />
+        <Avatar className="app-header__avatar" name={displayName(user?.email, user?.full_name)} photo={user?.avatar_url} size="sm" />
         {isPro && <span className="app-header__pro">PRO</span>}
       </button>
     </div>

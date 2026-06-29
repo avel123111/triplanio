@@ -8,9 +8,11 @@
 
 import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import Stripe from 'npm:stripe@17.0.0';
+import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
-import { reconcileEntitlement } from '../_shared/reconcileEntitlement.ts';
+import { reconcileEntitlement, needsEntitlementReconcile } from '../_shared/reconcileEntitlement.ts';
+import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
+import { PRODUCT_TO_PLAN, stripeEnv, ENTITLING_STATUSES, type ProductCode } from '../_shared/payments/catalog.ts';
 
 // Reads the EXACT amount the caller is billed from their live Stripe subscription
 // (the price line item), not the public catalog price — so a user on a legacy /
@@ -21,8 +23,8 @@ async function readActualPrice(stripeSubscriptionId: string | null) {
   const key = Deno.env.get('STRIPE_SECRET_KEY');
   if (!key) return null;
   try {
-    const stripe = new Stripe(key);
-    const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId, { expand: ['items.data.price'] });
+    const adapter = new StripeAdapter(key, stripeEnv(key));
+    const sub = await adapter.fetchSubscription(stripeSubscriptionId, { expand: ['items.data.price'] });
     const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
     if (!price || price.unit_amount == null) return null;
     return {
@@ -47,27 +49,20 @@ Deno.serve(async (req) => {
     // Read subscription fields from users table
     let { data: userData } = await supabaseAdmin
       .from('users')
-      .select('subscription_status, subscription_end_date, email, stripe_customer_id')
+      .select('subscription_status, subscription_end_date, email')
       .eq('id', user.id)
       .single();
 
-    const now = new Date();
-
-    // recompute-on-read (Ф3): self-heal a wrong cache via a throttled reconcile.
-    //  • stuck-PRO  — cache says pro but the end date is past/missing (lost renewal).
-    //  • stuck-FREE — cache says free but the user has a Stripe customer id (a lost
-    //    ACTIVATION webhook); reconcile discovers the live sub and restores Pro.
-    // Cheap in the common case: never fires for a never-paid free user (no customer
-    // id) or a healthy pro row (future end). Throttled to ≤1 Stripe call / 10 min.
-    const endPast =
-      !userData?.subscription_end_date || new Date(userData.subscription_end_date) <= now;
-    const needsReconcile =
-      (userData?.subscription_status === 'pro' && endPast) ||
-      (userData?.subscription_status !== 'pro' && !!userData?.stripe_customer_id);
+    // recompute-on-read (Ф3): self-heal a wrong cache via a throttled reconcile
+    // (stuck-PRO / stuck-FREE). Cheap in the common case: never fires for a
+    // never-paid free user (no customer id) or a healthy pro row (future end).
+    // Throttled to ≤1 Stripe call / 10 min. Предикат — единый (O1).
+    const needsReconcile = await needsEntitlementReconcile(
+      supabaseAdmin, user.id, userData?.subscription_status, userData?.subscription_end_date);
     if (needsReconcile && await reconcileEntitlement(supabaseAdmin, user.id)) {
       ({ data: userData } = await supabaseAdmin
         .from('users')
-        .select('subscription_status, subscription_end_date, email, stripe_customer_id')
+        .select('subscription_status, subscription_end_date, email')
         .eq('id', user.id)
         .single());
     }
@@ -80,30 +75,28 @@ Deno.serve(async (req) => {
     const hasProSubscription = isProRpc === true;
 
     if (hasProSubscription) {
-      // Find active TripSubscription record — surfaces plan type & cancellation state
+      // Активная подписка из реестра — отдаёт тип плана и состояние отмены.
       const { data: subs } = await supabaseAdmin
-        .from('trip_subscriptions')
-        .select('*')
-        .eq('user_id', user.id);
+        .from('subscription')
+        .select('product_code, provider_subscription_id, cancel_at_period_end, status, created_at')
+        .eq('user_id', user.id)
+        .in('product_code', ['account_pro_monthly', 'account_pro_yearly'])
+        .in('status', [...ENTITLING_STATUSES])
+        .order('created_at', { ascending: false });
 
-      const recurring = (subs ?? [])
-        .filter((s) => s.type === 'pro_monthly' || s.type === 'pro_yearly')
-        .sort((a, b) =>
-          new Date(b.start_date || 0).getTime() - new Date(a.start_date || 0).getTime()
-        );
-      const latest = recurring[0] || null;
+      const latest = (subs ?? [])[0] || null;
+      // product_code → plan_type ('pro_monthly'/'pro_yearly') для совместимости с фронтом.
+      const subscriptionType = latest ? PRODUCT_TO_PLAN[latest.product_code as ProductCode] : null;
 
-      const actualPrice = await readActualPrice(latest?.stripe_subscription_id || null);
+      const actualPrice = await readActualPrice(latest?.provider_subscription_id || null);
 
       return Response.json({
         plan: 'pro',
         subscriptionEnd: userData?.subscription_end_date ?? null,
-        subscriptionType: latest?.type || null,
-        // Scheduled cancellation (UI "won't renew" state). Status stays 'active'
-        // verbatim; the flag lives in cancel_at_period_end (set by the webhook).
+        subscriptionType,
+        // Scheduled cancellation (UI "won't renew"). Status stays verbatim; flag in cancel_at_period_end.
         cancelled: latest?.cancel_at_period_end === true,
-        stripeSubscriptionId: latest?.stripe_subscription_id || null,
-        // Exact billed amount from Stripe (minor units), e.g. { amount: 500, currency: 'EUR', interval: 'month' }.
+        stripeSubscriptionId: latest?.provider_subscription_id || null,
         actualPrice,
         email: user.email,
       }, { headers: corsHeaders });
