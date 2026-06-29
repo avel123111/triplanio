@@ -8,10 +8,11 @@
 
 import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
-import Stripe from 'npm:stripe@17.0.0';
+import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { reconcileEntitlement, needsEntitlementReconcile } from '../_shared/reconcileEntitlement.ts';
-import { PRODUCT_TO_PLAN, type ProductCode } from '../_shared/payments/catalog.ts';
+import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
+import { PRODUCT_TO_PLAN, stripeEnv, ENTITLING_STATUSES, type ProductCode } from '../_shared/payments/catalog.ts';
 
 // Reads the EXACT amount the caller is billed from their live Stripe subscription
 // (the price line item), not the public catalog price — so a user on a legacy /
@@ -22,8 +23,8 @@ async function readActualPrice(stripeSubscriptionId: string | null) {
   const key = Deno.env.get('STRIPE_SECRET_KEY');
   if (!key) return null;
   try {
-    const stripe = new Stripe(key);
-    const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId, { expand: ['items.data.price'] });
+    const adapter = new StripeAdapter(key, stripeEnv(key));
+    const sub = await adapter.fetchSubscription(stripeSubscriptionId, { expand: ['items.data.price'] });
     const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
     if (!price || price.unit_amount == null) return null;
     return {
@@ -80,7 +81,7 @@ Deno.serve(async (req) => {
         .select('product_code, provider_subscription_id, cancel_at_period_end, status, created_at')
         .eq('user_id', user.id)
         .in('product_code', ['account_pro_monthly', 'account_pro_yearly'])
-        .in('status', ['active', 'trialing', 'past_due'])
+        .in('status', [...ENTITLING_STATUSES])
         .order('created_at', { ascending: false });
 
       const latest = (subs ?? [])[0] || null;

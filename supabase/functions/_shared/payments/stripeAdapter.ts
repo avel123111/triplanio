@@ -65,8 +65,18 @@ export class StripeAdapter implements PaymentAdapter {
     return this.stripe.subscriptions.retrieve(id, opts);
   }
 
+  /** Все подписки клиента (для reconcile stuck-FREE — материализация потерянной активации). */
+  async listSubscriptionsByCustomer(customerId: string, limit = 10): Promise<Stripe.Subscription[]> {
+    const res = await this.stripe.subscriptions.list({ customer: customerId, status: 'all', limit });
+    return res.data;
+  }
+
   fetchCharge(id: string): Promise<Stripe.Charge> {
     return this.stripe.charges.retrieve(id);
+  }
+
+  fetchPaymentIntent(id: string, opts?: Stripe.PaymentIntentRetrieveParams): Promise<Stripe.PaymentIntent> {
+    return this.stripe.paymentIntents.retrieve(id, opts);
   }
 
   fetchInvoice(id: string): Promise<Stripe.Invoice> {

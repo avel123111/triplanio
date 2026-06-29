@@ -12,7 +12,7 @@ import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv } from '../_shared/payments/catalog.ts';
-import { getProviderCustomerId } from '../_shared/payments/customer.ts';
+import { getProviderCustomerId, saveProviderCustomerId } from '../_shared/payments/customer.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -48,7 +48,11 @@ Deno.serve(async (req) => {
     // Fast path: customer id из provider_customer (канон). Избегает round-trip к Stripe.
     let customerId = await getProviderCustomerId(supabaseAdmin, user.id);
 
-    // Fallback: резолвим customer через последнюю recurring подписку реестра.
+    // Fallback (теперь почти не срабатывает): createStripeCheckout создаёт+сохраняет
+    // customer ДО чекаута, а вебхук сохраняет его на каждом событии — provider_customer
+    // у платившего юзера всегда заполнен. Оставлен как страховка для исторических строк:
+    // резолвим customer через последнюю recurring подписку реестра И записываем обратно,
+    // чтобы следующий заход шёл по fast-path (не дёргал Stripe каждый раз).
     if (!customerId) {
       const { data: subs } = await supabaseAdmin
         .from('subscription')
@@ -64,6 +68,7 @@ Deno.serve(async (req) => {
       }
       const subscription = await adapter.fetchSubscription(latest.provider_subscription_id);
       customerId = (subscription.customer as string) || null;
+      if (customerId) await saveProviderCustomerId(supabaseAdmin, user.id, customerId);
     }
 
     if (!customerId) {
