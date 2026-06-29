@@ -104,13 +104,17 @@ union all select 'gyg_unmatched',    count(*)::text from public.gyg_resolved whe
 
 -- ======================= PART 2 — сборка + свап строк (ДЕСТРУКТИВНО) ========
 -- Запускать ТОЛЬКО после ревью хвоста. Одной транзакцией.
+-- ПОСТОЯННУЮ схему здесь НЕ трогаем (FK не дропаем, индексы не вешаем) — это
+-- чистая DATA-операция. unique(geonameid) ставит миграция (CI/CD).
 begin;
 
--- Осиротить визиты (city_id повиснет; перерезолв — Phase 5).
-alter table public.city_visits drop constraint if exists city_visits_city_id_fkey;
+-- Осиротить визиты: снимаем ссылки (FK ОСТАЁТСЯ цел — не мутируем схему).
+-- Перерезолв осиротевших city_id — Phase 5.
+update public.city_visits set city_id = null where city_id is not null;
 
--- Вычистить строки (структура/RLS/гранты/identity сохраняются).
-truncate table public.cities;
+-- Вычистить строки. DELETE (а не TRUNCATE: TRUNCATE запрещён на таблице под FK;
+-- DELETE проходит — ссылок уже нет). Структура/RLS/гранты/identity сохраняются.
+delete from public.cities;
 
 -- Залить директорию: одна строка на geonameid, канонические поля из газеттира,
 -- провайдеры схлопнуты (ближайший Viator-dest на geonameid + GYG).
@@ -145,10 +149,10 @@ left join lateral (
   where gr.geonameid = ids.geonameid limit 1
 ) y on true;
 
--- geonameid становится уникальным ключом директории.
-create unique index if not exists cities_geonameid_key on public.cities(geonameid);
-
 commit;
+-- unique(geonameid) НЕ здесь — его вешает миграция (CI/CD): partial unique
+-- index `cities_geonameid_key where geonameid is not null`. Поэтому insert выше
+-- обязан давать одну строку на geonameid (он и даёт — группировка по ids).
 
 -- --- пост-свап валидация (security, правило 13 — аффилиат = деньги) ---
 -- select count(*) cities, count(distinct geonameid) uniq,
@@ -156,3 +160,11 @@ commit;
 --        count(*) filter (where getyourguide_id is not null) with_gyg
 -- from public.cities;
 -- Спот-чек известного: select name_en, country_code, viator_dest_id from public.cities where geonameid = 360630; -- Cairo
+
+
+-- ======================= PART 3 — cleanup лесов (после успешного PART 2) ====
+-- Транзиентные staging-таблицы отслужили → дроп, чтобы не было untracked-схемы.
+drop table if exists public.viator_resolved;
+drop table if exists public.gyg_resolved;
+drop table if exists public.viator_import;
+drop table if exists public.gyg_import;
