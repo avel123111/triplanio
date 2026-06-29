@@ -52,9 +52,13 @@ not a `SKILL.md`, so it lives on the guaranteed-loaded agents channel):
 |---|---|---|---|---|
 | code-simplifier | github.com/anthropics/claude-plugins-official | `ceb9b72` | Apache-2.0 | `plugins/code-simplifier/agents/code-simplifier.md` |
 
-Verbatim copy (only an inline provenance comment added after the frontmatter).
-It reads our own `CLAUDE.md` standards at runtime; the upstream body keeps its
-original TS-flavoured examples — do not hand-edit, re-vendor at the pinned commit.
+**Adapted, not verbatim:** section 2 "Apply Project Standards" was localised to
+our JS/Vite stack — the upstream TS-only bullets (explicit return-type
+annotations, React Props types) were replaced by our design-system-reuse
+(Hard rule #6) and i18n (Hard rule #4) conventions. Everything else is the
+upstream text. The inline provenance comment records exactly what diverged from
+the pinned commit; refresh by re-applying that same localisation on top of a
+re-vendor.
 
 ## Caveat: does Cyrus load `.claude/skills/`?
 
