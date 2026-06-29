@@ -119,13 +119,14 @@ delete from public.cities;
 -- Залить директорию: одна строка на geonameid, канонические поля из газеттира,
 -- провайдеры схлопнуты (ближайший Viator-dest на geonameid + GYG).
 insert into public.cities (geonameid, name_en, country_code, lat, lng, time_zone,
-                           viator_dest_id, getyourguide_id, source)
+                           viator_dest_id, getyourguide_id, iata_code, source)
 select gz.geonameid,
        coalesce(en.alternate_name, gz.name, gz.asciiname)            as name_en,
        gz.country_code,
        gz.lat, gz.lng, gz.timezone,
        v.viator_dest_id,
        y.getyourguide_id,
+       v.iata,
        case when v.viator_dest_id is not null and y.getyourguide_id is not null then 'viator+gyg'
             when v.viator_dest_id is not null then 'viator'
             else 'getyourguide' end                                  as source
@@ -141,8 +142,14 @@ left join lateral (
   order by is_preferred desc nulls last limit 1
 ) en on true
 left join lateral (
-  select viator_dest_id from public.viator_resolved vr
-  where vr.geonameid = ids.geonameid order by vr.km asc limit 1
+  -- nearest Viator dest on this geonameid; prefer one that carries an IATA so the
+  -- city's flight-link code isn't lost when the closest dest happens to lack it.
+  select vr.viator_dest_id, vi.iata
+  from public.viator_resolved vr
+  left join public.viator_import vi on vi.viator_dest_id = vr.viator_dest_id
+  where vr.geonameid = ids.geonameid
+  order by (vi.iata is not null and vi.iata <> '') desc, vr.km asc
+  limit 1
 ) v on true
 left join lateral (
   select getyourguide_id from public.gyg_resolved gr

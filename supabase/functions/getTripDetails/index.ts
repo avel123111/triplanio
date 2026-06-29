@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     };
 
     if (wantShell) {
-      add('cityVisits', supabaseAdmin.from('city_visits').select('*, cities(iata_code, viator_dest_id, getyourguide_id, name_en)').eq('trip_id', tripId).order('position'));
+      add('cityVisits', supabaseAdmin.from('city_visits').select('*').eq('trip_id', tripId).order('position'));
     }
     if (wantContent) {
       add('hotels',     supabaseAdmin.from('hotel_stays').select('*').eq('trip_id', tripId));
@@ -130,9 +130,25 @@ Deno.serve(async (req) => {
 
     if (wantShell) {
       const cv = (pick('cityVisits') as any[]) ?? [];
-      // iata_city_code is no longer a stored column — derive it from the embedded
-      // cities row so existing consumers (Aviasales flight deep-link) keep working.
-      response.cityVisits = cv.map((v) => ({ ...v, iata_city_code: v?.cities?.iata_code ?? null }));
+      // Affiliate fields are LATE-BOUND by GeoNames identity (visit.geonameid →
+      // cities.geonameid, TRIP-146), not the city_id FK: `cities` is a sparse
+      // affiliate directory, so a city added to it later is picked up by existing
+      // visits with no backfill. We fetch the directory rows for this trip's
+      // geonameids and attach them as `v.cities` (shape unchanged for consumers),
+      // plus derive iata_city_code so the Aviasales deep-link keeps working.
+      const gids = [...new Set(cv.map((v) => v?.geonameid).filter((g) => g != null))];
+      const dir: Record<string, any> = {};
+      if (gids.length) {
+        const { data: crows } = await supabaseAdmin
+          .from('cities')
+          .select('geonameid, iata_code, viator_dest_id, getyourguide_id, name_en')
+          .in('geonameid', gids as number[]);
+        for (const r of (crows ?? []) as any[]) dir[String(r.geonameid)] = r;
+      }
+      response.cityVisits = cv.map((v) => {
+        const c = v?.geonameid != null ? dir[String(v.geonameid)] ?? null : null;
+        return { ...v, cities: c, iata_city_code: c?.iata_code ?? null };
+      });
     }
     if (wantContent) {
                        response.hotels             = pick('hotels');

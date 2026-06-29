@@ -63,10 +63,10 @@ function CityPicker({ value, onPick, placeholder }) {
       inputValue={q}
       onInputChange={(val) => { setQ(val); if (value) onPick(null); }}
       search={(query, lang) => searchCities(query, lang)}
-      getKey={(c) => c.external_city_id || c.city_name}
+      getKey={(c) => c.geonameid ?? c.external_city_id ?? c.city_name}
       onPick={(c) => {
         setQ(c.city_name);
-        onPick({ city_name: c.city_name, country: c.country, country_code: c.country_code, latitude: c.latitude, longitude: c.longitude, timezone: tzFromCoords(c.latitude, c.longitude), external_city_id: c.external_city_id });
+        onPick({ city_name: c.city_name, city_name_en: c.city_name_en, geonameid: c.geonameid ?? null, name_i18n: c.name_i18n || null, country: c.country, country_code: c.country_code, latitude: c.latitude, longitude: c.longitude, timezone: tzFromCoords(c.latitude, c.longitude), external_city_id: c.external_city_id });
       }}
       renderRow={cityOptionRow}
       placeholder={placeholder || t('event.layover_city_ph')}
@@ -949,7 +949,7 @@ export default function EventEditDialog({
           const best = lvLists[k]?.[0];
           if (best?.latitude) {
             const tz = tzFromCoords(best.latitude, best.longitude);
-            formSegs[segIdx].toCity = { city_name: best.city_name, country: best.country, country_code: best.country_code, latitude: best.latitude, longitude: best.longitude, timezone: tz, external_city_id: best.external_city_id };
+            formSegs[segIdx].toCity = { city_name: best.city_name, city_name_en: best.city_name_en, geonameid: best.geonameid ?? null, name_i18n: best.name_i18n || null, country: best.country, country_code: best.country_code, latitude: best.latitude, longitude: best.longitude, timezone: tz, external_city_id: best.external_city_id };
           } else {
             unresolved.push(lvQ[k]);
           }
@@ -1356,6 +1356,8 @@ async function saveLayoverChain(form, fromVisit, toVisit, tripId, user, t) {
     waypoints.push({
       city_name: c.city_name,
       external_city_id: c.external_city_id || null,
+      geonameid: c.geonameid ?? null,
+      name_i18n: c.name_i18n || null,
       country: c.country || null,
       country_code: c.country_code || null,
       latitude: c.latitude ?? null,
