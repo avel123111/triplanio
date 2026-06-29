@@ -6,19 +6,20 @@
  * HTTP-referrer restriction on Free, so it must never reach the browser — the
  * client calls this function and we attach `LOCATIONIQ_API_KEY` server-side.
  *
+ * City search/resolve has moved to the local GeoNames `search_gazetteer` RPC
+ * (TRIP-146); this function now serves address + reverse geocoding only.
+ *
  * POST body (one of):
  *   { action: 'search',        q, lang?, limit? }                       → forward geocode (city), cached
  *   { action: 'reverse',       lat, lon, lang? }                        → reverse geocode, cached
  *   { action: 'autocomplete',  q, lang?, limit?, tag? }                 → address autocomplete, NOT cached
- *   { action: 'resolveCities', cities: [{ q, lang? }], priority? }      → batch city resolve, cached (shares 'search')
  *   { action: 'geocodeAddress', q, lang?, priority? }                   → forward geocode (street address), NOT cached
  *
- * Response: { results } for single actions; { results: Array<Array>, degraded }
- * for resolveCities. Normalization into the app's city shape stays client-side
- * in src/lib/geo.js.
+ * Response: { results } for each action. Normalization into the app's city/address
+ * shape stays client-side in src/lib/geo.js.
  *
- * TRIP-145 caching (P1): cities are immutable → search/reverse/resolveCities are
- * cached in `geocode_cache` forever (a hit never touches LocationIQ). autocomplete
+ * TRIP-145 caching (P1): search/reverse are cached in `geocode_cache` forever
+ * (a hit never touches LocationIQ). autocomplete
  * and geocodeAddress are addresses (high cardinality, ~zero cross-user reuse) →
  * never cached; their rate is held by the token bucket instead.
  *
@@ -201,58 +202,6 @@ async function resolveOne(
   return { results };
 }
 
-// Batch item resolve with bounded retry on a TRANSIENT upstream failure
-// (LocationIQ 429/5xx). TRIP-145 follow-up: the single-shot path is retried by
-// the FE `liq()` backoff + a surfaced 502, but the batch path used to swallow a
-// per-item `upstreamError` as `[]` (city goes red, no retry, no signal) — the
-// exact failure when a cold batch's burst trips LocationIQ's own ~2 req/s limit.
-// A genuine no-match returns `{ results: [] }` and is NOT retried. `degraded`
-// means the rate budget is already spent (acquireToken waited to the deadline),
-// so retrying can't help → stop. Retries share the batch `deadline`, so one
-// flaky city can't drain the whole budget and starve later cities.
-const BATCH_ITEM_MAX_RETRIES = 2;
-async function resolveBatchItem(
-  queryKey: string,
-  lang: string,
-  priority: string,
-  urlParams: { q?: unknown; limit: string },
-  apiKey: string,
-  deadline: number,
-): Promise<{ results: unknown[]; failed: boolean }> {
-  for (let attempt = 0; ; attempt++) {
-    const r = await resolveOne('search', 'search', queryKey, lang, priority, urlParams, apiKey, deadline);
-    if ('results' in r) return { results: r.results, failed: false };
-    if ('degraded' in r || attempt >= BATCH_ITEM_MAX_RETRIES || Date.now() >= deadline) {
-      return { results: [], failed: true };
-    }
-    // Back off so LocationIQ's own 1 s window clears before we re-take a token.
-    await new Promise((res) => setTimeout(res, 700 + Math.random() * 300));
-    if (Date.now() >= deadline) return { results: [], failed: true };
-  }
-}
-
-// ── Local directory (TRIP-145 P3) ────────────────────────────────────────────
-// resolveCities first asks the curated `cities` table by (name_en, country_code)
-// via resolve_cities_local. A hit returns coords with NO upstream call. We shape
-// the hit back into a LocationIQ/Nominatim-style row so the client's refineCities
-// path consumes it unchanged; external_city_id becomes a stable `dir:<id>` (an
-// opaque identity key client-side). city_id/viator are re-attached at save by
-// the existing coords trigger (set_city_id), so nothing is plumbed here.
-function directoryRow(h: { city_id: number; name_en: string; country_code: string; lat: number; lng: number }): Record<string, unknown> {
-  return {
-    place_id: `dir:${h.city_id}`,
-    lat: String(h.lat),
-    lon: String(h.lng),
-    display_name: h.name_en,
-    name: h.name_en,
-    namedetails: { 'name:en': h.name_en },
-    address: { country_code: String(h.country_code || '').toLowerCase() },
-    type: 'city',
-    class: 'place',
-    importance: 1,
-  };
-}
-
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -265,66 +214,14 @@ Deno.serve(async (req) => {
     if (!apiKey) return Response.json({ error: 'LOCATIONIQ_API_KEY not configured' }, { status: 500, headers: corsHeaders });
 
     const body = await req.json();
-    const { action, q, lat, lon, lang, limit, tag, cities, priority } = body;
+    const { action, q, lat, lon, lang, limit, tag, priority } = body;
 
     const acceptLang = (typeof lang === 'string' && lang.trim()) ? lang.trim() : 'en';
     const lim = String(limit && limit > 0 ? limit : DEFAULT_LIMIT);
 
-    // ── Batch city resolve: one call resolves all trip cities, dedups identical
-    // queries, shares the 'search' cache. Background priority by default.
-    if (action === 'resolveCities') {
-      if (!Array.isArray(cities)) {
-        return Response.json({ error: 'cities[] is required' }, { status: 400, headers: corsHeaders });
-      }
-      const prio = priority || 'background';
-      // One shared deadline for the whole batch → bounded total wall-clock.
-      const deadline = Date.now() + TOKEN_WAIT_MS[prio === 'background' ? 'background' : 'interactive'];
-
-      // (C) Directory-first: one RPC resolves the whole batch by name → hits skip
-      // LocationIQ entirely. Fail-open: a limiter/RPC error just falls through to
-      // the geocoder for every city (old behaviour).
-      let dir: Array<{ city_id: number; name_en: string; country_code: string; lat: number; lng: number } | null> = [];
-      try {
-        const { data: dirData } = await supabaseAdmin.rpc('resolve_cities_local', {
-          p_items: cities.map((c: { name_en?: unknown; country_code?: unknown }) => ({
-            name_en: c?.name_en ?? null,
-            country_code: c?.country_code ?? null,
-          })),
-        });
-        if (Array.isArray(dirData)) dir = dirData;
-      } catch (e) {
-        console.error('[geoLocationiq] resolve_cities_local failed', (e as Error).message);
-      }
-
-      const memo = new Map<string, unknown[]>();
-      let degraded = false;
-      const out: unknown[][] = [];
-      for (let i = 0; i < cities.length; i++) {
-        const c = cities[i];
-        const hit = dir[i];
-        if (hit && hit.lat != null && hit.lng != null) {
-          out.push([directoryRow(hit)]);
-          continue;
-        }
-        const cq = c?.q;
-        if (!cq || !String(cq).trim()) { out.push([]); continue; }
-        const cLang = (typeof c?.lang === 'string' && c.lang.trim()) ? c.lang.trim() : acceptLang;
-        const key = `${normKey(cq)}|${cLang}`;
-        if (memo.has(key)) { out.push(memo.get(key)!); continue; }
-        const item = await resolveBatchItem(normKey(cq), cLang, prio, { q: cq, limit: lim }, apiKey, deadline);
-        if (item.failed) degraded = true; // rate budget spent OR upstream error after retries
-        // NOTE: we intentionally do NOT write geocoded misses back into `cities`
-        // (TRIP-135). The directory is a curated seed/ETL-only dimension; runtime
-        // flows never grow it. A miss simply resolves coords for this request and
-        // the visit keeps a NULL city_id until a curated row covers it.
-        memo.set(key, item.results);
-        out.push(item.results);
-      }
-      if (degraded) {
-        await captureEdgeError(new Error('geocode batch had unresolved items'), 'geoLocationiq', { action: 'resolveCities', count: cities.length });
-      }
-      return Response.json({ results: out, degraded }, { headers: corsHeaders });
-    }
+    // City search/resolve moved to the local GeoNames `search_gazetteer` RPC
+    // (TRIP-146). The old `resolveCities` batch action + `resolve_cities_local`
+    // directory RPC are dropped; this function now serves address/reverse only.
 
     // ── Single-shot actions ──
     let endpoint: string;

@@ -10,13 +10,15 @@
  *   1. Scope = TRANSIT cities only. The start anchor, the end anchor and
  *      waypoints (pass-through points with no stay) are NOT destinations and
  *      never count. Identity is the `kind` field: only `kind === 'transit'`.
- *   2. Dedup repeats by CITY + COUNTRY. The same physical city visited twice —
+ *   2. Dedup repeats by CITY identity. The same physical city visited twice —
  *      e.g. flying out of Madrid and returning to Madrid, or Moscow entered
- *      twice with two different external_city_id — counts once. Identity is
- *      `city_name` (lowercased+trimmed) + `country_code`. external_city_id is
- *      deliberately NOT used: the same city can carry different external ids
- *      across two picks, which would wrongly inflate the count. Country
- *      identity is the ISO `country_code`.
+ *      twice — counts once. Identity is the GeoNames `geonameid` (TRIP-146): a
+ *      stable, language-independent key that also fixes same-city-two-external-ids
+ *      fragmentation for free. Legacy rows without a geonameid fall back to
+ *      `name` (lowercased+trimmed) + `country_code`; raw `external_city_id` is
+ *      only a last resort for a nameless row (it is NOT the primary key: the same
+ *      city can carry different external ids across two picks). Country identity
+ *      is the ISO `country_code`.
  */
 
 /** A real destination: a city stay, not an anchor or a pass-through waypoint. */
@@ -30,14 +32,20 @@ export function transitVisits(visits = []) {
 }
 
 /**
- * Canonical city identity key: "city + country". Returns null when a visit has
- * no usable name (so it's ignored by counts/labels). external_city_id is only
- * a last-resort fallback for the rare nameless row.
+ * Canonical city identity key (TRIP-146). Priority:
+ *   1. `gn:<geonameid>` — GeoNames identity, strongest + language-independent.
+ *   2. `<name>|<cc>`    — legacy fallback for rows still missing a geonameid.
+ *                         name = English snapshot first (stable across UI locale),
+ *                         then city_name_en, then the localized city_name.
+ *   3. `id:<external_city_id>` — last resort for a nameless row.
+ * Returns null when a visit has no usable identity (ignored by counts/labels).
  */
 export function cityKey(v) {
   if (!v) return null;
-  if (v.city_name) {
-    const name = String(v.city_name).trim().toLowerCase();
+  if (v.geonameid != null && v.geonameid !== '') return `gn:${v.geonameid}`;
+  const name = String(v.name_i18n?.en || v.city_name_en || v.city_name || '')
+    .trim().toLowerCase();
+  if (name) {
     const cc = (v.country_code || '').trim().toLowerCase();
     return `${name}|${cc}`;
   }
