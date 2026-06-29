@@ -48,14 +48,31 @@ public.search_gazetteer(q text, lang text default 'en', lim int default 10)
 - `geo_admin1` ← admin1CodesASCII, `geo_country` ← countryInfo (для подписей
   «регион, страна»; их локализованные имена тоже в alt-names по их geonameid).
 
-## Перезалив `cities` = директория по `geonameid` (НЕ только аффилиат)
-Объединение: полное **IATA-покрытие** (как сегодняшний iata-seed ~3507, для
-авиа-ссылок Aviasales по `iata_code`) + `viator_dest_id`/`getyourguide_id`/
-`tripster_id` где есть. **Пустых IATA не оставляем** (Pavel). Запись через
-`ON CONFLICT(geonameid) DO UPDATE` (обогащение) → дубль физически невозможен =
-**структурный корневой фикс TRIP-69** (отдельный merge-хелпер НЕ нужен; рантайм
-вообще не пишет в cities — seed-only после TRIP-135). `iata_city`/метро-код
-берём из Viator/Tripster, НЕ из GeoNames (там airport-коды).
+## Перезалив `cities` = директория по `geonameid` (финал, план Pavel 2026-06-29)
+Стройка с нуля, но **таблицу НЕ пересоздаём** (TRUNCATE+INSERT в ту же `cities`) —
+иначе теряем RLS-политику `cities_read` (seed-only, TRIP-135) + гранты + identity
+`id`. Источники:
+- **Viator-фид** `/destinations` type CITY/TOWN/VILLAGE (~2.5k): `name`→`name_en`,
+  `viator_dest_id`, центр-координаты. Скрипт `import-viator-destinations.mjs`
+  (заменил `enrich-viator-destinations.mjs` — тот матчил по координатам и писал в
+  cities, плодя дубли = корень TRIP-69) грузит сырьё в staging `viator_import`,
+  НЕ в cities; матч — отдельным SQL.
+- **GetYourGuide** (240): снимок `getyourguide_id`+name+cc из текущего cities ДО
+  вычистки (staging `gyg_import`).
+- **IATA НЕ тащим** — iata-сид (3507) выкидываем; Pavel дообогатит `iata_code` сам
+  по необходимости. **`tripster_id` нет** — Tripster/Sputnik8 ходят по `city_name_en`.
+
+Матч (`scripts/cities-rebuild.sql`): Viator — строго **имя через `search_gazetteer`
++ ближайший кандидат в пределах 10 км** → `geonameid` (координаты Viator = центры,
+10 км точен; тёзки разводит координата); GYG — имя + country. **Несовпавшие НЕ
+заливаются → Pavel на ручной разбор** (нон-сити: парки/регионы/острова, которых
+нет в cities500 — структурно). Канонические поля строки (`name_en` = en-altname→
+name→asciiname, `country_code`, `lat/lng`, `time_zone`) берём **из газеттира**
+(чинит координатный мусор и кривой name_en = заодно TRIP-58). Схлоп дублей —
+группировкой по `geonameid` (структурный фикс TRIP-69, ложных слияний ≈0).
+`unique(geonameid)` после заливки. Визиты осиротают (FK снят) → перерезолв Phase 5.
+Прокси-замер matcher на dev (source='viator' 1334 — трудное подмножество): 73%
+name+10км, схлоп 2.
 
 ## Снимок на визите `city_visits` (Phase 2, аддитивно)
 - `+ geonameid bigint NULL` — ключ идентичности v2.
@@ -82,15 +99,21 @@ public.search_gazetteer(q text, lang text default 'en', lim int default 10)
   INSERT (НЕ `COPY` — pgx-wire его не тянет, 08P01), temp-агрегат для doc-build,
   новый таймстамп на каждую миграцию ([[triplanio-bulk-data-migrations-constraints]],
   [[triplanio-migration-naming-drift]]). Данные грузит Pavel по инструкции агента.
+- Phase 3 (финал): `cities` строим из **Viator-фид + GYG**, БЕЗ iata-сида (IATA
+  Pavel дообогатит сам); TRUNCATE+INSERT в ту же таблицу (сохранить RLS/гранты);
+  матч строго имя+10км; несовпавшие → ручной разбор Pavel; визиты осиротают,
+  перерезолв в Phase 5; rebuild = SQL-скрипт (данные), не миграция.
 
 ## Пофазный план (каждая фаза = ветка → PR → dev → prod)
 - **Phase 0** — зафиксировать дизайн в память (этот файл). ✅
 - **Phase 2** — аддитив: `city_visits + geonameid + name_i18n`; `cities + geonameid`.
   Только колонки, поведение не меняется, чистый откат. (Phase 1 = слой поиска
   уже готов спайком, переиспользуем как есть; all-locales/nearest_city вынесены.)
-- **Phase 3** — перезалив `cities` рядом (staging) → свап (не TRUNCATE вживую);
-  матч Viator+Tripster+IATA в geonameid; confidence-флаг; `geonameid` unique на
-  свапе; пост-свап валидация целостности аффилиат-ссылок (деньги, правило 13).
+- **Phase 3** — перезалив `cities` (TRUNCATE+INSERT в ту же таблицу): источники
+  Viator-фид (staging) + GYG (снимок); матч имя+10км → geonameid; хвост → Pavel
+  вручную; канон-поля из газеттира; `unique(geonameid)`; IATA не тащим; визиты
+  осиротают; пост-свап валидация аффилиат-целостности (деньги, правило 13).
+  Артефакты: `scripts/import-viator-destinations.mjs` + `scripts/cities-rebuild.sql`.
 - **Phase 4** — фронт `src/lib/geo.js` + UI на RPC: `searchCities`→search_gazetteer
   (ManualPlanner:186, EventEditDialog:71, CitySearch:24); `resolveCities`→RPC
   (ManualPlanner:971, EventEditDialog:938); на выборе пишем geonameid+name_i18n+
