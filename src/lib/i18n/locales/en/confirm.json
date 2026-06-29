@@ -1,0 +1,22 @@
+{
+  "delete_category.body": "Expenses inside will be left without a category",
+  "delete_category.title": "Delete category?",
+  "delete_city.body": "Hotels, activities and transfers of this city will also be deleted",
+  "delete_city.title": "Delete city?",
+  "delete_document.body": "«{name}». This cannot be undone",
+  "delete_document.title": "Delete document?",
+  "delete_event.body": "«{name}». This cannot be undone",
+  "delete_event.title": "Delete {kind}?",
+  "delete_expense.body": "«{title}» · {amount}",
+  "delete_expense.title": "Delete expense?",
+  "delete_pro_trip.body": "This is a Pro trip - the one-time upgrade you paid for will be lost. Are you sure?",
+  "delete_pro_trip.title": "You are deleting a Pro trip",
+  "delete_service.body": "«{name}». This cannot be undone",
+  "delete_service.title": "Delete service?",
+  "leave_trip.body": "You will lose access, and your personal documents in this trip will be permanently deleted. You can return only with a new invite.",
+  "leave_trip.title": "Leave trip?",
+  "remove_member.body": "{name} will lose access to the trip",
+  "remove_member.title": "Remove member?",
+  "unlink_telegram.body": "The bot will stop sending reminders for this trip",
+  "unlink_telegram.title": "Disconnect Telegram?"
+}

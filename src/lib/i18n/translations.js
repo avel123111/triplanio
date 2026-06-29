@@ -1,11 +1,9 @@
-// Translation dictionaries - thin index over modular per-section files.
-// Use t('key') in components. Add new strings in lib/i18n/locales/{lang}/{section}.js
-
-import ru from './locales/ru';
-import en from './locales/en';
-import es from './locales/es';
-
-export const TRANSLATIONS = { ru, en, es };
+// i18n static config — language list + IETF locale tags. PURE config, no
+// dictionary import, so non-Vite consumers (formatters, tests) can import it
+// without pulling the JSON glob. The dictionaries live in ./dictionary.js
+// (Vite-only) and are consumed solely by I18nContext.
+// Use t('namespace.key') in components; add strings in
+// lib/i18n/locales/{lang}/{namespace}.json (BARE keys, namespace = file stem).
 
 export const LANGUAGES = [
   { code: 'ru', label: 'Русский', flag: '🇷🇺' },

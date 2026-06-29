@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * CI guard 2d (TRIP-134) — i18n discipline (rule 4). Two checks:
+ * CI guard 2d (TRIP-134, JSON model TRIP-129) — i18n discipline (rule 4). Two checks:
  *
- * A. DUPLICATE KEYS (global, blocking). Each translation key must live in exactly
- *    ONE namespace file per locale. A key defined in two namespaces (e.g. trip.js
- *    AND ai_plan.js) is a bug: the last spread in locales/<loc>/index.js silently
- *    wins and the other copy is dead/conflicting. Scans every namespace file in
- *    every locale at HEAD (parser-free — keys are flat quoted strings).
+ * A. NAMESPACE/KEY INTEGRITY (global, blocking). Locales are JSON files at
+ *    locales/<loc>/<namespace>.json with BARE keys (the namespace is the file
+ *    stem; call-sites use the dotted address `t('namespace.key')`). Enforces:
+ *    (1) valid JSON; (2) bare-key invariant — a key inside <ns>.json must NOT
+ *    re-encode its namespace (no "ns." prefix), else `t('ns.key')` silently
+ *    misses; (3) no full key `ns.key` defined in two files per locale.
  *
  * B. HARDCODED UI STRINGS (PR-diff scoped, blocking). Every NEW user-facing string
  *    must go through t(), not be hardcoded in JSX. Scanning the whole tree would
@@ -28,35 +29,41 @@ function git(args) {
   return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 }
 
-/* ----------------------------- A. duplicate keys ---------------------------- */
+/* ------------------------- A. namespace/key integrity ----------------------- */
 
-const KEY_RE = /^\s*(['"])([^'"]+)\1\s*:/;
-
-function checkDuplicateKeys() {
+function checkLocaleKeys() {
   const errors = [];
   if (!existsSync(LOCALES_DIR)) return errors;
 
   for (const loc of readdirSync(LOCALES_DIR, { withFileTypes: true })) {
     if (!loc.isDirectory()) continue;
     const dir = join(LOCALES_DIR, loc.name);
-    const keyToFiles = new Map(); // key -> [namespace files]
+    const fullKeyToFiles = new Map(); // `ns.key` -> [files]
 
     for (const f of readdirSync(dir)) {
-      if (!f.endsWith('.js') || f === 'index.js') continue;
-      const content = readFileSync(join(dir, f), 'utf8');
-      for (const line of content.split('\n')) {
-        const m = line.match(KEY_RE);
-        if (!m) continue;
-        const key = m[2];
-        if (!keyToFiles.has(key)) keyToFiles.set(key, []);
-        const arr = keyToFiles.get(key);
+      if (!f.endsWith('.json')) continue;
+      const ns = f.slice(0, -'.json'.length);
+      let obj;
+      try {
+        obj = JSON.parse(readFileSync(join(dir, f), 'utf8'));
+      } catch (e) {
+        errors.push(`[${loc.name}] ${f}: invalid JSON — ${e.message}`);
+        continue;
+      }
+      for (const bare of Object.keys(obj)) {
+        if (bare === ns || bare.startsWith(`${ns}.`)) {
+          errors.push(`[${loc.name}] ${f}: key "${bare}" re-encodes its namespace — store it bare (drop the "${ns}." prefix)`);
+        }
+        const full = `${ns}.${bare}`;
+        if (!fullKeyToFiles.has(full)) fullKeyToFiles.set(full, []);
+        const arr = fullKeyToFiles.get(full);
         if (!arr.includes(f)) arr.push(f);
       }
     }
 
-    for (const [key, files] of keyToFiles) {
+    for (const [full, files] of fullKeyToFiles) {
       if (files.length > 1) {
-        errors.push(`[${loc.name}] key "${key}" defined in ${files.length} namespaces: ${files.join(', ')}`);
+        errors.push(`[${loc.name}] key "${full}" defined in ${files.length} files: ${files.join(', ')}`);
       }
     }
   }
@@ -128,9 +135,9 @@ function checkHardcoded() {
 
 /* ---------------------------------- run ------------------------------------ */
 
-let dupErrors, hcErrors;
+let keyErrors, hcErrors;
 try {
-  dupErrors = checkDuplicateKeys();
+  keyErrors = checkLocaleKeys();
   hcErrors = checkHardcoded();
 } catch (e) {
   console.error(`::error::i18n guard internal error: ${e.message}`);
@@ -139,12 +146,12 @@ try {
 
 let failed = false;
 
-if (dupErrors.length) {
+if (keyErrors.length) {
   failed = true;
-  console.error('::error::i18n duplicate-key guard failed (a key must live in ONE namespace per locale):');
-  for (const e of dupErrors) console.error(`  ✗ ${e}`);
+  console.error('::error::i18n namespace/key integrity guard failed (bare keys, one file per `ns.key`, valid JSON):');
+  for (const e of keyErrors) console.error(`  ✗ ${e}`);
 } else {
-  console.log('check-i18n: no duplicate keys — OK');
+  console.log('check-i18n: namespace/key integrity — OK');
 }
 
 if (hcErrors.length) {

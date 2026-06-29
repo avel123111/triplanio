@@ -1,0 +1,22 @@
+{
+  "delete_category.body": "Los gastos quedarán sin categoría",
+  "delete_category.title": "¿Eliminar categoría?",
+  "delete_city.body": "También se eliminarán los hoteles, actividades y traslados de esta ciudad",
+  "delete_city.title": "¿Eliminar ciudad?",
+  "delete_document.body": "«{name}». Esta acción es irreversible",
+  "delete_document.title": "¿Eliminar documento?",
+  "delete_event.body": "«{name}». Esta acción es irreversible",
+  "delete_event.title": "¿Eliminar {kind}?",
+  "delete_expense.body": "«{title}» · {amount}",
+  "delete_expense.title": "¿Eliminar gasto?",
+  "delete_pro_trip.body": "Este es un viaje Pro - la mejora única que pagaste se perderá. ¿Eliminar?",
+  "delete_pro_trip.title": "Estás eliminando un viaje Pro",
+  "delete_service.body": "«{name}». Esta acción es irreversible",
+  "delete_service.title": "¿Eliminar servicio?",
+  "leave_trip.body": "Perderás el acceso y tus documentos personales en este viaje se eliminarán de forma permanente. Solo podrás volver con una nueva invitación.",
+  "leave_trip.title": "¿Salir del viaje?",
+  "remove_member.body": "{name} perderá el acceso al viaje",
+  "remove_member.title": "¿Quitar participante?",
+  "unlink_telegram.body": "El bot dejará de enviar recordatorios de este viaje",
+  "unlink_telegram.title": "¿Desconectar Telegram?"
+}
