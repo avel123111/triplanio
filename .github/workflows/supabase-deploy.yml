@@ -82,12 +82,51 @@ jobs:
           && needs.detect.result == 'success'
           && (github.event_name == 'workflow_dispatch' || needs.detect.outputs.migrations == 'true') }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # re-stamp step commits the rename back to dev (TRIP-134 Ф5)
     steps:
       - uses: actions/checkout@v5
 
       - uses: supabase/setup-cli@v2
         with:
           version: latest
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # TRIP-134 Ф5 — auto re-stamp out-of-order migrations, DEV ONLY. Closes the
+      # residual race guard 2a can't catch: two PRs pass 2a against the same
+      # journal snapshot; after the first merges the second is now <= the journal
+      # max → strict db push would reject it (the TRIP-121 incident). This renames
+      # only PENDING (not-yet-applied) files whose timestamp is <= the applied max,
+      # commits the rename back to dev with [skip ci], and lets the db push step
+      # below apply it in this same run. NEVER on main (renaming there = repo↔prod
+      # journal drift, TRIP-68) — there out-of-order stays a hard fail + alert.
+      - name: Auto re-stamp out-of-order migrations (dev only)
+        if: ${{ github.ref_name == 'dev' }}
+        env:
+          DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DB_URL_DEV" ]; then
+            echo "::error::Missing SUPABASE_DB_URL_DEV"; exit 1
+          fi
+          # `migration list` reports Local vs Remote(applied); the script parses it.
+          supabase migration list --db-url "$DB_URL_DEV" > /tmp/mlist.txt
+          node scripts/ci/restamp-out-of-order-migrations.mjs /tmp/mlist.txt
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am \
+              "chore(migrations): auto re-stamp out-of-order migration(s) [skip ci]" \
+              -m "TRIP-134 Ф5: a pending migration was <= the dev journal max (out-of-order); re-stamped to a fresh timestamp so strict db push applies it. [skip ci] avoids a redundant deploy; the rename is applied in this same run."
+            # Push the rename back to dev. If dev moved meanwhile the push is
+            # rejected → step fails → notify alerts (safe; rare, manual retry).
+            git push origin HEAD:dev
+          else
+            echo "re-stamp: nothing to do"
+          fi
 
       - name: Apply pending migrations (db push)
         env:
