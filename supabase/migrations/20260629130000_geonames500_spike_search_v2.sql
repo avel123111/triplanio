@@ -43,6 +43,9 @@ language sql immutable set search_path to 'public' as $fn$
 $fn$;
 
 -- localized region/country names per code (all languages present in the dictionary)
+-- Single-session db push (prod applies ALL migrations in one session): clear any
+-- temp tables left over from a prior search migration, else CREATE TEMP collides.
+drop table if exists _reg, _cty, _cityalt, _cityname;
 create temp table _reg as
   select r.code, string_agg(a.alternate_name, ' ') as names
   from geo_admin1_test r join geo_alt_names_test a on a.geonameid = r.geonameid group by r.code;

@@ -28,6 +28,9 @@ alter table geo_gazetteer_test
 
 -- per-city dictionary names. After the all-language reload adds is_historic, change to
 --   ... from geo_alt_names_test where not coalesce(is_historic,false) ...
+-- Single-session db push (prod applies ALL migrations in one session): clear any
+-- temp tables left over from a prior search migration, else CREATE TEMP collides.
+drop table if exists _reg, _cty, _cityalt, _cityname;
 create temp table _cityname as
   select geonameid, string_agg(alternate_name, ' ') as names from geo_alt_names_test group by geonameid;
 create temp table _reg as
