@@ -1,19 +1,20 @@
--- TRIP-145 — search engine v4 for the GeoNames spike (THROWAWAY; Supabase dev only).
+-- TRIP-145 — search engine v4/v5 for the GeoNames spike (THROWAWAY; Supabase dev only).
 -- Field-weighted, structured matching (aligned with Pelias/Nominatim practice):
---   * TWO documents per city instead of one flat `doc`:
---       name_doc = the city's OWN names (name + asciiname + dictionary names, all langs).
---                  Deliberately NOT built from search_blob — that flat bag also contains
---                  historic/obsolete names (e.g. Taldykorgan carries "Gavrilovka"), which
---                  polluted results. name_doc carries only real current names.
+--   * THREE documents per city instead of one flat `doc`:
+--       name_doc = the city's CURRENT names (name + asciiname + dictionary names) — HIGH priority.
+--       blob_doc = the flat search_blob (current + HISTORIC/obscure names, e.g. Taldykorgan
+--                  carries "Gavrilovka") — kept for findability but LOW priority.
 --       area_doc = region + country names (the admin qualifiers).
---   * Structured match: the LEADING place token must hit name_doc; every token (place +
---     trailing qualifiers like "сша"/"франция") must hit name_doc OR area_doc. So
---     "city country" filters by country, and a token matching only a region no longer
---     surfaces the whole region (e.g. "мехико" stops dragging in New Mexico cities).
---   * Ranking unchanged (1.0*exact + 0.5*prefix on the localized name, +1.2*log10(pop)) —
---     but with historic names gone from name_doc, importance no longer buries real matches.
--- Pure SQL over existing data. After the all-language dictionary reload, add an
--- `is_historic`-aware filter to _cityname (see note) and re-run the doc UPDATE.
+--   * Structured match: the LEADING place token must hit name_doc OR blob_doc (so historic
+--     names still find the place); every token (place + trailing qualifiers like "сша"/
+--     "франция") must hit name_doc / blob_doc / area_doc. A region-only token does NOT
+--     surface the region's cities ("мехико" stops dragging in New Mexico — region lives only
+--     in area_doc, and the place token is required in name/blob, not area).
+--   * Ranking: +3.0 when the CURRENT name (name_doc) matches the leading token, so a match
+--     via a historic name (blob_doc only, e.g. Taldykorgan for "гаврилов") is kept but ranked
+--     well below real "Gavrilov*" cities; then +1.0 exact / +0.5 prefix / +1.2*log10(pop).
+-- Pure SQL over existing data. After the all-language reload adds is_historic, you can also
+-- split historic out of blob_doc for an even cleaner low-priority tier.
 
 set statement_timeout = '600s';
 
@@ -22,7 +23,8 @@ create extension if not exists unaccent with schema public;
 
 alter table geo_gazetteer_test
   add column if not exists name_doc tsvector,
-  add column if not exists area_doc tsvector;
+  add column if not exists area_doc tsvector,
+  add column if not exists blob_doc tsvector;
 
 -- per-city dictionary names. After the all-language reload adds is_historic, change to
 --   ... from geo_alt_names_test where not coalesce(is_historic,false) ...
@@ -39,6 +41,7 @@ update geo_gazetteer_test g set
   name_doc = to_tsvector('simple', regexp_replace(lower(unaccent(
     coalesce(g.name,'') || ' ' || coalesce(g.asciiname,'') || ' ' || coalesce(cn.names,'')
   )), '[^a-z0-9а-яё]+', ' ', 'g')),
+  blob_doc = to_tsvector('simple', regexp_replace(lower(unaccent(coalesce(g.search_blob,''))), '[^a-z0-9а-яё]+', ' ', 'g')),
   area_doc = to_tsvector('simple', regexp_replace(lower(unaccent(
     coalesce(g.admin1_name,'') || ' ' || coalesce(rg.names,'') || ' ' ||
     coalesce(g.country_code,'') || ' ' || coalesce(ct.names,'')
@@ -51,6 +54,7 @@ where gg.geonameid = g.geonameid;
 
 create index if not exists gaz_namedoc on geo_gazetteer_test using gin (name_doc);
 create index if not exists gaz_areadoc on geo_gazetteer_test using gin (area_doc);
+create index if not exists gaz_blobdoc on geo_gazetteer_test using gin (blob_doc);
 
 drop function if exists public.search_gazetteer(text, text, int);
 create function public.search_gazetteer(q text, lang text default 'en', lim int default 10)
@@ -88,8 +92,8 @@ language sql stable security definer set search_path to 'public' as $$
          g.country_code, g.population, g.feature_code, g.lat, g.lng
   from t
   join geo_gazetteer_test g
-    on g.name_doc @@ t.q_name
-   and (g.name_doc || g.area_doc) @@ t.q_all
+    on (g.name_doc || g.blob_doc) @@ t.q_name
+   and (g.name_doc || g.blob_doc || g.area_doc) @@ t.q_all
   left join lateral (
     select regexp_replace(lower(unaccent(
              coalesce((select an.alternate_name from geo_alt_names_test an
@@ -99,7 +103,8 @@ language sql stable security definer set search_path to 'public' as $$
   ) nn on true
   where t.q_all is not null
     and g.feature_code not in ('PPLX','PPLH','PPLQ','PPLW','PPLCH')
-  order by 1.0 * (case when nn.nm = t.qn or nn.nm = t.qn_lat then 1 else 0 end)
+  order by 3.0 * (case when g.name_doc @@ t.q_name then 1 else 0 end)
+         + 1.0 * (case when nn.nm = t.qn or nn.nm = t.qn_lat then 1 else 0 end)
          + 0.5 * (case when nn.nm like t.first_tok||'%' or nn.nm like t.first_lat||'%' then 1 else 0 end)
          + 1.2 * log((coalesce(g.population,0) + 1)::numeric) desc,
            g.population desc nulls last
