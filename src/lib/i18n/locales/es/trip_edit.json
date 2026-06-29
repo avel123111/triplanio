@@ -1,0 +1,9 @@
+{
+  "add_transfer_btn": "Añadir traslado",
+  "add_transfer_desc": "Conecta {from} → {to} con un traslado",
+  "add_transfer_title": "¿Añadir traslado?",
+  "back": "Volver al viaje",
+  "edit_trip": "Título y portada",
+  "skip": "Omitir",
+  "view": "Ver viaje"
+}

@@ -1,0 +1,22 @@
+{
+  "delete_category.body": "Траты внутри останутся без категории",
+  "delete_category.title": "Удалить категорию?",
+  "delete_city.body": "Отели, активности и переезды этого города тоже удалятся",
+  "delete_city.title": "Удалить город?",
+  "delete_document.body": "«{name}». Действие необратимо",
+  "delete_document.title": "Удалить документ?",
+  "delete_event.body": "«{name}». Действие необратимо",
+  "delete_event.title": "Удалить {kind}?",
+  "delete_expense.body": "«{title}» · {amount}",
+  "delete_expense.title": "Удалить трату?",
+  "delete_pro_trip.body": "Это Pro-путешествие - разовый апгрейд, который вы оплатили, сгорит. Удалить?",
+  "delete_pro_trip.title": "Вы удаляете Pro-путешествие",
+  "delete_service.body": "«{name}». Действие необратимо",
+  "delete_service.title": "Удалить услугу?",
+  "leave_trip.body": "Ты потеряешь доступ, а твои личные документы в этом путешествии будут удалены безвозвратно. Вернуться можно только по новому приглашению.",
+  "leave_trip.title": "Выйти из путешествия?",
+  "remove_member.body": "{name} потеряет доступ к путешествию",
+  "remove_member.title": "Убрать участника?",
+  "unlink_telegram.body": "Бот перестанет присылать напоминания по этому путешествию",
+  "unlink_telegram.title": "Отключить Telegram?"
+}

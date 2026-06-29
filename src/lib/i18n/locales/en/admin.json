@@ -1,0 +1,17 @@
+{
+  "home.notifications_desc": "All notifications the app can send, grouped by channel",
+  "home.notifications_title": "Notifications registry",
+  "home.subtitle": "System tools for administrators",
+  "home.title": "Admin panel",
+  "notifications.audience": "Audience",
+  "notifications.back_home": "Back to home",
+  "notifications.filter_all": "All",
+  "notifications.forbidden_desc": "This page is available only to app administrators",
+  "notifications.forbidden_title": "Admins only",
+  "notifications.hardcoded_text": "Hard-coded text",
+  "notifications.i18n_keys": "i18n keys",
+  "notifications.source": "Source",
+  "notifications.subtitle": "All notifications the app can send, grouped by channel",
+  "notifications.title": "Notifications registry",
+  "notifications.when": "When"
+}

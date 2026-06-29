@@ -1,0 +1,6 @@
+{
+  "book_on": "Reservar en {name}",
+  "find_flights_on": "Buscar vuelos en {name}",
+  "find_on": "Buscar en {name}",
+  "find_tickets_on": "Buscar billetes en {name}"
+}
