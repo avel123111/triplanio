@@ -22,11 +22,9 @@ import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError, reportPaymentAnomaly } from '../_shared/sentry.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
-import { stripeEnv, PLAN_TO_PRODUCT, type ProductCode, type PlanType } from '../_shared/payments/catalog.ts';
+import { stripeEnv, PLAN_TO_PRODUCT, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode, type PlanType } from '../_shared/payments/catalog.ts';
 import { saveProviderCustomerId } from '../_shared/payments/customer.ts';
 import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from '../_shared/revokeLostProFeatures.ts';
-
-const ENTITLING = ['active', 'trialing', 'past_due'];
 
 // Ошибка записи права → Sentry + throw (Stripe ретраит). Только для
 // энтайтлмент-критичных записей; best-effort (нотификации, customer id) — нет.
@@ -37,6 +35,13 @@ async function ensureWrite(label: string, op: PromiseLike<{ error: unknown }>) {
     await captureEdgeError(new Error(`${label}: ${msg}`), 'stripe-webhook');
     throw new Error(`${label} failed`);
   }
+}
+
+// Ordering-guard (ТЗ §5.2): событие старше уже записанного provider_event_at —
+// устаревшее/переставленное, игнорируем. Сравнение по эпохам (строковое
+// сравнение ISO↔pg-формата некорректно). Был продублирован в .updated/.deleted.
+function isStaleEvent(eventCreatedUnix: number, existingEventAt: unknown): boolean {
+  return !!existingEventAt && eventCreatedUnix * 1000 <= new Date(existingEventAt as string).getTime();
 }
 
 async function recomputeUser(userId: string | null | undefined) {
@@ -87,7 +92,7 @@ async function findSubRow(subId: string) {
 // Есть ли у юзера ДРУГАЯ энтайтлинг-подписка (для детекта дубля).
 async function hasOtherEntitlingSub(userId: string, exceptSubId: string | null): Promise<boolean> {
   const { data } = await supabaseAdmin
-    .from('subscription').select('provider_subscription_id').eq('user_id', userId).in('status', ENTITLING);
+    .from('subscription').select('provider_subscription_id').eq('user_id', userId).in('status', [...ENTITLING_STATUSES]);
   return (data ?? []).some((r) => r.provider_subscription_id !== exceptSubId);
 }
 
@@ -234,7 +239,7 @@ Deno.serve(async (req) => {
               status: isDup ? 'duplicate' : status, needs_review: isDup,
               current_period_end: periodEndIso, cancel_at_period_end: cancelAtPeriodEnd,
               amount: session.amount_total, currency: session.currency || 'usd',
-              billing_interval: productCode === 'account_pro_monthly' ? 'month' : 'year',
+              billing_interval: billingIntervalForProduct(productCode),
             }, { onConflict: 'provider_subscription_id' }));
             if (!isDup) {
               await saveCustomer(user_id, session.customer);
@@ -278,7 +283,7 @@ Deno.serve(async (req) => {
             provider_subscription_id: subId, status: isDup ? 'duplicate' : sub.status, needs_review: isDup,
             current_period_end: periodEndIso, cancel_at_period_end: sub.cancel_at_period_end === true,
             currency: invoice.currency || 'usd',
-            billing_interval: resolved.productCode === 'account_pro_monthly' ? 'month' : 'year',
+            billing_interval: billingIntervalForProduct(resolved.productCode),
           }, { onConflict: 'provider_subscription_id' }));
           if (isDup) await reportPaymentAnomaly('sub_double_paid', { user_id: resolved.userId, sub_id: subId, ctx: 'invoice.paid' }, 'error');
         }
@@ -297,17 +302,17 @@ Deno.serve(async (req) => {
         await saveCustomer(resolved.userId, invoice.customer);
         const nextAttemptIso = invoice.next_payment_attempt ? unixToIso(invoice.next_payment_attempt) : null;
         // Refetch истины (ТЗ §1.3): статус подписки берём из Stripe verbatim
-        // (active в smart-retry / unpaid / canceled при исчерпании дённинга),
-        // collection_state='past_due' и grace — из контекста инвойса.
+        // (active в smart-retry / unpaid / canceled при исчерпании дённинга).
+        // Грейс держит recompute по provider_meta.next_payment_attempt (ниже).
         const sub = await adapter.fetchSubscription(subId);
         const periodEndIso = unixToIso(getPeriodEndUnix(sub));
         await ensureWrite('invoice.payment_failed upsert', supabaseAdmin.from('subscription').upsert({
           user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
-          provider_subscription_id: subId, status: sub.status, collection_state: 'past_due',
+          provider_subscription_id: subId, status: sub.status,
           cancel_at_period_end: sub.cancel_at_period_end === true,
           ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
           currency: invoice.currency || 'usd',
-          billing_interval: resolved.productCode === 'account_pro_monthly' ? 'month' : 'year',
+          billing_interval: billingIntervalForProduct(resolved.productCode),
           ...(nextAttemptIso ? { provider_meta: { next_payment_attempt: nextAttemptIso } } : {}),
         }, { onConflict: 'provider_subscription_id' }));
         await recomputeUser(resolved.userId);
@@ -339,11 +344,11 @@ Deno.serve(async (req) => {
         const periodEndIso = unixToIso(getPeriodEndUnix(sub));
         await ensureWrite('invoice.updated upsert', supabaseAdmin.from('subscription').upsert({
           user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
-          provider_subscription_id: subId, status: sub.status, collection_state: 'past_due',
+          provider_subscription_id: subId, status: sub.status,
           cancel_at_period_end: sub.cancel_at_period_end === true,
           ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
           currency: invoice.currency || 'usd',
-          billing_interval: resolved.productCode === 'account_pro_monthly' ? 'month' : 'year',
+          billing_interval: billingIntervalForProduct(resolved.productCode),
           provider_meta: { next_payment_attempt: nextAttemptIso },
         }, { onConflict: 'provider_subscription_id' }));
         await recomputeUser(resolved.userId);
@@ -355,10 +360,8 @@ Deno.serve(async (req) => {
         const existing = await findSubRow(subObj.id);
         if (existing) {
           // Ordering-guard (ТЗ §5.2): пропускаем устаревшие/переставленные события.
-          // Сравнение по эпохам (строковое сравнение ISO↔pg-формата некорректно).
+          if (isStaleEvent(event.created, existing.provider_event_at)) break;
           const evtAtIso = unixToIso(event.created);
-          if (existing.provider_event_at
-              && event.created * 1000 <= new Date(existing.provider_event_at as string).getTime()) break;
           // Refetch истины из Stripe (ТЗ §1.3): не доверяем телу события (могло
           // прийти не по порядку). Это и чинит «отменил, а показывает активной».
           const sub = await adapter.fetchSubscription(subObj.id);
@@ -369,7 +372,7 @@ Deno.serve(async (req) => {
           const productCode = productId ? await adapter.productCodeForProviderProduct(productId) : null;
           await ensureWrite('subscription.updated', supabaseAdmin.from('subscription').update({
             status: sub.status, cancel_at_period_end: sub.cancel_at_period_end === true,
-            ...(productCode ? { product_code: productCode, billing_interval: productCode === 'account_pro_monthly' ? 'month' : 'year' } : {}),
+            ...(productCode ? { product_code: productCode, billing_interval: billingIntervalForProduct(productCode) } : {}),
             ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
             ...(evtAtIso ? { provider_event_at: evtAtIso } : {}),
           }).eq('id', existing.id));
@@ -382,9 +385,8 @@ Deno.serve(async (req) => {
         const subObj = event.data.object as Stripe.Subscription;
         const existing = await findSubRow(subObj.id);
         if (existing) {
+          if (isStaleEvent(event.created, existing.provider_event_at)) break;
           const evtAtIso = unixToIso(event.created);
-          if (existing.provider_event_at
-              && event.created * 1000 <= new Date(existing.provider_event_at as string).getTime()) break;
           await ensureWrite('subscription.deleted', supabaseAdmin.from('subscription')
             .update({
               status: 'canceled', canceled_at: new Date().toISOString(),

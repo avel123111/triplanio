@@ -26,10 +26,8 @@ import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
-import { stripeEnv, PLAN_TO_PRODUCT, VALID_PLANS, type PlanType } from '../_shared/payments/catalog.ts';
+import { stripeEnv, PLAN_TO_PRODUCT, VALID_PLANS, ENTITLING_STATUSES, type PlanType } from '../_shared/payments/catalog.ts';
 import { ensureProviderCustomerId, saveProviderCustomerId } from '../_shared/payments/customer.ts';
-
-const ENTITLING = ['active', 'trialing', 'past_due'];
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -76,7 +74,7 @@ Deno.serve(async (req) => {
     } else {
       // Статус-driven (как recompute): active/trialing/past_due держат Pro.
       const { data: subs } = await supabaseAdmin
-        .from('subscription').select('status').eq('user_id', user.id).in('status', ENTITLING).limit(1);
+        .from('subscription').select('status').eq('user_id', user.id).in('status', [...ENTITLING_STATUSES]).limit(1);
       if (subs && subs.length > 0) {
         return Response.json({
           error: 'You already have an active subscription. Use the billing portal to change plans.',

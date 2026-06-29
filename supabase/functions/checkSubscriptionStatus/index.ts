@@ -4,28 +4,15 @@
 // OWNER has an active Pro subscription. Without a tripId, falls back to the
 // caller's own subscription (used by the trip-creation paywall).
 import { corsFor } from '../_shared/cors.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { supabaseAdmin as admin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { reconcileEntitlement, needsEntitlementReconcile } from '../_shared/reconcileEntitlement.ts';
-
-const admin = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  { auth: { persistSession: false } },
-);
-
-async function getUser(req: Request) {
-  const a = req.headers.get('Authorization');
-  if (!a) return null;
-  const { data: { user } } = await admin.auth.getUser(a.replace('Bearer ', ''));
-  return user ?? null;
-}
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const user = await getUser(req);
+    const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
     const { tripId } = await req.json().catch(() => ({}));

@@ -38,6 +38,19 @@ export function stripeEnv(stripeKey: string): ProviderEnv {
   return isTestStripeKey(stripeKey) ? 'test' : 'live';
 }
 
+// Энтайтлинг-статусы подписки (держат Pro): active/trialing + грейс past_due.
+// Единый источник — был продублирован константой ENTITLING в webhook / reconcile /
+// createStripeCheckout и инлайном в getUserPlan. Меняешь набор грейс-статусов —
+// меняешь ЗДЕСЬ, а не в 4 файлах.
+export const ENTITLING_STATUSES = ['active', 'trialing', 'past_due'] as const;
+
+// billing_interval подписочного продукта. Тернарник был размазан по ~6 местам
+// (webhook ×5 + reconcile). Для trip_pro_lifetime поле не используется (разовая
+// покупка), поэтому ветка else безопасна.
+export function billingIntervalForProduct(code: ProductCode): 'month' | 'year' {
+  return code === 'account_pro_monthly' ? 'month' : 'year';
+}
+
 export interface ProviderProductRow {
   product_code: ProductCode;
   provider_product_id: string;

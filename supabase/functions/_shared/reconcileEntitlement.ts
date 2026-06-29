@@ -12,16 +12,16 @@
  *     подписок клиента и материализуем строку, чтобы recompute вернул Pro.
  */
 
-import Stripe from 'npm:stripe@17.0.0';
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import type Stripe from 'npm:stripe@17.0.0';
 import { getPeriodEndUnix, unixToIso } from './getPeriodEnd.ts';
-import { PLAN_TO_PRODUCT, PRODUCT_TO_PLAN, stripeEnv, getActiveProviderProducts, type ProductCode } from './payments/catalog.ts';
+import { PLAN_TO_PRODUCT, PRODUCT_TO_PLAN, stripeEnv, getActiveProviderProducts, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode } from './payments/catalog.ts';
+import { StripeAdapter } from './payments/stripeAdapter.ts';
 import { getProviderCustomerId } from './payments/customer.ts';
 import { reportPaymentAnomaly } from './sentry.ts';
 import { revokeLostProFeaturesForUser } from './revokeLostProFeatures.ts';
 
 const THROTTLE_MIN = 10;
-const ENTITLING = ['active', 'trialing', 'past_due'];
 
 /**
  * Нужен ли recompute-on-read для юзера (единый предикат, O1 — был продублирован в
@@ -58,7 +58,7 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
   // Помечаем синк сразу — медленный/падающий Stripe всё равно троттлит следующее чтение.
   await admin.from('users').update({ entitlement_synced_at: new Date().toISOString() }).eq('id', userId);
 
-  const stripe = new Stripe(key);
+  const adapter = new StripeAdapter(key, stripeEnv(key));
 
   const { data: rows } = await admin
     .from('subscription')
@@ -71,7 +71,7 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
     // stuck-PRO: освежаем статус/период имеющихся строк.
     for (const r of rows) {
       try {
-        const sub = await stripe.subscriptions.retrieve(r.provider_subscription_id as string);
+        const sub = await adapter.fetchSubscription(r.provider_subscription_id as string);
         const iso = unixToIso(getPeriodEndUnix(sub));
         await admin.from('subscription').update({
           status: sub.status,
@@ -86,14 +86,13 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
     // stuck-FREE: строк нет, но есть customer → потерянная активация. Находим живые
     // подписки и материализуем строку (bounded throttle выше).
     try {
-      const env = stripeEnv(key);
       // product_id → product_code из каталога БД (один запрос на весь список).
       const codeByProduct = new Map<string, ProductCode>(
-        (await getActiveProviderProducts('stripe', env)).map((r) => [r.provider_product_id, r.product_code] as [string, ProductCode]),
+        (await getActiveProviderProducts('stripe', adapter.env)).map((r) => [r.provider_product_id, r.product_code] as [string, ProductCode]),
       );
-      const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 });
+      const subs = await adapter.listSubscriptionsByCustomer(customerId, 10);
       const recovered: string[] = [];
-      for (const sub of subs.data) {
+      for (const sub of subs) {
         const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
         const productId = typeof price?.product === 'string'
           ? price.product : ((price?.product as { id?: string } | undefined)?.id ?? null);
@@ -116,13 +115,13 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
         } else {
           // Дубль-гард: не плодим вторую энтайтлинг-строку юзеру.
           const { data: live } = await admin
-            .from('subscription').select('id').eq('user_id', userId).in('status', ENTITLING).limit(1);
-          const isDup = live && live.length > 0 && ENTITLING.includes(sub.status);
+            .from('subscription').select('id').eq('user_id', userId).in('status', [...ENTITLING_STATUSES]).limit(1);
+          const isDup = live && live.length > 0 && (ENTITLING_STATUSES as readonly string[]).includes(sub.status);
           await admin.from('subscription').insert({
             user_id: userId, product_code: productCode, provider: 'stripe',
             provider_subscription_id: sub.id, status: isDup ? 'duplicate' : sub.status, needs_review: !!isDup,
             cancel_at_period_end: sub.cancel_at_period_end === true,
-            billing_interval: productCode === 'account_pro_monthly' ? 'month' : 'year',
+            billing_interval: billingIntervalForProduct(productCode),
             ...(iso ? { current_period_end: iso } : {}),
           });
         }
