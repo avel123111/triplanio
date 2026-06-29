@@ -9,7 +9,8 @@
   input,select{font:inherit;padding:8px;box-sizing:border-box}
   input{width:60%}
   .r{padding:8px 10px;border-bottom:1px solid #eee}
-  .t{font-weight:600}
+  .t{font-weight:600;display:flex;align-items:center;gap:8px}
+  .flag{width:22px;height:16px;flex:none;object-fit:cover;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
   .s{color:#666;font-size:13px}
   .d{color:#aaa;font-size:11px}
   .hint{color:#999;font-size:12px;margin:14px 0}
@@ -38,11 +39,15 @@
     if (v.length < 2) { out.innerHTML = ''; return; }
     const { data, error } = await sb.rpc('search_gazetteer', { q: v, lang: lang.value, lim: 10 });
     if (error) { out.textContent = error.message; return; }
-    out.innerHTML = (data || []).map(r => `<div class="r">
-      <div class="t">${esc(r.display)}</div>
+    out.innerHTML = (data || []).map(r => {
+      const cc = (r.country_code || '').toLowerCase();
+      const flag = cc ? `<img class="flag" src="/flags/${esc(cc)}.svg" alt="" loading="lazy" onerror="this.style.display='none'">` : '';
+      return `<div class="r">
+      <div class="t">${flag}<span>${esc(r.display)}</span></div>
       <div class="s">${esc(r.subtitle || '')}</div>
       <div class="d">${r.geonameid} · ${esc(r.feature_code)} · pop ${r.population ?? 0} · ${r.lat},${r.lng}</div>
-    </div>`).join('');
+    </div>`;
+    }).join('');
   };
   q.oninput = () => { clearTimeout(t); t = setTimeout(run, 250); };
   lang.onchange = run;
