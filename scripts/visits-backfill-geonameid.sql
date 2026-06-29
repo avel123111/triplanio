@@ -57,6 +57,33 @@ set geonameid = r.geonameid,
 from r
 where r.id = cv.id and r.geonameid is not null;
 
+-- ----- ПРОХОД 2: добор оставшихся по ЛОКАЛЬНОМУ имени (city_name) -----------
+-- У части старых визитов city_name_en — мусор от LocationIQ (TRIP-58): Монако→
+-- "Nice", Рим→"Vatican City", Валетта→"Malta", Милан→"Livigno & Bormio". Проход 1
+-- по английскому имени на них промахивается, но ЛОКАЛЬНОЕ city_name резолвится
+-- (search_gazetteer держит кириллицу/любой скрипт). Добираем оставшиеся null.
+with r2 as (
+  select cv.id, m.geonameid, m.name_i18n
+  from public.city_visits cv
+  left join lateral (
+    select s.geonameid, s.name_i18n,
+      case when cv.latitude is not null then
+        6371*acos(least(1, greatest(-1,
+          sin(radians(cv.latitude))*sin(radians(s.lat))
+          + cos(radians(cv.latitude))*cos(radians(s.lat))*cos(radians(cv.longitude - s.lng))))) end as km
+    from public.search_gazetteer(cv.city_name, 'ru', 20) s
+    where (cv.country_code is null or cv.country_code = '' or upper(cv.country_code) = s.country_code)
+    order by km asc nulls last
+    limit 1
+  ) m on true
+  where cv.geonameid is null
+)
+update public.city_visits cv
+set geonameid = r2.geonameid,
+    name_i18n = coalesce(cv.name_i18n, r2.name_i18n)
+from r2
+where r2.id = cv.id and r2.geonameid is not null;
+
 -- ----- ВАЛИДАЦИЯ -----------------------------------------------------------
 -- select count(*) total, count(geonameid) with_gid,
 --        count(*) filter (where geonameid is null) still_null
