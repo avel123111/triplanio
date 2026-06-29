@@ -145,7 +145,25 @@ jobs:
           # Non-interactive, STRICT (no --include-all): applies only migrations
           # newer than the project's journal. Out-of-order is rejected on purpose
           # (caught earlier by PR guard 2a; surfaced here by notify if it slips).
-          supabase db push --db-url "$URL" --yes
+          #
+          # Retry on transient pooler flakiness: `db push` over the Supabase
+          # transaction pooler intermittently dies with
+          #   ERROR: prepared statement "lrupscN_M" already exists (SQLSTATE 42P05)
+          # when it reuses a pooled server connection that still holds a prepared
+          # statement. The error happens during db push's internal "migration list"
+          # query (before applying), and db push only applies versions newer than the
+          # journal, so retrying with a fresh connection is SAFE and idempotent.
+          # DURABLE FIX (separate, by Pavel): point SUPABASE_DB_URL_* at the SESSION
+          # pooler (port 5432) / direct connection, not the TRANSACTION pooler (6543).
+          ok=0
+          for attempt in 1 2 3 4; do
+            if supabase db push --db-url "$URL" --yes; then ok=1; break; fi
+            echo "::warning::db push attempt $attempt failed (transient?); retrying in $((attempt*5))s…"
+            sleep $((attempt*5))
+          done
+          if [ "$ok" != 1 ]; then
+            echo "::error::db push failed after 4 attempts"; exit 1
+          fi
 
   # 2. Edge functions — after migrations succeed (or are skipped).
   deploy:
