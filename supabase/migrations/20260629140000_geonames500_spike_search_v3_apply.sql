@@ -19,6 +19,8 @@
 -- GeoNames alternateNamesV2 dump). The `doc` build below reads whatever languages are present;
 -- re-run the "build doc" UPDATE after (re)loading the dictionary. Pure SQL, no bulk data here.
 
+set statement_timeout = '600s';  -- doc rebuild over 234k rows
+
 create extension if not exists pg_trgm with schema public;
 create extension if not exists unaccent with schema public;
 
@@ -52,17 +54,20 @@ create temp table _reg as
 create temp table _cty as
   select c.code, string_agg(a.alternate_name, ' ') as names
   from geo_country_test c join geo_alt_names_test a on a.geonameid = c.geonameid group by c.code;
+create temp table _cityalt as
+  select a.geonameid, string_agg(a.alternate_name, ' ') as names from geo_alt_names_test a group by a.geonameid;
 
 -- build the search document (latin+cyrillic tokens; CJK/arabic dropped — UI is ru/en/es).
 -- RE-RUN this UPDATE after (re)loading geo_alt_names_test with more languages.
 update geo_gazetteer_test g set doc = to_tsvector('simple',
   regexp_replace(lower(unaccent(
     coalesce(g.search_blob,'') || ' ' ||
-    coalesce((select string_agg(a.alternate_name, ' ') from geo_alt_names_test a where a.geonameid = g.geonameid), '') || ' ' ||
+    coalesce(ca.names, '') || ' ' ||
     coalesce(g.admin1_name,'') || ' ' || coalesce(rg.names,'') || ' ' ||
     coalesce(g.country_code,'') || ' ' || coalesce(ct.names,'')
   )), '[^a-z0-9а-яё]+', ' ', 'g'))
 from geo_gazetteer_test gg
+  left join _cityalt ca on ca.geonameid = gg.geonameid
   left join _reg rg on rg.code = gg.country_code || '.' || gg.admin1_code
   left join _cty ct on ct.code = gg.country_code
 where gg.geonameid = g.geonameid;
