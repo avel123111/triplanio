@@ -33,11 +33,13 @@
   const lang = document.getElementById('lang');
   const out = document.getElementById('out');
   const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  let t;
+  let t, seq = 0;
   const run = async () => {
     const v = q.value.trim();
     if (v.length < 2) { out.innerHTML = ''; return; }
+    const my = ++seq;
     const { data, error } = await sb.rpc('search_gazetteer', { q: v, lang: lang.value, lim: 10 });
+    if (my !== seq) return; // a newer keystroke already fired — drop this stale response
     if (error) { out.textContent = error.message; return; }
     out.innerHTML = (data || []).map(r => {
       const cc = (r.country_code || '').toLowerCase();
