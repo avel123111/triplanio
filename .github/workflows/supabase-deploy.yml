@@ -156,3 +156,80 @@ jobs:
           # After TRIP-68 reconcile the journal holds the baseline, so this is a
           # no-op until a new timestamped migration lands.
           supabase db push --db-url "$URL" --yes
+
+  # Visibility (TRIP-134, phase 1): one Telegram ping per deploy run — on success
+  # AND on failure. Runs LAST and `if: always()`, so it fires even when an
+  # upstream job failed or was skipped (the `needs` chain stops at the first
+  # failure → downstream jobs are skipped → terminal state). Reports the result
+  # of each backend job and points at the run.
+  #
+  # Sends via a dedicated OPS bot (NOT the production telegramWebhook bot). Until
+  # the repo secrets exist the step no-ops gracefully (never fails the pipeline):
+  #   TELEGRAM_OPS_BOT_TOKEN — ops bot token from @BotFather
+  #   TELEGRAM_OPS_CHAT_ID   — chat/channel id the ops bot posts to
+  notify:
+    name: Notify (Telegram)
+    needs: [gate, detect, deploy, migrate]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram notification
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_OPS_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_OPS_CHAT_ID }}
+          GATE: ${{ needs.gate.result }}
+          DEPLOY: ${{ needs.deploy.result }}
+          MIGRATE: ${{ needs.migrate.result }}
+        run: |
+          set -uo pipefail
+          if [ -z "$TOKEN" ] || [ -z "$CHAT_ID" ]; then
+            echo "::warning::TELEGRAM_OPS_BOT_TOKEN / TELEGRAM_OPS_CHAT_ID not set — skipping Telegram notification"
+            exit 0
+          fi
+
+          # Map branch → human target. dev → Supabase dev, main → prod.
+          case "${{ github.ref_name }}" in
+            dev)  TARGET="Supabase dev" ;;
+            main) TARGET="Supabase prod" ;;
+            *)    TARGET="${{ github.ref_name }}" ;;
+          esac
+
+          # Per-job glyph. A skipped job (path-filtered out, or chain stopped
+          # before it) is neutral — only failure/cancelled count as bad.
+          glyph() {
+            case "$1" in
+              success)   echo "✅" ;;
+              failure)   echo "❌" ;;
+              cancelled) echo "🚫" ;;
+              skipped|"") echo "➖" ;;
+              *)         echo "❓ $1" ;;
+            esac
+          }
+
+          # Overall: bad if any tracked backend job failed or was cancelled.
+          OVERALL="success"
+          for r in "$GATE" "$DEPLOY" "$MIGRATE"; do
+            case "$r" in failure|cancelled) OVERALL="failure" ;; esac
+          done
+          if [ "$OVERALL" = "success" ]; then HEAD="✅ Backend deploy OK"; else HEAD="❌ Backend deploy FAILED"; fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          MSG="$HEAD — $TARGET
+          Branch: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+          By: ${{ github.actor }}
+
+          gate    $(glyph "$GATE")
+          deploy  $(glyph "$DEPLOY")   (functions)
+          migrate $(glyph "$MIGRATE")   (db push)
+
+          Run: $RUN_URL"
+
+          # Plain text (no parse_mode) — avoids Markdown/HTML escaping landmines.
+          curl -fsS -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT_ID}" \
+            --data-urlencode "text=${MSG}" \
+            --data-urlencode "disable_web_page_preview=true" \
+            >/dev/null \
+            && echo "Telegram notification sent ($OVERALL)" \
+            || echo "::warning::Telegram sendMessage failed (non-fatal)"
