@@ -61,6 +61,35 @@ test('dedup falls back to name+country_code when no external_city_id', () => {
   assert.equal(uniqueCountryCount(v), 1);
 });
 
+test('geonameid is the primary identity: same geonameid counts once', () => {
+  // TRIP-146: same physical city, two picks with DIFFERENT localized names and
+  // external ids, but the same GeoNames id -> one city.
+  const v = [
+    { id: 'g1', kind: 'transit', city_name: 'Москва', country_code: 'RU', geonameid: 524901, external_city_id: '195713348' },
+    { id: 'g2', kind: 'transit', city_name: 'Moscow', country_code: 'RU', geonameid: 524901, external_city_id: '196017222' },
+  ];
+  assert.equal(uniqueCityCount(v), 1);
+  assert.equal(uniqueTransitCities(v).length, 1);
+});
+
+test('geonameid takes priority over name: different geonameid = different city', () => {
+  // Two same-named cities with distinct GeoNames ids must NOT collapse.
+  const v = [
+    { id: 'p1', kind: 'transit', city_name: 'Springfield', country_code: 'US', geonameid: 4250542 },
+    { id: 'p2', kind: 'transit', city_name: 'Springfield', country_code: 'US', geonameid: 4951788 },
+  ];
+  assert.equal(uniqueCityCount(v), 2);
+});
+
+test('legacy rows without geonameid still dedup by name+country', () => {
+  // Mixed: a geonameid-less pair falls back to name|cc (Phase 5 backfill tail).
+  const v = [
+    { id: 'l1', kind: 'transit', city_name: 'Rome', country_code: 'IT' },
+    { id: 'l2', kind: 'transit', city_name: 'rome', country_code: 'IT' },
+  ];
+  assert.equal(uniqueCityCount(v), 1);
+});
+
 test('transitVisits / isTransitVisit filter correctly', () => {
   assert.equal(transitVisits(VISITS).length, 4); // 4 transit rows (incl. the repeat)
   assert.equal(isTransitVisit({ kind: 'transit' }), true);
