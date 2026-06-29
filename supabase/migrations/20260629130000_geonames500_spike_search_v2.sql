@@ -26,6 +26,11 @@ alter table geo_gazetteer_test
   drop column if exists name_es,
   add  column if not exists doc tsvector;
 
+-- the dictionary must hold MANY names per (geonameid, language) once ALL languages are
+-- loaded, so drop the single-name (geonameid,isolanguage) PK and keep a plain index.
+alter table geo_alt_names_test drop constraint if exists geo_alt_names_test_pkey;
+create index if not exists gan_geo_lang on geo_alt_names_test (geonameid, isolanguage);
+
 -- ru -> lat transliteration (digraphs first, then 1:1; ь dropped). Approximate, good for matching.
 create or replace function public.translit_ru_lat(s text) returns text
 language sql immutable set search_path to 'public' as $fn$
