@@ -100,6 +100,7 @@ import { FieldError, IssuesPanel, fieldHasError } from '@/components/common/Vali
 import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
+import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
 import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
@@ -201,13 +202,6 @@ const SERVICE_META = {
     titleNewKey: 'service.insurance_new', titleEditKey: 'service.insurance_edit',
   },
   car_rental: TYPE_META.service,
-};
-
-const TABLE_BY_KIND = {
-  hotel: 'hotel_stays',
-  transfer: 'transfers',
-  activity: 'activities',
-  service: 'trip_services',
 };
 
 const TRANSPORT_KINDS = [
@@ -746,7 +740,6 @@ export default function EventEditDialog({
     if (currentKind === 'transfer') return buildTransferPayload(form, fromVisit, toVisit, tripId, startTz, endTz);
     return buildServicePayload(form, tripId, t);
   };
-  const OPT_TABLE = { hotel: 'hotel_stays', transfer: 'transfers', activity: 'activities', service: 'trip_services' };
   const OPT_CACHE = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
   // A create that touches several rows/cities (layover chain or AI extra segments)
   // can't be cleanly mirrored optimistically — keep the awaited path for those.
@@ -766,7 +759,7 @@ export default function EventEditDialog({
     // creates keep the awaited mutation (avoids the view-panel read race / multi-row).
     const optimistic = !entity && tripId && OPT_CACHE[currentKind] && !isComplexTransferCreate;
     if (!optimistic) { saveMut.mutate(); return; }
-    const table = OPT_TABLE[currentKind];
+    const table = ENTITY_TABLE_BY_KIND[currentKind];
     const cacheKind = OPT_CACHE[currentKind];
     const payload = buildCurrentPayload();
     const tempId = 'tmp-' + Math.random().toString(36).slice(2);
@@ -838,15 +831,14 @@ export default function EventEditDialog({
   // ── Delete mutation ────────────────────────────────────────────────────
   const deleteMut = useMutation({
     mutationFn: async () => {
-      const table = TABLE_BY_KIND[currentKind];
-      const { error } = await supabase.from(table).delete().eq('id', entity.id);
+      // Entity gone → every file it referenced (originals + any staged this
+      // session) is orphaned. deleteSourceEntity sweeps best-effort on success
+      // (TRIP-117); seenDocPaths is the dialog's broader set (originals + staged).
+      const { error } = await deleteSourceEntity(currentKind, entity.id, [...seenDocPaths.current]);
       if (error) throw error;
     },
     onSuccess: () => {
-      // Entity gone → every file it referenced (originals + any staged this
-      // session) is orphaned. Sweep best-effort (TRIP-117).
       committedRef.current = true;
-      removeTripFiles([...seenDocPaths.current]);
       if (tripId) invalidateTripData(qc, tripId);
       onOpenChange(false);
     },

@@ -24,19 +24,13 @@ import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate } from '@/lib/trip-data';
 import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
+import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import {
   Map as MapIcon, Calendar, FileText,
   BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
   ShieldCheck,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
-
-export const TABLE_BY_KIND = {
-  hotel: 'hotel_stays',
-  transfer: 'transfers',
-  activity: 'activities',
-  service: 'trip_services',
-};
 
 export const TRANSPORT_ICONS = {
   plane: Plane, train: Train, bus: Bus, car: CarIcon, taxi: CarIcon,
@@ -488,7 +482,7 @@ export function useEntityDocs(kind, entity, canEdit) {
       if (uploaded.length) {
         const next = [...docs, ...uploaded];
         setDocs(next);
-        const table = TABLE_BY_KIND[kind];
+        const table = ENTITY_TABLE_BY_KIND[kind];
         if (table && entity.id) {
           if (kind === 'service') {
             await supabase.from(table).update({ details: { ...(entity.details || {}), documents: next } }).eq('id', entity.id);

@@ -9,7 +9,6 @@
  */
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, optimisticContentUpdate } from '@/lib/trip-data';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
@@ -18,9 +17,8 @@ import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
 import { PanelShell, EventPanelBody, kindIcon } from '@/components/common/EventPanels';
 import { getSourceDocuments } from '@/lib/documents';
-import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
-
-const TABLE_BY_KIND = { hotel: 'hotel_stays', transfer: 'transfers', activity: 'activities', service: 'trip_services' };
+import { collectDocPaths } from '@/lib/storageCleanup';
+import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
 const LABEL_KEY = { hotel: 'budget.cat_accommodation', activity: 'budget.source_activity', service: 'service.car_default_name' };
 
 export default function EventSourcePanel({ kind, id, canEdit = false, warning = null, autoEdit = false, onClose }) {
@@ -87,13 +85,12 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
 
   const CACHE_KIND = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
   const doDelete = async () => {
-    const table = TABLE_BY_KIND[kind];
-    if (!table) return;
+    if (!ENTITY_TABLE_BY_KIND[kind]) return;
     const tripId = data.trip_id;
     const cacheKind = CACHE_KIND[kind];
     // Entity gone → its attachments are orphaned. Capture their object keys
-    // before delete; sweep best-effort only once the row is actually gone, never
-    // on rollback (TRIP-117).
+    // before delete; deleteSourceEntity sweeps best-effort only once the row is
+    // actually gone, never on rollback (TRIP-117).
     const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
     // Optimistic: drop it from the content cache + close immediately, then delete
     // in the DB in the background and reconcile (rollback on error).
@@ -102,18 +99,16 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
       optimisticContentUpdate(qc, tripId, cacheKind, 'remove', { id: data.id });
       onClose?.();
       (async () => {
-        const { error } = await supabase.from(table).delete().eq('id', data.id);
+        const { error } = await deleteSourceEntity(kind, data.id, orphanPaths);
         if (error && prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
-        else if (!error) removeTripFiles(orphanPaths);
         invalidate();
       })();
       return;
     }
     setDeleting(true);
-    const { error } = await supabase.from(table).delete().eq('id', data.id);
+    const { error } = await deleteSourceEntity(kind, data.id, orphanPaths);
     setDeleting(false);
     if (error) { toast({ description: t('event.delete_failed') + ': ' + error.message, variant: 'destructive' }); return; }
-    removeTripFiles(orphanPaths);
     invalidate();
     onClose?.();
   };
