@@ -1,0 +1,11 @@
+{
+  "$schema": "https://tolgee.io/cli-schema.json",
+  "apiUrl": "https://tolgee.triplanio.com",
+  "projectId": 2,
+  "format": "JSON_TOLGEE",
+  "pull": {
+    "path": "./src/lib/i18n/locales",
+    "delimiter": "",
+    "fileStructureTemplate": "{languageTag}/{namespace}.{extension}"
+  }
+}

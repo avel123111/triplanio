@@ -74,14 +74,67 @@ jobs:
             migrations:
               - 'supabase/migrations/**'
 
-  # 1. Migrations first — a function must never outrun its migration.
+  # 0. Translations — pull authored strings from Tolgee into the repo BEFORE the
+  # deploy chain, so the frontend bakes the latest (TRIP-134, pull-on-deploy). DEV
+  # ONLY: dev is the single sync point; main inherits the committed files via the
+  # dev→main merge (CI never commits to main). Runs before `migrate` so its push to
+  # dev lands first and migrate's re-stamp push (if any) fast-forwards on top — the
+  # two mid-run pushers never race. The downstream chain requires this job
+  # success-or-skipped, so a pull/normalize failure STOPS the deploy and notify
+  # reports it. If TOLGEE_API_KEY is unset the job no-ops (never blocks deploys) —
+  # same graceful pattern as the Telegram step.
+  tolgee_sync:
+    name: Sync translations (Tolgee → dev)
+    needs: [gate, detect]
+    if: ${{ !cancelled() && needs.gate.result == 'success' && github.ref_name == 'dev' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # commits the refreshed locales back to dev
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Pull from Tolgee + normalize + commit
+        env:
+          TOLGEE_API_KEY: ${{ secrets.TOLGEE_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TOLGEE_API_KEY:-}" ]; then
+            echo "::warning::TOLGEE_API_KEY not set — skipping Tolgee sync (translations won't refresh until the secret is added)"
+            exit 0
+          fi
+          # Native pull (config: .tolgeerc.json). The project uses namespaces, so the
+          # CLI writes per-namespace files with BARE keys (delimiter '' = flat) to
+          # src/lib/i18n/locales/<lang>/<ns>.json — exactly the repo layout. Normalize
+          # = sort keys + trailing newline so the commit diff shows ONLY real
+          # translation changes (Tolgee is the source of truth; local edits are
+          # overwritten by design).
+          npx --yes @tolgee/cli@latest pull
+          node scripts/ci/normalize-locale-json.mjs
+          if [ -n "$(git status --porcelain src/lib/i18n/locales)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/lib/i18n/locales
+            git commit -m "chore(i18n): sync translations from Tolgee [skip ci]" \
+              -m "TRIP-134 pull-on-deploy: authoritative source = Tolgee. [skip ci] avoids a redundant run; the vercel job below checks out dev tip and bakes these files in this same run."
+            # If dev moved meanwhile the push is rejected → job fails → notify alerts
+            # (safe; rare, manual retry).
+            git push origin HEAD:dev
+          else
+            echo "tolgee sync: no translation changes"
+          fi
+
+  # 1. Migrations — after the translation sync (so the re-stamp push never races
+  # tolgee_sync's push). A function must never outrun its migration.
   migrate:
     name: Apply migrations
-    needs: [gate, detect]
+    needs: [gate, detect, tolgee_sync]
     if: >-
       ${{ !cancelled()
           && needs.gate.result == 'success'
           && needs.detect.result == 'success'
+          && (needs.tolgee_sync.result == 'success' || needs.tolgee_sync.result == 'skipped')
           && (github.event_name == 'workflow_dispatch' || needs.detect.outputs.migrations == 'true') }}
     runs-on: ubuntu-latest
     permissions:
@@ -164,11 +217,12 @@ jobs:
   # 2. Edge functions — after migrations succeed (or are skipped).
   deploy:
     name: Deploy functions
-    needs: [gate, detect, migrate]
+    needs: [gate, detect, tolgee_sync, migrate]
     if: >-
       ${{ !cancelled()
           && needs.gate.result == 'success'
           && needs.detect.result == 'success'
+          && (needs.tolgee_sync.result == 'success' || needs.tolgee_sync.result == 'skipped')
           && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
           && (github.event_name == 'workflow_dispatch' || needs.detect.outputs.functions == 'true') }}
     runs-on: ubuntu-latest
@@ -237,11 +291,12 @@ jobs:
   # migrate+deploy skipped (fast-path).
   vercel:
     name: Deploy frontend (Vercel)
-    needs: [gate, detect, migrate, deploy]
+    needs: [gate, detect, tolgee_sync, migrate, deploy]
     if: >-
       ${{ !cancelled()
           && needs.gate.result == 'success'
           && needs.detect.result == 'success'
+          && (needs.tolgee_sync.result == 'success' || needs.tolgee_sync.result == 'skipped')
           && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
           && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') }}
     runs-on: ubuntu-latest
@@ -250,7 +305,13 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
+      # Check out the branch TIP (not the triggering SHA): on dev, tolgee_sync may
+      # have just committed refreshed locales, and `vercel deploy` uploads this
+      # working dir to the remote build — so it must include that commit to bake the
+      # latest translations. On main there's no mid-run commit, so tip == SHA.
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -295,7 +356,7 @@ jobs:
   #   TELEGRAM_OPS_CHAT_ID   — chat/channel id the ops bot posts to
   notify:
     name: Notify (Telegram)
-    needs: [gate, detect, migrate, deploy, vercel]
+    needs: [gate, detect, tolgee_sync, migrate, deploy, vercel]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -305,6 +366,7 @@ jobs:
           CHAT_ID: ${{ secrets.TELEGRAM_OPS_CHAT_ID }}
           GATE: ${{ needs.gate.result }}
           DETECT: ${{ needs.detect.result }}
+          TOLGEE: ${{ needs.tolgee_sync.result }}
           MIGRATE: ${{ needs.migrate.result }}
           DEPLOY: ${{ needs.deploy.result }}
           VERCEL: ${{ needs.vercel.result }}
@@ -336,7 +398,7 @@ jobs:
 
           # Overall: bad if any tracked job failed or was cancelled.
           OVERALL="success"
-          for r in "$GATE" "$DETECT" "$MIGRATE" "$DEPLOY" "$VERCEL"; do
+          for r in "$GATE" "$DETECT" "$TOLGEE" "$MIGRATE" "$DEPLOY" "$VERCEL"; do
             case "$r" in failure|cancelled) OVERALL="failure" ;; esac
           done
           if [ "$OVERALL" = "success" ]; then HEAD="✅ Deploy OK"; else HEAD="❌ Deploy FAILED"; fi
@@ -348,6 +410,7 @@ jobs:
           By: ${{ github.actor }}
 
           $(glyph "$GATE") gate
+          $(glyph "$TOLGEE") tolgee sync (i18n)
           $(glyph "$MIGRATE") migrate (db push)
           $(glyph "$DEPLOY") deploy (functions)
           $(glyph "$VERCEL") vercel (frontend)
