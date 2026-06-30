@@ -23,8 +23,10 @@ const I18nContext = createContext({
 });
 
 // Active locale falls back to this one (then to the raw key) for missing strings,
-// so it is always loaded alongside whatever language is active.
-const FALLBACK_LANG = 'ru';
+// so it is always loaded alongside whatever language is active. 'en' matches the
+// Tolgee project's base language, so a missing key resolves the same way here and
+// in Tolgee (and never shows Russian to an en/es user).
+const FALLBACK_LANG = 'en';
 
 // Resolve a dotted address `namespace.bareKey` against a nested locale dict
 // ({ namespace: { bareKey: value } }). Split on the FIRST dot only: the namespace
@@ -158,7 +160,7 @@ export function I18nProvider({ children }) {
   //  - In-context editing session (only you, locally): route through Tolgee so the
   //    observer marker-wraps the string for editing.
   //  - Everyone else: resolve straight from the baked dictionary (active lang →
-  //    ru fallback → raw key) and do the {var} interpolation ourselves — zero
+  //    en fallback → raw key) and do the {var} interpolation ourselves — zero
   //    Tolgee overhead on the hot path. Mirrors the pre-Tolgee behaviour exactly.
   // Re-created on `lang` change so consumers re-render with the new language.
   const t = useCallback((key, vars) => {
