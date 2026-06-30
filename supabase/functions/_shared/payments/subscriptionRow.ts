@@ -52,16 +52,6 @@ export interface SubscriptionUpsertInput {
   currency: string;
   billingInterval: 'month' | 'year';
   currentPeriodEnd: string | null;
-  /**
-   * Включать ли `current_period_end`, когда значение null.
-   *  - true  (checkout-new / invoice.paid-new): ключ пишется всегда — поведение
-   *    сохранено байт-в-байт (`current_period_end: periodEndIso`).
-   *  - false (payment_failed / invoice.updated): ключ только при непустом значении
-   *    (`...(periodEndIso ? { current_period_end } : {})`).
-   * ⚠️ Эта асимметрия — НЕ дизайн, а унаследованная неконсистентность исходного
-   *    кода; сохранена намеренно (характеризация), кандидат на отдельный фикс.
-   */
-  includePeriodEndWhenNull: boolean;
   providerMeta: ProviderMetaDirective;
   /** needs_review — только ветки с детектом дубля (checkout-new / invoice.paid-new). */
   needsReview?: boolean;
@@ -88,7 +78,11 @@ export function buildSubscriptionUpsertRow(input: SubscriptionUpsertInput): Reco
     billing_interval: input.billingInterval,
   };
 
-  if (input.currentPeriodEnd !== null || input.includePeriodEndWhenNull) {
+  // current_period_end пишем ТОЛЬКО когда Stripe реально вернул дату. null'ом не
+  // затираем известный «оплачено до» — его читает recompute как границу права
+  // (max(... else current_period_end)). Тот же безопасный паттерн уже в
+  // reconcileEntitlement / invoice.payment_failed / invoice.updated.
+  if (input.currentPeriodEnd !== null) {
     row.current_period_end = input.currentPeriodEnd;
   }
   if (input.needsReview !== undefined) row.needs_review = input.needsReview;
