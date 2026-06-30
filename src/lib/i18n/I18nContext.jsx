@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/api/supabaseClient';
 import { hasLang, loadLocale } from './dictionary';
 import { LANGUAGES, localeTag } from './translations';
+import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, splitNs } from './tolgee';
 import {
   applyLuxonLocale,
   formatDateTime,
@@ -81,6 +82,11 @@ export function I18nProvider({ children }) {
       if (dictsRef.current[l]) return null;
       if (!loadingRef.current[l]) {
         loadingRef.current[l] = loadLocale(l).then((d) => {
+          // Mirror the loaded locale into Tolgee's static cache so tolgee.t()
+          // resolves it synchronously and the in-context observer can wrap it
+          // (path-A spike). Our own `dicts` state stays the safety net below.
+          addLocaleToTolgee(l, d);
+          ensureTolgeeRunning();
           // Functional update so concurrent locale loads merge atomically; the
           // ref mirror is kept current inside so `ensureLoaded` dedupes reads.
           setDicts((prev) => {
@@ -109,6 +115,10 @@ export function I18nProvider({ children }) {
   // Apply Luxon default locale on mount and whenever lang changes,
   // so every DateTime.toFormat('LLLL') / .toFormat('ccc') picks up the right names.
   useEffect(() => { applyLuxonLocale(lang); }, [lang]);
+
+  // Keep Tolgee's active language in sync with ours so tolgee.t() resolves the
+  // right locale (path-A spike).
+  useEffect(() => { tolgee.changeLanguage(lang); }, [lang]);
 
   // Sync from user once authenticated
   useEffect(() => {
@@ -141,10 +151,17 @@ export function I18nProvider({ children }) {
   }, [user]);
 
   const t = useCallback((key, vars) => {
+    // Path-A spike: resolve THROUGH Tolgee so the output carries in-context
+    // markers and interpolation is done by Tolgee's FormatSimple ({var}) — we
+    // never .replace() over a wrapped string (that would damage the markers).
+    const { ns, key: bareKey } = splitNs(key);
+    const out = tolgee.t({ key: bareKey, ns, params: vars || {}, defaultValue: undefined });
+    // tolgee.t() returns the bare key when it has no record (sync-timing race or
+    // a genuinely missing key). In that case fall back to our own dictionaries —
+    // identical to the pre-spike behaviour, so there is no functional regression.
+    if (out && out !== bareKey) return out;
+
     const dict = dicts[lang] || dicts[FALLBACK_LANG];
-    // Keys are stored bare inside per-namespace dicts; the call-site address is
-    // `namespace.key`. Split on the FIRST dot to resolve. Fallback chain mirrors
-    // the previous flat lookup: active locale → ru → the key itself.
     let str = resolveKey(dict, key) || resolveKey(dicts[FALLBACK_LANG], key) || key;
     if (vars && typeof str === 'string') {
       Object.entries(vars).forEach(([k, v]) => {
