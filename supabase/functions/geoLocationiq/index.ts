@@ -28,6 +28,12 @@
  * is taken ONLY before a real upstream call (cache hits skip it). Interactive
  * callers (autocomplete, manual search) have priority over background ones (AI
  * batch, booking-address resolve) via `p_min`.
+ *
+ * TRIP-60 observability: two distinct Sentry events separate the degradation
+ * causes — `geocode bucket exhausted` (our own token bucket ran dry → tune
+ * cap/rate) vs `geocode upstream_429|upstream_5xx` (LocationIQ itself rejected →
+ * key/tariff ceiling or provider outage; the bucket can't help). endpoint/status
+ * ride along in extra.
  */
 
 import { corsFor } from '../_shared/cors.ts';
@@ -261,6 +267,15 @@ Deno.serve(async (req) => {
       );
     }
     if ('upstreamError' in outcome) {
+      // TRIP-60: distinct Sentry counter for an UPSTREAM LocationIQ failure
+      // (429/5xx), kept separate from our own `geocode bucket exhausted` event so
+      // the graph distinguishes "key/provider ceiling" from "our token-bucket
+      // rate". Message drives grouping (one group per reason); endpoint/status go
+      // in extra. After TRIP-146 the only callers left are address/reverse ops.
+      const reason = outcome.upstreamError === 429 ? 'upstream_429' : 'upstream_5xx';
+      await captureEdgeError(new Error(`geocode ${reason}`), 'geoLocationiq', {
+        reason, action, endpoint, status: outcome.upstreamError,
+      });
       return Response.json(
         { error: 'locationiq_upstream_error', status: outcome.upstreamError },
         { status: 502, headers: corsHeaders },
