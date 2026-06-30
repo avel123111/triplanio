@@ -12,22 +12,25 @@
 //     stays in static mode (plain strings from `staticData`, zero network). The
 //     browser extension injects the key locally for a single authorised user to
 //     switch into dev mode — the key never ships to real users.
-//   - InContextTools is imported from `@tolgee/web/tools` (unconditional) so the
-//     observer survives a production `vite build`; the main-export `DevTools` is
-//     a no-op in production builds and would silently disable in-context.
+//   - We DO NOT bundle InContextTools: it would wrap every string with invisible
+//     in-context markers for EVERY user (verified — it wraps even when isDev is
+//     false / no key). Instead we ship only BrowserExtensionPlugin; the Tolgee
+//     Tools browser extension injects the observer + editing UI on demand, into
+//     the authorised user's session only. Normal users get plain baked strings.
 import { Tolgee, FormatSimple, BrowserExtensionPlugin } from '@tolgee/web';
-import { InContextTools } from '@tolgee/web/tools';
 
 const DEFAULT_API_URL = 'https://tolgee.triplanio.com';
 
 export const tolgee = Tolgee()
   .use(FormatSimple()) // interpolates our existing {var} placeholders
-  .use(BrowserExtensionPlugin()) // lets the extension hand the SDK an apiKey
-  .use(InContextTools()) // observer + in-context UI, kept through prod build
+  .use(BrowserExtensionPlugin()) // lets the extension hand the SDK an apiKey + UI
   .init({
     // Empty in the bundle on purpose — the extension provides it at runtime.
     apiKey: import.meta.env.VITE_TOLGEE_API_KEY || undefined,
     apiUrl: import.meta.env.VITE_TOLGEE_API_URL || DEFAULT_API_URL,
+    // run() throws without a base language; the facade then drives the active
+    // language via changeLanguage(). 'en' is the Tolgee base + our fallback.
+    defaultLanguage: 'en',
     fallbackLanguage: 'en',
     observerType: 'invisible',
     // Our bare keys are flat (and may themselves contain dots) — never let
@@ -36,12 +39,12 @@ export const tolgee = Tolgee()
     staticData: {},
   });
 
-let started = false;
-// Start the observer once. Safe to call repeatedly.
+// Start the observer once. Idempotent — Tolgee's own isRunning() is the source
+// of truth (survives HMR re-eval; no separate module flag to drift).
+// INVARIANT: addStaticData (via addLocaleToTolgee) must happen BEFORE this —
+// after run()+invalidate the static version is bumped and re-adds are ignored.
 export function ensureTolgeeRunning() {
-  if (started) return;
-  started = true;
-  tolgee.run();
+  if (!tolgee.isRunning()) tolgee.run();
 }
 
 // Mirror a loaded locale ({ namespace: { bareKey: value } }) into Tolgee's static

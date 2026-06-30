@@ -151,18 +151,25 @@ export function I18nProvider({ children }) {
   }, [user]);
 
   const t = useCallback((key, vars) => {
-    // Path-A spike: resolve THROUGH Tolgee so the output carries in-context
-    // markers and interpolation is done by Tolgee's FormatSimple ({var}) — we
-    // never .replace() over a wrapped string (that would damage the markers).
-    // The Tolgee project is flat, so the full dotted address IS the key.
-    const out = tolgee.t({ key, params: vars || {}, defaultValue: undefined });
-    // tolgee.t() returns the key itself when it has no record (sync-timing race
-    // or a genuinely missing key). In that case fall back to our own dictionaries
-    // — identical to the pre-spike behaviour, so there is no functional regression.
-    if (out && out !== key) return out;
-
+    // Our own dictionaries stay the AUTHORITY for presence and (correct-language)
+    // value. Tolgee is only an overlay: when it is in step with our active
+    // language we prefer its output so the in-context observer can wrap/edit the
+    // string (and FormatSimple does the {var} interpolation). The full dotted
+    // address is the Tolgee key (flat project). We deliberately do NOT detect a
+    // miss via `out !== key`: an active observer marker-wraps even a missing key,
+    // which would defeat that check — so we gate on our own dict instead.
     const dict = dicts[lang] || dicts[FALLBACK_LANG];
-    let str = resolveKey(dict, key) || resolveKey(dicts[FALLBACK_LANG], key) || key;
+    const have = resolveKey(dict, key);
+    const haveFallback = have === undefined ? resolveKey(dicts[FALLBACK_LANG], key) : have;
+
+    if (haveFallback !== undefined && tolgee.getLanguage() === lang) {
+      const out = tolgee.t({ key, params: vars });
+      if (out) return out;
+    }
+
+    // Genuinely missing, or Tolgee not yet language-synced → resolve ourselves
+    // (correct language, no markers). Identical to the pre-Tolgee behaviour.
+    let str = haveFallback !== undefined ? haveFallback : key;
     if (vars && typeof str === 'string') {
       Object.entries(vars).forEach(([k, v]) => {
         str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
