@@ -55,12 +55,7 @@
 .bgt-ctl { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 14px; }
 .bgt-ctl__spacer { flex: 1; min-width: 8px; }
 
-/* pill segmented control (category ⇄ city) — matches the Lumo .seg spec */
-.bgt-seg { display: inline-flex; background: var(--surface-2); border-radius: var(--r-pill); padding: 4px; gap: 2px; }
-.bgt-seg button { font: inherit; font-size: var(--fs-meta); font-weight: 700; color: var(--muted); background: transparent; border: 0; cursor: pointer; padding: 7px 13px; border-radius: var(--r-pill); display: inline-flex; align-items: center; gap: 6px; transition: color .2s, background .2s, transform .16s var(--ease-spring); }
-.bgt-seg button svg { width: 14px; height: 14px; }
-.bgt-seg button.on { color: var(--ink); background: var(--surface); box-shadow: var(--sh-1); }
-.bgt-seg button:active { transform: scale(.96); }
+/* category ⇄ city segmented control reuses the shared Lumo .seg component */
 
 /* ════════ TWO-PANE DRILLDOWN ════════ */
 .bgt-drill { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }

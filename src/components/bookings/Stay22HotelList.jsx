@@ -340,7 +340,7 @@ export default function Stay22HotelList({
         .s22f { display: flex; flex-direction: column; gap: 11px; }
         .s22f-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
         .s22f-wrap { position: relative; }
-        .s22f-chip { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: var(--r-pill); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); font-family: var(--font-display); font-weight: 600; font-size: var(--fs-meta); cursor: pointer; white-space: nowrap; transition: border-color .2s var(--ease-out), box-shadow .2s, transform .12s var(--ease-spring); }
+        .s22f-chip { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: var(--r-control); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); font-family: var(--font-display); font-weight: 600; font-size: var(--fs-meta); cursor: pointer; white-space: nowrap; transition: border-color .2s var(--ease-out), box-shadow .2s, transform .12s var(--ease-spring); }
         .s22f-chip:hover { border-color: var(--line-hover); }
         .s22f-chip:active { transform: scale(.98); }
         .s22f-chip svg { color: var(--muted); flex: none; }
@@ -354,7 +354,7 @@ export default function Stay22HotelList({
         .s22f-plbl { font-size: 13px; font-weight: 800; color: var(--ink-2); }
         .s22f-pmuted { font-weight: 600; color: var(--muted); }
         .s22f-pfields { display: flex; align-items: center; gap: 8px; }
-        .s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong); border-radius: var(--r-sm); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
+        .s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong); border-radius: var(--r-control); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
         .s22f-field:focus-within { border-color: var(--brand); background: var(--surface); box-shadow: 0 0 0 4px var(--primary-ring); }
         .s22f-cur { font-family: var(--font-display); font-weight: 700; color: var(--muted); font-size: 14px; flex: none; }
         .s22f-field input { border: 0; outline: 0; background: transparent; width: 100%; min-width: 0; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; padding: 0; }

@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/lib/AuthContext';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
-import { invokeGetTripDetails, tripErrorKind } from '@/lib/invokeTripFn';
+import { invokeGetTripDetails } from '@/lib/invokeTripFn';
+import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
 import { naiveDayKey, parseNaive, formatNaive } from '@/lib/naive-time';
 import { formatTripRange } from '@/lib/trip-dates';
@@ -835,7 +836,10 @@ export default function TripView() {
   };
 
   // Fetch shell (trip + cityVisits)
-  const { data: shellData, isLoading: loadingShell, error: shellError } = useQuery({
+  // isPending + fetchStatus (not just isLoading/error) feed useQueryGate: while
+  // OFFLINE, React Query PAUSES this query (fetchStatus 'paused') instead of
+  // throwing, so the gate must read that state directly — see the gate below.
+  const { data: shellData, isLoading: loadingShell, error: shellError, isPending: shellPending, fetchStatus: shellFetchStatus } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
     // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
     // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
@@ -927,20 +931,20 @@ export default function TripView() {
   const screenBodyRef = useRef(null);
   useEffect(() => { if (screenBodyRef.current) screenBodyRef.current.scrollTop = 0; }, [shownLens]);
 
-  // TRIP-56: map the trip-load failure to the right screen instead of one
-  // catch-all "no access". 'auth' = session truly gone after refresh+retry →
-  // send to /login (mirrors AuthContext's SIGNED_OUT redirect; same destination,
-  // harmless if both fire). 'temporary' = 500/network → retry screen. 'access'
-  // (403/404) → the existing "no access" stub.
-  const shellErrKind = tripErrorKind(shellError);
-  useEffect(() => {
-    if (shellErrKind === 'auth') nav('/login', { replace: true });
-  }, [shellErrKind, nav]);
+  // TRIP-56: map the shell-load state to the right screen instead of one
+  // catch-all "no access". useQueryGate reads isPending + fetchStatus + error
+  // together (shared with the editor + auto /login redirect), so OFFLINE — where
+  // React Query PAUSES the query and never throws — resolves to 'temporary'
+  // (retry screen) instead of the old false "no access" that flashed the instant
+  // you opened a trip with no network. 'auth' = session gone → /login (mirrors
+  // AuthContext's SIGNED_OUT redirect; harmless if both fire). 'access' (403/404)
+  // → the "no access" stub. Cached trip stays visible. Render stays per-screen.
+  const shellGate = useQueryGate({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError }, !!shellData?.trip);
 
-  if (loadingShell) return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} />;
-  if (shellErrKind === 'auth') return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} />;
-  if (shellErrKind === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
-  if (shellError || (!loadingShell && !trip)) return <TripAccessError onBack={() => nav('/trips')} />;
+  // 'auth' shows the same loading placeholder while useQueryGate's effect redirects to /login.
+  if (shellGate === 'loading' || shellGate === 'auth') return <LoadingScreen lens={new URLSearchParams(window.location.search).get('lens') || 'overview'} />;
+  if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
+  if (shellGate === 'access') return <TripAccessError onBack={() => nav('/trips')} />;
 
   // ── Global trip header: cover, subtitle and the right-hand hero actions ──
   // (Share / Edit / "…"). Cover priority mirrors the old cover strip: uploaded

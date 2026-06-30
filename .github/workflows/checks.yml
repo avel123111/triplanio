@@ -79,9 +79,14 @@ jobs:
   #   2b check-destructive-migrations — DROP/RENAME/ALTER…DROP without opt-in marker
   #   2c check-verify-jwt            — new externally-callable fn missing config.toml pin
   #   2d check-i18n                  — duplicate keys + new hardcoded UI strings
+  #
+  # ONLY on PRs into `dev` (feature-branch → dev), where migrations/strings first
+  # enter the codebase. On a `dev → main` promotion PR these would re-scan content
+  # already gated and APPLIED to dev — and can't be acted on there (re-stamping an
+  # applied migration = journal drift, TRIP-68). So scope them to base=dev.
   guards:
     name: PR guards (migrations / verify_jwt / i18n)
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' && github.base_ref == 'dev' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

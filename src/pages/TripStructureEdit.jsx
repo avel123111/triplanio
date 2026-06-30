@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
-import { invokeGetTripDetails, tripErrorKind } from '@/lib/invokeTripFn';
+import { invokeGetTripDetails } from '@/lib/invokeTripFn';
+import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
@@ -243,7 +244,10 @@ export default function TripStructureEdit() {
   const startCommit = useRef(null);         // debounce handle for trip start shift
   const startTarget = useRef(null);         // latest target trip start ISO (sync source of truth)
 
-  const { data: shell, isLoading: loadingShell, error: shellError } = useQuery({
+  // isPending + fetchStatus feed useQueryGate: OFFLINE pauses these queries
+  // (fetchStatus 'paused') rather than throwing, so the gate reads that state
+  // directly instead of mistaking "paused, no data" for "no access" (TRIP-56).
+  const { data: shell, isLoading: loadingShell, error: shellError, isPending: shellPending, fetchStatus: shellFetchStatus } = useQuery({
     queryKey: TRIP_SHELL_KEY(tripId),
     // invokeGetTripDetails self-heals a stale-token 401 (refresh + retry once);
     // retry:false so React Query doesn't stack its own retry on top (TRIP-56).
@@ -252,7 +256,7 @@ export default function TripStructureEdit() {
     retry: false,
     staleTime: 30000, // reuse TripView's cached shell on entry → no reload flicker
   });
-  const { data: content, isLoading: loadingContent } = useQuery({
+  const { data: content, error: contentError, isPending: contentPending, fetchStatus: contentFetchStatus } = useQuery({
     queryKey: TRIP_CONTENT_KEY(tripId),
     queryFn: () => invokeGetTripDetails({ tripId, include: ['content'] }),
     enabled: !!tripId && !loadingShell,
@@ -580,19 +584,25 @@ export default function TripStructureEdit() {
   // The map is always shown beside the itinerary now (the old "hide map" toggle
   // was removed); on phones it's hidden via CSS (.ts-col-right), so no toggle.
 
-  // TRIP-56: distinguish the trip-load failure instead of one catch-all "no
-  // access". 'auth' = session gone after refresh+retry → /login; 'temporary' =
-  // 500/network → retry screen; 'access' (403/404) → the "no access" stub.
-  // Mirrors TripView's gate (shared invokeGetTripDetails/tripErrorKind helper).
-  const shellErrKind = tripErrorKind(shellError);
-  useEffect(() => {
-    if (shellErrKind === 'auth') nav('/login', { replace: true });
-  }, [shellErrKind, nav]);
-  if (shellErrKind === 'auth') return <>{headerEl}</>;
-  if (shellErrKind === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
-  if (shellError) return <TripAccessError onBack={() => nav('/trips')} />;
+  // TRIP-56: distinguish the trip-load state instead of one catch-all "no
+  // access", and read isPending + fetchStatus (not just error) so OFFLINE —
+  // where React Query PAUSES the query and never throws — resolves to the retry
+  // screen rather than a false "no access" (or, for content, an endless skeleton
+  // since the draft can't build without it). 'auth' = session gone → /login;
+  // 'temporary' = 500/network/offline → retry; 'access' (403/404) → no-access.
+  // Mirrors TripView's gate (shared useQueryGate hook: classification + auto
+  // /login on a dead session). Render stays per-screen.
+  const shellGate = useQueryGate({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError }, !!shell?.trip);
+  const contentGate = useQueryGate({ isPending: contentPending, fetchStatus: contentFetchStatus, error: contentError }, !!content);
+  if (shellGate === 'auth' || contentGate === 'auth') return <>{headerEl}</>;
+  if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
+  if (shellGate === 'access') return <TripAccessError onBack={() => nav('/trips')} />;
+  // Shell is fine but content can't be loaded (offline with nothing cached) →
+  // the draft would never build → show the retry screen, not a forever-skeleton.
+  // (content has no perms of its own, so any non-loadable state → retry.)
+  if (contentGate === 'temporary' || contentGate === 'access') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   // shell/content are cached (shared with TripView) so the editor paints instantly.
-  if (loadingShell || loadingContent || !draft) {
+  if (shellGate === 'loading' || contentGate === 'loading' || !draft) {
     return <>{headerEl}<div style={{ maxWidth: 1380, margin: '0 auto', padding: 16 }}><Skeleton w="40%" h={28} style={{ marginBottom: 18 }} /><Skeleton w="100%" h={120} style={{ marginBottom: 10 }} /><Skeleton w="100%" h={120} /></div></>;
   }
 
