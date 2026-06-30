@@ -136,3 +136,9 @@ jobs:
         # (the repo-root package.json would otherwise push Deno into node_modules
         # mode and fail to resolve npm:stripe etc.). --no-lock keeps CI lock-free.
         run: deno check --no-lock --node-modules-dir=none $(find supabase/functions -name '*.ts')
+      - name: Test edge functions (pure logic)
+        # BLOCKING. Characterization + unit tests on pure edge-function helpers
+        # (no Deno/Stripe/Supabase runtime deps). Guards the payment single-writer
+        # (subscriptionRow) so a future refactor can't silently change what the
+        # webhook writes. --no-check: types are already covered by the step above.
+        run: deno test --no-lock --no-check --node-modules-dir=none $(find supabase/functions -name '*_test.ts')

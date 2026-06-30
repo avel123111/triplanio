@@ -24,6 +24,7 @@ import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv, PLAN_TO_PRODUCT, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode, type PlanType } from '../_shared/payments/catalog.ts';
 import { saveProviderCustomerId } from '../_shared/payments/customer.ts';
+import { buildSubscriptionUpsertRow } from '../_shared/payments/subscriptionRow.ts';
 import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from '../_shared/revokeLostProFeatures.ts';
 
 // Ошибка записи права → Sentry + throw (Stripe ретраит). Только для
@@ -233,14 +234,15 @@ Deno.serve(async (req) => {
             if (isDup) await reportPaymentAnomaly('sub_double_paid', { user_id, sub_id: subId, session_id: session.id }, 'error');
             // upsert по provider_subscription_id — гонко-безопасно: конкурентная
             // доставка invoice.paid для той же подписки станет апдейтом, не 500.
-            await ensureWrite('subscription upsert (checkout)', supabaseAdmin.from('subscription').upsert({
-              user_id, product_code: productCode, provider: 'stripe',
-              provider_subscription_id: subId, provider_ref: session.id,
-              status: isDup ? 'duplicate' : status, needs_review: isDup,
-              current_period_end: periodEndIso, cancel_at_period_end: cancelAtPeriodEnd,
-              amount: session.amount_total, currency: session.currency || 'usd',
-              billing_interval: billingIntervalForProduct(productCode),
-            }, { onConflict: 'provider_subscription_id' }));
+            await ensureWrite('subscription upsert (checkout)', supabaseAdmin.from('subscription').upsert(
+              buildSubscriptionUpsertRow({
+                userId: user_id, productCode, providerSubscriptionId: subId,
+                providerRef: session.id, amount: session.amount_total,
+                status: isDup ? 'duplicate' : status, needsReview: isDup,
+                cancelAtPeriodEnd, currentPeriodEnd: periodEndIso, includePeriodEndWhenNull: true,
+                currency: session.currency || 'usd', billingInterval: billingIntervalForProduct(productCode),
+                providerMeta: { mode: 'leave' },
+              }), { onConflict: 'provider_subscription_id' }));
             if (!isDup) {
               await saveCustomer(user_id, session.customer);
               await recomputeUser(user_id);
@@ -278,13 +280,15 @@ Deno.serve(async (req) => {
           const isDup = await hasOtherEntitlingSub(resolved.userId, subId);
           // upsert: гонка checkout.session.completed ↔ invoice.paid для той же
           // подписки больше не даёт unique-violation/500 (была причина 500 на dev).
-          await ensureWrite('invoice.paid upsert', supabaseAdmin.from('subscription').upsert({
-            user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
-            provider_subscription_id: subId, status: isDup ? 'duplicate' : sub.status, needs_review: isDup,
-            current_period_end: periodEndIso, cancel_at_period_end: sub.cancel_at_period_end === true,
-            currency: invoice.currency || 'usd',
-            billing_interval: billingIntervalForProduct(resolved.productCode),
-          }, { onConflict: 'provider_subscription_id' }));
+          await ensureWrite('invoice.paid upsert', supabaseAdmin.from('subscription').upsert(
+            buildSubscriptionUpsertRow({
+              userId: resolved.userId, productCode: resolved.productCode, providerSubscriptionId: subId,
+              status: isDup ? 'duplicate' : sub.status, needsReview: isDup,
+              cancelAtPeriodEnd: sub.cancel_at_period_end === true,
+              currentPeriodEnd: periodEndIso, includePeriodEndWhenNull: true,
+              currency: invoice.currency || 'usd', billingInterval: billingIntervalForProduct(resolved.productCode),
+              providerMeta: { mode: 'leave' },
+            }), { onConflict: 'provider_subscription_id' }));
           if (isDup) await reportPaymentAnomaly('sub_double_paid', { user_id: resolved.userId, sub_id: subId, ctx: 'invoice.paid' }, 'error');
         }
         await recomputeUser(resolved.userId);
@@ -306,15 +310,14 @@ Deno.serve(async (req) => {
         // Грейс держит recompute по provider_meta.next_payment_attempt (ниже).
         const sub = await adapter.fetchSubscription(subId);
         const periodEndIso = unixToIso(getPeriodEndUnix(sub));
-        await ensureWrite('invoice.payment_failed upsert', supabaseAdmin.from('subscription').upsert({
-          user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
-          provider_subscription_id: subId, status: sub.status,
-          cancel_at_period_end: sub.cancel_at_period_end === true,
-          ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
-          currency: invoice.currency || 'usd',
-          billing_interval: billingIntervalForProduct(resolved.productCode),
-          ...(nextAttemptIso ? { provider_meta: { next_payment_attempt: nextAttemptIso } } : {}),
-        }, { onConflict: 'provider_subscription_id' }));
+        await ensureWrite('invoice.payment_failed upsert', supabaseAdmin.from('subscription').upsert(
+          buildSubscriptionUpsertRow({
+            userId: resolved.userId, productCode: resolved.productCode, providerSubscriptionId: subId,
+            status: sub.status, cancelAtPeriodEnd: sub.cancel_at_period_end === true,
+            currentPeriodEnd: periodEndIso, includePeriodEndWhenNull: false,
+            currency: invoice.currency || 'usd', billingInterval: billingIntervalForProduct(resolved.productCode),
+            providerMeta: nextAttemptIso ? { mode: 'set', nextPaymentAttempt: nextAttemptIso } : { mode: 'leave' },
+          }), { onConflict: 'provider_subscription_id' }));
         await recomputeUser(resolved.userId);
         try {
           await supabaseAdmin.from('notifications').insert({
@@ -342,15 +345,14 @@ Deno.serve(async (req) => {
         // Refetch истины (ТЗ §1.3): статус из Stripe verbatim + grace-дата из инвойса.
         const sub = await adapter.fetchSubscription(subId);
         const periodEndIso = unixToIso(getPeriodEndUnix(sub));
-        await ensureWrite('invoice.updated upsert', supabaseAdmin.from('subscription').upsert({
-          user_id: resolved.userId, product_code: resolved.productCode, provider: 'stripe',
-          provider_subscription_id: subId, status: sub.status,
-          cancel_at_period_end: sub.cancel_at_period_end === true,
-          ...(periodEndIso ? { current_period_end: periodEndIso } : {}),
-          currency: invoice.currency || 'usd',
-          billing_interval: billingIntervalForProduct(resolved.productCode),
-          provider_meta: { next_payment_attempt: nextAttemptIso },
-        }, { onConflict: 'provider_subscription_id' }));
+        await ensureWrite('invoice.updated upsert', supabaseAdmin.from('subscription').upsert(
+          buildSubscriptionUpsertRow({
+            userId: resolved.userId, productCode: resolved.productCode, providerSubscriptionId: subId,
+            status: sub.status, cancelAtPeriodEnd: sub.cancel_at_period_end === true,
+            currentPeriodEnd: periodEndIso, includePeriodEndWhenNull: false,
+            currency: invoice.currency || 'usd', billingInterval: billingIntervalForProduct(resolved.productCode),
+            providerMeta: { mode: 'set', nextPaymentAttempt: nextAttemptIso },
+          }), { onConflict: 'provider_subscription_id' }));
         await recomputeUser(resolved.userId);
         break;
       }
