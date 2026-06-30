@@ -20,6 +20,26 @@ function sanitizeTrip(t: Record<string, unknown>) {
   return rest;
 }
 
+// Strip attached-file links before they leave the building. Booking/event
+// attachments live in each entity's `documents` jsonb (hotels/transfers/
+// activities) and in `trip_services.details.documents` — they are 10-year
+// signed download URLs. The public read-only view never renders them, so a
+// share-link holder must not receive them in the payload (same "frontend hides,
+// API returns" class as the private-docs bug TRIP-118 fixed).
+function stripEntityDocs<T extends Record<string, unknown>>(rows: T[] | null | undefined): T[] {
+  return (rows ?? []).map(({ documents: _docs, ...rest }) => rest as T);
+}
+
+function stripServiceDocs<T extends { details?: unknown }>(rows: T[] | null | undefined): T[] {
+  return (rows ?? []).map((row) => {
+    if (row?.details && typeof row.details === 'object' && !Array.isArray(row.details)) {
+      const { documents: _docs, ...restDetails } = row.details as Record<string, unknown>;
+      return { ...row, details: restDetails };
+    }
+    return row;
+  });
+}
+
 type UserRow = { id: string; full_name: string | null; avatar_url: string | null; email: string | null };
 type MemberRow = { user_id: string | null; user_full_name: string | null; role: string | null; status: string | null };
 
@@ -49,7 +69,9 @@ Deno.serve(async (req) => {
         .eq('status', 'active'),
     ]);
 
-    const carRentals = (services.data ?? []).filter((s: { kind?: string }) => s.kind === 'car_rental');
+    const carRentals = stripServiceDocs(
+      (services.data ?? []).filter((s: { kind?: string }) => s.kind === 'car_rental'),
+    );
 
     // ── Resolve owner + member identities (display name + avatar ONLY) ──
     // One batched users lookup for the owner and every active member. `email` is
@@ -95,9 +117,9 @@ Deno.serve(async (req) => {
       owner,
       members: memberList,
       visits: visits.data ?? [],
-      hotels: hotels.data ?? [],
-      transfers: transfers.data ?? [],
-      activities: activities.data ?? [],
+      hotels: stripEntityDocs(hotels.data),
+      transfers: stripEntityDocs(transfers.data),
+      activities: stripEntityDocs(activities.data),
       carRentals,
     }, { headers: corsHeaders });
   } catch (err) {
