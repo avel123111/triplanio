@@ -18,6 +18,8 @@ import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
 import { useT } from '@/lib/i18n/I18nContext';
 import { useToast } from '@/design/index';
+import { getSourceDocuments } from '@/lib/documents';
+import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 
 const TABLE_BY_KIND = {
   hotel: 'hotel_stays',
@@ -87,8 +89,12 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
   const handleDelete = async () => {
     const table = TABLE_BY_KIND[kind];
     if (!table) return;
+    // Capture attachment object keys before delete; sweep best-effort only after
+    // the row is gone (TRIP-117).
+    const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
     const { error } = await supabase.from(table).delete().eq('id', data.id);
     if (error) { toast({ description: t('event.delete_failed') + ': ' + error.message, variant: 'destructive' }); throw error; }
+    removeTripFiles(orphanPaths);
     onOpenChange(false);
     invalidate();
   };

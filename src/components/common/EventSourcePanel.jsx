@@ -17,6 +17,8 @@ import { Btn, Skeleton, useToast } from '@/design/index';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
 import { PanelShell, EventPanelBody, kindIcon } from '@/components/common/EventPanels';
+import { getSourceDocuments } from '@/lib/documents';
+import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 
 const TABLE_BY_KIND = { hotel: 'hotel_stays', transfer: 'transfers', activity: 'activities', service: 'trip_services' };
 const LABEL_KEY = { hotel: 'budget.cat_accommodation', activity: 'budget.source_activity', service: 'service.car_default_name' };
@@ -89,6 +91,10 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
     if (!table) return;
     const tripId = data.trip_id;
     const cacheKind = CACHE_KIND[kind];
+    // Entity gone → its attachments are orphaned. Capture their object keys
+    // before delete; sweep best-effort only once the row is actually gone, never
+    // on rollback (TRIP-117).
+    const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
     // Optimistic: drop it from the content cache + close immediately, then delete
     // in the DB in the background and reconcile (rollback on error).
     if (tripId && cacheKind) {
@@ -98,6 +104,7 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
       (async () => {
         const { error } = await supabase.from(table).delete().eq('id', data.id);
         if (error && prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
+        else if (!error) removeTripFiles(orphanPaths);
         invalidate();
       })();
       return;
@@ -106,6 +113,7 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
     const { error } = await supabase.from(table).delete().eq('id', data.id);
     setDeleting(false);
     if (error) { toast({ description: t('event.delete_failed') + ': ' + error.message, variant: 'destructive' }); return; }
+    removeTripFiles(orphanPaths);
     invalidate();
     onClose?.();
   };
