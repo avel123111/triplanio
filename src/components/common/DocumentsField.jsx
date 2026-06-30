@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
+import { removeTripFiles } from '@/lib/storageCleanup';
 import { Paperclip, Upload, X, Loader2, Plus } from 'lucide-react';
 import { useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
@@ -29,6 +30,11 @@ export default function DocumentsField({
   const t = useT();
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  // storage_paths uploaded during THIS mount (not yet persisted by the parent
+  // form). Removing one of these = removing an orphan, so it's safe to delete
+  // the Storage object immediately. Files that arrived via `value` (already
+  // saved on the entity) are left for the parent's save-time diff (TRIP-117).
+  const stagedPaths = useRef(new Set());
 
   const setUploadingWithCb = (val) => {
     setUploading(val);
@@ -65,6 +71,7 @@ export default function DocumentsField({
         // Long-lived signed URL (10 years) - matches the documents lens convention.
         const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
         uploaded.push({ file_url: urlData?.signedUrl || '', file_name: file.name, storage_path: path });
+        stagedPaths.current.add(path);
       }
       if (uploaded.length) onChange([...docs, ...uploaded]);
     } finally {
@@ -74,9 +81,18 @@ export default function DocumentsField({
   };
 
   const removeAt = (idx) => {
+    const removed = docs[idx];
     const next = docs.slice();
     next.splice(idx, 1);
     onChange(next);
+    // Only sweep files staged this session — a previously-saved file is still
+    // referenced by the entity until the form is saved, so its removal is
+    // resolved by the parent's save-time diff (TRIP-117).
+    const path = removed?.storage_path;
+    if (path && stagedPaths.current.has(path)) {
+      stagedPaths.current.delete(path);
+      removeTripFiles([path]);
+    }
   };
 
   return (
