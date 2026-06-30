@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY, invalidateTripData } from '@/lib/trip-data';
-import { invokeGetTripDetails, tripGateKind } from '@/lib/invokeTripFn';
+import { invokeGetTripDetails } from '@/lib/invokeTripFn';
+import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
@@ -243,7 +244,7 @@ export default function TripStructureEdit() {
   const startCommit = useRef(null);         // debounce handle for trip start shift
   const startTarget = useRef(null);         // latest target trip start ISO (sync source of truth)
 
-  // isPending + fetchStatus feed tripGateKind: OFFLINE pauses these queries
+  // isPending + fetchStatus feed useQueryGate: OFFLINE pauses these queries
   // (fetchStatus 'paused') rather than throwing, so the gate reads that state
   // directly instead of mistaking "paused, no data" for "no access" (TRIP-56).
   const { data: shell, isLoading: loadingShell, error: shellError, isPending: shellPending, fetchStatus: shellFetchStatus } = useQuery({
@@ -589,12 +590,10 @@ export default function TripStructureEdit() {
   // screen rather than a false "no access" (or, for content, an endless skeleton
   // since the draft can't build without it). 'auth' = session gone → /login;
   // 'temporary' = 500/network/offline → retry; 'access' (403/404) → no-access.
-  // Mirrors TripView's gate (shared tripGateKind helper).
-  const shellGate = tripGateKind({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError, hasData: !!shell?.trip });
-  const contentGate = tripGateKind({ isPending: contentPending, fetchStatus: contentFetchStatus, error: contentError, hasData: !!content });
-  useEffect(() => {
-    if (shellGate === 'auth' || contentGate === 'auth') nav('/login', { replace: true });
-  }, [shellGate, contentGate, nav]);
+  // Mirrors TripView's gate (shared useQueryGate hook: classification + auto
+  // /login on a dead session). Render stays per-screen.
+  const shellGate = useQueryGate({ isPending: shellPending, fetchStatus: shellFetchStatus, error: shellError }, !!shell?.trip);
+  const contentGate = useQueryGate({ isPending: contentPending, fetchStatus: contentFetchStatus, error: contentError }, !!content);
   if (shellGate === 'auth' || contentGate === 'auth') return <>{headerEl}</>;
   if (shellGate === 'temporary') return <TripLoadError onRetry={() => invalidateTripData(qc, tripId)} onBack={() => nav('/trips')} />;
   if (shellGate === 'access') return <TripAccessError onBack={() => nav('/trips')} />;
