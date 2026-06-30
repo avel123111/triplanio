@@ -14,7 +14,7 @@
  *
  * Visual reference: EVENTS_SERVICES_REDESIGN_LUMO design system.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, useToast } from '@/design/index';
 import {
@@ -99,6 +99,7 @@ import { validateEntity, transferAiCityAdvisories } from '@/lib/validation';
 import { FieldError, IssuesPanel, fieldHasError } from '@/components/common/ValidationUI';
 import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
+import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
@@ -517,6 +518,29 @@ export default function EventEditDialog({
     buildInitialForm(initialKind || 'hotel', entity, { visit, fromVisit, toVisit, defaultStart, defaultCurrency, initialServiceKind })
   );
 
+  // ── Storage cleanup bookkeeping (TRIP-117) ──────────────────────────────
+  // Files attach to the live entity immediately on upload (uuid-unique keys,
+  // single reference each). Track which object keys we've seen so dropped/
+  // abandoned ones can be swept best-effort once their reference is gone:
+  //   • originalDocPaths — the entity's files when the dialog opened.
+  //   • seenDocPaths     — every key that has appeared in the form (originals
+  //                        + uploads staged this session).
+  //   • committedRef     — set once we save/delete, so the unmount sweep skips
+  //                        a successful flow.
+  const originalDocPaths = useRef(collectDocPaths(form.documents));
+  const seenDocPaths = useRef(new Set(originalDocPaths.current));
+  const committedRef = useRef(false);
+  useEffect(() => {
+    for (const p of collectDocPaths(form.documents)) seenDocPaths.current.add(p);
+  }, [form.documents]);
+  // Dialog dismissed without saving/deleting → sweep uploads staged this session
+  // that never got persisted (originals stay; they're still referenced).
+  useEffect(() => () => {
+    if (committedRef.current) return;
+    const original = new Set(originalDocPaths.current);
+    removeTripFiles([...seenDocPaths.current].filter((p) => !original.has(p)));
+  }, []);
+
   // For services, the header (icon / colour / title) follows the concrete
   // subtype (esim / insurance / car_rental), not the generic `service` kind.
   const meta = (currentKind === 'service' && SERVICE_META[form.service_kind])
@@ -749,6 +773,10 @@ export default function EventEditDialog({
     const row = { id: tempId, trip_id: tripId, created_by: user?.id, ...payload };
     const prev = qc.getQueryData(TRIP_CONTENT_KEY(tripId));
     optimisticContentUpdate(qc, tripId, cacheKind, 'add', row);
+    // We're committing optimistically and the dialog unmounts now — mark it so
+    // the unmount sweep won't delete the staged files this create is about to
+    // reference (TRIP-117). On insert failure we sweep them explicitly below.
+    committedRef.current = true;
     onOpenChange(false);
     (async () => {
       try {
@@ -758,6 +786,7 @@ export default function EventEditDialog({
       } catch (err) {
         if (prev !== undefined) qc.setQueryData(TRIP_CONTENT_KEY(tripId), prev);
         invalidateTripData(qc, tripId);
+        removeTripFiles(collectDocPaths(form.documents));
         toast({ title: t('event.save_failed'), description: err?.message || String(err), variant: 'destructive' });
       }
     })();
@@ -789,6 +818,11 @@ export default function EventEditDialog({
       return upsert('trip_services', entity, payload, user);
     },
     onSuccess: () => {
+      // Files detached during this edit (present originally, gone from the saved
+      // form) are now orphaned — sweep them best-effort (TRIP-117).
+      committedRef.current = true;
+      const finalPaths = new Set(collectDocPaths(form.documents));
+      removeTripFiles(originalDocPaths.current.filter((p) => !finalPaths.has(p)));
       if (tripId) invalidateTripData(qc, tripId);
       onOpenChange(false);
     },
@@ -809,6 +843,10 @@ export default function EventEditDialog({
       if (error) throw error;
     },
     onSuccess: () => {
+      // Entity gone → every file it referenced (originals + any staged this
+      // session) is orphaned. Sweep best-effort (TRIP-117).
+      committedRef.current = true;
+      removeTripFiles([...seenDocPaths.current]);
       if (tripId) invalidateTripData(qc, tripId);
       onOpenChange(false);
     },

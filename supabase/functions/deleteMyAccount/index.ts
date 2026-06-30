@@ -74,6 +74,18 @@ Deno.serve(async (req) => {
       console.error('deleteMyAccount: purge personal doc files failed', e);
     }
 
+    // anonymize_my_account scrubs users.avatar_url to null but has no Storage
+    // access, so the avatar object itself is left orphaned in the `avatars`
+    // bucket. Sweep the user's avatar folder best-effort (TRIP-117) — never let
+    // an orphan file turn a successful anonymize into a failure.
+    try {
+      const { data: avatarFiles } = await supabaseAdmin.storage.from('avatars').list(user.id);
+      const paths = (avatarFiles ?? []).map((f) => `${user.id}/${f.name}`);
+      if (paths.length) await supabaseAdmin.storage.from('avatars').remove(paths);
+    } catch (e) {
+      console.error('deleteMyAccount: purge avatar files failed', e);
+    }
+
     return Response.json({ code: 'ok' }, { headers: corsHeaders });
 
   } catch (e) {
