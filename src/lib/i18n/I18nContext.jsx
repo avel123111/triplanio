@@ -164,7 +164,15 @@ export function I18nProvider({ children }) {
   //    Tolgee overhead on the hot path. Mirrors the pre-Tolgee behaviour exactly.
   // Re-created on `lang` change so consumers re-render with the new language.
   const t = useCallback((key, vars) => {
-    if (IN_CONTEXT) return tolgee.t({ key, params: vars });
+    if (IN_CONTEXT) {
+      // Tolgee stores keys namespaced (namespace = the first dot segment, e.g.
+      // 'account'); split the dotted address so the SDK resolves the right
+      // (namespace, key) and the observer marker-wraps it for the editor. A dotless
+      // address has no namespace (mirrors the baked-dict `lookup` split below).
+      const dot = key.indexOf('.');
+      if (dot > 0) return tolgee.t({ key: key.slice(dot + 1), ns: key.slice(0, dot), params: vars });
+      return tolgee.t({ key, params: vars });
+    }
     const dicts = dictsRef.current;
     let str = lookup(dicts[lang], key) || lookup(dicts[FALLBACK_LANG], key) || key;
     if (vars && typeof str === 'string') {

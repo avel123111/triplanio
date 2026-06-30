@@ -66,17 +66,18 @@ export function ensureTolgeeRunning() {
 }
 
 // Mirror a loaded locale ({ namespace: { bareKey: value } }) into Tolgee's static
-// cache under the FULL dotted address `namespace.bareKey` — identical to the
-// call-site address t('namespace.bareKey'). Only used in an in-context session
-// (normal users resolve from our dictionary, never from Tolgee).
+// cache. Tolgee stores keys NAMESPACED (namespace = our file stem, key = the bare
+// key), so each namespace goes into its own `${lang}:${ns}` static-data slot with
+// bare keys — matching the in-context t({ key, ns }) lookup in I18nContext and
+// letting the observer marker-wrap the right (namespace, key) pair for the editor.
+// Only used in an in-context session (normal users resolve from our dictionary,
+// never from Tolgee).
 // INVARIANT: must run BEFORE ensureTolgeeRunning() — after run()+invalidate the
 // static version is bumped and re-adds are ignored.
 export function addLocaleToTolgee(lang, nsDict) {
-  const flat = {};
+  const data = {};
   for (const [ns, records] of Object.entries(nsDict)) {
-    for (const [bareKey, value] of Object.entries(records)) {
-      flat[`${ns}.${bareKey}`] = value;
-    }
+    data[`${lang}:${ns}`] = { ...records };
   }
-  tolgee.addStaticData({ [lang]: flat });
+  tolgee.addStaticData(data);
 }
