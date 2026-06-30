@@ -3,49 +3,28 @@
 // Pro is available if EITHER the trip is a one-time pro_trip OR the trip's
 // OWNER has an active Pro subscription. Without a tripId, falls back to the
 // caller's own subscription (used by the trip-creation paywall).
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { corsFor } from '../_shared/cors.ts';
+import { supabaseAdmin as admin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
-import { reconcileEntitlement } from '../_shared/reconcileEntitlement.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-const admin = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  { auth: { persistSession: false } },
-);
-
-async function getUser(req: Request) {
-  const a = req.headers.get('Authorization');
-  if (!a) return null;
-  const { data: { user } } = await admin.auth.getUser(a.replace('Bearer ', ''));
-  return user ?? null;
-}
+import { reconcileEntitlement, needsEntitlementReconcile, reconcileTripEntitlement } from '../_shared/reconcileEntitlement.ts';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const user = await getUser(req);
+    const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
     const { tripId } = await req.json().catch(() => ({}));
-    const now = new Date();
-
     // No trip context → check caller's own subscription.
     if (!tripId) {
       const { data: me } = await admin
-        .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
+        .from('users').select('subscription_status, subscription_end_date')
         .eq('id', user.id).single();
-      // recompute-on-read (Ф3): self-heal a wrong cache, throttled. Stuck-PRO (pro
-      // but end stale) OR stuck-FREE (free but has a Stripe customer = lost activation).
-      const meEndPast = !me?.subscription_end_date || new Date(me.subscription_end_date) <= now;
-      const meNeeds = (me?.subscription_status === 'pro' && meEndPast)
-        || (me?.subscription_status !== 'pro' && !!me?.stripe_customer_id);
-      if (meNeeds) await reconcileEntitlement(admin, user.id);
+      // recompute-on-read (Ф3): self-heal a wrong cache, throttled (stuck-PRO /
+      // stuck-FREE). Предикат — единый (O1).
+      if (await needsEntitlementReconcile(admin, user.id, me?.subscription_status, me?.subscription_end_date))
+        await reconcileEntitlement(admin, user.id);
       // Verdict from the single SQL source (is_user_pro, migration 0055) — reads the
       // post-reconcile state, so no manual re-select needed.
       const { data: isProRpc } = await admin.rpc('is_user_pro', { p_uid: user.id });
@@ -60,23 +39,28 @@ Deno.serve(async (req) => {
 
     const isOwner = trip.created_by === user.id;
 
-    if (trip.is_pro_trip) {
+    // recompute-on-read для разовой Trip Pro (симметрия подписочному пути ниже):
+    // потерянный refund/dispute-вебхук оставил бы is_pro_trip=true навсегда. Сверяем
+    // покупку со Stripe (throttled per-trip) ПЕРЕД тем как поверить флагу. Если
+    // сверка сходила в Stripe и сняла Pro — перечитываем флаг и идём в owner-путь.
+    let tripIsPro = trip.is_pro_trip === true;
+    if (tripIsPro && await reconcileTripEntitlement(admin, tripId)) {
+      const { data: fresh } = await admin.from('trips').select('is_pro_trip').eq('id', tripId).single();
+      tripIsPro = fresh?.is_pro_trip === true;
+    }
+    if (tripIsPro) {
       return Response.json({ isPro: true, isOwner, reason: 'trip' }, { headers: corsHeaders });
     }
 
     if (trip.created_by) {
       const { data: owner } = await admin
-        .from('users').select('subscription_status, subscription_end_date, stripe_customer_id')
+        .from('users').select('subscription_status, subscription_end_date')
         .eq('id', trip.created_by).single();
-      // recompute-on-read (Ф3): self-heal the owner's cache, throttled. Same two
-      // perekos as the no-trip branch / getUserPlan:
-      //  • stuck-PRO  — 'pro' but end date stale/missing (lost renewal)
-      //  • stuck-FREE — not 'pro' but has a Stripe customer id (lost activation),
-      //    so an invited participant opening the trip also heals the owner.
-      const ownerEndPast = !owner?.subscription_end_date || new Date(owner.subscription_end_date) <= now;
-      const ownerNeeds = (owner?.subscription_status === 'pro' && ownerEndPast)
-        || (owner?.subscription_status !== 'pro' && !!owner?.stripe_customer_id);
-      if (ownerNeeds) await reconcileEntitlement(admin, trip.created_by);
+      // recompute-on-read (Ф3): self-heal the owner's cache, throttled (stuck-PRO /
+      // stuck-FREE) — so an invited participant opening the trip also heals the
+      // owner. Предикат — единый (O1).
+      if (await needsEntitlementReconcile(admin, trip.created_by, owner?.subscription_status, owner?.subscription_end_date))
+        await reconcileEntitlement(admin, trip.created_by);
       // Verdict from the single SQL source (is_user_pro, migration 0055) — reads the
       // owner's post-reconcile state, so no manual re-select needed.
       const { data: ownerProRpc } = await admin.rpc('is_user_pro', { p_uid: trip.created_by });
@@ -89,6 +73,6 @@ Deno.serve(async (req) => {
   } catch (error) {
     await captureEdgeError(error, 'checkSubscriptionStatus');
     console.error('checkSubscriptionStatus error:', error);
-    return Response.json({ error: String(error?.message || error) }, { status: 500, headers: corsHeaders });
+    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500, headers: corsHeaders });
   }
 });

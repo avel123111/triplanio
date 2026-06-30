@@ -1,0 +1,68 @@
+/* TripCoverPicker — ported off Tailwind onto Lumo tokens (TRIP-53 / ретайр Tailwind, Этап 1).
+   1:1 visual port of the former utility classes. */
+
+.tcp { display: flex; flex-direction: column; gap: 12px; }                /* was space-y-3 */
+
+/* preview frame — was: relative w-full h-[120px] rounded-lg overflow-hidden border bg-muted */
+.tcp__preview {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  border-radius: var(--radius);            /* rounded-lg = var(--radius) (16px) */
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface-2);            /* bg-muted */
+}
+.tcp__img { width: 100%; height: 100%; object-fit: cover; }
+/* was: w-full h-full flex items-center justify-center text-3xl opacity-30 */
+.tcp__ph {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-h2);
+  opacity: .3;
+}
+
+.tcp__swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* gradient swatch — was: relative w-10 h-10 rounded-full transition-transform (+ hover:scale-105) */
+.tcp__sw {
+  position: relative;
+  width: 40px; height: 40px;
+  border: 0; padding: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: transform .15s var(--ease-out);
+}
+.tcp__sw:hover { transform: scale(1.05); }
+/* active — was: ring-2 ring-white ring-offset-2 ring-offset-background scale-110 */
+.tcp__sw.is-active {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px #fff;
+}
+/* was: absolute inset-0 m-auto w-4 h-4 text-white drop-shadow */
+.tcp__check {
+  position: absolute; inset: 0; margin: auto;
+  color: #fff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5));
+}
+
+/* upload button — was: inline-flex items-center gap-1.5 px-3 py-2 rounded-md border
+   bg-background hover:bg-secondary text-sm disabled:opacity-50 */
+.tcp__upload {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: var(--fs-base);
+  cursor: pointer;
+  transition: background .15s var(--ease-out);
+}
+.tcp__upload:hover { background: var(--surface-2); }
+.tcp__upload:disabled { opacity: .5; cursor: default; }
+
+.tcp__file { display: none; }                                            /* was hidden */
+
+/* was: text-xs text-destructive */
+.tcp__err { margin: 0; font-size: var(--fs-meta); color: var(--danger); }

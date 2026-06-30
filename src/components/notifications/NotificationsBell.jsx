@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
@@ -8,7 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ru, es, enUS } from 'date-fns/locale';
 import { Icon } from '@/design/icons';
-import { Btn, EmptyState } from '@/design/index';
+import { Btn, EmptyState, Popover, PopoverContent, PopoverTrigger } from '@/design/index';
 
 const DATE_LOCALES = { ru, es, en: enUS };
 
@@ -120,9 +119,7 @@ export default function NotificationsBell({ triggerClassName }) {
         <button
           type="button"
           aria-label={t('notif.title')}
-          className={triggerClassName
-            ? `relative ${triggerClassName}`
-            : 'relative inline-flex items-center justify-center h-10 w-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition'}
+          className={`relative ${triggerClassName || 'icon-btn'}`}
         >
           <Icon name="bell" size={17} />
           {unread > 0 && (
@@ -131,15 +128,15 @@ export default function NotificationsBell({ triggerClassName }) {
               style={{
                 position: 'absolute', top: 4, right: 4,
                 width: 11, height: 11, borderRadius: 999,
-                background: 'var(--danger, #e5484d)',
-                border: '2px solid var(--surface, #fff)',
-                boxShadow: '0 0 0 1px color-mix(in oklab, var(--danger, #e5484d) 30%, transparent)',
+                background: 'var(--danger)',
+                border: '2px solid var(--surface)',
+                boxShadow: '0 0 0 1px color-mix(in oklab, var(--danger) 30%, transparent)',
               }}
             />
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} className="p-0 w-[360px] max-w-[calc(100vw-16px)] overflow-hidden rounded-2xl">
+      <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">
         <div className="bell-dd__head">
           <Icon name="bell" size={16} />
           <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', flex: 1 }}>{t('notif.title')}</div>

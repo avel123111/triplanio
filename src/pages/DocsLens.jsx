@@ -19,12 +19,13 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
+import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { useAuth } from '@/lib/AuthContext';
 import { Icon } from '../design/icons';
-import { Avatar, Badge, Btn, Field, Severity, Skeleton } from '../design/index';
+import { Avatar, Badge, Btn, Field, Severity, Skeleton, DialogRoot as Dialog, DialogContent, DialogTitle } from '../design/index';
 import { useUserProfiles } from '@/lib/useUserProfiles';
 import { resolveAuthor } from '@/lib/resolveAuthor';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { displayName } from '@/lib/displayName';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { useConfirm } from '@/components/common/ConfirmProvider';
@@ -70,7 +71,16 @@ function formatDate(iso) {
 export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpenChange }) {
   const isMobile = useIsMobile();
   const { t } = useI18n();
-  const close = () => onOpenChange?.(false);
+  // Files are uploaded to Storage as they're picked, before the row is saved.
+  // If the dialog is dismissed without saving, those staged objects are orphaned
+  // (the component unmounts on close, so `documents` only ever holds this
+  // session's staged uploads). Sweep them on any close path unless we saved.
+  const savedRef = useRef(false);
+  const handleOpenChange = (next) => {
+    if (!next && !savedRef.current) removeTripFiles(collectDocPaths(documents));
+    onOpenChange?.(next);
+  };
+  const close = () => handleOpenChange(false);
 
   const [title,      setTitle]      = useState('');
   const [notes,      setNotes]      = useState('');
@@ -126,6 +136,9 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
     });
     setSaving(false);
     if (error) { setErr(error.message); return; }
+    // Saved → the staged files are now referenced by the row; the close sweep
+    // must skip them.
+    savedRef.current = true;
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
     close();
   }
@@ -146,10 +159,10 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
   ];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         {/* sr-only a11y title — visible h2 is inside dlg__head */}
-        <DialogTitle className="sr-only">{t('doc.dialog_new')}</DialogTitle>
+        <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('doc.dialog_new')}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="dlg__head">
@@ -261,7 +274,12 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                       type="button"
                       className="dl-upitem__rm"
                       aria-label={t('doc.remove_doc_aria')}
-                      onClick={() => setDocuments(prev => prev.filter((_, j) => j !== i))}>
+                      onClick={() => {
+                        // Staged-but-unsaved upload → the object is already
+                        // orphaned, remove it immediately (TRIP-117).
+                        removeTripFiles(collectDocPaths([documents[i]]));
+                        setDocuments(prev => prev.filter((_, j) => j !== i));
+                      }}>
                       <Icon name="close" size={13} />
                     </button>
                   </div>
@@ -328,7 +346,11 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
   async function handleDelete() {
     if (!(await confirm({ title: t('doc.delete_confirm', { name: doc.title }), variant: 'destructive' }))) return;
     setDeleting(true);
-    await supabase.from('trip_documents').delete().eq('id', doc.id);
+    const { error } = await supabase.from('trip_documents').delete().eq('id', doc.id);
+    if (error) { setDeleting(false); return; }
+    // Row gone → its files are now orphaned (unique uuid keys, single reference).
+    // Best-effort sweep; never blocks the delete (TRIP-117).
+    await removeTripFiles(collectDocPaths(doc.documents, doc.file_url));
     qc.invalidateQueries({ queryKey: DOCS_KEY(tripId) });
     close();
   }
@@ -336,7 +358,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle className="sr-only">{doc.title}</DialogTitle>
+        <DialogTitle className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{doc.title}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="dlg__head">
@@ -501,7 +523,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
           </>
         ) : (
           <>
-            <Avatar name={user?.full_name || '?'} size="sm" />
+            <Avatar name={displayName(user?.email, user?.full_name)} size="sm" />
             <span className="dl-card__foot-who">{t('doc.only_you')}</span>
           </>
         )}

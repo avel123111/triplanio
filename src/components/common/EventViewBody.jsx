@@ -15,7 +15,7 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/lib/i18n/I18nContext';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/design/index';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { parseNaive } from '@/lib/naive-time';
@@ -23,20 +23,14 @@ import { fmtMoneyActive } from '@/lib/i18n/format';
 import { utcToLocalInput } from '@/lib/time';
 import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate } from '@/lib/trip-data';
-import { BOOKING_PLATFORMS, platformLogoUrl, detectPlatformFromUrl } from '@/lib/booking-platforms';
+import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
+import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import {
   Map as MapIcon, Calendar, FileText,
   BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
   ShieldCheck,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
-
-export const TABLE_BY_KIND = {
-  hotel: 'hotel_stays',
-  transfer: 'transfers',
-  activity: 'activities',
-  service: 'trip_services',
-};
 
 export const TRANSPORT_ICONS = {
   plane: Plane, train: Train, bus: Bus, car: CarIcon, taxi: CarIcon,
@@ -293,7 +287,7 @@ function ServiceBody({ entity, accent }) {
     <>
       <Section title={t('service.car_pickup')} accent={accent}>
         <div className="kv-grid">
-          <KV label={t('event.pickup_where')}><div className="leading-snug">{d.pickup_address}</div></KV>
+          <KV label={t('event.pickup_where')}><div style={{ lineHeight: 1.375 }}>{d.pickup_address}</div></KV>
           <KV label={t('admin.notifications.when')}>{fmtDT(pickupDisplay)}</KV>
         </div>
       </Section>
@@ -303,7 +297,7 @@ function ServiceBody({ entity, accent }) {
             {sameLocation ? (
               <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{t('event.return_same')}</span>
             ) : (
-              <div className="leading-snug">{d.dropoff_address}</div>
+              <div style={{ lineHeight: 1.375 }}>{d.dropoff_address}</div>
             )}
           </KV>
           <KV label={t('admin.notifications.when')}>{fmtDT(dropoffDisplay)}</KV>
@@ -338,10 +332,10 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
   const price = kind === 'service' ? (entity.price ?? entity.details?.price) : entity.price;
 
   const bookingUrl = kind === 'service' ? entity.details?.booking_url : entity.booking_url;
-  // Platform is derived from the booking URL on the fly (no stored column) — TRIP-75.
-  const bookingPlatform = detectPlatformFromUrl(bookingUrl);
-  const platformInfo = bookingPlatform ? BOOKING_PLATFORMS[bookingPlatform] : null;
-  const platformLogo = platformLogoUrl(bookingPlatform, bookingUrl);
+  // Favicon + host label are derived from the booking URL on the fly (no stored
+  // column, no platform directory) — the favicon works for any domain.
+  const platformLogo = faviconUrl(bookingUrl);
+  const platformLabel = hostnameFromUrl(bookingUrl);
 
   const metaItems = [];
   if (kind === 'hotel') {
@@ -381,7 +375,7 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
 
   return {
     theme, themeLabel, title, cur, price, priceText,
-    bookingUrl, bookingPlatform, platformInfo, platformLogo, mapAddress, metaItems,
+    bookingUrl, platformLabel, platformLogo, mapAddress, metaItems,
   };
 }
 
@@ -488,7 +482,7 @@ export function useEntityDocs(kind, entity, canEdit) {
       if (uploaded.length) {
         const next = [...docs, ...uploaded];
         setDocs(next);
-        const table = TABLE_BY_KIND[kind];
+        const table = ENTITY_TABLE_BY_KIND[kind];
         if (table && entity.id) {
           if (kind === 'service') {
             await supabase.from(table).update({ details: { ...(entity.details || {}), documents: next } }).eq('id', entity.id);

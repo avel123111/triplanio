@@ -7,6 +7,7 @@ import { useI18n, useI18nFormat } from '@/lib/i18n/I18nContext';
 import { SiteHeader, SiteFooter, useLandingCss } from '@/components/site/SiteChrome';
 import MapView from '@/components/views/MapView';
 import { sortVisits } from '@/lib/validation';
+import { localizeVisits } from '@/lib/trip-cities';
 import { tripStats, tripDateSpan } from '@/lib/trip-stats';
 import { transportInfo } from '@/lib/transport';
 import { formatDuration } from '@/lib/time';
@@ -91,7 +92,7 @@ export default function PublicTrip() {
     });
     return list;
   }, [owner, members]);
-  const visits = useMemo(() => data?.visits || [], [data]);
+  const visits = useMemo(() => localizeVisits(data?.visits || [], lang), [data, lang]);
   const hotels = useMemo(() => data?.hotels || [], [data]);
   const transfers = useMemo(() => data?.transfers || [], [data]);
   const activities = useMemo(() => data?.activities || [], [data]);
@@ -448,7 +449,7 @@ function NotFound({ message, t }) {
   return (
     <div className="ptrip"><div className="pt-center">
       <div>
-        <div className="ic"><Plane className="w-6 h-6" /></div>
+        <div className="ic"><Plane size={24} /></div>
         <h1 style={{ fontSize: 'var(--fs-h2)', marginBottom: 8 }}>{t('public.oops')}</h1>
         <p style={{ color: 'var(--muted)' }}>{message}</p>
       </div>

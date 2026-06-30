@@ -1,0 +1,9 @@
+{
+  "add_transfer_btn": "Add transfer",
+  "add_transfer_desc": "Connect {from} → {to} with a transfer",
+  "add_transfer_title": "Add transfer?",
+  "back": "Back to trip",
+  "edit_trip": "Title & cover",
+  "skip": "Skip",
+  "view": "View trip"
+}

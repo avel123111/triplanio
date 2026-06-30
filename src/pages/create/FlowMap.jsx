@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { mapboxgl, fitToPoints } from '@/lib/mapbox';
+import { mapboxgl } from '@/lib/mapbox';
+import { calmFit } from '@/lib/map/camera';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached } from '@/lib/map/routeLines';
 import { groupByLocation, createMarkerEl, iconForKinds } from '@/lib/map/markers';
@@ -77,7 +78,7 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
       markersRef.current.push(marker);
     });
-    if (positions.length) fitToPoints(map, positions, { padding: 48, maxZoom: 7, singleZoom: 8, animate: true });
+    if (positions.length) calmFit(map, positions, { padding: 48, maxZoom: 7, singleZoom: 8 });
     return undefined;
   }, [ready, ptsKey]);
 

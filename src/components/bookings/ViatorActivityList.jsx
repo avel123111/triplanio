@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import {
-  ExternalLink, ChevronLeft, ChevronRight, Search, RotateCcw, Ticket, AlertTriangle, Star,
+  ChevronLeft, ChevronRight, Search, RotateCcw, Ticket, AlertTriangle, Star,
 } from 'lucide-react';
 import { Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
 import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
+import PartnerResultCard from '@/components/bookings/PartnerResultCard';
 
 // Live Viator activities for the activity fork panel — mirrors Stay22HotelList.
 // Rendered under the partner block (activity + panel only). Fetches on open via
@@ -31,6 +32,12 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
   const { t, fmtMoney } = useI18nFormat();
   const logClick = usePartnerLogger(tripId);
   const [page, setPage] = useState(1);
+  // Selection + hover are list-local here (no map for activities) but follow the
+  // SAME interaction model as hotels via PartnerResultCard: click selects, a
+  // second click on the selected card opens the link. Keeps identical elements
+  // behaving identically (TRIP-140 unification).
+  const [selectedId, setSelectedId] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
 
   const { data, isLoading, isFetching, isError, refetch } = useViatorActivities({
     visit, currency, lang, page, enabled: true,
@@ -42,7 +49,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
   const pages = useMemo(() => (totalPages ? pageWindow(page, totalPages) : []), [page, totalPages]);
   const showSkeletons = isLoading && activities.length === 0;
 
-  const onCardClick = (a) => logClick({ partner: 'viator', type: 'activity', link: a.url, provider: 'viator' });
+  const onBook = (a) => logClick({ partner: 'viator', type: 'activity', link: a.url, provider: 'viator' });
   const cityName = visit?.city_name || visit?.cities?.name_en || '';
 
   return (
@@ -65,9 +72,9 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
       {showSkeletons && (
         <div className="va-list" aria-hidden="true">
           {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-            <div className="va-card va-card--sk" key={i}>
+            <div className="pcard pcard--sk" key={i}>
               <Skeleton w={96} h={96} r={12} />
-              <div className="va-body">
+              <div className="pcard__body">
                 <Skeleton w="80%" h={14} />
                 <Skeleton w="50%" h={12} style={{ marginTop: 8 }} />
                 <Skeleton w="45%" h={16} style={{ marginTop: 14 }} />
@@ -98,36 +105,39 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         <>
           <div className="va-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
             {activities.map((a) => (
-              <a key={a.code} className="va-card" href={a.url} target="_blank" rel="noreferrer" onClick={() => onCardClick(a)}>
-                <div className="va-thumb">
-                  <div className="va-ph"><Ticket size={22} /></div>
-                  {a.image && <img src={a.image} alt={a.title} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
-                </div>
-                <div className="va-body">
-                  <div className="va-name">{a.title}</div>
-                  {(a.rating != null || a.freeCancellation) && (
-                    <div className="va-rate">
-                      {a.rating != null && (
-                        <>
-                          <Star size={12} className="va-star" />
-                          <span className="va-sc">{Number(a.rating).toFixed(1)}</span>
-                          {a.reviewCount ? <span className="va-cnt">{t('fork.activities_reviews', { n: a.reviewCount })}</span> : null}
-                        </>
-                      )}
-                      {a.freeCancellation && <span className="va-flag">{t('fork.activities_free_cancel')}</span>}
-                    </div>
-                  )}
-                  <div className="va-foot">
-                    {a.fromPrice != null ? (
-                      <span className="va-price">
-                        <span className="va-from">{t('fork.activities_from')}</span>
-                        <b>{fmtMoney(a.fromPrice, a.currency || currency)}</b>
-                      </span>
-                    ) : <span />}
-                    <span className="btn btn--primary btn--sm">{t('fork.activities_book')}<ExternalLink size={13} /></span>
+              <PartnerResultCard
+                key={a.code}
+                id={a.code}
+                name={a.title}
+                accent="var(--ev-activity)"
+                icon={<Ticket size={22} />}
+                image={a.image}
+                rating={(a.rating != null || a.freeCancellation) ? (
+                  <div className="va-rate">
+                    {a.rating != null && (
+                      <>
+                        <Star size={12} className="va-star" />
+                        <span className="va-sc">{Number(a.rating).toFixed(1)}</span>
+                        {a.reviewCount ? <span className="va-cnt">{t('fork.activities_reviews', { n: a.reviewCount })}</span> : null}
+                      </>
+                    )}
+                    {a.freeCancellation && <span className="va-flag">{t('fork.activities_free_cancel')}</span>}
                   </div>
-                </div>
-              </a>
+                ) : null}
+                price={a.fromPrice != null ? (
+                  <span className="va-price">
+                    <span className="va-from">{t('fork.activities_from')}</span>
+                    <b>{fmtMoney(a.fromPrice, a.currency || currency)}</b>
+                  </span>
+                ) : null}
+                link={a.url}
+                bookLabel={t('fork.activities_book')}
+                selected={String(selectedId) === String(a.code)}
+                hovered={String(hoveredId) === String(a.code)}
+                onSelect={setSelectedId}
+                onHover={setHoveredId}
+                onOpen={() => onBook(a)}
+              />
             ))}
           </div>
 
@@ -162,25 +172,16 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         .va-state b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); color: var(--ink); }
         .va-state p { margin: 0; font-size: var(--fs-meta); color: var(--muted); max-width: 30ch; }
         .va-retry { margin-top: 6px; }
-        .va-card { display: flex; gap: 13px; padding: 11px; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); transition: transform .18s var(--ease-spring), border-color .16s, box-shadow .18s; }
-        .va-card--sk { cursor: default; }
-        @media (hover: hover) and (pointer: fine) { .va-card:hover { transform: translateY(-2px); border-color: var(--line-hover); box-shadow: var(--sh-2); } }
-        .va-card:active { transform: scale(.99); }
-        .va-thumb { position: relative; width: 96px; height: 96px; flex: none; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #b6e0c8, var(--ev-activity) 120%); }
-        .va-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; position: relative; z-index: 1; }
-        .va-ph { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.85); z-index: 0; }
-        .va-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-        .va-name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); line-height: 1.28; color: var(--ink); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
+           the activity-specific body content keeps its own classes below. */
         .va-rate { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
         .va-star { color: var(--pro); flex: none; }
         .va-sc { font-family: var(--font-display); font-weight: 700; font-size: 12.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
         .va-cnt { font-size: 11px; color: var(--muted); font-weight: 600; }
         .va-flag { font-size: 10.5px; color: var(--brand); font-weight: 700; background: var(--primary-soft); padding: 1px 7px; border-radius: var(--r-pill); }
-        .va-foot { margin-top: auto; padding-top: 9px; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
         .va-price { display: flex; flex-direction: column; line-height: 1.15; }
         .va-from { font-size: var(--fs-nano); color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
         .va-price b { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-strong); color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 2px; }
-        .va-foot .btn { flex: none; }
         .va-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
         .va-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-family: var(--font-display); font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
         .va-pg:disabled { opacity: .4; cursor: default; }
@@ -188,8 +189,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         @media (hover: hover) and (pointer: fine) { .va-pg:not(:disabled):hover { border-color: var(--line-hover); } }
         .va-pg--on { background: var(--brand); border-color: var(--brand); color: #fff; }
         .va-gap { color: var(--muted-2); padding: 0 2px; }
-        @media (prefers-reduced-motion: reduce) { .va-card, .va-pg { transition: none; } .va-card:active { transform: none; } }
-        @media (max-width: 560px) { .va-thumb { width: 84px; height: 84px; } }
+        @media (prefers-reduced-motion: reduce) { .va-pg { transition: none; } }
       `}</style>
     </div>
   );

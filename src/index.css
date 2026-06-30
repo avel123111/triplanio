@@ -1,117 +1,281 @@
 @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap&subset=cyrillic,cyrillic-ext,latin');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  :root {
-    /* ===================================================================
-       SINGLE SOURCE OF TRUTH for colour. These shadcn primitive tokens
-       (HSL triplets, for Tailwind alpha modifiers) are the authored base.
-       The Atlantic semantic layer in src/design/app.css aliases these via
-       hsl(var(--…)). Change a brand/ink/border colour HERE, once.
-       =================================================================== */
-    /* Triplanio — Lumo (light) — values generated from Lumo hex */
-    --background: 0 0% 99%;                /* bg #fcfcfc — unified with app.css --bg */
-    --foreground: 252 17% 17%;             /* ink #272433 */
-    --card: 0 0% 100%;                     /* surface #FFFFFF */
-    --card-foreground: 252 17% 17%;
-    --popover-hsl: 0 0% 100%;
-    --popover-foreground: 252 17% 17%;
-    --primary: 211 72% 46%;               /* primary #2173C8 */
-    --primary-foreground: 0 0% 100%;
-    --secondary-hsl: 240 36% 95%;         /* surface-2 #EEEEF7 (Tailwind-only; app.css owns --secondary as a color) */
-    --secondary-foreground: 253 12% 31%;  /* ink-2 #4A4659 */
-    --muted-hsl: 240 36% 95%;
-    --muted-foreground: 253 7% 50%;       /* muted #7A7689 */
-    --accent-hsl: 240 36% 95%;
-    --accent-foreground: 211 72% 46%;
-    --destructive: 357 72% 59%;           /* danger #E24A52 */
-    --destructive-foreground: 0 0% 100%;
-    --border: 246 28% 93%;                /* line #E9E8F2 */
-    --input-hsl: 249 23% 88%;             /* line-strong #DBD9E7 (Tailwind-only) */
-    --ring: 211 72% 46%;
-    --chart-1: 211 72% 46%;
-    --chart-2: 155 66% 36%;
-    --chart-3: 16 67% 54%;
-    --chart-4: 357 72% 59%;
-    --chart-5: 254 82% 68%;
-    --radius: 1rem;                       /* Lumo r-md 16px (ui-kit base) */
-    --font-sans: 'Nunito', ui-sans-serif, system-ui, -apple-system, sans-serif;  /* Lumo UI/body */
-    --font-display: 'Rubik', ui-sans-serif, system-ui, sans-serif;               /* Lumo headings */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 252 17% 17%;
-    --sidebar-primary: 211 72% 46%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 36% 95%;
-    --sidebar-accent-foreground: 253 12% 31%;
-    --sidebar-border: 246 28% 93%;
-    --sidebar-ring: 211 72% 46%;
-  }
-
-  .dark {
-    /* Triplanio — Lumo (dark) — values generated from Lumo hex */
-    --background: 245 21% 10%;             /* bg #161520 */
-    --foreground: 248 27% 94%;            /* ink #EDECF4 */
-    --card: 245 17% 15%;                  /* surface #201F2C */
-    --card-foreground: 248 27% 94%;
-    --popover-hsl: 245 17% 15%;
-    --popover-foreground: 248 27% 94%;
-    --primary: 212 100% 72%;             /* primary #6FB2FF */
-    --primary-foreground: 212 68% 10%;
-    --secondary-hsl: 244 15% 19%;        /* surface-2 #2A2937 (Tailwind-only) */
-    --secondary-foreground: 251 16% 79%;
-    --muted-hsl: 244 15% 19%;
-    --muted-foreground: 250 11% 58%;
-    --accent-hsl: 244 15% 19%;
-    --accent-foreground: 212 100% 72%;
-    --destructive: 356 84% 68%;          /* danger #F26A72 */
-    --destructive-foreground: 351 68% 6%;
-    --border: 249 12% 22%;               /* line #33313F */
-    --input-hsl: 247 12% 28%;            /* line-strong #403E4F (Tailwind-only) */
-    --ring: 212 100% 72%;
-    --chart-1: 212 100% 72%;
-    --chart-2: 154 54% 50%;
-    --chart-3: 18 82% 68%;
-    --chart-4: 356 84% 68%;
-    --chart-5: 256 100% 77%;
-    --sidebar-background: 245 19% 13%;    /* sidebar-bg #1B1A26 */
-    --sidebar-foreground: 248 27% 94%;
-    --sidebar-primary: 212 100% 72%;
-    --sidebar-primary-foreground: 212 68% 10%;
-    --sidebar-accent: 244 15% 19%;
-    --sidebar-accent-foreground: 251 16% 79%;
-    --sidebar-border: 249 12% 22%;
-    --sidebar-ring: 212 100% 72%;
-  }
+/* ===================================================================
+   Reset — was Tailwind's `@tailwind base` (Preflight). Inlined verbatim
+   from Tailwind v3 Preflight (TRIP-53 ретайр Tailwind, Этап 4) so the
+   global reset behaviour is byte-for-byte identical now that Tailwind no
+   longer builds it. `@tailwind components/utilities` are gone — no
+   component in src uses Tailwind utility classes any more.
+   The `border-color` on the universal selector folds in the old
+   `* { @apply border-border }`.
+   =================================================================== */
+*,
+::before,
+::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: hsl(var(--border));
+}
+html,
+:host {
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -moz-tab-size: 4;
+  tab-size: 4;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: normal;
+  font-variation-settings: normal;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  margin: 0;
+  line-height: inherit;
+}
+hr {
+  height: 0;
+  color: inherit;
+  border-top-width: 1px;
+}
+abbr:where([title]) {
+  text-decoration: underline dotted;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+b, strong {
+  font-weight: bolder;
+}
+code, kbd, samp, pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 1em;
+}
+small {
+  font-size: 80%;
+}
+sub, sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+sub { bottom: -0.25em; }
+sup { top: -0.5em; }
+table {
+  text-indent: 0;
+  border-color: inherit;
+  border-collapse: collapse;
+}
+button, input, optgroup, select, textarea {
+  font-family: inherit;
+  font-feature-settings: inherit;
+  font-variation-settings: inherit;
+  font-size: 100%;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+}
+button, select {
+  text-transform: none;
+}
+button,
+input:where([type='button']),
+input:where([type='reset']),
+input:where([type='submit']) {
+  -webkit-appearance: button;
+  background-color: transparent;
+  background-image: none;
+}
+:-moz-focusring {
+  outline: auto;
+}
+:-moz-ui-invalid {
+  box-shadow: none;
+}
+progress {
+  vertical-align: baseline;
+}
+::-webkit-inner-spin-button,
+::-webkit-outer-spin-button {
+  height: auto;
+}
+[type='search'] {
+  -webkit-appearance: textfield;
+  outline-offset: -2px;
+}
+::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+::-webkit-file-upload-button {
+  -webkit-appearance: button;
+  font: inherit;
+}
+summary {
+  display: list-item;
+}
+blockquote, dl, dd, h1, h2, h3, h4, h5, h6,
+hr, figure, p, pre {
+  margin: 0;
+}
+fieldset {
+  margin: 0;
+  padding: 0;
+}
+legend {
+  padding: 0;
+}
+ol, ul, menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+dialog {
+  padding: 0;
+}
+textarea {
+  resize: vertical;
+}
+input::placeholder,
+textarea::placeholder {
+  opacity: 1;
+  color: #9ca3af;
+}
+button,
+[role="button"] {
+  cursor: pointer;
+}
+:disabled {
+  cursor: default;
+}
+img, svg, video, canvas, audio, iframe, embed, object {
+  display: block;
+  vertical-align: middle;
+}
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+[hidden] {
+  display: none;
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-    overscroll-behavior: none;
-  }
-  /* Mobile-friendly: avoid accidental text selection on tappable elements. */
-  button,
-  [role="tab"],
-  .nav-link {
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  h1, h2, h3, h4 {
-    font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-  h1 { font-size: var(--fs-h1); line-height: 1.08; }
-  h2 { font-size: var(--fs-h2); line-height: 1.15; }
-  h3 { font-size: var(--fs-h3); line-height: 1.25; }
-  h4 { font-size: var(--fs-h4); line-height: 1.3; }
+/* ===================================================================
+   SINGLE SOURCE OF TRUTH for colour. These shadcn primitive tokens
+   (HSL triplets, kept as the authored base — formerly fed Tailwind alpha
+   modifiers; now consumed by src/design/app.css via hsl(var(--…))).
+   Change a brand/ink/border colour HERE, once.
+   =================================================================== */
+:root {
+  /* Triplanio — Lumo (light) — values generated from Lumo hex */
+  --background: 0 0% 99%;                /* bg #fcfcfc — unified with app.css --bg */
+  --foreground: 252 17% 17%;             /* ink #272433 */
+  --card: 0 0% 100%;                     /* surface #FFFFFF */
+  --card-foreground: 252 17% 17%;
+  --popover-hsl: 0 0% 100%;
+  --popover-foreground: 252 17% 17%;
+  --primary: 211 72% 46%;               /* primary #2173C8 */
+  --primary-foreground: 0 0% 100%;
+  --secondary-hsl: 240 36% 95%;         /* surface-2 #EEEEF7 */
+  --secondary-foreground: 253 12% 31%;  /* ink-2 #4A4659 */
+  --muted-hsl: 240 36% 95%;
+  --muted-foreground: 253 7% 50%;       /* muted #7A7689 */
+  --accent-hsl: 240 36% 95%;
+  --accent-foreground: 211 72% 46%;
+  --destructive: 357 72% 59%;           /* danger #E24A52 */
+  --destructive-foreground: 0 0% 100%;
+  --border: 246 28% 93%;                /* line #E9E8F2 */
+  --input-hsl: 249 23% 88%;             /* line-strong #DBD9E7 */
+  --ring: 211 72% 46%;
+  --chart-1: 211 72% 46%;
+  --chart-2: 155 66% 36%;
+  --chart-3: 16 67% 54%;
+  --chart-4: 357 72% 59%;
+  --chart-5: 254 82% 68%;
+  --radius: 1rem;                       /* Lumo r-md 16px (ui-kit base) */
+  --font-sans: 'Nunito', ui-sans-serif, system-ui, -apple-system, sans-serif;  /* Lumo UI/body */
+  --font-display: 'Rubik', ui-sans-serif, system-ui, sans-serif;               /* Lumo headings */
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 252 17% 17%;
+  --sidebar-primary: 211 72% 46%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 36% 95%;
+  --sidebar-accent-foreground: 253 12% 31%;
+  --sidebar-border: 246 28% 93%;
+  --sidebar-ring: 211 72% 46%;
 }
+
+.dark {
+  /* Triplanio — Lumo (dark) — values generated from Lumo hex */
+  --background: 245 21% 10%;             /* bg #161520 */
+  --foreground: 248 27% 94%;            /* ink #EDECF4 */
+  --card: 245 17% 15%;                  /* surface #201F2C */
+  --card-foreground: 248 27% 94%;
+  --popover-hsl: 245 17% 15%;
+  --popover-foreground: 248 27% 94%;
+  --primary: 212 100% 72%;             /* primary #6FB2FF */
+  --primary-foreground: 212 68% 10%;
+  --secondary-hsl: 244 15% 19%;        /* surface-2 #2A2937 */
+  --secondary-foreground: 251 16% 79%;
+  --muted-hsl: 244 15% 19%;
+  --muted-foreground: 250 11% 58%;
+  --accent-hsl: 244 15% 19%;
+  --accent-foreground: 212 100% 72%;
+  --destructive: 356 84% 68%;          /* danger #F26A72 */
+  --destructive-foreground: 351 68% 6%;
+  --border: 249 12% 22%;               /* line #33313F */
+  --input-hsl: 247 12% 28%;            /* line-strong #403E4F */
+  --ring: 212 100% 72%;
+  --chart-1: 212 100% 72%;
+  --chart-2: 154 54% 50%;
+  --chart-3: 18 82% 68%;
+  --chart-4: 356 84% 68%;
+  --chart-5: 256 100% 77%;
+  --sidebar-background: 245 19% 13%;    /* sidebar-bg #1B1A26 */
+  --sidebar-foreground: 248 27% 94%;
+  --sidebar-primary: 212 100% 72%;
+  --sidebar-primary-foreground: 212 68% 10%;
+  --sidebar-accent: 244 15% 19%;
+  --sidebar-accent-foreground: 251 16% 79%;
+  --sidebar-border: 249 12% 22%;
+  --sidebar-ring: 212 100% 72%;
+}
+
+/* Base element styles — was @layer base { } with @apply (now plain CSS). */
+* {
+  outline-color: hsl(var(--ring) / 0.5);   /* was @apply outline-ring/50 */
+}
+body {
+  background: hsl(var(--background));        /* was bg-background */
+  color: hsl(var(--foreground));            /* was text-foreground */
+  font-family: var(--font-sans);            /* was font-sans */
+  -webkit-font-smoothing: antialiased;      /* was antialiased */
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+/* Mobile-friendly: avoid accidental text selection on tappable elements. */
+button,
+[role="tab"],
+.nav-link {
+  user-select: none;
+  -webkit-user-select: none;
+}
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+h1 { font-size: var(--fs-h1); line-height: 1.08; }
+h2 { font-size: var(--fs-h2); line-height: 1.15; }
+h3 { font-size: var(--fs-h3); line-height: 1.25; }
+h4 { font-size: var(--fs-h4); line-height: 1.3; }
 
 /* AI-filled field: violet tint on the inner input/select trigger, matching the
    designer's `.field--ai` look (var(--ai-soft) fill + soft violet border). */

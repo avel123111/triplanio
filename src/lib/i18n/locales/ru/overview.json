@@ -1,0 +1,12 @@
+{
+  "map_empty": "Добавь города, чтобы увидеть карту",
+  "map_title": "Карта маршрута",
+  "open": "Открыть",
+  "stat_cities": "Города",
+  "stat_countries": "Страны",
+  "stat_distance": "Путь",
+  "stat_duration": "Длительность",
+  "stat_transfers": "Переезды",
+  "unit_days": "дн",
+  "unit_nights": "ноч"
+}

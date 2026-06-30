@@ -31,8 +31,7 @@ import { CATEGORY_HEXES, DEFAULT_CATEGORY_HEX } from '@/lib/budget/category-colo
 import { getActiveLocale } from '@/lib/i18n/format';
 import { countTripMembers } from '@/lib/members';
 import { Icon } from '../design/icons';
-import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, fmtDate } from '../design/index';
-import CurrencyCombobox from '@/components/ui/CurrencyCombobox';
+import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, fmtDate, CurrencyCombobox } from '../design/index';
 import SourceViewLoader from '@/components/budget/SourceViewLoader';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
@@ -741,9 +740,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
       {/* ░ CONTROLS ░ */}
       <div className="bgt-ctl">
-        <div className="bgt-seg" role="group" aria-label={t('budget.group_by_category')}>
-          <button type="button" className={grouping === 'category' ? 'on' : ''} aria-pressed={grouping === 'category'} onClick={() => setGrouping('category')}><Icon name="grid" size={14} />{t('budget.group_by_category')}</button>
-          <button type="button" className={grouping === 'city' ? 'on' : ''} aria-pressed={grouping === 'city'} onClick={() => setGrouping('city')}><Icon name="pin" size={14} />{t('budget.group_by_city')}</button>
+        <div className="seg" role="group" aria-label={t('budget.group_by_category')}>
+          <button type="button" aria-pressed={grouping === 'category'} onClick={() => setGrouping('category')}><Icon name="grid" size={14} />{t('budget.group_by_category')}</button>
+          <button type="button" aria-pressed={grouping === 'city'} onClick={() => setGrouping('city')}><Icon name="pin" size={14} />{t('budget.group_by_city')}</button>
         </div>
         <div className="bgt-ctl__spacer" />
         {grouping === 'category' && (

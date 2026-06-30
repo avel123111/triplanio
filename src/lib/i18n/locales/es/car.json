@@ -1,0 +1,5 @@
+{
+  "dropoff_event": "Devolución del coche",
+  "fallback_name": "Alquiler de coche",
+  "pickup_event": "Recogida del coche"
+}

@@ -1,0 +1,17 @@
+{
+  "home.notifications_desc": "Todas las notificaciones que la app puede enviar, agrupadas por canal",
+  "home.notifications_title": "Registro de notificaciones",
+  "home.subtitle": "Herramientas del sistema para administradores",
+  "home.title": "Panel de administración",
+  "notifications.audience": "Destinatario",
+  "notifications.back_home": "Volver al inicio",
+  "notifications.filter_all": "Todas",
+  "notifications.forbidden_desc": "Esta página solo está disponible para administradores",
+  "notifications.forbidden_title": "Solo administradores",
+  "notifications.hardcoded_text": "Texto fijo",
+  "notifications.i18n_keys": "Claves i18n",
+  "notifications.source": "Origen",
+  "notifications.subtitle": "Todas las notificaciones que la app puede enviar, agrupadas por canal",
+  "notifications.title": "Registro de notificaciones",
+  "notifications.when": "Cuándo"
+}

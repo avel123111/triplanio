@@ -1,16 +1,18 @@
 import React, { useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
+import { removeTripFiles } from '@/lib/storageCleanup';
 import { Paperclip, Upload, X, Loader2, Plus } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/design/index';
 import { useT } from '@/lib/i18n/I18nContext';
+import './DocumentsField.css';
 
 /**
  * Multi-file document field. Manages an array of { file_url, file_name }.
  * - `value` and `onChange` work with an array.
  * - `maxFiles` (optional): caps the count (no cap by default).
  * - `label`: section title (optional).
- * - `iconColor`: tailwind text color for the section icon.
+ * - `iconColor`: CSS color (token/value) for the section icon.
  */
 export default function DocumentsField({
   value = [],
@@ -19,7 +21,7 @@ export default function DocumentsField({
   tripId,
   maxFiles = null,
   label = '',
-  iconColor = 'text-primary',
+  iconColor = 'var(--brand)',
   accept = '*',
   maxFileSizeMb = 10,
   bare = false,
@@ -28,6 +30,11 @@ export default function DocumentsField({
   const t = useT();
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  // storage_paths uploaded during THIS mount (not yet persisted by the parent
+  // form). Removing one of these = removing an orphan, so it's safe to delete
+  // the Storage object immediately. Files that arrived via `value` (already
+  // saved on the entity) are left for the parent's save-time diff (TRIP-117).
+  const stagedPaths = useRef(new Set());
 
   const setUploadingWithCb = (val) => {
     setUploading(val);
@@ -64,6 +71,7 @@ export default function DocumentsField({
         // Long-lived signed URL (10 years) - matches the documents lens convention.
         const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
         uploaded.push({ file_url: urlData?.signedUrl || '', file_name: file.name, storage_path: path });
+        stagedPaths.current.add(path);
       }
       if (uploaded.length) onChange([...docs, ...uploaded]);
     } finally {
@@ -73,36 +81,45 @@ export default function DocumentsField({
   };
 
   const removeAt = (idx) => {
+    const removed = docs[idx];
     const next = docs.slice();
     next.splice(idx, 1);
     onChange(next);
+    // Only sweep files staged this session — a previously-saved file is still
+    // referenced by the entity until the form is saved, so its removal is
+    // resolved by the parent's save-time diff (TRIP-117).
+    const path = removed?.storage_path;
+    if (path && stagedPaths.current.has(path)) {
+      stagedPaths.current.delete(path);
+      removeTripFiles([path]);
+    }
   };
 
   return (
-    <section className={bare ? '' : 'rounded-xl border bg-card p-4'}>
+    <section className={bare ? '' : 'docfield'}>
       {!bare && (
-        <div className="flex items-center justify-between mb-2 gap-2">
-          <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
-            <Paperclip className={`w-4 h-4 shrink-0 ${iconColor}`} />
-            <span className="truncate">{label || t('event.documents')}</span>
+        <div className="docfield__head">
+          <div className="docfield__title">
+            <Paperclip className="ico" size={16} style={{ color: iconColor }} />
+            <span className="docfield__name">{label || t('event.documents')}</span>
             {docs.length > 0 && (
-              <span className="text-xs text-muted-foreground font-normal">· {docs.length}</span>
+              <span className="docfield__count">· {docs.length}</span>
             )}
           </div>
         </div>
       )}
 
       {docs.length > 0 && (
-        <div className="flex flex-col gap-1.5 mb-2">
+        <div className="docfield__list">
           {docs.map((d, i) => (
             <div key={`${d.file_url}-${i}`} className="docrow">
-              <span className="di"><Paperclip className="w-4 h-4" /></span>
+              <span className="di"><Paperclip size={16} /></span>
               <b style={{ flex: 1, minWidth: 0 }}>
                 <a
                   href={d.file_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="block truncate"
+                  className="docrow__link"
                   style={{ color: 'inherit', textDecoration: 'none' }}
                 >
                   {d.file_name || t('event.file_word')}
@@ -111,11 +128,11 @@ export default function DocumentsField({
               <button
                 type="button"
                 onClick={() => removeAt(i)}
-                className="shrink-0 grid place-items-center"
+                className="docrow__rm"
                 style={{ width: 24, height: 24, borderRadius: 6, color: 'var(--muted)' }}
                 aria-label={t('doc.remove_doc_aria')}
               >
-                <X className="w-4 h-4" />
+                <X size={16} />
               </button>
             </div>
           ))}
@@ -133,23 +150,23 @@ export default function DocumentsField({
             ref={inputRef}
             type="file"
             multiple
-            className="hidden"
+            className="docfield__file"
             accept={accept}
             onChange={(e) => uploadFiles(e.target.files)}
           />
           {uploading ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--primary)' }} />
+              <Loader2 className="spin" style={{ color: 'var(--primary)' }} />
               <b>{t('common.loading')}</b>
             </>
           ) : docs.length === 0 ? (
             <>
-              <Upload className="w-5 h-5" />
+              <Upload />
               <b>{t('doc.upload_files', { mb: maxFileSizeMb })}</b>
             </>
           ) : (
             <>
-              <Plus className="w-5 h-5" />
+              <Plus />
               <b>{t('doc.add_more_files')}{maxFiles ? t('doc.remaining', { n: maxFiles - docs.length }) : ''}</b>
             </>
           )}

@@ -11,13 +11,15 @@ import {
 // trip A (2024): Madrid, Barcelona (ES) + return Madrid (dedup) → 2 cities, 1 country
 // trip B (2025): Paris (FR), Rome (IT) → 2 cities, 2 countries
 // custom: Tokyo (JP) 2023
+// Post-Phase-6 point shape: server carries geonameid (dedup key) + name_i18n;
+// `city_name` is the localized display label localizeVisits writes at the seam.
 const pts = [
-  { kind: 'trip', trip_id: 'A', city_name: 'Madrid', country_code: 'ES', lat: 40.4, lng: -3.7, start_date: '2024-03-01', end_date: '2024-03-04' },
-  { kind: 'trip', trip_id: 'A', city_name: 'Barcelona', country_code: 'ES', lat: 41.4, lng: 2.2, start_date: '2024-03-04', end_date: '2024-03-08' },
-  { kind: 'trip', trip_id: 'A', city_name: 'Madrid', country_code: 'ES', lat: 40.4, lng: -3.7, start_date: '2024-03-08', end_date: '2024-03-09' },
-  { kind: 'trip', trip_id: 'B', city_name: 'Paris', country_code: 'FR', lat: 48.8, lng: 2.3, start_date: '2025-06-01', end_date: '2025-06-05' },
-  { kind: 'trip', trip_id: 'B', city_name: 'Rome', country_code: 'IT', lat: 41.9, lng: 12.5, start_date: '2025-06-05', end_date: '2025-06-09' },
-  { kind: 'custom', trip_id: null, city_name: 'Tokyo', country_code: 'JP', lat: 35.7, lng: 139.7, start_date: '2023-10-10', end_date: '2023-10-20' },
+  { kind: 'trip', trip_id: 'A', geonameid: 3117735, city_name: 'Madrid', country_code: 'ES', lat: 40.4, lng: -3.7, start_date: '2024-03-01', end_date: '2024-03-04' },
+  { kind: 'trip', trip_id: 'A', geonameid: 3128760, city_name: 'Barcelona', country_code: 'ES', lat: 41.4, lng: 2.2, start_date: '2024-03-04', end_date: '2024-03-08' },
+  { kind: 'trip', trip_id: 'A', geonameid: 3117735, city_name: 'Madrid', country_code: 'ES', lat: 40.4, lng: -3.7, start_date: '2024-03-08', end_date: '2024-03-09' },
+  { kind: 'trip', trip_id: 'B', geonameid: 2988507, city_name: 'Paris', country_code: 'FR', lat: 48.8, lng: 2.3, start_date: '2025-06-01', end_date: '2025-06-05' },
+  { kind: 'trip', trip_id: 'B', geonameid: 3169070, city_name: 'Rome', country_code: 'IT', lat: 41.9, lng: 12.5, start_date: '2025-06-05', end_date: '2025-06-09' },
+  { kind: 'custom', trip_id: null, geonameid: 1850147, city_name: 'Tokyo', country_code: 'JP', lat: 35.7, lng: 139.7, start_date: '2023-10-10', end_date: '2023-10-20' },
 ];
 const trips = { A: { title: 'Spain' }, B: { title: 'Italy & France' } };
 
@@ -85,10 +87,10 @@ test('lists + continents breakdown', () => {
 // number of city-stops. Madrid here is in trip A (twice), trip C, plus one manual
 // visit → 3 visits (not 4 stops). ES inherits the same 3.
 const tripUnitPts = [
-  { id: 1, kind: 'trip', trip_id: 'A', city_name: 'Madrid', country_code: 'ES', start_date: '2024-03-01', end_date: '2024-03-04' },
-  { id: 2, kind: 'trip', trip_id: 'A', city_name: 'Madrid', country_code: 'ES', start_date: '2024-03-08', end_date: '2024-03-09' },
-  { id: 3, kind: 'trip', trip_id: 'C', city_name: 'Madrid', country_code: 'ES', start_date: '2025-01-01', end_date: '2025-01-05' },
-  { id: 99, kind: 'custom', trip_id: null, city_name: 'Madrid', country_code: 'ES', start_date: '2023-01-01', end_date: '2023-01-03' },
+  { id: 1, kind: 'trip', trip_id: 'A', geonameid: 3117735, city_name: 'Madrid', country_code: 'ES', start_date: '2024-03-01', end_date: '2024-03-04' },
+  { id: 2, kind: 'trip', trip_id: 'A', geonameid: 3117735, city_name: 'Madrid', country_code: 'ES', start_date: '2024-03-08', end_date: '2024-03-09' },
+  { id: 3, kind: 'trip', trip_id: 'C', geonameid: 3117735, city_name: 'Madrid', country_code: 'ES', start_date: '2025-01-01', end_date: '2025-01-05' },
+  { id: 99, kind: 'custom', trip_id: null, geonameid: 3117735, city_name: 'Madrid', country_code: 'ES', start_date: '2023-01-01', end_date: '2023-01-03' },
 ];
 
 test('counts are by trip/manual units, not city-stops', () => {

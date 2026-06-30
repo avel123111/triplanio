@@ -63,7 +63,7 @@ function ScreenMap({ visits = [], transfers = [], hotels = [], activities = [], 
       {/* MAP - full-bleed Google Maps */}
       <div style={{
         position: 'relative',
-        background: isDark ? '#0e1a2e' : '#dceaf5',
+        background: isDark ? '#0e1a2e' : '#dceaf5', // design-token-exempt: map backdrop tint behind the canvas
         overflow: 'hidden',
         borderRight: '1px solid var(--line)',
       }}>

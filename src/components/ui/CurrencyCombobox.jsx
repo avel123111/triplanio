@@ -20,7 +20,7 @@ export default function CurrencyCombobox({ value, onChange, className = '' }) {
       renderValue={(c) => `${c.code} · ${c.symbol}`}
       renderOption={(c) => (
         <>
-          <span className="font-mono" style={{ fontWeight: 700, width: 40, flex: 'none' }}>{c.code}</span>
+          <span className="mono" style={{ fontWeight: 700, width: 40, flex: 'none' }}>{c.code}</span>
           <span style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
           <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{c.symbol}</span>
         </>

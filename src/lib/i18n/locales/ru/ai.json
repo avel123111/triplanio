@@ -1,0 +1,21 @@
+{
+  "add_more": "Добавить ещё (осталось {remaining})",
+  "analyze": "Анализ",
+  "analyzing_hotel": "ИИ анализирует бронирование…",
+  "analyzing_transfer": "ИИ анализирует билет…",
+  "aria_close": "Закрыть",
+  "aria_delete": "Удалить",
+  "drop_files": "Перетащи файлы или нажми",
+  "error_files": "Не удалось распознать файлы",
+  "error_link": "Не удалось распознать ссылку",
+  "formats_hint": "PDF, PNG, JPG • до 5MB • до {max} файлов",
+  "hotel_title": "Распознать бронирование",
+  "hotel_url_placeholder": "Вставьте ссылку на бронирование (Booking, Airbnb…)",
+  "or": "или",
+  "recognize_files_few": "Распознать {count} файла",
+  "recognize_files_many": "Распознать {count} файлов",
+  "recognize_files_one": "Распознать {count} файл",
+  "too_many_files": "Можно загрузить не больше {max} файлов в ИИ",
+  "transfer_title": "Распознать билет / бронирование",
+  "transfer_url_placeholder": "Вставьте ссылку на бронирование (Aviasales, Trainline…)"
+}

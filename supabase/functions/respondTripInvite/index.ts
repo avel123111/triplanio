@@ -9,11 +9,12 @@
  * In both cases: marks the invite notification as read.
  */
 
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsFor } from '../_shared/cors.ts';
 import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { renderJoinedNotification, renderDeclinedNotification } from '../_shared/emailTemplate.ts';
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -40,6 +41,21 @@ Deno.serve(async (req) => {
     }
     if (member.status !== 'pending') {
       return Response.json({ error: 'Invite already responded to' }, { status: 409, headers: corsHeaders });
+    }
+
+    // The trip creator is the owner via trips.created_by and must never become a
+    // trip_members row. If the creator somehow holds a pending invite to their
+    // own trip, accepting it would demote them to viewer/admin inside the trip —
+    // so drop the stray invite instead of activating it (TRIP-143).
+    const { data: ownTrip } = await supabaseAdmin
+      .from('trips').select('created_by').eq('id', member.trip_id).single();
+    if (ownTrip?.created_by === user.id) {
+      await supabaseAdmin.from('trip_members').delete().eq('id', member_id);
+      await supabaseAdmin.from('notifications')
+        .update({ read: true })
+        .eq('user_id', user.id)
+        .eq('trip_member_id', member_id);
+      return Response.json({ ok: true, alreadyOwner: true }, { headers: corsHeaders });
     }
 
     if (action === 'decline') {

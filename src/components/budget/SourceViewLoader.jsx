@@ -11,20 +11,15 @@
  */
 import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/api/supabaseClient';
 import { TRIP_SHELL_KEY, TRIP_CONTENT_KEY } from '@/lib/trip-data';
 import EventModal from '@/components/common/EventModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { useEntitySource } from '@/components/common/EventViewBody';
 import { useT } from '@/lib/i18n/I18nContext';
-import { useToast } from '@/components/ui/use-toast';
-
-const TABLE_BY_KIND = {
-  hotel: 'hotel_stays',
-  transfer: 'transfers',
-  activity: 'activities',
-  service: 'trip_services',
-};
+import { useToast } from '@/design/index';
+import { getSourceDocuments } from '@/lib/documents';
+import { collectDocPaths } from '@/lib/storageCleanup';
+import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
 
 export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit = false, warning = null, onEditInEditor = null }) {
   const t = useT();
@@ -85,9 +80,11 @@ export default function SourceViewLoader({ kind, id, open, onOpenChange, canEdit
   }
 
   const handleDelete = async () => {
-    const table = TABLE_BY_KIND[kind];
-    if (!table) return;
-    const { error } = await supabase.from(table).delete().eq('id', data.id);
+    if (!ENTITY_TABLE_BY_KIND[kind]) return;
+    // Capture attachment object keys before delete; deleteSourceEntity sweeps
+    // best-effort only after the row is actually gone (TRIP-117).
+    const orphanPaths = collectDocPaths(getSourceDocuments(kind, data));
+    const { error } = await deleteSourceEntity(kind, data.id, orphanPaths);
     if (error) { toast({ description: t('event.delete_failed') + ': ' + error.message, variant: 'destructive' }); throw error; }
     onOpenChange(false);
     invalidate();

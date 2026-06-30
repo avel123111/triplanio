@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/design/icons';
 import HeaderActions from '@/components/HeaderActions';
+import { useT } from '@/lib/i18n/I18nContext';
 
 /**
  * Unified top bar (brand gradient) used across the whole app.
@@ -46,6 +47,7 @@ export default function AppHeader({
   isTrip = false,
 }) {
   const nav = useNavigate();
+  const t = useT();
   const goBrand = onBrand || (() => nav('/trips'));
   const hasTrip = title != null || meta != null;
 
@@ -53,12 +55,12 @@ export default function AppHeader({
     <header className={'app-header' + (isTrip ? ' app-header--trip' : '')}>
       <div className="app-header__left">
         {onBack && (
-          <button className="app-header__gbtn" onClick={onBack} title={backTitle} aria-label={backTitle || 'Back'} type="button">
+          <button className="app-header__gbtn" onClick={onBack} title={backTitle} aria-label={backTitle || t('common.back')} type="button">
             <Icon name="back" size={17} />
           </button>
         )}
         {onMenu && (
-          <button className="app-header__gbtn app-header__menu" onClick={onMenu} aria-label="Menu" type="button">
+          <button className="app-header__gbtn app-header__menu" onClick={onMenu} aria-label={t('common.menu')} type="button">
             <Icon name="list" size={18} />
           </button>
         )}

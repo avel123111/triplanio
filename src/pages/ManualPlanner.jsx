@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useT, useI18n } from '@/lib/i18n/I18nContext';
-import { useToast } from '@/components/ui/use-toast';
 import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
@@ -13,19 +11,21 @@ import { searchCities, resolveCities, countryFlag, reverseGeocode } from '@/lib/
 import { tzFromCoords } from '@/lib/timezone';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
-import { Btn, EmptyState, Severity, Toggle } from '../design/index';
+import { Btn, EmptyState, Severity, Toggle, useToast } from '../design/index';
 import CityRowBase from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
 import TripStartControl from '@/components/trip/TripStartControl';
 import AppHeader from '@/components/AppHeader';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
 import { finalizeDraftCover } from '@/lib/coverStorage';
-import { getGradientById } from '@/lib/trip-gradients';
+import { coverGradientCss, DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 import FlowProgress from '@/pages/create/FlowProgress';
 import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
+import Autocomplete from '@/components/common/Autocomplete';
+import cityOptionRow from '@/components/common/cityOptionRow';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 import '../design/app.css';
 
@@ -111,157 +111,33 @@ function recomputeDates(list) {
 
 // ─── CityPicker ──────────────────────────────────────────────────────────────
 
-// Nearest vertically-scrollable ancestor (the create-flow scroller: .flow-grid on
-// mobile, .lp-b on desktop). The dropdown is portaled INTO it and positioned
-// absolutely within its scrolled content, so it moves with the input on scroll
-// with zero lag (no position:fixed, no per-frame recompute → it cannot "fly").
-function getScrollParent(el) {
-  let n = el?.parentElement;
-  while (n && n !== document.body) {
-    const oy = getComputedStyle(n).overflowY;
-    if (oy === 'auto' || oy === 'scroll' || oy === 'overlay') return n;
-    n = n.parentElement;
-  }
-  return document.scrollingElement || document.body;
-}
-
-function CityPicker({ value, onChange, placeholder, autoFocus, style: extStyle }) {
+// City picker for the create-flow rows — a thin facade over the shared
+// <Autocomplete> engine (same field/dropdown/scroll/hover as CitySearch and the
+// address picker). It owns only the create-flow contract: controlled `value`
+// (city object), clear-on-type, and timezone enrichment on pick.
+function CityPicker({ value, onChange, placeholder, autoFocus }) {
   const t = useT();
-  const { lang } = useI18n();
   const [q, setQ] = useState(value?.city_name || '');
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-  const timerRef = useRef(null);
-  const wrapRef = useRef(null);
-  const [box, setBox] = useState(null);
 
-  // Sync display when value changes externally
-  useEffect(() => {
-    setQ(value?.city_name || '');
-  }, [value?.city_name]);
-
-  // The results list is an OVERLAY portaled into the nearest scroll container and
-  // positioned ABSOLUTELY within its scrolled content. Three properties at once:
-  //  • out of flow → it does NOT push/expand the row it lives in;
-  //  • lives in the scroller, ABOVE the card → never clipped by .lp overflow:hidden;
-  //  • absolute-in-scroller → it is part of the scrolled content, so it moves
-  //    pixel-for-pixel WITH the input on scroll. No position:fixed, no scroll
-  //    listener, no per-frame recompute → it can never lag behind / "fly".
-  // Position is computed once on open / results change and re-derived only when the
-  // viewport itself changes (resize / keyboard show-hide).
-  useLayoutEffect(() => {
-    if (!open || results.length === 0) { setBox(null); return undefined; }
-    const compute = () => {
-      const el = wrapRef.current;
-      if (!el) return;
-      const sp = getScrollParent(el);
-      const r = el.getBoundingClientRect();
-      const spRect = sp.getBoundingClientRect();
-      const vh = window.visualViewport?.height || window.innerHeight;
-      const spaceBelow = vh - r.bottom - 12;
-      setBox({
-        sp,
-        left: Math.round(r.left - spRect.left + sp.scrollLeft),
-        top: Math.round(r.bottom - spRect.top + sp.scrollTop + 4),
-        width: Math.round(r.width),
-        maxH: Math.round(Math.max(160, Math.min(300, spaceBelow))),
-      });
-    };
-    compute();
-    const onR = () => compute();
-    window.addEventListener('resize', onR);
-    window.visualViewport?.addEventListener('resize', onR);
-    return () => {
-      window.removeEventListener('resize', onR);
-      window.visualViewport?.removeEventListener('resize', onR);
-    };
-  }, [open, results.length]);
-
-  const runSearch = (query) => {
-    clearTimeout(timerRef.current);
-    if (query.length < 2) { setResults([]); setOpen(false); return; }
-    setLoading(true);
-    timerRef.current = setTimeout(async () => {
-      const r = await searchCities(query, lang);
-      setResults(r);
-      setLoading(false);
-      setOpen(r.length > 0);
-    }, 350);
-  };
-
-  const handleChange = (e) => {
-    const val = e.target.value;
-    setQ(val);
-    if (value) onChange(null); // clear selection when user types
-    runSearch(val);
-  };
-
-  const handleSelect = async (city) => {
-    setOpen(false);
-    setResults([]);
-    setQ(city.city_name);
-    setLoading(true);
-    const tz = tzFromCoords(city.latitude, city.longitude);
-    setLoading(false);
-    onChange({ ...city, timezone: tz });
-  };
-
-  const handleBlur = () => {
-    // Delay to allow mousedown on dropdown items
-    setTimeout(() => setOpen(false), 200);
-  };
+  // Sync the field text when the selection changes externally.
+  useEffect(() => { setQ(value?.city_name || ''); }, [value?.city_name]);
 
   return (
-    <div style={{ position: 'relative', ...extStyle }}>
-      <div style={{ position: 'relative' }} ref={wrapRef}>
-        <Icon
-          name="pin" size={15}
-          style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: value ? 'var(--brand)' : 'var(--muted-2)', pointerEvents: 'none' }}
-        />
-        <input
-          className="input"
-          value={q}
-          onChange={handleChange}
-          onFocus={() => results.length > 0 && setOpen(true)}
-          onBlur={handleBlur}
-          placeholder={placeholder || t('planner.city_search_ph')}
-          style={{ paddingLeft: 36, paddingRight: loading ? 36 : 12 }}
-          autoFocus={autoFocus}
-        />
-        {loading && (
-          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
-        )}
-      </div>
-      {open && results.length > 0 && box && createPortal(
-        <div className="flow-city-dd" style={{
-          position: 'absolute', left: box.left, top: box.top, width: box.width, zIndex: 60,
-          maxHeight: box.maxH,
-          background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10,
-          boxShadow: '0 8px 24px rgba(0,0,0,.18)', overflowX: 'hidden', overflowY: 'auto',
-        }}>
-          {results.map((c) => (
-            <button
-              key={c.external_city_id}
-              onMouseDown={() => handleSelect(c)}
-              className="dz-rowhover"
-              style={{
-                width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none',
-                borderBottom: '1px solid var(--line-2)', cursor: 'pointer',
-                display: 'flex', gap: 10, alignItems: 'center',
-              }}
-            >
-              <span style={{ fontSize: 'var(--fs-h3)', flexShrink: 0 }}>{countryFlag(c.country_code)}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="te-cityname">{c.city_name}</div>
-                <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name}</div>
-              </div>
-            </button>
-          ))}
-        </div>,
-        box.sp
-      )}
-    </div>
+    <Autocomplete
+      inputValue={q}
+      onInputChange={(val) => { setQ(val); if (value) onChange(null); }}
+      search={(query, lang) => searchCities(query, lang)}
+      getKey={(c) => c.external_city_id}
+      onPick={(city) => {
+        setQ(city.city_name);
+        onChange({ ...city, timezone: tzFromCoords(city.latitude, city.longitude) });
+      }}
+      renderRow={cityOptionRow}
+      placeholder={placeholder || t('planner.city_search_ph')}
+      autoFocus={autoFocus}
+      icon="pin"
+      iconActive={!!value}
+    />
   );
 }
 
@@ -313,10 +189,10 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
   const stopArm = (e) => e.stopPropagation();
   const pick = (picked) => {
     if (picked) {
-      onChange({ city_name: picked.city_name, country: picked.country, country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
+      onChange({ city_name: picked.city_name, city_name_en: picked.city_name_en, geonameid: picked.geonameid ?? null, name_i18n: picked.name_i18n || null, country: picked.country, country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
       setEditing(false);
     } else {
-      onChange({ city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
+      onChange({ city_name: '', city_name_en: '', geonameid: null, name_i18n: null, country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
     }
   };
 
@@ -706,14 +582,8 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
   const autoTitle = computeAutoTitle(home, cities, t);
   const displayTitle = tripTitle || autoTitle;
 
-  const gradient = cover?.cover_gradient ? getGradientById(cover.cover_gradient) : null;
   const hasPhoto = !!cover?.cover_image_url;
-  const hasGradient = !hasPhoto && !!gradient;
-  const heroBg = hasGradient
-    ? gradient.css
-    : !hasPhoto
-      ? 'linear-gradient(135deg, hsl(210, 60%, 55%) 0%, hsl(195, 55%, 50%) 40%, hsl(25, 65%, 60%) 100%)'
-      : 'var(--wash)';
+  const heroBg = hasPhoto ? 'var(--wash)' : coverGradientCss(cover?.cover_gradient);
 
   if (savedOk) {
     return (
@@ -745,12 +615,6 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
         <div style={{ height: 120, background: heroBg, position: 'relative' }}>
           {hasPhoto && (
             <img src={cover.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-          )}
-          {!hasPhoto && !hasGradient && (
-            <svg viewBox="0 0 800 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.5 }}>
-              <path d="M0 130 Q 200 80 400 110 T 800 95 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.5)" />
-              <path d="M0 160 Q 250 110 450 140 T 800 130 L 800 200 L 0 200 Z" fill="rgba(255,255,255,.3)" />
-            </svg>
           )}
           <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad-soft)' }} />
           <div style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
@@ -935,6 +799,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     return {
       id: Date.now() + idx,
       external_city_id: best?.external_city_id || null,
+      geonameid: best?.geonameid ?? null,
+      name_i18n: best?.name_i18n || null,
       city_name: c.city_name || '',
       // English name kept for partner links (Stay22/Viator) and the directory:
       // prefer the AI's city_name_en, else the geocoder's canonical en name.
@@ -1021,7 +887,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       const { data, error: fnErr } = await supabase.functions.invoke('planTripWithAi', {
         body: { sessionId, prompt: promptText, language: lang || 'ru' },
       });
-      if (fnErr) throw fnErr;
+      if (fnErr) {
+        // TRIP-111: серверный rate-limit генераций → понятное сообщение вместо
+        // общего «не удалось». supabase.functions.invoke кладёт Response в .context.
+        if (fnErr?.context?.status === 429) throw new Error(t('ai_plan.error_rate_limited'));
+        throw fnErr;
+      }
       return data;
     },
     onMutate: () => { setAiState('generating'); setError(null); },
@@ -1138,7 +1009,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
           .from('trips')
           .update({
             cover_image_url: finalCoverUrl,
-            cover_gradient: cover.cover_gradient || null,
+            // Invariant: every trip keeps a built-in gradient (photo renders on
+            // top when present). Never persist null → no legacy/procedural cover.
+            cover_gradient: cover.cover_gradient || DEFAULT_GRADIENT_ID,
           })
           .eq('id', trip.id);
         if (coverErr) console.error('Failed to set cover:', coverErr);
@@ -1152,7 +1025,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         visitsToInsert.push({
           trip_id: trip.id,
           external_city_id: home.external_city_id || null,
-          city_name: home.city_name,
+          geonameid: home.geonameid ?? null,
+          name_i18n: home.name_i18n || null,
           city_name_en: home.city_name_en || null,
           country: home.country || null,
           country_code: home.country_code || null,
@@ -1176,7 +1050,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         visitsToInsert.push({
           trip_id: trip.id,
           external_city_id: c.external_city_id || null,
-          city_name: c.city_name,
+          geonameid: c.geonameid ?? null,
+          name_i18n: c.name_i18n || null,
           city_name_en: c.city_name_en || null,
           country: c.country || null,
           country_code: c.country_code || null,
@@ -1197,7 +1072,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
         visitsToInsert.push({
           trip_id: trip.id,
           external_city_id: effectiveReturn.external_city_id || null,
-          city_name: effectiveReturn.city_name,
+          geonameid: effectiveReturn.geonameid ?? null,
+          name_i18n: effectiveReturn.name_i18n || null,
           city_name_en: effectiveReturn.city_name_en || null,
           country: effectiveReturn.country || null,
           country_code: effectiveReturn.country_code || null,
@@ -1237,7 +1113,15 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   };
 
   // ── Limit guard ───────────────────────────────────────────────────────────
-  if (!isPro && checkingLimit) {
+  // The guard gates ENTERING / continuing creation while a free user is at the
+  // cap — it must NOT override the terminal success screen. Saving the trip
+  // raises the active count and invalidates the limit cache (see above), so the
+  // refetch flips isOverLimit→true a moment after savedOk. Without `!savedOk`
+  // the success screen would be replaced by the "limit reached" blocker a second
+  // after it appears. savedOk can only be true if the user was UNDER the limit
+  // at save time (the blocker returns before the form), so suppressing it here is
+  // safe by construction.
+  if (!isPro && checkingLimit && !savedOk) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 32, height: 32, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
@@ -1245,7 +1129,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     );
   }
 
-  if (isOverLimit) {
+  if (isOverLimit && !savedOk) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
         <AppHeader

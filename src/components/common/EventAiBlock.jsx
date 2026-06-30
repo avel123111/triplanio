@@ -13,6 +13,7 @@ import React, { useRef, useState } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
+import { removeTripFiles } from '@/lib/storageCleanup';
 import { Badge } from '@/design/index';
 import {
   Sparkles, Lock, Upload, X, FileText, Image as ImageIcon,
@@ -95,6 +96,10 @@ export default function EventAiBlock({
   const runParse = async () => {
     setError(null);
     setState('parsing');
+    // Objects uploaded for THIS attempt. On any non-success exit they're orphans
+    // (the parse result is discarded and a retry re-uploads), so sweep them
+    // best-effort — otherwise every failed/retried parse leaked files (TRIP-117).
+    const uploadedPaths = [];
     try {
       // 1. Upload local files to Storage → long-lived signed URLs.
       const uploaded = await Promise.all(files.map(async (f) => {
@@ -105,6 +110,7 @@ export default function EventAiBlock({
         const path = tripStoragePath(tripId, f.name);
         const { error: upErr } = await supabase.storage.from(TRIP_BUCKET).upload(path, f.file);
         if (upErr) throw new Error(upErr.message || t('event.ai_upload_error'));
+        uploadedPaths.push(path);
         const { data: urlData } = await supabase.storage.from(TRIP_BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
         return { ...f, file_url: urlData?.signedUrl || '', storage_path: path };
       }));
@@ -114,7 +120,13 @@ export default function EventAiBlock({
       //    n8n (prompts and schemas live inside the n8n workflow).
       const body = { kind, fileUrls, text: text.trim(), trip_id: tripId };
       const { data: invoked, error: invokeErr } = await supabase.functions.invoke('parseBookingWithAi', { body });
-      if (invokeErr) throw invokeErr;
+      if (invokeErr) {
+        // TRIP-111: серверный гейт — отдельные сообщения для лимита и Pro.
+        const status = invokeErr?.context?.status;
+        if (status === 429) { setError(t('event.ai_rate_limited')); setState('uploaded'); removeTripFiles(uploadedPaths); return; }
+        if (status === 403) { setError(t('event.ai_pro_required')); setState('uploaded'); removeTripFiles(uploadedPaths); return; }
+        throw invokeErr;
+      }
       if (invoked?.error) throw new Error(invoked.error);
 
       const result = extractBookingPayload(invoked);
@@ -140,6 +152,9 @@ export default function EventAiBlock({
         documents[0]?.file_name || null,
       );
     } catch (e) {
+      // Parse failed → the uploaded objects are orphaned (result discarded);
+      // sweep them so a retry doesn't pile up new ones (TRIP-117).
+      removeTripFiles(uploadedPaths);
       // supabase.functions.invoke surfaces a generic "Edge Function returned a
       // non-2xx status code" when the edge fn / n8n can't read the document.
       // Show a clear, friendly hint instead of that raw string. Explicit thrown

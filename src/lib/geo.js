@@ -37,105 +37,74 @@ async function liq(action, body) {
   return [];
 }
 
-const POPULATED = new Set([
-  'city', 'town', 'village', 'hamlet', 'suburb', 'neighbourhood',
-  'municipality', 'locality', 'administrative', 'island', 'islet',
-  'state', 'county', 'region', 'province',
-]);
+// App UI locales baked into the per-visit name_i18n snapshot. Anything else
+// collapses to English.
+function normLang(lang) {
+  const l = (lang || (typeof navigator !== 'undefined' && navigator.language) || 'en')
+    .slice(0, 2).toLowerCase();
+  return (l === 'es' || l === 'ru') ? l : 'en';
+}
 
-// Map one raw LocationIQ/Nominatim row → the app's city shape.
-function mapCity(d) {
-  const a = d.address || {};
-  const name =
-    a.city || a.town || a.village || a.hamlet || a.suburb ||
-    a.neighbourhood || a.municipality || a.locality || a.county ||
-    a.state || d.name || d.display_name.split(',')[0];
-  const nd = d.namedetails || {};
+// Map one search_gazetteer RPC row → the app's city shape (TRIP-146). `geonameid`
+// is the v2 identity key; `name_i18n` is the hot-path localized snapshot (en/es/ru)
+// the caller bakes onto the visit at save time so trip/stats rendering never
+// joins the gazetteer. Display name = snapshot for the active locale, falling
+// back to the RPC's localized `display`. Country name is NOT carried — partner
+// builders derive it from country_code (countryNameEn).
+function mapGazCity(g, lk) {
+  const i18n = g.name_i18n || {};
   return {
-    external_city_id: String(d.place_id),
-    city_name: name,
-    // Canonical English name from namedetails: explicit name:en, else the
-    // international name, else the default OSM name (Latin for many cities).
-    city_name_en: nd['name:en'] || nd['int_name'] || nd['name'] || '',
-    country: a.country || '',
-    country_code: (a.country_code || '').toUpperCase(),
-    latitude: parseFloat(d.lat),
-    longitude: parseFloat(d.lon),
-    display_name: d.display_name,
-    _importance: d.importance || 0,
+    geonameid: g.geonameid,
+    external_city_id: g.geonameid != null ? String(g.geonameid) : null,
+    city_name: i18n[lk] || g.display || '',
+    city_name_en: i18n.en || g.display || '',
+    name_i18n: i18n,
+    country: null,
+    country_code: (g.country_code || '').toUpperCase(),
+    latitude: g.lat,
+    longitude: g.lng,
+    display_name: g.subtitle || '',
   };
 }
 
-// Filter a raw LocationIQ array to populated places, dedup, sort by importance,
-// cap at 12. Shared by searchCities (single) and resolveCities (batch) so the
-// "pick the right city" logic lives in ONE place.
-function refineCities(data) {
-  const seen = new Set();
-  return (data || [])
-    .filter(d => POPULATED.has(d.type) || d.class === 'place' || d.class === 'boundary')
-    .map(mapCity)
-    .filter(c => {
-      const key = `${c.city_name}|${c.country_code}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((a, b) => b._importance - a._importance)
-    .slice(0, 12);
-}
-
+// City typeahead via the local GeoNames gazetteer (TRIP-146): one stable RPC
+// `search_gazetteer`, no LocationIQ. Rows come back already filtered + ranked
+// server-side (one per geonameid), mapped to the shared city shape. `lang`
+// localizes both the display and the name_i18n snapshot.
 export async function searchCities(query, lang) {
   if (!query || query.length < 2) return [];
-  // Caller passes the app language so city/country names come back localized.
-  const acceptLang = lang
-    || (typeof navigator !== 'undefined' && navigator.language)
-    || 'en';
-  // No type filter upstream - the geocoder's city filter is too restrictive and
-  // misses resort towns / villages / suburbs (e.g. Maspalomas). We request more
-  // results and filter to populated places client-side.
-  const data = await liq('search', { q: query, lang: acceptLang, limit: 20 });
-  return refineCities(data);
+  const lk = normLang(lang);
+  const { data, error } = await supabase.rpc('search_gazetteer', { q: query, lang: lk, lim: 12 });
+  if (error) return [];
+  return (data || []).map((g) => mapGazCity(g, lk));
 }
 
-// Batch-resolve many city names in ONE edge call (TRIP-145 P2). The edge dedups
-// identical queries and shares the 'search' cache; we get back an array aligned
-// to `queries`, each element refined exactly like searchCities (best = [0]) so
-// callers pick result[0] as before. Background priority (yields to interactive
-// autocomplete/manual search under the rate limit).
-// `items` is an array of EITHER plain query strings (legacy) OR objects
-// `{ city_name, name_en, country, country_code }`. For objects we send the
-// English name + country_code so the edge can (1) hit the local `cities`
-// directory by name and skip LocationIQ entirely, and (2) fall back to an
-// English geocoder query (small towns that 404 in Cyrillic resolve in English).
-// The displayed/saved Russian name is the caller's `city_name` — the geocoder
-// only supplies coordinates — so localisation is unaffected.
+// Batch-resolve many city names → geonameid via the gazetteer RPC (TRIP-146;
+// replaces the LocationIQ edge path). `items` is an array of EITHER plain query
+// strings OR objects `{ city_name, name_en, country, country_code }`. For objects
+// we query by the English name (small towns that miss in Cyrillic resolve in
+// English) and, when a country_code is given, keep only same-country matches.
+// Returns an array aligned to `items`, each a refined list (best = [0]) so callers
+// pick result[0] as before. The displayed/saved name stays the caller's — we
+// supply geonameid + coords + the name_i18n snapshot.
 export async function resolveCities(items, lang) {
   if (!Array.isArray(items) || items.length === 0) return [];
-  const acceptLang = lang
-    || (typeof navigator !== 'undefined' && navigator.language)
-    || 'en';
-  const cities = items.map((it) => {
-    if (typeof it === 'string') return { q: it, lang: acceptLang };
-    const nameEn = (it.name_en || it.city_name_en || '').trim();
-    const cc = (it.country_code || '').trim();
-    // Free-text fallback query for the geocoder: prefer the English name, else
-    // the localised one. Append the country for disambiguation.
-    const base = nameEn || it.city_name || it.q || '';
-    const q = it.q || `${base}${it.country ? ', ' + it.country : ''}`;
-    return {
-      q,
-      name_en: nameEn || null,
-      country_code: cc || null,
-      // English geocoder query when we have an English name; locale otherwise.
-      lang: nameEn ? 'en' : acceptLang,
-    };
-  });
-  const { data, error } = await supabase.functions.invoke('geoLocationiq', {
-    body: { action: 'resolveCities', cities },
-  });
-  if (error) return items.map(() => []);
-  const raw = data?.results || [];
-  return items.map((_, i) => refineCities(raw[i] || []));
+  const lk = normLang(lang);
+  return Promise.all(items.map(async (it) => {
+    const isStr = typeof it === 'string';
+    const nameEn = isStr ? '' : (it.name_en || it.city_name_en || '').trim();
+    const cc = isStr ? '' : (it.country_code || '').trim().toUpperCase();
+    const q = isStr ? it : (nameEn || it.city_name || it.q || '');
+    if (!q) return [];
+    const { data, error } = await supabase.rpc('search_gazetteer', { q, lang: nameEn ? 'en' : lk, lim: 10 });
+    if (error) return [];
+    let rows = data || [];
+    if (cc) {
+      const inCc = rows.filter((g) => (g.country_code || '').toUpperCase() === cc);
+      if (inCc.length) rows = inCc;
+    }
+    return rows.map((g) => mapGazCity(g, lk));
+  }));
 }
 
 // Reverse geocode lat/lon → city object.
