@@ -3,7 +3,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/api/supabaseClient';
 import { hasLang, loadLocale } from './dictionary';
 import { LANGUAGES, localeTag } from './translations';
-import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, splitNs } from './tolgee';
+import { tolgee, ensureTolgeeRunning, addLocaleToTolgee } from './tolgee';
 import {
   applyLuxonLocale,
   formatDateTime,
@@ -154,12 +154,12 @@ export function I18nProvider({ children }) {
     // Path-A spike: resolve THROUGH Tolgee so the output carries in-context
     // markers and interpolation is done by Tolgee's FormatSimple ({var}) — we
     // never .replace() over a wrapped string (that would damage the markers).
-    const { ns, key: bareKey } = splitNs(key);
-    const out = tolgee.t({ key: bareKey, ns, params: vars || {}, defaultValue: undefined });
-    // tolgee.t() returns the bare key when it has no record (sync-timing race or
-    // a genuinely missing key). In that case fall back to our own dictionaries —
-    // identical to the pre-spike behaviour, so there is no functional regression.
-    if (out && out !== bareKey) return out;
+    // The Tolgee project is flat, so the full dotted address IS the key.
+    const out = tolgee.t({ key, params: vars || {}, defaultValue: undefined });
+    // tolgee.t() returns the key itself when it has no record (sync-timing race
+    // or a genuinely missing key). In that case fall back to our own dictionaries
+    // — identical to the pre-spike behaviour, so there is no functional regression.
+    if (out && out !== key) return out;
 
     const dict = dicts[lang] || dicts[FALLBACK_LANG];
     let str = resolveKey(dict, key) || resolveKey(dicts[FALLBACK_LANG], key) || key;

@@ -45,19 +45,15 @@ export function ensureTolgeeRunning() {
 }
 
 // Mirror a loaded locale ({ namespace: { bareKey: value } }) into Tolgee's static
-// cache as `${lang}:${namespace}` records, so tolgee.t() resolves synchronously.
+// cache. The Tolgee project is flat (useNamespaces=false), so each key is stored
+// under its FULL dotted address `namespace.bareKey` — identical to the call-site
+// address `t('namespace.bareKey')`, a 1:1 mapping with no namespace plumbing.
 export function addLocaleToTolgee(lang, nsDict) {
-  const data = {};
+  const flat = {};
   for (const [ns, records] of Object.entries(nsDict)) {
-    data[`${lang}:${ns}`] = records;
+    for (const [bareKey, value] of Object.entries(records)) {
+      flat[`${ns}.${bareKey}`] = value;
+    }
   }
-  tolgee.addStaticData(data);
-}
-
-// Split our dotted address `namespace.key` into Tolgee's { ns, key }. Mirrors the
-// facade's resolveKey: split on the FIRST dot so a bare key may contain dots.
-export function splitNs(address) {
-  const i = address.indexOf('.');
-  if (i <= 0) return { ns: undefined, key: address };
-  return { ns: address.slice(0, i), key: address.slice(i + 1) };
+  tolgee.addStaticData({ [lang]: flat });
 }
