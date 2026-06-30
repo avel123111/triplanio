@@ -10,21 +10,37 @@
 // Returns: { external_city_id, city_name, country, country_code, latitude, longitude }
 import { supabase } from '@/api/supabaseClient';
 
+// Base delay (ms) before the single retry. Half is fixed, half is jitter, so the
+// actual wait lands in [BASE/2, BASE]. The jitter desynchronizes the retries of
+// concurrent clients — without it every browser that hit the rate limit at the
+// same instant would retry in lock-step and re-stack the peak (retry-storm).
+const LIQ_RETRY_BASE_MS = 700;
+
 // Thin call into the geoLocationiq edge proxy. Returns the LocationIQ result
 // array (Nominatim-shaped) or [] on any error.
 async function liq(action, body) {
-  // Retry with backoff on an invoke error. LocationIQ free is ~2 req/s; when the
-  // rate limit is hit the geoLocationiq edge function returns a 502 (upstream
-  // 429), surfacing here as `error`. Without retry that becomes [] → empty search
-  // dropdown / unresolved (red) cities. A genuine no-match returns a 200 with an
-  // empty array (no error), so it is NOT retried (no added latency on normal use).
-  const backoff = [0, 600, 1200];
-  for (let attempt = 0; attempt < backoff.length; attempt++) {
-    if (backoff[attempt]) await new Promise((r) => setTimeout(r, backoff[attempt]));
+  // ONE retry on an invoke error (TRIP-59). LocationIQ free is ~2 req/s; when the
+  // shared budget is spent the geoLocationiq edge returns 429 + Retry-After (or a
+  // 502 on an upstream error), surfacing here as `error`. Without a retry that
+  // becomes [] → empty search dropdown / unresolved (red) cities. A genuine
+  // no-match returns a 200 with an empty array (no error) → NOT retried.
+  //
+  // Why one jittered retry, not the old fixed [0,600,1200] triple: the edge ALREADY
+  // waits its own token budget (and fair-queues) before degrading, so stacking 3
+  // more fixed client waits double-counts the delay and, being identical across
+  // clients, synchronizes the herd. A single jittered retry reconciles the two
+  // layers. 401 (stale token) is handled one layer down by the client's auth-retry
+  // fetch (TRIP-56), so it never reaches here. Batch resolveCities does NOT use
+  // liq() — it degrades as a 200 and is deliberately not retried.
+  for (let attempt = 0; attempt < 2; attempt++) {
     const { data, error } = await supabase.functions.invoke('geoLocationiq', {
       body: { action, ...body },
     });
     if (!error) return data?.results || [];
+    if (attempt === 0) {
+      const delay = LIQ_RETRY_BASE_MS / 2 + Math.random() * (LIQ_RETRY_BASE_MS / 2);
+      await new Promise((r) => setTimeout(r, delay));
+    }
   }
   return [];
 }
