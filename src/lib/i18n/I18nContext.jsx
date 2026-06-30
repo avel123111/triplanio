@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/api/supabaseClient';
-import { TRANSLATIONS } from './dictionary';
+import { hasLang, loadLocale } from './dictionary';
 import { LANGUAGES, localeTag } from './translations';
 import {
   applyLuxonLocale,
@@ -21,6 +21,10 @@ const I18nContext = createContext({
   t: (key) => key,
 });
 
+// Active locale falls back to this one (then to the raw key) for missing strings,
+// so it is always loaded alongside whatever language is active.
+const FALLBACK_LANG = 'ru';
+
 // Resolve a dotted `namespace.key` address against a namespaced locale dict
 // ({ namespace: { bareKey: value } }). Splits on the FIRST dot so bare keys may
 // themselves contain dots. Returns undefined when absent (caller falls back).
@@ -37,13 +41,13 @@ const UNITS_STORAGE_KEY = 'travel-planner-units';
 const UNIT_SYSTEMS = ['metric', 'imperial'];
 
 function detectInitialLang(user) {
-  if (user?.language && TRANSLATIONS[user.language]) return user.language;
+  if (user?.language && hasLang(user.language)) return user.language;
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && TRANSLATIONS[stored]) return stored;
+    if (stored && hasLang(stored)) return stored;
   } catch (e) { /* ignore */ }
   const browser = (typeof navigator !== 'undefined' ? navigator.language : 'ru').slice(0, 2);
-  return TRANSLATIONS[browser] ? browser : 'en';
+  return hasLang(browser) ? browser : 'en';
 }
 
 // Distance unit system. Authoritative source = users.unit_system once signed in,
@@ -63,16 +67,52 @@ export function I18nProvider({ children }) {
   const [lang, setLangState] = useState(() => detectInitialLang(null));
   const [units, setUnitsState] = useState(() => detectInitialUnits(null));
 
+  // Lazily-loaded locale dictionaries: { [lang]: { [namespace]: { [bareKey]: value } } }.
+  // Only the active locale (+ FALLBACK_LANG) is ever fetched. A ref mirrors the state
+  // so concurrent loads dedupe and `ensureLoaded` reads the latest without re-binding.
+  const [dicts, setDicts] = useState({});
+  const dictsRef = useRef(dicts);
+  const loadingRef = useRef({});
+
+  // Fetch a language (and the fallback) once; updates `dicts` when each arrives.
+  const ensureLoaded = useCallback((target) => {
+    const need = target === FALLBACK_LANG ? [FALLBACK_LANG] : [target, FALLBACK_LANG];
+    return Promise.all(need.map((l) => {
+      if (dictsRef.current[l]) return null;
+      if (!loadingRef.current[l]) {
+        loadingRef.current[l] = loadLocale(l).then((d) => {
+          // Functional update so concurrent locale loads merge atomically; the
+          // ref mirror is kept current inside so `ensureLoaded` dedupes reads.
+          setDicts((prev) => {
+            const next = { ...prev, [l]: d };
+            dictsRef.current = next;
+            return next;
+          });
+          return d;
+        });
+      }
+      return loadingRef.current[l];
+    }));
+  }, []);
+
+  // Load the active locale, then make it visible — so a language switch never
+  // shows raw keys: the old language stays until the new dictionary is ready.
+  const applyLang = useCallback(async (newLang) => {
+    await ensureLoaded(newLang);
+    setLangState(newLang);
+  }, [ensureLoaded]);
+
+  // Load the initial locale on mount (detected browser/stored language). A
+  // signed-in user whose language differs triggers a follow-up load below.
+  useEffect(() => { ensureLoaded(detectInitialLang(null)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Apply Luxon default locale on mount and whenever lang changes,
   // so every DateTime.toFormat('LLLL') / .toFormat('ccc') picks up the right names.
   useEffect(() => { applyLuxonLocale(lang); }, [lang]);
 
   // Sync from user once authenticated
   useEffect(() => {
-    if (user) {
-      const fromUser = detectInitialLang(user);
-      setLangState(fromUser);
-    }
+    if (user) applyLang(detectInitialLang(user));
   }, [user?.language]); // eslint-disable-line
 
   useEffect(() => {
@@ -80,14 +120,15 @@ export function I18nProvider({ children }) {
   }, [user?.unit_system]); // eslint-disable-line
 
   const setLang = useCallback(async (newLang) => {
-    if (!TRANSLATIONS[newLang]) return;
+    if (!hasLang(newLang)) return;
+    await ensureLoaded(newLang);
     setLangState(newLang);
     try { localStorage.setItem(STORAGE_KEY, newLang); } catch (e) { /* ignore */ }
     // Persist on user if signed in
     if (user) {
       try { await supabase.from('users').update({ language: newLang }).eq('id', user.id); } catch (e) { /* ignore */ }
     }
-  }, [user]);
+  }, [user, ensureLoaded]);
 
   const setUnits = useCallback(async (newUnits) => {
     if (!UNIT_SYSTEMS.includes(newUnits)) return;
@@ -100,18 +141,18 @@ export function I18nProvider({ children }) {
   }, [user]);
 
   const t = useCallback((key, vars) => {
-    const dict = TRANSLATIONS[lang] || TRANSLATIONS.ru;
+    const dict = dicts[lang] || dicts[FALLBACK_LANG];
     // Keys are stored bare inside per-namespace dicts; the call-site address is
     // `namespace.key`. Split on the FIRST dot to resolve. Fallback chain mirrors
     // the previous flat lookup: active locale → ru → the key itself.
-    let str = resolveKey(dict, key) || resolveKey(TRANSLATIONS.ru, key) || key;
+    let str = resolveKey(dict, key) || resolveKey(dicts[FALLBACK_LANG], key) || key;
     if (vars && typeof str === 'string') {
       Object.entries(vars).forEach(([k, v]) => {
         str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
       });
     }
     return str;
-  }, [lang]);
+  }, [dicts, lang]);
 
   const value = useMemo(() => ({
     lang,
@@ -122,6 +163,18 @@ export function I18nProvider({ children }) {
     languages: LANGUAGES,
     locale: localeTag(lang),
   }), [lang, setLang, units, setUnits, t]);
+
+  // Gate the first paint until the active locale is loaded, so no screen ever
+  // renders raw keys. Mirrors the app's existing loading splash (reuse). Once
+  // loaded, language switches no longer hit this branch (applyLang/setLang flip
+  // `lang` only after the new dictionary is in `dicts`).
+  if (!dicts[lang]) {
+    return (
+      <div className="app-loading">
+        <div className="app-spinner"></div>
+      </div>
+    );
+  }
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
