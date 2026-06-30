@@ -122,10 +122,11 @@
 
   /* Radii (Lumo names + legacy aliases) */
   --r-card:24px; --r-md:16px; --r-btn:14px; --r-sm:11px; --r-pill:999px;
-  /* Unified control radius (TRIP-149): all text fields + guests-chip "match the
-     button" — derived from --r-btn so controls track the button from one source;
-     segmented controls share a track/button pair. */
-  --r-control:var(--r-btn); --r-seg-track:18px; --r-seg-btn:12px;
+  /* Unified control radius (TRIP-149): all text fields + guests-chip + segmented
+     controls derive from --r-btn via --r-control, so every control outer shape
+     shares one radius. Segment track == control radius; its inner buttons are
+     concentric (control radius minus the 4px track padding). */
+  --r-control:var(--r-btn); --r-seg-track:var(--r-control); --r-seg-btn:calc(var(--r-control) - 4px);
   --radius-card: var(--r-card);
   --radius-btn:  var(--r-btn);
   --radius-sm:   var(--r-sm);
