@@ -206,7 +206,7 @@
   padding: 0 14px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-btn);
+  border-radius: var(--r-control);
   font-family: var(--font-body);
   font-size: var(--fs-base);
   color: var(--ink);
