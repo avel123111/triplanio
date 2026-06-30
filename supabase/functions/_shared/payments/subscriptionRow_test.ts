@@ -2,9 +2,13 @@
  * Характеризационные тесты buildSubscriptionUpsertRow.
  *
  * Каждый ожидаемый объект выведен НАПРЯМУЮ из инлайн-кода stripe-webhook (ссылки на
- * строки — на момент написания), ДО рефактора. Они фиксируют запись «как сейчас»:
- * после прогона билдера через эти же ветки запись в БД обязана остаться той же —
- * особенно набор ключей (присутствует/отсутствует) и `provider_meta` (null vs нет).
+ * строки — на момент написания). Пинят набор ключей (присутствует/отсутствует) и
+ * `provider_meta` (null vs нет) для всех 4 рекуррентных UPSERT-веток.
+ *
+ * ЕДИНСТВЕННОЕ намеренное отличие от старого инлайна: `current_period_end` теперь
+ * НИКОГДА не пишется null'ом (checkout-new/invoice.paid-new раньше писали его
+ * безусловно). Гармонизировано с reconcile/payment_failed/invoice.updated — null'ом
+ * нельзя затирать «оплачено до», его читает recompute как границу права.
  *
  * Запуск: deno test supabase/functions/_shared/payments/subscriptionRow_test.ts
  */
@@ -20,7 +24,7 @@ const NEXT = '2026-07-20T00:00:00.000Z';
 //   { user_id, product_code, provider, provider_subscription_id, provider_ref,
 //     status: isDup?'duplicate':status, needs_review: isDup, current_period_end,
 //     cancel_at_period_end, amount, currency, billing_interval }
-//   ⤷ provider_meta ОТСУТСТВУЕТ; current_period_end пишется всегда.
+//   ⤷ provider_meta ОТСУТСТВУЕТ; current_period_end — только при непустой дате.
 // ---------------------------------------------------------------------------
 Deno.test('B checkout-new: healthy row matches inline shape', () => {
   const row = buildSubscriptionUpsertRow({
@@ -33,7 +37,6 @@ Deno.test('B checkout-new: healthy row matches inline shape', () => {
     needsReview: false,
     cancelAtPeriodEnd: false,
     currentPeriodEnd: PERIOD,
-    includePeriodEndWhenNull: true,
     currency: 'usd',
     billingInterval: 'month',
     providerMeta: { mode: 'leave' },
@@ -66,7 +69,6 @@ Deno.test('B checkout-new: duplicate → status=duplicate, needs_review=true', (
     needsReview: true,
     cancelAtPeriodEnd: false,
     currentPeriodEnd: PERIOD,
-    includePeriodEndWhenNull: true,
     currency: 'usd',
     billingInterval: 'year',
     providerMeta: { mode: 'leave' },
@@ -76,7 +78,7 @@ Deno.test('B checkout-new: duplicate → status=duplicate, needs_review=true', (
   assertEquals(row.billing_interval, 'year');
 });
 
-Deno.test('B checkout-new: null period still written (includeWhenNull=true)', () => {
+Deno.test('B checkout-new: null period OMITTED (never null-clobbers a known date)', () => {
   const row = buildSubscriptionUpsertRow({
     userId: 'u1',
     productCode: 'account_pro_monthly',
@@ -87,13 +89,11 @@ Deno.test('B checkout-new: null period still written (includeWhenNull=true)', ()
     needsReview: false,
     cancelAtPeriodEnd: false,
     currentPeriodEnd: null,
-    includePeriodEndWhenNull: true,
     currency: 'usd',
     billingInterval: 'month',
     providerMeta: { mode: 'leave' },
   });
-  assert('current_period_end' in row);
-  assertEquals(row.current_period_end, null);
+  assert(!('current_period_end' in row)); // null period → ключ не пишется (см. recompute-границу)
   assertEquals(row.amount, null); // amount key present even when null (was passed)
 });
 
@@ -113,7 +113,6 @@ Deno.test('D invoice.paid-new: no provider_ref / amount / provider_meta', () => 
     needsReview: false,
     cancelAtPeriodEnd: false,
     currentPeriodEnd: PERIOD,
-    includePeriodEndWhenNull: true,
     currency: 'eur',
     billingInterval: 'month',
     providerMeta: { mode: 'leave' },
@@ -151,7 +150,6 @@ Deno.test('E payment_failed: with next attempt → provider_meta set', () => {
     status: 'past_due',
     cancelAtPeriodEnd: false,
     currentPeriodEnd: PERIOD,
-    includePeriodEndWhenNull: false,
     currency: 'usd',
     billingInterval: 'year',
     providerMeta: { mode: 'set', nextPaymentAttempt: NEXT },
@@ -179,7 +177,6 @@ Deno.test('E payment_failed: no next attempt → provider_meta omitted', () => {
     status: 'past_due',
     cancelAtPeriodEnd: false,
     currentPeriodEnd: PERIOD,
-    includePeriodEndWhenNull: false,
     currency: 'usd',
     billingInterval: 'year',
     providerMeta: { mode: 'leave' },
@@ -187,7 +184,7 @@ Deno.test('E payment_failed: no next attempt → provider_meta omitted', () => {
   assert(!('provider_meta' in row));
 });
 
-Deno.test('E payment_failed: null period → current_period_end omitted (includeWhenNull=false)', () => {
+Deno.test('E payment_failed: null period → current_period_end omitted', () => {
   const row = buildSubscriptionUpsertRow({
     userId: 'u3',
     productCode: 'account_pro_yearly',
@@ -195,7 +192,6 @@ Deno.test('E payment_failed: null period → current_period_end omitted (include
     status: 'past_due',
     cancelAtPeriodEnd: false,
     currentPeriodEnd: null,
-    includePeriodEndWhenNull: false,
     currency: 'usd',
     billingInterval: 'year',
     providerMeta: { mode: 'leave' },
@@ -216,7 +212,6 @@ Deno.test('F invoice.updated: provider_meta always set, period conditional', () 
     status: 'active',
     cancelAtPeriodEnd: true,
     currentPeriodEnd: null,
-    includePeriodEndWhenNull: false,
     currency: 'usd',
     billingInterval: 'month',
     providerMeta: { mode: 'set', nextPaymentAttempt: NEXT },
@@ -263,7 +258,6 @@ function base(over: Partial<Parameters<typeof buildSubscriptionUpsertRow>[0]>) {
     status: 'active',
     cancelAtPeriodEnd: false,
     currentPeriodEnd: PERIOD,
-    includePeriodEndWhenNull: false,
     currency: 'usd',
     billingInterval: 'month',
     providerMeta: { mode: 'leave' },

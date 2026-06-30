@@ -239,7 +239,7 @@ Deno.serve(async (req) => {
                 userId: user_id, productCode, providerSubscriptionId: subId,
                 providerRef: session.id, amount: session.amount_total,
                 status: isDup ? 'duplicate' : status, needsReview: isDup,
-                cancelAtPeriodEnd, currentPeriodEnd: periodEndIso, includePeriodEndWhenNull: true,
+                cancelAtPeriodEnd, currentPeriodEnd: periodEndIso,
                 currency: session.currency || 'usd', billingInterval: billingIntervalForProduct(productCode),
                 providerMeta: { mode: 'leave' },
               }), { onConflict: 'provider_subscription_id' }));
@@ -285,7 +285,7 @@ Deno.serve(async (req) => {
               userId: resolved.userId, productCode: resolved.productCode, providerSubscriptionId: subId,
               status: isDup ? 'duplicate' : sub.status, needsReview: isDup,
               cancelAtPeriodEnd: sub.cancel_at_period_end === true,
-              currentPeriodEnd: periodEndIso, includePeriodEndWhenNull: true,
+              currentPeriodEnd: periodEndIso,
               currency: invoice.currency || 'usd', billingInterval: billingIntervalForProduct(resolved.productCode),
               providerMeta: { mode: 'leave' },
             }), { onConflict: 'provider_subscription_id' }));
@@ -314,7 +314,7 @@ Deno.serve(async (req) => {
           buildSubscriptionUpsertRow({
             userId: resolved.userId, productCode: resolved.productCode, providerSubscriptionId: subId,
             status: sub.status, cancelAtPeriodEnd: sub.cancel_at_period_end === true,
-            currentPeriodEnd: periodEndIso, includePeriodEndWhenNull: false,
+            currentPeriodEnd: periodEndIso,
             currency: invoice.currency || 'usd', billingInterval: billingIntervalForProduct(resolved.productCode),
             providerMeta: nextAttemptIso ? { mode: 'set', nextPaymentAttempt: nextAttemptIso } : { mode: 'leave' },
           }), { onConflict: 'provider_subscription_id' }));
@@ -349,7 +349,7 @@ Deno.serve(async (req) => {
           buildSubscriptionUpsertRow({
             userId: resolved.userId, productCode: resolved.productCode, providerSubscriptionId: subId,
             status: sub.status, cancelAtPeriodEnd: sub.cancel_at_period_end === true,
-            currentPeriodEnd: periodEndIso, includePeriodEndWhenNull: false,
+            currentPeriodEnd: periodEndIso,
             currency: invoice.currency || 'usd', billingInterval: billingIntervalForProduct(resolved.productCode),
             providerMeta: { mode: 'set', nextPaymentAttempt: nextAttemptIso },
           }), { onConflict: 'provider_subscription_id' }));
