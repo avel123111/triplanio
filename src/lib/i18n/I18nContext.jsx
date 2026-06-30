@@ -3,7 +3,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/api/supabaseClient';
 import { hasLang, loadLocale } from './dictionary';
 import { LANGUAGES, localeTag } from './translations';
-import { tolgee, ensureTolgeeRunning, addLocaleToTolgee } from './tolgee';
+import { tolgee, ensureTolgeeRunning, addLocaleToTolgee, IN_CONTEXT } from './tolgee';
 import {
   applyLuxonLocale,
   formatDateTime,
@@ -26,15 +26,18 @@ const I18nContext = createContext({
 // so it is always loaded alongside whatever language is active.
 const FALLBACK_LANG = 'ru';
 
-// Resolve a dotted `namespace.key` address against a namespaced locale dict
-// ({ namespace: { bareKey: value } }). Splits on the FIRST dot so bare keys may
-// themselves contain dots. Returns undefined when absent (caller falls back).
-function resolveKey(dict, key) {
-  if (!dict) return undefined;
-  const i = key.indexOf('.');
-  if (i <= 0) return dict[key]; // dotless address — no namespace
-  const ns = dict[key.slice(0, i)];
-  return ns ? ns[key.slice(i + 1)] : undefined;
+// Resolve a dotted address `namespace.bareKey` against a nested locale dict
+// ({ namespace: { bareKey: value } }). Split on the FIRST dot only: the namespace
+// is the file stem (dot-free), while a bare key may itself contain dots
+// (e.g. 'admin.home.title' → ns 'admin', key 'home.title'). Every real address is
+// dotted; a dotless/leading-dot key has no namespace and no value here, so we
+// return undefined (→ fallback → raw key) rather than the namespace object.
+function lookup(nsDict, key) {
+  if (!nsDict) return undefined;
+  const dot = key.indexOf('.');
+  if (dot <= 0) return undefined;
+  const rec = nsDict[key.slice(0, dot)];
+  return rec ? rec[key.slice(dot + 1)] : undefined;
 }
 
 const STORAGE_KEY = 'travel-planner-lang';
@@ -68,32 +71,25 @@ export function I18nProvider({ children }) {
   const [lang, setLangState] = useState(() => detectInitialLang(null));
   const [units, setUnitsState] = useState(() => detectInitialUnits(null));
 
-  // Lazily-loaded locale dictionaries: { [lang]: { [namespace]: { [bareKey]: value } } }.
-  // Only the active locale (+ FALLBACK_LANG) is ever fetched. A ref mirrors the state
-  // so concurrent loads dedupe and `ensureLoaded` reads the latest without re-binding.
-  const [dicts, setDicts] = useState({});
-  const dictsRef = useRef(dicts);
+  // Our baked dictionaries are the authoritative reader for NORMAL users:
+  // { [lang]: { [namespace]: { [bareKey]: value } } }, kept in a ref so t() reads
+  // the latest without being re-created. `ready` tracks WHICH locales are loaded
+  // (to gate the first paint) and the active language. `loadingRef` holds the
+  // in-flight load promise per locale so each is fetched at most once.
+  const [ready, setReady] = useState(() => new Set());
+  const dictsRef = useRef({});
   const loadingRef = useRef({});
 
-  // Fetch a language (and the fallback) once; updates `dicts` when each arrives.
+  // Load a language (and the fallback) exactly once into our dictionary. Only in
+  // an in-context editing session do we ALSO mirror it into Tolgee (so the observer
+  // can wrap these strings) — normal users never put anything in Tolgee.
   const ensureLoaded = useCallback((target) => {
     const need = target === FALLBACK_LANG ? [FALLBACK_LANG] : [target, FALLBACK_LANG];
     return Promise.all(need.map((l) => {
-      if (dictsRef.current[l]) return null;
       if (!loadingRef.current[l]) {
         loadingRef.current[l] = loadLocale(l).then((d) => {
-          // Mirror the loaded locale into Tolgee's static cache so tolgee.t()
-          // resolves it synchronously and the in-context observer can wrap it
-          // (path-A spike). Our own `dicts` state stays the safety net below.
-          addLocaleToTolgee(l, d);
-          ensureTolgeeRunning();
-          // Functional update so concurrent locale loads merge atomically; the
-          // ref mirror is kept current inside so `ensureLoaded` dedupes reads.
-          setDicts((prev) => {
-            const next = { ...prev, [l]: d };
-            dictsRef.current = next;
-            return next;
-          });
+          dictsRef.current[l] = d;
+          if (IN_CONTEXT) addLocaleToTolgee(l, d); // BEFORE ensureTolgeeRunning()
           return d;
         });
       }
@@ -101,24 +97,32 @@ export function I18nProvider({ children }) {
     }));
   }, []);
 
-  // Load the active locale, then make it visible — so a language switch never
-  // shows raw keys: the old language stays until the new dictionary is ready.
-  const applyLang = useCallback(async (newLang) => {
-    await ensureLoaded(newLang);
-    setLangState(newLang);
+  // Make a language usable, then expose it. Tolgee is started either way so the
+  // browser extension can detect the page and offer in-context editing. In an
+  // editing session we also switch Tolgee to the active language BEFORE exposing it
+  // (so tolgee.t() resolves the right language with no wrong-language frame); normal
+  // users never call tolgee.t(), so no language switch is needed for them.
+  const activate = useCallback(async (target) => {
+    await ensureLoaded(target);
+    ensureTolgeeRunning();
+    if (IN_CONTEXT) await tolgee.changeLanguage(target);
+    setReady((prev) => (prev.has(target) ? prev : new Set(prev).add(target)));
   }, [ensureLoaded]);
 
-  // Load the initial locale on mount (detected browser/stored language). A
+  // Load+activate the active locale, then make it visible — a language switch
+  // keeps the old language on screen until the new one is fully loaded.
+  const applyLang = useCallback(async (newLang) => {
+    await activate(newLang);
+    setLangState(newLang);
+  }, [activate]);
+
+  // Activate the initial locale on mount (detected browser/stored language). A
   // signed-in user whose language differs triggers a follow-up load below.
-  useEffect(() => { ensureLoaded(detectInitialLang(null)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { activate(detectInitialLang(null)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Apply Luxon default locale on mount and whenever lang changes,
   // so every DateTime.toFormat('LLLL') / .toFormat('ccc') picks up the right names.
   useEffect(() => { applyLuxonLocale(lang); }, [lang]);
-
-  // Keep Tolgee's active language in sync with ours so tolgee.t() resolves the
-  // right locale (path-A spike).
-  useEffect(() => { tolgee.changeLanguage(lang); }, [lang]);
 
   // Sync from user once authenticated
   useEffect(() => {
@@ -131,14 +135,14 @@ export function I18nProvider({ children }) {
 
   const setLang = useCallback(async (newLang) => {
     if (!hasLang(newLang)) return;
-    await ensureLoaded(newLang);
+    await activate(newLang);
     setLangState(newLang);
     try { localStorage.setItem(STORAGE_KEY, newLang); } catch (e) { /* ignore */ }
     // Persist on user if signed in
     if (user) {
       try { await supabase.from('users').update({ language: newLang }).eq('id', user.id); } catch (e) { /* ignore */ }
     }
-  }, [user, ensureLoaded]);
+  }, [user, activate]);
 
   const setUnits = useCallback(async (newUnits) => {
     if (!UNIT_SYSTEMS.includes(newUnits)) return;
@@ -150,33 +154,24 @@ export function I18nProvider({ children }) {
     }
   }, [user]);
 
+  // Conditional resolution:
+  //  - In-context editing session (only you, locally): route through Tolgee so the
+  //    observer marker-wraps the string for editing.
+  //  - Everyone else: resolve straight from the baked dictionary (active lang →
+  //    ru fallback → raw key) and do the {var} interpolation ourselves — zero
+  //    Tolgee overhead on the hot path. Mirrors the pre-Tolgee behaviour exactly.
+  // Re-created on `lang` change so consumers re-render with the new language.
   const t = useCallback((key, vars) => {
-    // Our own dictionaries stay the AUTHORITY for presence and (correct-language)
-    // value. Tolgee is only an overlay: when it is in step with our active
-    // language we prefer its output so the in-context observer can wrap/edit the
-    // string (and FormatSimple does the {var} interpolation). The full dotted
-    // address is the Tolgee key (flat project). We deliberately do NOT detect a
-    // miss via `out !== key`: an active observer marker-wraps even a missing key,
-    // which would defeat that check — so we gate on our own dict instead.
-    const dict = dicts[lang] || dicts[FALLBACK_LANG];
-    const have = resolveKey(dict, key);
-    const haveFallback = have === undefined ? resolveKey(dicts[FALLBACK_LANG], key) : have;
-
-    if (haveFallback !== undefined && tolgee.getLanguage() === lang) {
-      const out = tolgee.t({ key, params: vars });
-      if (out) return out;
-    }
-
-    // Genuinely missing, or Tolgee not yet language-synced → resolve ourselves
-    // (correct language, no markers). Identical to the pre-Tolgee behaviour.
-    let str = haveFallback !== undefined ? haveFallback : key;
+    if (IN_CONTEXT) return tolgee.t({ key, params: vars });
+    const dicts = dictsRef.current;
+    let str = lookup(dicts[lang], key) || lookup(dicts[FALLBACK_LANG], key) || key;
     if (vars && typeof str === 'string') {
-      Object.entries(vars).forEach(([k, v]) => {
+      for (const [k, v] of Object.entries(vars)) {
         str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
-      });
+      }
     }
     return str;
-  }, [dicts, lang]);
+  }, [lang]);
 
   const value = useMemo(() => ({
     lang,
@@ -188,11 +183,11 @@ export function I18nProvider({ children }) {
     locale: localeTag(lang),
   }), [lang, setLang, units, setUnits, t]);
 
-  // Gate the first paint until the active locale is loaded, so no screen ever
-  // renders raw keys. Mirrors the app's existing loading splash (reuse). Once
-  // loaded, language switches no longer hit this branch (applyLang/setLang flip
-  // `lang` only after the new dictionary is in `dicts`).
-  if (!dicts[lang]) {
+  // Gate the first paint until the active locale is ready in Tolgee, so no screen
+  // ever renders raw keys. Mirrors the app's existing loading splash (reuse). Once
+  // ready, language switches no longer hit this branch (applyLang/setLang flip
+  // `lang` only after `activate` has loaded + switched Tolgee to the new locale).
+  if (!ready.has(lang)) {
     return (
       <div className="app-loading">
         <div className="app-spinner"></div>
