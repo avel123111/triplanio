@@ -25,6 +25,7 @@ import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
 import { stripeEnv, PLAN_TO_PRODUCT, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode, type PlanType } from '../_shared/payments/catalog.ts';
 import { saveProviderCustomerId } from '../_shared/payments/customer.ts';
 import { buildSubscriptionUpsertRow } from '../_shared/payments/subscriptionRow.ts';
+import { buildPurchaseRow } from '../_shared/payments/purchaseRow.ts';
 import { revokeLostProFeaturesForUser, revokeLostProFeaturesForTrip } from '../_shared/revokeLostProFeatures.ts';
 
 // Ошибка записи права → Sentry + throw (Stripe ретраит). Только для
@@ -198,14 +199,14 @@ Deno.serve(async (req) => {
           if (isDup) {
             await reportPaymentAnomaly('pro_trip_double_paid', { trip_id, session_id: session.id, user_id }, 'error');
           }
-          await ensureWrite('purchase insert', supabaseAdmin.from('purchase').insert({
-            user_id, trip_id, product_code: 'trip_pro_lifetime', provider: 'stripe',
-            provider_charge_id: (typeof fresh.payment_intent === 'string' ? fresh.payment_intent : null),
-            provider_ref: session.id,
-            status: isDup ? 'duplicate' : 'active', needs_review: isDup,
+          await ensureWrite('purchase insert', supabaseAdmin.from('purchase').insert(buildPurchaseRow({
+            userId: user_id, tripId: trip_id, productCode: 'trip_pro_lifetime',
+            providerChargeId: typeof fresh.payment_intent === 'string' ? fresh.payment_intent : null,
+            providerRef: session.id,
+            status: isDup ? 'duplicate' : 'active', needsReview: isDup,
             amount: fresh.amount_total, currency: fresh.currency || 'usd',
-            purchased_at: new Date().toISOString(),
-          }));
+            purchasedAt: new Date().toISOString(),
+          })));
           if (!isDup) await recomputeTrip(trip_id);
           await saveCustomer(user_id, fresh.customer);
 
