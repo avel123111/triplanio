@@ -156,6 +156,19 @@ export default function Stay22HotelList({
 
   return (
     <div className="s22">
+      {/* ===== Header (neutral, supplier-agnostic — mirrors ViatorActivityList) —
+          sits ABOVE the filters so both forks lead with the title (TRIP-161). ===== */}
+      <div className="s22-head">
+        <div className="s22-ti">
+          <span className="s22-logo"><Hotel size={15} /></span>
+          <div className="s22-tiwrap">
+            <b>{t('fork.stay22_title')}</b>
+            <span className="s22-sub">{t('fork.stay22_source')}{dateLine ? ` · ${dateLine}` : ''}</span>
+          </div>
+        </div>
+        {countLabel && <span className="s22-count">{countLabel}</span>}
+      </div>
+
       {/* ===== Filters bar ===== */}
       <div className="s22f">
         <div className="s22f-row">
@@ -231,18 +244,6 @@ export default function Stay22HotelList({
             <button type="button" className="s22f-resetall" onClick={resetAll}>{t('fork.f_reset_all')}</button>
           </div>
         )}
-      </div>
-
-      {/* ===== Header (neutral, supplier-agnostic — mirrors ViatorActivityList) ===== */}
-      <div className="s22-head">
-        <div className="s22-ti">
-          <span className="s22-logo"><Hotel size={15} /></span>
-          <div className="s22-tiwrap">
-            <b>{t('fork.stay22_title')}</b>
-            <span className="s22-sub">{t('fork.stay22_source')}{dateLine ? ` · ${dateLine}` : ''}</span>
-          </div>
-        </div>
-        {countLabel && <span className="s22-count">{countLabel}</span>}
       </div>
 
       {/* ===== States ===== */}
