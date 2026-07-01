@@ -37,9 +37,10 @@ export default function PanelAi({ ctx }) {
         </div>
       </div>
 
-      {/* Prompt field — design-system AI field (proper padding/border/focus ring,
-          auto "AI" label badge). The generate/refine CTA sits below, right. */}
-      <div className="field field--ai" style={{ marginBottom: 0 }}>
+      {/* Prompt field — plain design-system input (neutral surface, NOT the AI
+          tint: the assistant reply block right below is already ai-purple, so a
+          purple textarea stacked on it read as one muddy block). */}
+      <div className="field" style={{ marginBottom: 0 }}>
         <label className="field__label">{t('ai_plan.assistant_hint')}</label>
         <textarea
           className="textarea"

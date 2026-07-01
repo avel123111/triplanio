@@ -9,6 +9,7 @@ import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
 import { resolveCities, countryFlag, reverseGeocode } from '@/lib/geo';
 import { tzFromCoords } from '@/lib/timezone';
+import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
 import { Btn, EmptyState, Severity, Toggle, useToast } from '../design/index';
@@ -136,7 +137,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
   const stopArm = (e) => e.stopPropagation();
   const pick = (picked) => {
     if (picked) {
-      onChange({ city_name: picked.city_name, city_name_en: picked.city_name_en, geonameid: picked.geonameid ?? null, name_i18n: picked.name_i18n || null, country: picked.country, country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
+      onChange({ city_name: picked.city_name, city_name_en: picked.city_name_en, geonameid: picked.geonameid ?? null, name_i18n: picked.name_i18n || null, country: picked.country || localizeCountry(picked.country_code, lang), country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
       setEditing(false);
     } else {
       onChange({ city_name: '', city_name_en: '', geonameid: null, name_i18n: null, country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
@@ -462,8 +463,8 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 
         <button onClick={() => setReturnMode('other')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'other' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'other' ? 'var(--brand)' : 'var(--line)'), borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
-              <Icon name="flag" size={16} />
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--warm)', color: 'white', display: 'grid', placeItems: 'center' }}>
+              <Icon name="globe" size={16} />
             </div>
             <div style={{ fontWeight: 700 }}>{t('planner.return_other')}</div>
           </div>
@@ -770,7 +771,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // English name kept for partner links (Stay22/Viator) and the directory:
       // prefer the AI's city_name_en, else the geocoder's canonical en name.
       city_name_en: c.city_name_en || best?.city_name_en || '',
-      country: c.country || best?.country || '',
+      // The gazetteer (TRIP-146) resolves country=null (only country_code), so
+      // derive the localized country name from the code when neither the AI nor
+      // the geocoder gave one — otherwise the review/rail shows "-".
+      country: c.country || best?.country || localizeCountry(c.country_code || best?.country_code, lang) || '',
       country_code: (c.country_code || best?.country_code || '').toUpperCase(),
       latitude: best?.latitude ?? null,
       longitude: best?.longitude ?? null,
@@ -1165,6 +1169,9 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
     // Origin is OPTIONAL now (can be added on step 2 or later from the timeline);
     // the trip start DATE is the only hard requirement of the manual entry step.
     primaryDisabled = isAi ? aiState !== 'draft' : !startDate;
+    // Make the optionality discoverable: with no origin picked the primary CTA
+    // reads "Пропустить" (not "Дальше"), so the user knows the step is skippable.
+    if (!isAi && !home?.city_name) primaryLabel = t('planner.skip');
   } else if (step === 'cities') {
     primaryDisabled = !citiesValid;
   } else if (step === 'review') {

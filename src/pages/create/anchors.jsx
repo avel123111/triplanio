@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { searchCities } from '@/lib/geo';
 import { tzFromCoords } from '@/lib/timezone';
+import { localizeCountry } from '@/lib/i18n/format';
 import { Icon } from '../../design/icons';
-import { useT } from '@/lib/i18n/I18nContext';
+import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
 
@@ -15,6 +16,7 @@ import cityOptionRow from '@/components/common/cityOptionRow';
 // without a circular import.
 export function CityPicker({ value, onChange, placeholder, autoFocus }) {
   const t = useT();
+  const { lang } = useI18n();
   const [q, setQ] = useState(value?.city_name || '');
 
   // Sync the field text when the selection changes externally.
@@ -28,7 +30,9 @@ export function CityPicker({ value, onChange, placeholder, autoFocus }) {
       getKey={(c) => c.external_city_id}
       onPick={(city) => {
         setQ(city.city_name);
-        onChange({ ...city, timezone: tzFromCoords(city.latitude, city.longitude) });
+        // Gazetteer rows carry country_code but not a country name → derive the
+        // localized name so the anchor/review shows a country, not blank.
+        onChange({ ...city, country: city.country || localizeCountry(city.country_code, lang), timezone: tzFromCoords(city.latitude, city.longitude) });
       }}
       renderRow={cityOptionRow}
       placeholder={placeholder || t('planner.city_search_ph')}
