@@ -73,7 +73,7 @@ export const Severity = ({ level = "info", title, children, action, icon }) => (
       <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
     </span>
     <div style={{ flex: 1, minWidth: 0 }}>
-      {title && <div style={{ fontWeight: 800, color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
+      {title && <div style={{ fontWeight: 700, color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
       {children}
     </div>
     {action}
@@ -233,7 +233,7 @@ export const DismissibleSeverity = ({ level = "info", title, children, onDismiss
         <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
       </span>
       <div style={{ flex: 1, minWidth: 0, paddingRight: 28 }}>
-        {title && <div style={{ fontWeight: 800, color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
+        {title && <div style={{ fontWeight: 700, color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
         {children}
         {action && <div style={{ marginTop: 8 }}>{action}</div>}
       </div>

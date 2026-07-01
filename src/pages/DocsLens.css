@@ -59,7 +59,7 @@
 /* ─── Visibility chip ─────────────────────────────────────────── */
 .dl-vischip {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: var(--fs-nano); font-weight: 800; padding: 3px 8px;
+  font-size: var(--fs-nano); font-weight: 700; padding: 3px 8px;
   border-radius: var(--r-pill); flex: none;
 }
 .dl-vischip svg { width: 11px; height: 11px; }
@@ -102,7 +102,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
 }
 .dl-linkrow__icon { width: 15px; height: 15px; color: var(--ev-hotel-ink); flex: none; }
 .dl-linkrow b {
-  font-size: var(--fs-meta); font-weight: 800; color: var(--ev-hotel-ink); flex: 1;
+  font-size: var(--fs-meta); font-weight: 700; color: var(--ev-hotel-ink); flex: 1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .dl-linkrow__go { width: 13px; height: 13px; color: var(--ev-hotel-ink); opacity: .55; }
@@ -159,7 +159,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
 
 /* ─── Dialog: section label ───────────────────────────────────── */
 .dl-label {
-  font-size: var(--fs-meta); font-weight: 800; color: var(--ink-2);
+  font-size: var(--fs-meta); font-weight: 700; color: var(--ink-2);
   display: flex; align-items: center; gap: 6px;
   margin-bottom: 8px;
 }
@@ -181,7 +181,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
   transition: background .16s, color .16s;
 }
 .dl-visopt__ic svg { width: 17px; height: 17px; }
-.dl-visopt__lbl b    { font-size: var(--fs-meta); font-weight: 800; color: var(--ink); display: block; }
+.dl-visopt__lbl b    { font-size: var(--fs-meta); font-weight: 700; color: var(--ink); display: block; }
 .dl-visopt__lbl span { font-size: var(--fs-nano); color: var(--muted); font-weight: 600; }
 .dl-visopt.is-on               { border-color: var(--brand); background: var(--brand-soft); }
 .dl-visopt.is-on .dl-visopt__ic { background: var(--brand); color: #fff; }
@@ -197,7 +197,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
   cursor: pointer; text-align: center;
   transition: border-color .16s, background .16s;
 }
-.dl-dropzone b     { font-size: var(--fs-meta); font-weight: 800; color: var(--ink-2); }
+.dl-dropzone b     { font-size: var(--fs-meta); font-weight: 700; color: var(--ink-2); }
 .dl-dropzone span  { font-size: var(--fs-micro); color: var(--muted); font-weight: 600; }
 .dl-dropzone svg   { color: var(--muted-2); transition: color .16s; }
 @media (hover: hover) {
@@ -240,7 +240,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
 }
 .dl-dview-link svg { width: 16px; height: 16px; color: var(--ev-hotel-ink); flex: none; }
 .dl-dview-link b {
-  flex: 1; color: var(--ev-hotel-ink); font-weight: 800;
+  flex: 1; color: var(--ev-hotel-ink); font-weight: 700;
   font-size: var(--fs-meta); word-break: break-all;
 }
 .dl-dview-files { display: flex; flex-direction: column; gap: 8px; }

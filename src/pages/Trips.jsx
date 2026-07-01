@@ -114,7 +114,7 @@ function NextTripCard({ trip, onClick, t }) {
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
       </span>
       <span className="nextcard__tx">
-        <span style={{ fontSize: 'var(--fs-micro)', fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--muted-2)' }}>{t('stats.next_trip_title')}</span>
+        <span style={{ fontSize: 'var(--fs-micro)', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--muted-2)' }}>{t('stats.next_trip_title')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
         <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>

@@ -1131,10 +1131,12 @@ export default function TripStructureEdit() {
         @media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
         .te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
         @keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
-        /* TRIP-161: side-panel drawer over the left column. Full height up to the
-           map, no scrim (the map stays interactive), route rail mounted beneath.
-           Reuses the .lp shell as its content; desktop two-column only. */
-        .ts-pdrawer { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
+        /* TRIP-161: side-panel drawer. Fixed & full-viewport-height — covers the
+           app header too — and spans the left half up to the map. No scrim: the
+           map (right half) stays interactive. Route rail mounted beneath. Width =
+           left half of the content area (viewport minus the 56px icon rail split
+           in two → 50vw + 28px from the left edge). Desktop two-column only. */
+        .ts-pdrawer { position: fixed; top: 0; bottom: 0; left: 0; width: calc(50vw + 28px); z-index: 100; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
         .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
         @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
         /* Warnings FAB: lift on hover, press on click. */
@@ -1282,7 +1284,7 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
     <div className="te-seam">
       <button className={'te-seam__pill' + (mismatch ? ' is-warn' : '') + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
         <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
-        <span style={{ fontWeight: 800, fontSize: 'var(--fs-meta)', color: mismatch ? 'var(--warning)' : 'var(--ev-transfer-ink)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+        <span style={{ fontWeight: 700, fontSize: 'var(--fs-meta)', color: mismatch ? 'var(--warning)' : 'var(--ev-transfer-ink)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
         {t.day_change && <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} title={tx('tse.overnight_title')} />}
         <span className="num muted" style={{ fontSize: 'var(--fs-micro)' }}>· {fmtD(t.start_datetime, lang)}</span>
       </button>
