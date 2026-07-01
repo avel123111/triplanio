@@ -10,29 +10,21 @@
 import { supabaseAdmin } from '../supabaseAdmin.ts';
 import type { ProviderEnv } from './types.ts';
 
-// Поддерживаемые plan_type (переходный словарь фронта/edge до полного перехода
-// на product_code, Ф5). Источник истины — один, здесь.
-export const VALID_PLANS = ['pro_trip', 'pro_monthly', 'pro_yearly'] as const;
-export type PlanType = typeof VALID_PLANS[number];
+// Единый вокабуляр продукта — product_code (фронт, metadata провайдера, каталог и
+// реестр говорят на нём же; переходный plan_type и мосты PLAN_TO_PRODUCT/
+// PRODUCT_TO_PLAN выпилены — одна сущность, одно имя).
 export type ProductCode = 'trip_pro_lifetime' | 'account_pro_monthly' | 'account_pro_yearly';
+export const VALID_PRODUCTS = ['trip_pro_lifetime', 'account_pro_monthly', 'account_pro_yearly'] as const;
+
+/** Является ли строка валидным product_code (для проверки входа/metadata). */
+export function isProductCode(value: unknown): value is ProductCode {
+  return typeof value === 'string' && (VALID_PRODUCTS as readonly string[]).includes(value);
+}
 
 /** True когда секретный ключ Stripe — тестовый (`sk_test_…`). */
 export function isTestStripeKey(key: string): boolean {
   return key.includes('_test_');
 }
-
-// Переходный мост: фронт/edge ещё говорят на plan_type, каталог — на product_code.
-// Уйдёт в Ф5, когда все перейдут на product_code.
-export const PLAN_TO_PRODUCT: Record<PlanType, ProductCode> = {
-  pro_trip: 'trip_pro_lifetime',
-  pro_monthly: 'account_pro_monthly',
-  pro_yearly: 'account_pro_yearly',
-};
-export const PRODUCT_TO_PLAN: Record<ProductCode, PlanType> = {
-  trip_pro_lifetime: 'pro_trip',
-  account_pro_monthly: 'pro_monthly',
-  account_pro_yearly: 'pro_yearly',
-};
 
 export function stripeEnv(stripeKey: string): ProviderEnv {
   return isTestStripeKey(stripeKey) ? 'test' : 'live';

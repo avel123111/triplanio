@@ -3,8 +3,8 @@
  *
  * GET/POST — no body required.
  *
- * Returns Stripe default prices for our 3 plan types so the frontend
- * renders amounts/currency from Stripe Dashboard (no hardcoded prices).
+ * Returns Stripe default prices keyed by product_code (our 3 products) so the
+ * frontend renders amounts/currency from Stripe Dashboard (no hardcoded prices).
  *
  * Stripe mode (test/live) is auto-detected from STRIPE_SECRET_KEY — one mode
  * per Supabase project (live in prod, test in dev).
@@ -14,7 +14,7 @@ import { corsFor } from '../_shared/cors.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
-import { getActiveProviderProducts, stripeEnv, PRODUCT_TO_PLAN } from '../_shared/payments/catalog.ts';
+import { getActiveProviderProducts, stripeEnv } from '../_shared/payments/catalog.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -41,10 +41,9 @@ Deno.serve(async (req) => {
 
     const entries = await Promise.all(
       catalog.map(async ({ product_code, provider_product_id }) => {
-        const planType = PRODUCT_TO_PLAN[product_code];
         const price = await adapter.resolvePriceForProduct(provider_product_id);
-        return [planType, {
-          plan_type: planType,
+        return [product_code, {
+          product_code,
           price_id: price.price_id,
           product_id: provider_product_id,
           unit_amount: price.unit_amount,

@@ -79,11 +79,11 @@ export default function StripeReturnModals() {
       if (kind === 'sub') {
         try {
           const planRes = await supabase.functions.invoke('getUserPlan');
-          const type = planRes.data?.subscriptionType;
-          setPlanLabel(type === 'pro_monthly' ? t('sub.plan_monthly_title') : type === 'pro_yearly' ? t('sub.plan_yearly_title') : null);
-          if (type) {
+          const productCode = planRes.data?.productCode;
+          setPlanLabel(productCode === 'account_pro_monthly' ? t('sub.plan_monthly_title') : productCode === 'account_pro_yearly' ? t('sub.plan_yearly_title') : null);
+          if (productCode) {
             const priceRes = await supabase.functions.invoke('getStripePrices', { body: {} });
-            const p = priceRes.data?.prices?.[type];
+            const p = priceRes.data?.prices?.[productCode];
             if (p?.unit_amount != null) {
               const amt = fmtMoneyActive(p.unit_amount / 100, p.currency || 'usd');
               const per = p.recurring_interval === 'month' ? t('sub.period_month') : p.recurring_interval === 'year' ? t('sub.period_year') : '';

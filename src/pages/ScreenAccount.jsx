@@ -38,7 +38,7 @@ function derivePlanState(isPro, plan) {
   if (!isPro) return 'no-sub';
   if (!plan || plan.plan !== 'pro') return 'pro-pending';
   if (plan.cancelled) return 'cancelled';
-  if (plan.subscriptionType === 'pro_yearly') return 'annual';
+  if (plan.productCode === 'account_pro_yearly') return 'annual';
   return 'with-sub';
 }
 
@@ -62,11 +62,11 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
     return (p && p.unit_amount != null) ? money(p.unit_amount, p.currency) : null;
   };
   const yearlyMonthlyEq = () => {
-    const p = prices?.pro_yearly;
+    const p = prices?.account_pro_yearly;
     return (p && p.unit_amount != null) ? money(Math.round(p.unit_amount / 12), p.currency) : null;
   };
-  const monthlyPrice = priceOf('pro_monthly');
-  const yearlyPrice = priceOf('pro_yearly');
+  const monthlyPrice = priceOf('account_pro_monthly');
+  const yearlyPrice = priceOf('account_pro_yearly');
 
   // Exact billed amount from the user's Stripe subscription (preferred over catalog).
   const actual = plan?.actualPrice;

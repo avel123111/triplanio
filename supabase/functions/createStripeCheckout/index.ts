@@ -1,7 +1,7 @@
 /**
  * createStripeCheckout (Ф2b — платёжный фундамент)
  *
- * POST body: { tripId?, planType: 'pro_trip'|'pro_monthly'|'pro_yearly' }
+ * POST body: { tripId?, productCode: 'trip_pro_lifetime'|'account_pro_monthly'|'account_pro_yearly' }
  *
  * Двойная оплата закрывается ЗДЕСЬ (корень TRIP-32) НАТИВНОЙ идемпотентностью
  * Stripe — без своей дедуп-машинерии:
@@ -15,8 +15,8 @@
  *    две вкладки (даже одновременно, даже новый юзер) → Stripe отдаёт ТУ ЖЕ сессию →
  *    одно списание. Свой outbound_idempotency/90с/рандом-ключ — выпилены.
  *
- * landing-path детерминирован сервером из (planType, tripId): подписка → /settings,
- * pro_trip → /trip/<id>. returnPath клиента больше НЕ принимаем (ломал детерминизм).
+ * landing-path детерминирован сервером из (productCode, tripId): подписка → /settings,
+ * trip_pro_lifetime → /trip/<id>. returnPath клиента больше НЕ принимаем (ломал детерминизм).
  *
  * Каталог/цена — из БД через StripeAdapter (provider_price + default_price).
  */
@@ -26,7 +26,7 @@ import { supabaseAdmin, getRequestUser } from '../_shared/supabaseAdmin.ts';
 import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
-import { stripeEnv, PLAN_TO_PRODUCT, VALID_PLANS, ENTITLING_STATUSES, type PlanType } from '../_shared/payments/catalog.ts';
+import { stripeEnv, isProductCode, ENTITLING_STATUSES } from '../_shared/payments/catalog.ts';
 import { ensureProviderCustomerId, saveProviderCustomerId } from '../_shared/payments/customer.ts';
 
 Deno.serve(async (req) => {
@@ -37,9 +37,9 @@ Deno.serve(async (req) => {
     const user = await getRequestUser(req);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 
-    const { tripId, planType } = await req.json();
-    if (!VALID_PLANS.includes(planType)) {
-      return Response.json({ error: 'Invalid plan type' }, { status: 400, headers: corsHeaders });
+    const { tripId, productCode } = await req.json();
+    if (!isProductCode(productCode)) {
+      return Response.json({ error: 'Invalid product code' }, { status: 400, headers: corsHeaders });
     }
 
     // ---------- Origin ----------
@@ -60,8 +60,8 @@ Deno.serve(async (req) => {
     const adapter = new StripeAdapter(stripeKey, env);
 
     // ---------- Предчек активного права (до создания Customer) ----------
-    if (planType === 'pro_trip') {
-      if (!tripId) return Response.json({ error: 'tripId required for pro_trip' }, { status: 400, headers: corsHeaders });
+    if (productCode === 'trip_pro_lifetime') {
+      if (!tripId) return Response.json({ error: 'tripId required for trip_pro_lifetime' }, { status: 400, headers: corsHeaders });
       const { data: trip } = await supabaseAdmin
         .from('trips').select('id, created_by, is_pro_trip').eq('id', tripId).single();
       if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
@@ -84,10 +84,9 @@ Deno.serve(async (req) => {
     }
 
     // ---------- Резолв цены из каталога БД ----------
-    const productCode = PLAN_TO_PRODUCT[planType as PlanType];
     const providerProductId = await adapter.providerProductId(productCode);
     if (!providerProductId) {
-      return Response.json({ error: `No catalog entry for ${planType}` }, { status: 500, headers: corsHeaders });
+      return Response.json({ error: `No catalog entry for ${productCode}` }, { status: 500, headers: corsHeaders });
     }
     const price = await adapter.resolvePriceForProduct(providerProductId);
 
@@ -101,10 +100,10 @@ Deno.serve(async (req) => {
       user.email ?? null,
     );
 
-    const mode = planType === 'pro_trip' ? 'payment' : 'subscription';
+    const mode = productCode === 'trip_pro_lifetime' ? 'payment' : 'subscription';
     // landing-path детерминирован сервером (returnPath клиента не принимаем).
-    const landingPath = planType === 'pro_trip' ? `/trip/${tripId}` : '/settings';
-    const ctxParam = planType === 'pro_trip' ? `&kind=trip&pt=${tripId}` : '&kind=sub';
+    const landingPath = productCode === 'trip_pro_lifetime' ? `/trip/${tripId}` : '/settings';
+    const ctxParam = productCode === 'trip_pro_lifetime' ? `&kind=trip&pt=${tripId}` : '&kind=sub';
 
     const buildParams = (custId: string): Stripe.Checkout.SessionCreateParams => ({
       payment_method_types: ['card'],
@@ -115,15 +114,15 @@ Deno.serve(async (req) => {
       cancel_url: `${publicAppUrl}${landingPath}?stripe_status=cancel${ctxParam}`,
       client_reference_id: user.id,
       customer: custId,
-      metadata: { user_id: user.id, user_email: user.email!, trip_id: tripId || '', plan_type: planType },
+      metadata: { user_id: user.id, user_email: user.email!, trip_id: tripId || '', product_code: productCode },
       ...(mode === 'subscription'
-        ? { subscription_data: { metadata: { user_id: user.id, plan_type: planType } } }
+        ? { subscription_data: { metadata: { user_id: user.id, product_code: productCode } } }
         : {}),
     });
 
     // СТАБИЛЬНЫЙ Stripe idempotency-ключ. customerId в ключе: при протухшем customer
     // (см. ниже) ключ меняется вместе с телом — нет Stripe-400 «same key, diff params».
-    const idemKeyFor = (custId: string) => planType === 'pro_trip'
+    const idemKeyFor = (custId: string) => productCode === 'trip_pro_lifetime'
       ? `checkout:${user.id}:${productCode}:${tripId}:${custId}`
       : `checkout:${user.id}:${productCode}:${custId}`;
 
