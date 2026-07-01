@@ -14,7 +14,7 @@ import { corsFor } from '../_shared/cors.ts';
 import { getRequestUser } from '../_shared/supabaseAdmin.ts';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
-import { getActiveProviderProducts, stripeEnv } from '../_shared/payments/catalog.ts';
+import { getCatalogPricesCached, stripeEnv } from '../_shared/payments/catalog.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsFor(req);
@@ -32,28 +32,26 @@ Deno.serve(async (req) => {
     const env = stripeEnv(stripeKey);
     const adapter = new StripeAdapter(stripeKey, env);
 
-    // Каталог из БД (product / provider_price) — единственный источник. Пусто =
-    // реальный мисконфиг (миграция Ф1 сидирует обе среды): логируем и отдаём {}.
-    const catalog = await getActiveProviderProducts('stripe', env);
-    if (catalog.length === 0) {
+    // Каталог из БД (product / provider_price) — единственный источник. Цена берётся
+    // из lazy-TTL кэша в provider_price; в Stripe идём только на протухшей/пустой
+    // строке (первый читающий обновляет кэш). Пусто = реальный мисконфиг (миграция
+    // Ф1 сидирует обе среды): логируем и отдаём {}.
+    const prices = await getCatalogPricesCached(
+      (pid) => adapter.resolvePriceForProduct(pid), 'stripe', env);
+    if (prices.length === 0) {
       console.warn(`getStripePrices: DB catalog empty for env=${env} (seed migration not applied?)`);
     }
 
-    const entries = await Promise.all(
-      catalog.map(async ({ product_code, provider_product_id }) => {
-        const price = await adapter.resolvePriceForProduct(provider_product_id);
-        return [product_code, {
-          product_code,
-          price_id: price.price_id,
-          product_id: provider_product_id,
-          unit_amount: price.unit_amount,
-          currency: price.currency,
-          recurring_interval: price.recurring_interval,
-        }];
-      })
-    );
+    const map = Object.fromEntries(prices.map((p) => [p.product_code, {
+      product_code: p.product_code,
+      price_id: p.price_id,
+      product_id: p.product_id,
+      unit_amount: p.unit_amount,
+      currency: p.currency,
+      recurring_interval: p.recurring_interval,
+    }]));
 
-    return Response.json({ prices: Object.fromEntries(entries) }, { headers: corsHeaders });
+    return Response.json({ prices: map }, { headers: corsHeaders });
 
   } catch (error) {
     await captureEdgeError(error, 'getStripePrices');
