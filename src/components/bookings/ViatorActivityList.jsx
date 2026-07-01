@@ -176,14 +176,14 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
            the activity-specific body content keeps its own classes below. */
         .va-rate { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
         .va-star { color: var(--pro); flex: none; }
-        .va-sc { font-family: var(--font-display); font-weight: 700; font-size: 12.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
-        .va-cnt { font-size: 11px; color: var(--muted); font-weight: 600; }
-        .va-flag { font-size: 10.5px; color: var(--brand); font-weight: 700; background: var(--primary-soft); padding: 1px 7px; border-radius: var(--r-pill); }
+        .va-sc { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-meta); color: var(--ink); font-variant-numeric: tabular-nums; }
+        .va-cnt { font-size: var(--fs-micro); color: var(--muted); font-weight: 600; }
+        .va-flag { font-size: var(--fs-nano); color: var(--brand); font-weight: 700; background: var(--primary-soft); padding: 1px 7px; border-radius: var(--r-pill); }
         .va-price { display: flex; flex-direction: column; line-height: 1.15; }
         .va-from { font-size: var(--fs-nano); color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
         .va-price b { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-strong); color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 2px; }
         .va-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
-        .va-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-family: var(--font-display); font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
+        .va-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-family: var(--font-display); font-size: var(--fs-meta); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
         .va-pg:disabled { opacity: .4; cursor: default; }
         .va-pg:not(:disabled):active { transform: scale(.94); }
         @media (hover: hover) and (pointer: fine) { .va-pg:not(:disabled):hover { border-color: var(--line-hover); } }

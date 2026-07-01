@@ -2112,15 +2112,15 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .lph-meta { margin-left: auto; display: flex; align-items: stretch; }
 .lph-meta > div { display: flex; flex-direction: column; gap: 3px; padding: 0 12px; }
 .lph-meta > div + div { border-left: 1px solid rgba(255,255,255,.2); }
-.lph-mk { font-size: var(--fs-nano); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.72); }
+.lph-mk { font-size: var(--fs-nano); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.72); }
 .lph-mv { font-size: var(--fs-meta); font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media (max-width: 560px) { .lph-meta { margin-left: 48px; } }
 
 .lp-h { display: flex; align-items: center; gap: 11px; padding: 14px 15px; border-bottom: 1px solid var(--line-2); }
 .lp-h .lp-ic { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; flex: none; }
 .lp-h .ti { min-width: 0; flex: 1; }
-.ti b { font-family: var(--font-display); font-weight: 600; font-size: 16px; color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ti span { font-size: 12px; color: var(--muted); font-weight: 600; }
+.ti b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-strong); color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ti span { font-size: var(--fs-micro); color: var(--muted); font-weight: 600; }
 /* Unified panel back button — solid surface chip, always clearly visible with a
    non-blending hover (used in every light panel header). */
 .lp-back { width: 34px; height: 34px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
@@ -2157,8 +2157,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .bookrow:active { transform: translateY(0) scale(.99); }
 .bi { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; flex: none; }
 .bt { flex: 1; min-width: 0; }
-.bt b { font-size: 14px; font-weight: 800; color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bt span { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.bt b { font-family: var(--font-display); font-size: var(--fs-base); font-weight: 600; color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bt span { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--muted); font-weight: 600; }
 .chev { width: 16px; height: 16px; color: var(--muted-2); flex: none; }
 
 .gadd { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border-radius: 13px; background: transparent; border: 1.5px dashed var(--line-strong); cursor: pointer; transition: border-color .16s, background .16s, transform .14s var(--ease-spring); text-align: left; font-family: var(--font-ui); width: 100%; }
@@ -2168,15 +2168,15 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .gadd .gi { width: 34px; height: 34px; border: 1.5px dashed var(--line-strong); background: transparent; color: var(--muted-2); }
 .gadd:hover .gi { border-color: var(--a, var(--primary)); color: var(--a, var(--primary)); }
 .gt { flex: 1; min-width: 0; }
-.gt b { font-size: 13.5px; font-weight: 800; color: var(--muted); display: block; }
-.gt span { font-size: 11.5px; color: var(--muted-2); font-weight: 600; }
+.gt b { font-family: var(--font-display); font-size: var(--fs-base); font-weight: 600; color: var(--muted); display: block; }
+.gt span { font-size: var(--fs-micro); color: var(--muted-2); font-weight: 600; }
 
 .stepper { display: inline-flex; align-items: center; gap: 3px; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
 .stepper button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--primary); border-radius: 50%; cursor: pointer; font-size: 17px; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
 .stepper button:hover { background: var(--surface); }
 .stepper button:active { transform: scale(.9); }
 .stepper button:disabled { color: var(--muted-2); cursor: default; }
-.stepper .n { min-width: 48px; text-align: center; font-weight: 800; font-size: 13px; color: var(--ink); }
+.stepper .n { min-width: 48px; text-align: center; font-weight: 700; font-size: var(--fs-meta); color: var(--ink); }
 .lp-stepper { display: flex; align-items: center; justify-content: space-between; }
 
 .metastrip { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2197,18 +2197,18 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .rmid .dur { color: var(--muted); font-weight: 800; font-size: 10.5px; white-space: nowrap; }
 
 .lp-warn { display: flex; gap: 10px; padding: 12px; border-radius: 13px; background: var(--warning-soft); color: var(--warning-ink); }
-.lp-warn b { display: block; font-size: 13.5px; font-weight: 800; }
-.lp-warn span { font-size: 12px; color: var(--warning-ink); opacity: .85; }
+.lp-warn b { display: block; font-size: var(--fs-base); font-weight: 700; }
+.lp-warn span { font-size: var(--fs-meta); color: var(--warning-ink); opacity: .85; }
 .metastrip .ch--p { background: var(--primary-soft); color: var(--primary); }
 .addr { display: flex; gap: 9px; align-items: flex-start; padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); }
 .addr svg { width: 16px; height: 16px; color: var(--muted-2); flex: none; margin-top: 1px; }
-.addr div { font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+.addr div { font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.5; }
 .docrow { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 11px; background: var(--surface-3); border: 1px solid var(--line); text-decoration: none; color: var(--ink); }
 .docrow .di { width: 30px; height: 30px; border-radius: 8px; background: var(--danger-soft); color: var(--danger-ink); display: grid; place-items: center; flex: none; }
-.docrow b { flex: 1; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.docrow span { font-size: 11px; color: var(--muted); font-weight: 600; }
+.docrow b { flex: 1; font-size: var(--fs-meta); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.docrow span { font-size: var(--fs-micro); color: var(--muted); font-weight: 600; }
 /* Notes block — Lumo .notes: surface-3 card with hairline border. */
-.notes { font-size: 13px; color: var(--ink-2); font-weight: 600; line-height: 1.5; padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); white-space: pre-wrap; word-break: break-word; }
+.notes { font-size: var(--fs-meta); color: var(--ink-2); font-weight: 600; line-height: 1.5; padding: 11px 13px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); white-space: pre-wrap; word-break: break-word; }
 /* Upload dropzone — Lumo .upload (was used by DocumentsField but never defined). */
 .upload { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 16px; border-radius: 13px; border: 1.5px dashed var(--line-strong); background: var(--surface-3); cursor: pointer; text-align: center; transition: border-color .16s, background .16s; }
 .upload:hover { border-color: var(--primary); background: var(--primary-soft); }
@@ -3542,28 +3542,28 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .kv-grid.kv1{grid-template-columns:1fr;}
 .kv{display:flex;flex-direction:column;gap:2px;}
 .kv.full{grid-column:1/-1;}
-.kv .k{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
-.kv .v{font-size:13px;font-weight:700;color:var(--ink);}
-.kv .v.mono{font-family:var(--font-mono);font-weight:600;font-size:12.5px;}
+.kv .k{font-size:var(--fs-nano);font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+.kv .v{font-size:var(--fs-meta);font-weight:700;color:var(--ink);}
+.kv .v.mono{font-family:var(--font-mono);font-weight:600;font-size:var(--fs-meta);}
 /* route block (transfer view) */
 .route-block{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:13px 14px;background:var(--surface-3);border:1px solid var(--line);border-radius:13px;}
-.route-block .rd{font-family:var(--font-mono);font-size:10.5px;color:var(--muted);font-weight:600;}
-.route-block .rt{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--ink);line-height:1.05;}
-.route-block .rc{font-size:12.5px;font-weight:800;color:var(--ink-2);margin-top:2px;}
-.route-block .ra{font-size:10.5px;color:var(--muted);font-weight:600;margin-top:1px;}
+.route-block .rd{font-family:var(--font-mono);font-size:var(--fs-nano);color:var(--muted);font-weight:600;}
+.route-block .rt{font-family:var(--font-display);font-size:var(--fs-h2);font-weight:700;color:var(--ink);line-height:1.05;}
+.route-block .rc{font-size:var(--fs-meta);font-weight:700;color:var(--ink-2);margin-top:2px;}
+.route-block .ra{font-size:var(--fs-nano);color:var(--muted);font-weight:600;margin-top:1px;}
 .route-block .rmid{display:flex;flex-direction:column;align-items:center;gap:3px;}
 .route-block .rmid svg{width:20px;height:20px;color:var(--ev-color,var(--ev-transfer));}
-.route-block .dur{font-size:10px;font-weight:800;color:var(--muted);white-space:nowrap;}
+.route-block .dur{font-size:var(--fs-nano);font-weight:700;color:var(--muted);white-space:nowrap;}
 .route-block .end{text-align:right;}
 /* booking link */
-.bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font-size:12px;font-weight:700;color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
+.bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font-size:var(--fs-meta);font-weight:700;color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
 .bk-link:hover{background:var(--primary-soft);color:var(--primary);}
 .bk-link svg{width:12px;height:12px;color:var(--muted);}
 /* warning banner */
 .warn-banner{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;border-radius:12px;background:var(--warning-soft);border:1px solid color-mix(in srgb,var(--warning) 30%,transparent);}
 .warn-banner svg{width:17px;height:17px;color:var(--warning-ink);flex:none;margin-top:1px;}
-.warn-banner b{display:block;font-size:13px;font-weight:800;color:var(--ink);}
-.warn-banner span{display:block;font-size:11.5px;color:var(--muted);font-weight:600;}
+.warn-banner b{display:block;font-size:var(--fs-base);font-weight:700;color:var(--ink);}
+.warn-banner span{display:block;font-size:var(--fs-micro);color:var(--muted);font-weight:600;}
 /* delete confirm */
 .del-confirm{display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:12px;background:var(--danger-soft);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);}
 .del-confirm-ic{width:40px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger-ink);display:grid;place-items:center;flex:none;}
@@ -3572,47 +3572,50 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .badge--partial{background:var(--warning-soft);color:var(--warning-ink);}
 .badge--on-arrival{background:var(--primary-soft);color:var(--primary);}
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
-.f-sec{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ev-color,var(--primary));display:flex;align-items:center;gap:7px;margin:2px 0 -2px;}
+.f-sec{font-size:var(--fs-nano);font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ev-color,var(--primary));display:flex;align-items:center;gap:7px;margin:2px 0 -2px;}
 .f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--primary)) 18%,transparent);}
 .ch-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:11px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;}
 .ch-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary);margin-top:2px;flex:none;cursor:pointer;}
 .ch-row .cr-b{flex:1;min-width:0;}
-.ch-row .cr-b b{display:block;font-size:13px;font-weight:700;color:var(--ink);}
-.ch-row .cr-b span{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:1px;}
+.ch-row .cr-b b{display:block;font-size:var(--fs-base);font-weight:600;color:var(--ink);}
+.ch-row .cr-b span{display:block;font-size:var(--fs-micro);color:var(--muted);font-weight:600;margin-top:1px;}
 .fld-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 13px;}
 @media(max-width:640px){.fld-grid{grid-template-columns:1fr;}}
 .drop-zone{display:flex;flex-direction:column;align-items:center;gap:5px;padding:18px;border:1.5px dashed var(--line-strong);border-radius:12px;text-align:center;cursor:pointer;transition:border-color .14s,background .14s;}
 .drop-zone:hover{border-color:var(--primary);background:var(--primary-soft);}
 .drop-zone svg{width:20px;height:20px;color:var(--muted);}
-.drop-zone b{font-size:12.5px;font-weight:800;color:var(--ink-2);}
-.drop-zone span{font-size:11px;color:var(--muted);font-weight:600;}
+.drop-zone b{font-size:var(--fs-meta);font-weight:700;color:var(--ink-2);}
+.drop-zone span{font-size:var(--fs-micro);color:var(--muted);font-weight:600;}
 /* transport type grid */
 .tx-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;}
-.tx-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:9px 4px;border-radius:10px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--muted);cursor:pointer;font:inherit;font-size:10px;font-weight:700;transition:all .13s;}
+.tx-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:9px 4px;border-radius:10px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--muted);cursor:pointer;font:inherit;font-size:var(--fs-nano);font-weight:700;transition:all .13s;}
 .tx-btn svg{width:17px;height:17px;}
-.tx-btn:hover,.tx-btn.act{border-color:var(--ev-transfer);color:var(--ev-transfer-ink);background:var(--ev-transfer-soft);font-weight:800;}
+.tx-btn:hover,.tx-btn.act{border-color:var(--ev-transfer);color:var(--ev-transfer-ink);background:var(--ev-transfer-soft);font-weight:700;}
 /* layover segment cards */
 .seg-card{border:1px solid var(--line-2);border-radius:13px;overflow:hidden;background:var(--surface);}
 .seg-card-hd{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--ev-transfer-soft);cursor:pointer;}
 .seg-card-ic{width:30px;height:30px;border-radius:9px;background:var(--ev-transfer-soft-2);color:var(--ev-transfer-ink);display:grid;place-items:center;flex:none;}
 .seg-card-ic svg{width:14px;height:14px;}
 .seg-card-ti{flex:1;min-width:0;}
-.seg-card-ti .ey{font-size:10px;font-weight:800;color:var(--ev-transfer-ink);display:block;text-transform:uppercase;letter-spacing:.04em;}
-.seg-card-ti .rl{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--ink);}
+.seg-card-ti .ey{font-size:var(--fs-nano);font-weight:700;color:var(--ev-transfer-ink);display:block;text-transform:uppercase;letter-spacing:.04em;}
+.seg-card-ti .rl{display:flex;align-items:center;gap:5px;font-size:var(--fs-meta);font-weight:700;color:var(--ink);}
 .seg-card-ti .rl svg{width:11px;height:11px;color:var(--muted);}
 .seg-card-body{padding:11px 12px;border-top:1px solid var(--line-2);display:flex;flex-direction:column;gap:8px;}
 .lay-div{display:flex;align-items:center;gap:8px;padding:4px 10px;}
 .lay-div .ld{width:1px;height:14px;background:var(--line);margin-left:14px;}
-.lay-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r-pill);background:var(--ev-transfer-soft);color:var(--ev-transfer-ink);font-size:11px;font-weight:800;}
+.lay-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r-pill);background:var(--ev-transfer-soft);color:var(--ev-transfer-ink);font-size:var(--fs-micro);font-weight:700;}
 .lay-pill svg{width:11px;height:11px;}
-.night-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--line);font-size:11px;font-weight:800;color:var(--ink-2);}
+.night-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--line);font-size:var(--fs-micro);font-weight:700;color:var(--ink-2);}
 .night-badge svg{width:12px;height:12px;}
 
 /* booking-link platform logo chip (was unsized → giant logo) */
-.bk-link .pb{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex:none;overflow:hidden;}
+.bk-link .pb{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:var(--fs-micro);font-weight:700;color:#fff;flex:none;overflow:hidden;}
 .bk-link .pb img{width:100%;height:100%;object-fit:cover;}
-/* edit-modal field labels: match Lumo design (.field>label = 11px/800/muted/uppercase) */
-.ev-dlg .field__label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+/* Editor form-field labels — one canon for both shells (TRIP-161). The dialog
+   variant scopes under .ev-dlg; the drawer/panel variant scopes under .lp (only
+   the event-edit panel carries fields — city/event/fork panels have none). */
+.ev-dlg .field__label,
+.lp .field__label { font-size: var(--fs-micro); font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 
 /* iOS Safari auto-zooms the viewport when a focused field has font-size < 16px.
    Canonical anti-zoom guard (TRIP-92): one element-level rule forces 16px on
@@ -3645,15 +3648,15 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .lp-ic { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; flex: none; }
 .lp-ic svg { width: 17px; height: 17px; }
 .lp-ti { min-width: 0; flex: 1; }
-.lp-ti b { font-family: var(--font-display); font-weight: 600; font-size: 15px; color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lp-ti span { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.lp-ti b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-strong); color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lp-ti span { font-size: var(--fs-micro); color: var(--muted); font-weight: 600; }
 /* tinted header (per-kind colour via --ev-soft/--ev-ink on the .lp root) */
 .lp-h--ev { background: var(--ev-soft, var(--primary-soft)); border-bottom-color: color-mix(in srgb, var(--ev-soft, var(--primary-soft)) 60%, var(--line)); }
 .lp-h--ev .lp-back { background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
 .lp-h--ev .lp-back:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
 /* section label (panel sections) */
 .sec-lbl { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
-.sec-lbl .sl { font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ev-ink, var(--primary)); }
+.sec-lbl .sl { font-size: var(--fs-nano); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ev-ink, var(--primary)); }
 .sec-lbl .addmini { width: 22px; height: 22px; border-radius: 7px; background: var(--primary-soft); color: var(--primary); border: 0; cursor: pointer; display: grid; place-items: center; flex: none; }
 .sec-lbl .addmini svg { width: 12px; height: 12px; }
 /* vertical stack used between rows */
