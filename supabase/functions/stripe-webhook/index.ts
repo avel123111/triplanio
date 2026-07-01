@@ -22,7 +22,7 @@ import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError, reportPaymentAnomaly } from '../_shared/sentry.ts';
 import { getPeriodEndUnix, unixToIso } from '../_shared/getPeriodEnd.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
-import { stripeEnv, PLAN_TO_PRODUCT, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode, type PlanType } from '../_shared/payments/catalog.ts';
+import { stripeEnv, isProductCode, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode } from '../_shared/payments/catalog.ts';
 import { saveProviderCustomerId } from '../_shared/payments/customer.ts';
 import { buildSubscriptionUpsertRow } from '../_shared/payments/subscriptionRow.ts';
 import { buildPurchaseRow } from '../_shared/payments/purchaseRow.ts';
@@ -110,8 +110,8 @@ async function resolveRecurringUser(
   if (!userId || !productCode) {
     const sub = await adapter.fetchSubscription(subId);
     userId = userId ?? ((sub.metadata?.user_id as string) || null);
-    const planType = (sub.metadata?.plan_type as PlanType | undefined) ?? null;
-    productCode = productCode ?? (planType ? PLAN_TO_PRODUCT[planType] : null);
+    const metaCode = sub.metadata?.product_code;
+    productCode = productCode ?? (isProductCode(metaCode) ? metaCode : null);
   }
   if (!userId || (productCode !== 'account_pro_monthly' && productCode !== 'account_pro_yearly')) {
     await reportPaymentAnomaly('sub_unresolved_user', { ctx, sub_id: subId }, 'error');
@@ -172,9 +172,9 @@ Deno.serve(async (req) => {
 
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        const { user_id, trip_id, plan_type } = session.metadata || {};
-        const productCode: ProductCode | null = plan_type ? PLAN_TO_PRODUCT[plan_type as PlanType] ?? null : null;
-        console.log('Checkout completed:', user_id, plan_type, 'trip:', trip_id);
+        const { user_id, trip_id, product_code } = session.metadata || {};
+        const productCode: ProductCode | null = isProductCode(product_code) ? product_code : null;
+        console.log('Checkout completed:', user_id, product_code, 'trip:', trip_id);
 
         if (productCode === 'trip_pro_lifetime' && trip_id && user_id) {
           // Идемпотентность по checkout id (provider_ref): тот же чекаут уже записан → no-op.

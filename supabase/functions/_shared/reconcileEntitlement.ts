@@ -15,7 +15,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type Stripe from 'npm:stripe@17.0.0';
 import { getPeriodEndUnix, unixToIso } from './getPeriodEnd.ts';
-import { PLAN_TO_PRODUCT, PRODUCT_TO_PLAN, stripeEnv, getActiveProviderProducts, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode } from './payments/catalog.ts';
+import { isProductCode, stripeEnv, getActiveProviderProducts, billingIntervalForProduct, ENTITLING_STATUSES, type ProductCode } from './payments/catalog.ts';
 import { StripeAdapter } from './payments/stripeAdapter.ts';
 import { getProviderCustomerId } from './payments/customer.ts';
 import { reportPaymentAnomaly } from './sentry.ts';
@@ -96,11 +96,10 @@ export async function reconcileEntitlement(admin: SupabaseClient, userId: string
         const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
         const productId = typeof price?.product === 'string'
           ? price.product : ((price?.product as { id?: string } | undefined)?.id ?? null);
-        const code = productId ? codeByProduct.get(productId) ?? null : null;
-        const planType = (code ? PRODUCT_TO_PLAN[code] : null)
-          ?? ((sub.metadata?.plan_type as string | undefined) ?? null);
-        if (planType !== 'pro_monthly' && planType !== 'pro_yearly') continue;
-        const productCode = PLAN_TO_PRODUCT[planType];
+        const catalogCode = productId ? codeByProduct.get(productId) ?? null : null;
+        const metaCode = sub.metadata?.product_code;
+        const productCode = catalogCode ?? (isProductCode(metaCode) ? metaCode : null);
+        if (productCode !== 'account_pro_monthly' && productCode !== 'account_pro_yearly') continue;
         const iso = unixToIso(getPeriodEndUnix(sub));
 
         // Уже есть строка по этому sub id? Обновляем; иначе вставляем (партиал-уник

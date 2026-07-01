@@ -12,7 +12,7 @@ import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { reconcileEntitlement, needsEntitlementReconcile } from '../_shared/reconcileEntitlement.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
-import { PRODUCT_TO_PLAN, stripeEnv, ENTITLING_STATUSES, type ProductCode } from '../_shared/payments/catalog.ts';
+import { stripeEnv, ENTITLING_STATUSES } from '../_shared/payments/catalog.ts';
 
 // Reads the EXACT amount the caller is billed from their live Stripe subscription
 // (the price line item), not the public catalog price — so a user on a legacy /
@@ -85,15 +85,15 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: false });
 
       const latest = (subs ?? [])[0] || null;
-      // product_code → plan_type ('pro_monthly'/'pro_yearly') для совместимости с фронтом.
-      const subscriptionType = latest ? PRODUCT_TO_PLAN[latest.product_code as ProductCode] : null;
+      // Единый вокабуляр: фронт получает product_code напрямую (без plan_type-моста).
+      const productCode = latest ? (latest.product_code as string) : null;
 
       const actualPrice = await readActualPrice(latest?.provider_subscription_id || null);
 
       return Response.json({
         plan: 'pro',
         subscriptionEnd: userData?.subscription_end_date ?? null,
-        subscriptionType,
+        productCode,
         // Scheduled cancellation (UI "won't renew"). Status stays verbatim; flag in cancel_at_period_end.
         cancelled: latest?.cancel_at_period_end === true,
         stripeSubscriptionId: latest?.provider_subscription_id || null,
