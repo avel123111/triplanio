@@ -12,29 +12,58 @@ import type Stripe from 'npm:stripe@17.0.0';
 import { captureEdgeError } from '../_shared/sentry.ts';
 import { reconcileEntitlement, needsEntitlementReconcile } from '../_shared/reconcileEntitlement.ts';
 import { StripeAdapter } from '../_shared/payments/stripeAdapter.ts';
-import { stripeEnv, ENTITLING_STATUSES } from '../_shared/payments/catalog.ts';
+import { stripeEnv, ENTITLING_STATUSES, isPriceCacheFresh } from '../_shared/payments/catalog.ts';
 
-// Reads the EXACT amount the caller is billed from their live Stripe subscription
-// (the price line item), not the public catalog price — so a user on a legacy /
-// promo / discounted price sees what they actually pay. Best-effort: any Stripe
-// error just leaves the price fields null and the UI falls back to the catalog.
-async function readActualPrice(stripeSubscriptionId: string | null) {
-  if (!stripeSubscriptionId) return null;
+interface SubPriceRow {
+  provider_subscription_id: string | null;
+  amount: number | null;
+  currency: string | null;
+  billing_interval: string | null;
+  price_synced_at: string | null;
+}
+
+// Плоское представление цены из кэшированной строки подписки.
+function cachedPrice(sub: SubPriceRow) {
+  return sub.amount == null ? null : {
+    amount: Number(sub.amount),                        // minor units (cents)
+    currency: (sub.currency || 'usd').toUpperCase(),
+    interval: sub.billing_interval,                    // 'month' | 'year' | null
+  };
+}
+
+// Возвращает ТОЧНУЮ цену, которую платит юзер (легаси/промо/скидка) — из строки
+// подписки. Lazy-TTL кэш: свежая метка price_synced_at → отдаём из БД без Stripe;
+// протухла/пуста → один живой fetch подписки + write-back кэша. Best-effort: любая
+// ошибка Stripe откатывается на кэш (пусть слегка устаревший) либо null → UI на каталог.
+async function readActualPrice(sub: SubPriceRow | null) {
+  if (!sub) return null;
+  if (isPriceCacheFresh(sub.price_synced_at) && sub.amount != null) return cachedPrice(sub);
+
+  const subId = sub.provider_subscription_id;
   const key = Deno.env.get('STRIPE_SECRET_KEY');
-  if (!key) return null;
+  if (!subId || !key) return cachedPrice(sub);
   try {
     const adapter = new StripeAdapter(key, stripeEnv(key));
-    const sub = await adapter.fetchSubscription(stripeSubscriptionId, { expand: ['items.data.price'] });
-    const price = sub.items?.data?.[0]?.price as Stripe.Price | undefined;
-    if (!price || price.unit_amount == null) return null;
+    const live = await adapter.fetchSubscription(subId, { expand: ['items.data.price'] });
+    const price = live.items?.data?.[0]?.price as Stripe.Price | undefined;
+    if (!price || price.unit_amount == null) return cachedPrice(sub);
+    const interval = price.recurring?.interval ?? null;
+    const currency = (price.currency || 'usd').toUpperCase();
+    const { error } = await supabaseAdmin.from('subscription').update({
+      amount: price.unit_amount,
+      currency,
+      ...(interval === 'month' || interval === 'year' ? { billing_interval: interval } : {}),
+      price_synced_at: new Date().toISOString(),
+    }).eq('provider_subscription_id', subId);
+    if (error) console.error('getUserPlan: price cache write-back failed', error.message);
     return {
-      amount: price.unit_amount,                 // minor units (cents)
-      currency: (price.currency || 'usd').toUpperCase(),
-      interval: price.recurring?.interval || null, // 'month' | 'year'
+      amount: price.unit_amount,
+      currency,
+      interval,
     };
   } catch (e) {
     console.error('getUserPlan: failed to read Stripe price', e);
-    return null;
+    return cachedPrice(sub);
   }
 }
 
@@ -78,7 +107,7 @@ Deno.serve(async (req) => {
       // Активная подписка из реестра — отдаёт тип плана и состояние отмены.
       const { data: subs } = await supabaseAdmin
         .from('subscription')
-        .select('product_code, provider_subscription_id, cancel_at_period_end, status, created_at')
+        .select('product_code, provider_subscription_id, cancel_at_period_end, status, created_at, amount, currency, billing_interval, price_synced_at')
         .eq('user_id', user.id)
         .in('product_code', ['account_pro_monthly', 'account_pro_yearly'])
         .in('status', [...ENTITLING_STATUSES])
@@ -88,7 +117,7 @@ Deno.serve(async (req) => {
       // Единый вокабуляр: фронт получает product_code напрямую (без plan_type-моста).
       const productCode = latest ? (latest.product_code as string) : null;
 
-      const actualPrice = await readActualPrice(latest?.provider_subscription_id || null);
+      const actualPrice = await readActualPrice(latest);
 
       return Response.json({
         plan: 'pro',
