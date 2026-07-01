@@ -85,7 +85,7 @@
   padding: 5px 12px; border-radius: var(--r-pill);
   background: var(--primary-soft); color: var(--brand);
   border: none; font-family: var(--font-ui);
-  font-size: var(--fs-meta); font-weight: 800;
+  font-size: var(--fs-meta); font-weight: 700;
   transition: background .15s, color .15s;
   cursor: pointer;
 }
@@ -126,7 +126,7 @@
 }
 .ncal-wd {
   text-align: center;
-  font-size: var(--fs-nano); font-weight: 800;
+  font-size: var(--fs-nano); font-weight: 700;
   letter-spacing: .08em; text-transform: uppercase;
   color: var(--muted-2); padding: 5px 0;
 }
@@ -163,7 +163,7 @@
   height: 20px;
   display: flex; align-items: center;
   padding: 0 9px;
-  font-size: var(--fs-nano); font-weight: 800;
+  font-size: var(--fs-nano); font-weight: 700;
   color: rgba(255,255,255,.92);
   letter-spacing: .05em; text-transform: uppercase;
   white-space: nowrap; overflow: hidden;
@@ -182,7 +182,7 @@
   flex: 1; height: 100%;
   display: flex; align-items: center;
   padding: 0 6px;
-  font-size: var(--fs-nano); font-weight: 800;
+  font-size: var(--fs-nano); font-weight: 700;
   color: rgba(255,255,255,.9);
   letter-spacing: .04em; text-transform: uppercase;
   overflow: hidden; white-space: nowrap; min-width: 0;
@@ -239,7 +239,7 @@
   display: inline-flex; align-items: center;
   padding: 2px 8px; border-radius: var(--r-pill);
   background: var(--primary-soft); color: var(--brand);
-  font-size: var(--fs-nano); font-weight: 800;
+  font-size: var(--fs-nano); font-weight: 700;
   border: none; font-family: var(--font-ui);
   margin-top: 2px; cursor: pointer;
   transition: background .14s;
@@ -297,7 +297,7 @@
   box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
 .ncal-wdc-wd {
-  font-size: var(--fs-nano); font-weight: 800;
+  font-size: var(--fs-nano); font-weight: 700;
   text-transform: uppercase; letter-spacing: .07em;
   color: var(--muted-2); margin-top: 5px;
 }
@@ -305,7 +305,7 @@
 .ncal-wdc-city {
   display: inline-flex; align-items: center;
   padding: 3px 9px; border-radius: var(--r-pill);
-  font-size: var(--fs-nano); font-weight: 800; margin-top: 8px;
+  font-size: var(--fs-nano); font-weight: 700; margin-top: 8px;
   letter-spacing: .04em; text-transform: uppercase;
 }
 /* Multiple city badges row */
@@ -342,11 +342,11 @@
 .ncal-aev:hover { filter: brightness(.97); }
 .ncal-aev:active { transform: scale(.98); }
 .ncal-aev .atm {
-  font-size: var(--fs-nano); font-weight: 800;
+  font-size: var(--fs-nano); font-weight: 700;
   opacity: .7; font-variant-numeric: tabular-nums;
 }
 .ncal-aev .atl {
-  font-size: var(--fs-micro); font-weight: 800;
+  font-size: var(--fs-micro); font-weight: 700;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ncal-aev.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
@@ -364,7 +364,7 @@
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
 }
 .ncal-legend-lbl {
-  font-size: var(--fs-nano); font-weight: 800;
+  font-size: var(--fs-nano); font-weight: 700;
   text-transform: uppercase; letter-spacing: .07em;
   color: var(--muted-2); width: 64px; flex: none;
 }

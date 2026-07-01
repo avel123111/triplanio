@@ -833,7 +833,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           <Card title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 800 }}>{t('settings.warn_bookings_title')}</div>
+                <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 700 }}>{t('settings.warn_bookings_title')}</div>
                 <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{t('settings.warn_bookings_desc')}</div>
               </div>
               <Toggle on={bookingWarnings} busy={busyToggle === 'booking_warnings'} onChange={toggleBookingWarnings} />
