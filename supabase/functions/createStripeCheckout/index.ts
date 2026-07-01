@@ -63,12 +63,19 @@ Deno.serve(async (req) => {
     if (productCode === 'trip_pro_lifetime') {
       if (!tripId) return Response.json({ error: 'tripId required for trip_pro_lifetime' }, { status: 400, headers: corsHeaders });
       const { data: trip } = await supabaseAdmin
-        .from('trips').select('id, created_by, is_pro_trip').eq('id', tripId).single();
+        .from('trips').select('id, created_by').eq('id', tripId).single();
       if (!trip) return Response.json({ error: 'Trip not found' }, { status: 404, headers: corsHeaders });
       if (trip.created_by !== user.id) {
         return Response.json({ error: 'Only the trip owner can buy Pro for this trip' }, { status: 403, headers: corsHeaders });
       }
-      if (trip.is_pro_trip) {
+      // Уже Pro по ЛЮБОЙ оси → второй раз не продаём. Единый предикат
+      // is_trip_pro = is_pro_trip OR is_user_pro(created_by) закрывает рассинхрон
+      // сервер↔фронт: владелец с активной подпиской имеет is_pro_trip=false, но трип
+      // уже Pro через подписку — прежний чек по колонке этого не видел. Fail-closed:
+      // ошибка предиката → 500 (не начинаем оплату), а не молчаливое списание.
+      const { data: alreadyPro, error: proErr } = await supabaseAdmin.rpc('is_trip_pro', { p_trip_id: tripId });
+      if (proErr) throw proErr;
+      if (alreadyPro) {
         return Response.json({ error: 'This trip is already Pro', code: 'TRIP_ALREADY_PRO' }, { status: 409, headers: corsHeaders });
       }
     } else {
