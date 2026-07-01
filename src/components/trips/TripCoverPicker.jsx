@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Upload, Loader2, Check } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 import { TRIP_BUCKET, SIGNED_URL_TTL, DRAFT_PREFIX, tripStoragePath } from '@/lib/storage';
+import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { TRIP_GRADIENTS, getGradientById } from '@/lib/trip-gradients';
 import { useT } from '@/lib/i18n/I18nContext';
 import './TripCoverPicker.css';
@@ -26,10 +27,22 @@ export default function TripCoverPicker({
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  // Covers uploaded during THIS picker session. When such a staged cover is
+  // replaced (new upload / gradient) it's an orphan → delete it immediately.
+  // A cover that arrived via props is the persisted one; its replacement is
+  // swept by the parent's save-time diff, not here (TRIP-117).
+  const stagedUrls = useRef(new Set());
+  const sweepIfStaged = (url) => {
+    if (url && stagedUrls.current.has(url)) {
+      stagedUrls.current.delete(url);
+      removeTripFiles(collectDocPaths([], url));
+    }
+  };
 
   const gradient = getGradientById(coverGradient);
 
   const handlePickGradient = (id) => {
+    sweepIfStaged(coverImageUrl);
     onChange({ cover_image_url: '', cover_gradient: id });
   };
 
@@ -58,6 +71,8 @@ export default function TripCoverPicker({
         .from(TRIP_BUCKET)
         .createSignedUrl(path, SIGNED_URL_TTL);
       if (signErr || !signed?.signedUrl) throw signErr || new Error(t('trip.cover_upload_failed'));
+      sweepIfStaged(coverImageUrl); // replacing an earlier staged upload
+      stagedUrls.current.add(signed.signedUrl);
       onChange({ cover_image_url: signed.signedUrl, cover_gradient: '' });
     } catch (err) {
       setError(err?.message || t('trip.cover_upload_failed'));

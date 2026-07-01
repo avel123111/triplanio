@@ -494,6 +494,14 @@ export default function ScreenAccount() {
       const url = `${publicUrl}?t=${Date.now()}`;
       const { error: dbErr } = await supabase.from('users').update({ avatar_url: url }).eq('id', user.id);
       if (dbErr) throw dbErr;
+      // Uploading a different extension (png→jpg) leaves the previous avatar.<ext>
+      // behind (upsert only overwrites the same key). Sweep any stale avatar
+      // objects in the user's folder except the one we just wrote (TRIP-117).
+      try {
+        const { data: files } = await supabase.storage.from('avatars').list(user.id);
+        const stale = (files || []).map(f => `${user.id}/${f.name}`).filter(p => p !== path);
+        if (stale.length) await supabase.storage.from('avatars').remove(stale);
+      } catch (e) { console.error('avatar stale-sweep failed', e); }
       setAvatarUrl(url);
       await checkUserAuth?.();
     } catch (e) {

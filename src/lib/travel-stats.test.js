@@ -112,3 +112,24 @@ test('counts are by trip/manual units, not city-stops', () => {
   const oneTrip = tripUnitPts.filter((p) => p.trip_id === 'A');
   assert.equal(citiesList(oneTrip)[0].count, 1);
 });
+
+// TRIP-65 — the core cross-locale case: the SAME physical city added on a trip in
+// English ("Moscow") and as a manual stat pin in Russian ("Москва") shares one
+// geonameid, so it dedups to a single city despite the two name strings. Before
+// geonameid identity, these keyed on `moscow|ru` vs `москва|ru` → counted twice.
+const crossLocalePts = [
+  { id: 1, kind: 'trip', trip_id: 'A', geonameid: 524901, city_name: 'Moscow', country_code: 'RU', start_date: '2024-05-01', end_date: '2024-05-04' },
+  { id: 2, kind: 'custom', trip_id: null, geonameid: 524901, city_name: 'Москва', country_code: 'RU', start_date: '2023-01-01', end_date: '2023-01-03' },
+];
+
+test('TRIP-65: one city across locales (trip EN + manual RU) dedups by geonameid', () => {
+  assert.equal(countCities(crossLocalePts), 1);
+  const list = citiesList(crossLocalePts);
+  assert.equal(list.length, 1);
+  assert.equal(list[0].count, 2); // one trip + one manual = 2 visit units
+  // A manual pin with no geonameid still counts via the name_i18n.en snapshot the
+  // RPC always emits (backfilled from city_name) — the dedup key never reads the
+  // dropped city_name column, so display-only rows are not lost.
+  const noGn = [{ id: 3, kind: 'custom', trip_id: null, geonameid: null, name_i18n: { en: 'Atlantis' }, city_name: 'Atlantis', country_code: 'XX', start_date: '2023-01-01', end_date: '2023-01-02' }];
+  assert.equal(countCities(noGn), 1);
+});

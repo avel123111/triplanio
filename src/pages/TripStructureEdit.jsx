@@ -8,6 +8,7 @@ import { useQueryGate } from '@/lib/useQueryGate';
 import TripLoadError from '@/components/trips/TripLoadError';
 import { rpcSetCityNights, rpcSetTripStartDate, rpcAddCity, rpcRemoveCity, rpcReorderCities, refetchTrip } from '@/lib/tripEdit';
 import { layoutDates } from '@/lib/tripDates';
+import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import CityRow from '@/components/trip/CityRow';
 import NightsStepper from '@/components/trip/NightsStepper';
@@ -483,7 +484,18 @@ export default function TripStructureEdit() {
       const node = d.nodes.find((n) => n.id === id); if (!node) return d;
       return { ...d, nodes: d.nodes.filter((n) => n.id !== id) };
     });
-    if (!String(id).startsWith('tmp-')) runAction(() => rpcRemoveCity(id));
+    if (String(id).startsWith('tmp-')) return; // never persisted → no server rows / files
+    // remove_city cascade-deletes this city's hotels/activities/transfers server-side, but
+    // SQL can't reach Storage. Collect the SAME set's document paths and sweep them via the
+    // single shared file primitive (removeTripFiles) — only AFTER the RPC succeeds (onResult),
+    // else those bookings' files orphan until the whole trip is deleted (TRIP-137). Mirrors
+    // remove_city's cascade set: transfers touching the city on either end.
+    const orphanPaths = [
+      ...liveHotels.filter((h) => h.city_visit_id === id),
+      ...liveActivities.filter((a) => a.city_visit_id === id),
+      ...liveTransfers.filter((tr) => tr.from_city_visit_id === id || tr.to_city_visit_id === id),
+    ].flatMap((e) => collectDocPaths(e.documents));
+    runAction(() => rpcRemoveCity(id), () => removeTripFiles(orphanPaths));
   };
   // Start/finish anchors go through the same confirm dialog as regular cities.
   const removeEndpoint = (id) => { const n = draft.nodes.find((x) => x.id === id); if (n) setConfirmDel(n); };

@@ -25,6 +25,7 @@ import TelegramUnlinkDialog from '@/components/common/TelegramUnlinkDialog';
 import { useConfirm } from '@/components/common/ConfirmProvider';
 import { telegram as tgBrand } from '@/lib/externalBrands';
 import TripCoverPicker from '@/components/trips/TripCoverPicker';
+import { collectDocPaths, removeTripFiles } from '@/lib/storageCleanup';
 import { DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
@@ -521,6 +522,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     if (!title.trim()) return;
     setSaving(true);
     const prevCurrency = trip?.details?.main_currency || trip?.main_currency || 'EUR';
+    const prevCoverUrl = trip?.cover_image_url || '';
     const fields = {
       title: title.trim(),
       description: description.trim() || null,
@@ -541,6 +543,12 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
     }
     setSaving(false);
     if (error || !data?.ok) { toast({ description: t('settings.save_error2', { message: error?.message || data?.code || t('members.error_generic') }), variant: 'destructive' }); return; }
+    // Cover replaced/cleared → the previously persisted object is now orphaned.
+    // Delete it best-effort, comparing object KEYS (signed-URL tokens differ but
+    // the key is stable) so we never delete the key the new cover still uses (TRIP-117).
+    const prevPath = collectDocPaths([], prevCoverUrl)[0];
+    const newPath = collectDocPaths([], fields.cover_image_url)[0];
+    if (prevPath && prevPath !== newPath) removeTripFiles([prevPath]);
     // Optimistically patch the shell cache so the header title + cover update
     // instantly, then invalidate to reconcile with the server.
     queryClient?.setQueryData(TRIP_SHELL_KEY(tripId), (old) =>

@@ -26,7 +26,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
   const qc = useQueryClient();
   const isEdit = !!editing;
 
-  const [city, setCity] = useState(null);   // { city_name, country_code, latitude, longitude }
+  const [city, setCity] = useState(null);   // { geonameid, name_i18n, city_name, country_code, latitude, longitude }
   const [from, setFrom] = useState(todayISO());
   const [to, setTo] = useState(todayISO());
   const [picking, setPicking] = useState(true);
@@ -38,7 +38,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
     if (!open) return;
     setErr(''); setSaving(false);
     if (editing) {
-      setCity({ city_name: editing.city_name, country_code: editing.country_code, latitude: editing.lat, longitude: editing.lng });
+      setCity({ geonameid: editing.geonameid ?? null, name_i18n: editing.name_i18n || null, city_name: editing.city_name, country_code: editing.country_code, latitude: editing.lat, longitude: editing.lng });
       setFrom(editing.start_date || todayISO());
       setTo(editing.end_date || editing.start_date || todayISO());
       setPicking(false);
@@ -57,9 +57,13 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
     setSaving(true); setErr('');
     // user_id is set explicitly: the RLS insert/update policy requires it to equal
     // auth.uid() (a user can only write their own visits).
+    // Identity + display follow the trip-city model (TRIP-65): geonameid dedups
+    // cross-locale, name_i18n is the localized snapshot. Both come straight from
+    // the CitySearch pick. The dropped city_name column is no longer written.
     const row = {
       user_id: user.id,
-      city_name: city.city_name,
+      geonameid: city.geonameid ?? null,
+      name_i18n: city.name_i18n || null,
       country_code: city.country_code || null,
       lat: city.latitude ?? null,
       lng: city.longitude ?? null,

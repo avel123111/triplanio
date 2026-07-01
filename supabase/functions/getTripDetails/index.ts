@@ -114,7 +114,13 @@ Deno.serve(async (req) => {
       add('members',    supabaseAdmin.from('trip_members').select('*').eq('trip_id', tripId));
     }
     if (wantDocuments) {
-      add('documents',  supabaseAdmin.from('trip_documents').select('*').eq('trip_id', tripId));
+      // Private-document guard (TRIP-118). supabaseAdmin bypasses RLS, so the
+      // trip_documents RLS policy does NOT protect this read — we must filter
+      // here. Caller sees shared docs + only their OWN private docs. user.id
+      // comes from the verified JWT (getRequestUser), never the request body,
+      // so it cannot be spoofed to read someone else's private docs.
+      add('documents',  supabaseAdmin.from('trip_documents').select('*').eq('trip_id', tripId)
+        .or(`visibility.eq.shared,created_by.eq.${user.id}`));
     }
     if (wantBudget) {
       add('budget',           supabaseAdmin.from('trip_budgets').select('*').eq('trip_id', tripId));
