@@ -2157,7 +2157,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .bookrow:active { transform: translateY(0) scale(.99); }
 .bi { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; flex: none; }
 .bt { flex: 1; min-width: 0; }
-.bt b { font-size: var(--fs-base); font-weight: 700; color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bt b { font-size: var(--fs-base); font-weight: 600; color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bt span { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--muted); font-weight: 600; }
 .chev { width: 16px; height: 16px; color: var(--muted-2); flex: none; }
 
@@ -2168,7 +2168,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .gadd .gi { width: 34px; height: 34px; border: 1.5px dashed var(--line-strong); background: transparent; color: var(--muted-2); }
 .gadd:hover .gi { border-color: var(--a, var(--primary)); color: var(--a, var(--primary)); }
 .gt { flex: 1; min-width: 0; }
-.gt b { font-size: var(--fs-base); font-weight: 700; color: var(--muted); display: block; }
+.gt b { font-size: var(--fs-base); font-weight: 600; color: var(--muted); display: block; }
 .gt span { font-size: var(--fs-micro); color: var(--muted-2); font-weight: 600; }
 
 .stepper { display: inline-flex; align-items: center; gap: 3px; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
