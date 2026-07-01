@@ -169,6 +169,16 @@ export default function TripStructureEdit() {
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
+  // TRIP-161: the two-column desktop layout (>1080px, mirrors the .ts-grid CSS
+  // breakpoint). Only there do side panels open as a full-height drawer over the
+  // left column; below it we keep the in-flow swap, ≤640 the bottom sheet.
+  const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1081px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1081px)');
+    const onChange = () => setIsWide(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
   // A11y: when an in-place left panel opens, move focus into it (its back button
   // if present) so keyboard/SR users land in the new context; Esc closes it.
   const leftPaneRef = useRef(null);
@@ -796,6 +806,13 @@ export default function TripStructureEdit() {
   // Key the left pane on its identity so React remounts it on panel change →
   // the .te-panefade entry animation replays.
   const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
+  // TRIP-161: on the desktop two-column layout every side panel EXCEPT "add
+  // city" opens as a full-height drawer over the left column (route rail stays
+  // mounted underneath; the map keeps interactive — no scrim). Add-city and the
+  // ≤1080 / ≤640 fallbacks keep swapping the rail in place.
+  const isDrawerPanel = !!leftPanel && leftPanel.type !== 'cityadd';
+  const useDrawer = isWide && isDrawerPanel && !!leftPanelEl;
+  const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
 
   // Trip-start control — lives in the "Маршрут" panel header. The stepper shifts
   // the whole itinerary by ±1 day; tapping the date opens a calendar to jump to
@@ -902,10 +919,12 @@ export default function TripStructureEdit() {
             side panel fills the same box. */}
         <div className="ts-col-left" style={{ position: 'relative', minWidth: 0, display: 'flex', minHeight: 0, background: 'var(--bg)' }}>
           <div className="ts-leftbox">
-          <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={leftPanel ? (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } } : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
-          {/* Desktop: panel replaces the column. Mobile: column keeps the cities
-              list; the panel opens as a Radix bottom-sheet (rendered below). */}
-          {(!isSheet && leftPanelEl) || (<>
+          <div key={useDrawer ? 'list' : panelKey} ref={useDrawer ? null : leftPaneRef} tabIndex={-1} onKeyDown={(leftPanel && !useDrawer) ? onPanelEsc : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
+          {/* Desktop (>1080): "add city" replaces the column; other panels open as
+              a drawer overlay (below) and the rail stays here. ≤1080: the panel
+              replaces the column. ≤640: the column keeps the cities list and the
+              panel opens as a Radix bottom-sheet (rendered below). */}
+          {(!isSheet && !useDrawer && leftPanelEl) || (<>
           <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--surface)' }}>
           {/* "Маршрут" container header — scrolls WITH the list (not sticky), the
               same as on mobile. A left panel replaces this whole column. */}
@@ -1015,6 +1034,16 @@ export default function TripStructureEdit() {
             </DialogPrimitive.Root>
           )}
           </div>{/* /ts-leftbox */}
+
+          {/* TRIP-161: side-panel DRAWER (city / fork / event view+edit) on the
+              desktop two-column layout. Overlays the left column edge-to-edge, up
+              to the map — no scrim, so the map (and its hotel pins) stays
+              interactive. The route rail stays mounted underneath. */}
+          {useDrawer && (
+            <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc} className="ts-pdrawer">
+              {leftPanelEl}
+            </div>
+          )}
         </div>
 
         {/* RIGHT - full-height map (always on; hidden on phones via CSS);
@@ -1102,6 +1131,12 @@ export default function TripStructureEdit() {
         @media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
         .te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
         @keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+        /* TRIP-161: side-panel drawer over the left column. Full height up to the
+           map, no scrim (the map stays interactive), route rail mounted beneath.
+           Reuses the .lp shell as its content; desktop two-column only. */
+        .ts-pdrawer { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
+        .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
+        @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
         /* Warnings FAB: lift on hover, press on click. */
         .ts-fab { transition: transform .16s var(--ease-out), box-shadow .16s var(--ease-out); }
         .ts-fab:hover { transform: scale(1.06); }
@@ -1112,7 +1147,7 @@ export default function TripStructureEdit() {
         @keyframes tsBackdropIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes tsCardIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
         @media (prefers-reduced-motion: reduce) {
-          .te-panefade, .ts-confirm-backdrop, .ts-confirm-card { animation: none; }
+          .te-panefade, .ts-confirm-backdrop, .ts-confirm-card, .ts-pdrawer { animation: none; }
           .ts-fab:hover, .ts-fab:active, .ts-step:active { transform: none; }
         }
         @media (max-width: 1080px) {
