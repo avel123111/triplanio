@@ -1332,7 +1332,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    matches the editor row exactly — one component, one look. The resting card look
    is set here because the planner list is NOT inside .te-table. */
 .te-row.te-row--plan { grid-template-columns: 16px 28px minmax(0, 1fr) auto; padding: 13px 14px; border: 1px solid var(--line); background: var(--surface); border-radius: 16px; box-shadow: var(--sh-1); cursor: default; }
-.te-row.te-row--plan.te-row--fin { background: var(--warm-tint, color-mix(in oklab, var(--warm) 14%, transparent)); border-color: var(--warm); }
+/* Finish (final-point) uses the SAME brand accent as the start anchor — one
+   blue endpoint look across the flow (no warm/orange divergence). */
+.te-row.te-row--plan.te-row--fin { background: var(--brand-soft); border-color: var(--brand); }
 .te-row.te-row--plan.te-row--bad { border-color: var(--danger); }
 .te-row.te-row--plan .te-row__pacts { display: inline-flex; align-items: center; gap: 8px; justify-self: end; }
 /* Planner has no reliable row-hover (esp. touch) → nights +/- and delete are
@@ -1349,10 +1351,14 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    strip holds the final-point toggle, so the toggle reads as part of the last
    city (the finish), not a stray control. */
 .pl-lastcard { border: 1px solid var(--line); border-radius: 15px; background: var(--surface); box-shadow: var(--sh-1); overflow: hidden; }
-.pl-lastcard.is-fin { border-color: var(--warm); }
+.pl-lastcard.is-fin { border-color: var(--brand); }
 .pl-lastcard > .te-row--plan { border: none; border-radius: 0; box-shadow: none; }
 .pl-lastcard > .te-row--plan.is-dragging { box-shadow: none; }
 .pl-fin-sub { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px dashed var(--line-2); }
+/* Add-start affordance — the empty-origin variant of .te-end (dashed, clickable).
+   One control for both flows (manual skip + AI no-origin). */
+.te-end--add { width: 100%; text-align: left; border-style: dashed; cursor: pointer; transition: border-color .15s, background .15s; }
+.te-end--add:hover { border-color: var(--brand); background: var(--brand-soft); }
 
 /* Trip-start control + mini-calendar (.ts-*) — shared by the editor and the
    planner. These lived only in TripStructureEdit's inline <style>, so the planner
