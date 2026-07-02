@@ -31,6 +31,9 @@ const originalCss = new WeakMap(); // element → prior inline cssText (for rese
 const previewStates = new WeakMap();// element → {keys:Set, track:int} — preview-only states (caps/track/mono/mute)
 
 let els = {};                  // cached DOM refs (launcher, hi, panel, tray…)
+let panelMoved = false;        // user dragged the panel → stop auto-repositioning
+let dragging = false;          // a panel/tray drag is in progress (suppress hover/select)
+const offCanon = new Set();    // elements currently flagged off-canon (red highlight)
 
 // ── canon/modifier helpers ─────────────────────────────────────────────────
 const psFor = (el) => previewStates.get(el) || { keys: new Set(), track: 0 };
@@ -128,6 +131,9 @@ function injectStyles() {
   .ci-row__x { float: right; color: #64748b; cursor: pointer; padding-left: 8px; }
   .ci-row__x:hover { color: #fca5a5; }
   .ci-empty { padding: 16px 14px; color: #64748b; font-size: 12px; }
+  .ci-panel__head, .ci-tray__head { cursor: move; }
+  .ci-offcanon-hi { outline: 2px solid #ef4444 !important; outline-offset: 1px;
+    background: rgba(239,68,68,.10) !important; }
   `;
   document.head.appendChild(s);
 }
@@ -160,10 +166,14 @@ function enable() {
   document.addEventListener('mousemove', onMove, true);
   document.addEventListener('click', onClick, true);
   document.addEventListener('keydown', onKey, true);
+  highlightOffCanon();          // flag every off-canon text element in red
 }
 function disable() {
   active = false;
   selected = null;
+  dragging = false;
+  panelMoved = false;
+  clearOffCanon();
   els.launcher.classList.remove('is-on');
   els.hi.style.display = 'none';
   els.panel.style.display = 'none';
@@ -175,6 +185,7 @@ function disable() {
 const isOurs = (el) => !!(el && el.closest && el.closest('.' + ROOT_CLASS));
 
 function onMove(e) {
+  if (dragging) { els.hi.style.display = 'none'; return; }
   const el = e.target;
   if (isOurs(el)) { els.hi.style.display = 'none'; return; }
   const r = el.getBoundingClientRect();
@@ -182,6 +193,7 @@ function onMove(e) {
 }
 
 function onClick(e) {
+  if (dragging) return;         // trailing click after a drag — ignore
   if (isOurs(e.target)) return; // let our own UI work normally
   e.preventDefault();
   e.stopPropagation();
@@ -189,6 +201,61 @@ function onClick(e) {
 }
 
 function onKey(e) { if (e.key === 'Escape') disable(); }
+
+// ── draggable panels ───────────────────────────────────────────────────────
+// Drag a floating element by a handle (its header). Buttons inside the handle
+// keep working (drag ignores mousedown that starts on a button).
+function makeDraggable(box, handle, onStart) {
+  handle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || e.target.closest('button')) return;
+    e.preventDefault();
+    const r = box.getBoundingClientRect();
+    const offX = e.clientX - r.left, offY = e.clientY - r.top;
+    dragging = true;
+    if (onStart) onStart();
+    box.style.right = 'auto'; box.style.bottom = 'auto';
+    const move = (ev) => {
+      const left = Math.max(0, Math.min(ev.clientX - offX, window.innerWidth - box.offsetWidth));
+      const top = Math.max(0, Math.min(ev.clientY - offY, window.innerHeight - box.offsetHeight));
+      box.style.left = left + 'px'; box.style.top = top + 'px';
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move, true);
+      document.removeEventListener('mouseup', up, true);
+      setTimeout(() => { dragging = false; }, 0);   // swallow the trailing click
+    };
+    document.addEventListener('mousemove', move, true);
+    document.addEventListener('mouseup', up, true);
+  });
+}
+
+// ── off-canon highlighting ─────────────────────────────────────────────────
+// An element "owns text" if it has a non-empty direct text node (it renders
+// text itself, rather than only through children) — those are what must sit on
+// a canon. On enable we flag every such element that detects as off-canon.
+function ownsText(el) {
+  for (const n of el.childNodes) if (n.nodeType === 3 && n.textContent.trim()) return true;
+  return false;
+}
+const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'PATH', 'TEXTAREA', 'INPUT', 'OPTION']);
+function reflag(el) {
+  // Re-evaluate one element's off-canon state (used after preview/save/reset).
+  if (!active || isOurs(el)) return;
+  const off = ownsText(el) && !detectCanon(el, probed);
+  el.classList.toggle('ci-offcanon-hi', off);
+  if (off) offCanon.add(el); else offCanon.delete(el);
+}
+function highlightOffCanon() {
+  for (const el of document.body.querySelectorAll('*')) {
+    if (SKIP_TAGS.has(el.tagName) || isOurs(el) || !ownsText(el)) continue;
+    if (!el.getClientRects().length) continue;               // not rendered
+    if (!detectCanon(el, probed)) { el.classList.add('ci-offcanon-hi'); offCanon.add(el); }
+  }
+}
+function clearOffCanon() {
+  for (const el of offCanon) el.classList.remove('ci-offcanon-hi');
+  offCanon.clear();
+}
 
 // ── scope (element vs. all-like-this) ──────────────────────────────────────
 function scopeTargets(el) {
@@ -290,11 +357,13 @@ function render(el) {
 
   els.panel.innerHTML = '';
   els.panel.append(head, mods, ...list.childNodes, foot);
+  makeDraggable(els.panel, head, () => { panelMoved = true; });   // drag by header
 }
 
 function positionPanel(el) {
-  const r = el.getBoundingClientRect();
   els.panel.style.display = 'block';
+  if (panelMoved) return;                        // user moved it — keep their position
+  const r = el.getBoundingClientRect();
   const pw = 300, gap = 10;
   let left = r.right + gap;
   if (left + pw > window.innerWidth) left = Math.max(gap, r.left - pw - gap);
@@ -360,6 +429,7 @@ function applyPreview(el) {
     if (!baseCanon.has(t)) baseCanon.set(t, detectCanon(t, probed));
     if (!originalCss.has(t)) originalCss.set(t, t.getAttribute('style') || '');
     Object.assign(t.style, props, scss || {});
+    reflag(t);                              // now on a canon → drop red highlight
   }
 }
 function restorePreview(el) {
@@ -368,6 +438,7 @@ function restorePreview(el) {
     const prev = originalCss.get(t);
     if (prev) t.setAttribute('style', prev); else t.removeAttribute('style');
     originalCss.delete(t);
+    reflag(t);                              // back to its real canon → re-check highlight
   }
 }
 
@@ -438,6 +509,7 @@ function renderTray() {
 
   els.tray.innerHTML = '';
   els.tray.append(head, ...rows.childNodes);
+  makeDraggable(els.tray, head);            // drag the tray by its header
 }
 
 function removeChange(key) {
