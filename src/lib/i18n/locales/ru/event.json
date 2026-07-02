@@ -77,6 +77,7 @@
   "flight_n": "Рейс {number}",
   "flight_number": "Номер рейса",
   "flight_train_no": "Номер рейса / поезда",
+  "flight_no_ph": "TP 1379",
   "free_cancel_have": "Есть бесплатная отмена",
   "free_cancel_hint": "До какой даты можно отменить без штрафа",
   "free_cancel_until": "Бесплатная отмена до",

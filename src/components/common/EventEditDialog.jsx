@@ -1819,7 +1819,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         <div>
           <Label>{t('event.flight_train_no')}</Label>
           <AiField active={aiFields.has('flight_number')}>
-            <Input className="t-mono" value={form.flight_number} onChange={(e) => setField('flight_number', e.target.value)} placeholder="TP 1379" />
+            <Input className="t-mono" value={form.flight_number} onChange={(e) => setField('flight_number', e.target.value)} placeholder={t('event.flight_no_ph')} />
           </AiField>
         </div>
       </div>
@@ -2080,7 +2080,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
 
                 <div className="fld-grid" style={{ marginBottom: 12 }}>
                   <div><Label>{t('event.carrier')}</Label><AiField active={aiOn(seg, 'carrier')}><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder={t('event.carrier_ph')} /></AiField></div>
-                  <div><Label>{t('event.flight_train_no')}</Label><AiField active={aiOn(seg, 'flight_number')}><Input className="t-mono" value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></AiField></div>
+                  <div><Label>{t('event.flight_train_no')}</Label><AiField active={aiOn(seg, 'flight_number')}><Input className="t-mono" value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder={t('event.flight_no_ph')} /></AiField></div>
                 </div>
                 <div className="fld-grid">
                   <div><Label>{t('event.price')}</Label><AiField active={aiOn(seg, 'price')}><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></AiField></div>
