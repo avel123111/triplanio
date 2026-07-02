@@ -643,7 +643,7 @@ export default function Trips() {
             {/* Section header row */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <h2>{t('trips.page_title')}</h2>
+                <h2 className="t-ui">{t('trips.page_title')}</h2>
                 <div className="muted t-ui">
                   {t('trips.count_summary', { active: activeTrips.length, past: pastTrips.length })}
                 </div>
