@@ -8,14 +8,14 @@ const LOGO_URL = 'https://www.triplanio.com/triplanio-logo.png';
 
 const STYLES = `
 .jt-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-  font-family:"Nunito",ui-sans-serif,system-ui,-apple-system,sans-serif;color:#16294A;
+  font-family:'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif;color:#16294A;
   background:radial-gradient(900px 480px at 50% -8%,rgba(33,115,200,.12),transparent 62%),radial-gradient(700px 420px at 100% 110%,rgba(98,166,240,.10),transparent 60%),#F4F7FC;}
 .jt-card{width:100%;max-width:440px;background:#fff;border:1px solid #E9E8F2;border-radius:24px;
   box-shadow:0 18px 50px -20px rgba(22,41,74,.28);padding:48px 40px 40px;text-align:center;}
 .jt-logo{height:38px;width:auto;margin:0 auto 30px;display:block;}
-.jt-card h1{font-family:"Rubik",ui-sans-serif,system-ui,sans-serif;font-weight:700;font-size:25px;letter-spacing:-.02em;line-height:1.2;margin:0;}
+.jt-card h1{font-family:'Golos Text',ui-sans-serif,system-ui,sans-serif;font-weight:700;font-size:25px;letter-spacing:-.02em;line-height:1.2;margin:0;}
 .jt-lede{color:#7A7689;font-size:16px;line-height:1.55;margin:12px 0 0;}
-.jt-btn{font-family:"Rubik",ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:16px;color:#fff;
+.jt-btn{font-family:'Golos Text',ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:16px;color:#fff;
   background:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);border:none;border-radius:14px;width:100%;
   padding:15px 22px;margin-top:28px;cursor:pointer;box-shadow:0 10px 24px -8px rgba(33,115,200,.55);
   transition:transform .15s,box-shadow .15s;display:inline-flex;align-items:center;justify-content:center;gap:8px;}

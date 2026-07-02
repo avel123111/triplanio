@@ -5,7 +5,7 @@
    the dark theme.
    ================================================================= */
 
-@import url("https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap&subset=cyrillic,cyrillic-ext,latin");
+/* Шрифты грузятся глобально из src/design/fonts.css (@import в index.css) — TRIP-165 */
 
 :root {
   /* ===================================================================
@@ -140,10 +140,10 @@
   --shadow-card: var(--sh-2);
   --shadow-pop:  var(--sh-3);
 
-  --font-display: "Rubik",ui-sans-serif,system-ui,sans-serif;          /* Lumo — headings/buttons */
-  --font-ui:      "Nunito",ui-sans-serif,system-ui,-apple-system,sans-serif; /* Lumo — body/UI */
-  --font-mono:    ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  --display-tracking: -0.01em;   /* Rubik needs far less negative tracking than Inter Tight */
+  --font-display: 'Golos Text',ui-sans-serif,system-ui,sans-serif;          /* TRIP-165 — единая суперсемья */
+  --font-ui:      'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 — та же семья */
+  --font-mono:    'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace; /* TRIP-165 — коды/идентификаторы */
+  --display-tracking: -0.02em;   /* Golos — чуть плотнее для крупных заголовков */
 
   /* Motion — strong custom curves (built-in easings are too weak).
      ease-out for enter/hover/press, ease-in-out for on-screen movement. */
@@ -262,7 +262,7 @@ body {
   color: var(--ink);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "ss01","cv11";
+  font-variant-numeric: tabular-nums;   /* TRIP-165 — цифры выровнены во всём приложении */
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -293,6 +293,26 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .muted-2 { color: var(--muted-2); }
 .num { font-variant-numeric: tabular-nums; }
 .mono { font-family: var(--font-mono); }
+
+/* =================================================================
+   ТИПОГРАФИКА — 10 канонических текст-стилей (TRIP-165).
+   Единственный санкционированный набор на всё приложение. Каждый
+   класс полностью фиксирует гарнитуру+размер+вес+интерлиньяж+трекинг.
+   ЦВЕТ сюда НЕ входит — отдельная ось (цвет-токены/утилиты).
+   Правка одного класса меняет стиль во всём приложении разом.
+   Не задавать font-size/weight/line-height/letter-spacing вручную —
+   вешать один из .t-* (гард это энфорсит, TRIP-165 Фаза 1).
+   ================================================================= */
+.t-display    { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
+.t-title      { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
+.t-heading    { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 600; line-height: 1.1;  letter-spacing: -0.02em; }
+.t-subheading { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
+.t-label      { font-family: var(--font-display); font-size: var(--fs-h4);      font-weight: 600; line-height: 1.25; letter-spacing: 0; }
+.t-body       { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 400; line-height: 1.5;  letter-spacing: 0; }
+.t-ui         { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 600; line-height: 1.3;  letter-spacing: 0; }
+.t-meta       { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }
+.t-micro      { font-family: var(--font-ui);      font-size: var(--fs-micro);   font-weight: 700; line-height: 1.2;  letter-spacing: .08em; text-transform: uppercase; }
+.t-mono       { font-family: var(--font-mono);    font-size: var(--fs-meta);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }
 
 /* =================================================================
    OUTER PROTOTYPE CHROME (frame list + viewport)
@@ -1673,7 +1693,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Overlay (visible text) and textarea (transparent, caret source) MUST share
    identical glyph advance widths or the caret drifts ahead of the text. On iOS
    Safari a `font: inherit` <textarea> can fall back to the system font (wider
-   than Nunito) while this <div> overlay keeps Nunito — the textarea text then
+   than Golos Text) while this <div> overlay keeps Golos Text — the textarea text then
    runs wider and the caret ends up far ahead of the visible glyphs (mobile
    only, most visible around @triplanio). Pin BOTH layers to the SAME explicit
    family/size/weight/letter-spacing, and disable iOS text inflation, so their

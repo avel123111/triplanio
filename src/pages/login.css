@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap&subset=cyrillic,cyrillic-ext,latin");
+/* Шрифты грузятся глобально из src/design/fonts.css — TRIP-165 */
 
 /* Auth-only token overrides. MUST stay scoped to .auth — this stylesheet is
    injected globally by Vite when Login mounts and is never removed, so a global
@@ -34,8 +34,8 @@
   --radius-btn: 12px;
   --radius-pill: 999px;
 
-  --font-display: "Rubik",ui-sans-serif,system-ui,sans-serif;
-  --font-body:    "Nunito",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-display: 'Golos Text',ui-sans-serif,system-ui,sans-serif;              /* TRIP-165 */
+  --font-body:    'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 */
 
   --banner-photo: url("https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=70");
 }

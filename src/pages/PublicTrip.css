@@ -12,8 +12,8 @@
      :root would otherwise shift the body's fonts/neutrals/brand. Values mirror
      src/design/app.css — this isolates the Lumo body from the landing palette
      while the shared marketing header/footer keep their landing styling. */
-  --font-display:"Rubik",ui-sans-serif,system-ui,sans-serif;
-  --font-ui:"Nunito",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-display:'Golos Text',ui-sans-serif,system-ui,sans-serif;              /* TRIP-165 */
+  --font-ui:'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif;      /* TRIP-165 */
   --brand:#2173C8;
   --brand-grad:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
   --ink:#272433; --ink-2:#4A4659; --muted:#7A7689; --muted-2:#ABA7B8;
