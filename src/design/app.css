@@ -3262,6 +3262,11 @@ h4,
 /* language flag chip (reused by the language SearchSelect trigger + options) */
 .acct-lang__flag { width: 24px; height: 24px; border-radius: 7px; background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
 
+/* CountryFlag — SVG country flag (from /public/flags/<iso2>.svg), the single
+   flag primitive that replaced emoji flags. Height ties to the surrounding
+   font-size so it scales with any text style; width keeps the native aspect. */
+.cflag { display: inline-block; height: 1em; width: auto; vertical-align: -0.12em; border-radius: 2px; border: 1px solid rgba(0, 0, 0, .08); object-fit: cover; flex: 0 0 auto; }
+
 /* Preferences rows (variant C): the right-side control (language select / .seg)
    stays compact and right-aligned on desktop, and drops to its own full-width
    line under the label on phones (see the 640px block below). Without this the

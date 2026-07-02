@@ -6,7 +6,6 @@ import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbl
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit } from '@/lib/map/camera';
 import MapControls from '@/lib/map/MapControls';
-import { countryFlag } from '@/lib/geo';
 import { sortVisits } from '@/lib/validation';
 
 // Great-circle distance (km) between two visits — used to scale the reveal flyTo
@@ -492,11 +491,7 @@ export default function MapView({
       };
     });
     groupByLocation(points).forEach((g) => {
-      const title = g.data
-        .map((v) => `${countryFlag(v.country_code)} ${v.city_name}${v.country ? ', ' + v.country : ''}`)
-        .join(' • ');
       const el = createMarkerEl(g.labels.filter((l) => l != null), {
-        title,
         icon: iconForKinds(g.kinds),
         onClick: () => { const cb = onCityClickRef.current; if (cb) cb(g.data); },
       });

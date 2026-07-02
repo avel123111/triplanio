@@ -169,10 +169,3 @@ export async function cityNameEn(cityName, countryCode) {
   const best = (countryCode && rows.find(r => r.country_code === String(countryCode).toUpperCase())) || rows[0];
   return best?.city_name_en || '';
 }
-
-// Country code → emoji flag
-export function countryFlag(code) {
-  if (!code || code.length !== 2) return '🌍';
-  const cc = code.toUpperCase();
-  return String.fromCodePoint(...[...cc].map(c => 0x1f1a5 + c.charCodeAt(0)));
-}
