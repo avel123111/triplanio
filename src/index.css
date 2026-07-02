@@ -201,7 +201,7 @@ img, video {
   --chart-5: 254 82% 68%;
   --radius: 1rem;                       /* Lumo r-md 16px (ui-kit base) */
   --font-sans: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;  /* TRIP-165 — единая суперсемья */
-  --font-display: 'Golos Text', ui-sans-serif, system-ui, sans-serif;              /* TRIP-165 — та же семья */
+  --font-display: 'Exo 2', ui-sans-serif, system-ui, sans-serif;                   /* TRIP-175 — заголовочная гарнитура */
   --sidebar-background: 0 0% 100%;
   --sidebar-foreground: 252 17% 17%;
   --sidebar-primary: 211 72% 46%;

@@ -140,10 +140,10 @@
   --shadow-card: var(--sh-2);
   --shadow-pop:  var(--sh-3);
 
-  --font-display: 'Golos Text',ui-sans-serif,system-ui,sans-serif;          /* TRIP-165 — единая суперсемья */
+  --font-display: 'Exo 2',ui-sans-serif,system-ui,sans-serif;               /* TRIP-175 — заголовочная гарнитура (текст остаётся Golos через --font-ui) */
   --font-ui:      'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 — та же семья */
   --font-mono:    'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace; /* TRIP-165 — коды/идентификаторы */
-  --display-tracking: -0.02em;   /* Golos — чуть плотнее для крупных заголовков */
+  --display-tracking: -0.02em;   /* Exo 2 — чуть плотнее для крупных заголовков */
 
   /* Motion — strong custom curves (built-in easings are too weak).
      ease-out for enter/hover/press, ease-in-out for on-screen movement. */
@@ -299,13 +299,13 @@ h1, h2, h3, h4 {
    раскладка и цвет. (TRIP-165 Фаза 2)
    ================================================================= */
 .t-display,
-.ncal-month-lbl { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
+.ncal-month-lbl { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
 .t-title,
 h1,
 .plan-price__amount,
 .auth__h1,
 .budget__total .big,
-.head h1 { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
+.head h1 { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
 .t-heading,
 h2,
 .eroute h3,
@@ -327,7 +327,7 @@ h2,
 .tcp__ph,
 .ncal-wdc-num,
 .pt-mm .n,
-.ncal-year-lbl { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 600; line-height: 1.1;  letter-spacing: -0.02em; }
+.ncal-year-lbl { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.1;  letter-spacing: -0.02em; }
 .t-subheading,
 h3,
 .app-header__brand-name,
@@ -362,7 +362,7 @@ h3,
 .card h3,
 .step h3,
 .drawer li a,
-.ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
+.ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; }
 .t-label,
 h4,
 .choice-card__ttl,
@@ -388,7 +388,7 @@ h4,
 .va-ti b, .s22-ti b,
 .va-price b, .s22-price b,
 .ts-routehead__title,
-.cm-h { font-family: var(--font-display); font-size: var(--fs-h4);      font-weight: 600; line-height: 1.25; letter-spacing: 0; }
+.cm-h { font-family: var(--font-ui);      font-size: var(--fs-h4);      font-weight: 600; line-height: 1.25; letter-spacing: 0; }   /* TRIP-175: .t-label остаётся на Golos (--font-ui), не уходит в Exo 2 */
 .t-body,
 .proto__nav-item,
 .app-header .app-header__avatar,
