@@ -912,9 +912,9 @@ export default function TripStructureEdit() {
       />
     </div>
     <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
-      <div className="ts-railwrap" style={{ flex: '0 0 56px', minWidth: 0, position: 'relative', minHeight: 0 }}>
+      <div className="ts-sidecol" style={{ flex: '0 0 220px', minWidth: 0, minHeight: 0 }}>
         <TripSidebar
-          tripId={tripId} trip={trip} isEditScreen collapsed
+          tripId={tripId} trip={trip} isEditScreen
           onNavigate={(id) => leaveNow(`/trip/${tripId}?lens=${id}`)}
           isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
           onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
