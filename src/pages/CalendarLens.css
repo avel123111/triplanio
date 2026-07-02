@@ -17,7 +17,6 @@
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  line-height: 1;
 }
 .ncal-month-lbl {
   color: var(--ink);
@@ -170,7 +169,7 @@
 /* ── Day number ────────────────────────────────────────────────── */
 .ncal-dn-wrap { padding: 0 8px 4px; }
 .ncal-dn {
-  color: var(--ink-2); line-height: 1;
+  color: var(--ink-2);
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 27px; padding: 0;
 }
@@ -260,7 +259,7 @@
   border-bottom: 1px solid var(--line-2);
 }
 .ncal-wdc-num {
-  color: var(--ink); line-height: 1;
+  color: var(--ink);
   display: inline-block;
 }
 .ncal-wdc.is-today .ncal-wdc-num {
@@ -413,8 +412,8 @@
   /* Header: stack */
   .ncal-hd { flex-direction: column; gap: 10px; align-items: stretch; margin-bottom: 14px; }
   .ncal-hd-l { width: 100%; }
-  .ncal-month-lbl { font-size: clamp(26px, 9vw, 38px); }
-  .ncal-year-lbl  { font-size: clamp(15px, 5vw, 20px); margin-left: 8px; }
+  .ncal-month-lbl { font-size: var(--fs-h2); }
+  .ncal-year-lbl  { font-size: var(--fs-strong); margin-left: 8px; }
   /* Controls: nav + toggle in one row */
   .ncal-hd-r {
     flex-direction: row; align-items: center;
@@ -438,7 +437,7 @@
   .ncal-dn-wrap { padding: 0 4px 3px; }
   .ncal-ev     { padding: 2px 4px; border-radius: 5px; }
   .ncal-ev .tm { display: none; }
-  .ncal-ev .t  { font-size: var(--fs-nano); line-height: 1.2; }
+  .ncal-ev .t  { font-size: var(--fs-nano); }
   .ncal-evl    { padding: 0 3px; gap: 2px; }
   .ncal-more   { padding: 1px 6px; font-size: var(--fs-nano); }
 

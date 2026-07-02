@@ -173,7 +173,7 @@
   color: var(--ink-2);
 }
 .field__hint { color: var(--muted); }
-.field__hint a { color: var(--brand); font-weight: 500; text-decoration: none; }
+.field__hint a { color: var(--brand); text-decoration: none; }
 .field__hint a:hover { color: var(--brand-600); }
 
 .input-wrap { position: relative; }
@@ -300,7 +300,6 @@
 .terms {
   margin-top: 16px;
   color: var(--muted);
-  line-height: 1.55;
 }
 .terms a { color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 2px; }
 .terms a:hover { color: var(--brand); }
@@ -334,8 +333,8 @@
 }
 .field__match.is-ok { color: var(--success); }
 .field__match.is-bad { color: var(--danger); }
-.field__match.is-ok::before { content: "\2713\00a0"; font-weight: 700; }
-.field__match.is-bad::before { content: "\2715\00a0"; font-weight: 700; }
+.field__match.is-ok::before { content: "\2713\00a0"; }
+.field__match.is-bad::before { content: "\2715\00a0"; }
 
 .auth-error {
   display: flex;
@@ -459,8 +458,7 @@
 }
 .brand-col__tag {
   font-family: var(--font-display);
-  font-size: clamp(34px,3.4vw,46px);
-  line-height: 1.04;
+  font-size: var(--fs-h1);
   letter-spacing: -0.032em;
   font-weight: 600;
   color: #fff;

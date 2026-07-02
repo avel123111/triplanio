@@ -8,7 +8,7 @@
 .cm-a--brand { color: var(--brand); }                           /* text-primary */
 
 /* inline code — was: px-1 py-0.5 rounded bg-black/10 dark:bg-white/10 text-[0.85em] font-mono */
-.cm-code { padding: 2px 4px; border-radius: 4px; background: rgba(0, 0, 0, .1); font-size: 0.85em; font-family: var(--font-mono); }
+.cm-code { padding: 2px 4px; border-radius: 4px; background: rgba(0, 0, 0, .1); }
 /* code block — was: my-1 p-2 rounded bg-black/10 dark:bg-white/10 overflow-x-auto */
 .cm-pre { margin: 4px 0; padding: 8px; border-radius: 4px; background: rgba(0, 0, 0, .1); overflow-x: auto; }
 [data-theme="dark"] .cm-code, [data-theme="dark"] .cm-pre { background: rgba(255, 255, 255, .1); }
