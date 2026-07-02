@@ -65,6 +65,27 @@ const TYPO_WHITELIST = [
   'src/index.css', 'src/pages/login.css', // --fs-* token defs / Tailwind-preflight 1em/1rem resets only
 ];
 
+// Files allowed to contain raw font-weight / line-height (TRIP-165 Фаза 3).
+// Everywhere else emphasis is the .t-strong modifier and flush-centering is
+// .t-flush — weight/line-height legally live ONLY in canon (.t-*), the two
+// sanctioned modifiers (.t-strong/.t-flush) and base root rules.
+//   • app.css   — home of the 10 canons + .t-strong/.t-flush + base `body`.
+//   • index.css — Tailwind preflight / reset base.
+//   • login.css — isolated auth base (pending Lumo; also a base/reset home).
+//   • landing.css — STANDALONE marketing/legal stylesheet loaded WITHOUT app.css
+//     (SiteChrome + static terms/privacy pages), so its bare h1..h4 + `body`
+//     ARE the typographic canon home for that subtree — its own base.
+//   • fonts.css — @font-face declarations DEFINE each font's weight axis
+//     (font-weight: 400/500/600/700 per file); that's a font definition, not
+//     text styling.
+//   • PublicTrip.css — the standalone public reader's base root `.ptrip`
+//     (like `body`) sets the base reading weight/line-height; the rest of the
+//     page is on the closed set.
+const WEIGHT_LH_ALLOW = [
+  'src/design/app.css', 'src/index.css', 'src/pages/login.css', 'public/landing.css',
+  'src/design/fonts.css', 'src/pages/PublicTrip.css',
+];
+
 const PALETTE = '(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)';
 const RE = {
   textPx:    /text-\[[0-9.]+px\]/,
@@ -72,6 +93,12 @@ const RE = {
   fontSizeClamp:/font-size:\s*clamp\(/,
   fontSizeEm:/font-size:\s*(?!1(em|rem)\b)[0-9.]+r?em/,
   inlineFs:  /fontSize:\s*[0-9.]+[,\s}]/,
+  // TRIP-165 Фаза 3 — вес и межстрочный интервал легально живут ТОЛЬКО в
+  // канон-правилах / .t-strong / .t-flush / базовых root-правилах (body, .ptrip).
+  // В компонентных/страничных CSS их быть не должно — эмфаза даётся классом
+  // .t-strong, флеш-центровка — .t-flush.
+  fontWeightNum:/font-weight:\s*[0-9]/,
+  lineHeightNum:/line-height:\s*[0-9.]/,
   hex:       /#[0-9a-fA-F]{3,8}\b/,
   paletteCls:new RegExp(`\\b(bg|text|border|ring|from|to|via|divide|outline|fill|stroke|placeholder|shadow|accent|caret)-${PALETTE}-[0-9]{2,3}(\\/[0-9]+)?\\b`),
 };
@@ -118,6 +145,12 @@ for (const file of [...walk(ROOT), 'public/landing.css']) {
       if (isCss && RE.fontSizeClamp.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (isCss && RE.fontSizeEm.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (!isCss && RE.inlineFs.test(line))  typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+    }
+    // TRIP-165 Фаза 3 — weight / line-height closed set. Only CSS (inline JSX is
+    // already covered by the composition report). Skip canon/modifier/base homes.
+    if (isCss && !WEIGHT_LH_ALLOW.includes(file)) {
+      if (RE.fontWeightNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      if (RE.lineHeightNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
     }
     // colour
     if (!COLOR_WHITELIST.includes(file)) {

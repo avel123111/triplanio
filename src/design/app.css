@@ -825,6 +825,40 @@ h4,
 .confirm__email,
 .route-block .rd { font-family: var(--font-mono);    font-size: var(--fs-meta);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }
 
+/* Санкционированные орто-модификаторы (TRIP-165 Фаза 3) — комбинируются с любым каноном.
+   Единственные места (кроме канонов) где легально живёт font-weight / line-height. */
+.t-strong,
+.app-side__item.active,
+.dock-panel__head .nm b,
+.nrow__link,
+.te-seam__pill--add,
+.lkv .v,
+.bud-leg .nm,
+.bud-leg .v,
+.tl3-card--tr .rv-mode small,
+.acct-plan__line b,
+.pro-cta-strip__text strong,
+.tx-btn:hover, .tx-btn.act,
+.s22mk__count,
+.bgt-stat__s b,
+.ptrip h1, .ptrip h2, .ptrip h3,
+.pt-mast__l1 b,
+.pt-cstop__sub b,
+.pt-cleg__pill .dur,
+.pt-cleg__pill .dt,
+.pt-h-lead,
+.field__match.is-ok::before,
+.field__match.is-bad::before { font-weight: 700; }   /* инлайн-эмфаза: то же, но жирнее (ось <strong>) */
+.t-flush,
+.tmk,
+.s22mk,
+.bgt-donut__c .v,
+.ncal-title-row,
+.ncal-dn,
+.ncal-wdc-num,
+.pt-mm .n,
+.pt-cstop__ht h2 { line-height: 1; }     /* флеш-центровка крупных цифр/глифов */
+
 /* =================================================================
    OUTER PROTOTYPE CHROME (frame list + viewport)
    ================================================================= */
@@ -862,7 +896,7 @@ h4,
  width: 100%; text-align: left;
 }
 .proto__nav-item:hover { background: var(--wash); }
-.proto__nav-item.active { background: var(--brand-soft); color: var(--brand); font-weight: 500; }
+.proto__nav-item.active { background: var(--brand-soft); color: var(--brand); }
 .proto__nav-item-num {
  color: var(--muted-2); font-variant-numeric: tabular-nums;
  min-width: 18px;
@@ -1035,7 +1069,7 @@ h4,
 .app-side__item svg { stroke-width: 2.1px; transition: color .22s var(--ease-out); }
 .app-side__item:active { transform: scale(.985); }
 .app-side__item:hover { background: var(--wash); }
-.app-side__item.active { background: var(--brand-soft); color: var(--brand); font-weight: 700; }
+.app-side__item.active { background: var(--brand-soft); color: var(--brand); }
 .app-side__item-badge {
  margin-left: auto;
  min-width: 18px; height: 18px; padding: 0 6px;
@@ -1198,7 +1232,7 @@ h4,
   outline: none; border-color: var(--brand); background: var(--surface);
   box-shadow: 0 0 0 4px var(--primary-ring);
 }
-.textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
+.textarea { min-height: 80px; resize: vertical; }
 .field--ai .input, .field--ai .select, .field--ai .textarea {
   background: var(--ai-soft);
   border-color: var(--ai-soft-12);
@@ -2281,7 +2315,7 @@ h4,
 .dock-panel__tab.active { color: var(--brand); border-color: var(--brand); }
 .dock-panel__head { padding: 10px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-2); }
 .dock-panel__head .nm { flex: 1; color: var(--ink-2); min-width: 0; }
-.dock-panel__head .nm b { font-weight: 700; color: var(--ink); }
+.dock-panel__head .nm b { color: var(--ink); }
 
 /* ── Mobile: the open widget lives inside the canonical bottom-sheet (.sheet).
    .sheet--chat makes the body a full-height flex column so messages scroll
@@ -2371,7 +2405,7 @@ h4,
 .nrow__title em { font-style: normal; color: var(--brand); }
 .nrow__msg { color: var(--muted); margin-top: 2px; }
 .nrow__meta { color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 10px; }
-.nrow__link { color: var(--brand); font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+.nrow__link { color: var(--brand); display: inline-flex; align-items: center; gap: 3px; }
 .nrow__acts { display: flex; gap: 6px; align-items: center; }
 /* Mobile: actions drop to a full-width second row so the title isn't squeezed */
 @media (max-width: 640px) {
@@ -2435,7 +2469,7 @@ h4,
 }
 .invite-banner__ic { width: 44px; height: 44px; border-radius: 11px; background: var(--brand); color: #fff; display: grid; place-items: center; flex-shrink: 0; }
 .invite-banner__txt { flex: 1; min-width: 200px; }
-.invite-banner__title { font-weight: 600; margin-bottom: 2px; }
+.invite-banner__title { margin-bottom: 2px; }
 .invite-banner__desc { color: var(--muted); }
 
 /* Partner brand pills */
@@ -2597,7 +2631,7 @@ h4,
     .te-seam__pill:hover { box-shadow: var(--sh-3); transform: translateY(-1px) scale(1.02); }
     .te-seam__pill:active { transform: scale(0.96); }
     .te-seam__pill.is-warn { border-color: var(--warning); background: var(--warning-soft); }
-    .te-seam__pill--add { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted-2); font-weight: 700; gap: 7px; box-shadow: var(--sh-1); }
+    .te-seam__pill--add { background: transparent; border: 1.5px dashed var(--line-strong); color: var(--muted-2); gap: 7px; box-shadow: var(--sh-1); }
     .te-seam__pill--add:hover { color: var(--ev-transfer-ink); border-color: var(--ev-transfer); background: var(--ev-transfer-soft); transform: translateY(-1px); }
 
     .te-addmini { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--brand); cursor: pointer; display: grid; place-items: center; }
@@ -2696,8 +2730,8 @@ h4,
 .metastrip .ch { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); background: var(--secondary); padding: 6px 11px; border-radius: var(--r-pill); }
 
 .lkv { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.lkv .k { color: var(--muted); font-weight: 600; }
-.lkv .v { font-weight: 700; color: var(--ink); }
+.lkv .k { color: var(--muted); }
+.lkv .v { color: var(--ink); }
 .kvgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 16px; }
 /* .kv / .kv .k / .kv .v are defined once in the EVENT/SERVICE DIALOGS block below. */
 .route { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; padding: 16px; background: var(--surface-3); border: 1px solid var(--line); border-radius: 14px; }
@@ -2841,8 +2875,8 @@ h4,
 .bud-leg { display: flex; align-items: center; gap: 9px; padding: 6px; border-radius: 9px; transition: background .15s; }
 .bud-leg:hover { background: var(--surface-2); }
 .bud-leg .d { width: 10px; height: 10px; border-radius: 4px; flex: none; }
-.bud-leg .nm { flex: 1; min-width: 0; color: var(--ink-2); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bud-leg .v { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bud-leg .nm { flex: 1; min-width: 0; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bud-leg .v { color: var(--ink); font-variant-numeric: tabular-nums; }
 .ov-warn { display: flex; align-items: center; gap: 5px; margin-top: 6px; color: var(--warning); }
 
 /* ---- members widget ---- */
@@ -2987,7 +3021,7 @@ h4,
 .tl3-card--tr .dline { width: 2px; height: 12px; margin-left: 13px; border-radius: 2px; background: repeating-linear-gradient(var(--ev-transfer) 0 3px, transparent 3px 6px); }
 .tl3-card--tr .rv-mode { display: inline-flex; align-items: center; gap: 10px; color: var(--ev-transfer-ink); }
 .tl3-card--tr .rv-mode .ic { width: 28px; height: 28px; border-radius: 9px; background: var(--ev-transfer-soft); color: var(--ev-transfer-ink); display: grid; place-items: center; flex: none; }
-.tl3-card--tr .rv-mode small { font-weight: 700; color: var(--muted); }
+.tl3-card--tr .rv-mode small { color: var(--muted); }
 
 .tl3-warn { display: flex; gap: 13px; align-items: center; padding: 13px 16px; background: var(--warning-soft); border-radius: 16px; margin: 6px 0 4px 62px; }
 .tl3-warn .tile { width: 40px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--warning) 22%, var(--surface)); color: var(--warning-ink); display: grid; place-items: center; flex: none; }
@@ -3189,7 +3223,7 @@ h4,
 .acct-plan__face--ca { background: var(--warning); color: #fff; }
 .acct-plan__side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .acct-plan__line { color: var(--ink-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.acct-plan__line b { color: var(--ink); font-weight: 700; }
+.acct-plan__line b { color: var(--ink); }
 .acct-plan__acts { display: flex; gap: 9px; flex-wrap: wrap; }
 .acct-note { display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; background: var(--wash); border-radius: var(--r-sm); color: var(--muted); }
 .acct-note svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
@@ -3858,7 +3892,7 @@ h4,
  flex: 1; color: var(--muted);
  min-width: 0;
 }
-.pro-cta-strip__text strong { color: var(--ink-2); font-weight: 700; display: block; }
+.pro-cta-strip__text strong { color: var(--ink-2); display: block; }
 .pro-error {
   max-width: 820px; margin: 0 auto 16px; align-self: center; width: 100%;
 }
@@ -4087,7 +4121,7 @@ h4,
 .tx-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;}
 .tx-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:9px 4px;border-radius:10px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--muted);cursor:pointer;font:inherit; transition:all .13s;}
 .tx-btn svg{width:17px;height:17px;}
-.tx-btn:hover,.tx-btn.act{border-color:var(--ev-transfer);color:var(--ev-transfer-ink);background:var(--ev-transfer-soft);font-weight:700;}
+.tx-btn:hover,.tx-btn.act{border-color:var(--ev-transfer);color:var(--ev-transfer-ink);background:var(--ev-transfer-soft);}
 /* layover segment cards */
 .seg-card{border:1px solid var(--line-2);border-radius:13px;overflow:hidden;background:var(--surface);}
 .seg-card-hd{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--ev-transfer-soft);cursor:pointer;}
@@ -4172,7 +4206,7 @@ h4,
    so all visual transforms (selected scale/halo) sit on inner nodes, never .tmk.
    Roles: transit = number; start/finish = flag glyph; waypoint = smaller ring.
    ═══════════════════════════════════════════════════════════════════════════ */
-.tmk { --tmk: var(--brand); position: relative; display: inline-grid; place-items: center; line-height: 1; }
+.tmk { --tmk: var(--brand); position: relative; display: inline-grid; place-items: center; }
 .tmk.is-clickable { cursor: pointer; }
 .tmk--finish { --tmk: var(--warm); }
 .tmk__core {
@@ -4220,7 +4254,7 @@ h4,
    open. Same toggle-from-outside pattern as .tmk: .is-sel / .is-hover are set on
    the root, but the scale/elevation sit on the inner .s22mk__core (Mapbox owns
    the root's inline transform). Colours bind to the design tokens. */
-.s22mk { position: relative; display: inline-grid; place-items: center; line-height: 1; cursor: pointer; }
+.s22mk { position: relative; display: inline-grid; place-items: center; cursor: pointer; }
 .s22mk__core {
  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px 0 5px;
  background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: 999px;
@@ -4249,7 +4283,7 @@ h4,
    leaf count (the number in brand to read as "many"). No selected state — a bubble
    is never the final selection (Способ A / spiderfy resolve to a real badge). */
 .s22mk--cluster .s22mk__core { min-width: 26px; height: 26px; padding: 0 7px; justify-content: center; }
-.s22mk__count { color: var(--brand); font-weight: 700; }
+.s22mk__count { color: var(--brand); }
 
 /* ─── Partner result card (shared: Stay22 hotels + Viator activities) ─────────
    ONE shell for both fork partner lists so the identical elements stay identical
@@ -4342,7 +4376,7 @@ h4,
 .wring svg { transform: rotate(-90deg); display: block; }
 .ring__track { fill: none; stroke: var(--surface-2); }
 .ring__fg { fill: none; stroke: hsl(var(--primary)); stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease-out); }
-.ring__c { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 600; color: hsl(var(--primary)); }
+.ring__c { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); color: hsl(var(--primary)); }
 .ring__c .l { color: var(--muted); }
 .wmini .ttl { color: var(--ink); }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
@@ -4413,7 +4447,7 @@ h4,
 .world .b1 { width: 220px; height: 220px; background: var(--brand-grad); top: -110px; left: -40px; opacity: .10; }
 .world__ring { display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative; z-index: 1; }
 .world__ring .cap { color: var(--ink-2); text-align: center; }
-.world__ring .cap b { font-family: var(--font-display); font-weight: 600; }
+.world__ring .cap b { font-family: var(--font-display); }
 .world__cont { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 13px; }
 .world__cont .ttl { color: var(--muted); }
 .ring__c .l { color: var(--muted); }
