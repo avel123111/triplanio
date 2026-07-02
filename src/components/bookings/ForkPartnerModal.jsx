@@ -108,6 +108,11 @@ export default function ForkPartnerModal({
   // 'dialog' (default) = modal overlay; 'panel' = render inline in the trip
   // editor's left column (same content, PanelShell-style chrome + back button).
   variant = 'dialog',
+  // TRIP-176: 'embedded' renders body-only (no .lp shell, no header) so the
+  // shared AddBookingPanel tab wrapper can host it under a "Find …" tab. The
+  // "Add manually" CTA is dropped — the sibling "I have a booking" tab replaces
+  // it. Footer stays (a single Cancel) since only one tab is visible at a time.
+  embedded = false,
   // TRIP-140: lifted Stay22 state + handlers, forwarded as-is to the (now
   // presentational) hotel list so the same query/pool drives the map badges.
   // Only present for the hotel panel; null/undefined elsewhere.
@@ -146,8 +151,11 @@ export default function ForkPartnerModal({
 
   const body = (
     <>
+      {(!embedded || count > 0) && (
       <div className="fork-addzone">
-        {/* Manual add — redesigned horizontal CTA, ev-colored */}
+        {/* Manual add — redesigned horizontal CTA, ev-colored. Dropped in
+            embedded (tab) mode: the "I have a booking" tab replaces it. */}
+        {!embedded && (
         <button
           type="button"
           className="fork-manual"
@@ -161,10 +169,11 @@ export default function ForkPartnerModal({
           </span>
           <ChevronRight size={16} className="fork-manual__chev" />
         </button>
+        )}
 
         {count > 0 && (
           <>
-            <div className="fork-or"><span>{t('fork.or_find')}</span></div>
+            {!embedded && <div className="fork-or"><span>{t('fork.or_find')}</span></div>}
             <div className="fork-partners">
               {platforms.map((p) => (
                 <a
@@ -191,6 +200,7 @@ export default function ForkPartnerModal({
           </>
         )}
       </div>
+      )}
 
       {/* Live Stay22 stays — hotel fork, panel only. Query/state lifted to the
           editor (TRIP-140); this list is presentational. FE-only. */}
@@ -233,6 +243,18 @@ export default function ForkPartnerModal({
       @media (max-width: 480px) { .fork-partners { grid-template-columns: 1fr; } }
     `}</style>
   );
+
+  // TRIP-176: embedded in the AddBookingPanel tab wrapper — body + footer only,
+  // no .lp shell / header (the wrapper owns the shared header + tabs).
+  if (embedded) {
+    return (
+      <>
+        <div className="lp-b scrollbar-thin">{body}</div>
+        <div className="lp-f lp-f--single"><Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn></div>
+        {styleTag}
+      </>
+    );
+  }
 
   if (variant === 'panel') {
     return (

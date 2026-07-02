@@ -474,6 +474,11 @@ export default function EventEditDialog({
   // Optional (trip editor only): report the in-progress transfer so the map can
   // draw a live route preview shaped by the picked transport type.
   onPreviewTransfer = null,
+  // TRIP-176: 'embedded' renders body + footer only (no .lp shell, no header) so
+  // the shared AddBookingPanel tab wrapper can host it under an "I have a
+  // booking" tab. Panel-mode chrome (lp-b / lp-f) is kept; the wrapper supplies
+  // the .lp shell and the shared header.
+  embedded = false,
 }) {
   const { t } = useI18nFormat();
   const { lang } = useI18n();
@@ -1085,14 +1090,14 @@ export default function EventEditDialog({
   // ── Render ─────────────────────────────────────────────────────────────
   // Editor panel uses the Lumo `.lp` shell; the app-wide modal uses `.ev-dlg`.
   // Body content (AI block + fields + IssuesPanel) is identical for both.
-  const isPanel = variant === 'panel';
+  const isPanel = variant === 'panel' || embedded;
   const bodyCls = isPanel ? 'lp-b scrollbar-thin' : 'ev-dlg-body';
   const title = ctxTitle || (isEdit ? t(meta.titleEditKey) : t(meta.titleNewKey));
 
   const inner = (
     <>
-          {/* Header */}
-          {isPanel ? (
+          {/* Header — hidden when embedded (AddBookingPanel owns the shared header). */}
+          {embedded ? null : isPanel ? (
             <div className="lp-h lp-h--ev">
               <button className="lp-back" onClick={() => onOpenChange?.(false)} title={t('common.back')}>
                 <ArrowLeft style={{ width: 14, height: 14 }} />
@@ -1270,6 +1275,10 @@ export default function EventEditDialog({
   );
 
   const evVars = { '--ev-color': meta.color, '--ev-soft': meta.soft, '--ev-ink': meta.ink || meta.color };
+
+  // TRIP-176: embedded — body + footer only (no .lp shell / header). The
+  // AddBookingPanel wrapper provides the .lp shell + shared header + tabs.
+  if (embedded) return inner;
 
   return (
     <>
