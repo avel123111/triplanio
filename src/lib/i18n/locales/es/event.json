@@ -30,6 +30,7 @@
   "ai_upload_error": "No se pudo subir el archivo",
   "arr_after_dep": "La llegada debe ser posterior a la salida",
   "arrival_req": "Llegada *",
+  "booking_details": "Detalles de la reserva",
   "booking_ref": "Número de reserva",
   "booking_section": "Reserva",
   "booking_url": "Enlace de la reserva",

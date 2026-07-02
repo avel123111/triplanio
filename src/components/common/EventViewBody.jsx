@@ -127,6 +127,9 @@ function PaymentBadge({ t, status }) {
 
 function HotelBody({ entity, accent }) {
   const { t } = useI18n();
+  const ci = parseNaive(entity.check_in_datetime);
+  const co = parseNaive(entity.check_out_datetime);
+  const nights = (ci && co) ? Math.max(0, Math.round(co.startOf('day').diff(ci.startOf('day'), 'days').days)) : null;
   return (
     <>
       {entity.address && (
@@ -135,25 +138,38 @@ function HotelBody({ entity, accent }) {
           <div>{entity.address}</div>
         </div>
       )}
-      <Section title={t('event.checkin_checkout')} accent={accent}>
-        <div className="kv-grid">
-          <KV label={t('trip.hotel_check_in')}>{fmtDT(entity.check_in_datetime)}</KV>
-          <KV label={t('trip.hotel_check_out')}>{fmtDT(entity.check_out_datetime)}</KV>
-        </div>
-      </Section>
-      <Section title={t('event.finance_cancel')} accent={accent}>
+      {(entity.check_in_datetime || entity.check_out_datetime) && (
+        <Section title={t('event.checkin_checkout')} accent={accent}>
+          <div className="stay-dates">
+            <div className="stay-dates__cell">
+              <div className="stay-dates__lbl eyebrow">{t('trip.hotel_check_in')}</div>
+              <div className="stay-dates__v t-strong">{fmtDate(entity.check_in_datetime)}</div>
+              <div className="stay-dates__t t-meta">{fmtTime(entity.check_in_datetime)}</div>
+            </div>
+            <div className="stay-dates__mid">
+              {nights != null && <span className="t-meta">{t('fork.stay22_nights', { count: nights })}</span>}
+            </div>
+            <div className="stay-dates__cell">
+              <div className="stay-dates__lbl eyebrow">{t('trip.hotel_check_out')}</div>
+              <div className="stay-dates__v t-strong">{fmtDate(entity.check_out_datetime)}</div>
+              <div className="stay-dates__t t-meta">{fmtTime(entity.check_out_datetime)}</div>
+            </div>
+          </div>
+        </Section>
+      )}
+      <Section title={t('event.cost')} accent={accent}>
         <div className="kv-grid">
           <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
           <KV label={t('hotel.payment_status')}><PaymentBadge t={t} status={entity.payment_status} /></KV>
           {entity.free_cancellation && entity.free_cancellation_until && (
             <KV label={t('event.free_cancel_until')}>{fmtDT(entity.free_cancellation_until)}</KV>
           )}
-          <KV label={t('service.car_booking_ref')} mono>{entity.booking_reference}</KV>
         </div>
       </Section>
-      {(entity.phone || entity.email) && (
-        <Section title={t('event.contacts')} accent={accent}>
+      {(entity.booking_reference || entity.phone || entity.email) && (
+        <Section title={t('event.booking_details')} accent={accent}>
           <div className="kv-grid">
+            <KV label={t('service.car_booking_ref')} mono>{entity.booking_reference}</KV>
             <KV label={t('hotel.view_phone')}>{entity.phone}</KV>
             <KV label="E-mail">{entity.email ? <a href={`mailto:${entity.email}`} style={{ color: 'var(--primary)' }}>{entity.email}</a> : null}</KV>
           </div>

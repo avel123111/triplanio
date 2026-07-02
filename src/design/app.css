@@ -4116,6 +4116,14 @@ h4,
 .route-block .rmid svg{width:20px;height:20px;color:var(--ev-color,var(--ev-transfer));}
 .route-block .dur{ color:var(--muted);white-space:nowrap;}
 .route-block .end{text-align:right;}
+/* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
+.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);overflow:hidden;}
+.stay-dates__cell{padding:11px 14px;min-width:0;}
+.stay-dates__lbl{color:var(--muted);}
+.stay-dates__v{ color:var(--ink);margin-top:5px;}
+.stay-dates__t{ color:var(--muted);margin-top:3px;}
+.stay-dates__mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 12px;border-left:1px dashed var(--line-2);border-right:1px dashed var(--line-2);}
+.stay-dates__mid span{ color:var(--muted);white-space:nowrap;}
 /* booking link */
 .bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
 .bk-link:hover{background:var(--primary-soft);color:var(--primary);}

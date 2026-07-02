@@ -30,6 +30,7 @@
   "ai_upload_error": "Не удалось загрузить файл",
   "arr_after_dep": "Прибытие должно быть позже отправления",
   "arrival_req": "Прибытие *",
+  "booking_details": "Детали брони",
   "booking_ref": "Номер брони",
   "booking_section": "Бронирование",
   "booking_url": "Ссылка на бронирование",
