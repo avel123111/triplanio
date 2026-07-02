@@ -13,17 +13,21 @@
 //
 // Only the human-facing labels/roles live here (the tool's own copy).
 
+// `mockup` — имя стиля из присланной Павлом матрицы типографики (макет
+// «Triplanio Design System»). Каноны у себя мы НЕ переименовывали (наши имена
+// = cls), но по именам макета ориентироваться удобнее — показываем их рядом.
+// t-mono в 9-канонной матрице макета отсутствует (наш доп. моно-канон) → '—'.
 export const CANONS = [
-  { id: 1,  cls: 't-display',    name: 'Display',    role: 'Герой, 1 на экран' },
-  { id: 2,  cls: 't-title',      name: 'Title',      role: 'Заголовок страницы' },
-  { id: 3,  cls: 't-heading',    name: 'Heading',    role: 'Заголовок экрана / секции' },
-  { id: 4,  cls: 't-subheading', name: 'Subheading', role: 'Заголовок панели / карточки' },
-  { id: 5,  cls: 't-label',      name: 'Label',      role: 'Кнопки, крупные лейблы' },
-  { id: 6,  cls: 't-body',       name: 'Body',       role: 'Основной текст, абзацы' },
-  { id: 7,  cls: 't-ui',         name: 'UI',         role: 'Плотный интерфейсный текст' },
-  { id: 8,  cls: 't-meta',       name: 'Meta',       role: 'Даты, вторичная инфо, НЕ-капс подписи booking (Golos)' },
-  { id: 9,  cls: 't-micro',      name: 'Micro',      role: 'Бейджи, капс-метки, капс-эйбрау (JetBrains Mono)' },
-  { id: 10, cls: 't-mono',       name: 'Mono',       role: 'Коды, идентификаторы, техно-метаданные' },
+  { id: 1,  cls: 't-display',    name: 'Display',    mockup: 'display', role: 'Герой, 1 на экран' },
+  { id: 2,  cls: 't-title',      name: 'Title',      mockup: 'h1',      role: 'Заголовок страницы' },
+  { id: 3,  cls: 't-heading',    name: 'Heading',    mockup: 'h2',      role: 'Заголовок экрана / секции' },
+  { id: 4,  cls: 't-subheading', name: 'Subheading', mockup: 'h3',      role: 'Заголовок панели / карточки' },
+  { id: 5,  cls: 't-label',      name: 'Label',      mockup: 'label',   role: 'Кнопки, крупные лейблы' },
+  { id: 6,  cls: 't-body',       name: 'Body',       mockup: 'body',    role: 'Основной текст, абзацы' },
+  { id: 7,  cls: 't-ui',         name: 'UI',         mockup: 'ui',      role: 'Плотный интерфейсный текст' },
+  { id: 8,  cls: 't-meta',       name: 'Meta',       mockup: 'meta',    role: 'Даты, вторичная инфо, НЕ-капс подписи booking (Golos)' },
+  { id: 9,  cls: 't-micro',      name: 'Micro',      mockup: 'micro',   role: 'Бейджи, капс-метки, капс-эйбрау (JetBrains Mono)' },
+  { id: 10, cls: 't-mono',       name: 'Mono',       mockup: '—',       role: 'Коды, идентификаторы, техно-метаданные' },
   // TRIP-175: .t-nano/.t-caption СХЛОПНУТЫ (макет их не содержит) — их члены
   // переехали в .t-meta (НЕ-капс подписи) и .t-micro (капс-эйбрау). Снова 10 канонов.
 ];

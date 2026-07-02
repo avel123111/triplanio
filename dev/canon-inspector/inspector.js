@@ -38,7 +38,8 @@ function canonLabel(info) {
   if (!info) return 'off-canon';
   const c = CANONS[info.id - 1];
   const mods = info.mods.length ? ' + ' + info.mods.join(' + ') : '';
-  return `${info.id} · ${c.name}${mods}`;
+  const mk = c.mockup && c.mockup !== '—' ? ` (макет: ${c.mockup})` : '';
+  return `${info.id} · ${c.name}${mk}${mods}`;
 }
 
 // ── persistence ──────────────────────────────────────────────────────────
@@ -99,6 +100,9 @@ function injectStyles() {
   .ci-canon.is-cur { background: #172554; }
   .ci-canon__t { font-size: 13px; font-weight: 600; }
   .ci-canon__t i { color: #60a5fa; font-style: normal; }
+  .ci-canon__mk { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px;
+    background: #1e293b; color: #93c5fd; font-size: 10px; font-weight: 700;
+    font-family: ui-monospace, monospace; vertical-align: middle; }
   .ci-canon__spec { font-size: 11px; color: #94a3b8; margin-top: 2px; font-family: ui-monospace, monospace; }
   .ci-canon__role { font-size: 11px; color: #64748b; margin-top: 1px; }
   .ci-panel__foot { display: flex; gap: 8px; padding: 10px 14px; position: sticky; bottom: 0; background: #0f172a; border-top: 1px solid #1e293b; }
@@ -255,7 +259,8 @@ function render(el) {
     const btn = h('ci-canon', 'button');
     if (pending && c.id === pending.id) btn.classList.add('is-cur');
     const isBase = base && c.id === base.id;
-    btn.innerHTML = `<div class="ci-canon__t">${c.id} · ${c.name}${isBase ? ' <i>(сейчас)</i>' : ''}</div>`
+    const mkTag = c.mockup && c.mockup !== '—' ? ` <span class="ci-canon__mk">макет: ${c.mockup}</span>` : '';
+    btn.innerHTML = `<div class="ci-canon__t">${c.id} · ${c.name}${mkTag}${isBase ? ' <i>(сейчас)</i>' : ''}</div>`
       + `<div class="ci-canon__spec">${p.human}</div>`
       + `<div class="ci-canon__role">${c.role}</div>`;
     btn.onclick = () => pickCanon(el, c.id);
