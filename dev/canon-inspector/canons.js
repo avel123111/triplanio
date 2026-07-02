@@ -13,27 +13,60 @@
 //
 // Only the human-facing labels/roles live here (the tool's own copy).
 
+// `mockup` — имя стиля из присланной Павлом матрицы типографики (макет
+// «Triplanio Design System»). Каноны у себя мы НЕ переименовывали (наши имена
+// = cls), но по именам макета ориентироваться удобнее — показываем их рядом.
+// t-mono в 9-канонной матрице макета отсутствует (наш доп. моно-канон) → '—'.
 export const CANONS = [
-  { id: 1,  cls: 't-display',    name: 'Display',    role: 'Герой, 1 на экран' },
-  { id: 2,  cls: 't-title',      name: 'Title',      role: 'Заголовок страницы' },
-  { id: 3,  cls: 't-heading',    name: 'Heading',    role: 'Заголовок экрана / секции' },
-  { id: 4,  cls: 't-subheading', name: 'Subheading', role: 'Заголовок панели / карточки' },
-  { id: 5,  cls: 't-label',      name: 'Label',      role: 'Кнопки, крупные лейблы' },
-  { id: 6,  cls: 't-body',       name: 'Body',       role: 'Основной текст, абзацы' },
-  { id: 7,  cls: 't-ui',         name: 'UI',         role: 'Плотный интерфейсный текст' },
-  { id: 8,  cls: 't-meta',       name: 'Meta',       role: 'Даты, вторичная инфо, НЕ-капс подписи booking (Golos)' },
-  { id: 9,  cls: 't-micro',      name: 'Micro',      role: 'Бейджи, капс-метки, капс-эйбрау (JetBrains Mono)' },
-  { id: 10, cls: 't-mono',       name: 'Mono',       role: 'Коды, идентификаторы, техно-метаданные' },
+  { id: 1,  cls: 't-display',    name: 'Display',    mockup: 'display', role: 'Герой, 1 на экран' },
+  { id: 2,  cls: 't-title',      name: 'Title',      mockup: 'h1',      role: 'Заголовок страницы' },
+  { id: 3,  cls: 't-heading',    name: 'Heading',    mockup: 'h2',      role: 'Заголовок экрана / секции' },
+  { id: 4,  cls: 't-subheading', name: 'Subheading', mockup: 'h3',      role: 'Заголовок панели / карточки' },
+  { id: 5,  cls: 't-label',      name: 'Label',      mockup: 'label',   role: 'Кнопки, крупные лейблы' },
+  { id: 6,  cls: 't-body',       name: 'Body',       mockup: 'body',    role: 'Основной текст, абзацы' },
+  { id: 7,  cls: 't-ui',         name: 'UI',         mockup: 'ui',      role: 'Плотный интерфейсный текст' },
+  { id: 8,  cls: 't-meta',       name: 'Meta',       mockup: 'meta',    role: 'Даты, вторичная инфо, НЕ-капс подписи booking (Golos)' },
+  { id: 9,  cls: 't-micro',      name: 'Micro',      mockup: 'micro',   role: 'Бейджи, капс-метки, капс-эйбрау (JetBrains Mono)' },
+  { id: 10, cls: 't-mono',       name: 'Mono',       mockup: '—',       role: 'Коды, идентификаторы, техно-метаданные' },
   // TRIP-175: .t-nano/.t-caption СХЛОПНУТЫ (макет их не содержит) — их члены
   // переехали в .t-meta (НЕ-капс подписи) и .t-micro (капс-эйбрау). Снова 10 канонов.
 ];
 
 // The sanctioned orthogonal modifiers (app.css Фаза 3). They layer on top of a
 // canon; the only legal place (besides canons) where font-weight / line-height
-// is set. Order here is the order shown in the panel.
+// is set. Used for live detection (probe canon × modifier subsets).
 export const MODIFIERS = [
   { key: 'strong', cls: 't-strong', label: 'strong' },
   { key: 'flush',  cls: 't-flush',  label: 'flush'  },
+];
+
+// TRIP-175 · Состояния стиля — зеркалит специмен дизайн-системы (макет): у каждого
+// канона показываем ТОЛЬКО те состояния, что реально его меняют. Применимость
+// выводится из ЖИВОГО вычисленного стиля канона (a = apply-props из probeCanons),
+// поэтому список сам подстраивается под правку канона в app.css.
+//   • strong / flush — РЕАЛЬНЫЕ санкц. модификаторы (.t-strong/.t-flush): saveable,
+//     их эффект берётся из probe (comboApply), попадают в worklist.
+//   • caps / track / mono / mute — ПРЕВЬЮ-состояния (визуальный аудит, как в макете):
+//     применяются эфемерным inline-стилем, в worklist НЕ сохраняются (в проде это
+//     были бы отдельные утилиты — вводить только с одобрения Павла, правило #6).
+// applies(a): a = { fontFamily, fontSize, fontWeight, lineHeight, letterSpacing,
+//                   textTransform } — computed-стиль базового канона.
+export const STATES = [
+  { key: 'strong', label: 'Жирнее', saveable: true,
+    applies: (a) => (parseInt(a.fontWeight, 10) || 400) < 700 },            // .t-strong = 700
+  { key: 'caps',   label: 'Капс',
+    applies: (a) => a.textTransform !== 'uppercase',                        // .t-micro уже капс
+    css: { textTransform: 'uppercase', letterSpacing: '0.1em' } },
+  { key: 'track',  label: 'Трекинг', cycle: ['0.04em', '0.12em', '0.18em'],
+    applies: (a) => a.textTransform !== 'uppercase' },                      // у капс-канона трекинг зашит
+  { key: 'mono',   label: 'Моно',
+    applies: (a) => !/mono|jetbrains/i.test(a.fontFamily),                  // meta/micro/mono уже моно
+    css: { fontFamily: 'var(--font-mono)' } },
+  { key: 'flush',  label: 'Флеш', saveable: true,
+    applies: (a) => (parseFloat(a.lineHeight) / (parseFloat(a.fontSize) || 1)) >= 1.5 }, // виден на многострочном (t-body)
+  { key: 'mute',   label: 'Тише',
+    applies: () => true,
+    css: { color: 'var(--muted)' } },
 ];
 
 // Every subset of the modifier list, smallest-first: [], [strong], [flush], …

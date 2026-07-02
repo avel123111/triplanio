@@ -11,7 +11,7 @@
 // element that looks like it ("Все похожие", by shared class) — e.g. all the
 // sidebar menu items at once, not a single word.
 
-import { CANONS, MODIFIERS, probeCanons, detectCanon, comboApply } from './canons.js';
+import { CANONS, STATES, probeCanons, detectCanon, comboApply } from './canons.js';
 import { describe, groupSelector } from './describe.js';
 
 const LS_KEY = 'ci:canon-changes';
@@ -28,17 +28,23 @@ const pendingCanon = new WeakMap();// element → {id,mods}|null  (current previ
 const scopeMode = new WeakMap();   // element → 'el' | 'group'
 const queuedFor = new WeakMap();   // element → change.key (in-session dedup)
 const originalCss = new WeakMap(); // element → prior inline cssText (for reset)
+const previewStates = new WeakMap();// element → {keys:Set, track:int} — preview-only states (caps/track/mono/mute)
 
 let els = {};                  // cached DOM refs (launcher, hi, panel, tray…)
+let panelMoved = false;        // user dragged the panel → stop auto-repositioning
+let dragging = false;          // a panel/tray drag is in progress (suppress hover/select)
+const offCanon = new Set();    // elements currently flagged off-canon (red highlight)
 
 // ── canon/modifier helpers ─────────────────────────────────────────────────
+const psFor = (el) => previewStates.get(el) || { keys: new Set(), track: 0 };
 const sameSet = (a, b) => a.length === b.length && [...a].sort().join(',') === [...b].sort().join(',');
 const sameCanon = (a, b) => (!a && !b) || (!!a && !!b && a.id === b.id && sameSet(a.mods, b.mods));
 function canonLabel(info) {
   if (!info) return 'off-canon';
   const c = CANONS[info.id - 1];
   const mods = info.mods.length ? ' + ' + info.mods.join(' + ') : '';
-  return `${info.id} · ${c.name}${mods}`;
+  const mk = c.mockup && c.mockup !== '—' ? ` (макет: ${c.mockup})` : '';
+  return `${info.id} · ${c.name}${mk}${mods}`;
 }
 
 // ── persistence ──────────────────────────────────────────────────────────
@@ -99,6 +105,9 @@ function injectStyles() {
   .ci-canon.is-cur { background: #172554; }
   .ci-canon__t { font-size: 13px; font-weight: 600; }
   .ci-canon__t i { color: #60a5fa; font-style: normal; }
+  .ci-canon__mk { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px;
+    background: #1e293b; color: #93c5fd; font-size: 10px; font-weight: 700;
+    font-family: ui-monospace, monospace; vertical-align: middle; }
   .ci-canon__spec { font-size: 11px; color: #94a3b8; margin-top: 2px; font-family: ui-monospace, monospace; }
   .ci-canon__role { font-size: 11px; color: #64748b; margin-top: 1px; }
   .ci-panel__foot { display: flex; gap: 8px; padding: 10px 14px; position: sticky; bottom: 0; background: #0f172a; border-top: 1px solid #1e293b; }
@@ -122,6 +131,9 @@ function injectStyles() {
   .ci-row__x { float: right; color: #64748b; cursor: pointer; padding-left: 8px; }
   .ci-row__x:hover { color: #fca5a5; }
   .ci-empty { padding: 16px 14px; color: #64748b; font-size: 12px; }
+  .ci-panel__head, .ci-tray__head { cursor: move; }
+  .ci-offcanon-hi { outline: 2px solid #ef4444 !important; outline-offset: 1px;
+    background: rgba(239,68,68,.10) !important; }
   `;
   document.head.appendChild(s);
 }
@@ -154,10 +166,14 @@ function enable() {
   document.addEventListener('mousemove', onMove, true);
   document.addEventListener('click', onClick, true);
   document.addEventListener('keydown', onKey, true);
+  highlightOffCanon();          // flag every off-canon text element in red
 }
 function disable() {
   active = false;
   selected = null;
+  dragging = false;
+  panelMoved = false;
+  clearOffCanon();
   els.launcher.classList.remove('is-on');
   els.hi.style.display = 'none';
   els.panel.style.display = 'none';
@@ -169,6 +185,7 @@ function disable() {
 const isOurs = (el) => !!(el && el.closest && el.closest('.' + ROOT_CLASS));
 
 function onMove(e) {
+  if (dragging) { els.hi.style.display = 'none'; return; }
   const el = e.target;
   if (isOurs(el)) { els.hi.style.display = 'none'; return; }
   const r = el.getBoundingClientRect();
@@ -176,6 +193,7 @@ function onMove(e) {
 }
 
 function onClick(e) {
+  if (dragging) return;         // trailing click after a drag — ignore
   if (isOurs(e.target)) return; // let our own UI work normally
   e.preventDefault();
   e.stopPropagation();
@@ -183,6 +201,61 @@ function onClick(e) {
 }
 
 function onKey(e) { if (e.key === 'Escape') disable(); }
+
+// ── draggable panels ───────────────────────────────────────────────────────
+// Drag a floating element by a handle (its header). Buttons inside the handle
+// keep working (drag ignores mousedown that starts on a button).
+function makeDraggable(box, handle, onStart) {
+  handle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || e.target.closest('button')) return;
+    e.preventDefault();
+    const r = box.getBoundingClientRect();
+    const offX = e.clientX - r.left, offY = e.clientY - r.top;
+    dragging = true;
+    if (onStart) onStart();
+    box.style.right = 'auto'; box.style.bottom = 'auto';
+    const move = (ev) => {
+      const left = Math.max(0, Math.min(ev.clientX - offX, window.innerWidth - box.offsetWidth));
+      const top = Math.max(0, Math.min(ev.clientY - offY, window.innerHeight - box.offsetHeight));
+      box.style.left = left + 'px'; box.style.top = top + 'px';
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move, true);
+      document.removeEventListener('mouseup', up, true);
+      setTimeout(() => { dragging = false; }, 0);   // swallow the trailing click
+    };
+    document.addEventListener('mousemove', move, true);
+    document.addEventListener('mouseup', up, true);
+  });
+}
+
+// ── off-canon highlighting ─────────────────────────────────────────────────
+// An element "owns text" if it has a non-empty direct text node (it renders
+// text itself, rather than only through children) — those are what must sit on
+// a canon. On enable we flag every such element that detects as off-canon.
+function ownsText(el) {
+  for (const n of el.childNodes) if (n.nodeType === 3 && n.textContent.trim()) return true;
+  return false;
+}
+const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'PATH', 'TEXTAREA', 'INPUT', 'OPTION']);
+function reflag(el) {
+  // Re-evaluate one element's off-canon state (used after preview/save/reset).
+  if (!active || isOurs(el)) return;
+  const off = ownsText(el) && !detectCanon(el, probed);
+  el.classList.toggle('ci-offcanon-hi', off);
+  if (off) offCanon.add(el); else offCanon.delete(el);
+}
+function highlightOffCanon() {
+  for (const el of document.body.querySelectorAll('*')) {
+    if (SKIP_TAGS.has(el.tagName) || isOurs(el) || !ownsText(el)) continue;
+    if (!el.getClientRects().length) continue;               // not rendered
+    if (!detectCanon(el, probed)) { el.classList.add('ci-offcanon-hi'); offCanon.add(el); }
+  }
+}
+function clearOffCanon() {
+  for (const el of offCanon) el.classList.remove('ci-offcanon-hi');
+  offCanon.clear();
+}
 
 // ── scope (element vs. all-like-this) ──────────────────────────────────────
 function scopeTargets(el) {
@@ -235,16 +308,24 @@ function render(el) {
   scopeRow.append(bEl, bGroup);
   head.appendChild(scopeRow);
 
-  // modifiers (only meaningful once a canon is chosen)
+  // states — per-canon set from the design-system mockup (only those that change
+  // THIS canon). strong/flush save to the worklist; caps/track/mono/mute preview only.
   const mods = h('ci-mods');
-  const modLbl = h('ci-mods__lbl'); modLbl.textContent = 'Модификаторы:';
+  const modLbl = h('ci-mods__lbl'); modLbl.textContent = 'Состояния:';
   mods.appendChild(modLbl);
-  for (const m of MODIFIERS) {
-    const chip = h('ci-chip', 'button'); chip.textContent = m.label;
-    const on = !!pending && pending.mods.includes(m.key);
+  const baseApply = pending ? probed.canons.get(pending.id).apply : null;
+  const ps = psFor(el);
+  for (const st of STATES) {
+    if (baseApply && !st.applies(baseApply)) continue;   // hide states that don't change this canon
+    const chip = h('ci-chip', 'button');
+    let on = false, label = st.label;
+    if (st.saveable) on = !!pending && pending.mods.includes(st.key);
+    else if (st.cycle) { on = ps.track > 0; if (on) label = `${st.label} ·${ps.track}`; }
+    else on = ps.keys.has(st.key);
+    chip.textContent = label;
     if (on) chip.classList.add('is-on');
     if (!pending) chip.setAttribute('disabled', '');
-    chip.onclick = () => toggleMod(el, m.key);
+    chip.onclick = () => (st.saveable ? toggleMod(el, st.key) : togglePreviewState(el, st.key));
     mods.appendChild(chip);
   }
 
@@ -255,7 +336,8 @@ function render(el) {
     const btn = h('ci-canon', 'button');
     if (pending && c.id === pending.id) btn.classList.add('is-cur');
     const isBase = base && c.id === base.id;
-    btn.innerHTML = `<div class="ci-canon__t">${c.id} · ${c.name}${isBase ? ' <i>(сейчас)</i>' : ''}</div>`
+    const mkTag = c.mockup && c.mockup !== '—' ? ` <span class="ci-canon__mk">макет: ${c.mockup}</span>` : '';
+    btn.innerHTML = `<div class="ci-canon__t">${c.id} · ${c.name}${mkTag}${isBase ? ' <i>(сейчас)</i>' : ''}</div>`
       + `<div class="ci-canon__spec">${p.human}</div>`
       + `<div class="ci-canon__role">${c.role}</div>`;
     btn.onclick = () => pickCanon(el, c.id);
@@ -275,11 +357,13 @@ function render(el) {
 
   els.panel.innerHTML = '';
   els.panel.append(head, mods, ...list.childNodes, foot);
+  makeDraggable(els.panel, head, () => { panelMoved = true; });   // drag by header
 }
 
 function positionPanel(el) {
-  const r = el.getBoundingClientRect();
   els.panel.style.display = 'block';
+  if (panelMoved) return;                        // user moved it — keep their position
+  const r = el.getBoundingClientRect();
   const pw = 300, gap = 10;
   let left = r.right + gap;
   if (left + pw > window.innerWidth) left = Math.max(gap, r.left - pw - gap);
@@ -293,6 +377,7 @@ function positionPanel(el) {
 function pickCanon(el, id) {
   const cur = pendingCanon.get(el);
   pendingCanon.set(el, { id, mods: cur ? cur.mods : [] });
+  previewStates.delete(el);               // preview-states are canon-specific — reset on canon switch
   applyPreview(el);
   render(el);
 }
@@ -303,6 +388,26 @@ function toggleMod(el, key) {
   pendingCanon.set(el, { id: cur.id, mods });
   applyPreview(el);
   render(el);
+}
+// Preview-only states (caps/track/mono/mute) — ephemeral, never queued to the worklist.
+function togglePreviewState(el, key) {
+  const st = STATES.find((s) => s.key === key);
+  if (!st || !pendingCanon.get(el)) return;
+  const ps = psFor(el);
+  if (st.cycle) ps.track = (ps.track + 1) % (st.cycle.length + 1);   // 0=off, then 1..n
+  else if (ps.keys.has(key)) ps.keys.delete(key); else ps.keys.add(key);
+  previewStates.set(el, ps);
+  applyPreview(el);
+  render(el);
+}
+// Combined inline CSS of the active preview-states (layers on top of the canon).
+function stateCssFor(el) {
+  const ps = previewStates.get(el);
+  if (!ps) return null;
+  const css = {};
+  for (const st of STATES) if (!st.cycle && st.css && ps.keys.has(st.key)) Object.assign(css, st.css);
+  if (ps.track > 0) { const t = STATES.find((s) => s.cycle); css.letterSpacing = t.cycle[ps.track - 1]; }
+  return css;
 }
 function setScope(el, mode) {
   // restore the previous scope's preview before switching, to avoid orphaned styles
@@ -317,12 +422,14 @@ function applyPreview(el) {
   if (!pending) return;
   const props = comboApply(probed, pending.id, pending.mods);
   if (!props) return;
+  const scss = stateCssFor(el);           // preview-state overlay (caps/track/mono/mute)
   for (const t of scopeTargets(el)) {
     // Capture each target's REAL canon before we mutate it, so clicking a
     // group sibling later still reports its true "Сейчас".
     if (!baseCanon.has(t)) baseCanon.set(t, detectCanon(t, probed));
     if (!originalCss.has(t)) originalCss.set(t, t.getAttribute('style') || '');
-    Object.assign(t.style, props);
+    Object.assign(t.style, props, scss || {});
+    reflag(t);                              // now on a canon → drop red highlight
   }
 }
 function restorePreview(el) {
@@ -331,6 +438,7 @@ function restorePreview(el) {
     const prev = originalCss.get(t);
     if (prev) t.setAttribute('style', prev); else t.removeAttribute('style');
     originalCss.delete(t);
+    reflag(t);                              // back to its real canon → re-check highlight
   }
 }
 
@@ -350,6 +458,7 @@ function commit(el) {
 
 function resetEl(el) {
   restorePreview(el);
+  previewStates.delete(el);
   pendingCanon.set(el, baseCanon.get(el));
   if (queuedFor.has(el)) removeChange(queuedFor.get(el));
   render(el);
@@ -400,6 +509,7 @@ function renderTray() {
 
   els.tray.innerHTML = '';
   els.tray.append(head, ...rows.childNodes);
+  makeDraggable(els.tray, head);            // drag the tray by its header
 }
 
 function removeChange(key) {
