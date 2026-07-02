@@ -34,6 +34,17 @@ export function cssPath(el) {
   return parts.join(' > ');
 }
 
+// A selector grouping "elements like this one" for the higher-level scope
+// (e.g. every .app-side__label in the sidebar, not just the clicked item).
+// Uses the element's own classes; falls back to the tag name.
+export function groupSelector(el) {
+  const classes = (el.getAttribute('class') || '')
+    .split(/\s+/)
+    .filter((c) => c && !c.startsWith('ci-'));
+  if (classes.length) return classes.map((c) => '.' + CSS.escape(c)).join('');
+  return el.tagName.toLowerCase();
+}
+
 // Full descriptor recorded for one queued change.
 export function describe(el) {
   const text = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 48);

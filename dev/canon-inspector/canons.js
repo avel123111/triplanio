@@ -6,6 +6,11 @@
 // and reads getComputedStyle. So the reference values always come straight
 // from app.css; if a canon changes there, detection follows automatically.
 //
+// The same is true for the two sanctioned orthogonal modifiers (.t-strong,
+// .t-flush, app.css Фаза 3) — they combine with ANY canon. We probe every
+// canon × modifier-subset combination, so a modified element is recognised as
+// "canon + modifier" instead of falling through as off-canon.
+//
 // Only the human-facing labels/roles live here (the tool's own copy).
 
 export const CANONS = [
@@ -20,6 +25,22 @@ export const CANONS = [
   { id: 9,  cls: 't-micro',      name: 'Micro',      role: 'Бейджи, капс-метки' },
   { id: 10, cls: 't-mono',       name: 'Mono',       role: 'Коды, идентификаторы' },
 ];
+
+// The sanctioned orthogonal modifiers (app.css Фаза 3). They layer on top of a
+// canon; the only legal place (besides canons) where font-weight / line-height
+// is set. Order here is the order shown in the panel.
+export const MODIFIERS = [
+  { key: 'strong', cls: 't-strong', label: 'strong' },
+  { key: 'flush',  cls: 't-flush',  label: 'flush'  },
+];
+
+// Every subset of the modifier list, smallest-first: [], [strong], [flush], …
+function modifierSubsets() {
+  return MODIFIERS.reduce(
+    (acc, m) => acc.concat(acc.map((s) => [...s, m])),
+    [[]],
+  );
+}
 
 const round = (v, p = 1) => {
   const n = parseFloat(v);
@@ -57,44 +78,58 @@ function humanSpec(cs) {
   return `${px} · ${w} · ${lh} · ${track}${upper}${mono}`;
 }
 
-// Probe the live stylesheet: render each canon class hidden, read its computed
-// style. Returns a map id → { sig, spec (applyable props), human }.
+// Exact props to copy onto a target element for the live preview.
+function applyProps(cs) {
+  return {
+    fontFamily: cs.fontFamily,
+    fontSize: cs.fontSize,
+    fontWeight: cs.fontWeight,
+    lineHeight: cs.lineHeight,
+    letterSpacing: cs.letterSpacing === 'normal' ? '0' : cs.letterSpacing,
+    textTransform: cs.textTransform,
+  };
+}
+
+const modKey = (mods) => [...mods].sort().join(',');
+
+// Probe the live stylesheet. Returns:
+//   canons: Map<id, { human, apply }>          — base canon (no modifier)
+//   combos: [{ id, mods:[key], sig, apply }]   — every canon × modifier subset
 export function probeCanons() {
   const host = document.createElement('div');
   host.setAttribute('aria-hidden', 'true');
   host.style.cssText = 'position:fixed;left:-9999px;top:-9999px;visibility:hidden;pointer-events:none;';
   document.body.appendChild(host);
 
-  const byId = new Map();
+  const subsets = modifierSubsets();
+  const canons = new Map();
+  const combos = [];
   for (const canon of CANONS) {
-    const el = document.createElement('span');
-    el.className = canon.cls;
-    el.textContent = 'Ag';
-    host.appendChild(el);
-    const cs = getComputedStyle(el);
-    byId.set(canon.id, {
-      canon,
-      sig: signature(cs),
-      human: humanSpec(cs),
-      // exact props to copy onto a target element for the live preview
-      apply: {
-        fontFamily: cs.fontFamily,
-        fontSize: cs.fontSize,
-        fontWeight: cs.fontWeight,
-        lineHeight: cs.lineHeight,
-        letterSpacing: cs.letterSpacing === 'normal' ? '0' : cs.letterSpacing,
-        textTransform: cs.textTransform,
-      },
-    });
+    for (const subset of subsets) {
+      const el = document.createElement('span');
+      el.className = [canon.cls, ...subset.map((m) => m.cls)].join(' ');
+      el.textContent = 'Ag';
+      host.appendChild(el);
+      const cs = getComputedStyle(el);
+      combos.push({ id: canon.id, mods: subset.map((m) => m.key), sig: signature(cs), apply: applyProps(cs) });
+      if (!subset.length) canons.set(canon.id, { human: humanSpec(cs), apply: applyProps(cs) });
+    }
   }
   document.body.removeChild(host);
-  return byId;
+  return { canons, combos };
 }
 
-// Which canon (if any) an element currently renders as. Returns the canon id,
-// or null when the element matches none of the 10 (off-canon).
-export function detectCanon(el, probes) {
+// Which canon + modifiers (if any) an element currently renders as. Returns
+// { id, mods }, or null when it matches none of the combinations (off-canon).
+export function detectCanon(el, probed) {
   const sig = signature(getComputedStyle(el));
-  for (const [id, p] of probes) if (p.sig === sig) return id;
+  for (const c of probed.combos) if (c.sig === sig) return { id: c.id, mods: c.mods };
   return null;
+}
+
+// The applyable props for a given canon id + modifier set (from the probes).
+export function comboApply(probed, id, mods) {
+  const want = modKey(mods);
+  for (const c of probed.combos) if (c.id === id && modKey(c.mods) === want) return c.apply;
+  return probed.canons.get(id)?.apply || null;
 }
