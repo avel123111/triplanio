@@ -7,7 +7,8 @@ import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
-import { resolveCities, countryFlag, reverseGeocode } from '@/lib/geo';
+import { resolveCities, reverseGeocode } from '@/lib/geo';
+import CountryFlag from '@/components/common/CountryFlag';
 import { tzFromCoords } from '@/lib/timezone';
 import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
@@ -296,7 +297,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="t-ui">{nearbyCity.city_name}</div>
-              <div className="muted t-meta">{countryFlag(nearbyCity.country_code)} {nearbyCity.country} · {t('planner.your_city')}</div>
+              <div className="muted t-meta"><CountryFlag code={nearbyCity.country_code} /> {nearbyCity.country} · {t('planner.your_city')}</div>
             </div>
             {home?.city_name === nearbyCity.city_name && (
               <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>

@@ -62,14 +62,14 @@ const svgGlyph = (icon) =>
 // Build the DOM element for one mapboxgl.Marker (the Ring style).
 // labels: array shown on the pin (1 → ring with number; 2+ → split pill of
 //   first|last). Ignored when `icon` is set.
-// opts: { onClick, title, icon }
+// opts: { onClick, icon }
 //   icon ('start'|'end'|'waypoint') renders a glyph instead of a number;
 //   onClick omitted ⇒ non-interactive pin.
 // The selected/hover states are toggled by the consumer on the returned element
 // (.is-sel / .is-hover) so hovering a list doesn't rebuild the markers.
 // Visual transforms (scale/halo) sit on the inner .tmk__core so Mapbox's own
 // inline transform on the root .tmk (positioning) is never clobbered.
-export function createMarkerEl(labels, { onClick, title, icon } = {}) {
+export function createMarkerEl(labels, { onClick, icon } = {}) {
   const el = document.createElement('div');
 
   const classes = ['tmk'];
@@ -97,7 +97,6 @@ export function createMarkerEl(labels, { onClick, title, icon } = {}) {
   el.className = classes.join(' ');
   el.innerHTML = `<span class="tmk__halo"></span><span class="tmk__pulse"></span><span class="tmk__core">${core}</span>`;
 
-  if (title) el.title = title;
   if (onClick) el.addEventListener('click', onClick);
   return el;
 }

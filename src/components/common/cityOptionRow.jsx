@@ -1,5 +1,5 @@
 import React from 'react';
-import { countryFlag } from '@/lib/geo';
+import CountryFlag from '@/components/common/CountryFlag';
 
 /**
  * Canonical city option row for the shared <Autocomplete> dropdown — flag + city
@@ -10,7 +10,7 @@ import { countryFlag } from '@/lib/geo';
 export default function cityOptionRow(c) {
   return (
     <>
-      <span className="t-label" style={{ flex: 'none' }}>{countryFlag(c.country_code)}</span>
+      <span className="t-label" style={{ flex: 'none', display: 'inline-flex', alignItems: 'center' }}><CountryFlag code={c.country_code} /></span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.city_name}</span>
         <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.display_name || c.country}</span>

@@ -168,3 +168,53 @@ export function comboApply(probed, id, mods) {
   for (const c of probed.combos) if (c.id === id && modKey(c.mods) === want) return c.apply;
   return probed.canons.get(id)?.apply || null;
 }
+
+// ── colour axis (TRIP-175) ─────────────────────────────────────────────────
+// Sanctioned TEXT colours of the design system (colour is a SEPARATE axis from
+// the canon — canons deliberately carry no colour). `css` is the token to apply;
+// `util` is the utility class a dev applies in code (empty = set colour via the
+// element's own rule / `color: <token>`). This axis IS saved to the worklist.
+export const COLORS = [
+  { key: 'ink',     label: 'Основной',       css: 'var(--ink)',         util: '' },
+  { key: 'ink2',    label: 'Вторичный',      css: 'var(--ink-2)',       util: '' },
+  { key: 'muted',   label: 'Приглушённый',   css: 'var(--muted)',       util: '.muted' },
+  { key: 'muted2',  label: 'Ещё тише',       css: 'var(--muted-2)',     util: '.muted-2' },
+  { key: 'brand',   label: 'Акцент',         css: 'var(--brand)',       util: '' },
+  { key: 'danger',  label: 'Ошибка',         css: 'var(--danger-ink)',  util: '.err' },
+  { key: 'warn',    label: 'Предупреждение', css: 'var(--warning-ink)', util: '.wrn' },
+  { key: 'success', label: 'Успех',          css: 'var(--success-ink)', util: '' },
+  // Палитра типов событий/сервисов — для ТЕКСТА берём -ink варианты (так и красит
+  // приложение: color: var(--ev-*-ink)), они легибельны в обеих темах.
+  { key: 'ev-hotel',     label: 'Эвент · Отель',      css: 'var(--ev-hotel-ink)',     util: '' },
+  { key: 'ev-transfer',  label: 'Эвент · Переезд',    css: 'var(--ev-transfer-ink)',  util: '' },
+  { key: 'ev-activity',  label: 'Эвент · Активность', css: 'var(--ev-activity-ink)',  util: '' },
+  { key: 'ev-car',       label: 'Эвент · Авто',       css: 'var(--ev-car-ink)',       util: '' },
+  { key: 'ev-esim',      label: 'Эвент · eSIM',       css: 'var(--ev-esim-ink)',      util: '' },
+  { key: 'ev-insurance', label: 'Эвент · Страховка',  css: 'var(--ev-insurance-ink)', util: '' },
+  { key: 'ev-deadline',  label: 'Эвент · Дедлайн',    css: 'var(--ev-deadline-ink)',  util: '' },
+  { key: 'ev-service',   label: 'Эвент · Сервис',     css: 'var(--ev-service-ink)',   util: '' },
+];
+export const colorByKey = (key) => COLORS.find((c) => c.key === key) || null;
+
+// Probe each colour token to its computed rgb (like probeCanons), so we can
+// detect an element's current colour and preview swatches truthfully per theme.
+export function probeColors() {
+  const host = document.createElement('div');
+  host.setAttribute('aria-hidden', 'true');
+  host.style.cssText = 'position:fixed;left:-9999px;top:-9999px;visibility:hidden;pointer-events:none;';
+  document.body.appendChild(host);
+  const map = new Map();
+  for (const c of COLORS) {
+    const el = document.createElement('span');
+    el.style.color = c.css; host.appendChild(el);
+    map.set(c.key, getComputedStyle(el).color);
+  }
+  document.body.removeChild(host);
+  return map;
+}
+// The design colour an element currently renders in, or null (custom / off-palette).
+export function detectColor(el, colorMap) {
+  const rgb = getComputedStyle(el).color;
+  for (const [k, v] of colorMap) if (v === rgb) return k;
+  return null;
+}

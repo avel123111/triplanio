@@ -6,9 +6,9 @@
 // lib/i18n/locales/{lang}/{namespace}.json (BARE keys, namespace = file stem).
 
 export const LANGUAGES = [
-  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
 ];
 
 // IETF locale tags used by Intl.* APIs and Luxon
