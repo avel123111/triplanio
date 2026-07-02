@@ -7,7 +7,7 @@ import { DateTime } from 'luxon';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import { sortVisits } from '@/lib/validation';
-import { countryFlag } from '@/lib/geo';
+import CountryFlag from '@/components/common/CountryFlag';
 import { uniqueCityCount } from '@/lib/trip-cities';
 
 // =====================================================================
@@ -281,7 +281,7 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
               {visit?.city_name}
             </div>
             <div className="muted t-body" style={{ marginTop: 4 }}>
-              {countryFlag(visit?.country_code)} {visit?.country || ''}
+              <CountryFlag code={visit?.country_code} /> {visit?.country || ''}
               {isStart && <> {t('view.map_start_suffix')}</>}
               {isEnd && <> {t('view.map_finish_suffix')}</>}
             </div>

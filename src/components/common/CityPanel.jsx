@@ -10,6 +10,7 @@
 import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
+import CountryFlag from '@/components/common/CountryFlag';
 import { Btn } from '@/design/index';
 import { fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
 
@@ -97,7 +98,7 @@ export default function CityPanel({
         <button className="lp-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={17} /></button>
         <div className="lph-title">
           <b className="lph-name">{node.city_name}</b>
-          {meta?.country && <span className="lph-fc">{meta.flag ? `${meta.flag} ` : ''}{meta.country}</span>}
+          {meta?.country && <span className="lph-fc" style={{ display: 'inline-flex', alignItems: 'center', gap: '.35em' }}><CountryFlag code={node.country_code} />{meta.country}</span>}
         </div>
         <div className="lph-meta">
           <div><span className="lph-mk">{t('hotel.check_in')}</span><span className="lph-mv">{fmtDate(node.start_date) || '—'}</span></div>

@@ -72,9 +72,9 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
     if (!map || !ready) return undefined;
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
-    const points = pts.map((p) => ({ lng: p.lng, lat: p.lat, label: p.label, kind: p.kind, data: p.name }));
+    const points = pts.map((p) => ({ lng: p.lng, lat: p.lat, label: p.label, kind: p.kind }));
     groupByLocation(points).forEach((g) => {
-      const el = createMarkerEl(g.labels.filter((l) => l != null), { icon: iconForKinds(g.kinds), title: g.data.filter(Boolean).join(' • ') });
+      const el = createMarkerEl(g.labels.filter((l) => l != null), { icon: iconForKinds(g.kinds) });
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
       markersRef.current.push(marker);
     });
