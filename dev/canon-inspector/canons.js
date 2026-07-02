@@ -34,10 +34,39 @@ export const CANONS = [
 
 // The sanctioned orthogonal modifiers (app.css Фаза 3). They layer on top of a
 // canon; the only legal place (besides canons) where font-weight / line-height
-// is set. Order here is the order shown in the panel.
+// is set. Used for live detection (probe canon × modifier subsets).
 export const MODIFIERS = [
   { key: 'strong', cls: 't-strong', label: 'strong' },
   { key: 'flush',  cls: 't-flush',  label: 'flush'  },
+];
+
+// TRIP-175 · Состояния стиля — зеркалит специмен дизайн-системы (макет): у каждого
+// канона показываем ТОЛЬКО те состояния, что реально его меняют. Применимость
+// выводится из ЖИВОГО вычисленного стиля канона (a = apply-props из probeCanons),
+// поэтому список сам подстраивается под правку канона в app.css.
+//   • strong / flush — РЕАЛЬНЫЕ санкц. модификаторы (.t-strong/.t-flush): saveable,
+//     их эффект берётся из probe (comboApply), попадают в worklist.
+//   • caps / track / mono / mute — ПРЕВЬЮ-состояния (визуальный аудит, как в макете):
+//     применяются эфемерным inline-стилем, в worklist НЕ сохраняются (в проде это
+//     были бы отдельные утилиты — вводить только с одобрения Павла, правило #6).
+// applies(a): a = { fontFamily, fontSize, fontWeight, lineHeight, letterSpacing,
+//                   textTransform } — computed-стиль базового канона.
+export const STATES = [
+  { key: 'strong', label: 'Жирнее', saveable: true,
+    applies: (a) => (parseInt(a.fontWeight, 10) || 400) < 700 },            // .t-strong = 700
+  { key: 'caps',   label: 'Капс',
+    applies: (a) => a.textTransform !== 'uppercase',                        // .t-micro уже капс
+    css: { textTransform: 'uppercase', letterSpacing: '0.1em' } },
+  { key: 'track',  label: 'Трекинг', cycle: ['0.04em', '0.12em', '0.18em'],
+    applies: (a) => a.textTransform !== 'uppercase' },                      // у капс-канона трекинг зашит
+  { key: 'mono',   label: 'Моно',
+    applies: (a) => !/mono|jetbrains/i.test(a.fontFamily),                  // meta/micro/mono уже моно
+    css: { fontFamily: 'var(--font-mono)' } },
+  { key: 'flush',  label: 'Флеш', saveable: true,
+    applies: (a) => (parseFloat(a.lineHeight) / (parseFloat(a.fontSize) || 1)) >= 1.5 }, // виден на многострочном (t-body)
+  { key: 'mute',   label: 'Тише',
+    applies: () => true,
+    css: { color: 'var(--muted)' } },
 ];
 
 // Every subset of the modifier list, smallest-first: [], [strong], [flush], …

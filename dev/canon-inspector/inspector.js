@@ -11,7 +11,7 @@
 // element that looks like it ("Все похожие", by shared class) — e.g. all the
 // sidebar menu items at once, not a single word.
 
-import { CANONS, MODIFIERS, probeCanons, detectCanon, comboApply } from './canons.js';
+import { CANONS, STATES, probeCanons, detectCanon, comboApply } from './canons.js';
 import { describe, groupSelector } from './describe.js';
 
 const LS_KEY = 'ci:canon-changes';
@@ -28,10 +28,12 @@ const pendingCanon = new WeakMap();// element → {id,mods}|null  (current previ
 const scopeMode = new WeakMap();   // element → 'el' | 'group'
 const queuedFor = new WeakMap();   // element → change.key (in-session dedup)
 const originalCss = new WeakMap(); // element → prior inline cssText (for reset)
+const previewStates = new WeakMap();// element → {keys:Set, track:int} — preview-only states (caps/track/mono/mute)
 
 let els = {};                  // cached DOM refs (launcher, hi, panel, tray…)
 
 // ── canon/modifier helpers ─────────────────────────────────────────────────
+const psFor = (el) => previewStates.get(el) || { keys: new Set(), track: 0 };
 const sameSet = (a, b) => a.length === b.length && [...a].sort().join(',') === [...b].sort().join(',');
 const sameCanon = (a, b) => (!a && !b) || (!!a && !!b && a.id === b.id && sameSet(a.mods, b.mods));
 function canonLabel(info) {
@@ -239,16 +241,24 @@ function render(el) {
   scopeRow.append(bEl, bGroup);
   head.appendChild(scopeRow);
 
-  // modifiers (only meaningful once a canon is chosen)
+  // states — per-canon set from the design-system mockup (only those that change
+  // THIS canon). strong/flush save to the worklist; caps/track/mono/mute preview only.
   const mods = h('ci-mods');
-  const modLbl = h('ci-mods__lbl'); modLbl.textContent = 'Модификаторы:';
+  const modLbl = h('ci-mods__lbl'); modLbl.textContent = 'Состояния:';
   mods.appendChild(modLbl);
-  for (const m of MODIFIERS) {
-    const chip = h('ci-chip', 'button'); chip.textContent = m.label;
-    const on = !!pending && pending.mods.includes(m.key);
+  const baseApply = pending ? probed.canons.get(pending.id).apply : null;
+  const ps = psFor(el);
+  for (const st of STATES) {
+    if (baseApply && !st.applies(baseApply)) continue;   // hide states that don't change this canon
+    const chip = h('ci-chip', 'button');
+    let on = false, label = st.label;
+    if (st.saveable) on = !!pending && pending.mods.includes(st.key);
+    else if (st.cycle) { on = ps.track > 0; if (on) label = `${st.label} ·${ps.track}`; }
+    else on = ps.keys.has(st.key);
+    chip.textContent = label;
     if (on) chip.classList.add('is-on');
     if (!pending) chip.setAttribute('disabled', '');
-    chip.onclick = () => toggleMod(el, m.key);
+    chip.onclick = () => (st.saveable ? toggleMod(el, st.key) : togglePreviewState(el, st.key));
     mods.appendChild(chip);
   }
 
@@ -298,6 +308,7 @@ function positionPanel(el) {
 function pickCanon(el, id) {
   const cur = pendingCanon.get(el);
   pendingCanon.set(el, { id, mods: cur ? cur.mods : [] });
+  previewStates.delete(el);               // preview-states are canon-specific — reset on canon switch
   applyPreview(el);
   render(el);
 }
@@ -308,6 +319,26 @@ function toggleMod(el, key) {
   pendingCanon.set(el, { id: cur.id, mods });
   applyPreview(el);
   render(el);
+}
+// Preview-only states (caps/track/mono/mute) — ephemeral, never queued to the worklist.
+function togglePreviewState(el, key) {
+  const st = STATES.find((s) => s.key === key);
+  if (!st || !pendingCanon.get(el)) return;
+  const ps = psFor(el);
+  if (st.cycle) ps.track = (ps.track + 1) % (st.cycle.length + 1);   // 0=off, then 1..n
+  else if (ps.keys.has(key)) ps.keys.delete(key); else ps.keys.add(key);
+  previewStates.set(el, ps);
+  applyPreview(el);
+  render(el);
+}
+// Combined inline CSS of the active preview-states (layers on top of the canon).
+function stateCssFor(el) {
+  const ps = previewStates.get(el);
+  if (!ps) return null;
+  const css = {};
+  for (const st of STATES) if (!st.cycle && st.css && ps.keys.has(st.key)) Object.assign(css, st.css);
+  if (ps.track > 0) { const t = STATES.find((s) => s.cycle); css.letterSpacing = t.cycle[ps.track - 1]; }
+  return css;
 }
 function setScope(el, mode) {
   // restore the previous scope's preview before switching, to avoid orphaned styles
@@ -322,12 +353,13 @@ function applyPreview(el) {
   if (!pending) return;
   const props = comboApply(probed, pending.id, pending.mods);
   if (!props) return;
+  const scss = stateCssFor(el);           // preview-state overlay (caps/track/mono/mute)
   for (const t of scopeTargets(el)) {
     // Capture each target's REAL canon before we mutate it, so clicking a
     // group sibling later still reports its true "Сейчас".
     if (!baseCanon.has(t)) baseCanon.set(t, detectCanon(t, probed));
     if (!originalCss.has(t)) originalCss.set(t, t.getAttribute('style') || '');
-    Object.assign(t.style, props);
+    Object.assign(t.style, props, scss || {});
   }
 }
 function restorePreview(el) {
@@ -355,6 +387,7 @@ function commit(el) {
 
 function resetEl(el) {
   restorePreview(el);
+  previewStates.delete(el);
   pendingCanon.set(el, baseCanon.get(el));
   if (queuedFor.has(el)) removeChange(queuedFor.get(el));
   render(el);
