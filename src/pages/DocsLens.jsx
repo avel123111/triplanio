@@ -255,7 +255,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
               <Icon name="paperclip" size={13} style={{ color: 'var(--brand)' }} />
               {t('doc.files_label')}
               {documents.length > 0 && (
-                <span className="muted" style={{ fontWeight: 400, marginLeft: 4 }}>
+                <span className="muted t-body" style={{ marginLeft: 4 }}>
                   · {documents.length}
                 </span>
               )}

@@ -359,7 +359,7 @@ export default function Statistics() {
 
         {/* country / city lists */}
         <div className="sec-head">
-          <h2 style={{ fontSize: 'var(--fs-h3)' }}>{t('stats.places_title')}</h2>
+          <h2 className="t-subheading">{t('stats.places_title')}</h2>
           <div className="grow" />
           <div className="seg" role="group" aria-label={t('stats.places_title')}>
             <button aria-pressed={listMode === 'countries'} onClick={() => setListMode('countries')}>{t('stats.tab_countries')} · {bundle.countries}</button>
@@ -375,11 +375,11 @@ export default function Statistics() {
         </div>
 
         {/* records */}
-        <div className="sec-head"><h2 style={{ fontSize: 'var(--fs-h3)' }}>{t('stats.records_title')}</h2></div>
+        <div className="sec-head"><h2 className="t-subheading">{t('stats.records_title')}</h2></div>
         <Records items={recordItems} />
 
         {/* trips per year */}
-        <div className="sec-head"><h2 style={{ fontSize: 'var(--fs-h3)' }}>{t('stats.byyear_title')}</h2></div>
+        <div className="sec-head"><h2 className="t-subheading">{t('stats.byyear_title')}</h2></div>
         <YearChart bars={yearBars.bars} caption={yearBars.caption} />
         </>)}
       </main>

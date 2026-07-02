@@ -18,7 +18,7 @@ export default function NightsStepper({ value, onMinus, onPlus, minusDisabled = 
       <button className="te-step" onClick={onMinus} disabled={minusDisabled} aria-label={t('planner.fewer_nights')}>
         <Icon name="minus" size={12} />
       </button>
-      <span className="num te-nights">{value}<span className="muted" style={{ fontWeight: 500 }}>{t('planner.night_short')}</span></span>
+      <span className="num te-nights">{value}<span className="muted">{t('planner.night_short')}</span></span>
       <button className="te-step" onClick={onPlus} disabled={plusDisabled} aria-label={t('planner.more_nights')}>
         <Icon name="plus" size={10} />
       </button>

@@ -193,7 +193,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
         <div className="acct-plan__face acct-plan__face--ca">
           <span className="blob" aria-hidden="true" />
           <div className="acct-plan__k">{t('account.cancelled_sub')}</div>
-          <div className="acct-plan__v" style={{ fontSize: 'var(--fs-h3)' }}>{t('account.pro_cancelled')}</div>
+          <div className="acct-plan__v t-subheading">{t('account.pro_cancelled')}</div>
           {plan?.subscriptionEnd && <div className="acct-plan__p">{fmtDate(plan.subscriptionEnd, locale)}</div>}
         </div>
         <div className="acct-plan__side">

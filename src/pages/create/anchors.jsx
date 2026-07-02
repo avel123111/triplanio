@@ -78,7 +78,7 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
         <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name="plus" size={13} /></span>
         <div className="te-citycell" style={{ flex: 1 }}>
           <span className="te-endlabel" style={{ color: accent }}>{label}</span>
-          <span className="te-cityname muted" style={{ fontWeight: 500 }}>{t('planner.add_start')}</span>
+          <span className="te-cityname muted">{t('planner.add_start')}</span>
         </div>
       </button>
     );
@@ -90,7 +90,7 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
       <div className="te-citycell" style={{ flex: 1 }}>
         <span className="te-endlabel" style={{ color: accent }}>{label}</span>
         <div className="te-cityline">
-          <span className="te-cityname">{city?.city_name || <span className="muted" style={{ fontWeight: 500 }}>{t('planner.not_set')}</span>}</span>
+          <span className="te-cityname">{city?.city_name || <span className="muted">{t('planner.not_set')}</span>}</span>
           {city?.country && <span className="muted t-meta">{city.country}</span>}
         </div>
       </div>
