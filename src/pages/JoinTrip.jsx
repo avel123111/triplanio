@@ -14,8 +14,8 @@ const STYLES = `
   box-shadow:0 18px 50px -20px rgba(22,41,74,.28);padding:48px 40px 40px;text-align:center;}
 .jt-logo{height:38px;width:auto;margin:0 auto 30px;display:block;}
 .jt-card h1{margin:0;}
-.jt-lede{color:#7A7689;font-size:16px;line-height:1.55;margin:12px 0 0;}
-.jt-btn{font-family:'Golos Text',ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:16px;color:#fff;
+.jt-lede{color:#7A7689;margin:12px 0 0;}
+.jt-btn{color:#fff;
   background:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);border:none;border-radius:14px;width:100%;
   padding:15px 22px;margin-top:28px;cursor:pointer;box-shadow:0 10px 24px -8px rgba(33,115,200,.55);
   transition:transform .15s,box-shadow .15s;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
@@ -85,7 +85,7 @@ export default function JoinTrip() {
           <>
             <div className="jt-spinner" />
             <h1 className="t-heading">{t('member.join_joining')}</h1>
-            <p className="jt-lede">{t('member.join_joining_sub')}</p>
+            <p className="jt-lede t-body">{t('member.join_joining_sub')}</p>
           </>
         )}
 
@@ -96,8 +96,8 @@ export default function JoinTrip() {
               {t('member.join_invited')}
             </div>
             <h1 className="t-heading">{t('member.join_signin_title')}</h1>
-            <p className="jt-lede">{t('member.join_signin_lede')}</p>
-            <button className="jt-btn" onClick={() => { window.location.href = '/login'; }}>
+            <p className="jt-lede t-body">{t('member.join_signin_lede')}</p>
+            <button className="jt-btn t-label" onClick={() => { window.location.href = '/login'; }}>
               {t('member.join_signin_btn')}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
             </button>
@@ -110,9 +110,9 @@ export default function JoinTrip() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </div>
             <h1 className="t-heading">{t('member.join_error_title')}</h1>
-            <p className="jt-lede">{t(errKey)}</p>
-            <button className="jt-btn" onClick={() => nav('/trips', { replace: true })}>{t('member.join_to_app')}</button>
-            <button className="jt-btn jt-btn--ghost" onClick={() => { window.location.href = '/'; }}>{t('member.join_home')}</button>
+            <p className="jt-lede t-body">{t(errKey)}</p>
+            <button className="jt-btn t-label" onClick={() => nav('/trips', { replace: true })}>{t('member.join_to_app')}</button>
+            <button className="jt-btn jt-btn--ghost t-label" onClick={() => { window.location.href = '/'; }}>{t('member.join_home')}</button>
           </>
         )}
       </div>

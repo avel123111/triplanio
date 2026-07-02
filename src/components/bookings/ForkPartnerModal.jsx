@@ -213,12 +213,11 @@ export default function ForkPartnerModal({
       .fork-manual:active { transform: scale(.99); }
       .fork-manual__ic { width: 38px; height: 38px; border-radius: 11px; background: var(--fk); color: #fff; display: grid; place-items: center; flex: none; box-shadow: 0 5px 13px -6px var(--fk); }
       .fork-manual__tx { flex: 1; min-width: 0; }
-      .fork-manual__tx b { display: block; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); color: var(--ink); }
-      .fork-manual__tx span { display: block; font-size: var(--fs-micro); color: var(--muted); line-height: 1.35; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .fork-manual__tx b { display: block; color: var(--ink); }
+      .fork-manual__tx span { display: block; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .fork-manual__chev { flex: none; color: var(--fk); }
       .fork-or { display: flex; align-items: center; gap: 10px; color: var(--muted); }
       .fork-or::before, .fork-or::after { content: ""; height: 1px; flex: 1; background: var(--line); }
-      .fork-or span { font-size: var(--fs-micro); font-weight: 700; }
       .fork-partners { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
       .fork-partner { display: flex; align-items: center; gap: 10px; padding: 9px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); text-decoration: none; color: inherit; cursor: pointer; min-width: 0; transition: transform .16s var(--ease-spring), border-color .16s, box-shadow .18s; }
       .fork-partner:hover { transform: translateY(-1px); border-color: var(--line-hover); box-shadow: var(--sh-1); }
@@ -226,8 +225,8 @@ export default function ForkPartnerModal({
       .fork-partner__logo { width: 32px; height: 32px; border-radius: 9px; flex: none; background: transparent; object-fit: contain; }
       .fork-partner__logo--ph { display: grid; place-items: center; color: var(--muted); background: var(--wash); box-shadow: none; }
       .fork-partner__mid { flex: 1; min-width: 0; }
-      .fork-partner__mid b { display: block; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-meta); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .fork-partner__mid span { display: block; font-size: var(--fs-nano); color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .fork-partner__mid b { display: block; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .fork-partner__mid span { display: block; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .fork-partner__ext { color: var(--muted-2); flex: none; }
       .fork-addzone { container-type: inline-size; }
       @container (max-width: 380px) { .fork-partners { grid-template-columns: 1fr; } }

@@ -1099,7 +1099,7 @@ export default function TripStructureEdit() {
         .ts-step:hover { background: var(--wash); }
         .ts-step:active:not(:disabled) { transform: scale(0.9); }
         .ts-step:disabled { opacity: .3; cursor: default; }
-        .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: var(--fs-base); }
+        .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); }
         /* Left container — same 14px inset + border + radius as the map box, so
            the editor (or an open side panel) and the map read as two equal cards. */
         .ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 14px 7px 14px 14px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface); }
@@ -1110,20 +1110,20 @@ export default function TripStructureEdit() {
         .ts-leftscroll > .ts-routehead { margin: -12px -12px 12px; }
         /* "Маршрут" panel header (left column) + trip-start control. */
         .ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
-        .ts-routehead__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h4); color: var(--ink); }
+        .ts-routehead__title { color: var(--ink); }
         .ts-routehead__sp { flex: 1; }
         .ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
-        .ts-startctl__lbl { font-size: var(--fs-meta); font-weight: 600; color: var(--muted); padding: 0 4px 0 6px; }
-        .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; font-size: var(--fs-meta); font-weight: 600; color: var(--ink); white-space: nowrap; }
+        .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
+        .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
         .ts-startctl__date:hover { background: var(--wash); }
         /* Trip-start calendar popover content. */
         .ts-cal { width: 248px; }
         .ts-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-        .ts-cal__title { font-weight: 600; font-size: var(--fs-base); color: var(--ink); text-transform: capitalize; }
+        .ts-cal__title { color: var(--ink); text-transform: capitalize; }
         .ts-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
         .ts-cal__wd { margin-bottom: 4px; }
-        .ts-cal__wdc { text-align: center; font-size: var(--fs-micro); font-weight: 700; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
-        .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-size: var(--fs-meta); font-weight: 600; color: var(--ink); display: grid; place-items: center; }
+        .ts-cal__wdc { text-align: center; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
+        .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--ink); display: grid; place-items: center; }
         .ts-cal__day:hover { background: var(--wash); }
         .ts-cal__day.on { background: var(--brand); color: #fff; }
         /* In the mobile bottom-sheet the calendar spans the sheet width. */
