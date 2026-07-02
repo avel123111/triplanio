@@ -59,7 +59,7 @@ const AlertDialogDescription = React.forwardRef(({ className, ...props }, ref) =
   <AlertDialogPrimitive.Description
     ref={ref}
     className={cn("muted t-body", className)}
-    style={{ lineHeight: 1.55, marginTop: 6 }}
+    style={{ marginTop: 6 }}
     {...props} />
 ))
 AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName

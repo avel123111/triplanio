@@ -67,7 +67,7 @@ export default function ProUpsellModal({
             {/* ── Body ── */}
             <div className="dlg__body">
               {/* Description — differs by mode */}
-              <div className="muted t-body" style={{ lineHeight: 1.55, marginBottom: 14 }}>
+              <div className="muted t-body" style={{ marginBottom: 14 }}>
                 {isInfo ? (
                   <>
                     {t('sub.trip_pro_desc_pre')}

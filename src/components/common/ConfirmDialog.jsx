@@ -41,7 +41,7 @@ export default function ConfirmDialog({
         {description && (
           <p
             className="muted t-body"
-            style={{ lineHeight: 1.55, margin: '2px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+            style={{ margin: '2px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
           >
             {description}
           </p>

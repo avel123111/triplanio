@@ -2103,9 +2103,9 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                 <span style={{ width: 1, height: 14, background: 'var(--line)', marginLeft: 16 }} />
                 <span className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color }}>
                   <Repeat size={12} style={{ flexShrink: 0 }} />
-                  {t('event.layover_in', { city: '' }).replace(/\s*$/, '')}&nbsp;<span style={{ fontWeight: 700 }}>{layCity}</span>
-                  {layDate && <span className="num" style={{ fontWeight: 600, opacity: 0.7 }}>· {layDate}</span>}
-                  {layDur && <span className="num" style={{ fontWeight: 600, opacity: 0.7 }}>· {layDur}</span>}
+                  {t('event.layover_in', { city: '' }).replace(/\s*$/, '')}&nbsp;<span>{layCity}</span>
+                  {layDate && <span className="num" style={{ opacity: 0.7 }}>· {layDate}</span>}
+                  {layDur && <span className="num" style={{ opacity: 0.7 }}>· {layDur}</span>}
                 </span>
                 <span style={{ flex: 1, height: 1, background: 'var(--line-2)' }} />
               </div>

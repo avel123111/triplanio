@@ -246,7 +246,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       <h2 className="section-sub">{t('ai_plan.start')}</h2>
       <div className="field-row cols-2" style={{ alignItems: 'end', gridTemplateColumns: '7fr 3fr' }}>
         <div className="field" style={{ marginBottom: 0 }}>
-          <label className="field__label">{t('planner.start_city')} <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 }}>· {t('planner.optional')}</span></label>
+          <label className="field__label">{t('planner.start_city')} <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 /* design-token-exempt: caps-reset for optional suffix */ }}>· {t('planner.optional')}</span></label>
           <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} autoFocus />
         </div>
         <div className="field" style={{ marginBottom: 0 }}>

@@ -398,9 +398,9 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
         <div className="t-ui" style={{ marginBottom: 2 }}>{name}</div>
         <div className="muted t-meta">{sub}</div>
         {rating && (
-          <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 5, fontSize: 'var(--fs-micro)' }}>
+          <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
             <Badge variant="success">{rating}/10</Badge>
-            <span className="muted">{p?.label || partner}</span>
+            <span className="muted t-meta">{p?.label || partner}</span>
           </div>
         )}
         {extras && (

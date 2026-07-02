@@ -56,7 +56,7 @@ export default function PaymentResultDialog({
                 {isSuccess ? t(isTrip ? 'sub.success_title_trip' : 'sub.success_title') : t('sub.fail_title')}
               </h2>
 
-              <div className="muted t-body" style={{ lineHeight: 1.55, maxWidth: 340, margin: '0 auto 14px' }}>
+              <div className="muted t-body" style={{ maxWidth: 340, margin: '0 auto 14px' }}>
                 {isSuccess
                   ? t(isTrip ? 'sub.success_desc_trip' : 'sub.success_desc')
                   : code
@@ -72,7 +72,7 @@ export default function PaymentResultDialog({
 
               {/* Fail: help note */}
               {!isSuccess && (
-                <div className="t-meta" style={{ background: 'var(--wash)', padding: '9px 12px', borderRadius: 8, color: 'var(--muted)', lineHeight: 1.5, maxWidth: 340, margin: '0 auto' }}>
+                <div className="t-meta" style={{ background: 'var(--wash)', padding: '9px 12px', borderRadius: 8, color: 'var(--muted)', maxWidth: 340, margin: '0 auto' }}>
                   {t('sub.fail_help')}
                 </div>
               )}

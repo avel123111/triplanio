@@ -32,7 +32,7 @@ const STYLES = `
 .jt-badge{width:64px;height:64px;margin:4px auto 22px;border-radius:50%;background:#FAECE7;
   display:flex;align-items:center;justify-content:center;}
 .jt-badge svg{width:30px;height:30px;color:#D85A30;}
-@media(max-width:480px){.jt-card{padding:38px 24px 30px;border-radius:20px;}.jt-card h1{font-size:22px;}}
+@media(max-width:480px){.jt-card{padding:38px 24px 30px;border-radius:20px;}.jt-card h1{font-size:var(--fs-h3);}}
 `;
 
 export default function JoinTrip() {
