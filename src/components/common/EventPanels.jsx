@@ -10,6 +10,7 @@
  * Used by EventSourcePanel (view shell).
  */
 import React from 'react';
+import { X } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 
@@ -29,19 +30,22 @@ export function kindIcon(kind, entity) {
   return kind === 'hotel' ? 'bed' : kind === 'activity' ? 'ticket' : 'car';
 }
 
-// ── panel shell (Lumo .lp, tinted per-kind header + back button + footer) ─────
-export function PanelShell({ kind = 'hotel', icon, title, sub, onBack, foot, footClass = '', children }) {
+// ── panel shell (Lumo .lp, tinted per-kind header + close (×) button + footer) ─
+export function PanelShell({ kind = 'hotel', icon, eyebrow, title, sub, onBack, foot, footClass = '', children }) {
   const { t } = useI18n();
   const ev = EV[kind] || EV.hotel;
   return (
     <div className="lp lp--wide" style={{ '--ev-color': ev.color, '--ev-soft': ev.soft, '--ev-ink': ev.ink }}>
       <div className="lp-h lp-h--ev">
-        <button className="lp-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={14} /></button>
         <span className="lp-ic" style={{ background: ev.color, color: '#fff' }}><Icon name={icon || kindIcon(kind)} size={17} /></span>
         <div className="lp-ti">
-          <b>{title}</b>
-          {sub && <span>{sub}</span>}
+          {eyebrow && <div className="eyebrow" style={{ color: ev.color }}>{eyebrow}</div>}
+          <div className="lp-tirow">
+            <b className="t-title">{title}</b>
+            {sub && <span className="t-meta">{sub}</span>}
+          </div>
         </div>
+        <button className="ev-dlg-close" onClick={onBack} title={t('common.back')} aria-label={t('common.back')}><X size={15} /></button>
       </div>
       <div className="lp-b scrollbar-thin">{children}</div>
       {foot && <div className={'lp-f' + (footClass ? ' ' + footClass : '')}>{foot}</div>}

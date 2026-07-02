@@ -4254,8 +4254,14 @@ h4,
 .lp-ti { min-width: 0; flex: 1; }
 .lp-ti b { color: var(--ink); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-ti span { color: var(--muted); }
-/* tinted header (per-kind colour via --ev-soft/--ev-ink on the .lp root) */
-.lp-h--ev { background: var(--ev-soft, var(--primary-soft)); border-bottom-color: color-mix(in srgb, var(--ev-soft, var(--primary-soft)) 60%, var(--line)); }
+/* tinted header (per-kind colour via --ev-soft/--ev-ink on the .lp root).
+   TRIP-176: soft vertical gradient — one drawer-header look shared by the
+   add-booking panel and the view/edit panels. */
+.lp-h--ev { background: linear-gradient(180deg, var(--ev-soft, var(--primary-soft)), transparent 94%); border-bottom-color: color-mix(in srgb, var(--ev-soft, var(--primary-soft)) 60%, var(--line)); }
+/* eyebrow (type) + title(city) · meta(dates) row — shared drawer-header title. */
+.lp-tirow { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin-top: 4px; }
+.lp-tirow b { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lp-tirow span { flex: none; }
 .lp-h--ev .lp-back { background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
 .lp-h--ev .lp-back:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
 /* section label (panel sections) */

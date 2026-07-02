@@ -14,7 +14,7 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { Btn, Skeleton, useToast } from '@/design/index';
 import EventEditDialog from '@/components/common/EventEditDialog';
-import { useEntitySource, useEntityDocs, EventViewSections, eventTheme } from '@/components/common/EventViewBody';
+import { useEntitySource, useEntityDocs, EventViewSections, eventTheme, fmtDate, stayNights } from '@/components/common/EventViewBody';
 import { PanelShell, kindIcon } from '@/components/common/EventPanels';
 import { getSourceDocuments } from '@/lib/documents';
 import { collectDocPaths } from '@/lib/storageCleanup';
@@ -77,15 +77,20 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
   const themeLabel = kind === 'transfer'
     ? t(data.transport_type === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer')
     : t(LABEL_KEY[kind] || 'budget.source_activity');
-  // Hotel: header shows the TYPE ("Accommodation") + city; the hotel name lives
-  // in the body name-card (redesign) so it isn't shown twice.
-  const title = kind === 'hotel' ? themeLabel
+  // Drawer header (redesign): eyebrow = TYPE, title = city (hotel: the name is
+  // in the body name-card, not repeated here), meta/sub = stay dates.
+  const hotelNights = kind === 'hotel' ? stayNights(data.check_in_datetime, data.check_out_datetime) : null;
+  const hotelDates = kind === 'hotel' && data.check_in_datetime && data.check_out_datetime
+    ? `${fmtDate(data.check_in_datetime)} — ${fmtDate(data.check_out_datetime)}${hotelNights != null ? ` · ${t('fork.stay22_nights', { count: hotelNights })}` : ''}`
+    : '';
+  const title = kind === 'hotel' ? (visit?.city_name || themeLabel)
     : kind === 'activity' ? (data.title || themeLabel)
     : kind === 'service' ? (data.name || themeLabel)
     : (data.carrier || [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ') || themeLabel);
-  const sub = kind === 'transfer'
-    ? [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ') || themeLabel
-    : (visit?.city_name || themeLabel);
+  const sub = kind === 'hotel' ? (hotelDates || visit?.city_name || '')
+    : kind === 'transfer'
+      ? [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ') || themeLabel
+      : (visit?.city_name || themeLabel);
 
   const CACHE_KIND = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
   const doDelete = async () => {
@@ -121,6 +126,7 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
     <PanelShell
       kind={kind}
       icon={kindIcon(kind, data)}
+      eyebrow={themeLabel}
       title={title}
       sub={sub}
       onBack={onClose}
