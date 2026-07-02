@@ -1124,8 +1124,8 @@ export default function EventEditDialog({
               <div className="del-confirm">
                 <div className="del-confirm-ic"><Trash2 style={{ width: 20, height: 20 }} /></div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{t('event.delete_q', { label: t(meta.labelKey).toLowerCase() })}</div>
-                  <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', marginTop: 4 }}>{t('event.delete_irreversible')}</div>
+                  <div className="t-ui">{t('event.delete_q', { label: t(meta.labelKey).toLowerCase() })}</div>
+                  <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 4 }}>{t('event.delete_irreversible')}</div>
                 </div>
               </div>
             </div>
@@ -1655,7 +1655,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
         <div>
           <Label>{t('event.booking_ref')}</Label>
           <AiField active={aiFields.has('booking_reference')}>
-            <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+            <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
           </AiField>
         </div>
       </div>
@@ -1713,6 +1713,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
             <button
               key={k.id}
               type="button"
+              className="t-meta"
               onClick={() => setField('transport_type', k.id)}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -1721,7 +1722,6 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
                 border: '1.5px solid ' + (active ? color : 'var(--border, hsl(var(--border)))'),
                 color: active ? color : 'inherit',
                 borderRadius: 10, cursor: 'pointer',
-                fontWeight: 500, fontSize: 'var(--fs-micro)',
               }}
             >
               <Ic size={16} />
@@ -1801,10 +1801,10 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', marginBottom: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
         <Checkbox checked={!!form.day_change} onCheckedChange={(v) => setField('day_change', !!v)} />
         <span style={{ minWidth: 0 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 'var(--fs-base)' }}>
+          <span className="t-ui" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Moon size={16} /> {t('event.overnight_label')}
           </span>
-          <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+          <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', marginTop: 2 }}>{t('event.overnight_hint')}</span>
         </span>
       </label>
 
@@ -1819,7 +1819,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         <div>
           <Label>{t('event.flight_train_no')}</Label>
           <AiField active={aiFields.has('flight_number')}>
-            <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.flight_number} onChange={(e) => setField('flight_number', e.target.value)} placeholder="TP 1379" />
+            <Input className="t-mono" value={form.flight_number} onChange={(e) => setField('flight_number', e.target.value)} placeholder="TP 1379" />
           </AiField>
         </div>
       </div>
@@ -1833,7 +1833,7 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         <div>
           <Label>{t('event.booking_ref')}</Label>
           <AiField active={aiFields.has('booking_reference')}>
-            <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+            <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
           </AiField>
         </div>
       </div>
@@ -1897,12 +1897,12 @@ function LayoverToggle({ form, setForm, color }) {
             <span className="sw-knob" />
           </span>
           <span style={{ flex: 1 }}>
-            <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 500 }}>{t('event.with_layovers')}</span>
-            <span className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('event.layovers_hint')}</span>
+            <span className="t-body" style={{ display: 'block' }}>{t('event.with_layovers')}</span>
+            <span className="muted t-meta">{t('event.layovers_hint')}</span>
           </span>
         </label>
         {form.hasLayovers && (
-          <span className="num" style={{ fontSize: 'var(--fs-micro)', color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{t('event.seg_count', { n, c: Math.max(0, n - 1) })}</span>
+          <span className="num t-meta" style={{ color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{t('event.seg_count', { n, c: Math.max(0, n - 1) })}</span>
         )}
       </div>
     </>
@@ -1938,8 +1938,8 @@ function SegTransportGrid({ value, onChange, color }) {
       {TRANSPORT_KINDS.map((k) => {
         const active = value === k.id; const Ic = k.Icon;
         return (
-          <button key={k.id} type="button" onClick={() => onChange(k.id)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line-2)'), color: active ? color : 'var(--ink)', borderRadius: 10, cursor: 'pointer', fontWeight: 500, fontSize: 'var(--fs-micro)' }}>
+          <button key={k.id} type="button" className="t-meta" onClick={() => onChange(k.id)}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '10px 6px', background: active ? TYPE_META.transfer.soft : 'var(--surface)', border: '1.5px solid ' + (active ? color : 'var(--line-2)'), color: active ? color : 'var(--ink)', borderRadius: 10, cursor: 'pointer' }}>
             <Ic size={16} />{t(k.labelKey)}
           </button>
         );
@@ -2027,13 +2027,13 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                   </span>
                   <span style={{ minWidth: 0, flex: 1 }}>
                     <span className="eyebrow" style={{ color, display: 'block' }}>{t('event.segment_n', { n: i + 1 })} · {t(tk.labelKey)}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--fs-strong)', fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>
+                    <span className="t-ui" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink)', marginTop: 2 }}>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fromName}</span>
                       <ArrowRight size={12} style={{ color: 'var(--muted)', flexShrink: 0 }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{toName}</span>
                     </span>
                   </span>
-                  <span className="muted" style={{ fontSize: 'var(--fs-micro)', flexShrink: 0 }}>{open ? t('event.collapse') : t('event.expand')}</span>
+                  <span className="muted t-meta" style={{ flexShrink: 0 }}>{open ? t('event.collapse') : t('event.expand')}</span>
                   <ChevronDown size={16} style={{ color: 'var(--muted)', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
                 </button>
                 {N > 2 && (
@@ -2080,7 +2080,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
 
                 <div className="fld-grid" style={{ marginBottom: 12 }}>
                   <div><Label>{t('event.carrier')}</Label><AiField active={aiOn(seg, 'carrier')}><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder={t('event.carrier_ph')} /></AiField></div>
-                  <div><Label>{t('event.flight_train_no')}</Label><AiField active={aiOn(seg, 'flight_number')}><Input style={{ fontFamily: 'var(--font-mono)' }} value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></AiField></div>
+                  <div><Label>{t('event.flight_train_no')}</Label><AiField active={aiOn(seg, 'flight_number')}><Input className="t-mono" value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /></AiField></div>
                 </div>
                 <div className="fld-grid">
                   <div><Label>{t('event.price')}</Label><AiField active={aiOn(seg, 'price')}><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></AiField></div>
@@ -2089,10 +2089,10 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', marginTop: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
                   <Checkbox checked={!!seg.day_change} onCheckedChange={(v) => patchSeg(i, { day_change: !!v })} />
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 'var(--fs-base)' }}>
+                    <span className="t-ui" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <Moon size={16} /> {t('event.overnight_label')}
                     </span>
-                    <span style={{ display: 'block', fontSize: 'var(--fs-micro)', color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{t('event.overnight_hint')}</span>
+                    <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', marginTop: 2 }}>{t('event.overnight_hint')}</span>
                   </span>
                 </label>
               </div>
@@ -2101,7 +2101,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
             {!isLast && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
                 <span style={{ width: 1, height: 14, background: 'var(--line)', marginLeft: 16 }} />
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color, fontSize: 'var(--fs-meta)', fontWeight: 600 }}>
+                <span className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap', background: TYPE_META.transfer.soft, color }}>
                   <Repeat size={12} style={{ flexShrink: 0 }} />
                   {t('event.layover_in', { city: '' }).replace(/\s*$/, '')}&nbsp;<span style={{ fontWeight: 700 }}>{layCity}</span>
                   {layDate && <span className="num" style={{ fontWeight: 600, opacity: 0.7 }}>· {layDate}</span>}
@@ -2114,8 +2114,8 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
         );
       })}
 
-      <button type="button" onClick={addSegment}
-        style={{ marginTop: 6, padding: '11px 14px', border: '1.5px dashed ' + color, borderRadius: 10, background: TYPE_META.transfer.soft, color, cursor: 'pointer', fontWeight: 600, fontSize: 'var(--fs-meta)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+      <button type="button" className="t-meta" onClick={addSegment}
+        style={{ marginTop: 6, padding: '11px 14px', border: '1.5px dashed ' + color, borderRadius: 10, background: TYPE_META.transfer.soft, color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
         {t('event.add_layover')}
       </button>
     </div>
@@ -2258,7 +2258,7 @@ function InsuranceServiceFields({ form, setField, issues, setUploading, tripId }
       <SectionHeader>{t('service.insurance_section')}</SectionHeader>
       <div>
         <Label>{t('service.policy_number')}</Label>
-        <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
+        <Input className="t-mono" value={form.policy_number} onChange={(e) => setField('policy_number', e.target.value)} placeholder={t('service.policy_number_ph')} />
       </div>
       <div className="fld-grid">
         <div data-vfield="date_start" className={inv('date_start')}>
@@ -2420,7 +2420,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
         />
         <div>
           <Label>{t('event.booking_ref')}</Label>
-          <Input style={{ fontFamily: 'var(--font-mono)' }} value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+          <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
         </div>
       </div>
 

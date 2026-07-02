@@ -12,18 +12,15 @@ export default function AiField({ active, children, className = '' }) {
     <div className={`ai-filled ${className}`} style={{ position: 'relative' }}>
       {children}
       <span
+        className="t-micro"
         style={{
           position: 'absolute',
           top: -8,
           right: 8,
           zIndex: 10,
-          lineHeight: 1,
           pointerEvents: 'none',
           color: '#fff',
           background: 'var(--ai)',
-          fontSize: '9.5px',
-          fontWeight: 700,
-          letterSpacing: '.08em',
           padding: '2px 5px',
           borderRadius: 4,
         }}

@@ -91,7 +91,7 @@ export function CityAnchorRow({ label, city, editable = false, onPick }) {
         <span className="te-endlabel" style={{ color: accent }}>{label}</span>
         <div className="te-cityline">
           <span className="te-cityname">{city?.city_name || <span className="muted" style={{ fontWeight: 500 }}>{t('planner.not_set')}</span>}</span>
-          {city?.country && <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{city.country}</span>}
+          {city?.country && <span className="muted t-meta">{city.country}</span>}
         </div>
       </div>
       {editable && hasCity && (

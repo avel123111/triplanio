@@ -302,7 +302,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
                 onChange={e => uploadFiles(e.target.files)}
               />
               {uploading ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--brand)', fontSize: 'var(--fs-base)' }}>
+                <div className="t-body" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--brand)' }}>
                   <span className="dl-spinner" />
                   {t('common.loading')}
                 </div>
@@ -415,7 +415,7 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
           )}
 
           {!doc.notes && !doc.link_url && !doc.documents?.length && (
-            <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>
+            <div className="muted t-body">
               {t('doc.no_content')}
             </div>
           )}
@@ -691,7 +691,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
               {t('doc.section_shared')}
               <Badge variant="count">{sharedTotal}</Badge>
             </h3>
-            <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
+            <div className="muted t-meta">
               {t('doc.section_shared_hint')}
             </div>
           </div>
@@ -722,7 +722,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
                 {personalTotal}
               </Badge>
             </h3>
-            <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>
+            <div className="muted t-meta">
               {t('doc.section_private_hint')}
             </div>
           </div>

@@ -137,7 +137,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
           <div className="acct-plan__face acct-plan__face--mo">
             <span className="blob" aria-hidden="true" />
             <div className="acct-plan__k">{t('account.pro_monthly_sub')}</div>
-            <div className="acct-plan__v num">{actualMoney || monthlyPrice || 'Pro'}{(actualMoney || monthlyPrice) && <span style={{ fontSize: 'var(--fs-base)' }}>{t('account.per_month_short')}</span>}</div>
+            <div className="acct-plan__v num">{actualMoney || monthlyPrice || 'Pro'}{(actualMoney || monthlyPrice) && <span className="t-body">{t('account.per_month_short')}</span>}</div>
             <div className="acct-plan__p">{t('account.active')}</div>
           </div>
           <div className="acct-plan__side">
@@ -168,7 +168,7 @@ function SubscriptionModule({ planState, plan, detailsLoading, detailsError, awa
           <div className="acct-plan__face acct-plan__face--yr">
             <span className="blob" aria-hidden="true" />
             <div className="acct-plan__k">{t('account.pro_yearly_sub')}</div>
-            <div className="acct-plan__v num">{actualMoney || yearlyPrice || 'Pro'}{(actualMoney || yearlyPrice) && <span style={{ fontSize: 'var(--fs-base)' }}>{t('account.per_year_short')}</span>}</div>
+            <div className="acct-plan__v num">{actualMoney || yearlyPrice || 'Pro'}{(actualMoney || yearlyPrice) && <span className="t-body">{t('account.per_year_short')}</span>}</div>
             {(actualMonthlyEq || yearlyMonthlyEq()) && <div className="acct-plan__p num">{t('account.equivalent')} {actualMonthlyEq || yearlyMonthlyEq()}{t('account.per_month_short')}</div>}
           </div>
           <div className="acct-plan__side">
@@ -267,11 +267,11 @@ function ReminderChannels() {
   return (
     <div className="card">
       <div className="acct-subhead">{t('account.channels_title')}</div>
-      <div className="muted" style={{ fontSize: 'var(--fs-meta)', margin: '3px 0 16px' }}>{t('account.channels_desc')}</div>
+      <div className="muted t-meta" style={{ margin: '3px 0 16px' }}>{t('account.channels_desc')}</div>
 
       <div className="acct-chanlist">
         {items === null ? (
-          <div className="muted" style={{ fontSize: 'var(--fs-base)', padding: 8 }}>{t('common.loading')}</div>
+          <div className="muted t-body" style={{ padding: 8 }}>{t('common.loading')}</div>
         ) : connected ? (
           <div>
             <button className="acct-chan acct-chan--btn" aria-expanded={open} onClick={() => setOpen(v => !v)}>
@@ -294,7 +294,7 @@ function ReminderChannels() {
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.trip_title}</span>
                         <Badge variant="quiet">{t(`trips.role_${a.role}`)}</Badge>
                       </div>
-                      <div className="muted mono" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{nick(a)}</div>
+                      <div className="muted t-mono" style={{ marginTop: 1 }}>{nick(a)}</div>
                     </div>
                     <Btn variant="ghost" size="sm" onClick={() => nav(`/trip/${a.trip_id}?lens=settings`)}>{t('telegram.go_to_trip')}</Btn>
                     <Btn variant="ghost" size="sm" icon="unlink" ariaLabel={t('telegram.unlink')} onClick={() => unlink(a)} />
@@ -769,7 +769,7 @@ export default function ScreenAccount() {
                       <>
                         <span className="acct-lang__flag">{l.flag}</span>
                         <span>{l.native}</span>
-                        <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{l.sub}</span>
+                        <span className="t-meta" style={{ color: 'var(--muted)' }}>{l.sub}</span>
                       </>
                     )}
                     searchPlaceholder={t('common.search')}

@@ -208,8 +208,8 @@ function InboxEmpty({ onCollection }) {
                   <Icon name={r.icon} size={16} />
                 </span>
                 <span style={{ textAlign: 'left' }}>
-                  <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>{r.title}</div>
-                  <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', marginTop: 1, lineHeight: 1.35 }}>{r.sub}</div>
+                  <div className="t-ui" style={{ color: 'var(--ink-2)' }}>{r.title}</div>
+                  <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 1 }}>{r.sub}</div>
                 </span>
               </div>
             ))}
