@@ -341,7 +341,7 @@ export default function Stay22HotelList({
         .s22f { display: flex; flex-direction: column; gap: 11px; }
         .s22f-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
         .s22f-wrap { position: relative; }
-        .s22f-chip { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: var(--r-control); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); font-family: var(--font-display); font-weight: 600; font-size: var(--fs-meta); cursor: pointer; white-space: nowrap; transition: border-color .2s var(--ease-out), box-shadow .2s, transform .12s var(--ease-spring); }
+        .s22f-chip { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: var(--r-control); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; white-space: nowrap; transition: border-color .2s var(--ease-out), box-shadow .2s, transform .12s var(--ease-spring); }
         .s22f-chip:hover { border-color: var(--line-hover); }
         .s22f-chip:active { transform: scale(.98); }
         .s22f-chip svg { color: var(--muted); flex: none; }
@@ -352,23 +352,23 @@ export default function Stay22HotelList({
         .s22f-chip--active svg { color: var(--brand); }
 
         .s22f-price { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
-        .s22f-plbl { font-size: var(--fs-meta); font-weight: 700; color: var(--ink-2); }
-        .s22f-pmuted { font-weight: 600; color: var(--muted); }
+        .s22f-plbl { color: var(--ink-2); }
+        .s22f-pmuted { color: var(--muted); }
         .s22f-pfields { display: flex; align-items: center; gap: 8px; }
         .s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong); border-radius: var(--r-control); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
         .s22f-field:focus-within { border-color: var(--brand); background: var(--surface); box-shadow: 0 0 0 4px var(--primary-ring); }
-        .s22f-cur { font-family: var(--font-display); font-weight: 700; color: var(--muted); font-size: var(--fs-base); flex: none; }
-        .s22f-field input { border: 0; outline: 0; background: transparent; width: 100%; min-width: 0; font: inherit; font-size: var(--fs-base); font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; padding: 0; }
+        .s22f-cur { color: var(--muted); flex: none; }
+        .s22f-field input { border: 0; outline: 0; background: transparent; width: 100%; min-width: 0; color: var(--ink); font-variant-numeric: tabular-nums; padding: 0; }
         .s22f-field input::placeholder { color: var(--muted-2); }
-        .s22f-dash { color: var(--muted-2); font-weight: 700; flex: none; }
+        .s22f-dash { color: var(--muted-2); flex: none; }
         .s22f-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
         .s22f-pop { position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; width: 280px; max-width: calc(100vw - 32px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-3); padding: 6px; }
         .s22f-poprow { display: flex; align-items: center; gap: 12px; padding: 10px; }
         .s22f-poprow + .s22f-poprow { border-top: 1px solid var(--line-2); }
         .s22f-poptx { flex: 1; min-width: 0; }
-        .s22f-poptx b { display: block; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); color: var(--ink); }
-        .s22f-poptx span { display: block; font-size: var(--fs-micro); color: var(--muted); font-weight: 600; margin-top: 1px; }
+        .s22f-poptx b { display: block; color: var(--ink); }
+        .s22f-poptx span { display: block; color: var(--muted); margin-top: 1px; }
         .s22f-popfoot { display: flex; gap: 8px; padding: 8px 6px 4px; }
         .s22f-popfoot .btn { flex: 1; }
         .s22f-step { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
@@ -376,12 +376,12 @@ export default function Stay22HotelList({
         .s22f-step button:hover:not(:disabled) { background: var(--surface); }
         .s22f-step button:active:not(:disabled) { transform: scale(.88); }
         .s22f-step button:disabled { color: var(--muted-2); cursor: default; }
-        .s22f-val { min-width: 32px; text-align: center; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-meta); color: var(--ink); font-variant-numeric: tabular-nums; }
+        .s22f-val { min-width: 32px; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
 
         .s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--primary-soft); color: var(--brand); font-family: var(--font-display); font-weight: 600; font-size: var(--fs-micro); }
+        .s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--primary-soft); color: var(--brand); }
         .s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--primary-soft-2); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
-        .s22f-resetall { margin-left: auto; background: 0; border: 0; color: var(--muted); font-family: var(--font-display); font-weight: 700; font-size: var(--fs-micro); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+        .s22f-resetall { margin-left: auto; background: 0; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
         .s22f-resetall:hover { color: var(--ink); }
 
         @container (max-width: 480px) {
@@ -395,11 +395,11 @@ export default function Stay22HotelList({
         /* ---- header (neutral icon + title + subtitle, like .va-head) ---- */
         .s22-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
         .s22-ti { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
-        .s22-ti b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-strong); color: var(--ink); }
+        .s22-ti b { color: var(--ink); }
         .s22-tiwrap { display: flex; flex-direction: column; min-width: 0; }
-        .s22-sub { font-size: var(--fs-nano); color: var(--muted-2); margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .s22-sub { color: var(--muted-2); margin-top: 2px; font-variant-numeric: tabular-nums; }
         .s22-logo { width: 24px; height: 24px; border-radius: 6px; flex: none; display: grid; place-items: center; background: var(--ev-hotel-soft); color: var(--ev-hotel); }
-        .s22-count { font-size: var(--fs-meta); color: var(--muted); font-weight: 700; white-space: nowrap; }
+        .s22-count { color: var(--muted); white-space: nowrap; }
 
         /* ---- list + cards ---- */
         .s22-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
@@ -409,26 +409,26 @@ export default function Stay22HotelList({
         .s22-si { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 4px; }
         .s22-state--err .s22-si { background: var(--danger-soft); color: var(--danger-ink); }
         .s22-state--emp .s22-si { background: var(--surface-2); color: var(--muted); }
-        .s22-state b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); color: var(--ink); }
-        .s22-state p { margin: 0; font-size: var(--fs-meta); color: var(--muted); max-width: 28ch; }
+        .s22-state b { color: var(--ink); }
+        .s22-state p { margin: 0; color: var(--muted); max-width: 28ch; }
         .s22-retry { margin-top: 6px; }
         /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
            the hotel-specific body content keeps its own classes below. */
         .s22-rate { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
-        .s22-stars { color: var(--pro); letter-spacing: .5px; font-size: var(--fs-micro); }
+        .s22-stars { color: var(--pro); letter-spacing: .5px; }
         .s22-score { display: inline-flex; align-items: center; gap: 6px; }
-        .s22-sc { display: inline-grid; place-items: center; min-width: 30px; height: 19px; padding: 0 5px; border-radius: 6px 6px 6px 2px; background: var(--bk); color: var(--bk-fg); font-family: var(--font-display); font-weight: 700; font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
-        .s22-cnt { font-size: var(--fs-micro); color: var(--muted); font-weight: 600; }
-        .s22-addr { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: var(--fs-micro); color: var(--muted); overflow: hidden; }
+        .s22-sc { display: inline-grid; place-items: center; min-width: 30px; height: 19px; padding: 0 5px; border-radius: 6px 6px 6px 2px; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; }
+        .s22-cnt { color: var(--muted); }
+        .s22-addr { display: flex; align-items: center; gap: 5px; margin-top: 5px; color: var(--muted); overflow: hidden; }
         .s22-addr svg { flex: none; color: var(--muted-2); }
         .s22-addr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .s22-price { display: flex; flex-direction: column; line-height: 1.15; }
-        .s22-price b { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-strong); color: var(--ink); font-variant-numeric: tabular-nums; }
-        .s22-price span { font-size: var(--fs-nano); color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+        .s22-price { display: flex; flex-direction: column; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
+        .s22-price b { color: var(--ink); font-variant-numeric: tabular-nums; }
+        .s22-price span { color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
 
         /* ---- pager ---- */
         .s22-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
-        .s22-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-family: var(--font-display); font-size: var(--fs-meta); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
+        .s22-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
         .s22-pg:disabled { opacity: .4; cursor: default; }
         .s22-pg:not(:disabled):active { transform: scale(.94); }
         @media (hover: hover) and (pointer: fine) { .s22-pg:not(:disabled):hover { border-color: var(--line-hover); } }

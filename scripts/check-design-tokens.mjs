@@ -86,6 +86,12 @@ const WEIGHT_LH_ALLOW = [
   'src/design/fonts.css', 'src/pages/PublicTrip.css',
 ];
 
+// Files allowed to set inline JSX fontSize from a raw size token (var(--fs-*))
+// rather than a .t-* canon class. Both are documented decorative/crash islands:
+//   • AppErrorBoundary — crash screen, must render token-CSS-free (canons may be down).
+//   • LandingPage      — marketing mockup chrome (fake-app visuals), not semantic app text.
+const TYPO_INLINE_VAR_ALLOW = ['src/components/AppErrorBoundary.jsx', 'src/pages/Landing/LandingPage.jsx'];
+
 const PALETTE = '(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)';
 const RE = {
   textPx:    /text-\[[0-9.]+px\]/,
@@ -93,6 +99,10 @@ const RE = {
   fontSizeClamp:/font-size:\s*clamp\(/,
   fontSizeEm:/font-size:\s*(?!1(em|rem)\b)[0-9.]+r?em/,
   inlineFs:  /fontSize:\s*[0-9.]+[,\s}]/,
+  // Inline JSX fontSize sourced from a raw size token (var(--fs-*)) instead of a
+  // .t-* canon class — bypasses the numeric inlineFs regex. Enforced everywhere
+  // except the two documented decorative/crash islands (see TYPO_INLINE_VAR_ALLOW).
+  inlineFsVar:/fontSize:\s*['"]?var\(--fs/,
   // TRIP-165 Фаза 3 — вес и межстрочный интервал легально живут ТОЛЬКО в
   // канон-правилах / .t-strong / .t-flush / базовых root-правилах (body, .ptrip).
   // В компонентных/страничных CSS их быть не должно — эмфаза даётся классом
@@ -138,17 +148,26 @@ for (const file of [...walk(ROOT), 'public/landing.css']) {
   const lines = readFileSync(file, 'utf8').split('\n');
   lines.forEach((line, i) => {
     const loc = `${file}:${i + 1}`;
-    // typography
-    if (!TYPO_WHITELIST.includes(file)) {
-      if (RE.textPx.test(line))     typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
-      if (isCss && RE.fontSizePx.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
-      if (isCss && RE.fontSizeClamp.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
-      if (isCss && RE.fontSizeEm.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
-      if (!isCss && RE.inlineFs.test(line))  typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+    // Per-line escape hatch for legit raw typography (layout line-height on a
+    // stacked price column, decorative glyph). Same annotation as colour/composition.
+    const dtExempt = line.includes('design-token-exempt');
+    // typography — raw sizes. The `font-size:` / `font-weight:` / `line-height:`
+    // regexes match CSS syntax (hyphenated), so they ALSO catch CSS-in-JS <style>
+    // blocks inside .jsx WITHOUT false-matching inline camelCase props (fontSize:).
+    // That closes the old isCss blind spot where <style> template strings in
+    // components hid raw typography from the guard (TRIP-165 audit 2026-07-02).
+    if (!TYPO_WHITELIST.includes(file) && !dtExempt) {
+      if (RE.textPx.test(line))        typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      if (RE.fontSizePx.test(line))    typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      if (RE.fontSizeClamp.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      if (RE.fontSizeEm.test(line))    typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      if (!isCss && RE.inlineFs.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      if (!isCss && !TYPO_INLINE_VAR_ALLOW.includes(file) && RE.inlineFsVar.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
     }
-    // TRIP-165 Фаза 3 — weight / line-height closed set. Only CSS (inline JSX is
-    // already covered by the composition report). Skip canon/modifier/base homes.
-    if (isCss && !WEIGHT_LH_ALLOW.includes(file)) {
+    // TRIP-165 Фаза 3 — weight / line-height closed set. Legal only in canon /
+    // .t-strong / .t-flush / base-root homes (WEIGHT_LH_ALLOW); the per-line
+    // design-token-exempt escape covers genuine layout line-height.
+    if (!WEIGHT_LH_ALLOW.includes(file) && !dtExempt) {
       if (RE.fontWeightNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (RE.lineHeightNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
     }

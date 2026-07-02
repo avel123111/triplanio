@@ -301,7 +301,7 @@ input[type="time"] {
   input[type="datetime-local"],
   input[type="date"],
   input[type="time"] {
-    font-size: 0.8125rem; /* 13px */
+    font-size: var(--fs-meta); /* on-token: dense native date/time control */
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
