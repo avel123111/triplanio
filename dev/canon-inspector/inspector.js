@@ -11,13 +11,14 @@
 // element that looks like it ("Все похожие", by shared class) — e.g. all the
 // sidebar menu items at once, not a single word.
 
-import { CANONS, STATES, probeCanons, detectCanon, comboApply } from './canons.js';
+import { CANONS, STATES, COLORS, probeCanons, detectCanon, comboApply, probeColors, detectColor, colorByKey } from './canons.js';
 import { describe, groupSelector } from './describe.js';
 
 const LS_KEY = 'ci:canon-changes';
 const ROOT_CLASS = 'ci-root';
 
 let probed = null;             // { canons, combos } — lazy probe of app.css
+let probedColors = null;       // Map<colourKey, rgb> — lazy probe of colour tokens
 let active = false;            // inspect mode on/off
 let selected = null;           // currently selected (primary) element
 let changes = [];              // [{key, from, to, descriptor, scope, selector, count}]
@@ -29,6 +30,8 @@ const scopeMode = new WeakMap();   // element → 'el' | 'group'
 const queuedFor = new WeakMap();   // element → change.key (in-session dedup)
 const originalCss = new WeakMap(); // element → prior inline cssText (for reset)
 const previewStates = new WeakMap();// element → {keys:Set, track:int} — preview-only states (caps/track/mono/mute)
+const baseColor = new WeakMap();   // element → colour key|null (real colour, cached before preview)
+const pendingColor = new WeakMap();// element → colour key|null (current preview/queued colour choice)
 
 let els = {};                  // cached DOM refs (launcher, hi, panel, tray…)
 let panelMoved = false;        // user dragged the panel → stop auto-repositioning
@@ -99,6 +102,11 @@ function injectStyles() {
     color: #94a3b8; font-size: 11px; font-weight: 600; cursor: pointer; }
   .ci-chip.is-on { background: #2563eb; border-color: #2563eb; color: #fff; }
   .ci-chip[disabled] { opacity: .4; cursor: not-allowed; }
+  .ci-mods--col { flex-wrap: wrap; }
+  .ci-sw { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px 4px 5px; border-radius: 999px;
+    border: 1px solid #334155; background: #1e293b; color: #94a3b8; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .ci-sw i { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); flex: none; display: block; }
+  .ci-sw.is-on { border-color: #2563eb; color: #fff; background: #172554; }
   .ci-canon { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #1e293b;
     background: transparent; color: inherit; padding: 9px 14px; cursor: pointer; }
   .ci-canon:hover { background: #1e293b; }
@@ -161,6 +169,7 @@ function build() {
 // ── inspect mode ───────────────────────────────────────────────────────────
 function enable() {
   if (!probed) probed = probeCanons();
+  if (!probedColors) probedColors = probeColors();
   active = true;
   els.launcher.classList.add('is-on');
   document.addEventListener('mousemove', onMove, true);
@@ -279,6 +288,11 @@ function selectEl(el) {
     const queued = queuedFor.has(el) ? changes.find((c) => c.key === queuedFor.get(el)) : null;
     pendingCanon.set(el, queued ? queued.to : base);
   }
+  if (!baseColor.has(el)) baseColor.set(el, detectColor(el, probedColors));
+  if (!pendingColor.has(el)) {
+    const queued = queuedFor.has(el) ? changes.find((c) => c.key === queuedFor.get(el)) : null;
+    pendingColor.set(el, queued ? (queued.toColor ?? null) : baseColor.get(el));
+  }
   if (!scopeMode.has(el)) scopeMode.set(el, 'el');
   render(el);
   positionPanel(el);
@@ -329,6 +343,20 @@ function render(el) {
     mods.appendChild(chip);
   }
 
+  // colour — sanctioned text colours (SAVED to worklist). Independent of canon.
+  const curColor = pendingColor.get(el) ?? null;
+  const colorRow = h('ci-mods ci-mods--col');
+  const colLbl = h('ci-mods__lbl'); colLbl.textContent = 'Цвет:';
+  colorRow.appendChild(colLbl);
+  for (const c of COLORS) {
+    const sw = h('ci-sw', 'button');
+    sw.title = `${c.label}${c.util ? ' · ' + c.util : ''}`;
+    sw.innerHTML = `<i style="background:${c.css}"></i><span>${c.label}</span>`;
+    if (curColor === c.key) sw.classList.add('is-on');
+    sw.onclick = () => pickColor(el, c.key);
+    colorRow.appendChild(sw);
+  }
+
   // canon list
   const list = document.createDocumentFragment();
   for (const c of CANONS) {
@@ -347,7 +375,7 @@ function render(el) {
   // footer: save (only when the preview differs from the real current)
   const foot = h('ci-panel__foot');
   const saveBtn = h('ci-btn ci-btn--save', 'button'); saveBtn.textContent = 'Сохранить';
-  if (sameCanon(pending, base)) saveBtn.setAttribute('disabled', '');
+  if (!isChanged(el)) saveBtn.setAttribute('disabled', '');
   saveBtn.onclick = () => commit(el);
   const reset = h('ci-btn', 'button'); reset.textContent = 'Сбросить';
   reset.onclick = () => resetEl(el);
@@ -356,7 +384,7 @@ function render(el) {
   foot.append(saveBtn, reset, close);
 
   els.panel.innerHTML = '';
-  els.panel.append(head, mods, ...list.childNodes, foot);
+  els.panel.append(head, mods, colorRow, ...list.childNodes, foot);
   makeDraggable(els.panel, head, () => { panelMoved = true; });   // drag by header
 }
 
@@ -416,19 +444,42 @@ function setScope(el, mode) {
   applyPreview(el);
   render(el);
 }
+// Colour axis — SAVED to the worklist (unlike the preview-only states). Click the
+// active swatch again to clear the choice.
+function pickColor(el, key) {
+  const cur = pendingColor.get(el) ?? null;
+  pendingColor.set(el, cur === key ? null : key);
+  applyPreview(el);
+  render(el);
+}
+// Is there anything worth saving? Canon differs from real, or colour differs.
+function isChanged(el) {
+  const canonDiff = !sameCanon(pendingCanon.get(el), baseCanon.get(el));
+  const colorDiff = (pendingColor.get(el) ?? null) !== (baseColor.get(el) ?? null);
+  return canonDiff || colorDiff;
+}
+const colorLabel = (key) => {
+  const c = key ? colorByKey(key) : null;
+  return c ? `${c.label}${c.util ? ' ' + c.util : ''}` : '—';
+};
 
 function applyPreview(el) {
   const pending = pendingCanon.get(el);
-  if (!pending) return;
-  const props = comboApply(probed, pending.id, pending.mods);
-  if (!props) return;
+  const props = pending ? comboApply(probed, pending.id, pending.mods) : null;
   const scss = stateCssFor(el);           // preview-state overlay (caps/track/mono/mute)
+  const colKey = pendingColor.get(el) ?? null;
+  const merged = { ...(props || {}), ...(scss || {}) };
+  if (colKey) merged.color = colorByKey(colKey).css;
   for (const t of scopeTargets(el)) {
     // Capture each target's REAL canon before we mutate it, so clicking a
     // group sibling later still reports its true "Сейчас".
     if (!baseCanon.has(t)) baseCanon.set(t, detectCanon(t, probed));
     if (!originalCss.has(t)) originalCss.set(t, t.getAttribute('style') || '');
-    Object.assign(t.style, props, scss || {});
+    // Reset to the captured original, then layer the preview — so deselecting a
+    // colour/state actually removes it (Object.assign alone can't unset).
+    const orig = originalCss.get(t);
+    if (orig) t.setAttribute('style', orig); else t.removeAttribute('style');
+    Object.assign(t.style, merged);
     reflag(t);                              // now on a canon → drop red highlight
   }
 }
@@ -444,15 +495,13 @@ function restorePreview(el) {
 
 // ── save / reset ───────────────────────────────────────────────────────────
 function commit(el) {
-  const base = baseCanon.get(el);
-  const pending = pendingCanon.get(el);
-  // No real change → don't record; drop any stale queued entry for this element.
-  if (sameCanon(pending, base)) {
+  // No real change (canon AND colour unchanged) → don't record; drop stale entry.
+  if (!isChanged(el)) {
     if (queuedFor.has(el)) removeChange(queuedFor.get(el));
     render(el);
     return;
   }
-  queueChange(el, base, pending);
+  queueChange(el, baseCanon.get(el), pendingCanon.get(el));
   render(el);
 }
 
@@ -460,6 +509,7 @@ function resetEl(el) {
   restorePreview(el);
   previewStates.delete(el);
   pendingCanon.set(el, baseCanon.get(el));
+  pendingColor.set(el, baseColor.get(el));
   if (queuedFor.has(el)) removeChange(queuedFor.get(el));
   render(el);
 }
@@ -469,14 +519,16 @@ function queueChange(el, from, to) {
   const scope = scopeMode.get(el);
   const selector = groupSelector(el);
   const count = scope === 'group' ? scopeTargets(el).length : 1;
+  const fromColor = baseColor.get(el) ?? null;
+  const toColor = pendingColor.get(el) ?? null;
   const existingKey = queuedFor.get(el);
   if (existingKey != null) {
     const c = changes.find((x) => x.key === existingKey);
-    if (c) { Object.assign(c, { from, to, scope, selector, count }); save(); renderTray(); return; }
+    if (c) { Object.assign(c, { from, to, fromColor, toColor, scope, selector, count }); save(); renderTray(); return; }
   }
   const key = ++seq;
   queuedFor.set(el, key);
-  changes.push({ key, from, to, descriptor: describe(el), scope, selector, count });
+  changes.push({ key, from, to, fromColor, toColor, descriptor: describe(el), scope, selector, count });
   save();
   renderTray();
 }
@@ -498,8 +550,14 @@ function renderTray() {
   const rows = document.createDocumentFragment();
   for (const c of changes) {
     const row = h('ci-row');
+    const canonChanged = !sameCanon(c.from, c.to);
+    const colorChanged = (c.fromColor ?? null) !== (c.toColor ?? null);
+    let map = '';
+    if (canonChanged) map += `${canonLabel(c.from)} → <i>${canonLabel(c.to)}</i>`;
+    if (colorChanged) map += `${canonChanged ? '<br>' : ''}цвет: ${escapeHtml(colorLabel(c.fromColor))} → <i>${escapeHtml(colorLabel(c.toColor))}</i>`;
+    if (!map) map = canonLabel(c.to);
     let html = `<span class="ci-row__x" data-k="${c.key}">✕</span>`
-      + `<div class="ci-row__map">${canonLabel(c.from)} → <i>${canonLabel(c.to)}</i></div>`;
+      + `<div class="ci-row__map">${map}</div>`;
     if (c.scope === 'group') html += `<div class="ci-row__scope">область: ${escapeHtml(c.selector)} · ${c.count} эл.</div>`;
     html += `<div class="ci-row__path">${escapeHtml(c.descriptor.text || c.descriptor.tag)}<br>${escapeHtml(c.descriptor.path)}</div>`;
     row.innerHTML = html;
@@ -526,12 +584,16 @@ function clearList() {
 
 function copyList() {
   const lines = changes.map((c) => {
-    const to = CANONS[c.to.id - 1];
-    const toStr = `${canonLabel(c.to)} (.${to.cls}${c.to.mods.map((m) => ' .t-' + m).join('')})`;
+    const canonChanged = !sameCanon(c.from, c.to);
+    const cls = c.to ? ` (.${CANONS[c.to.id - 1].cls}${c.to.mods.map((m) => ' .t-' + m).join('')})` : '';
+    const head = canonChanged ? `${canonLabel(c.from)} → ${canonLabel(c.to)}${cls}` : canonLabel(c.to);
+    const colLine = (c.fromColor ?? null) !== (c.toColor ?? null)
+      ? `\n    цвет: ${colorLabel(c.fromColor)} → ${colorLabel(c.toColor)}${c.toColor ? ` [${colorByKey(c.toColor).css}]` : ''}`
+      : '';
     const scope = c.scope === 'group' ? `\n    область: ${c.selector} (${c.count} эл.)` : '';
-    return `- ${canonLabel(c.from)} → ${toStr}${scope}\n    текст: ${c.descriptor.text || '—'}\n    класс: ${c.descriptor.className || '—'}\n    путь:  ${c.descriptor.path}`;
+    return `- ${head}${colLine}${scope}\n    текст: ${c.descriptor.text || '—'}\n    класс: ${c.descriptor.className || '—'}\n    путь:  ${c.descriptor.path}`;
   });
-  const out = `# Canon-inspector: ${changes.length} правк(и) канонов (TRIP-165)\n\n${lines.join('\n')}\n`;
+  const out = `# Canon-inspector: ${changes.length} правк(и) канонов/цветов (TRIP-175)\n\n${lines.join('\n')}\n`;
   const done = () => { els.tray.querySelector('.ci-tray__title').textContent = `Скопировано ✓ · ${changes.length}`; };
   if (navigator.clipboard?.writeText) navigator.clipboard.writeText(out).then(done, () => fallbackCopy(out, done));
   else fallbackCopy(out, done);

@@ -168,3 +168,43 @@ export function comboApply(probed, id, mods) {
   for (const c of probed.combos) if (c.id === id && modKey(c.mods) === want) return c.apply;
   return probed.canons.get(id)?.apply || null;
 }
+
+// ── colour axis (TRIP-175) ─────────────────────────────────────────────────
+// Sanctioned TEXT colours of the design system (colour is a SEPARATE axis from
+// the canon — canons deliberately carry no colour). `css` is the token to apply;
+// `util` is the utility class a dev applies in code (empty = set colour via the
+// element's own rule / `color: <token>`). This axis IS saved to the worklist.
+export const COLORS = [
+  { key: 'ink',     label: 'Основной',       css: 'var(--ink)',         util: '' },
+  { key: 'ink2',    label: 'Вторичный',      css: 'var(--ink-2)',       util: '' },
+  { key: 'muted',   label: 'Приглушённый',   css: 'var(--muted)',       util: '.muted' },
+  { key: 'muted2',  label: 'Ещё тише',       css: 'var(--muted-2)',     util: '.muted-2' },
+  { key: 'brand',   label: 'Акцент',         css: 'var(--brand)',       util: '' },
+  { key: 'danger',  label: 'Ошибка',         css: 'var(--danger-ink)',  util: '.err' },
+  { key: 'warn',    label: 'Предупреждение', css: 'var(--warning-ink)', util: '.wrn' },
+  { key: 'success', label: 'Успех',          css: 'var(--success-ink)', util: '' },
+];
+export const colorByKey = (key) => COLORS.find((c) => c.key === key) || null;
+
+// Probe each colour token to its computed rgb (like probeCanons), so we can
+// detect an element's current colour and preview swatches truthfully per theme.
+export function probeColors() {
+  const host = document.createElement('div');
+  host.setAttribute('aria-hidden', 'true');
+  host.style.cssText = 'position:fixed;left:-9999px;top:-9999px;visibility:hidden;pointer-events:none;';
+  document.body.appendChild(host);
+  const map = new Map();
+  for (const c of COLORS) {
+    const el = document.createElement('span');
+    el.style.color = c.css; host.appendChild(el);
+    map.set(c.key, getComputedStyle(el).color);
+  }
+  document.body.removeChild(host);
+  return map;
+}
+// The design colour an element currently renders in, or null (custom / off-palette).
+export function detectColor(el, colorMap) {
+  const rgb = getComputedStyle(el).color;
+  for (const [k, v] of colorMap) if (v === rgb) return k;
+  return null;
+}
