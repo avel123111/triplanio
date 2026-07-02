@@ -1131,12 +1131,12 @@ export default function TripStructureEdit() {
         @media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
         .te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
         @keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
-        /* TRIP-161: side-panel drawer. Fixed & full-viewport-height — covers the
-           app header too — and spans the left half up to the map. No scrim: the
-           map (right half) stays interactive. Route rail mounted beneath. Width =
-           left half of the content area (viewport minus the 56px icon rail split
-           in two → 50vw + 28px from the left edge). Desktop two-column only. */
-        .ts-pdrawer { position: fixed; top: 0; bottom: 0; left: 0; width: calc(50vw + 28px); z-index: 100; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
+        /* TRIP-176: side-panel drawer. Absolute-fills the LEFT column only — below
+           the app header and to the right of the icon rail — so it never covers the
+           header or the left menu. Stops at the column seam, leaving the natural gap
+           to the map. No scrim: the map (right half) stays interactive. Route rail
+           mounted beneath. Desktop two-column only. */
+        .ts-pdrawer { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
         .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
         @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
         /* Warnings FAB: lift on hover, press on click. */
