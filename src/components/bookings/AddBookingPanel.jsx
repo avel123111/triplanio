@@ -59,15 +59,15 @@ export default function AddBookingPanel({
     <div className="lp lp--wide abp" style={{ '--ev-soft': meta.soft, '--ev-ink': meta.color }}>
       {/* Shared contextual header (× closes the panel). */}
       <div className="lp-h abp-h">
-        <span className="lp-ic" style={{ background: meta.soft, color: meta.color }}><HeaderIcon size={18} /></span>
+        <span className="lp-ic" style={{ background: meta.color, color: '#fff' }}><HeaderIcon size={18} /></span>
         <div className="lp-ti">
           <div className="eyebrow" style={{ color: meta.color }}>{t(meta.eyebrowKey)}</div>
           <div className="abp-tirow">
-            <b>{title}</b>
-            {subtitle && <span>{subtitle}</span>}
+            <b className="t-title">{title}</b>
+            {subtitle && <span className="t-meta">{subtitle}</span>}
           </div>
         </div>
-        <button className="abp-x" onClick={close} aria-label={t('fork.cancel')} title={t('fork.cancel')}>
+        <button className="ev-dlg-close" onClick={close} aria-label={t('fork.cancel')} title={t('fork.cancel')}>
           <X size={15} />
         </button>
       </div>
@@ -103,11 +103,10 @@ export default function AddBookingPanel({
       )}
 
       <style>{`
-        .abp-tirow { display: flex; align-items: baseline; gap: 8px; min-width: 0; margin-top: 2px; }
-        .abp-tirow b { flex: 0 1 auto; }
+        .abp-h { background: linear-gradient(180deg, var(--ev-soft), transparent 94%); }
+        .abp-tirow { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin-top: 4px; }
+        .abp-tirow b { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .abp-tirow span { flex: none; }
-        .abp-x { width: 34px; height: 34px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); color: var(--muted); display: grid; place-items: center; cursor: pointer; flex: none; transition: color .14s, border-color .14s; }
-        .abp-x:hover { color: var(--ink); border-color: var(--line-hover); }
         .abp-tabwrap { flex: none; padding: 12px 15px 2px; }
         .abp-tabs { display: flex; width: 100%; }
         .abp-tabs button { flex: 1; justify-content: center; }
