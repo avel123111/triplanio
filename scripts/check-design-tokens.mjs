@@ -86,7 +86,7 @@ const color = [];
 // Measures the remaining "not yet on a .t-* canon" surface so we can track the
 // unification worklist to zero. Does NOT affect exit code — flip TYPO_COMP_ENFORCED
 // to true only once every component text is on a .t-* class (TRIP-165 finale).
-const TYPO_COMP_ENFORCED = false;
+const TYPO_COMP_ENFORCED = true; // TRIP-165 finale: worklist reached 0 → block any text outside the 10 canons
 const TOKEN_SIZES = new Set(['10', '11', '12.5', '14', '15', '16', '19', '26', '40', '54']);
 // Files that legitimately DEFINE typography (token/canon/base rules) — not component text.
 // AppErrorBoundary = crash screen, intentionally token/CSS-free (must render even if
