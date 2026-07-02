@@ -89,7 +89,9 @@ const color = [];
 const TYPO_COMP_ENFORCED = false;
 const TOKEN_SIZES = new Set(['10', '11', '12.5', '14', '15', '16', '19', '26', '40', '54']);
 // Files that legitimately DEFINE typography (token/canon/base rules) — not component text.
-const TYPO_COMP_ALLOW = ['src/index.css', 'src/design/app.css', 'src/design/fonts.css', 'src/pages/login.css'];
+// AppErrorBoundary = crash screen, intentionally token/CSS-free (must render even if
+// the design system fails to load) → exempt.
+const TYPO_COMP_ALLOW = ['src/index.css', 'src/design/app.css', 'src/design/fonts.css', 'src/pages/login.css', 'src/components/AppErrorBoundary.jsx'];
 const area = (f) => {
   const m = f.replace('src/', '').match(/^(design|pages\/[A-Za-z]+|components\/[a-z]+|lib\/[a-z]+|lib)/);
   return m ? m[1] : f.replace('src/', '');
@@ -125,7 +127,12 @@ for (const file of walk(ROOT)) {
       if (!exempt && !isCss && RE.paletteCls.test(line))      color.push(`${loc}  ${line.trim().slice(0, 90)}`);
     }
     // typography composition (report-only) — only component files, not canon/token defs
-    if (!TYPO_COMP_ALLOW.includes(file)) {
+    // Skip lines with a container-computed fontSize (e.g. `fontSize: size * 0.55`) —
+    // those are decorative glyphs (avatar initials), not text, scaled to their box.
+    const computedGlyph = /fontSize:\s*[A-Za-z_$][\w$]*\s*[*/]/.test(line);
+    // Per-line escape hatch for legit non-canon inline type (marketing/decorative).
+    const typoExempt = line.includes('design-token-exempt');
+    if (!TYPO_COMP_ALLOW.includes(file) && !computedGlyph && !typoExempt) {
       // off-token raw px sizes (CSS `font-size: Npx` / inline `fontSize: 'Npx'|N`)
       const cssSize = line.match(/font-size:\s*([\d.]+)px/);
       if (cssSize && !TOKEN_SIZES.has(cssSize[1])) bump(file, 'offSize');
