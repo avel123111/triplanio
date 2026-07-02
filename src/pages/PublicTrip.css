@@ -43,7 +43,10 @@
 .pt-mast__kick::before{content:"";width:28px;height:2px;background:var(--brand);border-radius:2px}
 /* Full-width hero — title + author sit ABOVE the reader divider; the map starts
    under that divider, beside the cities/stats column. */
-.pt-mast h1{font-size:clamp(38px,6.5vw,78px);font-weight:700;line-height:.98;letter-spacing:-.035em;margin:18px 0 0}
+/* TRIP-165 — hero-заголовок на канон t-display (54), адаптив ступеньками на токенах */
+.pt-mast h1{font-size:var(--fs-display);font-weight:700;line-height:.98;letter-spacing:-.035em;margin:18px 0 0}
+@media (max-width:900px){.pt-mast h1{font-size:var(--fs-h1)}}   /* 54 → 40 */
+@media (max-width:560px){.pt-mast h1{font-size:var(--fs-h2)}}   /* 40 → 26 */
 .pt-mast__by{display:flex;align-items:center;gap:13px;margin-top:24px}
 .pt-mast__av{width:46px;height:46px;border-radius:50%;position:relative;overflow:hidden;flex:none;background:var(--brand-grad);display:grid;place-items:center;color:#fff;box-shadow:var(--sh-1)}
 .pt-mast__av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -90,7 +93,7 @@
 .pt-cstop__num{width:var(--num);height:var(--num);border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;box-shadow:0 8px 18px -8px rgba(0,0,0,.25);transition:background .35s var(--ease-out),box-shadow .35s var(--ease-out)}
 .pt-cstop.is-active .pt-cstop__num{box-shadow:0 10px 22px -8px var(--primary-ring,rgba(33,115,200,.28))}
 .pt-cstop__ht{flex:1;min-width:0}
-.pt-cstop__ht h2{font-size:clamp(26px,3.4vw,36px);letter-spacing:-.03em;line-height:1;transition:color .35s var(--ease-out)}
+.pt-cstop__ht h2{font-size:var(--fs-h2);letter-spacing:-.03em;line-height:1;transition:color .35s var(--ease-out)}   /* 26 — канон t-heading (TRIP-165) */
 .pt-cstop.is-active .pt-cstop__ht h2{color:var(--brand)}
 .pt-cstop__sub{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:9px;color:var(--muted)}
 .pt-cstop__sub img{width:22px;height:15px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(0,0,0,.10)}
@@ -134,7 +137,8 @@
 /* ── participants ── */
 .pt-band{padding:64px 0;border-top:1px solid var(--line);margin-top:30px}
 .pt-eyebrow{color:var(--muted);margin-bottom:8px}
-.pt-h-lead{font-size:clamp(24px,3.4vw,32px);font-weight:700;letter-spacing:-.025em}
+.pt-h-lead{font-size:var(--fs-h2);font-weight:700;letter-spacing:-.025em}   /* 26 — канон t-heading (TRIP-165) */
+@media (max-width:560px){.pt-h-lead{font-size:var(--fs-h3)}}   /* 26 → 19 */
 .pt-people{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:26px}
 .pt-person{display:flex;align-items:center;gap:10px;padding:7px 17px 7px 7px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);box-shadow:var(--sh-1)}
 .pt-person .av{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;overflow:hidden;color:#fff;position:relative}
@@ -144,7 +148,9 @@
 /* ── CTA ── */
 .pt-cta{position:relative;overflow:hidden;padding:80px 0;text-align:center;color:#fff;background:linear-gradient(135deg,#1C66B4 0%,#3E63D6 48%,#7E5BE6 100%)}
 .pt-cta__glow{position:absolute;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 70%);top:-230px;left:50%;transform:translateX(-50%);pointer-events:none}
-.pt-cta h2{color:#fff;font-size:clamp(28px,5vw,44px);font-weight:700;letter-spacing:-.03em;line-height:1.04;position:relative}
+/* TRIP-165 — CTA-заголовок на канон t-title (40), адаптив ступеньками на токенах */
+.pt-cta h2{color:#fff;font-size:var(--fs-h1);font-weight:700;letter-spacing:-.03em;line-height:1.04;position:relative}
+@media (max-width:560px){.pt-cta h2{font-size:var(--fs-h2)}}   /* 40 → 26 */
 .pt-cta p{position:relative;margin:14px auto 26px;max-width:520px;color:rgba(255,255,255,.9)}
 .pt-cta__act{position:relative;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 
