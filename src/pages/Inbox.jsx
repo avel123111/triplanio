@@ -208,8 +208,8 @@ function InboxEmpty({ onCollection }) {
                   <Icon name={r.icon} size={16} />
                 </span>
                 <span style={{ textAlign: 'left' }}>
-                  <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>{r.title}</div>
-                  <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', marginTop: 1, lineHeight: 1.35 }}>{r.sub}</div>
+                  <div className="t-ui" style={{ color: 'var(--ink-2)' }}>{r.title}</div>
+                  <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 1 }}>{r.sub}</div>
                 </span>
               </div>
             ))}
@@ -242,8 +242,8 @@ function InboxRow({ n, t, dateLocale, pending, onRespond, onMarkRead }) {
   const titleText = n.i18n_title_key ? t(n.i18n_title_key, renderParams(n.i18n_params)) : n.title;
   const messageText = n.i18n_message_key ? t(n.i18n_message_key, renderParams(n.i18n_params)) : n.message;
   const ip = n.i18n_params || {};
-  const titleNode = isInvite ? emphasize(titleText, [{ value: ip.trip, style: { fontWeight: 700, color: 'var(--brand)' } }]) : titleText;
-  const messageNode = isInvite ? emphasize(messageText, [{ value: ip.inviter, style: { fontWeight: 700 } }]) : messageText;
+  const titleNode = isInvite ? emphasize(titleText, [{ value: ip.trip, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */, color: 'var(--brand)' } }]) : titleText;
+  const messageNode = isInvite ? emphasize(messageText, [{ value: ip.inviter, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } }]) : messageText;
   const meta = notifMeta(n.type);
   const showPending = isInvite && member?.status === 'pending';
 

@@ -53,6 +53,7 @@ const COLOR_WHITELIST = [
   'src/pages/Landing/LandingPage.jsx',                 // marketing page: demo visuals + brand icons
   'src/pages/JoinTrip.jsx',                            // standalone join page (embedded <style>)
   'src/pages/PublicTrip.css',                          // public read-only page styles
+  'public/landing.css',                                // marketing landing: mockup/brand demo visuals (typography still enforced)
 ];
 
 // Files allowed to contain raw FONT SIZES.
@@ -81,7 +82,25 @@ function walk(dir, out = []) {
 
 const typo = [];
 const color = [];
-for (const file of walk(ROOT)) {
+
+// ── TRIP-165 typography-composition report (REPORT-ONLY until migration done) ──
+// Measures the remaining "not yet on a .t-* canon" surface so we can track the
+// unification worklist to zero. Does NOT affect exit code — flip TYPO_COMP_ENFORCED
+// to true only once every component text is on a .t-* class (TRIP-165 finale).
+const TYPO_COMP_ENFORCED = true; // TRIP-165 finale: worklist reached 0 → block any text outside the 10 canons
+const TOKEN_SIZES = new Set(['10', '11', '12.5', '14', '15', '16', '19', '26', '40', '54']);
+// Files that legitimately DEFINE typography (token/canon/base rules) — not component text.
+// AppErrorBoundary = crash screen, intentionally token/CSS-free (must render even if
+// the design system fails to load) → exempt.
+const TYPO_COMP_ALLOW = ['src/index.css', 'src/design/app.css', 'src/design/fonts.css', 'src/pages/login.css', 'src/components/AppErrorBoundary.jsx'];
+const area = (f) => {
+  const m = f.replace('src/', '').match(/^(design|pages\/[A-Za-z]+|components\/[a-z]+|lib\/[a-z]+|lib)/);
+  return m ? m[1] : f.replace('src/', '');
+};
+const typoComp = {}; // area -> { offSize, inlineWeight, inlineLh, inlineLs, inlineFamily }
+const bump = (f, k) => { const a = area(f); (typoComp[a] ||= { offSize: 0, inlineWeight: 0, inlineLh: 0, inlineLs: 0, inlineFamily: 0 })[k]++; };
+
+for (const file of [...walk(ROOT), 'public/landing.css']) {
   const isCss = file.endsWith('.css');
   const lines = readFileSync(file, 'utf8').split('\n');
   lines.forEach((line, i) => {
@@ -108,6 +127,26 @@ for (const file of walk(ROOT)) {
       if (!exempt && !isTokenDef && nonNeutralHex)            color.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (!exempt && !isCss && RE.paletteCls.test(line))      color.push(`${loc}  ${line.trim().slice(0, 90)}`);
     }
+    // typography composition (report-only) — only component files, not canon/token defs
+    // Skip lines with a container-computed fontSize (e.g. `fontSize: size * 0.55`) —
+    // those are decorative glyphs (avatar initials), not text, scaled to their box.
+    const computedGlyph = /fontSize:\s*[A-Za-z_$][\w$]*\s*[*/]/.test(line);
+    // Per-line escape hatch for legit non-canon inline type (marketing/decorative).
+    const typoExempt = line.includes('design-token-exempt');
+    if (!TYPO_COMP_ALLOW.includes(file) && !computedGlyph && !typoExempt) {
+      // off-token raw px sizes (CSS `font-size: Npx` / inline `fontSize: 'Npx'|N`)
+      const cssSize = line.match(/font-size:\s*([\d.]+)px/);
+      if (cssSize && !TOKEN_SIZES.has(cssSize[1])) bump(file, 'offSize');
+      const jsSize = line.match(/fontSize:\s*['"]?([\d.]+)(?:px)?['"]?[,\s}]/);
+      if (!isCss && jsSize && !TOKEN_SIZES.has(jsSize[1])) bump(file, 'offSize');
+      // inline JSX typography props (component sets its own type instead of a .t-* class)
+      if (!isCss) {
+        if (/fontWeight:/.test(line))    bump(file, 'inlineWeight');
+        if (/lineHeight:/.test(line))    bump(file, 'inlineLh');
+        if (/letterSpacing:/.test(line)) bump(file, 'inlineLs');
+        if (/fontFamily:/.test(line))    bump(file, 'inlineFamily');
+      }
+    }
   });
 }
 
@@ -122,6 +161,24 @@ color.slice(0, 40).forEach((l) => console.log('  • ' + l));
 if (color.length > 40) console.log(`  … and ${color.length - 40} more`);
 if (!color.length) console.log('  ✓ none');
 
-const failed = typo.length > 0 || (COLOR_ENFORCED && color.length > 0);
+// ── TRIP-165 typography-composition report (report-only) ──
+const compAreas = Object.entries(typoComp).sort((a, b) => {
+  const sum = (o) => o.offSize + o.inlineWeight + o.inlineLh + o.inlineLs + o.inlineFamily;
+  return sum(b[1]) - sum(a[1]);
+});
+const compTotal = compAreas.reduce((acc, [, o]) => {
+  acc.offSize += o.offSize; acc.inlineWeight += o.inlineWeight; acc.inlineLh += o.inlineLh;
+  acc.inlineLs += o.inlineLs; acc.inlineFamily += o.inlineFamily; return acc;
+}, { offSize: 0, inlineWeight: 0, inlineLh: 0, inlineLs: 0, inlineFamily: 0 });
+const compSum = compTotal.offSize + compTotal.inlineWeight + compTotal.inlineLh + compTotal.inlineLs + compTotal.inlineFamily;
+console.log(`\nTYPOGRAPHY COMPOSITION (report-only, TRIP-165 — migrate to .t-* canons) — ${compSum} site(s) left:`);
+console.log(`  off-token size: ${compTotal.offSize} · inline weight: ${compTotal.inlineWeight} · inline line-height: ${compTotal.inlineLh} · inline tracking: ${compTotal.inlineLs} · inline font-family: ${compTotal.inlineFamily}`);
+for (const [a, o] of compAreas) {
+  const s = o.offSize + o.inlineWeight + o.inlineLh + o.inlineLs + o.inlineFamily;
+  if (s) console.log(`    ${String(s).padStart(3)}  ${a}`);
+}
+if (!compSum) console.log('  ✓ none — every component text is on a .t-* canon');
+
+const failed = typo.length > 0 || (COLOR_ENFORCED && color.length > 0) || (TYPO_COMP_ENFORCED && compSum > 0);
 console.log(`\n${hr}\n${failed ? '✗ FAILED' : '✓ PASSED'}\n${hr}\n`);
 process.exit(failed ? 1 : 0);

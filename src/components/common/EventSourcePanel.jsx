@@ -143,8 +143,8 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
         <div className="del-confirm">
           <div className="del-confirm-ic"><Icon name="trash" size={18} /></div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{t('event.delete_q', { label: themeLabel.toLowerCase() })}</div>
-            <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', marginTop: 4 }}>{t('event.delete_irreversible')}</div>
+            <div className="t-ui">{t('event.delete_q', { label: themeLabel.toLowerCase() })}</div>
+            <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 4 }}>{t('event.delete_irreversible')}</div>
           </div>
         </div>
       ) : (

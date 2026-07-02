@@ -53,7 +53,7 @@ function replaceSentinelInChildren(children, mentionStyle, mentionClassName) {
 
 export default function ChatMarkdown({
   text,
-  mentionStyle    = { color: 'var(--ai)', fontWeight: 700 },
+  mentionStyle    = { color: 'var(--ai)', fontWeight: 700 /* design-token-exempt: inline mention emphasis */ },
   mentionClassName = '',
   linkClassName   = 'cm-a',
 }) {

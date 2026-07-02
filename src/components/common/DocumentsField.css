@@ -8,11 +8,12 @@
 .docfield__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 
 /* title cluster — was: flex items-center gap-2 text-sm font-semibold min-w-0 */
-.docfield__title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--fs-base); font-weight: 600; color: var(--ink); }
+.docfield__title { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink); }
 .docfield__title .ico { flex: none; }
 .docfield__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* was truncate */
-/* count — was: text-xs text-muted-foreground font-normal */
-.docfield__count { font-size: var(--fs-meta); color: var(--muted); font-weight: 400; }
+/* count — was: text-xs text-muted-foreground font-normal.
+   Typography now on the .t-meta canon (co-selector in app.css); weight collapses to the canon 600. */
+.docfield__count { color: var(--muted); }
 
 /* doc list — was: flex flex-col gap-1.5 mb-2 */
 .docfield__list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }

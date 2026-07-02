@@ -231,7 +231,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           <div className={'chat-bubble ' + bubbleMod + (m.__pending ? ' chat-bubble--pending' : '')}>
             <ChatMarkdown
               text={m.text || ''}
-              mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 } : { color: 'var(--ai)', fontWeight: 700 }}
+              mentionStyle={isMe ? { color: 'rgba(255,255,255,0.9)', fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } : { color: 'var(--ai)', fontWeight: 700 /* design-token-exempt: inline mention emphasis */ }}
             />
           </div>
           {isMe && !grouped && (
@@ -309,7 +309,7 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
       {isThinking && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
           <TriplanioAvatar size="xs" />
-          <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--ai)', fontWeight: 500 }}>{t('chat.typing')}</span>
+          <span className="t-meta" style={{ color: 'var(--ai)' }}>{t('chat.typing')}</span>
           <span className="ai-dots"><span /><span /><span /></span>
         </div>
       )}
@@ -406,9 +406,9 @@ export default function ChatWidget({ tripId, members = [], tripTitle, ownerId })
           <MessageCircle size={14} />
           {t('chat.group_title')}
           {unread > 0 && (
-            <span style={{
+            <span className="t-micro" style={{
               marginLeft: 4, background: 'var(--warm)', color: 'white',
-              borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700,
+              borderRadius: 999,
               minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               padding: '0 4px',
             }}>{unread > 99 ? '99+' : unread}</span>

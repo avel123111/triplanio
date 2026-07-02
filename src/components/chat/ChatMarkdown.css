@@ -18,9 +18,10 @@
 .cm-ol { list-style: decimal; margin: 4px 0; padding-left: 20px; }
 .cm-ul > li + li, .cm-ol > li + li { margin-top: 2px; }
 
-/* headings — was: font-semibold text-base/text-sm mt-1 mb-0.5 */
-.cm-h { font-weight: 600; font-size: var(--fs-h4); margin: 4px 0 2px; }
-.cm-h3 { font-weight: 600; font-size: var(--fs-base); margin: 4px 0 2px; }
+/* headings — was: font-semibold text-base/text-sm mt-1 mb-0.5.
+   Typography now on the .t-label (.cm-h) / .t-ui (.cm-h3) canons (co-selectors in app.css). */
+.cm-h { margin: 4px 0 2px; }
+.cm-h3 { margin: 4px 0 2px; }
 
 /* blockquote — was: border-l-2 border-current/30 pl-2 my-1 opacity-80 */
 .cm-quote { border-left: 2px solid color-mix(in srgb, currentColor 30%, transparent); padding-left: 8px; margin: 4px 0; opacity: .8; }

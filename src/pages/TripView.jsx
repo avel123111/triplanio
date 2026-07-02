@@ -348,8 +348,8 @@ function StreamAnchor({ label, sub, color, icon }) {
         <Icon name={icon} size={13} />
       </div>
       <div>
-        <div style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{label}</div>
-        {sub && <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{sub}</div>}
+        <div className="t-ui">{label}</div>
+        {sub && <div className="muted t-meta">{sub}</div>}
       </div>
     </div>
   );
@@ -369,7 +369,7 @@ function MissingTransferWarning({ from, to, fromVisit, toVisit, onAdd }) {
       marginBottom: 8,
     }}>
       <Icon name="warning" size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />
-      <div style={{ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 600 }}>
+      <div className="t-ui" style={{ flex: 1 }}>
         {t('trip.no_transfer', { from, to })}
       </div>
       <Btn variant="primary" size="sm" icon="plus" onClick={() => onAdd?.(fromVisit, toVisit)}>{t('trip.add_transfer')}</Btn>
@@ -643,7 +643,7 @@ function TimelineLens({ stream, visits, transfers, trip, isLoading, onAddTransfe
                   borderRadius: 10, color: 'var(--muted)',
                 }}>
                   <Icon name="info" size={14} />
-                  <div style={{ flex: 1, fontSize: 'var(--fs-meta)' }}>{t('view.empty_day')}</div>
+                  <div className="t-meta" style={{ flex: 1 }}>{t('view.empty_day')}</div>
                 </div>
               )}
             </>
@@ -1371,7 +1371,7 @@ export default function TripView() {
           <Btn variant="primary" icon="settings" onClick={() => { setBudgetAddonOff(false); setLens('settings'); }}>{t('trip.open_settings')}</Btn>
         </>}
       >
-        <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>
+        <div className="muted t-body">
           {t('trip.budget_addon_off_desc')}
         </div>
       </Dialog>

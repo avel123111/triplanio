@@ -29,7 +29,7 @@ export default function TelegramUnlinkDialog({ handle, onConfirm, open, onOpenCh
         </Btn>
       </>}
     >
-      <div style={{ fontSize: 'var(--fs-base)', color: 'var(--ink-2)', lineHeight: 1.55 }}>
+      <div className="t-body" style={{ color: 'var(--ink-2)' }}>
         {t('telegram.unlink_body', { handle })}
       </div>
     </Dialog>

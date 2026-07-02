@@ -20,9 +20,9 @@ export default function CurrencyCombobox({ value, onChange, className = '' }) {
       renderValue={(c) => `${c.code} · ${c.symbol}`}
       renderOption={(c) => (
         <>
-          <span className="mono" style={{ fontWeight: 700, width: 40, flex: 'none' }}>{c.code}</span>
-          <span style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-          <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{c.symbol}</span>
+          <span className="t-mono" style={{ width: 40, flex: 'none' }}>{c.code}</span>
+          <span className="t-meta" style={{ flex: 1, minWidth: 0, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+          <span className="t-meta" style={{ color: 'var(--muted)' }}>{c.symbol}</span>
         </>
       )}
       placeholder={t('common.choose')}

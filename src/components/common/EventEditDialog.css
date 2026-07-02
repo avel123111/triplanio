@@ -13,15 +13,15 @@
 .eed-typegrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
 @media (min-width: 640px) { .eed-typegrid { grid-template-columns: repeat(6, 1fr); } }
 
-/* FROM / TO eyebrow labels — was: text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold */
-.eed-fromto { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+/* FROM / TO eyebrow labels — was: text-[length:var(--fs-micro)] uppercase tracking-wider font-semibold.
+   Typography now on the .t-micro canon (co-selector in app.css). */
 
 /* free-cancellation box — was: rounded-lg border bg-secondary/30 p-3 */
 .eed-fcbox { border: 1px solid var(--line); background: color-mix(in srgb, var(--surface-2) 30%, transparent); border-radius: var(--radius); padding: 12px; }
 .eed-fclabel { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }   /* flex items-start gap-2 cursor-pointer */
 .eed-fcbody { flex: 1; }                                                   /* flex-1 */
-.eed-fctitle { font-size: var(--fs-base); font-weight: 600; }              /* text-sm font-medium */
-.eed-fchint { font-size: var(--fs-meta); color: var(--muted); }            /* text-xs text-muted-foreground */
+/* .eed-fctitle typography now on the .t-ui canon (co-selector in app.css) */
+.eed-fchint { color: var(--muted); }                                       /* text-xs text-muted-foreground */
 .eed-fcdate { margin-top: 8px; }                                           /* mt-2 */
 
 /* booking-url input with platform logo (×3 blocks) */
@@ -33,8 +33,8 @@
 .eed-bkmeta { margin-top: 6px; display: flex; align-items: center; gap: 8px; }
 /* platform pill — was: inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium.
    URL-detected brand-colour tint removed — neutral surface-2 background, favicon is the brand signal. */
-.eed-bkpill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 4px; font-size: var(--fs-meta); font-weight: 600; background: var(--surface-2); color: var(--ink-2); }
+.eed-bkpill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 4px; background: var(--surface-2); color: var(--ink-2); }
 .eed-bkpill__logo { width: 14px; height: 14px; border-radius: calc(var(--radius) - 8px); }   /* was w-3.5 h-3.5 rounded-sm */
 /* open link — was: text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 */
-.eed-bkopen { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-meta); color: var(--muted); text-decoration: none; }
+.eed-bkopen { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); text-decoration: none; }
 .eed-bkopen:hover { color: var(--brand); }
