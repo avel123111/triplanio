@@ -42,5 +42,18 @@ composer-оверлее + статические i18n). См. [[triplanio-paymen
 13 CSRF-инвариант (задокументировать) · 14 CAPTCHA/бот · 15 мобилка (Keychain/pinning/
 deep-link/IAP-через-RevenueCat).
 
+## ⚠️ Ревизия #8 и #9 (2026-07-02, по замечанию Ильи — были завышены)
+- **#9 AI cost-лимиты — ПО СУТИ ЗАКРЫТО.** rate-limit (`aiFlowLimited`/`rate_limit_hits`)
+  стоит на ВСЕХ LLM-ручках: callTriplanioAi(ai_inapp_chat)+Pro, parseBookingWithAi
+  (ai_trip_parser)+Pro, planTripWithAi(ai_trip_planner, 429), aiGate(ai_tg_chatbot);
+  triplanioAiReply LLM не зовёт. Cost-abuse закрыт. Остаток = ОПЦИОНАЛЬНЫЙ жёсткий
+  $-потолок поверх `ai_usage_events` (там сейчас только логирование). planTripWithAi без
+  Pro-гейта — намеренное продуктовое решение, не дыра. Риск: НИЗКИЙ.
+- **#8 Storage — ПОЧТИ ЗАКРЫТО.** `trip_documents` private/shared split = TRIP-118
+  (миграции 20260630180032/182810/193000); avatars delete/insert/update = TRIP-117/baseline.
+  Открыт ТОЛЬКО подпункт: `avatars_select` = `FOR SELECT TO public USING (bucket_id='avatars')`
+  → публичный листинг (утечка = перечень путей `<uid>/avatar.ext`). Бакет и так публичный →
+  Риск: НИЗКИЙ (не средний).
+
 **Мобилка:** отдельного «мобильного бэкенда» нет — общий Supabase, поэтому п.1-12 закрывают
 и мобильный клиент. Профильное для натива вынесено в п.15.
