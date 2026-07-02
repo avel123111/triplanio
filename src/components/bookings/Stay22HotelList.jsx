@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   MapPin, ChevronLeft, ChevronRight, ChevronDown,
-  Users, Search, RotateCcw, Minus, Plus, X, Hotel, AlertTriangle,
+  Search, RotateCcw, Minus, Plus, X, Hotel, AlertTriangle,
+  SlidersHorizontal, ArrowUpDown,
 } from 'lucide-react';
 import { Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -24,6 +25,10 @@ const SKELETON_COUNT = 4;
 const CLIENT_PAGE_SIZE = 20;
 const BASE_GUESTS = { adults: 2, children: 0, rooms: 1 };
 const BASE_FILTERS = { ...BASE_GUESTS, min: '', max: '' };
+// TRIP-176: sort toggle cycle (labels via fork.f_sort_*); wiring deferred.
+const SORT_ORDER = ['recommended', 'price', 'rating'];
+// Supplier brands for the platform filter (proper nouns — not translated). Wiring deferred.
+const PLATFORM_OPTIONS = ['Booking.com', 'Expedia', 'Hotels.com', 'Vrbo'];
 
 function fmtShort(dateStr, locale) {
   if (!dateStr) return '';
@@ -72,18 +77,15 @@ export default function Stay22HotelList({
   const seed = () => ({ ...BASE_FILTERS, ...(applied || {}) });
   const appliedSig = JSON.stringify(applied || null);
   const [pending, setPending] = useState(seed);
-  const [popOpen, setPopOpen] = useState(false);
-  const wrapRef = useRef(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  // TRIP-176: new controls — UI now, filtering/sorting logic wired later.
+  const [query, setQuery] = useState('');
+  const [platform, setPlatform] = useState('all');
+  const [sortBy, setSortBy] = useState('recommended');
+  const cycleSort = () => setSortBy((s) => SORT_ORDER[(SORT_ORDER.indexOf(s) + 1) % SORT_ORDER.length]);
   // Re-seed the draft whenever the committed filters change from the outside
-  // (apply / reset / pill removal in the parent) so the popover stays in sync.
+  // (apply / reset / pill removal in the parent) so the panel stays in sync.
   useEffect(() => { setPending(seed()); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [appliedSig]);
-
-  useEffect(() => {
-    if (!popOpen) return undefined;
-    const onDoc = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setPopOpen(false); };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [popOpen]);
 
   // The pool is the whole city (TRIP-141): paginate it on the CLIENT so the map
   // (clustered) and the list (paged) read from one source of truth.
@@ -113,29 +115,21 @@ export default function Stay22HotelList({
     if (node) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [selectedId, page, pool, onPageChange]);
 
-  const guestsLabel = () => {
-    const p = [t('fork.f_adults', { n: pending.adults })];
-    if (pending.children > 0) p.push(t('fork.f_children', { n: pending.children }));
-    p.push(t('fork.f_rooms', { n: pending.rooms }));
-    return p.join(' · ');
-  };
-  const guestsTouched = pending.adults !== BASE_GUESTS.adults || pending.children !== BASE_GUESTS.children || pending.rooms !== BASE_GUESTS.rooms;
-  const priceTouched = pending.min !== '' || pending.max !== '';
-  const dirty = guestsTouched || priceTouched;
-
   // Pager navigation clears any map selection first: otherwise the "scroll the
   // selected card into view" effect keeps yanking the list back to the selected
   // hotel's page and pagination appears stuck (TRIP-141 bugfix). The auto-scroll
   // effect calls onPageChange directly (it's navigating TO the selection), so it
   // must NOT go through here.
   const gotoPage = (p) => { onSelect?.(null); onPageChange(p); };
-  const apply = () => { onApply({ ...pending }); setPopOpen(false); };
-  const resetAll = () => { setPending({ ...BASE_FILTERS }); onResetAll(); setPopOpen(false); };
+  const apply = () => { onApply({ ...pending }); setFilterOpen(false); };
+  const resetAll = () => { setPending({ ...BASE_FILTERS }); setPlatform('all'); onResetAll(); setFilterOpen(false); };
   const setG = (k, v) => setPending((s) => ({ ...s, [k]: v }));
-  const resetGuests = () => setPending((s) => ({ ...s, ...BASE_GUESTS }));
 
   const appliedGuests = applied && (applied.adults !== BASE_GUESTS.adults || applied.children !== BASE_GUESTS.children || applied.rooms !== BASE_GUESTS.rooms);
   const appliedPrice = applied && (applied.min !== '' || applied.max !== '');
+  // Active-filter count on the toggle button (committed price/guests + local platform).
+  const activeCount = (appliedPrice ? 1 : 0) + (appliedGuests ? 1 : 0) + (platform !== 'all' ? 1 : 0);
+  const sortLabel = t(`fork.f_sort_${sortBy}`);
   const priceText = applied
     ? (applied.min && applied.max ? `$ ${applied.min} – ${applied.max}` : applied.min ? `$ ${t('fork.f_from')} ${applied.min}` : `$ ${t('fork.f_to')} ${applied.max}`)
     : '';
@@ -166,69 +160,85 @@ export default function Stay22HotelList({
             <span className="s22-sub">{t('fork.stay22_source')}{dateLine ? ` · ${dateLine}` : ''}</span>
           </div>
         </div>
-        {countLabel && <span className="s22-count">{countLabel}</span>}
       </div>
 
-      {/* ===== Filters bar ===== */}
+      {/* ===== Search + filters (TRIP-176 redesign) ===== */}
       <div className="s22f">
-        <div className="s22f-row">
-          <div className="s22f-wrap" ref={wrapRef}>
-            <button
-              type="button"
-              className={`s22f-chip ${appliedGuests ? 's22f-chip--active' : ''}`}
-              aria-expanded={popOpen}
-              onClick={() => setPopOpen((o) => !o)}
-            >
-              <Users size={14} />
-              <span>{guestsLabel()}</span>
-              <ChevronDown size={14} className="s22f-chev" />
-            </button>
-            {popOpen && (
-              <div className="s22f-pop" role="dialog">
-                <div className="s22f-poprow">
-                  <div className="s22f-poptx"><b>{t('fork.f_adults_t')}</b><span>{t('fork.f_adults_s')}</span></div>
-                  <Stepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
-                </div>
-                <div className="s22f-poprow">
-                  <div className="s22f-poptx"><b>{t('fork.f_children_t')}</b><span>{t('fork.f_children_s')}</span></div>
-                  <Stepper value={pending.children} min={0} onChange={(v) => setG('children', v)} label={t('fork.f_children_t')} />
-                </div>
-                <div className="s22f-poprow">
-                  <div className="s22f-poptx"><b>{t('fork.f_rooms_t')}</b><span>{t('fork.f_rooms_s')}</span></div>
-                  <Stepper value={pending.rooms} min={1} onChange={(v) => setG('rooms', v)} label={t('fork.f_rooms_t')} />
-                </div>
-                <div className="s22f-popfoot">
-                  <button type="button" className="btn btn--ghost btn--sm" onClick={resetGuests}>{t('fork.f_reset')}</button>
-                  <button type="button" className="btn btn--primary btn--sm" onClick={() => setPopOpen(false)}>{t('fork.f_apply')}</button>
-                </div>
-              </div>
-            )}
+        <div className="s22f-searchrow">
+          <div className="s22f-search">
+            <Search size={16} className="s22f-search__ic" />
+            {/* TODO(TRIP-176): wire name/area filtering over the pool. */}
+            <input
+              type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('fork.f_search_ph')} aria-label={t('fork.f_search_ph')}
+            />
           </div>
+          <button
+            type="button"
+            className={`s22f-fbtn ${filterOpen ? 's22f-fbtn--on' : ''} ${activeCount ? 's22f-fbtn--active' : ''}`}
+            aria-expanded={filterOpen} aria-label={t('fork.f_filters')} title={t('fork.f_filters')}
+            onClick={() => setFilterOpen((o) => !o)}
+          >
+            <SlidersHorizontal size={17} />
+            {activeCount > 0 && <span className="badge badge--count s22f-fbtn__n">{activeCount}</span>}
+          </button>
+        </div>
 
-          <div className="s22f-price">
-            <span className="s22f-plbl">{t('fork.f_price')} <span className="s22f-pmuted">{t('fork.f_price_unit')}</span></span>
-            <div className="s22f-pfields">
-              <label className="s22f-field"><span className="s22f-cur">$</span>
-                <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
-                  onChange={(e) => setG('min', e.target.value.replace(/[^\d]/g, ''))} />
-              </label>
-              <span className="s22f-dash">–</span>
-              <label className="s22f-field"><span className="s22f-cur">$</span>
-                <input type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
-                  onChange={(e) => setG('max', e.target.value.replace(/[^\d]/g, ''))} />
-              </label>
+        {filterOpen && (
+          <div className="s22f-panel">
+            <div className="s22f-grp">
+              <div className="eyebrow">{t('fork.f_price')} <span className="s22f-pmuted">{t('fork.f_price_unit')}</span></div>
+              <div className="s22f-pfields">
+                <label className="s22f-field"><span className="s22f-cur">$</span>
+                  <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
+                    onChange={(e) => setG('min', e.target.value.replace(/[^\d]/g, ''))} />
+                </label>
+                <span className="s22f-dash">–</span>
+                <label className="s22f-field"><span className="s22f-cur">$</span>
+                  <input type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
+                    onChange={(e) => setG('max', e.target.value.replace(/[^\d]/g, ''))} />
+                </label>
+              </div>
+            </div>
+
+            <div className="s22f-grp">
+              <div className="eyebrow">{t('fork.f_platform')}</div>
+              {/* TODO(TRIP-176): wire supplier/platform filtering (needs per-hotel supplier). */}
+              <div className="s22f-selwrap">
+                <select className="s22f-sel" value={platform} onChange={(e) => setPlatform(e.target.value)}>
+                  <option value="all">{t('fork.f_all_platforms')}</option>
+                  {PLATFORM_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <ChevronDown size={16} className="s22f-selchev" />
+              </div>
+            </div>
+
+            <div className="s22f-grp">
+              <div className="eyebrow">{t('fork.f_guests_rooms')}</div>
+              <div className="s22f-poprow">
+                <div className="s22f-poptx"><b>{t('fork.f_adults_t')}</b><span>{t('fork.f_adults_s')}</span></div>
+                <Stepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
+              </div>
+              <div className="s22f-poprow">
+                <div className="s22f-poptx"><b>{t('fork.f_children_t')}</b><span>{t('fork.f_children_s')}</span></div>
+                <Stepper value={pending.children} min={0} onChange={(v) => setG('children', v)} label={t('fork.f_children_t')} />
+              </div>
+              <div className="s22f-poprow">
+                <div className="s22f-poptx"><b>{t('fork.f_rooms_t')}</b><span>{t('fork.f_rooms_s')}</span></div>
+                <Stepper value={pending.rooms} min={1} onChange={(v) => setG('rooms', v)} label={t('fork.f_rooms_t')} />
+              </div>
+            </div>
+
+            <div className="s22f-panelfoot">
+              <button type="button" className="btn btn--quiet btn--sm" onClick={resetAll}>
+                <RotateCcw size={14} />{t('fork.f_reset')}
+              </button>
+              <button type="button" className="btn btn--primary btn--sm" onClick={apply}>
+                <Search size={14} />{t('fork.f_search')}
+              </button>
             </div>
           </div>
-        </div>
-
-        <div className="s22f-actions">
-          <button type="button" className="btn btn--quiet btn--sm" onClick={resetAll} disabled={!dirty && !applied}>
-            <RotateCcw size={14} />{t('fork.f_reset')}
-          </button>
-          <button type="button" className="btn btn--primary btn--sm" onClick={apply} disabled={!dirty}>
-            <Search size={14} />{t('fork.f_search')}
-          </button>
-        </div>
+        )}
 
         {(appliedGuests || appliedPrice) && (
           <div className="s22f-pills">
@@ -251,12 +261,17 @@ export default function Stay22HotelList({
         <div className="s22-list" aria-hidden="true">
           {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <div className="pcard pcard--sk" key={i}>
-              <Skeleton w={96} h={96} r={12} />
-              <div className="pcard__body">
-                <Skeleton w="80%" h={14} />
-                <Skeleton w="55%" h={12} style={{ marginTop: 8 }} />
-                <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
-                <Skeleton w="45%" h={16} style={{ marginTop: 14 }} />
+              <div className="pcard__top">
+                <Skeleton w={60} h={60} r={12} />
+                <div className="pcard__body">
+                  <Skeleton w="70%" h={14} />
+                  <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
+                </div>
+              </div>
+              <div className="pcard__bar">
+                <Skeleton w={80} h={14} />
+                <span className="pcard__spacer" />
+                <Skeleton w={70} h={30} r={10} />
               </div>
             </div>
           ))}
@@ -282,6 +297,14 @@ export default function Stay22HotelList({
 
       {!isError && pool.length > 0 && (
         <>
+          <div className="s22-countrow">
+            {countLabel && <span className="s22-count">{countLabel}</span>}
+            <span className="s22-countrow__ln" />
+            {/* TODO(TRIP-176): wire client-side sort (price/rating) over the pool. */}
+            <button type="button" className="s22-sort" onClick={cycleSort}>
+              <ArrowUpDown size={14} />{sortLabel}
+            </button>
+          </div>
           <div className="s22-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
             {hotels.map((h) => (
               <PartnerResultCard
@@ -292,7 +315,12 @@ export default function Stay22HotelList({
                 accent="var(--ev-hotel)"
                 icon={<Hotel size={22} />}
                 image={h.thumbnail}
-                thumbOverlay={h.supplierLogo ? <img className="pcard__supplier" src={h.supplierLogo} alt={h.supplierKey || ''} /> : null}
+                platform={h.supplierKey ? (
+                  <span className="pcard__plat">
+                    {h.supplierLogo ? <img src={h.supplierLogo} alt="" /> : null}
+                    <span>{h.supplierKey.charAt(0).toUpperCase() + h.supplierKey.slice(1)}</span>
+                  </span>
+                ) : null}
                 rating={(h.stars || h.ratingValue != null) ? (
                   <div className="s22-rate">
                     {h.stars ? <span className="s22-stars">{'★'.repeat(h.stars)}</span> : null}
@@ -337,41 +365,44 @@ export default function Stay22HotelList({
       <style>{`
         .s22 { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
 
-        /* ---- filters ---- */
+        /* ---- search + filters (TRIP-176) ---- */
         .s22f { display: flex; flex-direction: column; gap: 11px; }
-        .s22f-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
-        .s22f-wrap { position: relative; }
-        .s22f-chip { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: var(--r-control); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; white-space: nowrap; transition: border-color .2s var(--ease-out), box-shadow .2s, transform .12s var(--ease-spring); }
-        .s22f-chip:hover { border-color: var(--line-hover); }
-        .s22f-chip:active { transform: scale(.98); }
-        .s22f-chip svg { color: var(--muted); flex: none; }
-        .s22f-chip .s22f-chev { color: var(--muted-2); transition: transform .2s var(--ease-out); }
-        .s22f-chip[aria-expanded="true"] { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
-        .s22f-chip[aria-expanded="true"] .s22f-chev { transform: rotate(180deg); }
-        .s22f-chip--active { border-color: var(--brand); background: var(--primary-soft); color: var(--brand); }
-        .s22f-chip--active svg { color: var(--brand); }
+        .s22f-searchrow { display: flex; gap: 10px; }
+        .s22f-search { position: relative; flex: 1; min-width: 0; }
+        .s22f-search__ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+        .s22f-search input { width: 100%; background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: var(--r-control); padding: 11px 14px 11px 40px; color: var(--ink); outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }
+        .s22f-search input:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+        .s22f-search input::placeholder { color: var(--muted-2); }
+        .s22f-fbtn { position: relative; flex: none; width: 44px; height: 44px; border-radius: var(--r-control); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
+        .s22f-fbtn:hover { border-color: var(--line-hover); }
+        .s22f-fbtn:active { transform: scale(.96); }
+        .s22f-fbtn--on { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+        .s22f-fbtn--active { border-color: var(--brand); color: var(--brand); }
+        .s22f-fbtn__n { position: absolute; top: -6px; right: -6px; border: 2px solid var(--surface); }
 
-        .s22f-price { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
-        .s22f-plbl { color: var(--ink-2); }
+        .s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--line); }
+        .s22f-grp { display: flex; flex-direction: column; gap: 8px; }
         .s22f-pmuted { color: var(--muted); }
         .s22f-pfields { display: flex; align-items: center; gap: 8px; }
-        .s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong); border-radius: var(--r-control); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
-        .s22f-field:focus-within { border-color: var(--brand); background: var(--surface); box-shadow: 0 0 0 4px var(--primary-ring); }
+        .s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: var(--r-control); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
+        .s22f-field:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
         .s22f-cur { color: var(--muted); flex: none; }
         .s22f-field input { border: 0; outline: 0; background: transparent; width: 100%; min-width: 0; color: var(--ink); font-variant-numeric: tabular-nums; padding: 0; }
         .s22f-field input::placeholder { color: var(--muted-2); }
         .s22f-dash { color: var(--muted-2); flex: none; }
-        .s22f-actions { display: flex; gap: 8px; justify-content: flex-end; }
+        .s22f-selwrap { position: relative; }
+        .s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: var(--r-control); padding: 11px 40px 11px 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }
+        .s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+        .s22f-selchev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
 
-        .s22f-pop { position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; width: 280px; max-width: calc(100vw - 32px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--sh-3); padding: 6px; }
-        .s22f-poprow { display: flex; align-items: center; gap: 12px; padding: 10px; }
-        .s22f-poprow + .s22f-poprow { border-top: 1px solid var(--line-2); }
+        .s22f-poprow { display: flex; align-items: center; gap: 12px; }
+        .s22f-poprow + .s22f-poprow { border-top: 1px solid var(--line-2); padding-top: 8px; }
         .s22f-poptx { flex: 1; min-width: 0; }
         .s22f-poptx b { display: block; color: var(--ink); }
         .s22f-poptx span { display: block; color: var(--muted); margin-top: 1px; }
-        .s22f-popfoot { display: flex; gap: 8px; padding: 8px 6px 4px; }
-        .s22f-popfoot .btn { flex: 1; }
-        .s22f-step { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
+        .s22f-panelfoot { display: flex; gap: 8px; }
+        .s22f-panelfoot .btn { flex: 1; }
+        .s22f-step { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-3); border-radius: var(--r-pill); padding: 3px; }
         .s22f-step button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
         .s22f-step button:hover:not(:disabled) { background: var(--surface); }
         .s22f-step button:active:not(:disabled) { transform: scale(.88); }
@@ -384,14 +415,6 @@ export default function Stay22HotelList({
         .s22f-resetall { margin-left: auto; background: 0; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
         .s22f-resetall:hover { color: var(--ink); }
 
-        @container (max-width: 480px) {
-          .s22f-row { flex-direction: column; align-items: stretch; }
-          .s22f-wrap, .s22f-chip { width: 100%; }
-          .s22f-chip { justify-content: space-between; }
-          .s22f-price { width: 100%; min-width: 0; }
-          .s22f-actions .btn { flex: 1; }
-        }
-
         /* ---- header (neutral icon + title + subtitle, like .va-head) ---- */
         .s22-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
         .s22-ti { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
@@ -400,6 +423,13 @@ export default function Stay22HotelList({
         .s22-sub { color: var(--muted-2); margin-top: 2px; font-variant-numeric: tabular-nums; }
         .s22-logo { width: 24px; height: 24px; border-radius: 6px; flex: none; display: grid; place-items: center; background: var(--ev-hotel-soft); color: var(--ev-hotel); }
         .s22-count { color: var(--muted); white-space: nowrap; }
+
+        /* ---- count + sort row (TRIP-176) ---- */
+        .s22-countrow { display: flex; align-items: center; gap: 12px; }
+        .s22-countrow__ln { flex: 1; height: 1px; background: var(--line); }
+        .s22-sort { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0; white-space: nowrap; transition: color .15s; }
+        .s22-sort:hover { color: var(--ink); }
+        .s22-sort svg { color: var(--muted-2); }
 
         /* ---- list + cards ---- */
         .s22-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
@@ -414,15 +444,15 @@ export default function Stay22HotelList({
         .s22-retry { margin-top: 6px; }
         /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
            the hotel-specific body content keeps its own classes below. */
-        .s22-rate { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+        .s22-rate { display: flex; align-items: center; gap: 8px; flex: none; }
         .s22-stars { color: var(--pro); letter-spacing: .5px; /* design-token-exempt: разрядка глифов ★, не трекинг текста */ }
         .s22-score { display: inline-flex; align-items: center; gap: 6px; }
         .s22-sc { display: inline-grid; place-items: center; min-width: 30px; height: 19px; padding: 0 5px; border-radius: 6px 6px 6px 2px; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; }
         .s22-cnt { color: var(--muted); }
-        .s22-addr { display: flex; align-items: center; gap: 5px; margin-top: 5px; color: var(--muted); overflow: hidden; }
+        .s22-addr { display: flex; align-items: center; gap: 5px; color: var(--muted); overflow: hidden; }
         .s22-addr svg { flex: none; color: var(--muted-2); }
         .s22-addr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .s22-price { display: flex; flex-direction: column; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
+        .s22-price { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
         .s22-price b { color: var(--ink); font-variant-numeric: tabular-nums; }
         .s22-price span { color: var(--muted); margin-top: 2px; }  /* канон .t-micro (капс+моно) — в app.css (TRIP-175, был .t-nano+оверлей) */
 
@@ -436,8 +466,8 @@ export default function Stay22HotelList({
         .s22-gap { color: var(--muted-2); padding: 0 2px; }
 
         @media (prefers-reduced-motion: reduce) {
-          .s22-pg, .s22f-chip, .s22f-step button { transition: none; }
-          .s22f-chip:active { transform: none; }
+          .s22-pg, .s22f-fbtn, .s22f-step button { transition: none; }
+          .s22f-fbtn:active { transform: none; }
         }
       `}</style>
     </div>

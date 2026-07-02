@@ -173,7 +173,9 @@ export default function ForkPartnerModal({
 
         {count > 0 && (
           <>
-            {!embedded && <div className="fork-or"><span>{t('fork.or_find')}</span></div>}
+            {embedded
+              ? <div className="fork-searchon eyebrow">{t('fork.search_on')}</div>
+              : <div className="fork-or"><span>{t('fork.or_find')}</span></div>}
             <div className="fork-partners">
               {platforms.map((p) => (
                 <a
@@ -187,13 +189,11 @@ export default function ForkPartnerModal({
                   {p.logo ? (
                     <img className="fork-partner__logo" src={p.logo} alt="" />
                   ) : (
-                    <span className="fork-partner__logo fork-partner__logo--ph"><ExternalLink size={16} /></span>
+                    <span className="fork-partner__logo fork-partner__logo--ph"><ExternalLink size={14} /></span>
                   )}
                   <span className="fork-partner__mid">
                     <b>{PARTNER_NAME[p.key] || p.label}</b>
-                    {p.hint && <span>{p.hint}</span>}
                   </span>
-                  <ExternalLink size={14} className="fork-partner__ext" />
                 </a>
               ))}
             </div>
@@ -228,19 +228,16 @@ export default function ForkPartnerModal({
       .fork-manual__chev { flex: none; color: var(--fk); }
       .fork-or { display: flex; align-items: center; gap: 10px; color: var(--muted); }
       .fork-or::before, .fork-or::after { content: ""; height: 1px; flex: 1; background: var(--line); }
-      .fork-partners { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-      .fork-partner { display: flex; align-items: center; gap: 10px; padding: 9px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); text-decoration: none; color: inherit; cursor: pointer; min-width: 0; transition: transform .16s var(--ease-spring), border-color .16s, box-shadow .18s; }
+      .fork-searchon { color: var(--muted); margin-bottom: 1px; }
+      /* TRIP-176: compact partner chips — logo + single-line name, auto-fill grid. */
+      .fork-partners { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+      .fork-partner { display: flex; align-items: center; gap: 9px; padding: 8px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); text-decoration: none; color: inherit; cursor: pointer; min-width: 0; transition: transform .16s var(--ease-spring), border-color .16s, box-shadow .18s; }
       .fork-partner:hover { transform: translateY(-1px); border-color: var(--line-hover); box-shadow: var(--sh-1); }
       .fork-partner:active { transform: scale(.99); }
-      .fork-partner__logo { width: 32px; height: 32px; border-radius: 9px; flex: none; background: transparent; object-fit: contain; }
-      .fork-partner__logo--ph { display: grid; place-items: center; color: var(--muted); background: var(--wash); box-shadow: none; }
+      .fork-partner__logo { width: 24px; height: 24px; border-radius: var(--r-sm); flex: none; background: transparent; object-fit: contain; }
+      .fork-partner__logo--ph { display: grid; place-items: center; color: var(--muted); background: var(--wash); }
       .fork-partner__mid { flex: 1; min-width: 0; }
       .fork-partner__mid b { display: block; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .fork-partner__mid span { display: block; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* канон .t-micro (капс+моно) — в app.css (TRIP-175, был .t-nano+оверлей) */
-      .fork-partner__ext { color: var(--muted-2); flex: none; }
-      .fork-addzone { container-type: inline-size; }
-      @container (max-width: 380px) { .fork-partners { grid-template-columns: 1fr; } }
-      @media (max-width: 480px) { .fork-partners { grid-template-columns: 1fr; } }
     `}</style>
   );
 

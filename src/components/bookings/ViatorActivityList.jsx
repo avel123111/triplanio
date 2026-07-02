@@ -73,11 +73,17 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         <div className="va-list" aria-hidden="true">
           {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <div className="pcard pcard--sk" key={i}>
-              <Skeleton w={96} h={96} r={12} />
-              <div className="pcard__body">
-                <Skeleton w="80%" h={14} />
-                <Skeleton w="50%" h={12} style={{ marginTop: 8 }} />
-                <Skeleton w="45%" h={16} style={{ marginTop: 14 }} />
+              <div className="pcard__top">
+                <Skeleton w={60} h={60} r={12} />
+                <div className="pcard__body">
+                  <Skeleton w="70%" h={14} />
+                  <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
+                </div>
+              </div>
+              <div className="pcard__bar">
+                <Skeleton w={80} h={14} />
+                <span className="pcard__spacer" />
+                <Skeleton w={70} h={30} r={10} />
               </div>
             </div>
           ))}
@@ -174,12 +180,12 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         .va-retry { margin-top: 6px; }
         /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
            the activity-specific body content keeps its own classes below. */
-        .va-rate { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+        .va-rate { display: flex; align-items: center; gap: 6px; flex: none; }
         .va-star { color: var(--pro); flex: none; }
         .va-sc { color: var(--ink); font-variant-numeric: tabular-nums; }
         .va-cnt { color: var(--muted); }
         .va-flag { color: var(--brand); background: var(--primary-soft); padding: 1px 7px; border-radius: var(--r-pill); }
-        .va-price { display: flex; flex-direction: column; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
+        .va-price { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
         .va-from { color: var(--muted); }  /* канон .t-micro (капс+моно) — в app.css (TRIP-175, был .t-nano+оверлей) */
         .va-price b { color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 2px; }
         .va-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
