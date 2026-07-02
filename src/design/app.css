@@ -845,6 +845,10 @@ h4,
 .va-sub, .s22-sub,
 .va-flag,
 .va-from, .s22-price span, .fork-partner__mid span { font-family: var(--font-ui);      font-size: var(--fs-nano);    font-weight: 600; line-height: 1.3;  letter-spacing: 0; }
+/* Капс-эйбрау booking-карточек: канон .t-nano (семья/размер/вес/lh выше) + санкц.
+   капс-оверлей (UPPERCASE + трекинг). Держим ОДНИМ источником здесь, а не дублем в
+   каждом компонентном <style> — TRIP-165 аудит 2026-07-02 (одобрено Павлом). */
+.va-from, .s22-price span, .fork-partner__mid span { text-transform: uppercase; letter-spacing: .04em; }
 .t-caption,
 .fork-manual__tx span,
 .va-cnt, .s22-cnt, .s22-addr, .s22-stars,

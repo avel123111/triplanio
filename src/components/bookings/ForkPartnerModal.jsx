@@ -226,7 +226,7 @@ export default function ForkPartnerModal({
       .fork-partner__logo--ph { display: grid; place-items: center; color: var(--muted); background: var(--wash); box-shadow: none; }
       .fork-partner__mid { flex: 1; min-width: 0; }
       .fork-partner__mid b { display: block; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .fork-partner__mid span { display: block; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .fork-partner__mid span { display: block; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* канон .t-nano + капс-оверлей — в app.css (TRIP-165) */
       .fork-partner__ext { color: var(--muted-2); flex: none; }
       .fork-addzone { container-type: inline-size; }
       @container (max-width: 380px) { .fork-partners { grid-template-columns: 1fr; } }
