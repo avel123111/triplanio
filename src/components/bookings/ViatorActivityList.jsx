@@ -180,7 +180,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         .va-cnt { color: var(--muted); }
         .va-flag { color: var(--brand); background: var(--primary-soft); padding: 1px 7px; border-radius: var(--r-pill); }
         .va-price { display: flex; flex-direction: column; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
-        .va-from { color: var(--muted); }  /* канон .t-nano + капс-оверлей — в app.css (TRIP-165) */
+        .va-from { color: var(--muted); }  /* канон .t-micro (капс+моно) — в app.css (TRIP-175, был .t-nano+оверлей) */
         .va-price b { color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 2px; }
         .va-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
         .va-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
