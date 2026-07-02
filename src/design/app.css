@@ -3267,7 +3267,7 @@ h4,
    font-size so it scales with any text style. `aspect-ratio` + a definite
    height give a deterministic width (= 3em) BEFORE the SVG loads, so the box
    reserves its space and the following text never shifts on load. */
-.cflag { display: inline-block; height: 2em; aspect-ratio: 3 / 2; vertical-align: middle; border-radius: 3px; object-fit: cover; flex: 0 0 auto; }
+.cflag { display: inline-block; height: 1.33em; aspect-ratio: 3 / 2; vertical-align: middle; border-radius: 3px; object-fit: cover; flex: 0 0 auto; }
 
 /* Preferences rows (variant C): the right-side control (language select / .seg)
    stays compact and right-aligned on desktop, and drops to its own full-width
