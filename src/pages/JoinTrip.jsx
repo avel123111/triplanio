@@ -13,7 +13,7 @@ const STYLES = `
 .jt-card{width:100%;max-width:440px;background:#fff;border:1px solid #E9E8F2;border-radius:24px;
   box-shadow:0 18px 50px -20px rgba(22,41,74,.28);padding:48px 40px 40px;text-align:center;}
 .jt-logo{height:38px;width:auto;margin:0 auto 30px;display:block;}
-.jt-card h1{font-family:'Golos Text',ui-sans-serif,system-ui,sans-serif;font-weight:700;font-size:25px;letter-spacing:-.02em;line-height:1.2;margin:0;}
+.jt-card h1{margin:0;}
 .jt-lede{color:#7A7689;font-size:16px;line-height:1.55;margin:12px 0 0;}
 .jt-btn{font-family:'Golos Text',ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:16px;color:#fff;
   background:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);border:none;border-radius:14px;width:100%;
@@ -24,7 +24,7 @@ const STYLES = `
 .jt-btn--ghost{background:transparent;color:#2173C8;box-shadow:none;border:1.5px solid #E9E8F2;margin-top:14px;}
 .jt-btn--ghost:hover{background:rgba(33,115,200,.06);border-color:#62A6F0;transform:none;}
 .jt-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(33,115,200,.08);color:#2173C8;
-  font-weight:700;font-size:13px;padding:8px 14px;border-radius:999px;margin-bottom:22px;}
+  padding:8px 14px;border-radius:999px;margin-bottom:22px;}
 .jt-chip svg{width:15px;height:15px;}
 .jt-spinner{width:46px;height:46px;margin:6px auto 22px;border-radius:50%;
   border:4px solid rgba(33,115,200,.16);border-top-color:#2173C8;animation:jt-spin .8s linear infinite;}
@@ -84,18 +84,18 @@ export default function JoinTrip() {
         {state === 'working' && (
           <>
             <div className="jt-spinner" />
-            <h1>{t('member.join_joining')}</h1>
+            <h1 className="t-heading">{t('member.join_joining')}</h1>
             <p className="jt-lede">{t('member.join_joining_sub')}</p>
           </>
         )}
 
         {state === 'signin' && (
           <>
-            <div className="jt-chip">
+            <div className="jt-chip t-meta">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               {t('member.join_invited')}
             </div>
-            <h1>{t('member.join_signin_title')}</h1>
+            <h1 className="t-heading">{t('member.join_signin_title')}</h1>
             <p className="jt-lede">{t('member.join_signin_lede')}</p>
             <button className="jt-btn" onClick={() => { window.location.href = '/login'; }}>
               {t('member.join_signin_btn')}
@@ -109,7 +109,7 @@ export default function JoinTrip() {
             <div className="jt-badge">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </div>
-            <h1>{t('member.join_error_title')}</h1>
+            <h1 className="t-heading">{t('member.join_error_title')}</h1>
             <p className="jt-lede">{t(errKey)}</p>
             <button className="jt-btn" onClick={() => nav('/trips', { replace: true })}>{t('member.join_to_app')}</button>
             <button className="jt-btn jt-btn--ghost" onClick={() => { window.location.href = '/'; }}>{t('member.join_home')}</button>
