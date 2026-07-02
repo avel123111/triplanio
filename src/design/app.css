@@ -144,11 +144,7 @@
   --font-ui:      'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 — та же семья */
   --font-mono:    'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace; /* TRIP-165 — коды/идентификаторы */
   --display-tracking: -0.015em;  /* Exo 2 — чуть плотнее для крупных заголовков (TRIP-175 шкала макета) */
-  /* Трекинг-ось (TRIP-175) — переиспользуемые уровни разрядки капс-меток/эйбрау.
-     Комбинируются с канонами (t-micro и капс-оверлеи booking-карточек). */
-  --track-1: 0.04em;   /* мягкая разрядка (капс-эйбрау booking) */
-  --track-2: 0.12em;   /* капс-лейблы/бейджи (t-micro) */
-  --track-3: 0.18em;   /* разряжённые метки секций (резерв) */
+  --track-caps: 0.12em;          /* TRIP-175 — трекинг капс-меток/эйбрау (канон .t-micro) */
 
   /* Motion — strong custom curves (built-in easings are too weak).
      ease-out for enter/hover/press, ease-in-out for on-screen movement. */
@@ -835,7 +831,7 @@ h4,
 .app-sidebar__group,
 .mbnav__lbl,
 .va-from, .s22-price span, .fork-partner__mid span,
-.ncal-legend-lbl { font-family: var(--font-mono);    font-size: var(--fs-micro);   font-weight: 700; line-height: 1.2;  letter-spacing: var(--track-2); text-transform: uppercase; }   /* TRIP-175: .t-micro на JetBrains Mono + трекинг --track-2 (техно-метки); капс-эйбрау booking переехали сюда из схлопнутого .t-nano */
+.ncal-legend-lbl { font-family: var(--font-mono);    font-size: var(--fs-micro);   font-weight: 700; line-height: 1.2;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-175: .t-micro на JetBrains Mono + трекинг --track-caps (техно-метки); капс-эйбрау booking переехали сюда из схлопнутого .t-nano */
 .t-mono,
 .cm-code,
 .te-dts,
