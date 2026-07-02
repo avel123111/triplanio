@@ -73,7 +73,7 @@ export const Severity = ({ level = "info", title, children, action, icon }) => (
       <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
     </span>
     <div style={{ flex: 1, minWidth: 0 }}>
-      {title && <div style={{ fontWeight: 700, color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
+      {title && <div className="t-ui" style={{ color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
       {children}
     </div>
     {action}
@@ -100,11 +100,11 @@ export const Field = ({ label, hint, sub, ai, error, warning, children, required
     {label && (
       <label className="field__label">
         {label}{required && <span style={{ color: "var(--danger)" }}>*</span>}
-        {hint && <span className="muted" style={{ fontWeight: 400, fontSize: 'var(--fs-micro)', marginLeft: 4 }}>· {hint}</span>}
+        {hint && <span className="muted t-meta" style={{ marginLeft: 4 }}>· {hint}</span>}
       </label>
     )}
     {children}
-    {sub && <span className="field__sub">{sub}</span>}
+    {sub && <span className="field__sub t-meta">{sub}</span>}
     {error && <ErrLine>{error}</ErrLine>}
     {!error && warning && <WrnLine>{warning}</WrnLine>}
   </div>
@@ -147,7 +147,7 @@ export const Card = ({ variant = "", title, subtitle, action, children, classNam
       <div className="card-h">
         <div style={{ flex: 1 }}>
           {title && <h3>{title}</h3>}
-          {subtitle && <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{subtitle}</div>}
+          {subtitle && <div className="muted t-meta">{subtitle}</div>}
         </div>
         {action}
       </div>
@@ -171,7 +171,7 @@ export const EmptyState = ({ icon = "sparkles", title, body, action, kind = "emp
       <Icon name={icon} size={28} />
     </div>
     <h3 style={{ color: "var(--ink)", marginBottom: 6 }}>{title}</h3>
-    <div style={{ maxWidth: 340, fontSize: 'var(--fs-base)', lineHeight: 1.5 }}>{body}</div>
+    <div className="t-body" style={{ maxWidth: 340 }}>{body}</div>
     {action && <div style={{ marginTop: 18 }}>{action}</div>}
   </div>
 );
@@ -233,7 +233,7 @@ export const DismissibleSeverity = ({ level = "info", title, children, onDismiss
         <Icon name={icon || (level === "info" ? "info" : level === "warning" ? "warning" : "error")} size={16} />
       </span>
       <div style={{ flex: 1, minWidth: 0, paddingRight: 28 }}>
-        {title && <div style={{ fontWeight: 700, color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
+        {title && <div className="t-ui" style={{ color: "var(--ink)", marginBottom: 3 }}>{title}</div>}
         {children}
         {action && <div style={{ marginTop: 8 }}>{action}</div>}
       </div>
@@ -260,11 +260,10 @@ export const RoleBadge = ({ role, size = "md", status }) => {
   const key = ROLE_META[role] ? role : "viewer";
   const m = ROLE_META[key];
   return (
-    <span style={{
+    <span className="t-micro" style={{
       display: "inline-flex", alignItems: "center", gap: 5,
       padding: size === "sm" ? "2px 7px 2px 5px" : "3px 9px 3px 6px",
       borderRadius: 999, background: m.soft, color: m.color,
-      fontSize: size === "sm" ? 11 : 11.5, fontWeight: 500,
     }}>
       <Icon name={m.icon} size={size === "sm" ? 10 : 11} />
       {t(`members.badge_${key}`)}{status === "pending" && ` · ${t('members.pending')}`}
@@ -295,7 +294,7 @@ export const Dialog = ({ title, subtitle, icon, iconTone, onClose, size, childre
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2>{title}</h2>
-            {subtitle && <div className="muted" style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, marginTop: 2 }}>{subtitle}</div>}
+            {subtitle && <div className="muted t-meta" style={{ marginTop: 2 }}>{subtitle}</div>}
           </div>
           <button className="icon-btn" onClick={handleClose}>
             <Icon name="close" size={16} />
@@ -392,12 +391,12 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
       borderRadius: 12, padding: 12,
       display: "flex", gap: 12, maxWidth: 360,
     }}>
-      <div style={{ width: 48, height: 48, borderRadius: 8, background: p?.color || "var(--brand)", color: "white", display: "grid", placeItems: "center", flexShrink: 0, fontSize: 'var(--fs-h3)', fontWeight: 700 }}>
+      <div style={{ width: 48, height: 48, borderRadius: 8, background: p?.color || "var(--brand)", color: "white", display: "grid", placeItems: "center", flexShrink: 0 }}>
         <Icon name={type === "hotel" ? "bed" : type === "flight" ? "plane" : type === "train" ? "train" : "ticket"} size={20} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', marginBottom: 2 }}>{name}</div>
-        <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{sub}</div>
+        <div className="t-ui" style={{ marginBottom: 2 }}>{name}</div>
+        <div className="muted t-meta">{sub}</div>
         {rating && (
           <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 5, fontSize: 'var(--fs-micro)' }}>
             <Badge variant="success">{rating}/10</Badge>
@@ -410,7 +409,7 @@ export function BookingSuggestionCard({ type, name, partner, url, price, cur, ra
           </div>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-          <div className="num" style={{ fontWeight: 600, fontSize: 'var(--fs-strong)' }}>{fmt(price, cur)}</div>
+          <div className="num t-ui">{fmt(price, cur)}</div>
           <div style={{ flex: 1 }} />
           <Btn variant="ghost" size="sm" icon="external">{p?.label || t('common.open')}</Btn>
         </div>
@@ -621,7 +620,7 @@ export function StreamEventRow({ e, onClick }) {
 
 function _InfoChip({ icon, color, children }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 999, background: "var(--wash)", border: "1px solid var(--line-2)", fontSize: 'var(--fs-meta)', color: "var(--ink-2)", fontWeight: 500 }}>
+    <span className="t-meta" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 8px", borderRadius: 999, background: "var(--wash)", border: "1px solid var(--line-2)", color: "var(--ink-2)" }}>
       <Icon name={icon} size={13} style={{ color }} />
       {children}
     </span>

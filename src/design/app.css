@@ -675,7 +675,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Lumo DS: form labels are 13px / 800 / ink-2 — readable, not thin. */
 .field__label { font-size: 13px; font-weight: 700; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
 .field__hint { font-size: var(--fs-micro); color: var(--muted); font-weight: 600; }
-.field__sub { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; font-weight: 600; }
+.field__sub { color: var(--muted); margin-top: 2px; }   /* тип — канон .t-meta (TRIP-165) */
 /* Lumo DS inputs: 14.5px/500 on a soft surface-3 fill with a defined 1.5px
    line-strong border + 4px focus ring (was thin 1px on flat white). */
 .input, .select, .textarea {
