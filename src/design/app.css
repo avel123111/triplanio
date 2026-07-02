@@ -1502,7 +1502,7 @@ h4,
   .app-header--trip .app-header__vdiv { display: none; }
   .app-header__menu { display: grid; }                /* mobile burger appears */
   .app-header__trip-meta { display: none; }
-  .app-header__trip-title { font-size: 16px; }
+  .app-header__trip-title { font-size: var(--fs-h4); }
   .app-header__act-text { display: none; }            /* trip actions collapse to icons */
   .app-header__act { padding: 9px 10px; }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
@@ -1585,7 +1585,7 @@ h4,
   .mbnav__item.is-active .mbnav__ico::before {
     content: ''; position: absolute; inset: -3px -7px; border-radius: 9px; background: var(--primary-soft); z-index: 0;
   }
-  .mbnav__lbl { font-size: 10px; font-weight: 700; letter-spacing: .01em; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mbnav__lbl { font-size: var(--fs-nano); font-weight: 700; letter-spacing: .01em; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mbnav__avatar { width: 24px !important; height: 24px !important; }
   .mbnav__center { display: grid; place-items: center; height: 100%; }
   .mbnav__fab {
@@ -1658,7 +1658,7 @@ h4,
 .eroute__create { position: relative; z-index: 1; width: 100%; max-width: 640px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 640px) {
   .eroute { padding: 28px 18px 24px; }
-  .eroute h3 { font-size: 21px; }
+  .eroute h3 { font-size: var(--fs-h3); }
   .eroute__create { grid-template-columns: 1fr; }
 }
 
@@ -2195,7 +2195,7 @@ h4,
    <div>, not a .textarea, so it stayed 14px → 16-vs-14 advance mismatch pushed
    the caret ahead of the visible text at narrow widths. Keep BOTH layers at
    16px on mobile so their glyph advances stay identical. */
-@media (max-width: 640px) { .chat-ov, .chat-ta { font-size: 16px; } }
+@media (max-width: 640px) { .chat-ov, .chat-ta { font-size: var(--fs-h4); } }
 /* Keep the fill transparent on focus so the highlight overlay stays visible;
    the border + 4px ring from .textarea:focus still render around the field. */
 .chat-ta:focus { background: transparent; color: transparent; }
@@ -2935,7 +2935,7 @@ h4,
 @media (max-width: 640px) {
   .statrow { gap: 10px; }
   .statcard { padding: 12px 13px; }
-  .statcard .v { font-size: 16px; }
+  .statcard .v { font-size: var(--fs-h4); }
 }
 
 /* ============================================================
@@ -3912,7 +3912,7 @@ h4,
   .plan-card__body { padding: 12px 16px 10px; }
   .plan-card__footer { padding: 0 16px 12px; }
   .plan-price { margin-bottom: 8px; }
-  .plan-price__amount { font-size: 26px !important; }
+  .plan-price__amount { font-size: var(--fs-h2) !important; }
   .plan-divider { margin-bottom: 8px; }
   .plan-features { gap: 4px; }
   .plan-feature { font-size: var(--fs-meta); }
@@ -4127,7 +4127,7 @@ h4,
    safe. */
 @media (max-width: 640px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
-  textarea, select { font-size: 16px !important; }
+  textarea, select { font-size: var(--fs-h4) !important; }
   /* View-modal footer actions (Delete / Edit) share the row evenly instead of
      crowding. Scoped away from the edit dialog footer (.lp-f--edit), which has
      its own layout (icon-only delete + grow-to-fill save). */

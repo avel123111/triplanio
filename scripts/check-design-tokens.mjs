@@ -53,6 +53,7 @@ const COLOR_WHITELIST = [
   'src/pages/Landing/LandingPage.jsx',                 // marketing page: demo visuals + brand icons
   'src/pages/JoinTrip.jsx',                            // standalone join page (embedded <style>)
   'src/pages/PublicTrip.css',                          // public read-only page styles
+  'public/landing.css',                                // marketing landing: mockup/brand demo visuals (typography still enforced)
 ];
 
 // Files allowed to contain raw FONT SIZES.
@@ -99,7 +100,7 @@ const area = (f) => {
 const typoComp = {}; // area -> { offSize, inlineWeight, inlineLh, inlineLs, inlineFamily }
 const bump = (f, k) => { const a = area(f); (typoComp[a] ||= { offSize: 0, inlineWeight: 0, inlineLh: 0, inlineLs: 0, inlineFamily: 0 })[k]++; };
 
-for (const file of walk(ROOT)) {
+for (const file of [...walk(ROOT), 'public/landing.css']) {
   const isCss = file.endsWith('.css');
   const lines = readFileSync(file, 'utf8').split('\n');
   lines.forEach((line, i) => {
