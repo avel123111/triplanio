@@ -13,6 +13,16 @@ initSentry()
 // bottom sheets sit above the keyboard instead of jumping (native-app feel).
 initKeyboardInset()
 
+// Dev-only typography canon inspector (TRIP-165). The `import.meta.env.DEV`
+// guard is replaced by `false` in `vite build`, so this dynamic import (and the
+// whole dev/ module it pulls) is dead-code-eliminated from production bundles —
+// it never ships to users.
+if (import.meta.env.DEV) {
+  import('../dev/canon-inspector/index.js')
+    .then((m) => m.initCanonInspector())
+    .catch(() => { /* dev tool is best-effort; never break the app */ })
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />
 )
