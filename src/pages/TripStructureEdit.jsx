@@ -26,6 +26,7 @@ import EventSourcePanel from '@/components/common/EventSourcePanel';
 import CityPanel from '@/components/common/CityPanel';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
+import AddBookingPanel from '@/components/bookings/AddBookingPanel';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
 import AppHeader from '@/components/AppHeader';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
@@ -711,26 +712,44 @@ export default function TripStructureEdit() {
         autoEdit={leftPanel.autoEdit} canEdit onClose={closePanelAndSync}
       />
     );
-  } else if (leftPanel?.type === 'pick') {
-    leftPanelEl = (
-      <ForkPartnerModal
-        open variant="panel" type={leftPanel.kind} tripId={tripId} trip={trip}
-        visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
-        stay22={stay22Bundle}
-        onManual={() => setLeftPanel({ type: 'create', kind: leftPanel.kind, visit: leftPanel.visit, fromVisit: leftPanel.fromVisit, toVisit: leftPanel.toVisit })}
-        onOpenChange={(o) => { if (!o) closeLeftPanel(); }}
-      />
-    );
-  } else if (leftPanel?.type === 'create') {
-    leftPanelEl = (
-      <EventEditDialog
-        open variant="panel" kind={leftPanel.kind} tripId={tripId}
-        visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
-        defaultCurrency={trip?.details?.main_currency || 'EUR'}
-        onPreviewTransfer={setPreviewTransfer}
-        onOpenChange={(o) => { if (!o) { setPreviewTransfer(null); closePanelAndSync(); } }}
-      />
-    );
+  } else if (leftPanel?.type === 'pick' || leftPanel?.type === 'create') {
+    // TRIP-176: hotel / activity / transfer open the unified AddBookingPanel
+    // (fork + manual form merged behind a tab). Services (esim/car/insurance)
+    // keep the standalone fork → manual navigation.
+    const isMergedKind = leftPanel.kind === 'hotel' || leftPanel.kind === 'activity' || leftPanel.kind === 'transfer';
+    if (isMergedKind) {
+      leftPanelEl = (
+        <AddBookingPanel
+          kind={leftPanel.kind} tripId={tripId} trip={trip}
+          visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
+          stay22={stay22Bundle}
+          defaultCurrency={trip?.details?.main_currency || 'EUR'}
+          initialTab={leftPanel.type === 'create' ? 'manual' : 'find'}
+          onPreviewTransfer={setPreviewTransfer}
+          onClose={() => { setPreviewTransfer(null); closePanelAndSync(); }}
+        />
+      );
+    } else if (leftPanel.type === 'pick') {
+      leftPanelEl = (
+        <ForkPartnerModal
+          open variant="panel" type={leftPanel.kind} tripId={tripId} trip={trip}
+          visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
+          stay22={stay22Bundle}
+          onManual={() => setLeftPanel({ type: 'create', kind: leftPanel.kind, visit: leftPanel.visit, fromVisit: leftPanel.fromVisit, toVisit: leftPanel.toVisit })}
+          onOpenChange={(o) => { if (!o) closeLeftPanel(); }}
+        />
+      );
+    } else {
+      leftPanelEl = (
+        <EventEditDialog
+          open variant="panel" kind={leftPanel.kind} tripId={tripId}
+          visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
+          defaultCurrency={trip?.details?.main_currency || 'EUR'}
+          onPreviewTransfer={setPreviewTransfer}
+          onOpenChange={(o) => { if (!o) { setPreviewTransfer(null); closePanelAndSync(); } }}
+        />
+      );
+    }
   } else if (leftPanel?.type === 'city') {
     const node = ordered.find((n) => n.id === leftPanel.id);
     if (!node) { leftPanelEl = null; }
