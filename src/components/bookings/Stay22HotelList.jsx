@@ -261,12 +261,17 @@ export default function Stay22HotelList({
         <div className="s22-list" aria-hidden="true">
           {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <div className="pcard pcard--sk" key={i}>
-              <Skeleton w={96} h={96} r={12} />
-              <div className="pcard__body">
-                <Skeleton w="80%" h={14} />
-                <Skeleton w="55%" h={12} style={{ marginTop: 8 }} />
-                <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
-                <Skeleton w="45%" h={16} style={{ marginTop: 14 }} />
+              <div className="pcard__top">
+                <Skeleton w={60} h={60} r={12} />
+                <div className="pcard__body">
+                  <Skeleton w="70%" h={14} />
+                  <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
+                </div>
+              </div>
+              <div className="pcard__bar">
+                <Skeleton w={80} h={14} />
+                <span className="pcard__spacer" />
+                <Skeleton w={70} h={30} r={10} />
               </div>
             </div>
           ))}
@@ -310,7 +315,12 @@ export default function Stay22HotelList({
                 accent="var(--ev-hotel)"
                 icon={<Hotel size={22} />}
                 image={h.thumbnail}
-                thumbOverlay={h.supplierLogo ? <img className="pcard__supplier" src={h.supplierLogo} alt={h.supplierKey || ''} /> : null}
+                platform={h.supplierKey ? (
+                  <span className="pcard__plat">
+                    {h.supplierLogo ? <img src={h.supplierLogo} alt="" /> : null}
+                    <span>{h.supplierKey.charAt(0).toUpperCase() + h.supplierKey.slice(1)}</span>
+                  </span>
+                ) : null}
                 rating={(h.stars || h.ratingValue != null) ? (
                   <div className="s22-rate">
                     {h.stars ? <span className="s22-stars">{'★'.repeat(h.stars)}</span> : null}
@@ -434,15 +444,15 @@ export default function Stay22HotelList({
         .s22-retry { margin-top: 6px; }
         /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
            the hotel-specific body content keeps its own classes below. */
-        .s22-rate { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+        .s22-rate { display: flex; align-items: center; gap: 8px; flex: none; }
         .s22-stars { color: var(--pro); letter-spacing: .5px; /* design-token-exempt: разрядка глифов ★, не трекинг текста */ }
         .s22-score { display: inline-flex; align-items: center; gap: 6px; }
         .s22-sc { display: inline-grid; place-items: center; min-width: 30px; height: 19px; padding: 0 5px; border-radius: 6px 6px 6px 2px; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; }
         .s22-cnt { color: var(--muted); }
-        .s22-addr { display: flex; align-items: center; gap: 5px; margin-top: 5px; color: var(--muted); overflow: hidden; }
+        .s22-addr { display: flex; align-items: center; gap: 5px; color: var(--muted); overflow: hidden; }
         .s22-addr svg { flex: none; color: var(--muted-2); }
         .s22-addr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .s22-price { display: flex; flex-direction: column; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
+        .s22-price { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
         .s22-price b { color: var(--ink); font-variant-numeric: tabular-nums; }
         .s22-price span { color: var(--muted); margin-top: 2px; }  /* канон .t-micro (капс+моно) — в app.css (TRIP-175, был .t-nano+оверлей) */
 

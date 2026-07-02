@@ -11,8 +11,8 @@ import { ExternalLink } from 'lucide-react';
 //   • hover                           → onHover(id | null) for map/list sync
 //   • Enter/Space                     → same as click
 // The visual shell (.pcard, in app.css) is shared; per-list content is injected
-// through slots (thumb overlay, rating, subline, price) so hotels and activities
-// keep their own body while sharing behaviour + chrome. `ref` forwards to the root
+// through slots (thumb overlay, rating, subline, platform, price) so hotels and
+// activities keep their own body while sharing behaviour + chrome. `ref` forwards to the root
 // so a list can scrollIntoView the selected card.
 const PartnerResultCard = forwardRef(function PartnerResultCard({
   id,
@@ -21,9 +21,10 @@ const PartnerResultCard = forwardRef(function PartnerResultCard({
   icon,              // placeholder glyph shown under/instead of the image
   image,             // optional thumbnail src
   thumbOverlay = null, // optional node pinned in the thumb (e.g. supplier logo)
-  rating = null,     // optional rating row node
+  rating = null,     // optional rating node (shown next to the name)
   subline = null,    // optional secondary line node (e.g. address)
-  price = null,      // optional price node (rendered on the left of the foot)
+  price = null,      // optional price node (rendered in the bottom bar)
+  platform = null,   // optional platform/supplier node (left of the bottom bar)
   link,
   bookLabel,
   selected = false,
@@ -50,27 +51,34 @@ const PartnerResultCard = forwardRef(function PartnerResultCard({
       onMouseEnter={() => onHover?.(id)}
       onMouseLeave={() => onHover?.(null)}
     >
-      <div className="pcard__thumb" style={{ '--pc-accent': accent }}>
-        <div className="pcard__ph">{icon}</div>
-        {image && <img src={image} alt={name} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
-        {thumbOverlay}
-      </div>
-      <div className="pcard__body">
-        <div className="pcard__name">{name}</div>
-        {rating}
-        {subline}
-        <div className="pcard__foot">
-          {price ?? <span />}
-          {/* Book always opens the link; stopPropagation so it never doubles as a
-              card select/open. */}
-          <a
-            className="btn btn--primary btn--sm"
-            href={link}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => { e.stopPropagation(); onOpen?.(); }}
-          >{bookLabel}<ExternalLink size={13} /></a>
+      <div className="pcard__top">
+        <div className="pcard__thumb" style={{ '--pc-accent': accent }}>
+          <div className="pcard__ph">{icon}</div>
+          {image && <img src={image} alt={name} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
+          {thumbOverlay}
         </div>
+        <div className="pcard__body">
+          <div className="pcard__namerow">
+            <div className="pcard__name">{name}</div>
+            {rating}
+          </div>
+          {subline}
+        </div>
+      </div>
+      {/* Bottom bar: platform (supplier) · price · Book. */}
+      <div className="pcard__bar">
+        {platform}
+        <span className="pcard__spacer" />
+        {price}
+        {/* Book always opens the link; stopPropagation so it never doubles as a
+            card select/open. */}
+        <a
+          className="btn btn--primary btn--sm"
+          href={link}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => { e.stopPropagation(); onOpen?.(); }}
+        >{bookLabel}<ExternalLink size={13} /></a>
       </div>
     </div>
   );
