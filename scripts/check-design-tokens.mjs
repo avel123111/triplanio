@@ -65,10 +65,11 @@ const TYPO_WHITELIST = [
   'src/index.css', 'src/pages/login.css', // --fs-* token defs / Tailwind-preflight 1em/1rem resets only
 ];
 
-// Files allowed to contain raw font-weight / line-height (TRIP-165 Фаза 3).
+// Files allowed to contain raw font-weight / line-height / letter-spacing (TRIP-165).
 // Everywhere else emphasis is the .t-strong modifier and flush-centering is
-// .t-flush — weight/line-height legally live ONLY in canon (.t-*), the two
-// sanctioned modifiers (.t-strong/.t-flush) and base root rules.
+// .t-flush — weight/line-height/tracking legally live ONLY in canon (.t-*), the two
+// sanctioned modifiers (.t-strong/.t-flush) and base root rules. (letter-spacing
+// added to this tier in the TRIP-165 audit 2026-07-02: tracking is a canon axis.)
 //   • app.css   — home of the 10 canons + .t-strong/.t-flush + base `body`.
 //   • index.css — Tailwind preflight / reset base.
 //   • login.css — isolated auth base (pending Lumo; also a base/reset home).
@@ -103,12 +104,17 @@ const RE = {
   // .t-* canon class — bypasses the numeric inlineFs regex. Enforced everywhere
   // except the two documented decorative/crash islands (see TYPO_INLINE_VAR_ALLOW).
   inlineFsVar:/fontSize:\s*['"]?var\(--fs/,
-  // TRIP-165 Фаза 3 — вес и межстрочный интервал легально живут ТОЛЬКО в
+  // TRIP-165 — вес, межстрочный интервал и трекинг легально живут ТОЛЬКО в
   // канон-правилах / .t-strong / .t-flush / базовых root-правилах (body, .ptrip).
   // В компонентных/страничных CSS их быть не должно — эмфаза даётся классом
-  // .t-strong, флеш-центровка — .t-flush.
+  // .t-strong, флеш-центровка — .t-flush, трекинг фиксирует сам канон.
   fontWeightNum:/font-weight:\s*[0-9]/,
   lineHeightNum:/line-height:\s*[0-9.]/,
+  // Трекинг (letter-spacing) — часть канона (каждый .t-* фиксирует трекинг). В
+  // сыром CSS / JSX-<style> легально только в канон-доме + base-root'ах
+  // (WEIGHT_LH_ALLOW). Ранее не сканировался → booking-эйбрау держали .04em мимо
+  // канона (TRIP-165 аудит 2026-07-02). Escape для разрядки глифов — design-token-exempt.
+  letterSpacingNum:/letter-spacing:\s*-?[0-9.]/,
   hex:       /#[0-9a-fA-F]{3,8}\b/,
   paletteCls:new RegExp(`\\b(bg|text|border|ring|from|to|via|divide|outline|fill|stroke|placeholder|shadow|accent|caret)-${PALETTE}-[0-9]{2,3}(\\/[0-9]+)?\\b`),
 };
@@ -170,6 +176,7 @@ for (const file of [...walk(ROOT), 'public/landing.css']) {
     if (!WEIGHT_LH_ALLOW.includes(file) && !dtExempt) {
       if (RE.fontWeightNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (RE.lineHeightNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      if (RE.letterSpacingNum.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
     }
     // colour
     if (!COLOR_WHITELIST.includes(file)) {

@@ -415,7 +415,7 @@ export default function Stay22HotelList({
         /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
            the hotel-specific body content keeps its own classes below. */
         .s22-rate { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
-        .s22-stars { color: var(--pro); letter-spacing: .5px; }
+        .s22-stars { color: var(--pro); letter-spacing: .5px; /* design-token-exempt: разрядка глифов ★, не трекинг текста */ }
         .s22-score { display: inline-flex; align-items: center; gap: 6px; }
         .s22-sc { display: inline-grid; place-items: center; min-width: 30px; height: 19px; padding: 0 5px; border-radius: 6px 6px 6px 2px; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; }
         .s22-cnt { color: var(--muted); }
@@ -424,7 +424,7 @@ export default function Stay22HotelList({
         .s22-addr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .s22-price { display: flex; flex-direction: column; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
         .s22-price b { color: var(--ink); font-variant-numeric: tabular-nums; }
-        .s22-price span { color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+        .s22-price span { color: var(--muted); margin-top: 2px; }  /* канон .t-nano + капс-оверлей — в app.css (TRIP-165) */
 
         /* ---- pager ---- */
         .s22-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
