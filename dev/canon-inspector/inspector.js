@@ -1,31 +1,58 @@
 // TRIP-165 · Canon inspector — overlay, selection panel, change-list tray.
 //
-// Preview-only, dev-only. Alt-click any text → pick one of the 10 canons →
-// see the effect live (ephemeral inline style). Queued decisions accumulate in
-// a tray and persist to localStorage; "Копировать список" hands them to a PR.
-// Nothing is ever written to source or shipped to production.
+// Preview-only, dev-only. Enter inspect mode → click any text → the panel shows
+// its REAL current canon ("Сейчас"). Picking a canon or toggling a modifier is
+// a live PREVIEW only (ephemeral inline style); nothing is queued until you
+// press "Сохранить". Saved decisions accumulate in a tray, persist to
+// localStorage, and "Копировать список" hands them to a PR. Nothing is ever
+// written to source or shipped to production.
+//
+// Scope switch: preview/save either the clicked element ("Этот") or every
+// element that looks like it ("Все похожие", by shared class) — e.g. all the
+// sidebar menu items at once, not a single word.
 
-import { CANONS, probeCanons, detectCanon } from './canons.js';
-import { describe } from './describe.js';
+import { CANONS, MODIFIERS, probeCanons, detectCanon, comboApply } from './canons.js';
+import { describe, groupSelector } from './describe.js';
 
 const LS_KEY = 'ci:canon-changes';
 const ROOT_CLASS = 'ci-root';
 
-let probes = null;             // Map<id, {canon,sig,human,apply}> — lazy
+let probed = null;             // { canons, combos } — lazy probe of app.css
 let active = false;            // inspect mode on/off
-let selected = null;           // currently selected element
-let changes = [];              // [{key, from, to, descriptor}]
+let selected = null;           // currently selected (primary) element
+let changes = [];              // [{key, from, to, descriptor, scope, selector, count}]
 let seq = 0;                   // uid counter for change keys
-const queuedFor = new WeakMap(); // element → change.key (in-session dedup)
+
+const baseCanon = new WeakMap();   // element → {id,mods}|null  (real canon, cached before any preview)
+const pendingCanon = new WeakMap();// element → {id,mods}|null  (current preview choice)
+const scopeMode = new WeakMap();   // element → 'el' | 'group'
+const queuedFor = new WeakMap();   // element → change.key (in-session dedup)
 const originalCss = new WeakMap(); // element → prior inline cssText (for reset)
 
 let els = {};                  // cached DOM refs (launcher, hi, panel, tray…)
 
+// ── canon/modifier helpers ─────────────────────────────────────────────────
+const sameSet = (a, b) => a.length === b.length && [...a].sort().join(',') === [...b].sort().join(',');
+const sameCanon = (a, b) => (!a && !b) || (!!a && !!b && a.id === b.id && sameSet(a.mods, b.mods));
+function canonLabel(info) {
+  if (!info) return 'off-canon';
+  const c = CANONS[info.id - 1];
+  const mods = info.mods.length ? ' + ' + info.mods.join(' + ') : '';
+  return `${info.id} · ${c.name}${mods}`;
+}
+
 // ── persistence ──────────────────────────────────────────────────────────
+function normInfo(v) {
+  if (v == null) return null;
+  if (typeof v === 'number') return { id: v, mods: [] };   // legacy shape
+  return { id: v.id, mods: v.mods || [] };
+}
 function load() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) { changes = JSON.parse(raw); seq = changes.reduce((m, c) => Math.max(m, c.key), 0); }
+    if (!raw) return;
+    changes = JSON.parse(raw).map((c) => ({ ...c, from: normInfo(c.from), to: normInfo(c.to) }));
+    seq = changes.reduce((m, c) => Math.max(m, c.key), 0);
   } catch { /* corrupt / unavailable — start empty */ }
 }
 function save() {
@@ -37,13 +64,13 @@ function injectStyles() {
   const s = document.createElement('style');
   s.textContent = `
   .${ROOT_CLASS}, .${ROOT_CLASS} * { box-sizing: border-box; font-family: ui-sans-serif, system-ui, sans-serif; }
-  .ci-launch { position: fixed; left: 16px; bottom: 16px; z-index: 2147483000; display: flex; align-items: center; gap: 8px;
-    padding: 9px 13px; border-radius: 999px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0;
-    font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+  .ci-launch { position: fixed; left: 16px; bottom: 16px; z-index: 2147483000; width: 44px; height: 44px; padding: 0;
+    display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid #334155;
+    background: #0f172a; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
   .ci-launch:hover { background: #1e293b; }
-  .ci-launch.is-on { background: #2563eb; border-color: #2563eb; color: #fff; }
-  .ci-launch .ci-dot { width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
-  .ci-launch.is-on .ci-dot { background: #bfdbfe; }
+  .ci-launch.is-on { background: #2563eb; border-color: #2563eb; }
+  .ci-launch .ci-dot { width: 12px; height: 12px; border-radius: 50%; background: #64748b; }
+  .ci-launch.is-on .ci-dot { background: #fff; }
   .ci-hi { position: fixed; z-index: 2147482000; pointer-events: none; border: 2px solid #2563eb;
     background: rgba(37,99,235,.10); border-radius: 4px; transition: all .04s linear; display: none; }
   .ci-panel { position: fixed; z-index: 2147483000; width: 300px; max-height: 78vh; overflow: auto;
@@ -52,8 +79,20 @@ function injectStyles() {
   .ci-panel__head { padding: 12px 14px; border-bottom: 1px solid #1e293b; position: sticky; top: 0; background: #0f172a; }
   .ci-panel__now { font-size: 12px; color: #94a3b8; }
   .ci-panel__now b { color: #e2e8f0; font-size: 13px; }
+  .ci-panel__prev { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+  .ci-panel__prev b { color: #60a5fa; font-size: 13px; }
   .ci-panel__off { color: #fca5a5; }
   .ci-panel__samp { margin-top: 4px; font-size: 12px; color: #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ci-scope { display: flex; gap: 6px; margin-top: 10px; }
+  .ci-scope button { flex: 1; padding: 6px 8px; border-radius: 8px; border: 1px solid #334155; background: #1e293b;
+    color: #94a3b8; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .ci-scope button.is-on { background: #172554; border-color: #2563eb; color: #e2e8f0; }
+  .ci-mods { display: flex; gap: 6px; padding: 10px 14px; border-bottom: 1px solid #1e293b; }
+  .ci-mods__lbl { font-size: 11px; color: #64748b; align-self: center; margin-right: 2px; }
+  .ci-chip { padding: 5px 10px; border-radius: 999px; border: 1px solid #334155; background: #1e293b;
+    color: #94a3b8; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .ci-chip.is-on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .ci-chip[disabled] { opacity: .4; cursor: not-allowed; }
   .ci-canon { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #1e293b;
     background: transparent; color: inherit; padding: 9px 14px; cursor: pointer; }
   .ci-canon:hover { background: #1e293b; }
@@ -65,6 +104,9 @@ function injectStyles() {
   .ci-panel__foot { display: flex; gap: 8px; padding: 10px 14px; position: sticky; bottom: 0; background: #0f172a; border-top: 1px solid #1e293b; }
   .ci-btn { flex: 1; padding: 8px; border-radius: 9px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 12px; font-weight: 600; cursor: pointer; }
   .ci-btn:hover { background: #334155; }
+  .ci-btn--save { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .ci-btn--save:hover { background: #1d4ed8; }
+  .ci-btn[disabled] { opacity: .4; cursor: not-allowed; }
   .ci-tray { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; width: 320px; max-height: 60vh; overflow: auto;
     background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 14px; box-shadow: 0 16px 48px rgba(0,0,0,.5); display: none; }
   .ci-tray__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 14px; border-bottom: 1px solid #1e293b; position: sticky; top: 0; background: #0f172a; }
@@ -75,6 +117,7 @@ function injectStyles() {
   .ci-row { padding: 9px 14px; border-bottom: 1px solid #1e293b; font-size: 12px; }
   .ci-row__map { color: #e2e8f0; font-weight: 600; }
   .ci-row__map i { color: #60a5fa; font-style: normal; }
+  .ci-row__scope { color: #fbbf24; font-size: 11px; margin-top: 2px; }
   .ci-row__path { color: #64748b; font-size: 11px; margin-top: 2px; word-break: break-all; font-family: ui-monospace, monospace; }
   .ci-row__x { float: right; color: #64748b; cursor: pointer; padding-left: 8px; }
   .ci-row__x:hover { color: #fca5a5; }
@@ -90,7 +133,8 @@ function build() {
   const root = h(ROOT_CLASS);
 
   els.launcher = h('ci-launch', 'button');
-  els.launcher.innerHTML = `<span class="ci-dot"></span><span>Каноны</span>`;
+  els.launcher.title = 'Каноны — инспектор типографики';
+  els.launcher.innerHTML = `<span class="ci-dot"></span>`;
   els.launcher.onclick = () => (active ? disable() : enable());
 
   els.hi = h('ci-hi');
@@ -104,7 +148,7 @@ function build() {
 
 // ── inspect mode ───────────────────────────────────────────────────────────
 function enable() {
-  if (!probes) probes = probeCanons();
+  if (!probed) probed = probeCanons();
   active = true;
   els.launcher.classList.add('is-on');
   document.addEventListener('mousemove', onMove, true);
@@ -140,42 +184,97 @@ function onClick(e) {
 
 function onKey(e) { if (e.key === 'Escape') disable(); }
 
+// ── scope (element vs. all-like-this) ──────────────────────────────────────
+function scopeTargets(el) {
+  if (scopeMode.get(el) !== 'group') return [el];
+  const sel = groupSelector(el);
+  try {
+    return [...document.querySelectorAll(sel)].filter((t) => !isOurs(t));
+  } catch { return [el]; }
+}
+
 // ── selection panel ────────────────────────────────────────────────────────
 function selectEl(el) {
   selected = el;
-  const curId = detectCanon(el, probes);
-  const queuedKey = queuedFor.get(el);
-  const activeId = queuedKey != null ? changes.find((c) => c.key === queuedKey)?.to : curId;
 
+  // Cache the REAL canon once, before any preview mutates the element.
+  if (!baseCanon.has(el)) baseCanon.set(el, detectCanon(el, probed));
+  const base = baseCanon.get(el);
+
+  // Seed the pending (preview) choice: an already-queued target, else the base.
+  if (!pendingCanon.has(el)) {
+    const queued = queuedFor.has(el) ? changes.find((c) => c.key === queuedFor.get(el)) : null;
+    pendingCanon.set(el, queued ? queued.to : base);
+  }
+  if (!scopeMode.has(el)) scopeMode.set(el, 'el');
+  render(el);
+  positionPanel(el);
+}
+
+function render(el) {
+  const base = baseCanon.get(el);
+  const pending = pendingCanon.get(el);
+  const scope = scopeMode.get(el);
+  const groupCount = scopeTargets(el).length;
+
+  // head: real current + (if previewing something else) the preview
   const head = h('ci-panel__head');
-  const nowLabel = curId
-    ? `<b>${curId} · ${CANONS[curId - 1].name}</b>`
+  const nowLabel = base
+    ? `<b>${canonLabel(base)}</b>`
     : `<b class="ci-panel__off">off-canon</b> — не совпадает ни с одним`;
-  head.innerHTML = `<div class="ci-panel__now">Сейчас: ${nowLabel}</div>`
-    + `<div class="ci-panel__samp">${escapeHtml((el.textContent || '').trim().slice(0, 60)) || '<пусто>'}</div>`;
+  let headHtml = `<div class="ci-panel__now">Сейчас: ${nowLabel}</div>`;
+  if (!sameCanon(pending, base)) headHtml += `<div class="ci-panel__prev">Предпросмотр: <b>${canonLabel(pending)}</b></div>`;
+  headHtml += `<div class="ci-panel__samp">${escapeHtml((el.textContent || '').trim().slice(0, 60)) || '<пусто>'}</div>`;
+  head.innerHTML = headHtml;
 
+  const scopeRow = h('ci-scope');
+  const bEl = h(scope === 'el' ? 'is-on' : '', 'button'); bEl.textContent = 'Этот';
+  bEl.onclick = () => setScope(el, 'el');
+  const bGroup = h(scope === 'group' ? 'is-on' : '', 'button'); bGroup.textContent = `Все похожие · ${groupSelector(el)} (${groupCount})`;
+  bGroup.onclick = () => setScope(el, 'group');
+  scopeRow.append(bEl, bGroup);
+  head.appendChild(scopeRow);
+
+  // modifiers (only meaningful once a canon is chosen)
+  const mods = h('ci-mods');
+  const modLbl = h('ci-mods__lbl'); modLbl.textContent = 'Модификаторы:';
+  mods.appendChild(modLbl);
+  for (const m of MODIFIERS) {
+    const chip = h('ci-chip', 'button'); chip.textContent = m.label;
+    const on = !!pending && pending.mods.includes(m.key);
+    if (on) chip.classList.add('is-on');
+    if (!pending) chip.setAttribute('disabled', '');
+    chip.onclick = () => toggleMod(el, m.key);
+    mods.appendChild(chip);
+  }
+
+  // canon list
   const list = document.createDocumentFragment();
   for (const c of CANONS) {
-    const p = probes.get(c.id);
+    const p = probed.canons.get(c.id);
     const btn = h('ci-canon', 'button');
-    if (c.id === activeId) btn.classList.add('is-cur');
-    btn.innerHTML = `<div class="ci-canon__t">${c.id} · ${c.name}${c.id === curId ? ' <i>(сейчас)</i>' : ''}</div>`
+    if (pending && c.id === pending.id) btn.classList.add('is-cur');
+    const isBase = base && c.id === base.id;
+    btn.innerHTML = `<div class="ci-canon__t">${c.id} · ${c.name}${isBase ? ' <i>(сейчас)</i>' : ''}</div>`
       + `<div class="ci-canon__spec">${p.human}</div>`
       + `<div class="ci-canon__role">${c.role}</div>`;
-    btn.onclick = () => { applyCanon(el, c.id, curId); selectEl(el); };
+    btn.onclick = () => pickCanon(el, c.id);
     list.appendChild(btn);
   }
 
+  // footer: save (only when the preview differs from the real current)
   const foot = h('ci-panel__foot');
+  const saveBtn = h('ci-btn ci-btn--save', 'button'); saveBtn.textContent = 'Сохранить';
+  if (sameCanon(pending, base)) saveBtn.setAttribute('disabled', '');
+  saveBtn.onclick = () => commit(el);
   const reset = h('ci-btn', 'button'); reset.textContent = 'Сбросить';
-  reset.onclick = () => { resetEl(el); selectEl(el); };
+  reset.onclick = () => resetEl(el);
   const close = h('ci-btn', 'button'); close.textContent = 'Закрыть';
   close.onclick = () => { els.panel.style.display = 'none'; };
-  foot.append(reset, close);
+  foot.append(saveBtn, reset, close);
 
   els.panel.innerHTML = '';
-  els.panel.append(head, ...list.childNodes, foot);
-  positionPanel(el);
+  els.panel.append(head, mods, ...list.childNodes, foot);
 }
 
 function positionPanel(el) {
@@ -185,44 +284,90 @@ function positionPanel(el) {
   let left = r.right + gap;
   if (left + pw > window.innerWidth) left = Math.max(gap, r.left - pw - gap);
   if (left + pw > window.innerWidth) left = window.innerWidth - pw - gap;
-  let top = Math.min(r.top, window.innerHeight - els.panel.offsetHeight - gap);
+  const top = Math.min(r.top, window.innerHeight - els.panel.offsetHeight - gap);
   els.panel.style.left = Math.max(gap, left) + 'px';
   els.panel.style.top = Math.max(gap, top) + 'px';
 }
 
-// ── apply / reset (ephemeral inline preview) ───────────────────────────────
-function applyCanon(el, id, fromId) {
-  if (!originalCss.has(el)) originalCss.set(el, el.getAttribute('style') || '');
-  const { apply } = probes.get(id);
-  el.style.fontFamily = apply.fontFamily;
-  el.style.fontSize = apply.fontSize;
-  el.style.fontWeight = apply.fontWeight;
-  el.style.lineHeight = apply.lineHeight;
-  el.style.letterSpacing = apply.letterSpacing;
-  el.style.textTransform = apply.textTransform;
-  queueChange(el, fromId, id);
+// ── preview (ephemeral inline style; never queued) ─────────────────────────
+function pickCanon(el, id) {
+  const cur = pendingCanon.get(el);
+  pendingCanon.set(el, { id, mods: cur ? cur.mods : [] });
+  applyPreview(el);
+  render(el);
+}
+function toggleMod(el, key) {
+  const cur = pendingCanon.get(el);
+  if (!cur) return;                       // no canon chosen → modifier is meaningless
+  const mods = cur.mods.includes(key) ? cur.mods.filter((k) => k !== key) : [...cur.mods, key];
+  pendingCanon.set(el, { id: cur.id, mods });
+  applyPreview(el);
+  render(el);
+}
+function setScope(el, mode) {
+  // restore the previous scope's preview before switching, to avoid orphaned styles
+  restorePreview(el);
+  scopeMode.set(el, mode);
+  applyPreview(el);
+  render(el);
+}
+
+function applyPreview(el) {
+  const pending = pendingCanon.get(el);
+  if (!pending) return;
+  const props = comboApply(probed, pending.id, pending.mods);
+  if (!props) return;
+  for (const t of scopeTargets(el)) {
+    // Capture each target's REAL canon before we mutate it, so clicking a
+    // group sibling later still reports its true "Сейчас".
+    if (!baseCanon.has(t)) baseCanon.set(t, detectCanon(t, probed));
+    if (!originalCss.has(t)) originalCss.set(t, t.getAttribute('style') || '');
+    Object.assign(t.style, props);
+  }
+}
+function restorePreview(el) {
+  for (const t of scopeTargets(el)) {
+    if (!originalCss.has(t)) continue;
+    const prev = originalCss.get(t);
+    if (prev) t.setAttribute('style', prev); else t.removeAttribute('style');
+    originalCss.delete(t);
+  }
+}
+
+// ── save / reset ───────────────────────────────────────────────────────────
+function commit(el) {
+  const base = baseCanon.get(el);
+  const pending = pendingCanon.get(el);
+  // No real change → don't record; drop any stale queued entry for this element.
+  if (sameCanon(pending, base)) {
+    if (queuedFor.has(el)) removeChange(queuedFor.get(el));
+    render(el);
+    return;
+  }
+  queueChange(el, base, pending);
+  render(el);
 }
 
 function resetEl(el) {
-  if (originalCss.has(el)) {
-    const prev = originalCss.get(el);
-    if (prev) el.setAttribute('style', prev); else el.removeAttribute('style');
-    originalCss.delete(el);
-  }
-  const key = queuedFor.get(el);
-  if (key != null) { changes = changes.filter((c) => c.key !== key); queuedFor.delete(el); save(); renderTray(); }
+  restorePreview(el);
+  pendingCanon.set(el, baseCanon.get(el));
+  if (queuedFor.has(el)) removeChange(queuedFor.get(el));
+  render(el);
 }
 
 // ── change list / tray ─────────────────────────────────────────────────────
-function queueChange(el, fromId, toId) {
+function queueChange(el, from, to) {
+  const scope = scopeMode.get(el);
+  const selector = groupSelector(el);
+  const count = scope === 'group' ? scopeTargets(el).length : 1;
   const existingKey = queuedFor.get(el);
   if (existingKey != null) {
     const c = changes.find((x) => x.key === existingKey);
-    if (c) { c.to = toId; save(); renderTray(); return; }
+    if (c) { Object.assign(c, { from, to, scope, selector, count }); save(); renderTray(); return; }
   }
   const key = ++seq;
   queuedFor.set(el, key);
-  changes.push({ key, from: fromId, to: toId, descriptor: describe(el) });
+  changes.push({ key, from, to, descriptor: describe(el), scope, selector, count });
   save();
   renderTray();
 }
@@ -244,10 +389,11 @@ function renderTray() {
   const rows = document.createDocumentFragment();
   for (const c of changes) {
     const row = h('ci-row');
-    const from = c.from ? `${c.from} · ${CANONS[c.from - 1].name}` : 'off-canon';
-    row.innerHTML = `<span class="ci-row__x" data-k="${c.key}">✕</span>`
-      + `<div class="ci-row__map">${from} → <i>${c.to} · ${CANONS[c.to - 1].name}</i></div>`
-      + `<div class="ci-row__path">${escapeHtml(c.descriptor.text || c.descriptor.tag)}<br>${escapeHtml(c.descriptor.path)}</div>`;
+    let html = `<span class="ci-row__x" data-k="${c.key}">✕</span>`
+      + `<div class="ci-row__map">${canonLabel(c.from)} → <i>${canonLabel(c.to)}</i></div>`;
+    if (c.scope === 'group') html += `<div class="ci-row__scope">область: ${escapeHtml(c.selector)} · ${c.count} эл.</div>`;
+    html += `<div class="ci-row__path">${escapeHtml(c.descriptor.text || c.descriptor.tag)}<br>${escapeHtml(c.descriptor.path)}</div>`;
+    row.innerHTML = html;
     row.querySelector('.ci-row__x').onclick = () => removeChange(c.key);
     rows.appendChild(row);
   }
@@ -270,9 +416,10 @@ function clearList() {
 
 function copyList() {
   const lines = changes.map((c) => {
-    const from = c.from ? `${c.from}·${CANONS[c.from - 1].name}` : 'off-canon';
-    const to = `${c.to}·${CANONS[c.to - 1].name} (.${CANONS[c.to - 1].cls})`;
-    return `- ${from} → ${to}\n    текст: ${c.descriptor.text || '—'}\n    класс: ${c.descriptor.className || '—'}\n    путь:  ${c.descriptor.path}`;
+    const to = CANONS[c.to.id - 1];
+    const toStr = `${canonLabel(c.to)} (.${to.cls}${c.to.mods.map((m) => ' .t-' + m).join('')})`;
+    const scope = c.scope === 'group' ? `\n    область: ${c.selector} (${c.count} эл.)` : '';
+    return `- ${canonLabel(c.from)} → ${toStr}${scope}\n    текст: ${c.descriptor.text || '—'}\n    класс: ${c.descriptor.className || '—'}\n    путь:  ${c.descriptor.path}`;
   });
   const out = `# Canon-inspector: ${changes.length} правк(и) канонов (TRIP-165)\n\n${lines.join('\n')}\n`;
   const done = () => { els.tray.querySelector('.ci-tray__title').textContent = `Скопировано ✓ · ${changes.length}`; };
