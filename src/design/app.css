@@ -302,6 +302,12 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    Правка одного класса меняет стиль во всём приложении разом.
    Не задавать font-size/weight/line-height/letter-spacing вручную —
    вешать один из .t-* (гард это энфорсит, TRIP-165 Фаза 1).
+
+   Общие компонентные классы (.btn, .badge, .field__label…) ПРИВЯЗАНЫ к
+   канону как co-selector'ы прямо в правиле ниже — так правка канона меняет
+   и утилиту, и компонент, и все «сырые» использования разом, без переклейки
+   JSX. Свой тип у такого класса удалён; в его правиле остаются только
+   раскладка и цвет. (TRIP-165 Фаза 2)
    ================================================================= */
 .t-display    { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
 .t-title      { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
@@ -309,9 +315,13 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .t-subheading { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
 .t-label      { font-family: var(--font-display); font-size: var(--fs-h4);      font-weight: 600; line-height: 1.25; letter-spacing: 0; }
 .t-body       { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 400; line-height: 1.5;  letter-spacing: 0; }
-.t-ui         { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 600; line-height: 1.3;  letter-spacing: 0; }
-.t-meta       { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }
-.t-micro      { font-family: var(--font-ui);      font-size: var(--fs-micro);   font-weight: 700; line-height: 1.2;  letter-spacing: .08em; text-transform: uppercase; }
+.t-ui,
+.btn,
+.field__label { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 600; line-height: 1.3;  letter-spacing: 0; }
+.t-meta,
+.field__hint  { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }
+.t-micro,
+.badge        { font-family: var(--font-ui);      font-size: var(--fs-micro);   font-weight: 700; line-height: 1.2;  letter-spacing: .08em; text-transform: uppercase; }
 .t-mono       { font-family: var(--font-mono);    font-size: var(--fs-meta);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }
 
 /* =================================================================
@@ -594,7 +604,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .btn {
   --bg: var(--surface); --fg: var(--ink); --bd: var(--line-strong);
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  font-family: var(--font-display); font-weight: 600; font-size: 14.5px; line-height: 1;
+  /* тип — из канона .t-ui (co-selector, TRIP-165) */
   padding: 12px 20px; border-radius: var(--r-btn);
   background: var(--bg); color: var(--fg); border: 1px solid var(--bd);
   cursor: pointer; white-space: nowrap;
@@ -625,8 +635,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 [data-theme="dark"] .btn--ai { --fg: #0c0a1e; }
 .btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); background-size: 170% 170%; box-shadow: 0 8px 20px -7px var(--pro); }
 .btn--pro:hover { background-position: 100% 0; }
-.btn--sm { padding: 9px 15px; font-size: 13px; }
-.btn--lg { padding: 15px 26px; font-size: 16px; }
+.btn--sm { padding: 9px 15px; }                        /* размер из канона .t-ui (TRIP-165) */
+.btn--lg { padding: 15px 26px; font-size: var(--fs-h4); }  /* крупная кнопка = размер канона .t-label (TRIP-165) */
 .btn--icon { padding: 11px; width: 42px; height: 42px; }
 .btn--block { width: 100%; }
 .btn.is-on { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
@@ -673,8 +683,8 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 /* Form field */
 .field { display: flex; flex-direction: column; gap: 7px; }
 /* Lumo DS: form labels are 13px / 800 / ink-2 — readable, not thin. */
-.field__label { font-size: 13px; font-weight: 700; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
-.field__hint { font-size: var(--fs-micro); color: var(--muted); font-weight: 600; }
+.field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; }   /* тип — канон .t-ui (co-selector, TRIP-165) */
+.field__hint { color: var(--muted); }   /* тип — канон .t-meta (co-selector, TRIP-165) */
 .field__sub { color: var(--muted); margin-top: 2px; }   /* тип — канон .t-meta (TRIP-165) */
 /* Lumo DS inputs: 14.5px/500 on a soft surface-3 fill with a defined 1.5px
    line-strong border + 4px focus ring (was thin 1px on flat white). */
@@ -729,11 +739,9 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .badge {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 6px 12px;
-  font-size: 12.5px; font-weight: 700;
+  /* тип — из канона .t-micro (co-selector, TRIP-165) */
   border-radius: var(--r-pill);
   background: var(--surface-2); color: var(--ink-2);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
 }
 /* Pro badge — gold gradient (Lumo). Single source: recolour via --pro* tokens. */
 .badge--pro { background: var(--pro-gradient); color: var(--pro-fg); box-shadow: 0 4px 12px -4px var(--pro); }
@@ -804,7 +812,7 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 .badge--quiet { background: var(--surface-2); color: var(--muted); }
 .badge--brand { background: var(--primary-soft); color: var(--brand); }
 .badge--solid { background: var(--brand); color: white; }
-.badge--count { background: var(--brand); color: hsl(var(--primary-foreground)); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; font-size: 11px; }
+.badge--count { background: var(--brand); color: hsl(var(--primary-foreground)); min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); justify-content: center; letter-spacing: 0; }  /* числовой счётчик: без трекинга/капса канона (TRIP-165) */
 .badge--outline { background: transparent; color: var(--muted); border: 1.5px solid var(--line-strong); }
 .badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
