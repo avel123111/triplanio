@@ -269,25 +269,14 @@ button { cursor: pointer; }
 a { color: var(--brand); text-decoration: none; }
 
 h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  font-weight: 600;
   color: var(--ink);
   margin: 0;
-  letter-spacing: var(--display-tracking);
   text-wrap: balance;
+  /* размер/вес/начертание — из канонов .t-title/.t-heading/.t-subheading/.t-label (co-selector, TRIP-165) */
 }
-h1 { font-size: var(--fs-h1); line-height: 1.08; }
-h2 { font-size: var(--fs-h2); line-height: 1.15; }
-h3 { font-size: var(--fs-h3); line-height: 1.25; font-weight: 600; }
-h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
 
 .eyebrow {
-  font-family: var(--font-ui);
-  font-size: var(--fs-micro);
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--muted-2);
-  font-weight: 600;
+  color: var(--muted-2);   /* тип — из канона .t-micro (co-selector, TRIP-165) */
 }
 .muted { color: var(--muted); }
 .muted-2 { color: var(--muted-2); }
@@ -309,20 +298,21 @@ h4 { font-size: var(--fs-h4); line-height: 1.3; font-weight: 600; }
    JSX. Свой тип у такого класса удалён; в его правиле остаются только
    раскладка и цвет. (TRIP-165 Фаза 2)
    ================================================================= */
-.t-display    { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
-.t-title      { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
-.t-heading    { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 600; line-height: 1.1;  letter-spacing: -0.02em; }
-.t-subheading { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
-.t-label      { font-family: var(--font-display); font-size: var(--fs-h4);      font-weight: 600; line-height: 1.25; letter-spacing: 0; }
-.t-body       { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 400; line-height: 1.5;  letter-spacing: 0; }
+.t-display        { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
+.t-title, h1      { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
+.t-heading, h2    { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 600; line-height: 1.1;  letter-spacing: -0.02em; }
+.t-subheading, h3 { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
+.t-label, h4      { font-family: var(--font-display); font-size: var(--fs-h4);      font-weight: 600; line-height: 1.25; letter-spacing: 0; }
+.t-body           { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 400; line-height: 1.5;  letter-spacing: 0; }
 .t-ui,
 .btn,
-.field__label { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 600; line-height: 1.3;  letter-spacing: 0; }
+.field__label     { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 600; line-height: 1.3;  letter-spacing: 0; }
 .t-meta,
-.field__hint  { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }
+.field__hint      { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }
 .t-micro,
-.badge        { font-family: var(--font-ui);      font-size: var(--fs-micro);   font-weight: 700; line-height: 1.2;  letter-spacing: .08em; text-transform: uppercase; }
-.t-mono       { font-family: var(--font-mono);    font-size: var(--fs-meta);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }
+.badge,
+.eyebrow          { font-family: var(--font-ui);      font-size: var(--fs-micro);   font-weight: 700; line-height: 1.2;  letter-spacing: .08em; text-transform: uppercase; }
+.t-mono           { font-family: var(--font-mono);    font-size: var(--fs-meta);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }
 
 /* =================================================================
    OUTER PROTOTYPE CHROME (frame list + viewport)
