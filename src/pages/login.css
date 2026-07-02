@@ -34,7 +34,7 @@
   --radius-btn: 12px;
   --radius-pill: 999px;
 
-  --font-display: 'Golos Text',ui-sans-serif,system-ui,sans-serif;              /* TRIP-165 */
+  --font-display: 'Exo 2',ui-sans-serif,system-ui,sans-serif;                   /* TRIP-175 — заголовочная гарнитура */
   --font-body:    'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 */
 
   --banner-photo: url("https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=70");
