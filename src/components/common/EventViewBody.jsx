@@ -78,6 +78,13 @@ export function fmtPrice(price, cur) {
   if (price == null || price === '') return '';
   return fmtMoneyActive(Number(price), cur || 'EUR');
 }
+// Calendar nights between check-in and check-out (clock-time independent).
+// Shared by both hotel view shells (dialog EventViewBody + panel EventPanels).
+export function stayNights(checkInIso, checkOutIso) {
+  const ci = parseNaive(checkInIso);
+  const co = parseNaive(checkOutIso);
+  return (ci && co) ? Math.max(0, Math.round(co.startOf('day').diff(ci.startOf('day'), 'days').days)) : null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Section primitives (3px accent bar + body)
@@ -127,9 +134,7 @@ function PaymentBadge({ t, status }) {
 
 function HotelBody({ entity, accent }) {
   const { t } = useI18n();
-  const ci = parseNaive(entity.check_in_datetime);
-  const co = parseNaive(entity.check_out_datetime);
-  const nights = (ci && co) ? Math.max(0, Math.round(co.startOf('day').diff(ci.startOf('day'), 'days').days)) : null;
+  const nights = stayNights(entity.check_in_datetime, entity.check_out_datetime);
   return (
     <>
       {entity.address && (

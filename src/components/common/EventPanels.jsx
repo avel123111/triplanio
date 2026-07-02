@@ -12,7 +12,7 @@ import React from 'react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { getEntityDocuments } from '@/lib/documents';
-import { fmtDT, fmtDate, fmtTime, fmtPrice } from '@/components/common/EventViewBody';
+import { fmtDT, fmtDate, fmtTime, fmtPrice, stayNights } from '@/components/common/EventViewBody';
 import { formatDuration } from '@/lib/time';
 
 const EV = {
@@ -125,26 +125,40 @@ function Notes({ notes, t }) {
 function HotelBody({ entity }) {
   const { t } = useI18n();
   const docs = getEntityDocuments(entity);
+  const nights = stayNights(entity.check_in_datetime, entity.check_out_datetime);
   return (
     <>
       <AddressBlock address={entity.address} />
-      <Section title={t('event.checkin_checkout')}>
-        <KVGrid>
-          <KV label={t('trip.hotel_check_in')} mono>{fmtDT(entity.check_in_datetime)}</KV>
-          <KV label={t('trip.hotel_check_out')} mono>{fmtDT(entity.check_out_datetime)}</KV>
-        </KVGrid>
-      </Section>
-      <Section title={t('event.finance_cancel')}>
+      {(entity.check_in_datetime || entity.check_out_datetime) && (
+        <Section title={t('event.checkin_checkout')}>
+          <div className="stay-dates">
+            <div className="stay-dates__cell">
+              <div className="stay-dates__lbl eyebrow">{t('trip.hotel_check_in')}</div>
+              <div className="stay-dates__v t-strong">{fmtDate(entity.check_in_datetime)}</div>
+              <div className="stay-dates__t t-meta">{fmtTime(entity.check_in_datetime)}</div>
+            </div>
+            <div className="stay-dates__mid">
+              {nights != null && <span className="t-meta">{t('fork.stay22_nights', { count: nights })}</span>}
+            </div>
+            <div className="stay-dates__cell">
+              <div className="stay-dates__lbl eyebrow">{t('trip.hotel_check_out')}</div>
+              <div className="stay-dates__v t-strong">{fmtDate(entity.check_out_datetime)}</div>
+              <div className="stay-dates__t t-meta">{fmtTime(entity.check_out_datetime)}</div>
+            </div>
+          </div>
+        </Section>
+      )}
+      <Section title={t('event.cost')}>
         <KVGrid>
           <KV label={t('budget.field_amount')} mono>{money(entity.price, entity.currency)}</KV>
           {entity.payment_status && <KV label={t('hotel.payment_status')}><PaymentBadge t={t} status={entity.payment_status} /></KV>}
           {entity.free_cancellation && entity.free_cancellation_until && <KV label={t('event.free_cancel_until')} mono>{fmtDT(entity.free_cancellation_until)}</KV>}
-          {entity.booking_reference && <KV label={t('service.car_booking_ref')} mono>{entity.booking_reference}</KV>}
         </KVGrid>
       </Section>
-      {(entity.phone || entity.email) && (
-        <Section title={t('event.contacts')}>
+      {(entity.booking_reference || entity.phone || entity.email) && (
+        <Section title={t('event.booking_details')}>
           <KVGrid>
+            {entity.booking_reference && <KV label={t('service.car_booking_ref')} mono>{entity.booking_reference}</KV>}
             {entity.phone && <KV label={t('hotel.view_phone')} mono>{entity.phone}</KV>}
             {entity.email && <KV label="E-mail"><a href={`mailto:${entity.email}`} style={{ color: 'var(--primary)' }}>{entity.email}</a></KV>}
           </KVGrid>
