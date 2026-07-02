@@ -27,6 +27,8 @@ const BASE_GUESTS = { adults: 2, children: 0, rooms: 1 };
 const BASE_FILTERS = { ...BASE_GUESTS, min: '', max: '' };
 // TRIP-176: sort toggle cycle (labels via fork.f_sort_*); wiring deferred.
 const SORT_ORDER = ['recommended', 'price', 'rating'];
+// Supplier brands for the platform filter (proper nouns — not translated). Wiring deferred.
+const PLATFORM_OPTIONS = ['Booking.com', 'Expedia', 'Hotels.com', 'Vrbo'];
 
 function fmtShort(dateStr, locale) {
   if (!dateStr) return '';
@@ -205,10 +207,7 @@ export default function Stay22HotelList({
               <div className="s22f-selwrap">
                 <select className="s22f-sel" value={platform} onChange={(e) => setPlatform(e.target.value)}>
                   <option value="all">{t('fork.f_all_platforms')}</option>
-                  <option value="Booking.com">Booking.com</option>
-                  <option value="Expedia">Expedia</option>
-                  <option value="Hotels.com">Hotels.com</option>
-                  <option value="Vrbo">Vrbo</option>
+                  {PLATFORM_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
                 <ChevronDown size={16} className="s22f-selchev" />
               </div>
