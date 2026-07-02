@@ -3264,8 +3264,10 @@ h4,
 
 /* CountryFlag — SVG country flag (from /public/flags/<iso2>.svg), the single
    flag primitive that replaced emoji flags. Height ties to the surrounding
-   font-size so it scales with any text style; width keeps the native aspect. */
-.cflag { display: inline-block; height: 1em; width: auto; vertical-align: -0.12em; border-radius: 2px; border: 1px solid rgba(0, 0, 0, .08); object-fit: cover; flex: 0 0 auto; }
+   font-size so it scales with any text style. `aspect-ratio` + a definite
+   height give a deterministic width (= 3em) BEFORE the SVG loads, so the box
+   reserves its space and the following text never shifts on load. */
+.cflag { display: inline-block; height: 2em; aspect-ratio: 3 / 2; vertical-align: middle; border-radius: 3px; object-fit: cover; flex: 0 0 auto; }
 
 /* Preferences rows (variant C): the right-side control (language select / .seg)
    stays compact and right-aligned on desktop, and drops to its own full-width
