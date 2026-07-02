@@ -812,8 +812,10 @@ h4,
 .footer__col h4,
 .chat .planresult .badge,
 .app-sidebar__group,
+.mbnav__lbl,
 .ncal-legend-lbl { font-family: var(--font-ui);      font-size: var(--fs-micro);   font-weight: 700; line-height: 1.2;  letter-spacing: .08em; text-transform: uppercase; }
 .t-mono,
+.cm-code,
 .te-dts,
 .bt span,
 .route .rd,
@@ -1585,7 +1587,7 @@ h4,
   .mbnav__item.is-active .mbnav__ico::before {
     content: ''; position: absolute; inset: -3px -7px; border-radius: 9px; background: var(--primary-soft); z-index: 0;
   }
-  .mbnav__lbl { font-size: var(--fs-nano); font-weight: 700; letter-spacing: .01em; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mbnav__lbl { max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mbnav__avatar { width: 24px !important; height: 24px !important; }
   .mbnav__center { display: grid; place-items: center; height: 100%; }
   .mbnav__fab {
@@ -1749,7 +1751,7 @@ h4,
 /* Step title: 32px in the half-width panel (the 40px page-h1 dwarfed the column);
    on phones a fluid clamp instead of the global hard 26px !important shrink.
    Scoped to the create-flow panel so the global h1 is untouched. */
-@media (max-width: 720px) { .flow-lp-b h1 { font-size: clamp(26px, 6vw, 30px) !important; } }
+@media (max-width: 720px) { .flow-lp-b h1 { font-size: var(--fs-h2) !important; } }
 /* Section sub-heading — the missing mid-tier between the 32px title and the
    14–15px body. Use for in-step section labels ("Старт", "Города"…). */
 .flow-lp-b .section-sub { color: var(--ink); margin: 0 0 12px; }

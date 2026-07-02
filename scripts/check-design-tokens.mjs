@@ -58,13 +58,19 @@ const COLOR_WHITELIST = [
 
 // Files allowed to contain raw FONT SIZES.
 const TYPO_WHITELIST = [
-  'src/index.css', 'src/design/app.css', 'src/pages/login.css', // --fs-* token defs only
+  // src/design/app.css is NO LONGER whitelisted (TRIP-165): it now has 0 raw px /
+  // 0 clamp / 0 em, so typography is enforced there too — new raw sizes fail CI.
+  // (Its --fs-* token defs are `--fs-nano: 10px;` etc. — no `font-size:` prefix,
+  // so the fontSizePx/Clamp/Em regexes don't match them.)
+  'src/index.css', 'src/pages/login.css', // --fs-* token defs / Tailwind-preflight 1em/1rem resets only
 ];
 
 const PALETTE = '(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)';
 const RE = {
   textPx:    /text-\[[0-9.]+px\]/,
   fontSizePx:/font-size:\s*[0-9.]+px/,
+  fontSizeClamp:/font-size:\s*clamp\(/,
+  fontSizeEm:/font-size:\s*(?!1(em|rem)\b)[0-9.]+r?em/,
   inlineFs:  /fontSize:\s*[0-9.]+[,\s}]/,
   hex:       /#[0-9a-fA-F]{3,8}\b/,
   paletteCls:new RegExp(`\\b(bg|text|border|ring|from|to|via|divide|outline|fill|stroke|placeholder|shadow|accent|caret)-${PALETTE}-[0-9]{2,3}(\\/[0-9]+)?\\b`),
@@ -109,6 +115,8 @@ for (const file of [...walk(ROOT), 'public/landing.css']) {
     if (!TYPO_WHITELIST.includes(file)) {
       if (RE.textPx.test(line))     typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (isCss && RE.fontSizePx.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      if (isCss && RE.fontSizeClamp.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
+      if (isCss && RE.fontSizeEm.test(line)) typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
       if (!isCss && RE.inlineFs.test(line))  typo.push(`${loc}  ${line.trim().slice(0, 90)}`);
     }
     // colour
