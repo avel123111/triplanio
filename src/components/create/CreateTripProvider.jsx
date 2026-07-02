@@ -178,7 +178,7 @@ export function CreateTripProvider({ children }) {
         >
           <div className="dlg dlg--sm" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: 28, textAlign: 'center' }}>
             <div className="app-spinner" />
-            <div style={{ fontWeight: 600 }}>{t('trip.copying')}</div>
+            <div className="t-ui">{t('trip.copying')}</div>
           </div>
         </div>
       )}

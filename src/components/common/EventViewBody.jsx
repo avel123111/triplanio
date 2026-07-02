@@ -295,7 +295,7 @@ function ServiceBody({ entity, accent }) {
         <div className="kv-grid">
           <KV label={t('event.pickup_where')}>
             {sameLocation ? (
-              <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{t('event.return_same')}</span>
+              <span className="t-meta" style={{ color: 'var(--muted)' }}>{t('event.return_same')}</span>
             ) : (
               <div style={{ lineHeight: 1.375 }}>{d.dropoff_address}</div>
             )}

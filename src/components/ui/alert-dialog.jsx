@@ -58,8 +58,8 @@ AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName
 const AlertDialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Description
     ref={ref}
-    className={cn("muted", className)}
-    style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, marginTop: 6 }}
+    className={cn("muted t-body", className)}
+    style={{ lineHeight: 1.55, marginTop: 6 }}
     {...props} />
 ))
 AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName

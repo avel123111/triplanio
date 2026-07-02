@@ -528,7 +528,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         <Card title={t('chat.members_title')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {activeMembers.length === 0 ? (
-              <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('member.empty')}</div>
+              <div className="muted t-meta">{t('member.empty')}</div>
             ) : (
               activeMembers.map((m) => (
                 <ChatMember
@@ -547,7 +547,7 @@ export default function ChatLens({ tripId, members = [], myRole, ownerId }) {
         </Card>
 
         <Card variant="soft" title={t('chat.ai_can_title')}>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 'var(--fs-meta)', color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <ul className="t-meta" style={{ margin: 0, padding: 0, listStyle: 'none', color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <li>{t('chat.ai_can_1')}</li>
             <li>{t('chat.ai_can_2')}</li>
             <li>{t('chat.ai_can_3')}</li>

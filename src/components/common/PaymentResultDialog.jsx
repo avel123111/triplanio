@@ -52,15 +52,15 @@ export default function PaymentResultDialog({
                 <Icon name={isSuccess ? 'check' : 'error'} size={26} />
               </div>
 
-              <h2 style={{ marginBottom: 8, fontSize: 'var(--fs-h3)' }}>
+              <h2 className="t-subheading" style={{ marginBottom: 8 }}>
                 {isSuccess ? t(isTrip ? 'sub.success_title_trip' : 'sub.success_title') : t('sub.fail_title')}
               </h2>
 
-              <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, maxWidth: 340, margin: '0 auto 14px' }}>
+              <div className="muted t-body" style={{ lineHeight: 1.55, maxWidth: 340, margin: '0 auto 14px' }}>
                 {isSuccess
                   ? t(isTrip ? 'sub.success_desc_trip' : 'sub.success_desc')
                   : code
-                    ? <>{t('sub.fail_declined_pre')}<span className="mono" style={{ color: 'var(--ink-2)' }}>{code}</span>{t('sub.fail_declined_post')}</>
+                    ? <>{t('sub.fail_declined_pre')}<span className="mono t-mono" style={{ color: 'var(--ink-2)' }}>{code}</span>{t('sub.fail_declined_post')}</>
                     : t('sub.fail_cancelled')
                 }
               </div>
@@ -72,7 +72,7 @@ export default function PaymentResultDialog({
 
               {/* Fail: help note */}
               {!isSuccess && (
-                <div style={{ background: 'var(--wash)', padding: '9px 12px', borderRadius: 8, fontSize: 'var(--fs-meta)', color: 'var(--muted)', lineHeight: 1.5, maxWidth: 340, margin: '0 auto' }}>
+                <div className="t-meta" style={{ background: 'var(--wash)', padding: '9px 12px', borderRadius: 8, color: 'var(--muted)', lineHeight: 1.5, maxWidth: 340, margin: '0 auto' }}>
                   {t('sub.fail_help')}
                 </div>
               )}

@@ -108,7 +108,7 @@ export default function CityPanel({
       <div className="lp-b scrollbar-thin">
       {/* nights stepper */}
       <div className="lp-stepper" style={{ marginBottom: 6 }}>
-        <span className="muted" style={{ fontSize: 'var(--fs-meta)', fontWeight: 600 }}>{t('tse.nights_label')}</span>
+        <span className="muted t-meta">{t('tse.nights_label')}</span>
         <div className="stepper" title={t('tse.nights_label')}>
           <button onClick={onNightsMinus} disabled={nights <= 0} aria-label={t('tse.nights_remove')}>−</button>
           <span className="n">{nights}</span>

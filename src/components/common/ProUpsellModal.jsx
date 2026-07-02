@@ -67,7 +67,7 @@ export default function ProUpsellModal({
             {/* ── Body ── */}
             <div className="dlg__body">
               {/* Description — differs by mode */}
-              <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, marginBottom: 14 }}>
+              <div className="muted t-body" style={{ lineHeight: 1.55, marginBottom: 14 }}>
                 {isInfo ? (
                   <>
                     {t('sub.trip_pro_desc_pre')}
@@ -82,7 +82,7 @@ export default function ProUpsellModal({
               {/* Feat-list — both modes (P4 design) */}
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {proFeatures.map((feat, i) => (
-                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--fs-base)', color: 'var(--ink-2)', fontWeight: 600 }}>
+                  <li key={i} className="t-ui" style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--ink-2)' }}>
                     <span style={{
                       width: 24, height: 24, borderRadius: 8,
                       background: 'var(--pro-soft)', color: 'var(--pro-ink)',

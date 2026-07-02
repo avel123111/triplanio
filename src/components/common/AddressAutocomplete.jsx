@@ -81,7 +81,7 @@ export default function AddressAutocomplete({
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.main_text || p.description}</span>
             {p.secondary_text && (
-              <span style={{ display: 'block', fontSize: 'var(--fs-meta)', fontWeight: 600, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.secondary_text}</span>
+              <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.secondary_text}</span>
             )}
           </span>
         </>

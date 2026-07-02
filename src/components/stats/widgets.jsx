@@ -65,7 +65,7 @@ export function WorldMini({ world, title, caption }) {
             <circle className="ring__track" cx="36" cy="36" r={R} strokeWidth="9" />
             <circle className="ring__fg" cx="36" cy="36" r={R} strokeWidth="9" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }} />
           </svg>
-          <div className="ring__c" style={{ fontSize: 'var(--fs-h4)' }}>{world.pct}%</div>
+          <div className="ring__c t-label">{world.pct}%</div>
         </div>
         <div>
           <div className="ttl">{title}</div>
@@ -115,7 +115,7 @@ export function WorldRing({ world, label, caption }) {
           <circle className="ring__fg" cx="74" cy="74" r={R} strokeWidth="12" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }} />
         </svg>
         <div className="ring__c" style={{ flexDirection: 'column' }}>
-          <span style={{ fontSize: 'var(--fs-h1)' }}>{world.pct}%</span>
+          <span className="t-title">{world.pct}%</span>
           <span className="l">{label}</span>
         </div>
       </div>
