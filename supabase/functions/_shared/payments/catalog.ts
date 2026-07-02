@@ -68,9 +68,13 @@ export async function getActiveProviderProducts(
     .eq('provider', provider)
     .eq('provider_env', env)
     .eq('active', true);
+  // Пустой каталог ([]) и ошибка БД (throw) — РАЗНЫЕ вещи. Раньше здесь глотали
+  // любую ошибку в [] («каталог пуст»), из-за чего схемный сбой (напр. 42703 на
+  // дропнутую колонку, TRIP-174) маскировался под легитимно пустой каталог и тихо
+  // ронял весь платёжный путь. Пробрасываем: вызывающие edge-функции ловят это
+  // своим top-level try/catch → captureEdgeError → Sentry + 500 (громко, не молча).
   if (error) {
-    console.error('getActiveProviderProducts failed:', error.message);
-    return [];
+    throw new Error(`getActiveProviderProducts failed: ${error.message}`);
   }
   return (data ?? []) as ProviderProductRow[];
 }
