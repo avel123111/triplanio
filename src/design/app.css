@@ -1197,7 +1197,7 @@ h4,
 .btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); background-size: 170% 170%; box-shadow: 0 8px 20px -7px var(--pro); }
 .btn--pro:hover { background-position: 100% 0; }
 .btn--sm { padding: 9px 15px; }                        /* размер из канона .t-ui (TRIP-165) */
-.btn--lg { padding: 15px 26px; font-size: var(--fs-h4); }  /* крупная кнопка = размер канона .t-label (TRIP-165) */
+.btn--lg { padding: 15px 26px; font-size: var(--fs-h4); }  /* крупная кнопка = 16px (--fs-h4); .t-label с TRIP-175 = 14px, крупная кнопка осталась 16 намеренно */
 .btn--icon { padding: 11px; width: 42px; height: 42px; }
 .btn--block { width: 100%; }
 .btn.is-on { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }
