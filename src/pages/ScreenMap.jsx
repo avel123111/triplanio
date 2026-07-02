@@ -114,7 +114,7 @@ function ScreenMap({ visits = [], transfers = [], hotels = [], activities = [], 
           ) : (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--muted)' }}>
               <Icon name="pin" size={28} style={{ opacity: 0.4, marginBottom: 10 }} />
-              <div style={{ fontSize: 'var(--fs-base)' }}>{t('view.map_no_cities')}</div>
+              <div className="t-body">{t('view.map_no_cities')}</div>
             </div>
           )}
         </div>
@@ -154,16 +154,15 @@ function RouteStepper({ route, activeIdx, setActiveIdx, transfers, onHover }) {
                 padding: '6px 4px', background: 'transparent', border: 'none', cursor: 'pointer',
                 flex: '0 0 auto', minWidth: 60,
               }}>
-                <div style={{
+                <div className="t-meta" style={{
                   width: 26, height: 26, borderRadius: '50%',
                   background: activeIdx === i ? 'var(--brand)' : 'var(--brand-soft)',
                   color: activeIdx === i ? 'white' : 'var(--brand)',
                   display: 'grid', placeItems: 'center',
-                  fontSize: 'var(--fs-meta)', fontWeight: 700,
                   boxShadow: activeIdx === i ? '0 0 0 4px var(--brand-soft)' : 'none',
                   transition: 'all .15s ease',
                 }}>{i + 1}</div>
-                <div style={{ fontSize: 'var(--fs-micro)', fontWeight: activeIdx === i ? 600 : 500, color: activeIdx === i ? 'var(--ink)' : 'var(--muted)', whiteSpace: 'nowrap', maxWidth: 78, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div className="t-meta" style={{ color: activeIdx === i ? 'var(--ink)' : 'var(--muted)', whiteSpace: 'nowrap', maxWidth: 78, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {c.city_name}
                 </div>
               </button>
@@ -202,18 +201,18 @@ function RouteStepper({ route, activeIdx, setActiveIdx, transfers, onHover }) {
                 border: 'none', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
                 position: 'relative', zIndex: 1,
               }}>
-                <div style={{
+                <div className="t-meta" style={{
                   width: 22, height: 22, borderRadius: '50%',
                   background: activeIdx === i ? 'var(--brand)' : 'var(--surface)',
                   color: activeIdx === i ? 'white' : 'var(--brand)',
                   border: activeIdx === i ? 'none' : '2px solid var(--brand-soft-12)',
                   display: 'grid', placeItems: 'center',
-                  fontSize: 'var(--fs-micro)', fontWeight: 700, flexShrink: 0,
+                  flexShrink: 0,
                 }}>{i + 1}</div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 'var(--fs-meta)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.city_name}</div>
+                  <div className="t-meta" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.city_name}</div>
                   {nights > 0 && (
-                    <div className="muted num" style={{ fontSize: 'var(--fs-micro)' }}>{nights} {t('ai_plan.unit_nights_short')}</div>
+                    <div className="muted num t-meta">{nights} {t('ai_plan.unit_nights_short')}</div>
                   )}
                 </div>
                 <Icon name="chev" size={11} style={{ color: activeIdx === i ? 'var(--brand)' : 'var(--muted-2)' }} />
@@ -268,20 +267,20 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
         borderBottom: '1px solid var(--line-2)',
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
-          <div style={{
+          <div className="t-subheading" style={{
             width: 44, height: 44, borderRadius: 10,
             background: isStart || isEnd ? 'var(--ink-2)' : 'var(--brand)',
             color: 'white',
             display: 'grid', placeItems: 'center',
-            fontSize: 'var(--fs-h3)', fontWeight: 700, flexShrink: 0,
+            flexShrink: 0,
           }}>
             {isStart || isEnd ? <Icon name={isStart ? 'flag' : 'check'} size={18} /> : (activeIdx + 1)}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+            <div className="t-heading">
               {visit?.city_name}
             </div>
-            <div className="muted" style={{ fontSize: 'var(--fs-base)', marginTop: 4 }}>
+            <div className="muted t-body" style={{ marginTop: 4 }}>
               {countryFlag(visit?.country_code)} {visit?.country || ''}
               {isStart && <> {t('view.map_start_suffix')}</>}
               {isEnd && <> {t('view.map_finish_suffix')}</>}
@@ -290,12 +289,12 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {nights > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999, fontSize: 'var(--fs-meta)', fontWeight: 500 }}>
+            <span className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999 }}>
               <Icon name="moon" size={12} style={{ color: 'var(--muted)' }} /> {nights} {nights === 1 ? t('trip.nights_one') : nights < 5 ? t('trip.nights_few') : t('trip.nights_many')}
             </span>
           )}
           {cityActivities.length > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999, fontSize: 'var(--fs-meta)', fontWeight: 500 }}>
+            <span className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--surface)', border: '1px solid var(--line-2)', borderRadius: 999 }}>
               <Icon name="ticket" size={12} style={{ color: 'var(--warm)' }} /> {cityActivities.length} {t('view.map_activities_short')}
             </span>
           )}
@@ -359,11 +358,11 @@ function ActiveCityCard({ visit, prevVisit, transfers, hotels, activities, activ
                   <Icon name="ticket" size={11} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--ink)', lineHeight: 1.35 }}>
+                  <div className="t-body" style={{ color: 'var(--ink)' }}>
                     {a.title}
                   </div>
                   {a.start_datetime && (
-                    <div className="muted num" style={{ fontSize: 'var(--fs-micro)', marginTop: 2 }}>{fmtShortDate(a.start_datetime)}{a.start_datetime?.slice(11, 16) ? ` · ${a.start_datetime.slice(11, 16)}` : ''}</div>
+                    <div className="muted num t-meta" style={{ marginTop: 2 }}>{fmtShortDate(a.start_datetime)}{a.start_datetime?.slice(11, 16) ? ` · ${a.start_datetime.slice(11, 16)}` : ''}</div>
                   )}
                 </div>
               </button>
@@ -440,8 +439,8 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen, canEdit = false }) {
             <Icon name="warning" size={18} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 600 }}>{t('view.map_no_transfer')}</div>
-            <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, lineHeight: 1.4 }}>
+            <div className="t-ui">{t('view.map_no_transfer')}</div>
+            <div className="muted t-meta" style={{ marginTop: 2 }}>
               {t('view.map_from_add', { city: fromName })}
             </div>
           </div>
@@ -502,12 +501,12 @@ function TransferRow({ transfer, prevVisit, toCity, onOpen, canEdit = false }) {
         <Icon name={meta.icon} size={18} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <div className="t-ui" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span>{fromName}</span>
           <Icon name="arrowR" size={12} style={{ color: 'var(--muted-2)' }} />
           <span>{toName}</span>
         </div>
-        <div className="muted num" style={{ fontSize: 'var(--fs-meta)', marginTop: 2 }}>{subtitle}</div>
+        <div className="muted num t-meta" style={{ marginTop: 2 }}>{subtitle}</div>
       </div>
       <Icon name="chev" size={14} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
     </button>
@@ -547,8 +546,8 @@ function HotelRow({ hotel, visit, onOpen, canEdit = false }) {
             <Icon name="warning" size={18} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 600 }}>{t('hotel.no_hotel_gap')}</div>
-            <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 2, lineHeight: 1.4 }}>{t('view.map_hotel_not_booked')}</div>
+            <div className="t-ui">{t('hotel.no_hotel_gap')}</div>
+            <div className="muted t-meta" style={{ marginTop: 2 }}>{t('view.map_hotel_not_booked')}</div>
           </div>
           <Btn variant="ghost" size="sm" icon="plus">{t('view.map_find')}</Btn>
         </button>
@@ -597,10 +596,10 @@ function HotelRow({ hotel, visit, onOpen, canEdit = false }) {
         <Icon name="bed" size={18} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div className="t-ui" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {hotel.name}
         </div>
-        <div className="muted num" style={{ fontSize: 'var(--fs-meta)', marginTop: 2 }}>
+        <div className="muted num t-meta" style={{ marginTop: 2 }}>
           {[fmtShortDate(hotel.check_in_datetime), fmtShortDate(hotel.check_out_datetime)].filter(Boolean).join(' → ') || t('view.map_checkin_checkout')}
         </div>
       </div>

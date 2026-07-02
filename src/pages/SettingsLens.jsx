@@ -167,7 +167,7 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
     <Dialog title={t('telegram.connect_title')} icon="telegram" size=""
       open={open} onOpenChange={onOpenChange}
       foot={<Btn variant="ghost" onClick={closeConnect}>{t('common.close')}</Btn>}>
-      <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, marginBottom: 16 }}>
+      <div className="muted t-body" style={{ marginBottom: 16 }}>
         {t('settings.tg_connect_desc')}
       </div>
 
@@ -176,16 +176,16 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
           <div style={{ width: 44, height: 44, margin: '0 auto 12px', borderRadius: 12, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center' }}>
             <Icon name="telegram" size={20} />
           </div>
-          <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', marginBottom: 6 }}>
+          <div className="t-ui" style={{ marginBottom: 6 }}>
             {t('settings.tg_generating')}
             <span className="ai-dots" style={{ marginLeft: 6 }}><span /><span /><span /></span>
           </div>
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.5 }}>{t('settings.tg_creating')}</div>
+          <div className="muted t-meta">{t('settings.tg_creating')}</div>
         </div>
       )}
 
       {stage === 'error' && (
-        <div style={{ padding: 14, background: 'var(--danger-soft)', borderRadius: 12, fontSize: 'var(--fs-base)', lineHeight: 1.5 }}>
+        <div className="t-body" style={{ padding: 14, background: 'var(--danger-soft)', borderRadius: 12 }}>
           {errText}
         </div>
       )}
@@ -197,8 +197,8 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
               <Icon name="telegram" size={17} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('telegram.not_connected_title')}</div>
-              <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('settings.tg_for_trip')}</div>
+              <div className="t-ui">{t('telegram.not_connected_title')}</div>
+              <div className="muted t-meta">{t('settings.tg_for_trip')}</div>
             </div>
             <Badge variant="quiet">{t('settings.tg_not_connected_badge')}</Badge>
           </div>
@@ -211,14 +211,14 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
             </div>
           </div>
 
-          <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, marginBottom: 16 }}>
+          <div className="t-body" style={{ marginBottom: 16 }}>
             {t('settings.tg_press_below')}
           </div>
 
           <Btn variant="primary" icon="telegram" block onClick={openBot}>
             {t('telegram.open_bot')}
           </Btn>
-          <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 14, lineHeight: 1.5, textAlign: 'center' }}>
+          <div className="muted t-meta" style={{ marginTop: 14, textAlign: 'center' }}>
             {t('settings.tg_after_start')}
           </div>
         </>
@@ -231,21 +231,21 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
               <Icon name="telegram" size={17} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('settings.tg_waiting')}</div>
-              <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>
+              <div className="t-ui">{t('settings.tg_waiting')}</div>
+              <div className="muted t-meta">
                 <span className="ai-dots" style={{ marginRight: 6 }}><span /><span /><span /></span>
                 {t('settings.tg_link_valid')} <span className="num">{mmss}</span>
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 14, fontSize: 'var(--fs-meta)', lineHeight: 1.55 }}>
+          <div className="t-meta" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--wash)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 14 }}>
             <div style={{ display: 'flex', gap: 10 }}>
-              <div style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', fontSize: 'var(--fs-micro)', fontWeight: 700, display: 'grid', placeItems: 'center', flexShrink: 0 }}>1</div>
+              <div className="t-meta" style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>1</div>
               <div>{t('settings.tg_step1_pre')} <strong>«Start»</strong>.</div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <div style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', fontSize: 'var(--fs-micro)', fontWeight: 700, display: 'grid', placeItems: 'center', flexShrink: 0 }}>2</div>
+              <div className="t-meta" style={{ width: 20, height: 20, borderRadius: 999, background: 'var(--brand)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>2</div>
               <div>{t('settings.tg_step2')}</div>
             </div>
           </div>
@@ -265,12 +265,12 @@ function TelegramConnectDialog({ tripId, onLinked, open, onOpenChange }) {
               <Icon name="check" size={17} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('settings.tg_linked')}</div>
-              <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{t('settings.tg_just_now')}</div>
+              <div className="t-ui">{t('settings.tg_linked')}</div>
+              <div className="muted t-meta">{t('settings.tg_just_now')}</div>
             </div>
             <Badge variant="success" icon="check">{t('settings.tg_active')}</Badge>
           </div>
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.55, marginBottom: 14 }}>
+          <div className="muted t-meta" style={{ marginBottom: 14 }}>
             {t('settings.tg_connected_desc')}
           </div>
           <Btn variant="primary" icon="check" block onClick={closeConnect}>{t('view.edit_mode_done')}</Btn>
@@ -332,7 +332,7 @@ function TelegramSection({ tripId }) {
   const openConnect = () => setConnectOpen(true);
 
   if (accounts === null) {
-    return <div className="muted" style={{ fontSize: 'var(--fs-base)', padding: 8 }}>{t('common.loading')}</div>;
+    return <div className="muted t-body" style={{ padding: 8 }}>{t('common.loading')}</div>;
   }
 
   if (accounts.length === 0) {
@@ -341,8 +341,8 @@ function TelegramSection({ tripId }) {
         <div style={{ width: 48, height: 48, margin: '0 auto 10px', borderRadius: 12, background: tgBrand.bg, color: tgBrand.fg, display: 'grid', placeItems: 'center' }}>
           <Icon name="telegram" size={22} />
         </div>
-        <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('telegram.not_connected_title')}</div>
-        <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.5, marginBottom: 12 }}>
+        <div className="t-ui" style={{ marginBottom: 4 }}>{t('telegram.not_connected_title')}</div>
+        <div className="muted t-meta" style={{ marginBottom: 12 }}>
           {t('settings.tg_section_empty_desc')}
         </div>
         <Btn variant="primary" icon="telegram" onClick={openConnect}>
@@ -361,8 +361,8 @@ function TelegramSection({ tripId }) {
             <Icon name="telegram" size={17} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{displayName(a)}</div>
-            {handle(a) && <div className="muted mono" style={{ fontSize: 'var(--fs-micro)' }}>{handle(a)}</div>}
+            <div className="t-ui">{displayName(a)}</div>
+            {handle(a) && <div className="muted mono t-mono">{handle(a)}</div>}
           </div>
           <Toggle on={!!a.is_active} busy={busyId === a.id} onChange={() => toggle(a)} />
           <Btn variant="quiet" size="sm" icon="trash" loading={busyId === a.id} onClick={() => remove(a)} />
@@ -397,11 +397,11 @@ function ApproverRow({ member, profile, locked }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <Avatar name={name} photo={profile?.avatar_url || ''} deleted={isDeleted} size="sm" />
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700 }}>{name}</div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{roleLabel}</div>
+        <div className="t-ui">{name}</div>
+        <div className="muted t-meta">{roleLabel}</div>
       </div>
       {locked
-        ? <span className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('settings.approver_by_role')}</span>
+        ? <span className="muted t-meta">{t('settings.approver_by_role')}</span>
         : <Toggle on={on} onChange={() => setOn(v => !v)} />}
     </div>
   );
@@ -803,8 +803,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <Card title={t('settings.chat_widget_title')}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('settings.chat_widget_label')}</div>
-                  <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>
+                  <div className="t-ui">{t('settings.chat_widget_label')}</div>
+                  <div className="muted t-meta">
                     {t('settings.chat_widget_desc')}
                   </div>
                 </div>
@@ -820,7 +820,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                 }}>
                   <Icon name="chat" size={20} />
                 </div>
-                <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>
+                <div className="muted t-meta">
                   {chatWidget
                     ? t('settings.chat_widget_on')
                     : t('settings.chat_widget_off')}
@@ -833,8 +833,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           <Card title={t('settings.warnings_title')} subtitle={t('settings.warnings_desc')}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--wash)', borderRadius: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 700 }}>{t('settings.warn_bookings_title')}</div>
-                <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{t('settings.warn_bookings_desc')}</div>
+                <div className="t-ui">{t('settings.warn_bookings_title')}</div>
+                <div className="muted t-meta">{t('settings.warn_bookings_desc')}</div>
               </div>
               <Toggle on={bookingWarnings} busy={busyToggle === 'booking_warnings'} onChange={toggleBookingWarnings} />
             </div>
@@ -856,7 +856,7 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
                 {approvers.map(m => <ApproverRow key={m.id} member={m} profile={memberProfiles[m.user_id]} locked />)}
                 {viewerMems.map(m => <ApproverRow key={m.id} member={m} profile={memberProfiles[m.user_id]} locked={false} />)}
                 {members.length === 0 && (
-                  <div className="muted" style={{ fontSize: 'var(--fs-base)' }}>{t('settings.members_loading')}</div>
+                  <div className="muted t-body">{t('settings.members_loading')}</div>
                 )}
               </div>
             </Card>
@@ -871,8 +871,8 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
           {myRole !== 'owner' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('settings.leave_trip')}</div>
-                <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('settings.leave_desc')}</div>
+                <div className="t-ui">{t('settings.leave_trip')}</div>
+                <div className="muted t-meta">{t('settings.leave_desc')}</div>
               </div>
               <Btn variant="danger" onClick={leaveTrip}>{t('settings.leave_btn')}</Btn>
             </div>
@@ -881,16 +881,16 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('settings.leave_trip')}</div>
-                  <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('settings.leave_owner_blocked')}</div>
+                  <div className="t-ui">{t('settings.leave_trip')}</div>
+                  <div className="muted t-meta">{t('settings.leave_owner_blocked')}</div>
                 </div>
                 <Btn variant="danger" disabled>{t('settings.leave_btn')}</Btn>
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid var(--line-2)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)' }}>{t('settings.delete_trip')}</div>
-                  <div className="muted" style={{ fontSize: 'var(--fs-meta)' }}>{t('settings.delete_desc')}</div>
+                  <div className="t-ui">{t('settings.delete_trip')}</div>
+                  <div className="muted t-meta">{t('settings.delete_desc')}</div>
                 </div>
                 <Btn variant="danger-solid" onClick={deleteTrip}>{t('settings.delete_trip')}</Btn>
               </div>
