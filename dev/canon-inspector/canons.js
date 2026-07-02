@@ -1,6 +1,6 @@
 // TRIP-165 · Canon inspector — canon registry + live detection.
 //
-// The 10 typography canons are defined ONCE, in src/design/app.css (the .t-*
+// The 12 typography canons are defined ONCE, in src/design/app.css (the .t-*
 // co-selector rules). This module does NOT re-hardcode their numeric specs —
 // it PROBES the live stylesheet: it renders a hidden element per canon class
 // and reads getComputedStyle. So the reference values always come straight
@@ -24,6 +24,10 @@ export const CANONS = [
   { id: 8,  cls: 't-meta',       name: 'Meta',       role: 'Даты, вторичная инфо' },
   { id: 9,  cls: 't-micro',      name: 'Micro',      role: 'Бейджи, капс-метки' },
   { id: 10, cls: 't-mono',       name: 'Mono',       role: 'Коды, идентификаторы' },
+  // +2 канона (TRIP-165 аудит 2026-07-02) — плотные НЕ-капс подписи, которых не
+  // покрывал набор 10 (10px и 11px-без-капса; t-micro форсит UPPERCASE).
+  { id: 11, cls: 't-nano',       name: 'Nano',       role: 'Плотные подписи booking/editor (10px)' },
+  { id: 12, cls: 't-caption',    name: 'Caption',    role: 'Малые НЕ-капс подписи (11px)' },
 ];
 
 // The sanctioned orthogonal modifiers (app.css Фаза 3). They layer on top of a
