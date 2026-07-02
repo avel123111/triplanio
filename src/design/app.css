@@ -143,7 +143,8 @@
   --font-display: 'Exo 2',ui-sans-serif,system-ui,sans-serif;               /* TRIP-175 — заголовочная гарнитура (текст остаётся Golos через --font-ui) */
   --font-ui:      'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 — та же семья */
   --font-mono:    'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace; /* TRIP-165 — коды/идентификаторы */
-  --display-tracking: -0.02em;   /* Exo 2 — чуть плотнее для крупных заголовков */
+  --display-tracking: -0.015em;  /* Exo 2 — чуть плотнее для крупных заголовков (TRIP-175 шкала макета) */
+  --track-caps: 0.12em;          /* TRIP-175 — трекинг капс-меток/эйбрау (канон .t-micro) */
 
   /* Motion — strong custom curves (built-in easings are too weak).
      ease-out for enter/hover/press, ease-in-out for on-screen movement. */
@@ -159,10 +160,10 @@
   --fs-base:    14px;    /* default UI text */
   --fs-strong:  15px;    /* row labels, emphasised body */
   --fs-h4:      16px;    /* small headings / large labels */
-  --fs-h3:      19px;    /* panel / section titles */
-  --fs-h2:      26px;    /* screen headings */
-  --fs-h1:      40px;    /* page headings */
-  --fs-display: 54px;    /* hero / display */
+  --fs-h3:      17px;    /* panel / section titles (TRIP-175 шкала макета: 19→17) */
+  --fs-h2:      23px;    /* screen headings (TRIP-175: 26→23) */
+  --fs-h1:      32px;    /* page headings (TRIP-175: 40→32) */
+  --fs-display: 47px;    /* hero / display (TRIP-175: 54→47) */
 }
 
 /* Dark theme */
@@ -299,13 +300,13 @@ h1, h2, h3, h4 {
    раскладка и цвет. (TRIP-165 Фаза 2)
    ================================================================= */
 .t-display,
-.ncal-month-lbl { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
+.ncal-month-lbl { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.06; letter-spacing: var(--display-tracking); }
 .t-title,
 h1,
 .plan-price__amount,
 .auth__h1,
 .budget__total .big,
-.head h1 { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
+.head h1 { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 800; line-height: 1.1;  letter-spacing: var(--display-tracking); }
 .t-heading,
 h2,
 .eroute h3,
@@ -327,7 +328,7 @@ h2,
 .tcp__ph,
 .ncal-wdc-num,
 .pt-mm .n,
-.ncal-year-lbl { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.1;  letter-spacing: -0.02em; }
+.ncal-year-lbl { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; }
 .t-subheading,
 h3,
 .app-header__brand-name,
@@ -362,7 +363,7 @@ h3,
 .card h3,
 .step h3,
 .drawer li a,
-.ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; }
+.ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 700; line-height: 1.25; letter-spacing: 0; }
 .t-label,
 h4,
 .choice-card__ttl,
@@ -388,7 +389,7 @@ h4,
 .va-ti b, .s22-ti b,
 .va-price b, .s22-price b,
 .ts-routehead__title,
-.cm-h { font-family: var(--font-ui);      font-size: var(--fs-h4);      font-weight: 600; line-height: 1.25; letter-spacing: 0; }   /* TRIP-175: .t-label остаётся на Golos (--font-ui), не уходит в Exo 2 */
+.cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-175: .t-label — Golos 14/700 по шкале макета (был --fs-h4 16/600) */
 .t-body,
 .proto__nav-item,
 .app-header .app-header__avatar,
@@ -414,7 +415,7 @@ h4,
 .langdd__item,
 .ts-in,
 .s22f-field input,
-.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 400; line-height: 1.5;  letter-spacing: 0; }
+.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-strong);  font-weight: 400; line-height: 1.6;  letter-spacing: 0; }   /* TRIP-175: .t-body — 15px/lh1.6 по шкале макета (был --fs-base 14/lh1.5) */
 .t-ui,
 .btn,
 .field__label,
@@ -515,7 +516,7 @@ h4,
 .s22f-poptx b,
 .s22f-cur,
 .fork-manual__tx b,
-.cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 600; line-height: 1.3;  letter-spacing: 0; }
+.cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-175: .t-ui lh 1.3→1.4 (шкала макета) */
 .t-meta,
 .field__hint,
 .proto__nav-sub,
@@ -770,7 +771,9 @@ h4,
 .s22-count, .s22-sc, .s22-pg,
 .va-state p, .s22-state p,
 .fork-partner__mid b,
-.ncal-leg { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }
+.va-sub, .s22-sub, .va-flag,
+.fork-manual__tx span, .va-cnt, .s22-cnt, .s22-addr, .s22-stars, .s22f-poptx span, .s22f-pill, .fork-or span, .s22f-resetall,
+.ncal-leg { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-175: НЕ-капс подписи booking (схлопнутые .t-nano/.t-caption) → t-meta (Golos 12.5) */
 .t-micro,
 .badge,
 .eyebrow,
@@ -827,7 +830,8 @@ h4,
 .chat .planresult .badge,
 .app-sidebar__group,
 .mbnav__lbl,
-.ncal-legend-lbl { font-family: var(--font-ui);      font-size: var(--fs-micro);   font-weight: 700; line-height: 1.2;  letter-spacing: .08em; text-transform: uppercase; }
+.va-from, .s22-price span, .fork-partner__mid span,
+.ncal-legend-lbl { font-family: var(--font-mono);    font-size: var(--fs-micro);   font-weight: 700; line-height: 1.2;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-175: .t-micro на JetBrains Mono + трекинг --track-caps (техно-метки); капс-эйбрау booking переехали сюда из схлопнутого .t-nano */
 .t-mono,
 .cm-code,
 .te-dts,
@@ -838,22 +842,11 @@ h4,
 .kv .v.mono,
 .confirm__email,
 .route-block .rd { font-family: var(--font-mono);    font-size: var(--fs-meta);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }
-/* .t-nano / .t-caption — малые НЕ-капс подписи плотных карточек (booking/editor),
-   которых не покрывал набор 10 (10px и 11px-без-капса; t-micro форсит UPPERCASE).
-   Одобрены Павлом (TRIP-165, аудит 2026-07-02). Капс-эйбрау остаются на .t-micro. */
-.t-nano,
-.va-sub, .s22-sub,
-.va-flag,
-.va-from, .s22-price span, .fork-partner__mid span { font-family: var(--font-ui);      font-size: var(--fs-nano);    font-weight: 600; line-height: 1.3;  letter-spacing: 0; }
-/* Капс-эйбрау booking-карточек: канон .t-nano (семья/размер/вес/lh выше) + санкц.
-   капс-оверлей (UPPERCASE + трекинг). Держим ОДНИМ источником здесь, а не дублем в
-   каждом компонентном <style> — TRIP-165 аудит 2026-07-02 (одобрено Павлом). */
-.va-from, .s22-price span, .fork-partner__mid span { text-transform: uppercase; letter-spacing: .04em; }
-.t-caption,
-.fork-manual__tx span,
-.va-cnt, .s22-cnt, .s22-addr, .s22-stars,
-.s22f-poptx span, .s22f-pill,
-.fork-or span, .s22f-resetall { font-family: var(--font-ui);      font-size: var(--fs-micro);   font-weight: 600; line-height: 1.35; letter-spacing: 0; }
+/* TRIP-175: каноны-заплатки .t-nano/.t-caption СХЛОПНУТЫ (макет их не содержит).
+   Их члены переехали: НЕ-капс подписи booking → .t-meta (Golos 12.5, co-selector
+   в правиле t-meta выше), капс-эйбрау (.va-from/.s22-price span/.fork-partner__mid
+   span) → .t-micro (mono+track, co-selector выше — капс/трекинг уже в каноне, свой
+   оверлей больше не нужен). Токен --fs-nano оставлен: его использует CalendarLens. */
 
 /* Санкционированные орто-модификаторы (TRIP-165 Фаза 3) — комбинируются с любым каноном.
    Единственные места (кроме канонов) где легально живёт font-weight / line-height. */
@@ -1200,7 +1193,7 @@ h4,
 .btn--pro { --fg: var(--pro-fg); --bd: transparent; background: var(--pro-gradient); background-size: 170% 170%; box-shadow: 0 8px 20px -7px var(--pro); }
 .btn--pro:hover { background-position: 100% 0; }
 .btn--sm { padding: 9px 15px; }                        /* размер из канона .t-ui (TRIP-165) */
-.btn--lg { padding: 15px 26px; font-size: var(--fs-h4); }  /* крупная кнопка = размер канона .t-label (TRIP-165) */
+.btn--lg { padding: 15px 26px; font-size: var(--fs-h4); }  /* крупная кнопка = 16px (--fs-h4); .t-label с TRIP-175 = 14px, крупная кнопка осталась 16 намеренно */
 .btn--icon { padding: 11px; width: 42px; height: 42px; }
 .btn--block { width: 100%; }
 .btn.is-on { --bg: var(--primary-soft); --fg: var(--brand); --bd: transparent; }

@@ -424,7 +424,7 @@ export default function Stay22HotelList({
         .s22-addr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .s22-price { display: flex; flex-direction: column; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
         .s22-price b { color: var(--ink); font-variant-numeric: tabular-nums; }
-        .s22-price span { color: var(--muted); margin-top: 2px; }  /* канон .t-nano + капс-оверлей — в app.css (TRIP-165) */
+        .s22-price span { color: var(--muted); margin-top: 2px; }  /* канон .t-micro (капс+моно) — в app.css (TRIP-175, был .t-nano+оверлей) */
 
         /* ---- pager ---- */
         .s22-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
