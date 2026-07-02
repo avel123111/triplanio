@@ -3,7 +3,7 @@
  * in the trip-editor's left column (design mockup: HotelView / TransferView /
  * ActivityView). Controller only:
  *   - load by id (useEntitySource)
- *   - view   -> PanelShell + EventPanelBody (design-faithful, EventPanels.jsx)
+ *   - view   -> PanelShell (chrome) + EventViewSections (canonical shared body)
  *   - edit   -> EventEditDialog variant="panel"
  *   - delete -> inline confirm -> delete row -> invalidate -> onClose()
  */
@@ -14,8 +14,8 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { Btn, Skeleton, useToast } from '@/design/index';
 import EventEditDialog from '@/components/common/EventEditDialog';
-import { useEntitySource } from '@/components/common/EventViewBody';
-import { PanelShell, EventPanelBody, kindIcon } from '@/components/common/EventPanels';
+import { useEntitySource, useEntityDocs, EventViewSections, eventTheme } from '@/components/common/EventViewBody';
+import { PanelShell, kindIcon } from '@/components/common/EventPanels';
 import { getSourceDocuments } from '@/lib/documents';
 import { collectDocPaths } from '@/lib/storageCleanup';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
@@ -41,6 +41,8 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
   }, [kind, id]);
 
   const { data, visit, fromVisit, toVisit } = useEntitySource(kind, id, { open: true, onError: () => onClose?.(), refreshKey });
+  // Docs state for the shared view body (read-only here — no upload in view mode).
+  const { docs, uploading, uploadFiles } = useEntityDocs(kind, data, canEdit);
 
   const invalidate = () => {
     const tripId = data?.trip_id;
@@ -75,7 +77,9 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
   const themeLabel = kind === 'transfer'
     ? t(data.transport_type === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer')
     : t(LABEL_KEY[kind] || 'budget.source_activity');
-  const title = kind === 'hotel' ? (data.name || themeLabel)
+  // Hotel: header shows the TYPE ("Accommodation") + city; the hotel name lives
+  // in the body name-card (redesign) so it isn't shown twice.
+  const title = kind === 'hotel' ? themeLabel
     : kind === 'activity' ? (data.title || themeLabel)
     : kind === 'service' ? (data.name || themeLabel)
     : (data.carrier || [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ') || themeLabel);
@@ -148,7 +152,11 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
           </div>
         </div>
       ) : (
-        <EventPanelBody kind={kind} entity={data} fromVisit={fromVisit} toVisit={toVisit} />
+        <EventViewSections
+          kind={kind} entity={data} fromVisit={fromVisit} toVisit={toVisit}
+          accent={eventTheme(kind, data).color}
+          docs={docs} canEdit={false} uploading={uploading} uploadFiles={uploadFiles}
+        />
       )}
     </PanelShell>
   );

@@ -28,7 +28,7 @@ import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import {
   Map as MapIcon, Calendar, FileText,
   BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
-  ShieldCheck,
+  ShieldCheck, Phone, Mail, Hash, ExternalLink, Check,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
 
@@ -132,19 +132,41 @@ function PaymentBadge({ t, status }) {
 //  Per-kind body
 // ─────────────────────────────────────────────────────────────────────────────
 
-function HotelBody({ entity, accent }) {
+// Hotel view — canonical card-based layout (TRIP-176 redesign). Name card
+// (name + address + platform pill), labelled sections wrapping bordered cards,
+// booking details as a row list. Renders its own docs + notes (new style), so
+// EventViewSections skips the shared docs/notes for the hotel kind.
+function HotelBody({ entity, docs = [] }) {
   const { t } = useI18n();
   const nights = stayNights(entity.check_in_datetime, entity.check_out_datetime);
+  const bookingUrl = entity.booking_url;
+  const platformName = hostnameFromUrl(bookingUrl);
+  const platformLogo = faviconUrl(bookingUrl);
+  const priceText = fmtPrice(entity.price, entity.currency);
+  const perNight = (priceText && nights > 0) ? fmtPrice(Number(entity.price) / nights, entity.currency) : null;
+  const notes = entity.notes;
   return (
-    <>
-      {entity.address && (
-        <div className="addr">
-          <MapIcon style={{ width: 16, height: 16, color: accent, flexShrink: 0, marginTop: 1 }} />
-          <div>{entity.address}</div>
-        </div>
-      )}
+    <div className="hv">
+      {/* Name card */}
+      <div className="hv-namecard">
+        <div className="hv-name t-title">{entity.name}</div>
+        {entity.address && (
+          <div className="hv-addr t-meta"><MapIcon size={13} /><span>{entity.address}</span></div>
+        )}
+        {bookingUrl && (
+          <div className="hv-plat">
+            <span className="hv-plat__ic">
+              {platformLogo ? <img src={platformLogo} alt="" /> : (platformName ? platformName[0].toUpperCase() : '?')}
+            </span>
+            <span className="hv-plat__nm t-meta">{t('event.booked_on', { platform: platformName || '—' })}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Stay dates */}
       {(entity.check_in_datetime || entity.check_out_datetime) && (
-        <Section title={t('event.checkin_checkout')} accent={accent}>
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('event.stay_dates')}</div>
           <div className="stay-dates">
             <div className="stay-dates__cell">
               <div className="stay-dates__lbl eyebrow">{t('trip.hotel_check_in')}</div>
@@ -152,6 +174,7 @@ function HotelBody({ entity, accent }) {
               <div className="stay-dates__t t-meta">{fmtTime(entity.check_in_datetime)}</div>
             </div>
             <div className="stay-dates__mid">
+              <Calendar size={14} style={{ color: 'var(--muted-2)' }} />
               {nights != null && <span className="t-meta">{t('fork.stay22_nights', { count: nights })}</span>}
             </div>
             <div className="stay-dates__cell">
@@ -160,27 +183,99 @@ function HotelBody({ entity, accent }) {
               <div className="stay-dates__t t-meta">{fmtTime(entity.check_out_datetime)}</div>
             </div>
           </div>
-        </Section>
-      )}
-      <Section title={t('event.cost')} accent={accent}>
-        <div className="kv-grid">
-          <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
-          <KV label={t('hotel.payment_status')}><PaymentBadge t={t} status={entity.payment_status} /></KV>
-          {entity.free_cancellation && entity.free_cancellation_until && (
-            <KV label={t('event.free_cancel_until')}>{fmtDT(entity.free_cancellation_until)}</KV>
-          )}
         </div>
-      </Section>
-      {(entity.booking_reference || entity.phone || entity.email) && (
-        <Section title={t('event.booking_details')} accent={accent}>
-          <div className="kv-grid">
-            <KV label={t('service.car_booking_ref')} mono>{entity.booking_reference}</KV>
-            <KV label={t('hotel.view_phone')}>{entity.phone}</KV>
-            <KV label="E-mail">{entity.email ? <a href={`mailto:${entity.email}`} style={{ color: 'var(--primary)' }}>{entity.email}</a> : null}</KV>
-          </div>
-        </Section>
       )}
-    </>
+
+      {/* Cost */}
+      {priceText && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('event.cost')}</div>
+          <div className="hv-card hv-cost">
+            <div className="hv-cost__main">
+              <div className="hv-price t-heading">{priceText}</div>
+              {perNight && <div className="hv-pernight t-meta">{perNight} / {t('view.nights_one')}</div>}
+            </div>
+            <PaymentBadge t={t} status={entity.payment_status} />
+          </div>
+        </div>
+      )}
+
+      {/* Free cancellation */}
+      {entity.free_cancellation && (
+        <div className="hv-cancel">
+          <span className="hv-cancel__ic"><Check /></span>
+          <span className="hv-cancel__tx t-strong">
+            {entity.free_cancellation_until
+              ? `${t('event.free_cancel_until')} ${fmtDate(entity.free_cancellation_until)}`
+              : t('event.free_cancel_have')}
+          </span>
+        </div>
+      )}
+
+      {/* Booking details */}
+      {(entity.booking_reference || entity.phone || entity.email || bookingUrl) && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('event.booking_details')}</div>
+          <div className="hv-rows">
+            {entity.booking_reference && (
+              <div className="hv-row">
+                <span className="hv-row__ic"><Hash /></span>
+                <span className="hv-row__k t-meta">{t('event.booking_ref')}</span>
+                <span className="hv-row__sp" />
+                <span className="hv-row__v t-strong mono">{entity.booking_reference}</span>
+              </div>
+            )}
+            {entity.phone && (
+              <div className="hv-row">
+                <span className="hv-row__ic"><Phone /></span>
+                <span className="hv-row__k t-meta">{t('event.phone')}</span>
+                <span className="hv-row__sp" />
+                <span className="hv-row__v t-strong">{entity.phone}</span>
+              </div>
+            )}
+            {entity.email && (
+              <div className="hv-row">
+                <span className="hv-row__ic"><Mail /></span>
+                <span className="hv-row__k t-meta">E-mail</span>
+                <span className="hv-row__sp" />
+                <a className="hv-row__v t-strong" href={`mailto:${entity.email}`} style={{ color: 'var(--primary)' }}>{entity.email}</a>
+              </div>
+            )}
+            {bookingUrl && (
+              <a className="hv-row hv-row--link" href={bookingUrl} target="_blank" rel="noreferrer">
+                <span className="hv-row__ic"><ExternalLink /></span>
+                <span className="hv-row__lbl t-ui">{t('event.view_booking')}</span>
+                <ExternalLink size={15} style={{ color: 'var(--muted-2)' }} />
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Documents */}
+      {docs.length > 0 && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {docs.map((d, i) => (
+              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
+                <div className="di"><FileText /></div>
+                <b>{d.file_name || t('event.file_word')}</b>
+                {d.file_size && <span className="ds">{d.file_size}</span>}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Notes */}
+      {notes && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('activity.view_notes')}</div>
+          <div className="hv-notes t-body">{notes}</div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -535,13 +630,14 @@ export function EventViewSections({ kind, entity, fromVisit, toVisit, accent, do
   const { t } = useI18n();
   return (
     <>
-      {kind === 'hotel' && <HotelBody entity={entity} accent={accent} />}
+      {kind === 'hotel' && <HotelBody entity={entity} docs={docs} />}
       {kind === 'transfer' && <TransferBody entity={entity} fromVisit={fromVisit} toVisit={toVisit} accent={accent} />}
       {kind === 'activity' && <ActivityBody entity={entity} accent={accent} />}
       {kind === 'service' && <ServiceBody entity={entity} accent={accent} />}
 
-      {/* Documents — view is READ-ONLY: list only, no upload zone (design). */}
-      {docs.length > 0 && (
+      {/* Documents — view is READ-ONLY: list only, no upload zone (design).
+          Hotel renders its own docs+notes inside HotelBody (new card style). */}
+      {kind !== 'hotel' && docs.length > 0 && (
         <Section title={`${t('activity.documents_label')} · ${docs.length}`} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {docs.map((d, i) => (
@@ -561,8 +657,8 @@ export function EventViewSections({ kind, entity, fromVisit, toVisit, accent, do
         </Section>
       )}
 
-      {/* Notes */}
-      {(entity.notes || entity.details?.notes) && (
+      {/* Notes (hotel renders its own inside HotelBody) */}
+      {kind !== 'hotel' && (entity.notes || entity.details?.notes) && (
         <Section title={t('activity.view_notes')} accent={accent}>
           <div className="notes-block" style={{ background: 'transparent', border: 'none', padding: 0 }}>
             {entity.notes || entity.details?.notes}

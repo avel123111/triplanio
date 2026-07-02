@@ -4124,6 +4124,41 @@ h4,
 .stay-dates__t{ color:var(--muted);margin-top:3px;}
 .stay-dates__mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 12px;border-left:1px dashed var(--line-2);border-right:1px dashed var(--line-2);}
 .stay-dates__mid span{ color:var(--muted);white-space:nowrap;}
+/* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
+   sections wrapping bordered surface cards; details as a list of rows. */
+.hv{display:flex;flex-direction:column;gap:16px;}
+.hv-namecard{padding:16px 17px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);}
+.hv-name{ color:var(--ink);line-height:1.2;}
+.hv-addr{display:flex;align-items:flex-start;gap:6px; color:var(--muted);margin-top:8px;}
+.hv-addr svg{flex:none;margin-top:1px;color:var(--muted-2);}
+.hv-plat{display:inline-flex;align-items:center;gap:8px;margin-top:13px;padding:5px 12px 5px 5px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--line);}
+.hv-plat__ic{width:22px;height:22px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;overflow:hidden;background:var(--primary);}
+.hv-plat__ic img{width:100%;height:100%;object-fit:contain;background:#fff;}
+.hv-plat__nm{ color:var(--ink-2);}
+.hv-sec{display:flex;flex-direction:column;}
+.hv-lbl{ color:var(--muted);margin-bottom:7px;}
+.hv-card{padding:13px 15px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);}
+.hv-cost{display:flex;align-items:center;gap:12px;}
+.hv-cost__main{flex:1;min-width:0;}
+.hv-price{ color:var(--ink);}
+.hv-pernight{ color:var(--muted);margin-top:2px;}
+.hv-cancel{display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:var(--r-md);border:1px solid color-mix(in srgb,var(--success) 35%,transparent);background:var(--success-soft);}
+.hv-cancel__ic{width:26px;height:26px;flex:none;border-radius:var(--r-pill);background:color-mix(in srgb,var(--success) 22%,transparent);color:var(--success-ink);display:flex;align-items:center;justify-content:center;}
+.hv-cancel__ic svg{width:14px;height:14px;}
+.hv-cancel__tx{ color:var(--ink);}
+.hv-rows{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);overflow:hidden;}
+.hv-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line-2);}
+.hv-row:last-child{border-bottom:0;}
+.hv-row__ic{display:flex;flex:none;color:var(--muted);}
+.hv-row__ic svg{width:16px;height:16px;}
+.hv-row__k{flex:none; color:var(--muted);}
+.hv-row__sp{flex:1;}
+.hv-row__v{ color:var(--ink);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;}
+.hv-row--link{text-decoration:none;cursor:pointer;transition:background .12s;}
+.hv-row--link:hover{background:var(--surface-2);}
+.hv-row--link .hv-row__ic{color:var(--primary);}
+.hv-row__lbl{flex:1; color:var(--primary);}
+.hv-notes{padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface-2); color:var(--ink-2);line-height:1.5;}
 /* booking link */
 .bk-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface); color:var(--ink-2);text-decoration:none;transition:background .12s;width:fit-content;}
 .bk-link:hover{background:var(--primary-soft);color:var(--primary);}
