@@ -183,6 +183,16 @@ export const COLORS = [
   { key: 'danger',  label: 'Ошибка',         css: 'var(--danger-ink)',  util: '.err' },
   { key: 'warn',    label: 'Предупреждение', css: 'var(--warning-ink)', util: '.wrn' },
   { key: 'success', label: 'Успех',          css: 'var(--success-ink)', util: '' },
+  // Палитра типов событий/сервисов — для ТЕКСТА берём -ink варианты (так и красит
+  // приложение: color: var(--ev-*-ink)), они легибельны в обеих темах.
+  { key: 'ev-hotel',     label: 'Эвент · Отель',      css: 'var(--ev-hotel-ink)',     util: '' },
+  { key: 'ev-transfer',  label: 'Эвент · Переезд',    css: 'var(--ev-transfer-ink)',  util: '' },
+  { key: 'ev-activity',  label: 'Эвент · Активность', css: 'var(--ev-activity-ink)',  util: '' },
+  { key: 'ev-car',       label: 'Эвент · Авто',       css: 'var(--ev-car-ink)',       util: '' },
+  { key: 'ev-esim',      label: 'Эвент · eSIM',       css: 'var(--ev-esim-ink)',      util: '' },
+  { key: 'ev-insurance', label: 'Эвент · Страховка',  css: 'var(--ev-insurance-ink)', util: '' },
+  { key: 'ev-deadline',  label: 'Эвент · Дедлайн',    css: 'var(--ev-deadline-ink)',  util: '' },
+  { key: 'ev-service',   label: 'Эвент · Сервис',     css: 'var(--ev-service-ink)',   util: '' },
 ];
 export const colorByKey = (key) => COLORS.find((c) => c.key === key) || null;
 
