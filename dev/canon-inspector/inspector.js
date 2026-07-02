@@ -82,46 +82,68 @@ function injectStyles() {
   .ci-launch.is-on .ci-dot { background: #fff; }
   .ci-hi { position: fixed; z-index: 2147482000; pointer-events: none; border: 2px solid #2563eb;
     background: rgba(37,99,235,.10); border-radius: 4px; transition: all .04s linear; display: none; }
-  .ci-panel { position: fixed; z-index: 2147483000; width: 300px; max-height: 78vh; overflow: auto;
-    background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 14px;
-    box-shadow: 0 16px 48px rgba(0,0,0,.5); display: none; }
-  .ci-panel__head { padding: 12px 14px; border-bottom: 1px solid #1e293b; position: sticky; top: 0; background: #0f172a; }
-  .ci-panel__now { font-size: 12px; color: #94a3b8; }
-  .ci-panel__now b { color: #e2e8f0; font-size: 13px; }
-  .ci-panel__prev { font-size: 12px; color: #94a3b8; margin-top: 2px; }
-  .ci-panel__prev b { color: #60a5fa; font-size: 13px; }
+  /* panel = header / scrollable body / footer (structured) */
+  .ci-panel { position: fixed; z-index: 2147483000; width: 336px; max-height: 84vh; display: none; flex-direction: column;
+    background: #0f172a; color: #e2e8f0; border: 1px solid #33415588; border-radius: 16px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.6); overflow: hidden; }
+  .ci-head { flex: none; padding: 12px 14px; border-bottom: 1px solid #1e293b; cursor: move;
+    background: linear-gradient(180deg,#16203a,#0f172a); }
+  .ci-head__bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .ci-head__title { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #93c5fd; }
+  .ci-head__x { width: 22px; height: 22px; flex: none; border: 0; border-radius: 7px; background: #1e293b; color: #94a3b8; cursor: pointer; font-size: 12px; line-height: 1; }
+  .ci-head__x:hover { background: #334155; color: #fff; }
+  .ci-status { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: #94a3b8; }
+  .ci-status__dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px #22c55e22; }
+  .ci-status__dot--off { background: #ef4444; box-shadow: 0 0 0 3px #ef444422; }
+  .ci-status b { color: #e2e8f0; font-size: 13px; }
   .ci-panel__off { color: #fca5a5; }
-  .ci-panel__samp { margin-top: 4px; font-size: 12px; color: #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ci-scope { display: flex; gap: 6px; margin-top: 10px; }
-  .ci-scope button { flex: 1; padding: 6px 8px; border-radius: 8px; border: 1px solid #334155; background: #1e293b;
+  .ci-status__prev { margin-top: 4px; padding-left: 16px; font-size: 12px; color: #94a3b8; }
+  .ci-status__prev b { color: #60a5fa; }
+  .ci-samp { margin-top: 9px; padding: 7px 10px; border-radius: 9px; background: #0b1220; border: 1px solid #1e293b;
+    font-size: 12px; color: #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .ci-body { flex: 1; overflow: auto; }
+  .ci-sec { padding: 11px 14px; border-bottom: 1px solid #172033; }
+  .ci-sec__h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px;
+    font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #6b7a94; }
+  .ci-sec__h span { font-weight: 600; letter-spacing: 0; text-transform: none; color: #475569; font-family: ui-monospace, monospace; }
+  .ci-hint { font-size: 11px; color: #64748b; font-style: italic; }
+  .ci-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .ci-scope { display: flex; gap: 6px; }
+  .ci-scope button { flex: 1; padding: 7px 8px; border-radius: 8px; border: 1px solid #334155; background: #1e293b;
     color: #94a3b8; font-size: 11px; font-weight: 600; cursor: pointer; }
   .ci-scope button.is-on { background: #172554; border-color: #2563eb; color: #e2e8f0; }
-  .ci-mods { display: flex; gap: 6px; padding: 10px 14px; border-bottom: 1px solid #1e293b; }
-  .ci-mods__lbl { font-size: 11px; color: #64748b; align-self: center; margin-right: 2px; }
+
   .ci-chip { padding: 5px 10px; border-radius: 999px; border: 1px solid #334155; background: #1e293b;
     color: #94a3b8; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .ci-chip:hover { border-color: #475569; }
   .ci-chip.is-on { background: #2563eb; border-color: #2563eb; color: #fff; }
   .ci-chip[disabled] { opacity: .4; cursor: not-allowed; }
-  .ci-mods--col { flex-wrap: wrap; }
+
   .ci-sw { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px 4px 5px; border-radius: 999px;
     border: 1px solid #334155; background: #1e293b; color: #94a3b8; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .ci-sw:hover { border-color: #475569; }
   .ci-sw i { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); flex: none; display: block; }
   .ci-sw.is-on { border-color: #2563eb; color: #fff; background: #172554; }
-  .ci-canon { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #1e293b;
-    background: transparent; color: inherit; padding: 9px 14px; cursor: pointer; }
-  .ci-canon:hover { background: #1e293b; }
-  .ci-canon.is-cur { background: #172554; }
+
+  .ci-canons { display: flex; flex-direction: column; gap: 5px; }
+  .ci-canon { display: block; width: 100%; text-align: left; border: 1px solid transparent; border-radius: 10px;
+    background: #0d1626; color: inherit; padding: 8px 11px; cursor: pointer; transition: background .1s, border-color .1s; }
+  .ci-canon:hover { background: #16203a; }
+  .ci-canon.is-cur { background: #172554; border-color: #2563eb; }
   .ci-canon__t { font-size: 13px; font-weight: 600; }
-  .ci-canon__t i { color: #60a5fa; font-style: normal; }
+  .ci-canon__t i { color: #34d399; font-style: normal; font-size: 11px; font-weight: 700; }
   .ci-canon__mk { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px;
-    background: #1e293b; color: #93c5fd; font-size: 10px; font-weight: 700;
+    background: #0f172a; color: #93c5fd; font-size: 10px; font-weight: 700;
     font-family: ui-monospace, monospace; vertical-align: middle; }
   .ci-canon__spec { font-size: 11px; color: #94a3b8; margin-top: 2px; font-family: ui-monospace, monospace; }
   .ci-canon__role { font-size: 11px; color: #64748b; margin-top: 1px; }
-  .ci-panel__foot { display: flex; gap: 8px; padding: 10px 14px; position: sticky; bottom: 0; background: #0f172a; border-top: 1px solid #1e293b; }
-  .ci-btn { flex: 1; padding: 8px; border-radius: 9px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+  .ci-foot { flex: none; display: flex; gap: 8px; padding: 10px 14px; background: #0f172a; border-top: 1px solid #1e293b; }
+  .ci-btn { flex: 1; padding: 9px; border-radius: 9px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 12px; font-weight: 600; cursor: pointer; }
   .ci-btn:hover { background: #334155; }
-  .ci-btn--save { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .ci-btn--save { flex: 2; background: #2563eb; border-color: #2563eb; color: #fff; }
   .ci-btn--save:hover { background: #1d4ed8; }
   .ci-btn[disabled] { opacity: .4; cursor: not-allowed; }
   .ci-tray { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; width: 320px; max-height: 60vh; overflow: auto;
@@ -139,7 +161,7 @@ function injectStyles() {
   .ci-row__x { float: right; color: #64748b; cursor: pointer; padding-left: 8px; }
   .ci-row__x:hover { color: #fca5a5; }
   .ci-empty { padding: 16px 14px; color: #64748b; font-size: 12px; }
-  .ci-panel__head, .ci-tray__head { cursor: move; }
+  .ci-tray__head { cursor: move; }
   .ci-offcanon-hi { outline: 2px solid #ef4444 !important; outline-offset: 1px;
     background: rgba(239,68,68,.10) !important; }
   `;
@@ -298,67 +320,58 @@ function selectEl(el) {
   positionPanel(el);
 }
 
+// A titled section: uppercase header (+ optional monospace note) then its nodes.
+function section(title, note, ...nodes) {
+  const sec = h('ci-sec');
+  const hd = h('ci-sec__h');
+  hd.append(title);
+  if (note) { const n = h('', 'span'); n.textContent = note; hd.appendChild(n); }
+  sec.appendChild(hd);
+  for (const n of nodes) sec.appendChild(n);
+  return sec;
+}
+function hintNode(text) { const d = h('ci-hint'); d.textContent = text; return d; }
+
 function render(el) {
   const base = baseCanon.get(el);
   const pending = pendingCanon.get(el);
   const scope = scopeMode.get(el);
   const groupCount = scopeTargets(el).length;
 
-  // head: real current + (if previewing something else) the preview
-  const head = h('ci-panel__head');
-  const nowLabel = base
-    ? `<b>${canonLabel(base)}</b>`
-    : `<b class="ci-panel__off">off-canon</b> — не совпадает ни с одним`;
-  let headHtml = `<div class="ci-panel__now">Сейчас: ${nowLabel}</div>`;
-  if (!sameCanon(pending, base)) headHtml += `<div class="ci-panel__prev">Предпросмотр: <b>${canonLabel(pending)}</b></div>`;
-  headHtml += `<div class="ci-panel__samp">${escapeHtml((el.textContent || '').trim().slice(0, 60)) || '<пусто>'}</div>`;
-  head.innerHTML = headHtml;
+  // ── header (draggable): title bar + status + sample ──
+  const head = h('ci-head');
+  const bar = h('ci-head__bar');
+  const title = h('ci-head__title'); title.textContent = 'Инспектор канонов';
+  const xBtn = h('ci-head__x', 'button'); xBtn.textContent = '✕'; xBtn.title = 'Закрыть';
+  xBtn.onclick = () => { els.panel.style.display = 'none'; };
+  bar.append(title, xBtn);
+  const status = h('ci-status');
+  status.innerHTML = base
+    ? `<span class="ci-status__dot"></span><span>Сейчас: <b>${canonLabel(base)}</b></span>`
+    : `<span class="ci-status__dot ci-status__dot--off"></span><span><b class="ci-panel__off">off-canon</b> — не на каноне</span>`;
+  head.append(bar, status);
+  if (!sameCanon(pending, base)) {
+    const prev = h('ci-status__prev'); prev.innerHTML = `Предпросмотр: <b>${canonLabel(pending)}</b>`;
+    head.appendChild(prev);
+  }
+  const samp = h('ci-samp'); samp.textContent = (el.textContent || '').trim().slice(0, 90) || '‹пусто›';
+  head.appendChild(samp);
 
+  // ── body: scope · canon · states · colour ──
+  const body = h('ci-body');
+
+  // scope
   const scopeRow = h('ci-scope');
   const bEl = h(scope === 'el' ? 'is-on' : '', 'button'); bEl.textContent = 'Этот';
   bEl.onclick = () => setScope(el, 'el');
-  const bGroup = h(scope === 'group' ? 'is-on' : '', 'button'); bGroup.textContent = `Все похожие · ${groupSelector(el)} (${groupCount})`;
+  const bGroup = h(scope === 'group' ? 'is-on' : '', 'button'); bGroup.textContent = `Все похожие (${groupCount})`;
+  bGroup.title = groupSelector(el);
   bGroup.onclick = () => setScope(el, 'group');
   scopeRow.append(bEl, bGroup);
-  head.appendChild(scopeRow);
+  body.appendChild(section('Область', scope === 'group' ? groupSelector(el) : '', scopeRow));
 
-  // states — per-canon set from the design-system mockup (only those that change
-  // THIS canon). strong/flush save to the worklist; caps/track/mono/mute preview only.
-  const mods = h('ci-mods');
-  const modLbl = h('ci-mods__lbl'); modLbl.textContent = 'Состояния:';
-  mods.appendChild(modLbl);
-  const baseApply = pending ? probed.canons.get(pending.id).apply : null;
-  const ps = psFor(el);
-  for (const st of STATES) {
-    if (baseApply && !st.applies(baseApply)) continue;   // hide states that don't change this canon
-    const chip = h('ci-chip', 'button');
-    let on = false, label = st.label;
-    if (st.saveable) on = !!pending && pending.mods.includes(st.key);
-    else if (st.cycle) { on = ps.track > 0; if (on) label = `${st.label} ·${ps.track}`; }
-    else on = ps.keys.has(st.key);
-    chip.textContent = label;
-    if (on) chip.classList.add('is-on');
-    if (!pending) chip.setAttribute('disabled', '');
-    chip.onclick = () => (st.saveable ? toggleMod(el, st.key) : togglePreviewState(el, st.key));
-    mods.appendChild(chip);
-  }
-
-  // colour — sanctioned text colours (SAVED to worklist). Independent of canon.
-  const curColor = pendingColor.get(el) ?? null;
-  const colorRow = h('ci-mods ci-mods--col');
-  const colLbl = h('ci-mods__lbl'); colLbl.textContent = 'Цвет:';
-  colorRow.appendChild(colLbl);
-  for (const c of COLORS) {
-    const sw = h('ci-sw', 'button');
-    sw.title = `${c.label}${c.util ? ' · ' + c.util : ''}`;
-    sw.innerHTML = `<i style="background:${c.css}"></i><span>${c.label}</span>`;
-    if (curColor === c.key) sw.classList.add('is-on');
-    sw.onclick = () => pickColor(el, c.key);
-    colorRow.appendChild(sw);
-  }
-
-  // canon list
-  const list = document.createDocumentFragment();
+  // canon
+  const canons = h('ci-canons');
   for (const c of CANONS) {
     const p = probed.canons.get(c.id);
     const btn = h('ci-canon', 'button');
@@ -369,30 +382,62 @@ function render(el) {
       + `<div class="ci-canon__spec">${p.human}</div>`
       + `<div class="ci-canon__role">${c.role}</div>`;
     btn.onclick = () => pickCanon(el, c.id);
-    list.appendChild(btn);
+    canons.appendChild(btn);
   }
+  body.appendChild(section('Канон', `${CANONS.length}`, canons));
 
-  // footer: save (only when the preview differs from the real current)
-  const foot = h('ci-panel__foot');
-  const saveBtn = h('ci-btn ci-btn--save', 'button'); saveBtn.textContent = 'Сохранить';
-  if (!isChanged(el)) saveBtn.setAttribute('disabled', '');
+  // states — only those that change THIS canon (needs a chosen canon)
+  const baseApply = pending ? probed.canons.get(pending.id).apply : null;
+  const ps = psFor(el);
+  const stWrap = h('ci-wrap');
+  for (const st of STATES) {
+    if (baseApply && !st.applies(baseApply)) continue;
+    const chip = h('ci-chip', 'button');
+    let on = false, label = st.label;
+    if (st.saveable) on = !!pending && pending.mods.includes(st.key);
+    else if (st.cycle) { on = ps.track > 0; if (on) label = `${st.label} ·${ps.track}`; }
+    else on = ps.keys.has(st.key);
+    chip.textContent = label;
+    if (on) chip.classList.add('is-on');
+    chip.onclick = () => (st.saveable ? toggleMod(el, st.key) : togglePreviewState(el, st.key));
+    stWrap.appendChild(chip);
+  }
+  body.appendChild(section('Состояния', '', pending ? stWrap : hintNode('Выбери канон, чтобы включить состояния')));
+
+  // colour — sanctioned text colours (SAVED to the worklist)
+  const curColor = pendingColor.get(el) ?? null;
+  const colWrap = h('ci-wrap');
+  for (const c of COLORS) {
+    const sw = h('ci-sw', 'button');
+    sw.title = `${c.label}${c.util ? ' · ' + c.util : ''}`;
+    sw.innerHTML = `<i style="background:${c.css}"></i><span>${c.label}</span>`;
+    if (curColor === c.key) sw.classList.add('is-on');
+    sw.onclick = () => pickColor(el, c.key);
+    colWrap.appendChild(sw);
+  }
+  body.appendChild(section('Цвет текста', '', colWrap));
+
+  // ── footer ──
+  const foot = h('ci-foot');
+  const saveBtn = h('ci-btn ci-btn--save', 'button');
+  const changed = isChanged(el);
+  saveBtn.textContent = changed ? 'Сохранить' : 'Нет изменений';
+  if (!changed) saveBtn.setAttribute('disabled', '');
   saveBtn.onclick = () => commit(el);
   const reset = h('ci-btn', 'button'); reset.textContent = 'Сбросить';
   reset.onclick = () => resetEl(el);
-  const close = h('ci-btn', 'button'); close.textContent = 'Закрыть';
-  close.onclick = () => { els.panel.style.display = 'none'; };
-  foot.append(saveBtn, reset, close);
+  foot.append(saveBtn, reset);
 
   els.panel.innerHTML = '';
-  els.panel.append(head, mods, colorRow, ...list.childNodes, foot);
+  els.panel.append(head, body, foot);
   makeDraggable(els.panel, head, () => { panelMoved = true; });   // drag by header
 }
 
 function positionPanel(el) {
-  els.panel.style.display = 'block';
+  els.panel.style.display = 'flex';              // column: header / scroll body / footer
   if (panelMoved) return;                        // user moved it — keep their position
   const r = el.getBoundingClientRect();
-  const pw = 300, gap = 10;
+  const pw = 336, gap = 10;                      // keep in sync with .ci-panel width
   let left = r.right + gap;
   if (left + pw > window.innerWidth) left = Math.max(gap, r.left - pw - gap);
   if (left + pw > window.innerWidth) left = window.innerWidth - pw - gap;
