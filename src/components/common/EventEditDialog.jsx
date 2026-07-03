@@ -1554,7 +1554,6 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
   const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
-      <SectionHeader color={color}>{t('event.hotel_about')}</SectionHeader>
       <div className="eed-stack">
         <div data-vfield="name" className={inv('name')}>
           <Label>{t('event.name_req')}</Label>
@@ -2137,7 +2136,6 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
   const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
-      <SectionHeader color={color}>{t('event.activity_about')}</SectionHeader>
       <div data-vfield="title" className={inv('title')}>
         <Label>{t('event.name_req')}</Label>
         <Input value={form.title} onChange={(e) => setField('title', e.target.value)} placeholder={t('event.ph_activity_example')} />
