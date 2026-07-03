@@ -11,7 +11,7 @@
 // element that looks like it ("Все похожие", by shared class) — e.g. all the
 // sidebar menu items at once, not a single word.
 
-import { CANONS, STATES, COLORS, probeCanons, detectCanon, comboApply, probeColors, detectColor, colorByKey } from './canons.js';
+import { CANONS, KNOBS, STATES, COLORS, probeCanons, detectCanon, comboApply, probeColors, detectColor, colorByKey } from './canons.js';
 import { describe, groupSelector } from './describe.js';
 
 const LS_KEY = 'ci:canon-changes';
@@ -139,6 +139,11 @@ function injectStyles() {
     font-family: ui-monospace, monospace; vertical-align: middle; }
   .ci-canon__spec { font-size: 11px; color: #94a3b8; margin-top: 2px; font-family: ui-monospace, monospace; }
   .ci-canon__role { font-size: 11px; color: #64748b; margin-top: 1px; }
+  .ci-knobs { display: flex; flex-direction: column; gap: 4px; }
+  .ci-knob { display: flex; align-items: baseline; gap: 8px; font-size: 11px; }
+  .ci-knob code { font-family: ui-monospace, monospace; color: #93c5fd; }
+  .ci-knob b { font-family: ui-monospace, monospace; color: #e2e8f0; }
+  .ci-knob span { color: #64748b; }
 
   .ci-foot { flex: none; display: flex; gap: 8px; padding: 10px 14px; background: #0f172a; border-top: 1px solid #1e293b; }
   .ci-btn { flex: 1; padding: 9px; border-radius: 9px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -385,6 +390,18 @@ function render(el) {
     canons.appendChild(btn);
   }
   body.appendChild(section('Канон', `${CANONS.length}`, canons));
+
+  // knobs — дисплейные «ручки» из файла типографики «Экзо» (TRIP-183), с живым значением
+  const knobs = h('ci-knobs');
+  const rootCS = getComputedStyle(document.documentElement);
+  for (const k of KNOBS) {
+    const val = (rootCS.getPropertyValue(k.css) || '').trim() || '—';
+    const row = h('ci-knob');
+    const nm = k.css === k.file ? k.css : `${k.css} ↔ ${k.file}`;
+    row.innerHTML = `<code>${nm}</code> <b>${val}</b> <span>${k.label}</span>`;
+    knobs.appendChild(row);
+  }
+  body.appendChild(section('Ручки (модификаторы файла)', `${KNOBS.length}`, knobs));
 
   // states — only those that change THIS canon (needs a chosen canon)
   const baseApply = pending ? probed.canons.get(pending.id).apply : null;

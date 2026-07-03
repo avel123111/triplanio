@@ -1,4 +1,5 @@
-// TRIP-165 · Canon inspector — canon registry + live detection.
+// TRIP-165/183 · Canon inspector — canon registry + live detection.
+// TRIP-183: каноны «Экзо» (см. mockup-имена ниже + KNOBS); числа пробятся из app.css.
 //
 // The 10 typography canons are defined ONCE, in src/design/app.css (the .t-*
 // co-selector rules). This module does NOT re-hardcode their numeric specs —
@@ -13,31 +14,47 @@
 //
 // Only the human-facing labels/roles live here (the tool's own copy).
 
-// `mockup` — имя стиля из присланной Павлом матрицы типографики (макет
-// «Triplanio Design System»). Каноны у себя мы НЕ переименовывали (наши имена
-// = cls), но по именам макета ориентироваться удобнее — показываем их рядом.
-// t-mono в 9-канонной матрице макета отсутствует (наш доп. моно-канон) → '—'.
+// `mockup` — имя стиля из файла типографики «Экзо» (TRIP-183), присланного Павлом.
+// Каноны у себя мы НЕ переименовывали (наши имена = cls / name), но по именам файла
+// ориентироваться удобнее — показываем их рядом («макет: …»). Гарнитуры те же
+// (Exo 2 / Golos Text / JetBrains Mono); TRIP-183 переставил параметры и перевёл
+// мета-ярус (meta/label/meta-md) в моно. Числа инспектор берёт из ЖИВОГО app.css.
 export const CANONS = [
-  { id: 1,  cls: 't-display',    name: 'Display',    mockup: 'display', role: 'Герой, 1 на экран' },
-  { id: 2,  cls: 't-title',      name: 'Title',      mockup: 'h1',      role: 'Заголовок страницы' },
-  { id: 3,  cls: 't-heading',    name: 'Heading',    mockup: 'h2',      role: 'Заголовок экрана / секции' },
-  { id: 4,  cls: 't-subheading', name: 'Subheading', mockup: 'h3',      role: 'Заголовок панели / карточки' },
-  { id: 5,  cls: 't-label',      name: 'Label',      mockup: 'label',   role: 'Кнопки, крупные лейблы' },
-  { id: 6,  cls: 't-body',       name: 'Body',       mockup: 'body',    role: 'Основной текст, абзацы' },
-  { id: 7,  cls: 't-ui',         name: 'UI',         mockup: 'ui',      role: 'Плотный интерфейсный текст' },
-  { id: 8,  cls: 't-meta',       name: 'Meta',       mockup: 'meta',    role: 'Даты, вторичная инфо, НЕ-капс подписи booking (Golos)' },
-  { id: 9,  cls: 't-micro',      name: 'Micro',      mockup: 'micro',   role: 'Бейджи, капс-метки, капс-эйбрау (JetBrains Mono)' },
-  { id: 10, cls: 't-mono',       name: 'Mono',       mockup: '—',       role: 'Коды, идентификаторы, техно-метаданные' },
-  // TRIP-175: .t-nano/.t-caption СХЛОПНУТЫ (макет их не содержит) — их члены
-  // переехали в .t-meta (НЕ-капс подписи) и .t-micro (капс-эйбрау). Снова 10 канонов.
+  { id: 1,  cls: 't-display',    name: 'Display',    mockup: 'hero',     role: 'Герой, 1 на экран (Exo 2)' },
+  { id: 2,  cls: 't-title',      name: 'Title',      mockup: 'h1',       role: 'Заголовок страницы (Exo 2)' },
+  { id: 3,  cls: 't-heading',    name: 'Heading',    mockup: 'h2',       role: 'Заголовок экрана / секции (Exo 2)' },
+  { id: 4,  cls: 't-subheading', name: 'Subheading', mockup: 'h3',       role: 'Заголовок панели / карточки (Exo 2)' },
+  { id: 5,  cls: 't-label',      name: 'Label',      mockup: 'title',    role: 'Кнопки, крупные лейблы (Golos 700)' },
+  { id: 6,  cls: 't-body',       name: 'Body',       mockup: 'body',     role: 'Основной текст, абзацы (Golos 400)' },
+  { id: 7,  cls: 't-ui',         name: 'UI',         mockup: 'body-med', role: 'Плотный интерфейсный текст (Golos 600)' },
+  { id: 8,  cls: 't-meta',       name: 'Meta',       mockup: 'meta',     role: 'Даты, вторичная инфо, подписи booking (JetBrains Mono 500)' },
+  { id: 9,  cls: 't-micro',      name: 'Micro',      mockup: 'label',    role: 'Бейджи, капс-метки, капс-эйбрау (JetBrains Mono 600, UPPER)' },
+  { id: 10, cls: 't-mono',       name: 'Mono',       mockup: 'meta-md',  role: 'Рейтинги, счётчики, коды/идентификаторы (JetBrains Mono 700)' },
+  // TRIP-183: мета-ярус (t-meta/t-micro/t-mono) — на JetBrains Mono (каноны «Экзо»).
+  // Прозаичный код/email при желании переносится .t-mono → .t-meta канон-аудитором.
+];
+
+// Дисплейные «ручки» (модификаторы) из файла типографики «Экзо» — глобальные
+// CSS-переменные в src/design/app.css (:root). Правишь тут — двигается везде.
+// Показываем дуально: наше имя ↔ имя в файле. (TRIP-183)
+export const KNOBS = [
+  { css: '--fd-w',       file: '--fd-w',       label: 'Вес заголовков (hero/h1/h2)' },
+  { css: '--fd-w3',      file: '--fd-w3',      label: 'Вес h3 (t-subheading)' },
+  { css: '--fd-k',       file: '--fd-k',       label: 'Масштаб дисплейного кегля' },
+  { css: '--track-hero', file: '--track-hero', label: 'Трекинг hero (t-display)' },
+  { css: '--track-h',    file: '--track-h',    label: 'Трекинг h1/h2/h3' },
+  { css: '--track-caps', file: '--track-caps', label: 'Трекинг капс-лейблов (t-micro)' },
 ];
 
 // The sanctioned orthogonal modifiers (app.css Фаза 3). They layer on top of a
 // canon; the only legal place (besides canons) where font-weight / line-height
 // is set. Used for live detection (probe canon × modifier subsets).
+// Наши орто-модификаторы (наше имя ↔ имя в файле «Экзо»). Файл покрывает вес/трекинг
+// заголовков ГЛОБАЛЬНЫМИ ручками (KNOBS выше), а не per-element классами, поэтому у
+// strong/flush прямого имени в файле нет (file: '—'). (TRIP-183)
 export const MODIFIERS = [
-  { key: 'strong', cls: 't-strong', label: 'strong' },
-  { key: 'flush',  cls: 't-flush',  label: 'flush'  },
+  { key: 'strong', cls: 't-strong', label: 'strong', file: '—' },
+  { key: 'flush',  cls: 't-flush',  label: 'flush',  file: '—' },
 ];
 
 // TRIP-175 · Состояния стиля — зеркалит специмен дизайн-системы (макет): у каждого
