@@ -2144,6 +2144,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
   const { t } = useI18nFormat();
   const color = TYPE_META.activity.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
       <SectionHeader color={color}>{t('event.activity_about')}</SectionHeader>
@@ -2169,27 +2170,29 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         />
       </div>
 
-      <SectionHeader color={color}>{t('event.when')}</SectionHeader>
-      <div className="fld-grid">
-        <div className={`field ${inv('start')}`} data-vfield="start">
-          <Label>{t('event.start')}</Label>
-          <DateTimeInput
-            value={form.startLocal}
-            onChange={(v) => setField('startLocal', v)}
-            onTimeMissingChange={(v) => setTime('start', v)}
-          />
-          <TimezoneHint tz={tz} />
-          <FieldError issues={issues} field="start" />
-        </div>
-        <div className={`field ${inv('end')}`} data-vfield="end">
-          <Label>{t('event.end')}</Label>
-          <DateTimeInput
-            value={form.endLocal}
-            onChange={(v) => setField('endLocal', v)}
-            onTimeMissingChange={(v) => setTime('end', v)}
-          />
-          <TimezoneHint tz={tz} />
-          <FieldError issues={issues} field="end" />
+      <div className="eed-dateblock">
+        <div className="eed-dateblock__lbl t-ui">{t('event.when')}</div>
+        <div className="fld-grid">
+          <div className={`field ${inv('start')}`} data-vfield="start">
+            <Label>{t('event.start')}</Label>
+            <DateTimeInput
+              value={form.startLocal}
+              onChange={(v) => setField('startLocal', v)}
+              onTimeMissingChange={(v) => setTime('start', v)}
+            />
+            <TimezoneHint tz={tz} />
+            <FieldError issues={issues} field="start" />
+          </div>
+          <div className={`field ${inv('end')}`} data-vfield="end">
+            <Label>{t('event.end')}</Label>
+            <DateTimeInput
+              value={form.endLocal}
+              onChange={(v) => setField('endLocal', v)}
+              onTimeMissingChange={(v) => setTime('end', v)}
+            />
+            <TimezoneHint tz={tz} />
+            <FieldError issues={issues} field="end" />
+          </div>
         </div>
       </div>
 
@@ -2205,18 +2208,19 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         </div>
       </div>
 
-      <SectionHeader color={color}>{t('event.docs_notes')}</SectionHeader>
-      <DocumentsField
-        value={form.documents}
-        onChange={(docs) => setField('documents', docs)}
-        onUploadingChange={setUploading}
-        tripId={tripId}
-        bare
-      />
-      <div>
-        <Label>{t('event.notes')}</Label>
-        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
-      </div>
+      <Accordion title={t('event.docs_notes')} badge={docCount}>
+        <DocumentsField
+          value={form.documents}
+          onChange={(docs) => setField('documents', docs)}
+          onUploadingChange={setUploading}
+          tripId={tripId}
+          bare
+        />
+        <div className="eed-accrow">
+          <Label>{t('event.notes')}</Label>
+          <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
+        </div>
+      </Accordion>
     </>
   );
 }
