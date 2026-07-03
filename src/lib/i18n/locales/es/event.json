@@ -150,6 +150,7 @@
   "type_hotel": "Hotel",
   "type_transfer": "Transporte",
   "view_booking": "Ver la reserva",
+  "pick_datetime": "Elegir fecha",
   "when": "Cuándo",
   "with_layovers": "Con escalas"
 }

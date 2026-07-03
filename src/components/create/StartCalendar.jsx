@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 import { DateTime } from 'luxon';
 import { Icon } from '../../design/icons';
+import { useT } from '@/lib/i18n/I18nContext';
 
 // Shared month-grid calendar — extracted verbatim from TripStructureEdit so the
 // editor and the trip-creation flow render the SAME mini calendar (one copy, one
 // look). Mon-first, localized weekday/month names. `onPick` gets an ISO date.
-export default function StartCalendar({ value, onPick, lang = 'ru' }) {
+//
+// Two states, one calendar (TRIP-176): date-only (default) and date+time. When
+// `withTime` is set a time row appears under the grid; `time` is an "HH:mm"
+// string and `onTimeChange` reports edits. Callers that only need a date (trip
+// start) simply omit these props and get the original date-only calendar.
+export default function StartCalendar({ value, onPick, lang = 'ru', withTime = false, time = '', onTimeChange }) {
+  const t = useT();
   const sel = value ? DateTime.fromISO(value, { zone: 'utc' }) : DateTime.utc();
   const [view, setView] = useState(sel.startOf('month'));
   const monday = DateTime.utc(2024, 1, 1); // a known Monday → localized weekday heads
@@ -36,6 +43,17 @@ export default function StartCalendar({ value, onPick, lang = 'ru' }) {
             >{d}</button>
         ))}
       </div>
+      {withTime && (
+        <div className="ts-cal__time">
+          <span className="ts-cal__time-lbl">{t('common.time')}</span>
+          <input
+            type="time"
+            className="input ts-cal__time-in"
+            value={time || ''}
+            onChange={(e) => onTimeChange?.(e.target.value)}
+          />
+        </div>
+      )}
     </div>
   );
 }

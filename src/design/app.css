@@ -1958,7 +1958,15 @@ h4,
 .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--ink); display: grid; place-items: center; }
 .ts-cal__day:hover { background: var(--wash); }
 .ts-cal__day.on { background: var(--brand); color: #fff; }
+/* Time row (date+time state, TRIP-176) — sits under the month grid. */
+.ts-cal__time { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.ts-cal__time-lbl { flex: none; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.ts-cal__time-in { flex: 1; min-width: 0; }
 .sheet .ts-cal { width: 100%; max-width: 340px; margin: 0 auto; }
+/* Date/time field trigger — an .input-styled button that shows the picked value
+   (left-aligned) and opens the shared calendar. */
+.eed-dtbtn { text-align: left; cursor: pointer; }
+.eed-dtbtn.is-empty { color: var(--muted); }
 @media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
 @media (max-width: 720px) {
   .app-main { padding: 12px 12px 100px; }

@@ -150,6 +150,7 @@
   "type_hotel": "Hotel",
   "type_transfer": "Transfer",
   "view_booking": "View booking",
+  "pick_datetime": "Pick a date",
   "when": "When",
   "with_layovers": "With layovers"
 }
