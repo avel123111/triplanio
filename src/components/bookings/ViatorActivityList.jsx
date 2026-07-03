@@ -60,7 +60,6 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
           <span className="va-logo"><Ticket size={15} /></span>
           <div className="va-tiwrap">
             <b>{cityName ? t('fork.activities_title', { city: cityName }) : t('fork.activities_title_generic')}</b>
-            <span className="va-sub">{t('fork.activities_reviews_source')}</span>
           </div>
         </div>
         {meta.total != null && meta.total > 0 && (
