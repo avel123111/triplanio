@@ -1975,7 +1975,7 @@ function DateRangeBlock({
     || (endVField && fieldHasError(issues, endVField));
   return (
     <div className="eed-dateblock" style={style}>
-      <div className="eed-dateblock__lbl t-ui">{label}</div>
+      <div className="eed-dateblock__lbl t-micro">{label}</div>
       <div className={`stay-dates${invalid ? ' is-invalid' : ''}`}>
         <div className="sd-cellwrap" data-vfield={startVField}>
           <DateTimeInput variant="cell" cellLabel={startLabel} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} />
@@ -2019,7 +2019,7 @@ function ActivityWhenBlock({ form, setField, setTime, tz, issues, color }) {
   };
   return (
     <div className="eed-dateblock">
-      <div className="eed-dateblock__lbl t-ui">{t('event.date_time')}</div>
+      <div className="eed-dateblock__lbl t-micro">{t('event.date_time')}</div>
       <div data-vfield="start">
         <DateTimeInput withTime={false} value={date} onChange={(d) => emit(d, s.time, e.time)} />
       </div>

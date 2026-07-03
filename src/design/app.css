@@ -4176,7 +4176,7 @@ h4,
 .hv-plat__ic img{width:100%;height:100%;object-fit:contain;background:#fff;}
 .hv-plat__nm{ color:var(--ink-2);}
 .hv-sec{display:flex;flex-direction:column;}
-.hv-lbl{ color:var(--muted);margin-bottom:7px;}
+.hv-lbl{ color:var(--ink);margin-bottom:7px;}   /* TRIP-183: эйбрау-лейблы панели → основной цвет (канон-инспектор) */
 .hv-card{padding:13px 15px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);}
 .hv-cost{display:flex;align-items:center;gap:12px;}
 .hv-cost__main{flex:1;min-width:0;}
@@ -4290,7 +4290,7 @@ h4,
    variant scopes under .ev-dlg; the drawer/panel variant scopes under .lp (only
    the event-edit panel carries fields — city/event/fork panels have none). */
 .ev-dlg .field__label,
-.lp .field__label { color: var(--muted); }
+.lp .field__label { color: var(--ink); }   /* TRIP-183: лейблы форм в панелях события/броней → основной цвет (канон-инспектор) */
 
 /* iOS Safari auto-zooms the viewport when a focused field has font-size < 16px.
    Canonical anti-zoom guard (TRIP-92): one element-level rule forces 16px on
