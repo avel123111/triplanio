@@ -40,56 +40,60 @@ export const CANONS = [
 // превью на выбранном элементе (в worklist НЕ сохраняются; цвет сохраняется отдельной
 // осью «Цвет текста»). Ключ = id канона. css = дельта поверх базового канона; цвета
 // .c-* смаплены на наши токены (c-text→--ink, c-dim→--ink-2, c-mute→--muted, c-acc→--brand).
+const PILL_ON  = { color: 'var(--brand)', background: 'var(--brand-soft)', padding: '4px 11px', borderRadius: 'var(--r-pill)', display: 'inline-block' };
+const PILL_OFF = { color: 'var(--muted)', border: '1px dashed var(--line-strong)', padding: '4px 11px', borderRadius: 'var(--r-pill)', display: 'inline-block' };
+const CAPS     = { textTransform: 'uppercase', letterSpacing: '0.2em' };
 export const CANON_MODS = {
   1: [ // t-display ← hero
-    { label: '.c-text · заголовок страницы',      css: { color: 'var(--ink)' } },
-    { label: '.c-acc · акцент-спан в hero',        css: { color: 'var(--brand)' } },
+    { label: '.c-text · заголовок страницы',       css: { color: 'var(--ink)' } },
+    { label: '.c-acc · акцент-спан в hero',         css: { color: 'var(--brand)' } },
   ],
   2: [ // t-title ← h1
-    { label: '.c-text · экран/drawer/модалка',     css: { color: 'var(--ink)' } },
-    { label: '#fff · на градиентной обложке',      css: { color: '#fff' } },
+    { label: '.c-text · экран/drawer/модалка',      css: { color: 'var(--ink)' } },
+    { label: '#fff · на градиентной обложке',       css: { color: '#fff', background: 'linear-gradient(135deg,#FF7A59,#FF2D78)', padding: '4px 12px', borderRadius: 'var(--r-md)', display: 'inline-block' } },
   ],
   3: [ // t-heading ← h2
-    { label: '.c-text · карточки/списки',          css: { color: 'var(--ink)' } },
-    { label: '.tph__total · цена в поиске',         css: { color: 'var(--ink)' } },
-    { label: '+ .t-mono · время рейса/метрики',     css: { color: 'var(--ink)', fontFamily: 'var(--font-mono)' } },
+    { label: '.c-text · карточки/списки',           css: { color: 'var(--ink)' } },
+    { label: '.tph__total · цена (акцент)',          css: { color: 'var(--brand)' } },
+    { label: '+ .t-mono · время рейса/метрики',      css: { fontFamily: 'var(--font-mono)' } },
   ],
   4: [ // t-subheading ← h3
-    { label: '.c-text · строки/подзаголовки',      css: { color: 'var(--ink)' } },
-    { label: '+ .u-ell · обрезка в тесных карточках', css: { color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', maxWidth: '170px', verticalAlign: 'bottom' } },
+    { label: '.c-text · строки/подзаголовки',       css: { color: 'var(--ink)' } },
+    { label: '+ .u-ell · обрезка (узкая колонка)',   css: { display: 'inline-block', maxWidth: '160px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'bottom' } },
   ],
   5: [ // t-label ← title (Golos)
-    { label: '.c-text · строки/поповеры',          css: { color: 'var(--ink)' } },
-    { label: '.tp-btn--primary · кнопки/вкладки',   css: { color: 'var(--brand)' } },
-    { label: '.c-acc · ссылки',                    css: { color: 'var(--brand)' } },
-    { label: '.c-dim · secondary-кнопки',          css: { color: 'var(--ink-2)' } },
+    { label: '.c-text · строки/поповеры',           css: { color: 'var(--ink)' } },
+    { label: '.tp-btn--primary · кнопка',            css: { color: '#fff', background: 'var(--brand)', padding: '10px 18px', borderRadius: 'var(--r-btn)', display: 'inline-block' } },
+    { label: '.c-acc · ссылки',                     css: { color: 'var(--brand)' } },
+    { label: '.c-dim · secondary-кнопки',           css: { color: 'var(--ink-2)' } },
   ],
   6: [ // t-body ← body
-    { label: '.c-mute · базовый',                  css: { color: 'var(--muted)' } },
-    { label: '.c-dim · заметки',                   css: { color: 'var(--ink-2)' } },
-    { label: '.c-text · важный абзац',             css: { color: 'var(--ink)' } },
+    { label: '.c-mute · базовый',                   css: { color: 'var(--muted)' } },
+    { label: '.c-dim · заметки',                    css: { color: 'var(--ink-2)' } },
+    { label: '.c-text · важный абзац',              css: { color: 'var(--ink)' } },
   ],
   7: [ // t-ui ← body-med
-    { label: '.c-text · значения/инпуты',          css: { color: 'var(--ink)' } },
-    { label: '.c-dim · вторичное',                 css: { color: 'var(--ink-2)' } },
-    { label: '.tp-chip--active · чипы',             css: { color: 'var(--brand)' } },
-    { label: '.tp-chip--idle',                     css: { color: 'var(--muted)' } },
+    { label: '.c-text · значения/инпуты',           css: { color: 'var(--ink)' } },
+    { label: '.c-dim · вторичное',                  css: { color: 'var(--ink-2)' } },
+    { label: '.tp-chip--active · активный чип',      css: PILL_ON },
+    { label: '.tp-chip--idle · чип',                css: PILL_OFF },
   ],
   8: [ // t-meta ← meta
-    { label: '.c-mute · базовый',                  css: { color: 'var(--muted)' } },
-    { label: '.c-dim · значения дат/времени',       css: { color: 'var(--ink-2)' } },
+    { label: '.c-mute · базовый',                   css: { color: 'var(--muted)' } },
+    { label: '.c-dim · значения дат/времени',        css: { color: 'var(--ink-2)' } },
+    { label: '+ Golos (не моно)',                   css: { fontFamily: 'var(--font-ui)' } },
   ],
   9: [ // t-micro ← label
-    { label: 'базовый · track-2',                  css: {} },
-    { label: '--tight · track-1',                  css: { letterSpacing: '0.08em' } },
-    { label: '.tp-pill · статусы',                 css: { color: 'var(--brand)' } },
-    { label: 'микро-подписи на медиа',             css: { color: 'var(--muted)', letterSpacing: '0.08em' } },
+    { label: 'базовый · track-2',                   css: { letterSpacing: '0.14em' } },
+    { label: '--tight · track-1',                   css: { letterSpacing: '0.08em' } },
+    { label: '.tp-pill · статус',                   css: { ...PILL_ON, letterSpacing: '0.08em' } },
+    { label: 'на медиа (приглушённый)',             css: { color: 'var(--muted)' } },
   ],
   10: [ // t-mono ← meta-md
-    { label: '.c-mute · координаты/код',           css: { color: 'var(--muted)' } },
-    { label: '.tp-caption · капс track-3',          css: { textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--brand)' } },
-    { label: '.tp-caption--mute',                  css: { textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--muted)' } },
-    { label: '.c-acc · счётчики',                  css: { color: 'var(--brand)' } },
+    { label: '.c-mute · координаты/код',            css: { color: 'var(--muted)' } },
+    { label: '.tp-caption · капс track-3',           css: { ...CAPS, color: 'var(--brand)' } },
+    { label: '.tp-caption--mute · капс',             css: { ...CAPS, color: 'var(--muted)' } },
+    { label: '.c-acc · счётчики',                   css: { color: 'var(--brand)' } },
   ],
 };
 
