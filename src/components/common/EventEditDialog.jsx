@@ -16,7 +16,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, Toggle, useToast } from '@/design/index';
 import {
   Loader2, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
@@ -1608,6 +1608,11 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
             <FieldError issues={issues} field="checkOut" />
           </div>
         </div>
+        {(() => {
+          const ci = DateTime.fromISO(form.checkInLocal), co = DateTime.fromISO(form.checkOutLocal);
+          const n = (ci.isValid && co.isValid) ? Math.max(0, Math.round(co.startOf('day').diff(ci.startOf('day'), 'days').days)) : 0;
+          return n > 0 ? <DateSubline>{t('fork.stay22_nights', { count: n })}</DateSubline> : null;
+        })()}
       </div>
 
       <SectionHeader color={color}>{t('event.finance_cancel')}</SectionHeader>
@@ -1627,19 +1632,26 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
         <div>
           <Label>{t('event.payment_status')}</Label>
           <AiField active={aiFields.has('payment_status')}>
-            <select className="select" value={form.payment_status} onChange={(e) => setField('payment_status', e.target.value)}>
-              <option value="">-</option>
-              <option value="paid">{t('event.paid')}</option>
-              <option value="partial">{t('event.partial')}</option>
-              <option value="pay_on_arrival">{t('event.on_arrival')}</option>
-            </select>
+            {/* Segmented pills (design) — reuse .seg; click active pill to clear. */}
+            <div className="seg seg--fill" role="group" aria-label={t('event.payment_status')}>
+              {[['paid', 'event.paid'], ['partial', 'event.partial'], ['pay_on_arrival', 'event.on_arrival']].map(([v, k]) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={form.payment_status === v}
+                  onClick={() => setField('payment_status', form.payment_status === v ? '' : v)}
+                >
+                  {t(k)}
+                </button>
+              ))}
+            </div>
           </AiField>
         </div>
       </div>
       <AiField active={aiFields.has('free_cancellation')}>
         <div className="eed-fcbox">
-          <label className="eed-fclabel">
-            <Checkbox checked={form.free_cancellation} onCheckedChange={(v) => setField('free_cancellation', !!v)} />
+          <div className="eed-fclabel">
+            <Toggle on={!!form.free_cancellation} onChange={(v) => setField('free_cancellation', !!v)} label={t('event.free_cancel_have')} />
             <div className="eed-fcbody">
               <div className="eed-fctitle">{t('event.free_cancel_have')}</div>
               <div className="eed-fchint">{t('event.free_cancel_hint')}</div>
@@ -1656,7 +1668,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
                 </div>
               )}
             </div>
-          </label>
+          </div>
         </div>
       </AiField>
 
@@ -1891,16 +1903,16 @@ function TransferLegCard({
               <FieldError issues={issues} field={vf('end')} />
             </div>
           </div>
-          {durMin != null && <div className="muted t-meta" style={{ marginTop: 8, textAlign: 'center' }}>{fmtDur(durMin, t)}</div>}
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', marginTop: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
-            <Checkbox checked={!!leg.day_change} onCheckedChange={(v) => patch({ day_change: !!v })} />
+          {durMin != null && <DateSubline>{fmtDur(durMin, t)}</DateSubline>}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', marginTop: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))' }}>
+            <Toggle on={!!leg.day_change} onChange={(v) => patch({ day_change: !!v })} label={t('event.overnight_label')} />
             <span style={{ minWidth: 0 }}>
               <span className="t-ui" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Moon size={16} /> {t('event.overnight_label')}
               </span>
               <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', marginTop: 2 }}>{t('event.overnight_hint')}</span>
             </span>
-          </label>
+          </div>
         </div>
 
         {/* Carrier / flight no. */}
@@ -1995,6 +2007,10 @@ const fmtDur = (m, t) => {
   if (mm || !h) parts.push(t('event.dur_m', { m: mm }));
   return parts.join(' ');
 };
+// Centered subline under a date pair (duration / nights). Same markup everywhere.
+const DateSubline = ({ children }) => (
+  <div className="muted t-meta" style={{ marginTop: 8, textAlign: 'center' }}>{children}</div>
+);
 
 function SegTransportGrid({ value, onChange, color }) {
   const { t } = useI18nFormat();
@@ -2179,6 +2195,10 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
             <FieldError issues={issues} field="end" />
           </div>
         </div>
+        {(() => {
+          const m = layoverMins(form.startLocal, form.endLocal);
+          return m != null ? <DateSubline>{fmtDur(m, t)}</DateSubline> : null;
+        })()}
       </div>
 
       <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
