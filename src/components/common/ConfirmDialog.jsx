@@ -40,8 +40,8 @@ export default function ConfirmDialog({
       <Sheet open={open} onOpenChange={onOpenChange} title={title} titleText={title || finalConfirmLabel}>
         {description && (
           <p
-            className="muted"
-            style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, margin: '2px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+            className="muted t-body"
+            style={{ margin: '2px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
           >
             {description}
           </p>

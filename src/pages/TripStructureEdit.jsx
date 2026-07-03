@@ -26,6 +26,7 @@ import EventSourcePanel from '@/components/common/EventSourcePanel';
 import CityPanel from '@/components/common/CityPanel';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import EventEditDialog from '@/components/common/EventEditDialog';
+import AddBookingPanel from '@/components/bookings/AddBookingPanel';
 import { ConflictsPanel } from '@/components/common/ValidationUI';
 import AppHeader from '@/components/AppHeader';
 import { useCreateTrip } from '@/components/create/CreateTripProvider';
@@ -59,16 +60,13 @@ const nightsBetween = (a, b) => { const x = toDT(a), y = toDT(b); return x && y 
 // reproduces exactly what's stored, so editor = timeline = DB.
 const dayOf = (iso) => { const d = toDT(iso); return d ? d.startOf('day') : null; };
 const dayWord = (n, t) => (n === 1 ? t('tse.day_one') : n >= 2 && n <= 4 ? t('tse.day_few') : t('tse.day_many'));
-// Country flag emoji from an ISO-3166 alpha-2 code (regional-indicator pair);
-// '' when there's no valid 2-letter code (so the chip just shows the name).
-const flagEmoji = (cc) => (cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt(0))) : '');
 const isAnchor = (n) => n.kind === 'start' || n.kind === 'end';
 // A city added in the editor but not yet persisted carries a 'tmp-…' id (no real uuid
 // until add_city inserts it). A LIVE transfer write to such a city fails the
 // uuid type, so transfer creation is gated until the new city is persisted.
 const isTmpId = (id) => String(id || '').startsWith('tmp-');
 const colorFor = (key) => { let h = 0; const s = String(key || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return PALETTE[h % PALETTE.length]; };
-const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.id), flag: flagEmoji(n.country_code), country: n.country || '' });
+const metaOf = (n) => ({ color: colorFor(n.external_city_id || n.city_name || n.id), country: n.country || '' });
 
 // Canonical date-chain layout (start = prevEnd + gap; end = start + nights) now
 // lives in lib/tripDates.layoutDates, shared with ManualPlanner and mirroring the
@@ -166,6 +164,16 @@ export default function TripStructureEdit() {
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 640px)');
     const onChange = () => setIsSheet(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  // TRIP-161: the two-column desktop layout (>1080px, mirrors the .ts-grid CSS
+  // breakpoint). Only there do side panels open as a full-height drawer over the
+  // left column; below it we keep the in-flow swap, ≤640 the bottom sheet.
+  const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1081px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1081px)');
+    const onChange = () => setIsWide(mq.matches);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
@@ -701,26 +709,44 @@ export default function TripStructureEdit() {
         autoEdit={leftPanel.autoEdit} canEdit onClose={closePanelAndSync}
       />
     );
-  } else if (leftPanel?.type === 'pick') {
-    leftPanelEl = (
-      <ForkPartnerModal
-        open variant="panel" type={leftPanel.kind} tripId={tripId} trip={trip}
-        visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
-        stay22={stay22Bundle}
-        onManual={() => setLeftPanel({ type: 'create', kind: leftPanel.kind, visit: leftPanel.visit, fromVisit: leftPanel.fromVisit, toVisit: leftPanel.toVisit })}
-        onOpenChange={(o) => { if (!o) closeLeftPanel(); }}
-      />
-    );
-  } else if (leftPanel?.type === 'create') {
-    leftPanelEl = (
-      <EventEditDialog
-        open variant="panel" kind={leftPanel.kind} tripId={tripId}
-        visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
-        defaultCurrency={trip?.details?.main_currency || 'EUR'}
-        onPreviewTransfer={setPreviewTransfer}
-        onOpenChange={(o) => { if (!o) { setPreviewTransfer(null); closePanelAndSync(); } }}
-      />
-    );
+  } else if (leftPanel?.type === 'pick' || leftPanel?.type === 'create') {
+    // TRIP-176: hotel / activity / transfer open the unified AddBookingPanel
+    // (fork + manual form merged behind a tab). Services (esim/car/insurance)
+    // keep the standalone fork → manual navigation.
+    const isMergedKind = leftPanel.kind === 'hotel' || leftPanel.kind === 'activity' || leftPanel.kind === 'transfer';
+    if (isMergedKind) {
+      leftPanelEl = (
+        <AddBookingPanel
+          kind={leftPanel.kind} tripId={tripId} trip={trip}
+          visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
+          stay22={stay22Bundle}
+          defaultCurrency={trip?.details?.main_currency || 'EUR'}
+          initialTab={leftPanel.type === 'create' ? 'manual' : 'find'}
+          onPreviewTransfer={setPreviewTransfer}
+          onClose={() => { setPreviewTransfer(null); closePanelAndSync(); }}
+        />
+      );
+    } else if (leftPanel.type === 'pick') {
+      leftPanelEl = (
+        <ForkPartnerModal
+          open variant="panel" type={leftPanel.kind} tripId={tripId} trip={trip}
+          visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
+          stay22={stay22Bundle}
+          onManual={() => setLeftPanel({ type: 'create', kind: leftPanel.kind, visit: leftPanel.visit, fromVisit: leftPanel.fromVisit, toVisit: leftPanel.toVisit })}
+          onOpenChange={(o) => { if (!o) closeLeftPanel(); }}
+        />
+      );
+    } else {
+      leftPanelEl = (
+        <EventEditDialog
+          open variant="panel" kind={leftPanel.kind} tripId={tripId}
+          visit={leftPanel.visit} fromVisit={leftPanel.fromVisit} toVisit={leftPanel.toVisit}
+          defaultCurrency={trip?.details?.main_currency || 'EUR'}
+          onPreviewTransfer={setPreviewTransfer}
+          onOpenChange={(o) => { if (!o) { setPreviewTransfer(null); closePanelAndSync(); } }}
+        />
+      );
+    }
   } else if (leftPanel?.type === 'city') {
     const node = ordered.find((n) => n.id === leftPanel.id);
     if (!node) { leftPanelEl = null; }
@@ -796,6 +822,13 @@ export default function TripStructureEdit() {
   // Key the left pane on its identity so React remounts it on panel change →
   // the .te-panefade entry animation replays.
   const panelKey = leftPanel ? `${leftPanel.type}:${leftPanel.id || leftPanel.kind || ''}` : 'list';
+  // TRIP-161: on the desktop two-column layout every side panel EXCEPT "add
+  // city" opens as a full-height drawer over the left column (route rail stays
+  // mounted underneath; the map keeps interactive — no scrim). Add-city and the
+  // ≤1080 / ≤640 fallbacks keep swapping the rail in place.
+  const isDrawerPanel = !!leftPanel && leftPanel.type !== 'cityadd';
+  const useDrawer = isWide && isDrawerPanel && !!leftPanelEl;
+  const onPanelEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } };
 
   // Trip-start control — lives in the "Маршрут" panel header. The stepper shifts
   // the whole itinerary by ±1 day; tapping the date opens a calendar to jump to
@@ -879,9 +912,9 @@ export default function TripStructureEdit() {
       />
     </div>
     <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
-      <div className="ts-railwrap" style={{ flex: '0 0 56px', minWidth: 0, position: 'relative', minHeight: 0 }}>
+      <div className="ts-sidecol" style={{ flex: '0 0 220px', minWidth: 0, minHeight: 0 }}>
         <TripSidebar
-          tripId={tripId} trip={trip} isEditScreen collapsed
+          tripId={tripId} trip={trip} isEditScreen
           onNavigate={(id) => leaveNow(`/trip/${tripId}?lens=${id}`)}
           isPro={tripIsPro} proResolved={tripProResolved} isOwner={isOwner} myRole={myRole}
           onUpgrade={() => nav(`/pro?tripId=${tripId}`)}
@@ -902,10 +935,12 @@ export default function TripStructureEdit() {
             side panel fills the same box. */}
         <div className="ts-col-left" style={{ position: 'relative', minWidth: 0, display: 'flex', minHeight: 0, background: 'var(--bg)' }}>
           <div className="ts-leftbox">
-          <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={leftPanel ? (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeLeftPanel(); } } : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
-          {/* Desktop: panel replaces the column. Mobile: column keeps the cities
-              list; the panel opens as a Radix bottom-sheet (rendered below). */}
-          {(!isSheet && leftPanelEl) || (<>
+          <div key={useDrawer ? 'list' : panelKey} ref={useDrawer ? null : leftPaneRef} tabIndex={-1} onKeyDown={(leftPanel && !useDrawer) ? onPanelEsc : undefined} className="te-panefade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', outline: 'none' }}>
+          {/* Desktop (>1080): "add city" replaces the column; other panels open as
+              a drawer overlay (below) and the rail stays here. ≤1080: the panel
+              replaces the column. ≤640: the column keeps the cities list and the
+              panel opens as a Radix bottom-sheet (rendered below). */}
+          {(!isSheet && !useDrawer && leftPanelEl) || (<>
           <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--surface)' }}>
           {/* "Маршрут" container header — scrolls WITH the list (not sticky), the
               same as on mobile. A left panel replaces this whole column. */}
@@ -973,7 +1008,7 @@ export default function TripStructureEdit() {
           </div>
 
           {dragIdx !== null && ordered[ordered.length - 1]?.kind !== 'end' && (
-            <div style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 8, border: '1.5px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line-2)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', fontSize: 'var(--fs-meta)', fontWeight: 600, transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
+            <div className="t-meta" style={{ marginTop: 8, height: 36, display: 'grid', placeItems: 'center', borderRadius: 8, border: '1.5px dashed ' + (overGap === ordered.length ? 'var(--brand)' : 'var(--line-2)'), color: overGap === ordered.length ? 'var(--brand)' : 'var(--muted)', transition: 'color .15s var(--ease-out), border-color .15s var(--ease-out)' }}>
               {t('tse.move_to_end')}
             </div>
           )}
@@ -985,7 +1020,7 @@ export default function TripStructureEdit() {
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {outOfPlanTransfers.map((tr) => (
-                  <button key={tr.id} onClick={() => openEvent('transfer', tr.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', fontSize: 'var(--fs-meta)', fontWeight: 600, color: 'var(--ink)' }}>
+                  <button key={tr.id} onClick={() => openEvent('transfer', tr.id)} className="t-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer', color: 'var(--ink)' }}>
                     <Icon name="warning" size={12} style={{ color: 'var(--warning)' }} /> {nodeName(tr.from_city_visit_id)} → {nodeName(tr.to_city_visit_id)}
                   </button>
                 ))}
@@ -1015,6 +1050,16 @@ export default function TripStructureEdit() {
             </DialogPrimitive.Root>
           )}
           </div>{/* /ts-leftbox */}
+
+          {/* TRIP-161: side-panel DRAWER (city / fork / event view+edit) on the
+              desktop two-column layout. Overlays the left column edge-to-edge, up
+              to the map — no scrim, so the map (and its hotel pins) stays
+              interactive. The route rail stays mounted underneath. */}
+          {useDrawer && (
+            <div key={panelKey} ref={leftPaneRef} tabIndex={-1} onKeyDown={onPanelEsc} className="ts-pdrawer">
+              {leftPanelEl}
+            </div>
+          )}
         </div>
 
         {/* RIGHT - full-height map (always on; hidden on phones via CSS);
@@ -1053,7 +1098,7 @@ export default function TripStructureEdit() {
             >
               <Icon name={issues.length ? 'warning' : 'check'} size={23} />
               {issues.length > 0 && (
-                <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 20, height: 20, padding: '0 5px', borderRadius: 999, background: 'var(--surface)', color: 'var(--warning)', border: '2px solid var(--warning)', fontSize: 'var(--fs-micro)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+                <span className="t-micro" style={{ position: 'absolute', top: -3, right: -3, minWidth: 20, height: 20, padding: '0 5px', borderRadius: 999, background: 'var(--surface)', color: 'var(--warning)', border: '2px solid var(--warning)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   {issues.length > 99 ? '99+' : issues.length}
                 </span>
               )}
@@ -1070,7 +1115,7 @@ export default function TripStructureEdit() {
         .ts-step:hover { background: var(--wash); }
         .ts-step:active:not(:disabled) { transform: scale(0.9); }
         .ts-step:disabled { opacity: .3; cursor: default; }
-        .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 13px; }
+        .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); }
         /* Left container — same 14px inset + border + radius as the map box, so
            the editor (or an open side panel) and the map read as two equal cards. */
         .ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 14px 7px 14px 14px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface); }
@@ -1081,20 +1126,20 @@ export default function TripStructureEdit() {
         .ts-leftscroll > .ts-routehead { margin: -12px -12px 12px; }
         /* "Маршрут" panel header (left column) + trip-start control. */
         .ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
-        .ts-routehead__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h4); color: var(--ink); }
+        .ts-routehead__title { color: var(--ink); }
         .ts-routehead__sp { flex: 1; }
         .ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
-        .ts-startctl__lbl { font-size: var(--fs-meta); font-weight: 600; color: var(--muted); padding: 0 4px 0 6px; }
-        .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; font-size: var(--fs-meta); font-weight: 600; color: var(--ink); white-space: nowrap; }
+        .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
+        .ts-startctl__date { border: none; background: transparent; cursor: pointer; padding: 3px 8px; border-radius: 7px; color: var(--ink); white-space: nowrap; }
         .ts-startctl__date:hover { background: var(--wash); }
         /* Trip-start calendar popover content. */
         .ts-cal { width: 248px; }
         .ts-cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-        .ts-cal__title { font-weight: 600; font-size: var(--fs-base); color: var(--ink); text-transform: capitalize; }
+        .ts-cal__title { color: var(--ink); text-transform: capitalize; }
         .ts-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
         .ts-cal__wd { margin-bottom: 4px; }
-        .ts-cal__wdc { text-align: center; font-size: var(--fs-micro); font-weight: 700; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
-        .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-size: var(--fs-meta); font-weight: 600; color: var(--ink); display: grid; place-items: center; }
+        .ts-cal__wdc { text-align: center; color: var(--muted); text-transform: capitalize; padding: 2px 0; }
+        .ts-cal__day { aspect-ratio: 1 / 1; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--ink); display: grid; place-items: center; }
         .ts-cal__day:hover { background: var(--wash); }
         .ts-cal__day.on { background: var(--brand); color: #fff; }
         /* In the mobile bottom-sheet the calendar spans the sheet width. */
@@ -1102,6 +1147,14 @@ export default function TripStructureEdit() {
         @media (max-width: 520px) { .ts-startctl__lbl { display: none; } }
         .te-panefade { animation: tePaneIn .2s var(--ease-out) both; }
         @keyframes tePaneIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+        /* TRIP-176: side-panel drawer. Absolute-fills the LEFT column only — below
+           the app header and to the right of the icon rail — so it never covers the
+           header or the left menu. Stops at the column seam, leaving the natural gap
+           to the map. No scrim: the map (right half) stays interactive. Route rail
+           mounted beneath. Desktop two-column only. */
+        .ts-pdrawer { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--sh-2); animation: tsDrawerIn .24s var(--ease-out) both; }
+        .ts-pdrawer > .lp { flex: 1; min-height: 0; border: none; border-radius: 0; box-shadow: none; }
+        @keyframes tsDrawerIn { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
         /* Warnings FAB: lift on hover, press on click. */
         .ts-fab { transition: transform .16s var(--ease-out), box-shadow .16s var(--ease-out); }
         .ts-fab:hover { transform: scale(1.06); }
@@ -1112,7 +1165,7 @@ export default function TripStructureEdit() {
         @keyframes tsBackdropIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes tsCardIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
         @media (prefers-reduced-motion: reduce) {
-          .te-panefade, .ts-confirm-backdrop, .ts-confirm-card { animation: none; }
+          .te-panefade, .ts-confirm-backdrop, .ts-confirm-card, .ts-pdrawer { animation: none; }
           .ts-fab:hover, .ts-fab:active, .ts-step:active { transform: none; }
         }
         @media (max-width: 1080px) {
@@ -1173,7 +1226,7 @@ function ActCell({ count, warn, onClick }) {
   return (
     <button className={'te-actchip' + (warn ? ' is-warn' : '')} onClick={onClick} title={count + ''}>
       <Icon name="ticket" size={13} style={{ color: warn ? 'var(--warning)' : 'var(--ev-activity)' }} />
-      <span className="num" style={{ fontWeight: 700, fontSize: 'var(--fs-meta)' }}>{count}</span>
+      <span className="num t-meta">{count}</span>
       {warn && <Icon name="warning" size={11} style={{ color: 'var(--warning)' }} />}
     </button>
   );
@@ -1247,9 +1300,9 @@ function SeamTransfer({ a, b, t, mismatch, disabled, onOpen }) {
     <div className="te-seam">
       <button className={'te-seam__pill' + (mismatch ? ' is-warn' : '') + (disabled ? ' is-disabled' : '')} disabled={disabled} onClick={click} title={`${a.city_name} → ${b.city_name}`}>
         <Icon name={mismatch ? 'warning' : meta.icon} size={12} style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer)' }} />
-        <span style={{ fontWeight: 800, fontSize: 'var(--fs-meta)', color: mismatch ? 'var(--warning)' : 'var(--ev-transfer-ink)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
+        <span className="t-meta" style={{ color: mismatch ? 'var(--warning)' : 'var(--ev-transfer-ink)' }}>{tx(meta.labelKey)}{mismatch ? tx('tse.mismatch_suffix') : ''}</span>
         {t.day_change && <Icon name="moon" size={11} style={{ color: 'var(--brand)' }} title={tx('tse.overnight_title')} />}
-        <span className="num muted" style={{ fontSize: 'var(--fs-micro)' }}>· {fmtD(t.start_datetime, lang)}</span>
+        <span className="num muted t-meta">· {fmtD(t.start_datetime, lang)}</span>
       </button>
     </div>
   );
@@ -1315,11 +1368,11 @@ function CityAddPanel({ onPick, onBack, hasStart, hasEnd }) {
           {POINT_TYPES.map((pt) => {
             const dis = disabledFor(pt.id), active = type === pt.id;
             return <button key={pt.id} disabled={dis} onClick={() => setType(pt.id)} title={dis ? t('tse.already_set') : t(pt.subKey)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 6px', borderRadius: 11, cursor: dis ? 'not-allowed' : 'pointer', background: active ? 'var(--brand-soft)' : 'var(--surface)', border: '1px solid ' + (active ? 'var(--brand)' : 'var(--line)'), color: dis ? 'var(--muted-2)' : active ? 'var(--brand)' : 'var(--ink-2)', opacity: dis ? 0.5 : 1 }}>
-              <Icon name={pt.icon} size={17} /><span style={{ fontSize: 'var(--fs-micro)', fontWeight: 600 }}>{t(pt.labelKey)}</span>
+              <Icon name={pt.icon} size={17} /><span className="t-meta">{t(pt.labelKey)}</span>
             </button>;
           })}
         </div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{meta ? t(meta.subKey) : ''}</div>
+        <div className="muted t-meta">{meta ? t(meta.subKey) : ''}</div>
         <CitySearch onSelect={(c) => onPick(c, type)} />
       </div>
       <div className="lp-f lp-f--single">

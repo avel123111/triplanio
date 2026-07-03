@@ -156,8 +156,8 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
             {[['viewer', t('trips.role_viewer'), t('member.role_viewer_short')], ['admin', t('trips.role_admin'), t('member.role_admin_short')]].map(([k, lab, sub]) =>
               <button key={k} className={role === k ? 'active' : ''} onClick={() => setRole(k)}
                 style={{ flex: 1, flexDirection: 'column', gap: 0, padding: '8px 10px' }}>
-                <div style={{ fontWeight: 500 }}>{lab}</div>
-                <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{sub}</div>
+                <div className="t-ui">{lab}</div>
+                <div className="muted t-meta">{sub}</div>
               </button>
             )}
           </div>
@@ -177,7 +177,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
         <Field label={t('member.message_label')} hint={t('member.message_hint')}>
           <textarea className="textarea" value={message} onChange={e => setMessage(e.target.value)} placeholder={t('member.message_ph')} rows={3} />
         </Field>
-        <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 6 }}>
+        <div className="muted t-meta" style={{ marginTop: 6 }}>
           {t('member.invite_email_note')}
         </div>
       </>}
@@ -195,7 +195,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
           </div>
           {linkErr && <div style={{ marginTop: 8 }}><Severity level="error">{linkErr}</Severity></div>}
         </Field>
-        <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 8, lineHeight: 1.5 }}>
+        <div className="muted t-meta" style={{ marginTop: 8 }}>
           {t('member.invite_link_note')}
         </div>
       </>}
@@ -207,7 +207,7 @@ export function InviteDialog({ tripId, onSaved, promoteMember, open, onOpenChang
           </div>
           <FieldError issues={v.displayIssues} field="name" />
         </Field>
-        <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginTop: 8, lineHeight: 1.5 }}>
+        <div className="muted t-meta" style={{ marginTop: 8 }}>
           {t('member.offline_note')}
         </div>
       </>}
@@ -245,7 +245,7 @@ function ChangeRoleDialog({ member, email, tripId, onSaved, open, onOpenChange }
         <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="primary" loading={saving} onClick={save}>{saving ? t('member.saving') : t('trip.form_save')}</Btn>
       </>}>
-      <div style={{ marginBottom: 14, fontSize: 'var(--fs-base)', color: 'var(--muted)' }}>
+      <div className="t-body" style={{ marginBottom: 14, color: 'var(--muted)' }}>
         {displayName(email || member.invite_email, member.user_full_name)}
       </div>
       <Field label={t('member.role_label')}>
@@ -397,7 +397,7 @@ export default function MembersLens({ tripId, members = [], trip, user, role: my
               <div className="mbrow__id">
                 <div className="mbrow__name">
                   {name}
-                  {m.user_id === user?.id && <Badge variant="quiet" style={{ fontSize: 'var(--fs-micro)' }}>{t('member.you_self')}</Badge>}
+                  {m.user_id === user?.id && <Badge variant="quiet">{t('member.you_self')}</Badge>}
                 </div>
                 {hasRealName && emailLine && (
                   <div className="mbrow__email">{emailLine}</div>

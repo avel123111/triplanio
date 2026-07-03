@@ -315,10 +315,9 @@ export function transferPlatforms(fromVisit, toVisit, t, lang) {
   // date (DDMM) + 1 pax. The transfer fork has no own date → use the arrival day
   // (toVisit.start_date), fall back to the departure city's last day. If either
   // IATA city code is missing, link to the Aviasales homepage instead.
-  // iata now lives on the cities dimension, embedded by getTripDetails; fall back
-  // to the legacy flat field for any cached payloads.
-  const fromIata = fromVisit?.cities?.iata_code ?? fromVisit?.iata_city_code;
-  const toIata = toVisit?.cities?.iata_code ?? toVisit?.iata_city_code;
+  // iata lives on the cities dimension, embedded per-visit by getTripDetails.
+  const fromIata = fromVisit?.cities?.iata_code;
+  const toIata = toVisit?.cities?.iata_code;
   const flightDate = toVisit?.start_date || fromVisit?.end_date;
   const aviasalesUrl = (fromIata && toIata && flightDate)
     ? `https://www.aviasales.ru/search/${fromIata}${ddmm(flightDate)}${toIata}1`

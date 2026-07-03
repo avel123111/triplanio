@@ -108,6 +108,11 @@ export default function ForkPartnerModal({
   // 'dialog' (default) = modal overlay; 'panel' = render inline in the trip
   // editor's left column (same content, PanelShell-style chrome + back button).
   variant = 'dialog',
+  // TRIP-176: 'embedded' renders body-only (no .lp shell, no header) so the
+  // shared AddBookingPanel tab wrapper can host it under a "Find …" tab. The
+  // "Add manually" CTA is dropped — the sibling "I have a booking" tab replaces
+  // it. Footer stays (a single Cancel) since only one tab is visible at a time.
+  embedded = false,
   // TRIP-140: lifted Stay22 state + handlers, forwarded as-is to the (now
   // presentational) hotel list so the same query/pool drives the map badges.
   // Only present for the hotel panel; null/undefined elsewhere.
@@ -146,8 +151,11 @@ export default function ForkPartnerModal({
 
   const body = (
     <>
+      {(!embedded || count > 0) && (
       <div className="fork-addzone">
-        {/* Manual add — redesigned horizontal CTA, ev-colored */}
+        {/* Manual add — redesigned horizontal CTA, ev-colored. Dropped in
+            embedded (tab) mode: the "I have a booking" tab replaces it. */}
+        {!embedded && (
         <button
           type="button"
           className="fork-manual"
@@ -161,10 +169,13 @@ export default function ForkPartnerModal({
           </span>
           <ChevronRight size={16} className="fork-manual__chev" />
         </button>
+        )}
 
         {count > 0 && (
           <>
-            <div className="fork-or"><span>{t('fork.or_find')}</span></div>
+            {embedded
+              ? <div className="fork-searchon eyebrow">{t('fork.search_on')}</div>
+              : <div className="fork-or"><span>{t('fork.or_find')}</span></div>}
             <div className="fork-partners">
               {platforms.map((p) => (
                 <a
@@ -178,19 +189,18 @@ export default function ForkPartnerModal({
                   {p.logo ? (
                     <img className="fork-partner__logo" src={p.logo} alt="" />
                   ) : (
-                    <span className="fork-partner__logo fork-partner__logo--ph"><ExternalLink size={16} /></span>
+                    <span className="fork-partner__logo fork-partner__logo--ph"><ExternalLink size={14} /></span>
                   )}
                   <span className="fork-partner__mid">
                     <b>{PARTNER_NAME[p.key] || p.label}</b>
-                    {p.hint && <span>{p.hint}</span>}
                   </span>
-                  <ExternalLink size={14} className="fork-partner__ext" />
                 </a>
               ))}
             </div>
           </>
         )}
       </div>
+      )}
 
       {/* Live Stay22 stays — hotel fork, panel only. Query/state lifted to the
           editor (TRIP-140); this list is presentational. FE-only. */}
@@ -213,27 +223,35 @@ export default function ForkPartnerModal({
       .fork-manual:active { transform: scale(.99); }
       .fork-manual__ic { width: 38px; height: 38px; border-radius: 11px; background: var(--fk); color: #fff; display: grid; place-items: center; flex: none; box-shadow: 0 5px 13px -6px var(--fk); }
       .fork-manual__tx { flex: 1; min-width: 0; }
-      .fork-manual__tx b { display: block; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); color: var(--ink); }
-      .fork-manual__tx span { display: block; font-size: var(--fs-micro); color: var(--muted); line-height: 1.35; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .fork-manual__tx b { display: block; color: var(--ink); }
+      .fork-manual__tx span { display: block; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .fork-manual__chev { flex: none; color: var(--fk); }
       .fork-or { display: flex; align-items: center; gap: 10px; color: var(--muted); }
       .fork-or::before, .fork-or::after { content: ""; height: 1px; flex: 1; background: var(--line); }
-      .fork-or span { font-size: var(--fs-micro); font-weight: 700; }
-      .fork-partners { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-      .fork-partner { display: flex; align-items: center; gap: 10px; padding: 9px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); text-decoration: none; color: inherit; cursor: pointer; min-width: 0; transition: transform .16s var(--ease-spring), border-color .16s, box-shadow .18s; }
+      .fork-searchon { color: var(--muted); margin-bottom: 1px; }
+      /* TRIP-176: compact partner chips — logo + single-line name, auto-fill grid. */
+      .fork-partners { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+      .fork-partner { display: flex; align-items: center; gap: 9px; padding: 8px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); text-decoration: none; color: inherit; cursor: pointer; min-width: 0; transition: transform .16s var(--ease-spring), border-color .16s, box-shadow .18s; }
       .fork-partner:hover { transform: translateY(-1px); border-color: var(--line-hover); box-shadow: var(--sh-1); }
       .fork-partner:active { transform: scale(.99); }
-      .fork-partner__logo { width: 32px; height: 32px; border-radius: 9px; flex: none; background: transparent; object-fit: contain; }
-      .fork-partner__logo--ph { display: grid; place-items: center; color: var(--muted); background: var(--wash); box-shadow: none; }
+      .fork-partner__logo { width: 24px; height: 24px; border-radius: var(--r-sm); flex: none; background: transparent; object-fit: contain; }
+      .fork-partner__logo--ph { display: grid; place-items: center; color: var(--muted); background: var(--wash); }
       .fork-partner__mid { flex: 1; min-width: 0; }
-      .fork-partner__mid b { display: block; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-meta); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .fork-partner__mid span { display: block; font-size: var(--fs-nano); color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .fork-partner__ext { color: var(--muted-2); flex: none; }
-      .fork-addzone { container-type: inline-size; }
-      @container (max-width: 380px) { .fork-partners { grid-template-columns: 1fr; } }
-      @media (max-width: 480px) { .fork-partners { grid-template-columns: 1fr; } }
+      .fork-partner__mid b { display: block; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     `}</style>
   );
+
+  // TRIP-176: embedded in the AddBookingPanel tab wrapper — body + footer only,
+  // no .lp shell / header (the wrapper owns the shared header + tabs).
+  if (embedded) {
+    return (
+      <>
+        <div className="lp-b scrollbar-thin">{body}</div>
+        <div className="lp-f lp-f--single"><Btn variant="secondary" onClick={() => onOpenChange(false)}>{t('fork.cancel')}</Btn></div>
+        {styleTag}
+      </>
+    );
+  }
 
   if (variant === 'panel') {
     return (

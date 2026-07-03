@@ -7,13 +7,30 @@
 <meta name="description" content="Triplanio Privacy Notice — what personal information we collect, why we collect it, how we use and share it, and what choices you have." />
 <meta name="robots" content="index,follow" />
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="preload" href="/fonts/golos/golos-text-400-latin.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/golos/golos-text-400-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/golos/golos-text-600-latin.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/golos/golos-text-600-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
 
 <link rel="stylesheet" href="/landing.css" />
 
 <style>
+  /* Self-hosted Golos Text (TRIP-165) — этот standalone-документ не грузит app.css/fonts.css,
+     поэтому шрифт объявлен локально; :root ниже перенацеливает font-переменные landing.css на Golos. */
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/golos/golos-text-400-cyrillic-ext.woff2') format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/golos/golos-text-400-cyrillic.woff2') format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/golos/golos-text-400-latin-ext.woff2') format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/golos/golos-text-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/golos/golos-text-600-cyrillic-ext.woff2') format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/golos/golos-text-600-cyrillic.woff2') format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/golos/golos-text-600-latin-ext.woff2') format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/golos/golos-text-600-latin.woff2') format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/golos/golos-text-700-cyrillic-ext.woff2') format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/golos/golos-text-700-cyrillic.woff2') format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/golos/golos-text-700-latin-ext.woff2') format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
+  @font-face{font-family:'Golos Text';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/golos/golos-text-700-latin.woff2') format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+  :root{ --font-body:'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; --font-display:'Golos Text',ui-sans-serif,system-ui,sans-serif; }
+
   /* ============ Legal page — local styles ============ */
   body { background: #fff; color: var(--ink); font-family: var(--font-body); }
 
@@ -34,7 +51,7 @@
     display: inline-flex; align-items: center; gap: 10px;
     text-decoration: none; color: var(--ink); font-weight: 700;
     font-family: var(--font-display); letter-spacing: var(--display-tracking);
-    font-size: 18px;
+    font-size: 19px;
   }
   .legal-top a.brand img { display: block; height: 26px; width: 26px; }
   .legal-top .spacer { flex: 1 1 auto; }
@@ -52,7 +69,7 @@
     padding: 56px var(--gutter) 80px;
   }
   main.legal .legal__eyebrow {
-    font-size: 12px; font-weight: 600; letter-spacing: .12em;
+    font-size: 12.5px; font-weight: 600; letter-spacing: .12em;
     text-transform: uppercase; color: var(--brand);
     margin-bottom: 12px;
   }
@@ -71,7 +88,7 @@
   }
   main.legal h2 {
     font-family: var(--font-display);
-    font-size: 22px;
+    font-size: 26px;
     line-height: 1.25;
     margin: 40px 0 12px;
     color: var(--ink);
@@ -281,7 +298,7 @@
   <div class="container">
     <div class="footer__top">
       <div class="footer__brand">
-        <a href="/" class="brand" aria-label="Triplanio — home" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:700;font-family:var(--font-display);font-size:18px;">
+        <a href="/" class="brand" aria-label="Triplanio — home" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:700;font-family:var(--font-display);font-size:19px;">
           <img src="/triplanio-logo.svg" alt="" style="height:26px;width:26px;display:block;border-radius:6px;" />
           <span>Triplanio</span>
         </a>

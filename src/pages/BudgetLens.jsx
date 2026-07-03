@@ -260,7 +260,7 @@ function DeleteExpenseDialog({ expense, onSaved, open, onOpenChange }) {
         <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
         <Btn variant="danger" icon="trash" onClick={remove} disabled={deleting}>{deleting ? t('budget.deleting') : t('trip.delete')}</Btn>
       </>}>
-      <div style={{ fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>
+      <div className="t-body" style={{ color: 'var(--ink-2)' }}>
         {t('trip.delete')} «<b style={{ color: 'var(--ink)' }}>{expense.title || '-'}</b>»?
       </div>
       {err && <div style={{ marginTop: 10 }}><Severity level="error">{err}</Severity></div>}
@@ -321,7 +321,7 @@ function FxRatesDialog({ tripId, mainCurrency, currencies, currentOverrides, fx,
       <Btn variant="ghost" onClick={close}>{t('trip.form_cancel')}</Btn>
       <Btn variant="primary" icon="check" onClick={() => v.attemptSubmit(apply)} disabled={saving} aria-disabled={!v.canSubmit}>{saving ? t('member.saving') : t('budget.apply')}</Btn>
     </>}>
-      <div className="muted" style={{ fontSize: 'var(--fs-meta)', marginBottom: 8 }}>
+      <div className="muted t-meta" style={{ marginBottom: 8 }}>
         {t('budget.fx_intro')}
       </div>
       {others.length === 0 ? (
@@ -642,7 +642,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
               hoveredId={hoveredSeg} centerLabel={t('budget.donut_total')} />
             <div className="bgt-dleg">
               {donutSegments.length === 0 && (
-                <div className="muted" style={{ fontSize: 'var(--fs-meta)', padding: '6px 8px' }}>{t('budget.no_expenses')}</div>
+                <div className="muted t-meta" style={{ padding: '6px 8px' }}>{t('budget.no_expenses')}</div>
               )}
               {donutSegments.map(s => {
                 const pct = totalSpent > 0 ? Math.round((s.value / totalSpent) * 100) : 0;
@@ -731,8 +731,8 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
             <Icon name="wallet" size={24} />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontWeight: 700, fontSize: 'var(--fs-strong)', marginBottom: 4, color: 'var(--ink)' }}>{t('budget.no_expenses')}</div>
-            <div className="muted" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.5 }}>{t('budget.no_expenses_desc')}</div>
+            <div className="t-ui" style={{ marginBottom: 4, color: 'var(--ink)' }}>{t('budget.no_expenses')}</div>
+            <div className="muted t-body">{t('budget.no_expenses_desc')}</div>
           </div>
           <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.first_expense')}</Btn>
         </div>

@@ -99,12 +99,12 @@ export function IssuesPanel({ issues = [], className = '', style = {} }) {
           <button
             key={`${it.code}-${i}`}
             type="button"
+            className="t-meta"
             onClick={() => focusField(it.field)}
             style={{
               display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left',
               padding: '8px 11px', borderRadius: 10, border: `1px solid color-mix(in srgb, ${stripe} 40%, transparent)`,
               background: bg, color: 'var(--ink)', cursor: it.field ? 'pointer' : 'default',
-              fontFamily: 'var(--font-ui)', fontSize: 'var(--fs-meta)', lineHeight: 1.4,
             }}
           >
             <AlertTriangle size={14} style={{ marginTop: 1, flexShrink: 0, color: stripe }} />
@@ -168,16 +168,16 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer' }}
       >
         <span style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
           <AlertTriangle size={16} />
         </span>
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', fontWeight: 700, fontSize: 'var(--fs-strong)', color: 'var(--ink)' }}>{t('validation.panel_title')}</span>
-          <span style={{ display: 'block', fontSize: 'var(--fs-meta)', color: 'var(--muted)' }}>{t('validation.panel_subtitle', { n: list.length })}</span>
+          <span className="t-ui" style={{ display: 'block', color: 'var(--ink)' }}>{t('validation.panel_title')}</span>
+          <span className="t-meta" style={{ display: 'block', color: 'var(--muted)' }}>{t('validation.panel_subtitle', { n: list.length })}</span>
         </span>
-        <span style={{ minWidth: 24, height: 24, padding: '0 7px', borderRadius: 999, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', fontSize: 'var(--fs-meta)', fontWeight: 700, flexShrink: 0 }}>{list.length}</span>
+        <span className="t-meta" style={{ minWidth: 24, height: 24, padding: '0 7px', borderRadius: 999, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>{list.length}</span>
         <Chevron size={16} style={{ color: 'var(--muted)', flexShrink: 0 }} />
       </button>
       {expanded && (
@@ -190,14 +190,14 @@ export function ConflictsPanel({ issues = [], ctx = {}, onOpen, defaultExpanded 
                 key={`${it.code}-${it.entityId || it.fromId || i}`}
                 type="button"
                 onClick={() => onOpen?.(it)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 16px', background: 'transparent', border: 'none', borderTop: i ? '1px solid var(--line-2)' : 'none', boxShadow: `inset 3px 0 0 ${stripe}`, cursor: 'pointer', fontFamily: 'var(--font-ui)' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 16px', background: 'transparent', border: 'none', borderTop: i ? '1px solid var(--line-2)' : 'none', boxShadow: `inset 3px 0 0 ${stripe}`, cursor: 'pointer' }}
               >
                 <span style={{ width: 34, height: 34, borderRadius: 9, background: d.soft, color: d.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                   <d.Icon size={16} />
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontWeight: 600, fontSize: 'var(--fs-strong)', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title}</span>
-                  <span style={{ display: 'block', fontSize: 'var(--fs-meta)', color: 'var(--muted)', lineHeight: 1.35 }}>{d.sub}</span>
+                  <span className="t-ui" style={{ display: 'block', color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.title}</span>
+                  <span className="t-meta" style={{ display: 'block', color: 'var(--muted)' }}>{d.sub}</span>
                 </span>
                 <ChevronRight size={16} style={{ color: 'var(--muted-2)', flexShrink: 0 }} />
               </button>

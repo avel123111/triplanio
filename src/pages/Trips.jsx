@@ -114,7 +114,7 @@ function NextTripCard({ trip, onClick, t }) {
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
       </span>
       <span className="nextcard__tx">
-        <span style={{ fontSize: 'var(--fs-micro)', fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--muted-2)' }}>{t('stats.next_trip_title')}</span>
+        <span className="t-micro" style={{ color: 'var(--muted-2)' }}>{t('stats.next_trip_title')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
         <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
@@ -643,8 +643,8 @@ export default function Trips() {
             {/* Section header row */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <h2>{t('trips.page_title')}</h2>
-                <div className="muted" style={{ fontSize: 'var(--fs-strong)' }}>
+                <h2 className="t-title">{t('trips.page_title')}</h2>
+                <div className="muted t-ui">
                   {t('trips.count_summary', { active: activeTrips.length, past: pastTrips.length })}
                 </div>
               </div>

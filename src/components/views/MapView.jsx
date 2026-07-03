@@ -6,7 +6,6 @@ import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbl
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit } from '@/lib/map/camera';
 import MapControls from '@/lib/map/MapControls';
-import { countryFlag } from '@/lib/geo';
 import { sortVisits } from '@/lib/validation';
 
 // Great-circle distance (km) between two visits — used to scale the reveal flyTo
@@ -492,11 +491,7 @@ export default function MapView({
       };
     });
     groupByLocation(points).forEach((g) => {
-      const title = g.data
-        .map((v) => `${countryFlag(v.country_code)} ${v.city_name}${v.country ? ', ' + v.country : ''}`)
-        .join(' • ');
       const el = createMarkerEl(g.labels.filter((l) => l != null), {
-        title,
         icon: iconForKinds(g.kinds),
         onClick: () => { const cb = onCityClickRef.current; if (cb) cb(g.data); },
       });
@@ -744,7 +739,7 @@ export default function MapView({
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: ready ? 1 : 0, transition: 'opacity .3s ease' }} />
       {!ready && (
-        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 'var(--fs-base)', color: 'var(--muted)', background: 'var(--surface)', zIndex: 2 }}>
+        <div className="t-body" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--muted)', background: 'var(--surface)', zIndex: 2 }}>
           {error ? `Map error: ${error}` : <div style={{ width: 24, height: 24, border: '2px solid var(--line)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
         </div>
       )}

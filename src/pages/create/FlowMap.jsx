@@ -72,9 +72,9 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
     if (!map || !ready) return undefined;
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
-    const points = pts.map((p) => ({ lng: p.lng, lat: p.lat, label: p.label, kind: p.kind, data: p.name }));
+    const points = pts.map((p) => ({ lng: p.lng, lat: p.lat, label: p.label, kind: p.kind }));
     groupByLocation(points).forEach((g) => {
-      const el = createMarkerEl(g.labels.filter((l) => l != null), { icon: iconForKinds(g.kinds), title: g.data.filter(Boolean).join(' • ') });
+      const el = createMarkerEl(g.labels.filter((l) => l != null), { icon: iconForKinds(g.kinds) });
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(map);
       markersRef.current.push(marker);
     });
@@ -115,15 +115,15 @@ export default function FlowMap({ home, cities = [], returnCity, transport = {},
       )}
 
       {totalNights > 0 && (
-        <div style={{
+        <div className="t-meta" style={{
           position: 'absolute', bottom: 14, left: 14,
           display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px',
           background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 999,
-          fontSize: 'var(--fs-micro)', color: 'var(--muted)', boxShadow: 'var(--shadow-soft)',
+          color: 'var(--muted)', boxShadow: 'var(--shadow-soft)',
         }}>
-          <span style={{ fontWeight: 600, color: 'var(--ink-2)' }}>{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
+          <span style={{ color: 'var(--ink-2)' }}>{cities.length}</span> {cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many')}
           <span style={{ color: 'var(--muted-2)' }}>·</span>
-          <span style={{ fontWeight: 600, color: 'var(--ink-2)' }}>{totalNights}</span> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
+          <span style={{ color: 'var(--ink-2)' }}>{totalNights}</span> {totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}
         </div>
       )}
 

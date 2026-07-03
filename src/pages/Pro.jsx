@@ -46,7 +46,7 @@ export default function Pro() {
   // Start in the loading state: prices are always fetched on mount, so the very
   // first paint should already show skeletons (not a one-frame flash of "-" cards).
   const [pricesLoading, setPricesLoading] = useState(true);
-  const [picked, setPicked] = useState('pro_monthly');
+  const [picked, setPicked] = useState('account_pro_monthly');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -61,10 +61,10 @@ export default function Pro() {
   }, []);
 
   useEffect(() => {
-    if (hidePerTrip && picked === 'pro_trip') setPicked('pro_monthly');
+    if (hidePerTrip && picked === 'trip_pro_lifetime') setPicked('account_pro_monthly');
   }, [hidePerTrip, picked]);
 
-  const handleUpgrade = async (planType) => {
+  const handleUpgrade = async (productCode) => {
     setErrorMsg('');
     try {
       setLoading(true);
@@ -72,10 +72,10 @@ export default function Pro() {
       try { isIframe = window.self !== window.top; } catch { isIframe = true; }
       if (isIframe) { setErrorMsg(t('sub.iframe_alert')); setLoading(false); return; }
 
-      // landing-path (pro_trip → /trip/<id>, sub → /settings) деривируется НА СЕРВЕРЕ
-      // из (planType, tripId) — returnPath клиента не шлём (ломал детерминизм тела под
-      // нативную идемпотентность Stripe). Result-модалка глобальная, откроется на любом роуте.
-      const response = await supabase.functions.invoke('createStripeCheckout', { body: { tripId, planType } });
+      // landing-path (trip_pro_lifetime → /trip/<id>, sub → /settings) деривируется НА
+      // СЕРВЕРЕ из (productCode, tripId) — returnPath клиента не шлём (ломал детерминизм
+      // тела под нативную идемпотентность Stripe). Result-модалка глобальная, откроется на любом роуте.
+      const response = await supabase.functions.invoke('createStripeCheckout', { body: { tripId, productCode } });
       if (response.error) throw response.error;
       if (response.data?.url) { window.location.href = response.data.url; return; }
       setLoading(false);
@@ -97,8 +97,8 @@ export default function Pro() {
     }
   };
 
-  const renderPrice = (planType) => {
-    const p = prices?.[planType];
+  const renderPrice = (productCode) => {
+    const p = prices?.[productCode];
     if (!p) return { price: '-', period: '' };
     const amount = (p.unit_amount || 0) / 100;
     const price = fmtMoney(amount, p.currency, { minFraction: 0, maxFraction: 2 });
@@ -111,26 +111,26 @@ export default function Pro() {
 
   const allPlans = [
     {
-      type: 'pro_trip', title: t('sub.plan_trip_title'),
+      type: 'trip_pro_lifetime', title: t('sub.plan_trip_title'),
       caption: t('sub.plan_trip_desc'),
       badge: t('sub.badge_once') || 'one-time',
       features: [t('sub.plan_trip_feat_1'), t('sub.plan_trip_feat_2'), t('sub.plan_trip_feat_3')],
     },
     {
-      type: 'pro_monthly', title: t('sub.plan_monthly_title'),
+      type: 'account_pro_monthly', title: t('sub.plan_monthly_title'),
       caption: t('sub.plan_monthly_desc'), popular: true,
       badge: t('sub.badge_sub') || 'subscription',
       features: [t('sub.plan_monthly_feat_1'), t('sub.plan_monthly_feat_2'), t('sub.plan_monthly_feat_3'), t('sub.plan_monthly_feat_4')],
     },
     {
-      type: 'pro_yearly', title: t('sub.plan_yearly_title'),
+      type: 'account_pro_yearly', title: t('sub.plan_yearly_title'),
       caption: t('sub.plan_yearly_desc'), save: '−33%',
       badge: t('sub.badge_sub') || 'subscription',
       features: [t('sub.plan_yearly_feat_1'), t('sub.plan_yearly_feat_2')],
     },
   ];
 
-  const plans = hidePerTrip ? allPlans.filter(p => p.type !== 'pro_trip') : allPlans;
+  const plans = hidePerTrip ? allPlans.filter(p => p.type !== 'trip_pro_lifetime') : allPlans;
 
   return (
     <div className="pro-page app-shell">

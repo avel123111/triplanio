@@ -17,23 +17,13 @@
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  line-height: 1;
 }
 .ncal-month-lbl {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(32px, 6vw, 50px);
   color: var(--ink);
-  letter-spacing: -.03em;
-  line-height: 1;
 }
 .ncal-year-lbl {
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: clamp(18px, 3.5vw, 28px);
   color: var(--muted);
   margin-left: 12px;
-  letter-spacing: -.02em;
 }
 .ncal-hd-r {
   display: flex;
@@ -68,8 +58,6 @@
   border-radius: var(--r-pill);
   background: transparent; border: none;
   color: var(--muted);
-  font-family: var(--font-ui);
-  font-size: var(--fs-meta); font-weight: 700;
   transition: background .15s, color .15s;
   cursor: pointer;
 }
@@ -84,8 +72,7 @@
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 12px; border-radius: var(--r-pill);
   background: var(--primary-soft); color: var(--brand);
-  border: none; font-family: var(--font-ui);
-  font-size: var(--fs-meta); font-weight: 800;
+  border: none;
   transition: background .15s, color .15s;
   cursor: pointer;
 }
@@ -101,9 +88,6 @@
   padding: 4px; gap: 2px;
 }
 .ncal-vtgl-btn {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--fs-meta);
   color: var(--muted);
   background: transparent; border: none;
   padding: 8px 18px; border-radius: var(--r-pill);
@@ -126,8 +110,6 @@
 }
 .ncal-wd {
   text-align: center;
-  font-size: var(--fs-nano); font-weight: 800;
-  letter-spacing: .08em; text-transform: uppercase;
   color: var(--muted-2); padding: 5px 0;
 }
 
@@ -163,9 +145,7 @@
   height: 20px;
   display: flex; align-items: center;
   padding: 0 9px;
-  font-size: var(--fs-nano); font-weight: 800;
   color: rgba(255,255,255,.92);
-  letter-spacing: .05em; text-transform: uppercase;
   white-space: nowrap; overflow: hidden;
   margin-bottom: 8px;
   flex: none;
@@ -182,18 +162,14 @@
   flex: 1; height: 100%;
   display: flex; align-items: center;
   padding: 0 6px;
-  font-size: var(--fs-nano); font-weight: 800;
   color: rgba(255,255,255,.9);
-  letter-spacing: .04em; text-transform: uppercase;
   overflow: hidden; white-space: nowrap; min-width: 0;
 }
 
 /* ── Day number ────────────────────────────────────────────────── */
 .ncal-dn-wrap { padding: 0 8px 4px; }
 .ncal-dn {
-  font-family: var(--font-display); font-weight: 700;
-  font-size: var(--fs-h3);
-  color: var(--ink-2); line-height: 1;
+  color: var(--ink-2);
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 27px; padding: 0;
 }
@@ -214,10 +190,8 @@
 .ncal-ev {
   display: flex; align-items: center; gap: 4px;
   padding: 3px 7px; border-radius: 7px;
-  font-size: var(--fs-nano); font-weight: 700; line-height: 1.3;
   overflow: hidden; border: none; cursor: pointer;
   text-align: left; width: 100%;
-  font-family: var(--font-ui);
   transition: filter .14s;
 }
 .ncal-ev:hover { filter: brightness(.96); }
@@ -239,8 +213,7 @@
   display: inline-flex; align-items: center;
   padding: 2px 8px; border-radius: var(--r-pill);
   background: var(--primary-soft); color: var(--brand);
-  font-size: var(--fs-nano); font-weight: 800;
-  border: none; font-family: var(--font-ui);
+  border: none;
   margin-top: 2px; cursor: pointer;
   transition: background .14s;
 }
@@ -286,9 +259,7 @@
   border-bottom: 1px solid var(--line-2);
 }
 .ncal-wdc-num {
-  font-family: var(--font-display); font-weight: 700;
-  font-size: var(--fs-h2);
-  color: var(--ink); line-height: 1; letter-spacing: -.03em;
+  color: var(--ink);
   display: inline-block;
 }
 .ncal-wdc.is-today .ncal-wdc-num {
@@ -297,16 +268,13 @@
   box-shadow: 0 4px 14px -4px var(--brand-glow);
 }
 .ncal-wdc-wd {
-  font-size: var(--fs-nano); font-weight: 800;
-  text-transform: uppercase; letter-spacing: .07em;
   color: var(--muted-2); margin-top: 5px;
 }
 /* Single city badge */
 .ncal-wdc-city {
   display: inline-flex; align-items: center;
   padding: 3px 9px; border-radius: var(--r-pill);
-  font-size: var(--fs-nano); font-weight: 800; margin-top: 8px;
-  letter-spacing: .04em; text-transform: uppercase;
+  margin-top: 8px;
 }
 /* Multiple city badges row */
 .ncal-wdc-cities {
@@ -321,7 +289,6 @@
 /* Empty day state */
 .ncal-wdc-empty {
   text-align: center; color: var(--muted-2);
-  font-size: var(--fs-nano); font-weight: 600;
   padding: 14px 0 6px;
 }
 
@@ -342,11 +309,9 @@
 .ncal-aev:hover { filter: brightness(.97); }
 .ncal-aev:active { transform: scale(.98); }
 .ncal-aev .atm {
-  font-size: var(--fs-nano); font-weight: 800;
   opacity: .7; font-variant-numeric: tabular-nums;
 }
 .ncal-aev .atl {
-  font-size: var(--fs-micro); font-weight: 800;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ncal-aev.ev-hotel    { background: var(--ev-hotel-soft);    color: var(--ev-hotel-ink); }
@@ -364,13 +329,11 @@
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
 }
 .ncal-legend-lbl {
-  font-size: var(--fs-nano); font-weight: 800;
-  text-transform: uppercase; letter-spacing: .07em;
   color: var(--muted-2); width: 64px; flex: none;
 }
 .ncal-leg {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: var(--fs-meta); color: var(--muted); font-weight: 600;
+  color: var(--muted);
 }
 .ncal-leg-sw {
   width: 10px; height: 10px; border-radius: 3px; flex: none;
@@ -402,7 +365,7 @@
 /* ── Empty / no-dates ──────────────────────────────────────────── */
 .ncal-empty {
   padding: 48px 24px; text-align: center;
-  color: var(--muted); font-size: var(--fs-base);
+  color: var(--muted);
 }
 
 /* ── Dark mode: lighter cell shadow ────────────────────────────── */
@@ -449,8 +412,8 @@
   /* Header: stack */
   .ncal-hd { flex-direction: column; gap: 10px; align-items: stretch; margin-bottom: 14px; }
   .ncal-hd-l { width: 100%; }
-  .ncal-month-lbl { font-size: clamp(26px, 9vw, 38px); }
-  .ncal-year-lbl  { font-size: clamp(15px, 5vw, 20px); margin-left: 8px; }
+  .ncal-month-lbl { font-size: var(--fs-h2); }
+  .ncal-year-lbl  { font-size: var(--fs-strong); margin-left: 8px; }
   /* Controls: nav + toggle in one row */
   .ncal-hd-r {
     flex-direction: row; align-items: center;
@@ -474,7 +437,7 @@
   .ncal-dn-wrap { padding: 0 4px 3px; }
   .ncal-ev     { padding: 2px 4px; border-radius: 5px; }
   .ncal-ev .tm { display: none; }
-  .ncal-ev .t  { font-size: var(--fs-nano); line-height: 1.2; }
+  .ncal-ev .t  { font-size: var(--fs-nano); }
   .ncal-evl    { padding: 0 3px; gap: 2px; }
   .ncal-more   { padding: 1px 6px; font-size: var(--fs-nano); }
 

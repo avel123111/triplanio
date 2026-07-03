@@ -3,7 +3,7 @@
  * in the trip-editor's left column (design mockup: HotelView / TransferView /
  * ActivityView). Controller only:
  *   - load by id (useEntitySource)
- *   - view   -> PanelShell + EventPanelBody (design-faithful, EventPanels.jsx)
+ *   - view   -> PanelShell (chrome) + EventViewSections (canonical shared body)
  *   - edit   -> EventEditDialog variant="panel"
  *   - delete -> inline confirm -> delete row -> invalidate -> onClose()
  */
@@ -14,8 +14,8 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import { Btn, Skeleton, useToast } from '@/design/index';
 import EventEditDialog from '@/components/common/EventEditDialog';
-import { useEntitySource } from '@/components/common/EventViewBody';
-import { PanelShell, EventPanelBody, kindIcon } from '@/components/common/EventPanels';
+import { useEntitySource, useEntityDocs, EventViewSections, eventTheme, fmtDate, stayNights } from '@/components/common/EventViewBody';
+import { PanelShell, kindIcon } from '@/components/common/EventPanels';
 import { getSourceDocuments } from '@/lib/documents';
 import { collectDocPaths } from '@/lib/storageCleanup';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
@@ -41,6 +41,8 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
   }, [kind, id]);
 
   const { data, visit, fromVisit, toVisit } = useEntitySource(kind, id, { open: true, onError: () => onClose?.(), refreshKey });
+  // Docs state for the shared view body (read-only here — no upload in view mode).
+  const { docs, uploading, uploadFiles } = useEntityDocs(kind, data, canEdit);
 
   const invalidate = () => {
     const tripId = data?.trip_id;
@@ -75,13 +77,20 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
   const themeLabel = kind === 'transfer'
     ? t(data.transport_type === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer')
     : t(LABEL_KEY[kind] || 'budget.source_activity');
-  const title = kind === 'hotel' ? (data.name || themeLabel)
+  // Drawer header (redesign): eyebrow = TYPE, title = city (hotel: the name is
+  // in the body name-card, not repeated here), meta/sub = stay dates.
+  const hotelNights = kind === 'hotel' ? stayNights(data.check_in_datetime, data.check_out_datetime) : null;
+  const hotelDates = kind === 'hotel' && data.check_in_datetime && data.check_out_datetime
+    ? `${fmtDate(data.check_in_datetime)} — ${fmtDate(data.check_out_datetime)}${hotelNights != null ? ` · ${t('fork.stay22_nights', { count: hotelNights })}` : ''}`
+    : '';
+  const title = kind === 'hotel' ? (visit?.city_name || themeLabel)
     : kind === 'activity' ? (data.title || themeLabel)
     : kind === 'service' ? (data.name || themeLabel)
     : (data.carrier || [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ') || themeLabel);
-  const sub = kind === 'transfer'
-    ? [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ') || themeLabel
-    : (visit?.city_name || themeLabel);
+  const sub = kind === 'hotel' ? (hotelDates || visit?.city_name || '')
+    : kind === 'transfer'
+      ? [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ') || themeLabel
+      : (visit?.city_name || themeLabel);
 
   const CACHE_KIND = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
   const doDelete = async () => {
@@ -117,6 +126,7 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
     <PanelShell
       kind={kind}
       icon={kindIcon(kind, data)}
+      eyebrow={themeLabel}
       title={title}
       sub={sub}
       onBack={onClose}
@@ -143,12 +153,16 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
         <div className="del-confirm">
           <div className="del-confirm-ic"><Icon name="trash" size={18} /></div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)' }}>{t('event.delete_q', { label: themeLabel.toLowerCase() })}</div>
-            <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', marginTop: 4 }}>{t('event.delete_irreversible')}</div>
+            <div className="t-ui">{t('event.delete_q', { label: themeLabel.toLowerCase() })}</div>
+            <div className="t-meta" style={{ color: 'var(--muted)', marginTop: 4 }}>{t('event.delete_irreversible')}</div>
           </div>
         </div>
       ) : (
-        <EventPanelBody kind={kind} entity={data} fromVisit={fromVisit} toVisit={toVisit} />
+        <EventViewSections
+          kind={kind} entity={data} fromVisit={fromVisit} toVisit={toVisit}
+          accent={eventTheme(kind, data).color}
+          docs={docs} canEdit={false} uploading={uploading} uploadFiles={uploadFiles}
+        />
       )}
     </PanelShell>
   );

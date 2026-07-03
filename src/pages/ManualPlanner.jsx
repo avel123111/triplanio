@@ -7,8 +7,10 @@ import { useT, useI18n } from '@/lib/i18n/I18nContext';
 import { useActiveTripsLimit, invalidateActiveTripsLimit } from '@/hooks/useActiveTripsLimit';
 import { isProActive } from '@/lib/subscription';
 import { useTheme } from '@/lib/ThemeContext';
-import { searchCities, resolveCities, countryFlag, reverseGeocode } from '@/lib/geo';
+import { resolveCities, reverseGeocode } from '@/lib/geo';
+import CountryFlag from '@/components/common/CountryFlag';
 import { tzFromCoords } from '@/lib/timezone';
+import { localizeCountry } from '@/lib/i18n/format';
 import { layoutDates } from '@/lib/tripDates';
 import { Icon } from '../design/icons';
 import { Btn, EmptyState, Severity, Toggle, useToast } from '../design/index';
@@ -22,10 +24,9 @@ import { coverGradientCss, DEFAULT_GRADIENT_ID } from '@/lib/trip-gradients';
 import FlowProgress from '@/pages/create/FlowProgress';
 import FlowMap from '@/pages/create/FlowMap';
 import PanelAi from '@/pages/create/PanelAi';
+import { CityPicker, CityAnchorRow } from '@/pages/create/anchors';
 import { useRouteDnD } from '@/lib/useRouteDnD';
 import { useConfirm } from '@/components/common/ConfirmProvider';
-import Autocomplete from '@/components/common/Autocomplete';
-import cityOptionRow from '@/components/common/cityOptionRow';
 // StartCalendar / Popover / Sheet / DateTime are now encapsulated in the shared TripStartControl.
 import '../design/app.css';
 
@@ -109,60 +110,8 @@ function recomputeDates(list) {
   return list.map((c, i) => (i === 0 ? c : { ...c, startDate: laid[i].start_date }));
 }
 
-// ─── CityPicker ──────────────────────────────────────────────────────────────
-
-// City picker for the create-flow rows — a thin facade over the shared
-// <Autocomplete> engine (same field/dropdown/scroll/hover as CitySearch and the
-// address picker). It owns only the create-flow contract: controlled `value`
-// (city object), clear-on-type, and timezone enrichment on pick.
-function CityPicker({ value, onChange, placeholder, autoFocus }) {
-  const t = useT();
-  const [q, setQ] = useState(value?.city_name || '');
-
-  // Sync the field text when the selection changes externally.
-  useEffect(() => { setQ(value?.city_name || ''); }, [value?.city_name]);
-
-  return (
-    <Autocomplete
-      inputValue={q}
-      onInputChange={(val) => { setQ(val); if (value) onChange(null); }}
-      search={(query, lang) => searchCities(query, lang)}
-      getKey={(c) => c.external_city_id}
-      onPick={(city) => {
-        setQ(city.city_name);
-        onChange({ ...city, timezone: tzFromCoords(city.latitude, city.longitude) });
-      }}
-      renderRow={cityOptionRow}
-      placeholder={placeholder || t('planner.city_search_ph')}
-      autoFocus={autoFocus}
-      icon="pin"
-      iconActive={!!value}
-    />
-  );
-}
-
-// ─── CityAnchorRow ────────────────────────────────────────────────────────────
-
-// Start / finish plate — the SAME element as the editor's GridEndpoint (.te-end:
-// flag/check node, eyebrow label, bold .te-cityname). One look across both screens.
-function CityAnchorRow({ label, city_name, country, kind }) {
-  const t = useT();
-  const isStart = kind === 'home';
-  const accent = isStart ? 'var(--brand)' : 'var(--success-ink)';
-  const soft = isStart ? 'var(--brand-soft)' : 'var(--success-soft)';
-  return (
-    <div className="te-end">
-      <span className="te-row__node" style={{ background: soft, color: accent }}><Icon name={isStart ? 'flag' : 'check'} size={13} /></span>
-      <div className="te-citycell" style={{ flex: 1 }}>
-        <span className="te-endlabel" style={{ color: accent }}>{label}</span>
-        <div className="te-cityline">
-          <span className="te-cityname">{city_name || <span className="muted" style={{ fontWeight: 500 }}>{t('planner.not_set')}</span>}</span>
-          {country && <span className="muted" style={{ fontWeight: 500, fontSize: 'var(--fs-meta)' }}>{country}</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
+// CityPicker + CityAnchorRow live in ./create/anchors (shared by the planner
+// steps and the AI panel — one picker/anchor, no circular import).
 
 // ─── CityRow ──────────────────────────────────────────────────────────────────
 
@@ -189,7 +138,7 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
   const stopArm = (e) => e.stopPropagation();
   const pick = (picked) => {
     if (picked) {
-      onChange({ city_name: picked.city_name, city_name_en: picked.city_name_en, geonameid: picked.geonameid ?? null, name_i18n: picked.name_i18n || null, country: picked.country, country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
+      onChange({ city_name: picked.city_name, city_name_en: picked.city_name_en, geonameid: picked.geonameid ?? null, name_i18n: picked.name_i18n || null, country: picked.country || localizeCountry(picked.country_code, lang), country_code: picked.country_code, latitude: picked.latitude, longitude: picked.longitude, timezone: picked.timezone, external_city_id: picked.external_city_id });
       setEditing(false);
     } else {
       onChange({ city_name: '', city_name_en: '', geonameid: null, name_i18n: null, country: '', country_code: '', latitude: null, longitude: null, timezone: null, external_city_id: null });
@@ -248,8 +197,8 @@ function CityRow({ idx, city, isDragging, isPressing, isFinalAnchor, isLast, fin
       <div className="pl-fin-sub" onPointerDown={stopArm} onClick={stopArm}>
         <Toggle on={finalPoint} onChange={onToggleFinalPoint} label={t('planner.final_point')} />
         <Icon name="flag" size={13} style={{ color: 'var(--muted)', flexShrink: 0 }} />
-        <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
-          <span style={{ fontWeight: 600 }}>{t('planner.final_point')}</span>{' '}
+        <div className="t-meta" style={{ flex: 1, minWidth: 0 }}>
+          <span className="t-ui">{t('planner.final_point')}</span>{' '}
           <span className="muted">{t('planner.final_point_hint')}</span>
         </div>
       </div>
@@ -291,14 +240,14 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.home_title')}</h1>
-      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
+      <div className="t-ui" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
         {t('planner.home_desc')}
       </div>
 
       <h2 className="section-sub">{t('ai_plan.start')}</h2>
       <div className="field-row cols-2" style={{ alignItems: 'end', gridTemplateColumns: '7fr 3fr' }}>
         <div className="field" style={{ marginBottom: 0 }}>
-          <label className="field__label">{t('planner.start_city')}</label>
+          <label className="field__label">{t('planner.start_city')} <span className="muted" style={{ textTransform: 'none', letterSpacing: 0 /* design-token-exempt: caps-reset for optional suffix */ }}>· {t('planner.optional')}</span></label>
           <CityPicker value={home} onChange={setHome} placeholder={t('planner.start_city_ph')} autoFocus />
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
@@ -318,8 +267,8 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             <Icon name="pin" size={20} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
-            <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{t('planner.geo_hint')}</div>
+            <div className="t-ui" style={{ marginBottom: 2 }}>{t('planner.suggest_nearby')}</div>
+            <div className="muted t-meta">{t('planner.geo_hint')}</div>
           </div>
           <Btn variant="primary" size="sm" onClick={requestGeo}>{t('planner.allow')}</Btn>
         </div>
@@ -328,7 +277,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
       {geoState === 'loading' && (
         <div className="geo-prompt" style={{ border: '1.5px dashed var(--line)', background: 'var(--surface)' }}>
           <div style={{ width: 20, height: 20, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
-          <span style={{ fontSize: 'var(--fs-base)', color: 'var(--muted)' }}>{t('planner.detecting')}</span>
+          <span className="t-body" style={{ color: 'var(--muted)' }}>{t('planner.detecting')}</span>
         </div>
       )}
 
@@ -347,8 +296,8 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
               <Icon name="plane" size={14} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 'var(--fs-strong)', fontWeight: 700 }}>{nearbyCity.city_name}</div>
-              <div className="muted" style={{ fontSize: 'var(--fs-micro)' }}>{countryFlag(nearbyCity.country_code)} {nearbyCity.country} · {t('planner.your_city')}</div>
+              <div className="t-ui">{nearbyCity.city_name}</div>
+              <div className="muted t-meta"><CountryFlag code={nearbyCity.country_code} /> {nearbyCity.country} · {t('planner.your_city')}</div>
             </div>
             {home?.city_name === nearbyCity.city_name && (
               <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -365,8 +314,8 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
             <Icon name="lock" size={20} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, marginBottom: 2 }}>{t('planner.geo_off')}</div>
-            <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.45 }}>{t('planner.geo_off_hint')}</div>
+            <div className="t-ui" style={{ marginBottom: 2 }}>{t('planner.geo_off')}</div>
+            <div className="muted t-meta">{t('planner.geo_off_hint')}</div>
           </div>
           <Btn variant="ghost" size="sm" onClick={requestGeo}>{t('planner.retry_request')}</Btn>
         </div>
@@ -378,7 +327,7 @@ function StepHome({ home, setHome, startDate, setStartDate }) {
 
 // ─── Step 2: Cities ───────────────────────────────────────────────────────────
 
-function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalPoint, startDate, setStartDate }) {
+function StepCities({ cities, setCities, home, setHome, finalPoint, setFinalPoint, startDate, setStartDate }) {
   const t = useT();
   const addCity = (preset = null) => {
     const base = preset || { external_city_id: null, city_name: '', country: '', country_code: '', latitude: null, longitude: null, timezone: null };
@@ -409,7 +358,7 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.step_cities')}</h1>
-      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 18, maxWidth: 620 }}>
+      <div className="t-ui" style={{ color: 'var(--ink-2)', marginBottom: 18, maxWidth: 620 }}>
         {t('planner.cities_desc_1')} <b style={{ color: 'var(--ink)' }}>{t('planner.cities_desc_drag')}</b> {t('planner.cities_desc_2')}
       </div>
 
@@ -420,7 +369,9 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
         <TripStartControl date={startDate} onStep={(d) => startDate && setStartDate(addDays(startDate, d))} onPickDate={setStartDate} label={t('ai_plan.start')} />
       </div>
 
-      <CityAnchorRow label={t('ai_plan.start')} city_name={home?.city_name} country={home?.country} kind="home" />
+      {/* Start anchor — OPTIONAL. Empty → an inline "+ Указать старт" affordance
+          (one control for both flows: manual skip + AI no-origin). */}
+      <CityAnchorRow label={t('ai_plan.start')} city={home} editable onPick={setHome} />
 
       {cities.length === 0 ? (
         <div style={{ marginTop: 12 }}>
@@ -457,11 +408,11 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
               </div>
             );
           })}
-          <button onClick={() => addCity()} style={{
+          <button onClick={() => addCity()} className="t-body" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '12px 16px', background: 'transparent',
             border: '1.5px dashed var(--line)', borderRadius: 12, cursor: 'pointer',
-            color: 'var(--muted)', fontSize: 'var(--fs-base)', fontWeight: 500,
+            color: 'var(--muted)',
           }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.color = 'var(--brand)'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)'; }}
@@ -471,16 +422,8 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
         </div>
       )}
 
-      {/* End anchor — mirrors the start anchor (and PanelAi) so the AI-suggested
-          return city stays visible on this step instead of seeming to vanish.
-          Read-only here; it's edited in the Return step. effectiveReturn already
-          resolves round-trips to home. */}
-      {returnCity?.city_name && (
-        <div style={{ marginTop: 12 }}>
-          <CityAnchorRow label={t('ai_plan.end')} city_name={returnCity.city_name} country={returnCity.country} kind="end" />
-        </div>
-      )}
-
+      {/* Finish is expressed by the last city's "финиш" switch (below) — no
+          separate end/finish plate on this step, unified with the manual flow. */}
     </div>
   );
 }
@@ -489,37 +432,44 @@ function StepCities({ cities, setCities, home, returnCity, finalPoint, setFinalP
 
 function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity, setReturnCity }) {
   const t = useT();
+  // "Домой" is only meaningful with an origin. Without a start there's nowhere
+  // to return home to → the round-trip card is hidden and "другой город" is the
+  // only mode (matches the optional-start model).
+  const canHome = !!home?.city_name;
+  useEffect(() => { if (!canHome && returnMode !== 'other') setReturnMode('other'); }, [canHome]);
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>
         {t('planner.return_title_pre')} <span style={{ color: 'var(--brand)' }}>{lastCityName}</span>?
       </h1>
-      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
+      <div className="t-ui" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 540 }}>
         {t('planner.return_desc')}
       </div>
 
       <h2 className="section-sub">{t('planner.step_return')}</h2>
-      <div className="field-row cols-2" style={{ marginBottom: 14 }}>
-        <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
-              <Icon name="flag" size={16} />
+      <div className={'field-row' + (canHome ? ' cols-2' : '')} style={{ marginBottom: 14 }}>
+        {canHome && (
+          <button onClick={() => setReturnMode('home')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'home' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'home' ? 'var(--brand)' : 'var(--line)'), borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center' }}>
+                <Icon name="flag" size={16} />
+              </div>
+              <div className="t-ui">{t('planner.return_home', { city: home?.city_name || '…' })}</div>
             </div>
-            <div style={{ fontWeight: 700 }}>{t('planner.return_home', { city: home?.city_name || '…' })}</div>
-          </div>
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
-            {t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}
-          </div>
-        </button>
+            <div className="muted t-meta">
+              {t('planner.return_home_desc_1')} <b>{lastCityName}</b> {t('planner.return_home_desc_2')}
+            </div>
+          </button>
+        )}
 
         <button onClick={() => setReturnMode('other')} style={{ padding: 16, textAlign: 'left', background: returnMode === 'other' ? 'var(--brand-soft)' : 'var(--surface)', border: '1.5px solid ' + (returnMode === 'other' ? 'var(--brand)' : 'var(--line)'), borderRadius: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--warm)', color: 'white', display: 'grid', placeItems: 'center' }}>
               <Icon name="globe" size={16} />
             </div>
-            <div style={{ fontWeight: 700 }}>{t('planner.return_other')}</div>
+            <div className="t-ui">{t('planner.return_other')}</div>
           </div>
-          <div className="muted" style={{ fontSize: 'var(--fs-meta)', lineHeight: 1.4 }}>
+          <div className="muted t-meta">
             {t('planner.return_other_desc')}
           </div>
         </button>
@@ -539,7 +489,7 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 
       <div style={{ marginTop: 18, padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <Icon name="info" size={14} style={{ color: 'var(--muted)', marginTop: 2, flexShrink: 0 }} />
-        <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--muted)', lineHeight: 1.5 }}>
+        <div className="t-meta" style={{ color: 'var(--muted)' }}>
           {t('planner.return_info')}
         </div>
       </div>
@@ -553,12 +503,12 @@ function StepReturn({ home, lastCityName, returnMode, setReturnMode, returnCity,
 function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0', position: 'relative', zIndex: 1 }}>
-      <div style={{ width: 28, height: 28, borderRadius: '50%', background: icon ? (iconColor || 'var(--brand)') : 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 'var(--fs-micro)', fontWeight: 700, flexShrink: 0, border: '3px solid var(--surface)' }}>
+      <div className="t-meta" style={{ width: 28, height: 28, borderRadius: '50%', background: icon ? (iconColor || 'var(--brand)') : 'var(--brand)', color: 'white', display: 'grid', placeItems: 'center', flexShrink: 0, border: '3px solid var(--surface)' }}>
         {icon ? <Icon name={icon} size={12} /> : num}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="te-cityname" style={{ color: muted ? 'var(--muted)' : 'var(--ink)' }}>{name || '-'}</div>
-        <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{sub}</div>
+        <div className="muted t-meta" style={{ marginTop: 1 }}>{sub}</div>
       </div>
     </div>
   );
@@ -567,14 +517,14 @@ function ReviewRow({ num, name, sub, icon, iconColor, muted }) {
 function Stat({ label, value, hint }) {
   return (
     <div>
-      <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)', color: 'var(--ink-2)' }}>{label}</div>
-      <div style={{ fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{value}</div>
-      {hint && <div className="muted" style={{ fontSize: 'var(--fs-micro)', marginTop: 1 }}>{hint}</div>}
+      <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink-2)' }}>{label}</div>
+      <div className="t-subheading">{value}</div>
+      {hint && <div className="muted t-meta" style={{ marginTop: 1 }}>{hint}</div>}
     </div>
   );
 }
 
-function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error }) {
+function StepReview({ home, cities, returnCity, finalPoint, cover, setCover, tripTitle, setTripTitle, saving, savedOk, savedTripId, error }) {
   const nav = useNavigate();
   const t = useT();
   const { lang } = useI18n();
@@ -592,7 +542,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
           <Icon name="check" size={36} />
         </div>
         <h1 style={{ marginBottom: 8 }}>{t('planner.created_title')}</h1>
-        <div className="muted" style={{ fontSize: 'var(--fs-strong)', maxWidth: 460, margin: '0 auto 22px' }}>
+        <div className="muted t-ui" style={{ maxWidth: 460, margin: '0 auto 22px' }}>
           {t('planner.created_desc', { title: displayTitle, cities: cities.length, citiesWord: cities.length === 1 ? t('trip.cities_count_one') : cities.length < 5 ? t('trip.cities_count_few') : t('trip.cities_count_many'), nights: totalNights, nightsWord: totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many') })}
         </div>
         <div style={{ display: 'inline-flex', gap: 8 }}>
@@ -606,7 +556,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
   return (
     <div>
       <h1 style={{ marginBottom: 10 }}>{t('planner.step_review')}</h1>
-      <div style={{ fontSize: 'var(--fs-strong)', color: 'var(--ink-2)', marginBottom: 22, maxWidth: 620 }}>
+      <div className="t-ui" style={{ color: 'var(--ink-2)', marginBottom: 22, maxWidth: 620 }}>
         {t('planner.review_desc')}
       </div>
 
@@ -617,7 +567,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
             <img src={cover.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
           )}
           <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay-grad-soft)' }} />
-          <div style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', fontWeight: 700, fontSize: 'var(--fs-h2)', letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
+          <div className="t-heading" style={{ position: 'absolute', left: 20, bottom: 14, color: 'white', textShadow: '0 2px 12px rgba(0,0,0,.3)' }}>
             {displayTitle}
           </div>
         </div>
@@ -626,21 +576,38 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
           <div className="eyebrow" style={{ marginBottom: 10 }}>{t('planner.route_points', { n: (home ? 1 : 0) + cities.length + (returnCity ? 1 : 0) })}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
             <div style={{ position: 'absolute', left: 13, top: 14, bottom: 14, width: 2, background: 'var(--line-2)' }} />
-            <ReviewRow icon="flag" iconColor="var(--brand)" name={home?.city_name} sub={`${home?.country || ''} · ${t('planner.sub_start')}`} muted />
-            {cities.map((c, i) => (
-              <ReviewRow key={c.id} num={i + 1} name={c.city_name} sub={`${c.country || '-'} · ${c.nights} ${c.nights == 1 ? t('view.nights_one') : c.nights < 5 ? t('view.nights_few') : t('view.nights_many')}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${c.startDate}` : ''}`} />
-            ))}
+            {home?.city_name && (
+              <ReviewRow icon="flag" iconColor="var(--brand)" name={home.city_name} sub={`${home.country || ''} · ${t('planner.sub_start')}`} muted />
+            )}
+            {cities.map((c, i) => {
+              // Last city with the finish switch on → the endpoint marker (single
+              // blue flag, unified with the start), not a numbered stop.
+              const isFin = finalPoint && i === cities.length - 1;
+              return (
+                <ReviewRow
+                  key={c.id}
+                  num={isFin ? undefined : i + 1}
+                  icon={isFin ? 'flag' : undefined}
+                  iconColor={isFin ? 'var(--brand)' : undefined}
+                  name={c.city_name}
+                  sub={isFin
+                    ? `${c.country || '-'} · ${t('planner.sub_finish')}`
+                    : `${c.country || '-'} · ${c.nights} ${c.nights == 1 ? t('view.nights_one') : c.nights < 5 ? t('view.nights_few') : t('view.nights_many')}${c.startDate ? ` · ${t('planner.from_date_prefix')} ${c.startDate}` : ''}`}
+                  muted={isFin}
+                />
+              );
+            })}
             {returnCity?.city_name && (
-              <ReviewRow icon={returnCity.city_name === home?.city_name ? 'flag' : 'globe'} iconColor={returnCity.city_name === home?.city_name ? 'var(--brand)' : 'var(--warm)'} name={returnCity.city_name} sub={`${returnCity.country || ''} · ${t('planner.sub_return')}`} muted />
+              <ReviewRow icon="flag" iconColor="var(--brand)" name={returnCity.city_name} sub={`${returnCity.country || ''} · ${t('planner.sub_return')}`} muted />
             )}
           </div>
 
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
-              <div className="eyebrow" style={{ marginBottom: 3, fontSize: 'var(--fs-micro)', color: 'var(--ink-2)' }}>{t('event.start')}</div>
-              <div style={{ fontSize: 'var(--fs-h3)', fontWeight: 700 }}>{cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}</div>
+              <div className="eyebrow" style={{ marginBottom: 3, color: 'var(--ink-2)' }}>{t('event.start')}</div>
+              <div className="t-subheading">{cities[0]?.startDate ? shortDateLabel(cities[0].startDate, lang) : '—'}</div>
               {!cities[0]?.startDate && (
-                <div style={{ fontSize: 'var(--fs-micro)', color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
+                <div className="t-meta" style={{ color: 'var(--warning)', marginTop: 3 }}>{t('planner.date_required_hint')}</div>
               )}
             </div>
             <Stat label={t('planner.duration')} value={`${totalNights} ${totalNights === 1 ? t('view.nights_one') : totalNights < 5 ? t('view.nights_few') : t('view.nights_many')}`} />
@@ -650,7 +617,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
       </div>
 
       <div className="field">
-        <label className="field__label" style={{ fontSize: 'var(--fs-h4)' }}>{t('planner.cover')}</label>
+        <label className="field__label t-label">{t('planner.cover')}</label>
         <TripCoverPicker
           coverImageUrl={cover?.cover_image_url || ''}
           coverGradient={cover?.cover_gradient || ''}
@@ -660,7 +627,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
       </div>
 
       <div className="field">
-        <label className="field__label" style={{ fontSize: 'var(--fs-h4)' }}>{t('planner.title_label')}</label>
+        <label className="field__label t-label">{t('planner.title_label')}</label>
         <input
           className="input"
           value={tripTitle}
@@ -679,7 +646,7 @@ function StepReview({ home, cities, returnCity, cover, setCover, tripTitle, setT
       {saving && (
         <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-12, rgba(59,91,219,.12))', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 16, height: 16, border: '2px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite', flexShrink: 0 }} />
-          <div style={{ flex: 1, fontSize: 'var(--fs-base)', color: 'var(--ink-2)' }}>{t('planner.saving_msg')}</div>
+          <div className="t-body" style={{ flex: 1, color: 'var(--ink-2)' }}>{t('planner.saving_msg')}</div>
         </div>
       )}
 
@@ -805,7 +772,10 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       // English name kept for partner links (Stay22/Viator) and the directory:
       // prefer the AI's city_name_en, else the geocoder's canonical en name.
       city_name_en: c.city_name_en || best?.city_name_en || '',
-      country: c.country || best?.country || '',
+      // The gazetteer (TRIP-146) resolves country=null (only country_code), so
+      // derive the localized country name from the code when neither the AI nor
+      // the geocoder gave one — otherwise the review/rail shows "-".
+      country: c.country || best?.country || localizeCountry(c.country_code || best?.country_code, lang) || '',
       country_code: (c.country_code || best?.country_code || '').toUpperCase(),
       latitude: best?.latitude ?? null,
       longitude: best?.longitude ?? null,
@@ -854,30 +824,36 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       transitResolved.push({ ...base, startDate: c.start_date || '', nights: Math.max(1, +nights || 1) });
     }
 
-    // Start city → home (origin marker; no nights/dates of its own).
+    // Start city → home (origin marker; optional, no nights/dates of its own).
     setHome(startCity?.city_name ? startCity : null);
 
-    // Transit cities anchored to the first transit start_date (or default).
-    const anchor = transitResolved[0]?.startDate || defaultStartISO();
-    if (transitResolved[0]) transitResolved[0].startDate = anchor;
-    setCities(recomputeDates(transitResolved));
+    // Finish/return — mapped to the SAME model the manual flow uses (Pavel's
+    // call): a one-way end (a distinct final city, not the origin) becomes the
+    // LAST city with the "финиш" switch ON (finalPoint) — the "Возврат" step is
+    // then skipped, exactly like a manual finish, no separate return node. A
+    // round-trip (end == origin) or no end → switch OFF, return defaults to
+    // "home" (manual default) and the "Возврат" step is shown.
+    const startName = startCity?.city_name || '';
+    const oneWayEnd = !!endCity?.city_name && endCity.city_name !== startName;
+    let finalCities = transitResolved;
+    if (oneWayEnd) {
+      const lastTransit = transitResolved[transitResolved.length - 1];
+      // Don't duplicate when the itinerary already ends at that city — just flip
+      // the switch on the existing last city; else append the end as the finish.
+      if (!lastTransit || lastTransit.city_name !== endCity.city_name) {
+        finalCities = [...transitResolved, { ...endCity, startDate: '', nights: 1 }];
+      }
+    }
+
+    // Transit cities anchored to the first city's start_date (or default).
+    const anchor = finalCities[0]?.startDate || defaultStartISO();
+    if (finalCities[0]) finalCities[0].startDate = anchor;
+    setCities(recomputeDates(finalCities));
     setStartDateRaw(anchor);
 
-    // End city → return leg. The AI never marks the last transit city as the
-    // finish (that's the manual `finalPoint` toggle), so an explicit end is
-    // always a return node: same city as origin → "return home", else "other".
-    setFinalPoint(false);
-    if (endCity?.city_name) {
-      const sameAsHome = !!startCity?.city_name && endCity.city_name === startCity.city_name;
-      setReturnMode(sameAsHome ? 'home' : 'other');
-      setReturnCity(sameAsHome ? null : endCity);
-    } else {
-      // No explicit end. With an origin given, default to a round-trip home
-      // (matches the manual default, confirmed in the Return step); with no
-      // origin either, effectiveReturn stays null → no return leg.
-      setReturnMode('home');
-      setReturnCity(null);
-    }
+    setFinalPoint(oneWayEnd);
+    setReturnMode('home');
+    setReturnCity(null);
 
     if (d?.title) setTripTitle(d.title);
   };
@@ -1145,8 +1121,8 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
             <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--warning-soft)', color: 'var(--warning)', display: 'grid', placeItems: 'center', margin: '0 auto 18px' }}>
               <Icon name="lock" size={28} />
             </div>
-            <h2 style={{ margin: '0 0 8px', fontSize: 'var(--fs-h2)', fontWeight: 700 }}>{t('planner.limit_title')}</h2>
-            <p style={{ fontSize: 'var(--fs-strong)', color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24 }}>
+            <h2 className="t-heading" style={{ margin: '0 0 8px' }}>{t('planner.limit_title')}</h2>
+            <p className="t-ui" style={{ color: 'var(--muted)', marginBottom: 24 }}>
               {t('planner.limit_desc_pre')} <strong>{t('planner.limit_desc_strong')}</strong>{t('planner.limit_desc_post')}
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -1191,7 +1167,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // not the brand primary — keeps the whole AI screen on the --ai layer.
   let primaryVariant = (step === 'home' && isAi) ? 'ai' : 'primary';
   if (step === 'home') {
-    primaryDisabled = isAi ? aiState !== 'draft' : (!home?.city_name || !startDate);
+    // Origin is OPTIONAL now (can be added on step 2 or later from the timeline);
+    // the trip start DATE is the only hard requirement of the manual entry step.
+    primaryDisabled = isAi ? aiState !== 'draft' : !startDate;
+    // Make the optionality discoverable: with no origin picked the primary CTA
+    // reads "Пропустить" (not "Дальше"), so the user knows the step is skippable.
+    if (!isAi && !home?.city_name) primaryLabel = t('planner.skip');
   } else if (step === 'cities') {
     primaryDisabled = !citiesValid;
   } else if (step === 'review') {
@@ -1242,12 +1223,12 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
             <div className="lp-b scrollbar-thin flow-lp-b">
               {step === 'home' && (isAi ? (
-                <PanelAi ctx={{ aiState, prompt, setPrompt, aiComment, home, returnCity: effectiveReturn, cities, onGenerate }} />
+                <PanelAi ctx={{ aiState, prompt, setPrompt, aiComment, home, setHome, returnCity: effectiveReturn, cities, onGenerate }} />
               ) : (
                 <StepHome home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} />
               ))}
               {step === 'cities' && (
-                <StepCities cities={cities} setCities={setCities} home={home} returnCity={effectiveReturn} startDate={startDate} setStartDate={setStartDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} />
+                <StepCities cities={cities} setCities={setCities} home={home} setHome={setHome} startDate={startDate} setStartDate={setStartDate} finalPoint={finalPoint} setFinalPoint={setFinalPoint} />
               )}
               {step === 'return' && (
                 <StepReturn
@@ -1264,6 +1245,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
                   home={home}
                   cities={cities}
                   returnCity={effectiveReturn}
+                  finalPoint={finalPoint}
                   cover={cover}
                   setCover={setCover}
                   tripTitle={tripTitle}

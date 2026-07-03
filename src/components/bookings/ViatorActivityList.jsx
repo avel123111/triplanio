@@ -73,11 +73,17 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         <div className="va-list" aria-hidden="true">
           {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <div className="pcard pcard--sk" key={i}>
-              <Skeleton w={96} h={96} r={12} />
-              <div className="pcard__body">
-                <Skeleton w="80%" h={14} />
-                <Skeleton w="50%" h={12} style={{ marginTop: 8 }} />
-                <Skeleton w="45%" h={16} style={{ marginTop: 14 }} />
+              <div className="pcard__top">
+                <Skeleton w={60} h={60} r={12} />
+                <div className="pcard__body">
+                  <Skeleton w="70%" h={14} />
+                  <Skeleton w="90%" h={12} style={{ marginTop: 8 }} />
+                </div>
+              </div>
+              <div className="pcard__bar">
+                <Skeleton w={80} h={14} />
+                <span className="pcard__spacer" />
+                <Skeleton w={70} h={30} r={10} />
               </div>
             </div>
           ))}
@@ -160,30 +166,30 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         .va-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
         .va-ti { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
         .va-tiwrap { display: flex; flex-direction: column; min-width: 0; }
-        .va-ti b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-strong); color: var(--ink); }
-        .va-sub { font-size: var(--fs-nano); color: var(--muted-2); margin-top: 2px; }
+        .va-ti b { color: var(--ink); }
+        .va-sub { color: var(--muted-2); margin-top: 2px; }
         .va-logo { width: 24px; height: 24px; border-radius: 6px; flex: none; display: grid; place-items: center; background: var(--ev-activity-soft); color: var(--ev-activity); }
-        .va-count { font-size: var(--fs-meta); color: var(--muted); font-weight: 700; white-space: nowrap; }
+        .va-count { color: var(--muted); white-space: nowrap; }
         .va-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
         .va-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px 18px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); background: var(--wash); }
         .va-si { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 4px; }
         .va-state--err .va-si { background: var(--danger-soft); color: var(--danger-ink); }
         .va-state--emp .va-si { background: var(--surface-2); color: var(--muted); }
-        .va-state b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-base); color: var(--ink); }
-        .va-state p { margin: 0; font-size: var(--fs-meta); color: var(--muted); max-width: 30ch; }
+        .va-state b { color: var(--ink); }
+        .va-state p { margin: 0; color: var(--muted); max-width: 30ch; }
         .va-retry { margin-top: 6px; }
         /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
            the activity-specific body content keeps its own classes below. */
-        .va-rate { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+        .va-rate { display: flex; align-items: center; gap: 6px; flex: none; }
         .va-star { color: var(--pro); flex: none; }
-        .va-sc { font-family: var(--font-display); font-weight: 700; font-size: 12.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
-        .va-cnt { font-size: 11px; color: var(--muted); font-weight: 600; }
-        .va-flag { font-size: 10.5px; color: var(--brand); font-weight: 700; background: var(--primary-soft); padding: 1px 7px; border-radius: var(--r-pill); }
-        .va-price { display: flex; flex-direction: column; line-height: 1.15; }
-        .va-from { font-size: var(--fs-nano); color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-        .va-price b { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-strong); color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 2px; }
+        .va-sc { color: var(--ink); font-variant-numeric: tabular-nums; }
+        .va-cnt { color: var(--muted); }
+        .va-flag { color: var(--brand); background: var(--primary-soft); padding: 1px 7px; border-radius: var(--r-pill); }
+        .va-price { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.15; /* design-token-exempt: layout line-height on the stacked price column, not text */ }
+        .va-from { color: var(--muted); }  /* канон .t-micro (капс+моно) — в app.css (TRIP-175, был .t-nano+оверлей) */
+        .va-price b { color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 2px; }
         .va-pager { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
-        .va-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-family: var(--font-display); font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
+        .va-pg { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s ease, transform .12s ease; }
         .va-pg:disabled { opacity: .4; cursor: default; }
         .va-pg:not(:disabled):active { transform: scale(.94); }
         @media (hover: hover) and (pointer: fine) { .va-pg:not(:disabled):hover { border-color: var(--line-hover); } }

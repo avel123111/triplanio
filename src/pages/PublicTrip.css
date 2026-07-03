@@ -12,8 +12,8 @@
      :root would otherwise shift the body's fonts/neutrals/brand. Values mirror
      src/design/app.css — this isolates the Lumo body from the landing palette
      while the shared marketing header/footer keep their landing styling. */
-  --font-display:"Rubik",ui-sans-serif,system-ui,sans-serif;
-  --font-ui:"Nunito",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-display:'Exo 2',ui-sans-serif,system-ui,sans-serif;                   /* TRIP-175 — заголовочная гарнитура */
+  --font-ui:'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif;      /* TRIP-165 */
   --brand:#2173C8;
   --brand-grad:linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
   --ink:#272433; --ink-2:#4A4659; --muted:#7A7689; --muted-2:#ABA7B8;
@@ -28,7 +28,7 @@
   line-height:1.6;
   min-height:100vh;
 }
-.ptrip h1,.ptrip h2,.ptrip h3{font-family:var(--font-display);margin:0;color:var(--ink);letter-spacing:-.02em;font-weight:700}
+.ptrip h1,.ptrip h2,.ptrip h3{font-family:var(--font-display);margin:0;color:var(--ink);letter-spacing:-.02em}
 .ptrip .tnum{font-variant-numeric:tabular-nums}
 .pt-wide{max-width:1180px;margin:0 auto;padding:0 28px}
 
@@ -39,23 +39,26 @@
 /* The shared marketing header (/landing.css) is fixed; clear it with the
    landing's own --hero-top offset so the kick isn't tucked under the bar. */
 .pt-top{padding:var(--hero-top,96px) 0 30px}
-.pt-mast__kick{display:inline-flex;align-items:center;gap:10px;font-size:var(--fs-meta);font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--brand)}
+.pt-mast__kick{display:inline-flex;align-items:center;gap:10px;color:var(--brand)}
 .pt-mast__kick::before{content:"";width:28px;height:2px;background:var(--brand);border-radius:2px}
 /* Full-width hero — title + author sit ABOVE the reader divider; the map starts
    under that divider, beside the cities/stats column. */
-.pt-mast h1{font-size:clamp(38px,6.5vw,78px);font-weight:800;line-height:.98;letter-spacing:-.035em;margin:18px 0 0}
+/* TRIP-165 — hero-заголовок на канон t-display (54), адаптив ступеньками на токенах */
+.pt-mast h1{font-size:var(--fs-display);letter-spacing:-.035em;margin:18px 0 0}
+@media (max-width:900px){.pt-mast h1{font-size:var(--fs-h1)}}   /* 54 → 40 */
+@media (max-width:560px){.pt-mast h1{font-size:var(--fs-h2)}}   /* 40 → 26 */
 .pt-mast__by{display:flex;align-items:center;gap:13px;margin-top:24px}
-.pt-mast__av{width:46px;height:46px;border-radius:50%;position:relative;overflow:hidden;flex:none;background:var(--brand-grad);display:grid;place-items:center;color:#fff;font-family:var(--font-display);font-weight:700;font-size:var(--fs-h4);box-shadow:var(--sh-1)}
+.pt-mast__av{width:46px;height:46px;border-radius:50%;position:relative;overflow:hidden;flex:none;background:var(--brand-grad);display:grid;place-items:center;color:#fff;box-shadow:var(--sh-1)}
 .pt-mast__av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.pt-mast__tx{display:flex;flex-direction:column;line-height:1.28}
-.pt-mast__l1{font-weight:700;font-size:var(--fs-h4);color:var(--ink-2)}
-.pt-mast__l1 b{color:var(--brand);font-weight:800}
-.pt-mast__l2{font-size:var(--fs-base);font-weight:700;color:var(--muted)}
+.pt-mast__tx{display:flex;flex-direction:column}
+.pt-mast__l1{color:var(--ink-2)}
+.pt-mast__l1 b{color:var(--brand)}
+.pt-mast__l2{color:var(--muted)}
 
 .pt-ribbon{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:0}
 .pt-rchip{display:inline-flex;align-items:center;gap:9px;padding:7px 15px 7px 8px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);box-shadow:var(--sh-1)}
 .pt-rchip img{width:24px;height:17px;border-radius:4px;object-fit:cover;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.10)}
-.pt-rchip b{font-family:var(--font-display);font-weight:700;font-size:var(--fs-strong);color:var(--ink);white-space:nowrap}
+.pt-rchip b{color:var(--ink);white-space:nowrap}
 .pt-rsep{display:inline-flex;color:var(--muted-2);flex:none}
 .pt-rsep svg{width:15px;height:15px;display:block}
 
@@ -63,9 +66,9 @@
 .pt-mm .n{overflow:hidden;text-overflow:ellipsis}
 .pt-mm{display:flex;flex-direction:column;gap:5px;position:relative;padding-left:18px}
 .pt-mm::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:3px;border-radius:3px;background:color-mix(in srgb,var(--brand) 35%,transparent)}
-.pt-mm .n{font-family:var(--font-display);font-weight:800;font-size:var(--fs-h2);letter-spacing:-.02em;color:var(--brand);line-height:1;white-space:nowrap}
-.pt-mm .n small{font-size:var(--fs-base);font-weight:700;color:var(--brand);opacity:.65;margin-left:2px}
-.pt-mm .k{font-size:var(--fs-meta);font-weight:700;color:var(--muted)}
+.pt-mm .n{color:var(--brand);white-space:nowrap}
+.pt-mm .n small{color:var(--brand);opacity:.65;margin-left:2px}
+.pt-mm .k{color:var(--muted)}
 
 /* ── reader: masthead + itinerary (left column) and lifted sticky map (right) ──
    The map spans both rows so it sits beside the masthead AND the route list,
@@ -76,10 +79,10 @@
 .pt-mapbox{position:relative;height:100%;border-radius:var(--r-card);overflow:hidden;border:1px solid var(--line);box-shadow:var(--sh-1);background:var(--surface-3)}
 /* Bottom-left glass caption: which city the camera is on + its nights. */
 .pt-mapcap{position:absolute;left:16px;bottom:16px;z-index:2;display:flex;align-items:center;gap:10px;padding:9px 14px 9px 11px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:saturate(160%) blur(10px);border:1px solid var(--line);box-shadow:var(--sh-1)}
-.pt-mapcap__pill{width:24px;height:24px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--brand);color:#fff;font-family:var(--font-display);font-weight:800;font-size:var(--fs-meta)}
+.pt-mapcap__pill{width:24px;height:24px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--brand);color:#fff}
 .pt-mapcap__tx{display:flex;align-items:baseline;gap:5px;min-width:0}
-.pt-mapcap__tx b{font-family:var(--font-display);font-weight:700;font-size:var(--fs-base);color:var(--ink);white-space:nowrap}
-.pt-mapcap__tx span{font-size:var(--fs-meta);font-weight:700;color:var(--muted);white-space:nowrap}
+.pt-mapcap__tx b{color:var(--ink);white-space:nowrap}
+.pt-mapcap__tx span{color:var(--muted);white-space:nowrap}
 
 .pt-itin{min-width:0;--num:44px;--gap:16px;margin-top:30px;padding-top:28px;border-top:1px solid var(--line)}
 .pt-cstop{padding:30px 0 38px;border-top:1px solid var(--line)}
@@ -87,15 +90,15 @@
 .pt-cstop__h{display:flex;align-items:flex-start;gap:var(--gap)}
 /* The number badge eases between its per-city accent and the active blue as the
    reader scrolls, so the highlight visibly "moves" from one city to the next. */
-.pt-cstop__num{width:var(--num);height:var(--num);border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--font-display);font-weight:800;font-size:var(--fs-h3);color:#fff;box-shadow:0 8px 18px -8px rgba(0,0,0,.25);transition:background .35s var(--ease-out),box-shadow .35s var(--ease-out)}
+.pt-cstop__num{width:var(--num);height:var(--num);border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;box-shadow:0 8px 18px -8px rgba(0,0,0,.25);transition:background .35s var(--ease-out),box-shadow .35s var(--ease-out)}
 .pt-cstop.is-active .pt-cstop__num{box-shadow:0 10px 22px -8px var(--primary-ring,rgba(33,115,200,.28))}
 .pt-cstop__ht{flex:1;min-width:0}
-.pt-cstop__ht h2{font-size:clamp(26px,3.4vw,36px);letter-spacing:-.03em;line-height:1;transition:color .35s var(--ease-out)}
+.pt-cstop__ht h2{font-size:var(--fs-h2);letter-spacing:-.03em;transition:color .35s var(--ease-out)}   /* 26 — канон t-heading (TRIP-165) */
 .pt-cstop.is-active .pt-cstop__ht h2{color:var(--brand)}
-.pt-cstop__sub{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:9px;font-size:var(--fs-base);font-weight:700;color:var(--muted)}
+.pt-cstop__sub{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:9px;color:var(--muted)}
 .pt-cstop__sub img{width:22px;height:15px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(0,0,0,.10)}
-.pt-cstop__sub b{color:var(--ink-2);font-weight:800}
-.pt-cstop__hotel{display:inline-flex;align-items:center;gap:10px;margin-top:18px;font-weight:700;font-size:var(--fs-base);color:var(--ink-2)}
+.pt-cstop__sub b{color:var(--ink-2)}
+.pt-cstop__hotel{display:inline-flex;align-items:center;gap:10px;margin-top:18px;color:var(--ink-2)}
 .pt-cstop__hotel .ic{width:32px;height:32px;border-radius:10px;flex:none;display:grid;place-items:center;background:var(--ev-hotel-soft);color:var(--ev-hotel-ink)}
 .pt-cstop__hotel .ic svg{width:17px;height:17px}
 
@@ -104,7 +107,7 @@
    stop's accent (start = brand, finish = transfer-teal) — same colour as the map
    pin's ring and the on-map caption pill. */
 .pt-cstop__num--icon svg{width:21px;height:21px;color:#fff}
-.pt-role{display:inline-block;margin-left:11px;vertical-align:middle;font-family:var(--font-ui);font-size:var(--fs-nano);font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:3px 10px;border-radius:var(--r-pill);line-height:1.5}
+.pt-role{display:inline-block;margin-left:11px;vertical-align:middle;padding:3px 10px;border-radius:var(--r-pill)}
 
 /* Waypoint: a slim "ghost" pass-through row between cities — a small ring dot on
    the rail, the flag, the city and a TRANSIT tag. No number, no card. */
@@ -113,46 +116,49 @@
 .pt-wp__dot{width:14px;height:14px;border-radius:50%;flex:none;margin-left:calc((var(--num) - 14px) / 2);background:var(--surface);border:2.5px solid var(--muted);transition:border-color .35s var(--ease-out)}
 .pt-cstop--wp.is-active .pt-wp__dot{border-color:var(--brand)}
 .pt-wp__flag{width:20px;height:14px;border-radius:3px;object-fit:cover;box-shadow:0 0 0 1px rgba(0,0,0,.10);flex:none}
-.pt-wp__city{font-family:var(--font-display);font-weight:700;font-size:var(--fs-strong);color:var(--ink-2);transition:color .35s var(--ease-out)}
+.pt-wp__city{color:var(--ink-2);transition:color .35s var(--ease-out)}
 .pt-cstop--wp.is-active .pt-wp__city{color:var(--brand)}
-.pt-wp__tag{font-size:var(--fs-nano);font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);padding:2px 9px;border-radius:var(--r-pill)}
+.pt-wp__tag{color:var(--muted);background:var(--surface-2);padding:2px 9px;border-radius:var(--r-pill)}
 
 .pt-acts{margin:18px 0 0;padding-left:calc(var(--num) + var(--gap))}
 .pt-act{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px dashed var(--line)}
 .pt-act:first-child{border-top:0}
 .pt-act .dot{width:8px;height:8px;border-radius:50%;flex:none}
-.pt-act .nm{font-weight:700;font-size:var(--fs-strong);color:var(--ink)}
-.pt-act .day{margin-left:auto;font-size:var(--fs-meta);font-weight:800;color:var(--muted);white-space:nowrap;background:var(--surface-2);padding:3px 9px;border-radius:var(--r-pill)}
+.pt-act .nm{color:var(--ink)}
+.pt-act .day{margin-left:auto;color:var(--muted);white-space:nowrap;background:var(--surface-2);padding:3px 9px;border-radius:var(--r-pill)}
 
 .pt-cleg{padding:4px 0 34px calc(var(--num) + var(--gap))}
-.pt-cleg__pill{display:inline-flex;align-items:center;gap:10px;padding:11px 16px;border-radius:13px;background:var(--ev-transfer-soft);color:var(--ev-transfer-ink);font-weight:800;font-size:var(--fs-base)}
+.pt-cleg__pill{display:inline-flex;align-items:center;gap:10px;padding:11px 16px;border-radius:13px;background:var(--ev-transfer-soft);color:var(--ev-transfer-ink)}
 .pt-cleg__pill svg{width:17px;height:17px;flex:none}
-.pt-cleg__pill .dur{font-weight:700;opacity:.9}
+.pt-cleg__pill .dur{opacity:.9}
 .pt-cleg__pill .sep{opacity:.4}
-.pt-cleg__pill .dt{font-weight:700;opacity:.6}
+.pt-cleg__pill .dt{opacity:.6}
 
 /* ── participants ── */
 .pt-band{padding:64px 0;border-top:1px solid var(--line);margin-top:30px}
-.pt-eyebrow{font-size:var(--fs-meta);font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-.pt-h-lead{font-size:clamp(24px,3.4vw,32px);font-weight:800;letter-spacing:-.025em}
+.pt-eyebrow{color:var(--muted);margin-bottom:8px}
+.pt-h-lead{font-size:var(--fs-h2);letter-spacing:-.025em}   /* 26 — канон t-heading (TRIP-165) */
+@media (max-width:560px){.pt-h-lead{font-size:var(--fs-h3)}}   /* 26 → 19 */
 .pt-people{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:26px}
 .pt-person{display:flex;align-items:center;gap:10px;padding:7px 17px 7px 7px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);box-shadow:var(--sh-1)}
-.pt-person .av{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;overflow:hidden;color:#fff;font-family:var(--font-display);font-weight:700;font-size:var(--fs-meta);position:relative}
+.pt-person .av{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;overflow:hidden;color:#fff;position:relative}
 .pt-person .av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.pt-person .nm{font-weight:700;font-size:var(--fs-base);color:var(--ink)}
+.pt-person .nm{color:var(--ink)}
 
 /* ── CTA ── */
 .pt-cta{position:relative;overflow:hidden;padding:80px 0;text-align:center;color:#fff;background:linear-gradient(135deg,#1C66B4 0%,#3E63D6 48%,#7E5BE6 100%)}
 .pt-cta__glow{position:absolute;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 70%);top:-230px;left:50%;transform:translateX(-50%);pointer-events:none}
-.pt-cta h2{color:#fff;font-size:clamp(28px,5vw,44px);font-weight:800;letter-spacing:-.03em;line-height:1.04;position:relative}
-.pt-cta p{position:relative;margin:14px auto 26px;max-width:520px;font-size:var(--fs-h4);font-weight:600;color:rgba(255,255,255,.9)}
+/* TRIP-165 — CTA-заголовок на канон t-title (40), адаптив ступеньками на токенах */
+.pt-cta h2{color:#fff;font-size:var(--fs-h1);letter-spacing:-.03em;position:relative}
+@media (max-width:560px){.pt-cta h2{font-size:var(--fs-h2)}}   /* 40 → 26 */
+.pt-cta p{position:relative;margin:14px auto 26px;max-width:520px;color:rgba(255,255,255,.9)}
 .pt-cta__act{position:relative;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 
 /* ── mobile sticky CTA ── */
 .pt-scta{position:fixed;left:0;right:0;bottom:0;z-index:50;display:none;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:saturate(180%) blur(16px);border-top:1px solid var(--line)}
 .pt-scta .tx{flex:1;min-width:0}
-.pt-scta .tx b{display:block;font-family:var(--font-display);font-weight:700;font-size:var(--fs-base);color:var(--ink)}
-.pt-scta .tx span{font-size:var(--fs-micro);font-weight:700;color:var(--muted)}
+.pt-scta .tx b{display:block;color:var(--ink)}
+.pt-scta .tx span{color:var(--muted)}
 
 /* ── states ── */
 .pt-center{min-height:100vh;display:grid;place-items:center;padding:0 24px;text-align:center}

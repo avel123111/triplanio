@@ -4,7 +4,7 @@ import { supabase } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Dialog, Btn, Field, useToast } from '@/design/index';
-import { countryFlag } from '@/lib/geo';
+import CountryFlag from '@/components/common/CountryFlag';
 import CitySearch from '@/components/cities/CitySearch';
 
 // Add / edit / delete a manual visit (user_custom_visits) — the write side of the
@@ -124,9 +124,9 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
         ) : (
           <Field label={t('stats.field_city')}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line-strong)', borderRadius: 'var(--r-btn)', background: 'var(--surface)' }}>
-              <span style={{ fontSize: 'var(--fs-h3)', lineHeight: 1 }}>{countryFlag(city?.country_code)}</span>
-              <b style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-display)', fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city?.city_name}</b>
-              <button type="button" onClick={() => setPicking(true)} style={{ border: 0, background: 'transparent', color: 'var(--primary)', fontWeight: 700, fontSize: 'var(--fs-meta)', cursor: 'pointer', padding: 0 }}>
+              <span className="t-subheading" style={{ display: 'inline-flex', alignItems: 'center' }}><CountryFlag code={city?.country_code} /></span>
+              <b className="t-ui" style={{ flex: 1, minWidth: 0, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city?.city_name}</b>
+              <button type="button" onClick={() => setPicking(true)} className="t-meta" style={{ border: 0, background: 'transparent', color: 'var(--primary)', cursor: 'pointer', padding: 0 }}>
                 {t('stats.change_city')}
               </button>
             </div>
@@ -138,7 +138,7 @@ export default function AddPlaceDialog({ open, onOpenChange, editing = null, onS
           <Field label={t('stats.field_to')}><input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
         </div>
 
-        {err && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-meta)', fontWeight: 700 }}>{err}</div>}
+        {err && <div className="t-meta" style={{ color: 'var(--danger)' }}>{err}</div>}
       </div>
     </Dialog>
   );

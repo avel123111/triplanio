@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
@@ -39,7 +39,7 @@ function SidebarBody({
             <Icon name={item.icon} size={15} />
             <span className="app-side__label">{t(item.labelKey)}</span>
             {item.id === 'chat' && chatUnread > 0 && (
-              <span className="app-side__item-badge" style={{ marginLeft: 'auto', background: 'var(--warm)', color: '#fff', borderRadius: 999, fontSize: 'var(--fs-micro)', fontWeight: 700, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
+              <span className="app-side__item-badge t-meta" style={{ marginLeft: 'auto', background: 'var(--warm)', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
                 {chatUnread > 99 ? '99+' : chatUnread}
               </span>
             )}
@@ -100,35 +100,19 @@ function SidebarBody({
 }
 
 // Shared left trip menu — used by both the trip screens (TripView) and the
-// structure editor (TripStructureEdit) so the two are IDENTICAL: same item set
-// (addon-gated lenses + management), same role gating, same chat badge and the
-// same "upgrade to Pro" card. The only difference is navigation:
+// structure editor (TripStructureEdit) so the two are IDENTICAL: same full
+// sidebar, same item set (addon-gated lenses + management), same role gating,
+// chat badge and "upgrade to Pro" card. The only difference is navigation:
 //   • TripView   passes onNavigate=setLens (in-page lens switch), lens=current.
 //   • the editor passes onNavigate=route-nav and isEditScreen so the "Edit
 //     structure" item is the active one.
 export default function TripSidebar({
   tripId, trip, lens, onNavigate,
   isPro, proResolved = true, isOwner, myRole,
-  onUpgrade, onProInfo, onShare, isEditScreen = false, collapsed = false,
+  onUpgrade, onProInfo, onShare, isEditScreen = false,
 }) {
-  // Collapsed rail: open on arrival, stay open until the mouse leaves. But if the
-  // user arrived NOT via the menu (mouse isn't over it), collapse it right away.
-  const [railOpen, setRailOpen] = useState(true);
-  const asideRef = useRef(null);
-  useEffect(() => {
-    if (!collapsed) return;
-    const id = requestAnimationFrame(() => {
-      if (asideRef.current && !asideRef.current.matches(':hover')) setRailOpen(false);
-    });
-    return () => cancelAnimationFrame(id);
-  }, [collapsed]);
   return (
-    <aside
-      ref={asideRef}
-      className={'app-side' + (collapsed ? ' app-side--rail' : '') + (collapsed && railOpen ? ' is-open' : '')}
-      onMouseEnter={collapsed ? () => setRailOpen(true) : undefined}
-      onMouseLeave={collapsed ? () => setRailOpen(false) : undefined}
-    >
+    <aside className="app-side">
       <SidebarBody
         tripId={tripId} trip={trip} lens={lens} onNavigate={onNavigate}
         isPro={isPro} proResolved={proResolved} isOwner={isOwner} myRole={myRole}

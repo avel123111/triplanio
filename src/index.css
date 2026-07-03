@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap&subset=cyrillic,cyrillic-ext,latin');
+@import './design/fonts.css';   /* self-hosted Golos Text + JetBrains Mono (TRIP-165) */
 
 /* ===================================================================
    Reset — was Tailwind's `@tailwind base` (Preflight). Inlined verbatim
@@ -200,8 +200,8 @@ img, video {
   --chart-4: 357 72% 59%;
   --chart-5: 254 82% 68%;
   --radius: 1rem;                       /* Lumo r-md 16px (ui-kit base) */
-  --font-sans: 'Nunito', ui-sans-serif, system-ui, -apple-system, sans-serif;  /* Lumo UI/body */
-  --font-display: 'Rubik', ui-sans-serif, system-ui, sans-serif;               /* Lumo headings */
+  --font-sans: 'Golos Text', ui-sans-serif, system-ui, -apple-system, sans-serif;  /* TRIP-165 — единая суперсемья */
+  --font-display: 'Exo 2', ui-sans-serif, system-ui, sans-serif;                   /* TRIP-175 — заголовочная гарнитура */
   --sidebar-background: 0 0% 100%;
   --sidebar-foreground: 252 17% 17%;
   --sidebar-primary: 211 72% 46%;
@@ -301,7 +301,7 @@ input[type="time"] {
   input[type="datetime-local"],
   input[type="date"],
   input[type="time"] {
-    font-size: 0.8125rem; /* 13px */
+    font-size: var(--fs-meta); /* on-token: dense native date/time control */
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }

@@ -24,6 +24,7 @@ directory.
 | engineering | github.com/anthropics/knowledge-work-plugins | `17d56b6` | Apache-2.0 | engineering-code-review, engineering-debug, engineering-system-design, engineering-architecture, engineering-tech-debt, engineering-testing-strategy |
 | ui-ux-pro-max | github.com/nextlevelbuilder/ui-ux-pro-max-skill | `bdf1179` | MIT | ui-ux-pro-max (+ data/ + scripts/ reference assets) |
 | example-skills | github.com/anthropics/skills | `5754626` | Apache-2.0 | example-frontend-design (ships its own LICENSE.txt) |
+| marketingskills (Corey Haines) | github.com/coreyhaines31/marketingskills | `8bfcdff` | MIT | marketing-* (45 skills, see section below) |
 
 Apache-2.0 sources (`design`, `engineering`, `example-frontend-design`) retain
 their license/notice: `example-frontend-design` includes upstream `LICENSE.txt`;
@@ -59,6 +60,39 @@ annotations, React Props types) were replaced by our design-system-reuse
 upstream text. The inline provenance comment records exactly what diverged from
 the pinned commit; refresh by re-applying that same localisation on top of a
 re-vendor.
+
+## marketingskills — Corey Haines (TRIP-163)
+
+45 marketing skills (`marketing-*`) vendored from
+`github.com/coreyhaines31/marketingskills @ 8bfcdff` (MIT, plugin v2.5.1). The
+upstream package ships each skill as `<skill>/SKILL.md` + `references/*.md`
+(reference material the skill reads at runtime) + `evals/evals.json` (an eval
+harness). We vendored the **`SKILL.md` + `references/`** of every skill and
+**dropped `evals/`** (test fixtures, not needed at runtime). Directory + `name:`
+frontmatter were namespaced `marketing-<skill>` to match the repo convention
+(every other package is namespaced by source); the upstream skill names appear
+as `marketing-skills:<skill>` in the plugin form, which our flat `.claude/skills/`
+vendoring does not use.
+
+Skills: marketing-ab-testing, marketing-ad-creative, marketing-ads,
+marketing-ai-seo, marketing-analytics, marketing-aso, marketing-churn-prevention,
+marketing-co-marketing, marketing-cold-email, marketing-community-marketing,
+marketing-competitor-profiling, marketing-competitors, marketing-content-strategy,
+marketing-copy-editing, marketing-copywriting, marketing-cro,
+marketing-customer-research, marketing-directory-submissions, marketing-emails,
+marketing-free-tools, marketing-image, marketing-launch, marketing-lead-magnets,
+marketing-marketing-ideas, marketing-marketing-plan, marketing-marketing-psychology,
+marketing-offers, marketing-onboarding, marketing-paywalls, marketing-popups,
+marketing-pricing, marketing-product-marketing, marketing-programmatic-seo,
+marketing-prospecting, marketing-public-relations, marketing-referrals,
+marketing-revops, marketing-sales-enablement, marketing-schema, marketing-seo-audit,
+marketing-signup, marketing-site-architecture, marketing-sms, marketing-social,
+marketing-video.
+
+**Cross-references caveat:** the skill bodies reference each other by their
+original bare names (e.g. "For page-level conversion optimization, see cro."). With
+the `marketing-` prefix these stay as prose — the agent resolves "cro" to
+`marketing-cro` by description, same caveat as the ECC commands above.
 
 ## Caveat: does Cyrus load `.claude/skills/`?
 

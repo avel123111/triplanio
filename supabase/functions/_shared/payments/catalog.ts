@@ -8,31 +8,23 @@
  */
 
 import { supabaseAdmin } from '../supabaseAdmin.ts';
-import type { ProviderEnv } from './types.ts';
+import type { ProviderEnv, ResolvedPrice } from './types.ts';
 
-// Поддерживаемые plan_type (переходный словарь фронта/edge до полного перехода
-// на product_code, Ф5). Источник истины — один, здесь.
-export const VALID_PLANS = ['pro_trip', 'pro_monthly', 'pro_yearly'] as const;
-export type PlanType = typeof VALID_PLANS[number];
+// Единый вокабуляр продукта — product_code (фронт, metadata провайдера, каталог и
+// реестр говорят на нём же; переходный plan_type и мосты PLAN_TO_PRODUCT/
+// PRODUCT_TO_PLAN выпилены — одна сущность, одно имя).
 export type ProductCode = 'trip_pro_lifetime' | 'account_pro_monthly' | 'account_pro_yearly';
+export const VALID_PRODUCTS = ['trip_pro_lifetime', 'account_pro_monthly', 'account_pro_yearly'] as const;
+
+/** Является ли строка валидным product_code (для проверки входа/metadata). */
+export function isProductCode(value: unknown): value is ProductCode {
+  return typeof value === 'string' && (VALID_PRODUCTS as readonly string[]).includes(value);
+}
 
 /** True когда секретный ключ Stripe — тестовый (`sk_test_…`). */
 export function isTestStripeKey(key: string): boolean {
   return key.includes('_test_');
 }
-
-// Переходный мост: фронт/edge ещё говорят на plan_type, каталог — на product_code.
-// Уйдёт в Ф5, когда все перейдут на product_code.
-export const PLAN_TO_PRODUCT: Record<PlanType, ProductCode> = {
-  pro_trip: 'trip_pro_lifetime',
-  pro_monthly: 'account_pro_monthly',
-  pro_yearly: 'account_pro_yearly',
-};
-export const PRODUCT_TO_PLAN: Record<ProductCode, PlanType> = {
-  trip_pro_lifetime: 'pro_trip',
-  account_pro_monthly: 'pro_monthly',
-  account_pro_yearly: 'pro_yearly',
-};
 
 export function stripeEnv(stripeKey: string): ProviderEnv {
   return isTestStripeKey(stripeKey) ? 'test' : 'live';
@@ -54,6 +46,12 @@ export function billingIntervalForProduct(code: ProductCode): 'month' | 'year' {
 export interface ProviderProductRow {
   product_code: ProductCode;
   provider_product_id: string;
+  // Кэш каталожной цены (lazy TTL, TRIP-155). null у строки, ещё не синхронизированной.
+  provider_price_id: string | null;
+  unit_amount: number | null;
+  currency: string | null;
+  recurring_interval: string | null;
+  price_synced_at: string | null;
 }
 
 /**
@@ -66,15 +64,81 @@ export async function getActiveProviderProducts(
 ): Promise<ProviderProductRow[]> {
   const { data, error } = await supabaseAdmin
     .from('provider_price')
-    .select('product_code, provider_product_id')
+    .select('product_code, provider_product_id, provider_price_id, unit_amount, currency, recurring_interval, price_synced_at')
     .eq('provider', provider)
     .eq('provider_env', env)
     .eq('active', true);
+  // Пустой каталог ([]) и ошибка БД (throw) — РАЗНЫЕ вещи. Раньше здесь глотали
+  // любую ошибку в [] («каталог пуст»), из-за чего схемный сбой (напр. 42703 на
+  // дропнутую колонку, TRIP-174) маскировался под легитимно пустой каталог и тихо
+  // ронял весь платёжный путь. Пробрасываем: вызывающие edge-функции ловят это
+  // своим top-level try/catch → captureEdgeError → Sentry + 500 (громко, не молча).
   if (error) {
-    console.error('getActiveProviderProducts failed:', error.message);
-    return [];
+    throw new Error(`getActiveProviderProducts failed: ${error.message}`);
   }
   return (data ?? []) as ProviderProductRow[];
+}
+
+/** TTL кэша цен (lazy refresh на чтении). Цены меняются редко — часа с запасом. */
+export const PRICE_CACHE_TTL_MS = 60 * 60 * 1000;
+
+/** Свежесть price_synced_at относительно TTL. null/битая дата/просрочено → false. */
+export function isPriceCacheFresh(syncedAt: string | null | undefined): boolean {
+  if (!syncedAt) return false;
+  const t = Date.parse(syncedAt);
+  return Number.isFinite(t) && (Date.now() - t) < PRICE_CACHE_TTL_MS;
+}
+
+export interface CatalogPrice {
+  product_code: ProductCode;
+  price_id: string | null;
+  product_id: string;
+  unit_amount: number | null;
+  currency: string | null;
+  recurring_interval: string | null;
+}
+
+/**
+ * Каталожные цены с lazy-TTL кэшем в provider_price. Свежая строка → отдаём из БД
+ * без Stripe; протухшая/пустая → один resolve() + write-back свежих значений.
+ * `resolve` инжектится (адаптер провайдера), чтобы модуль остался провайдер-нейтральным.
+ * Write-back best-effort: сбой записи не роняет чтение цены.
+ */
+export async function getCatalogPricesCached(
+  resolve: (providerProductId: string) => Promise<ResolvedPrice>,
+  provider: string,
+  env: ProviderEnv,
+): Promise<CatalogPrice[]> {
+  const rows = await getActiveProviderProducts(provider, env);
+  return Promise.all(rows.map(async (row): Promise<CatalogPrice> => {
+    if (isPriceCacheFresh(row.price_synced_at) && row.unit_amount != null) {
+      return {
+        product_code: row.product_code,
+        price_id: row.provider_price_id,
+        product_id: row.provider_product_id,
+        unit_amount: row.unit_amount,
+        currency: row.currency,
+        recurring_interval: row.recurring_interval,
+      };
+    }
+    const p = await resolve(row.provider_product_id);
+    const { error } = await supabaseAdmin.from('provider_price').update({
+      provider_price_id: p.price_id,
+      unit_amount: p.unit_amount,
+      currency: p.currency,
+      recurring_interval: p.recurring_interval,
+      price_synced_at: new Date().toISOString(),
+    }).eq('provider', provider).eq('provider_env', env).eq('product_code', row.product_code).eq('active', true);
+    if (error) console.error('getCatalogPricesCached write-back failed:', error.message);
+    return {
+      product_code: row.product_code,
+      price_id: p.price_id,
+      product_id: row.provider_product_id,
+      unit_amount: p.unit_amount,
+      currency: p.currency,
+      recurring_interval: p.recurring_interval,
+    };
+  }));
 }
 
 /** product_code → id продукта провайдера для текущего env (или null). */

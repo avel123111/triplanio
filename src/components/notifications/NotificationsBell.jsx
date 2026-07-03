@@ -139,7 +139,7 @@ export default function NotificationsBell({ triggerClassName }) {
       <PopoverContent align="end" sideOffset={8} className="bell-dd-pop">
         <div className="bell-dd__head">
           <Icon name="bell" size={16} />
-          <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', flex: 1 }}>{t('notif.title')}</div>
+          <div className="t-ui" style={{ flex: 1 }}>{t('notif.title')}</div>
           {unread > 0 && (
             <button className="bell-dd__mark" onClick={() => markAllRead.mutate()}>
               {t('notif.mark_all_read')}
@@ -206,8 +206,8 @@ function NotifRow({ n, t, dateLocale, pending, onRespond, onMarkRead, onOpenTrip
   const titleText = n.i18n_title_key ? t(n.i18n_title_key, renderParams(n.i18n_params)) : n.title;
   const messageText = n.i18n_message_key ? t(n.i18n_message_key, renderParams(n.i18n_params)) : n.message;
   const ip = n.i18n_params || {};
-  const titleNode = isInvite ? emphasize(titleText, [{ value: ip.trip, style: { fontWeight: 700, color: 'var(--brand)' } }]) : titleText;
-  const messageNode = isInvite ? emphasize(messageText, [{ value: ip.inviter, style: { fontWeight: 700 } }]) : messageText;
+  const titleNode = isInvite ? emphasize(titleText, [{ value: ip.trip, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */, color: 'var(--brand)' } }]) : titleText;
+  const messageNode = isInvite ? emphasize(messageText, [{ value: ip.inviter, style: { fontWeight: 700 /* design-token-exempt: inline mention emphasis */ } }]) : messageText;
 
   const meta = notifMeta(n.type);
   const showPending = isInvite && member?.status === 'pending';
