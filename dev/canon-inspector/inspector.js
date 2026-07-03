@@ -445,8 +445,12 @@ function render(el) {
   reset.onclick = () => resetEl(el);
   foot.append(saveBtn, reset);
 
+  // Сохранить позицию скролла списка: render() пересоздаёт .ci-body целиком,
+  // иначе при выборе канона/модификатора скролл прыгает наверх (TRIP-183).
+  const prevScroll = els.panel.querySelector('.ci-body')?.scrollTop || 0;
   els.panel.innerHTML = '';
   els.panel.append(head, body, foot);
+  body.scrollTop = prevScroll;
   makeDraggable(els.panel, head, () => { panelMoved = true; });   // drag by header
 }
 
