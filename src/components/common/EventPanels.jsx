@@ -42,7 +42,7 @@ export function PanelShell({ kind = 'hotel', icon, eyebrow, title, sub, onBack, 
           {eyebrow && <div className="eyebrow" style={{ color: ev.color }}>{eyebrow}</div>}
           <div className="lp-tirow">
             <b className="t-title">{title}</b>
-            {sub && <span className="t-meta">{sub}</span>}
+            {sub && <span className="t-mono">{sub}</span>}
           </div>
         </div>
         <button className="ev-dlg-close" onClick={onBack} title={t('common.back')} aria-label={t('common.back')}><X size={15} /></button>
