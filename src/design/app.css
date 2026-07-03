@@ -155,7 +155,6 @@
   --fd-k:  1;                    /* глобальный множитель дисплейного кегля (регулятор) */
   --track-hero: -0.02em;         /* трекинг hero (t-display) */
   --track-h:    -0.01em;         /* трекинг h1/h2/h3 (t-title/t-heading/t-subheading) */
-  --display-tracking: var(--track-hero); /* legacy-алиас имени → hero-трекинг (landing.css держит свою локальную копию) */
   --track-caps: 0.14em;          /* трекинг капс-лейблов (канон .t-micro ← label макета; было .12, макет .14) */
 
   /* Motion — strong custom curves (built-in easings are too weak).
@@ -172,8 +171,8 @@
   --fs-micro:   11px;    /* meta/meta-md макета → каноны .t-meta / .t-mono (моно 11) */
   --fs-meta:    12.5px;  /* body-med макета → канон .t-ui */
   --fs-base:    13px;    /* title/body макета → каноны .t-label / .t-body; было 14 */
-  --fs-strong:  13px;    /* эмфаз-текст (внешние потребители); было 15 */
-  --fs-h4:      13px;    /* мелкие заголовки/крупные лейблы (внешние); было 16 */
+  --fs-strong:  var(--fs-base);  /* база body + эмфаз-текст (НЕ канон) — алиас на base, единый источник 13px (TRIP-183 аудит: убран дубль-литерал) */
+  --fs-h4:      16px;    /* НЕ канон и НЕ densify: анти-iOS-zoom (textarea/select/chat ≥16px), .btn--lg, хедер, statcard, глоб. h4 (TRIP-183 аудит: возврат 13→16, чинит зум моб-инпутов) */
   --fs-h3:      calc(14.5px * var(--fd-k));               /* h3 макета → канон .t-subheading; было 17 */
   --fs-h2:      calc(16.5px * var(--fd-k));               /* h2 макета → канон .t-heading; было 23 */
   --fs-h1:      calc(clamp(21px, 2.6vw, 26px) * var(--fd-k)); /* h1 макета → канон .t-title; было 32 */
