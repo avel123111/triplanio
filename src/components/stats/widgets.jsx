@@ -21,8 +21,6 @@ export function Greeting({ greeting, name, avatarName, photo, sub }) {
   const prefix = at >= 0 ? greeting.slice(0, at) : greeting;
   return (
     <div className="head">
-      <div className="blob b1" />
-      <div className="blob b2" />
       <div className="head__row">
         <Avatar name={avatarName || name || '?'} photo={photo} className="head__av" />
         <div className="grow">
@@ -58,7 +56,6 @@ export function WorldMini({ world, title, caption }) {
   const frac = world.total ? Math.min(1, world.visited / world.total) : 0;
   return (
     <div className="wmini">
-      <div className="blob b1" style={{ width: 160, height: 160, background: 'var(--brand-grad)', top: -90, right: -40, opacity: 0.1 }} />
       <div className="top">
         <div className="wring" style={{ width: 72, height: 72 }}>
           <svg viewBox="0 0 72 72" width="72" height="72">
