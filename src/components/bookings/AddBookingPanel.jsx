@@ -72,9 +72,9 @@ export default function AddBookingPanel({
         </button>
       </div>
 
-      {/* Segmented tabs (reuses the design-system .seg, full-width). */}
+      {/* Segmented tabs (reuses the design-system .seg + shared .seg--fill). */}
       <div className="abp-tabwrap">
-        <div className="seg abp-tabs" role="group" aria-label={t(meta.eyebrowKey)}>
+        <div className="seg seg--fill" role="group" aria-label={t(meta.eyebrowKey)}>
           <button type="button" aria-pressed={tab === 'find'} onClick={() => setTab('find')}>
             <Search size={14} />{t(meta.findKey)}
           </button>
@@ -104,8 +104,6 @@ export default function AddBookingPanel({
 
       <style>{`
         .abp-tabwrap { flex: none; padding: 12px 15px 2px; }
-        .abp-tabs { display: flex; width: 100%; }
-        .abp-tabs button { flex: 1; justify-content: center; }
       `}</style>
     </div>
   );
