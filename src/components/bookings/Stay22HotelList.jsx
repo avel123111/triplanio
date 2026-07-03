@@ -30,12 +30,6 @@ const SORT_ORDER = ['recommended', 'price', 'rating'];
 // Supplier brands for the platform filter (proper nouns — not translated). Wiring deferred.
 const PLATFORM_OPTIONS = ['Booking.com', 'Expedia', 'Hotels.com', 'Vrbo'];
 
-function fmtShort(dateStr, locale) {
-  if (!dateStr) return '';
-  const d = new Date(`${dateStr}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
-}
 
 function pageWindow(current, totalPages) {
   if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -69,7 +63,7 @@ export default function Stay22HotelList({
   // Formatting / click logging context.
   currency, tripId,
 }) {
-  const { t, locale, fmtMoney } = useI18nFormat();
+  const { t, fmtMoney } = useI18nFormat();
   const logClick = usePartnerLogger(tripId);
 
   // Local-only: the filter popover draft buffer (seeded from the committed
@@ -81,6 +75,7 @@ export default function Stay22HotelList({
   // TRIP-176: new controls — UI now, filtering/sorting logic wired later.
   const [query, setQuery] = useState('');
   const [platform, setPlatform] = useState('all');
+  const [rating, setRating] = useState(0);
   const [sortBy, setSortBy] = useState('recommended');
   const cycleSort = () => setSortBy((s) => SORT_ORDER[(SORT_ORDER.indexOf(s) + 1) % SORT_ORDER.length]);
   // Re-seed the draft whenever the committed filters change from the outside
@@ -139,9 +134,6 @@ export default function Stay22HotelList({
   const removeGuests = () => onApply({ ...(applied || {}), ...BASE_GUESTS });
   const removePrice = () => onApply({ ...(applied || {}), min: '', max: '' });
 
-  const dateLine = meta.checkin && meta.checkout
-    ? `${fmtShort(meta.checkin, locale)} – ${fmtShort(meta.checkout, locale)}${meta.nights ? ` · ${t('fork.stay22_nights', { count: meta.nights })}` : ''}`
-    : '';
 
   // Card click = select (no navigation); opening the supplier site (Book button
   // or a second click on the already-selected card) is logged here. The shared
@@ -150,18 +142,6 @@ export default function Stay22HotelList({
 
   return (
     <div className="s22">
-      {/* ===== Header (neutral, supplier-agnostic — mirrors ViatorActivityList) —
-          sits ABOVE the filters so both forks lead with the title (TRIP-161). ===== */}
-      <div className="s22-head">
-        <div className="s22-ti">
-          <span className="s22-logo"><Hotel size={15} /></span>
-          <div className="s22-tiwrap">
-            <b>{t('fork.stay22_title')}</b>
-            <span className="s22-sub">{t('fork.stay22_source')}{dateLine ? ` · ${dateLine}` : ''}</span>
-          </div>
-        </div>
-      </div>
-
       {/* ===== Search + filters (TRIP-176 redesign) ===== */}
       <div className="s22f">
         <div className="s22f-searchrow">
@@ -185,6 +165,7 @@ export default function Stay22HotelList({
         </div>
 
         {filterOpen && (
+          <>
           <div className="s22f-panel">
             <div className="s22f-grp">
               <div className="eyebrow">{t('fork.f_price')} <span className="s22f-pmuted">{t('fork.f_price_unit')}</span></div>
@@ -215,29 +196,36 @@ export default function Stay22HotelList({
 
             <div className="s22f-grp">
               <div className="eyebrow">{t('fork.f_guests_rooms')}</div>
-              <div className="s22f-poprow">
-                <div className="s22f-poptx"><b>{t('fork.f_adults_t')}</b><span>{t('fork.f_adults_s')}</span></div>
-                <Stepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
+              <div className="s22f-guestgrid">
+                <div className="s22f-gcard">
+                  <span className="s22f-gcard__l t-ui">{t('fork.f_adults_t')}</span>
+                  <Stepper value={pending.adults} min={1} onChange={(v) => setG('adults', v)} label={t('fork.f_adults_t')} />
+                </div>
+                <div className="s22f-gcard">
+                  <span className="s22f-gcard__l t-ui">{t('fork.f_children_t')}</span>
+                  <Stepper value={pending.children} min={0} onChange={(v) => setG('children', v)} label={t('fork.f_children_t')} />
+                </div>
+                <div className="s22f-gcard">
+                  <span className="s22f-gcard__l t-ui">{t('fork.f_rooms_t')}</span>
+                  <Stepper value={pending.rooms} min={1} onChange={(v) => setG('rooms', v)} label={t('fork.f_rooms_t')} />
+                </div>
+                <div className="s22f-gcard">
+                  <span className="s22f-gcard__l t-ui">{t('fork.f_rating_t')}</span>
+                  <Stepper value={rating} min={0} max={10} onChange={setRating} label={t('fork.f_rating_t')} />
+                </div>
               </div>
-              <div className="s22f-poprow">
-                <div className="s22f-poptx"><b>{t('fork.f_children_t')}</b><span>{t('fork.f_children_s')}</span></div>
-                <Stepper value={pending.children} min={0} onChange={(v) => setG('children', v)} label={t('fork.f_children_t')} />
-              </div>
-              <div className="s22f-poprow">
-                <div className="s22f-poptx"><b>{t('fork.f_rooms_t')}</b><span>{t('fork.f_rooms_s')}</span></div>
-                <Stepper value={pending.rooms} min={1} onChange={(v) => setG('rooms', v)} label={t('fork.f_rooms_t')} />
-              </div>
-            </div>
-
-            <div className="s22f-panelfoot">
-              <button type="button" className="btn btn--quiet btn--sm" onClick={resetAll}>
-                <RotateCcw size={14} />{t('fork.f_reset')}
-              </button>
-              <button type="button" className="btn btn--primary btn--sm" onClick={apply}>
-                <Search size={14} />{t('fork.f_search')}
-              </button>
             </div>
           </div>
+          {/* Actions live OUTSIDE the filter card (design) */}
+          <div className="s22f-panelfoot">
+            <button type="button" className="btn btn--quiet btn--sm" onClick={resetAll}>
+              <RotateCcw size={14} />{t('fork.f_reset')}
+            </button>
+            <button type="button" className="btn btn--primary btn--sm" onClick={apply}>
+              <Search size={14} />{t('fork.f_search')}
+            </button>
+          </div>
+          </>
         )}
 
         {(appliedGuests || appliedPrice) && (
@@ -395,12 +383,10 @@ export default function Stay22HotelList({
         .s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
         .s22f-selchev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
 
-        .s22f-poprow { display: flex; align-items: center; gap: 12px; }
-        .s22f-poprow + .s22f-poprow { border-top: 1px solid var(--line-2); padding-top: 8px; }
-        .s22f-poptx { flex: 1; min-width: 0; }
-        .s22f-poptx b { display: block; color: var(--ink); }
-        .s22f-poptx span { display: block; color: var(--muted); margin-top: 1px; }
-        .s22f-panelfoot { display: flex; gap: 8px; }
+        .s22f-guestgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-control); }
+        .s22f-gcard__l { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .s22f-panelfoot { display: flex; gap: 8px; margin-top: 12px; }
         .s22f-panelfoot .btn { flex: 1; }
         .s22f-step { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-3); border-radius: var(--r-pill); padding: 3px; }
         .s22f-step button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
@@ -415,13 +401,6 @@ export default function Stay22HotelList({
         .s22f-resetall { margin-left: auto; background: 0; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
         .s22f-resetall:hover { color: var(--ink); }
 
-        /* ---- header (neutral icon + title + subtitle, like .va-head) ---- */
-        .s22-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-        .s22-ti { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
-        .s22-ti b { color: var(--ink); }
-        .s22-tiwrap { display: flex; flex-direction: column; min-width: 0; }
-        .s22-sub { color: var(--muted-2); margin-top: 2px; font-variant-numeric: tabular-nums; }
-        .s22-logo { width: 24px; height: 24px; border-radius: 6px; flex: none; display: grid; place-items: center; background: var(--ev-hotel-soft); color: var(--ev-hotel); }
         .s22-count { color: var(--muted); white-space: nowrap; }
 
         /* ---- count + sort row (TRIP-176) ---- */

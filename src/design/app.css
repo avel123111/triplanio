@@ -4159,6 +4159,9 @@ h4,
 .sd-cell__d{color:var(--ink);}
 .sd-cell__t{color:var(--muted);}
 .sd-cell.is-empty .sd-cell__d{color:var(--muted-2);}
+.sd-cell--time{cursor:default;}
+.sd-cell--time:hover{background:transparent;}
+.sd-timeinput{border:0;background:transparent;padding:0;margin:0;width:100%;color:var(--ink);outline:0;font-variant-numeric:tabular-nums;}
 .stay-dates.is-invalid{border-color:var(--danger,#DC2626);}
 .eed-drange-tz{display:flex;gap:12px;margin-top:8px;}
 .eed-drange-tz>*{flex:1;min-width:0;}

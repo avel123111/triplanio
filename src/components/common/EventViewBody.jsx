@@ -25,6 +25,7 @@ import { getEntityDocuments, getDetailsDocuments } from '@/lib/documents';
 import { optimisticContentUpdate } from '@/lib/trip-data';
 import { faviconUrl, hostnameFromUrl } from '@/lib/booking-platforms';
 import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
+import { cityLabel } from '@/lib/trip-cities';
 import {
   Map as MapIcon, Calendar, FileText,
   BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
@@ -295,9 +296,9 @@ function transferDur(startIso, endIso, t) {
 // eyebrow type/night chips; cost/booking-details/docs/notes reuse the hotel .hv-*
 // cards. Renders its own docs+notes, so EventViewSections skips the shared ones.
 function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
-  const { t } = useI18n();
-  const fromCity = fromVisit?.city_name || '';
-  const toCity = toVisit?.city_name || '';
+  const { t, lang } = useI18n();
+  const fromCity = cityLabel(fromVisit, lang);
+  const toCity = cityLabel(toVisit, lang);
   const Ic = TRANSPORT_ICONS[entity.transport_type] || Plane;
   const night = !!entity.day_change;
   const typeCap = t(entity.transport_type === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer');
@@ -597,8 +598,9 @@ function ServiceBody({ entity, accent }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   if (!entity || !kind) return null;
+  const visitCity = cityLabel(visit, lang);
   const theme = eventTheme(kind, entity);
   const themeLabel = t(theme.labelKey);
 
@@ -621,14 +623,14 @@ export function useEventViewModel(kind, entity, visit, fromVisit, toVisit) {
     if (entity.check_in_datetime && entity.check_out_datetime) {
       metaItems.push({ icon: Calendar, text: `${fmtDate(entity.check_in_datetime)} → ${fmtDate(entity.check_out_datetime)}` });
     }
-    if (visit?.city_name) metaItems.push({ icon: MapIcon, text: visit.city_name });
+    if (visitCity) metaItems.push({ icon: MapIcon, text: visitCity });
   } else if (kind === 'transfer') {
     if (entity.start_datetime) metaItems.push({ icon: Calendar, text: fmtDT(entity.start_datetime) });
-    const route = [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ');
+    const route = [cityLabel(fromVisit, lang), cityLabel(toVisit, lang)].filter(Boolean).join(' → ');
     if (route) metaItems.push({ icon: MapIcon, text: route });
   } else if (kind === 'activity') {
     if (entity.start_datetime) metaItems.push({ icon: Calendar, text: fmtDT(entity.start_datetime) });
-    if (visit?.city_name) metaItems.push({ icon: MapIcon, text: visit.city_name });
+    if (visitCity) metaItems.push({ icon: MapIcon, text: visitCity });
   } else if (kind === 'service') {
     // car_rental: show pickup→dropoff date range in meta strip
     // esim/insurance: no datetime meta — they're not time-bound events

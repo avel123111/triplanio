@@ -20,7 +20,7 @@ import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, Toggle,
 import {
   Loader2, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
-  BedDouble, Ticket,
+  BedDouble, Ticket, Clock,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
 import { DateTime } from 'luxon';
@@ -2000,6 +2000,54 @@ function DateRangeBlock({
   );
 }
 
+const splitLocal = (v) => { const [d, tm = ''] = String(v || '').split('T'); return { date: d || '', time: tm.slice(0, 5) }; };
+
+// Activity "Дата и время" (design): ONE shared date + a time card (start · duration
+// · end). The model still stores full startLocal/endLocal — both share the date.
+function ActivityWhenBlock({ form, setField, setTime, tz, issues, color }) {
+  const { t } = useI18nFormat();
+  const s = splitLocal(form.startLocal);
+  const e = splitLocal(form.endLocal);
+  const date = s.date || e.date || '';
+  const durMin = layoverMins(form.startLocal, form.endLocal);
+  const invalid = fieldHasError(issues, 'start') || fieldHasError(issues, 'end');
+  const emit = (d, st, et) => {
+    setField('startLocal', d && st ? `${d}T${st}` : '');
+    setField('endLocal', d && et ? `${d}T${et}` : '');
+    setTime('start', !!d && !st);
+    setTime('end', !!d && !et);
+  };
+  return (
+    <div className="eed-dateblock">
+      <div className="eed-dateblock__lbl t-ui">{t('event.date_time')}</div>
+      <div data-vfield="start">
+        <DateTimeInput withTime={false} value={date} onChange={(d) => emit(d, s.time, e.time)} />
+      </div>
+      <div className={`stay-dates${invalid ? ' is-invalid' : ''}`} style={{ marginTop: 8 }}>
+        <div className="sd-cellwrap">
+          <div className="sd-cell sd-cell--time">
+            <span className="sd-cell__lbl eyebrow">{t('activity.start')}</span>
+            <input type="time" className="sd-timeinput t-strong" value={s.time} onChange={(ev) => emit(date, ev.target.value, e.time)} />
+          </div>
+        </div>
+        <div className="stay-dates__mid">
+          <Clock size={14} style={{ color: color || 'var(--muted-2)' }} />
+          {durMin != null && <span className="t-meta">{fmtDur(durMin, t)}</span>}
+        </div>
+        <div className="sd-cellwrap" data-vfield="end">
+          <div className="sd-cell sd-cell--time">
+            <span className="sd-cell__lbl eyebrow">{t('event.end')}</span>
+            <input type="time" className="sd-timeinput t-strong" value={e.time} onChange={(ev) => emit(date, s.time, ev.target.value)} />
+          </div>
+        </div>
+      </div>
+      {tz && <div className="eed-drange-tz"><TimezoneHint tz={tz} /></div>}
+      <FieldError issues={issues} field="start" />
+      <FieldError issues={issues} field="end" />
+    </div>
+  );
+}
+
 function SegTransportGrid({ value, onChange, color }) {
   const { t } = useI18nFormat();
   return (
@@ -2158,12 +2206,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         />
       </div>
 
-      <DateRangeBlock
-        label={t('event.when')} accent={color} issues={issues}
-        startLabel={t('event.start')} startValue={form.startLocal} onStart={(v) => setField('startLocal', v)} onStartMissing={(v) => setTime('start', v)} startVField="start" startTz={tz}
-        endLabel={t('event.end')} endValue={form.endLocal} onEnd={(v) => setField('endLocal', v)} onEndMissing={(v) => setTime('end', v)} endVField="end" endTz={tz}
-        midText={(() => { const m = layoverMins(form.startLocal, form.endLocal); return m != null ? fmtDur(m, t) : null; })()}
-      />
+      <ActivityWhenBlock form={form} setField={setField} setTime={setTime} tz={tz} issues={issues} color={color} />
 
       <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
       <div className="fld-grid">

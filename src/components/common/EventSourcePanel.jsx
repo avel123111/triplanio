@@ -19,10 +19,11 @@ import { PanelShell, kindIcon } from '@/components/common/EventPanels';
 import { getSourceDocuments } from '@/lib/documents';
 import { collectDocPaths } from '@/lib/storageCleanup';
 import { ENTITY_TABLE_BY_KIND, deleteSourceEntity } from '@/lib/trip-entities';
+import { cityLabel } from '@/lib/trip-cities';
 const LABEL_KEY = { hotel: 'budget.cat_accommodation', activity: 'budget.source_activity', service: 'service.car_default_name' };
 
 export default function EventSourcePanel({ kind, id, canEdit = false, warning = null, autoEdit = false, onClose }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [editMode, setEditMode] = useState(autoEdit);
@@ -83,14 +84,18 @@ export default function EventSourcePanel({ kind, id, canEdit = false, warning = 
   const hotelDates = kind === 'hotel' && data.check_in_datetime && data.check_out_datetime
     ? `${fmtDate(data.check_in_datetime)} — ${fmtDate(data.check_out_datetime)}${hotelNights != null ? ` · ${t('fork.stay22_nights', { count: hotelNights })}` : ''}`
     : '';
-  const title = kind === 'hotel' ? (visit?.city_name || themeLabel)
+  // city_visits has no `city_name` column — resolve the localized name from
+  // name_i18n/city_name_en (raw rows from useEntitySource aren't pre-localized).
+  const visitCity = cityLabel(visit, lang);
+  const routeCity = [cityLabel(fromVisit, lang), cityLabel(toVisit, lang)].filter(Boolean).join(' → ');
+  const title = kind === 'hotel' ? (visitCity || themeLabel)
     : kind === 'activity' ? (data.title || themeLabel)
     : kind === 'service' ? (data.name || themeLabel)
-    : (data.carrier || [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ') || themeLabel);
-  const sub = kind === 'hotel' ? (hotelDates || visit?.city_name || '')
+    : (data.carrier || routeCity || themeLabel);
+  const sub = kind === 'hotel' ? (hotelDates || visitCity || '')
     : kind === 'transfer'
-      ? [fromVisit?.city_name, toVisit?.city_name].filter(Boolean).join(' → ') || themeLabel
-      : (visit?.city_name || themeLabel);
+      ? (routeCity || themeLabel)
+      : (visitCity || themeLabel);
 
   const CACHE_KIND = { hotel: 'hotels', transfer: 'transfers', activity: 'activities', service: 'services' };
   const doDelete = async () => {
