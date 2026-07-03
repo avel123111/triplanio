@@ -287,23 +287,23 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(at 50% -5%, rgba(196,208,238,.30), transparent 60%);
+  background: radial-gradient(90% 60% at 50% 16%, rgba(146,164,232,.35), transparent 60%);
 }
 :root[data-theme="dark"] body::before {
-  background: radial-gradient(at 50% -5%, rgba(120,132,190,.22), transparent 60%);
+  background: radial-gradient(90% 60% at 50% 16%, rgba(124,138,205,.30), transparent 60%);
 }
 /* Оболочки экранов красят сплошной --bg/--surface инлайном (background-color),
    перекрывая body::before. Кладём градиент в их же background-image: !important
    в стайлшите перебивает инлайновый background-image (color из инлайна остаётся),
    attachment:fixed пинит glow к верху экрана. */
 .app-shell, .ts-screen {
-  background-image: radial-gradient(at 50% -5%, rgba(196,208,238,.30), transparent 60%) !important;
+  background-image: radial-gradient(90% 60% at 50% 16%, rgba(146,164,232,.35), transparent 60%) !important;
   background-repeat: no-repeat !important;
   background-attachment: fixed !important;
 }
 :root[data-theme="dark"] .app-shell,
 :root[data-theme="dark"] .ts-screen {
-  background-image: radial-gradient(at 50% -5%, rgba(120,132,190,.22), transparent 60%) !important;
+  background-image: radial-gradient(90% 60% at 50% 16%, rgba(124,138,205,.30), transparent 60%) !important;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
