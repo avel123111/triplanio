@@ -1224,6 +1224,20 @@ h4,
 .field__label { color: var(--ink-2); display: flex; align-items: center; gap: 6px; }   /* тип — канон .t-ui (co-selector, TRIP-165) */
 .field__hint { color: var(--muted); }   /* тип — канон .t-meta (co-selector, TRIP-165) */
 .field__sub { color: var(--muted); margin-top: 2px; }   /* тип — канон .t-meta (TRIP-165) */
+
+/* Accordion (collapsible field group) — TRIP-176. Reusable primitive: header
+   (title + optional subtitle + count badge + chevron) toggles the body. Text is
+   on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
+.acc { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); margin-bottom: 12px; overflow: hidden; }
+.acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: color-mix(in srgb, var(--surface-2) 30%, transparent); border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
+.acc__head:hover { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+.acc__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.acc__title { color: var(--ink); }
+.acc__sub { color: var(--muted); }
+.acc__badge { flex: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); display: inline-flex; align-items: center; justify-content: center; }
+.acc__chev { flex: none; display: inline-flex; color: var(--muted); transform: rotate(90deg); transition: transform .18s var(--ease-out); }
+.acc.is-open .acc__chev { transform: rotate(-90deg); }
+.acc__body { padding: 14px; border-top: 1px solid var(--line); }
 /* Lumo DS inputs: 14.5px/500 on a soft surface-3 fill with a defined 1.5px
    line-strong border + 4px focus ring (was thin 1px on flat white). */
 .input, .select, .textarea {

@@ -153,6 +153,7 @@ import { useI18nFormat, useI18n } from '@/lib/i18n/I18nContext';
 import DateTimeInput from '@/components/common/DateTimeInput';
 import TimezoneHint from '@/components/common/TimezoneHint';
 import DocumentsField from '@/components/common/DocumentsField';
+import Accordion from '@/components/common/Accordion';
 import AddressAutocomplete from '@/components/common/AddressAutocomplete';
 import Autocomplete from '@/components/common/Autocomplete';
 import cityOptionRow from '@/components/common/cityOptionRow';
@@ -1547,6 +1548,10 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
   const { t } = useI18nFormat();
   const color = TYPE_META.hotel.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  // Filled-field counts drive the accordion badges (how many booking details /
+  // documents are set without expanding the group).
+  const bookingFilled = [form.booking_url, form.booking_reference, form.phone, form.email].filter(Boolean).length;
+  const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
       <SectionHeader color={color}>{t('event.hotel_about')}</SectionHeader>
@@ -1575,31 +1580,33 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
         </div>
       </div>
 
-      <SectionHeader color={color}>{t('event.checkin_checkout')}</SectionHeader>
-      <div className="fld-grid">
-        <div className={`eed-minw0 ${inv('checkIn')}`} data-vfield="checkIn">
-          <Label>{t('event.checkin_req')}</Label>
-          <AiField active={aiFields.has('checkInLocal')}>
-            <DateTimeInput
-              value={form.checkInLocal}
-              onChange={(v) => setField('checkInLocal', v)}
-              onTimeMissingChange={(v) => setTime('checkIn', v)}
-            />
-          </AiField>
-          <TimezoneHint tz={tz} />
-          <FieldError issues={issues} field="checkIn" />
-        </div>
-        <div className={`eed-minw0 ${inv('checkOut')}`} data-vfield="checkOut">
-          <Label>{t('event.checkout_req')}</Label>
-          <AiField active={aiFields.has('checkOutLocal')}>
-            <DateTimeInput
-              value={form.checkOutLocal}
-              onChange={(v) => setField('checkOutLocal', v)}
-              onTimeMissingChange={(v) => setTime('checkOut', v)}
-            />
-          </AiField>
-          <TimezoneHint tz={tz} />
-          <FieldError issues={issues} field="checkOut" />
+      <div className="eed-dateblock">
+        <div className="eed-dateblock__lbl t-ui">{t('event.stay_dates')}</div>
+        <div className="fld-grid">
+          <div className={`eed-minw0 ${inv('checkIn')}`} data-vfield="checkIn">
+            <Label>{t('event.checkin_req')}</Label>
+            <AiField active={aiFields.has('checkInLocal')}>
+              <DateTimeInput
+                value={form.checkInLocal}
+                onChange={(v) => setField('checkInLocal', v)}
+                onTimeMissingChange={(v) => setTime('checkIn', v)}
+              />
+            </AiField>
+            <TimezoneHint tz={tz} />
+            <FieldError issues={issues} field="checkIn" />
+          </div>
+          <div className={`eed-minw0 ${inv('checkOut')}`} data-vfield="checkOut">
+            <Label>{t('event.checkout_req')}</Label>
+            <AiField active={aiFields.has('checkOutLocal')}>
+              <DateTimeInput
+                value={form.checkOutLocal}
+                onChange={(v) => setField('checkOutLocal', v)}
+                onTimeMissingChange={(v) => setTime('checkOut', v)}
+              />
+            </AiField>
+            <TimezoneHint tz={tz} />
+            <FieldError issues={issues} field="checkOut" />
+          </div>
         </div>
       </div>
 
@@ -1653,50 +1660,52 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
         </div>
       </AiField>
 
-      <SectionHeader color={color}>{t('event.booking_section')}</SectionHeader>
-      <div className="fld-grid">
-        <BookingUrlField
-          value={form.booking_url}
-          onChange={(e) => setField('booking_url', e.target.value)}
-          aiActive={aiFields.has('booking_url')}
-          t={t}
-        />
-        <div>
-          <Label>{t('event.booking_ref')}</Label>
-          <AiField active={aiFields.has('booking_reference')}>
-            <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
-          </AiField>
+      <Accordion title={t('event.booking_details')} subtitle={t('event.booking_details_hint')} badge={bookingFilled}>
+        <div className="fld-grid">
+          <BookingUrlField
+            value={form.booking_url}
+            onChange={(e) => setField('booking_url', e.target.value)}
+            aiActive={aiFields.has('booking_url')}
+            t={t}
+          />
+          <div>
+            <Label>{t('event.booking_ref')}</Label>
+            <AiField active={aiFields.has('booking_reference')}>
+              <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+            </AiField>
+          </div>
         </div>
-      </div>
-      <div className="fld-grid">
-        <div>
-          <Label>{t('event.phone')}</Label>
-          <AiField active={aiFields.has('phone')}>
-            <Input value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="+351 …" />
-          </AiField>
+        <div className="fld-grid eed-accrow">
+          <div>
+            <Label>{t('event.phone')}</Label>
+            <AiField active={aiFields.has('phone')}>
+              <Input value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="+351 …" />
+            </AiField>
+          </div>
+          <div>
+            <Label>E-mail</Label>
+            <AiField active={aiFields.has('email')}>
+              <Input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="-" />
+            </AiField>
+          </div>
         </div>
-        <div>
-          <Label>E-mail</Label>
-          <AiField active={aiFields.has('email')}>
-            <Input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="-" />
-          </AiField>
-        </div>
-      </div>
+      </Accordion>
 
-      <SectionHeader color={color}>{t('event.docs_notes')}</SectionHeader>
-      <AiField active={aiFields.has('documents')}>
-        <DocumentsField
-          value={form.documents}
-          onChange={(docs) => setField('documents', docs)}
-          onUploadingChange={setUploading}
-          tripId={tripId}
-          bare
-        />
-      </AiField>
-      <div>
-        <Label>{t('event.notes')}</Label>
-        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
-      </div>
+      <Accordion title={t('event.docs_notes')} badge={docCount}>
+        <AiField active={aiFields.has('documents')}>
+          <DocumentsField
+            value={form.documents}
+            onChange={(docs) => setField('documents', docs)}
+            onUploadingChange={setUploading}
+            tripId={tripId}
+            bare
+          />
+        </AiField>
+        <div className="eed-accrow">
+          <Label>{t('event.notes')}</Label>
+          <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
+        </div>
+      </Accordion>
     </>
   );
 }
