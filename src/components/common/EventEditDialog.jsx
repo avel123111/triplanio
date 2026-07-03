@@ -1580,73 +1580,45 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
         </div>
       </div>
 
-      <div className="eed-dateblock">
-        <div className="eed-dateblock__lbl t-ui">{t('event.stay_dates')}</div>
-        <div className="fld-grid">
-          <div className={`eed-minw0 ${inv('checkIn')}`} data-vfield="checkIn">
-            <Label>{t('event.checkin_req')}</Label>
-            <AiField active={aiFields.has('checkInLocal')}>
-              <DateTimeInput
-                value={form.checkInLocal}
-                onChange={(v) => setField('checkInLocal', v)}
-                onTimeMissingChange={(v) => setTime('checkIn', v)}
-              />
-            </AiField>
-            <TimezoneHint tz={tz} />
-            <FieldError issues={issues} field="checkIn" />
-          </div>
-          <div className={`eed-minw0 ${inv('checkOut')}`} data-vfield="checkOut">
-            <Label>{t('event.checkout_req')}</Label>
-            <AiField active={aiFields.has('checkOutLocal')}>
-              <DateTimeInput
-                value={form.checkOutLocal}
-                onChange={(v) => setField('checkOutLocal', v)}
-                onTimeMissingChange={(v) => setTime('checkOut', v)}
-              />
-            </AiField>
-            <TimezoneHint tz={tz} />
-            <FieldError issues={issues} field="checkOut" />
-          </div>
-        </div>
-        {(() => {
-          const ci = DateTime.fromISO(form.checkInLocal), co = DateTime.fromISO(form.checkOutLocal);
-          const n = (ci.isValid && co.isValid) ? Math.max(0, Math.round(co.startOf('day').diff(ci.startOf('day'), 'days').days)) : 0;
-          return n > 0 ? <DateSubline>{t('fork.stay22_nights', { count: n })}</DateSubline> : null;
-        })()}
-      </div>
+      {(() => {
+        const ci = DateTime.fromISO(form.checkInLocal), co = DateTime.fromISO(form.checkOutLocal);
+        const n = (ci.isValid && co.isValid) ? Math.max(0, Math.round(co.startOf('day').diff(ci.startOf('day'), 'days').days)) : 0;
+        return (
+          <DateRangeBlock
+            label={t('event.stay_dates')} accent={color} issues={issues}
+            startLabel={t('event.checkin_req')} startValue={form.checkInLocal} onStart={(v) => setField('checkInLocal', v)} onStartMissing={(v) => setTime('checkIn', v)} startVField="checkIn" startTz={tz}
+            endLabel={t('event.checkout_req')} endValue={form.checkOutLocal} onEnd={(v) => setField('checkOutLocal', v)} onEndMissing={(v) => setTime('checkOut', v)} endVField="checkOut" endTz={tz}
+            midText={n > 0 ? t('fork.stay22_nights', { count: n }) : null}
+          />
+        );
+      })()}
 
-      <SectionHeader color={color}>{t('event.finance_cancel')}</SectionHeader>
-      <div className="eed-grid3">
-        <div>
-          <Label>{t('event.price')}</Label>
+      {/* Price + currency + payment pills (design: "Стоимость за всё") */}
+      <div className="eed-finance">
+        <div className="hv-lbl eyebrow">{t('event.price_total')}</div>
+        <div className="eed-pricerow">
           <AiField active={aiFields.has('price')}>
-            <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
+            <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0" />
           </AiField>
-        </div>
-        <div>
-          <Label>{t('event.currency')}</Label>
           <AiField active={aiFields.has('currency')}>
             <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
           </AiField>
         </div>
-        <div>
-          <Label>{t('event.payment_status')}</Label>
-          <AiField active={aiFields.has('payment_status')}>
-            {/* Segmented pills (design) — reuse .seg; click active pill to clear. */}
-            <div className="seg seg--fill" role="group" aria-label={t('event.payment_status')}>
-              {[['paid', 'event.paid'], ['partial', 'event.partial'], ['pay_on_arrival', 'event.on_arrival']].map(([v, k]) => (
-                <button
-                  key={v}
-                  type="button"
-                  aria-pressed={form.payment_status === v}
-                  onClick={() => setField('payment_status', form.payment_status === v ? '' : v)}
-                >
-                  {t(k)}
-                </button>
-              ))}
-            </div>
-          </AiField>
-        </div>
+        <AiField active={aiFields.has('payment_status')}>
+          <div className="payseg" role="group" aria-label={t('event.payment_status')}>
+            {[['paid', 'event.paid'], ['partial', 'event.partial'], ['pay_on_arrival', 'event.on_arrival']].map(([v, k]) => (
+              <button
+                key={v}
+                type="button"
+                className="t-ui"
+                aria-pressed={form.payment_status === v}
+                onClick={() => setField('payment_status', form.payment_status === v ? '' : v)}
+              >
+                {t(k)}
+              </button>
+            ))}
+          </div>
+        </AiField>
       </div>
       <AiField active={aiFields.has('free_cancellation')}>
         <div className="eed-fcbox">
@@ -1883,36 +1855,20 @@ function TransferLegCard({
         </div>
 
         {/* Departure & arrival — bordered block (dates + duration + overnight) */}
-        <div className="eed-dateblock" style={{ marginTop: 14 }}>
-          <div className="eed-dateblock__lbl t-ui">{t('event.dep_arr')}</div>
-          <div className="fld-grid">
-            <div className={`eed-minw0 ${invF('start')}`} data-vfield={vf('start')}>
-              <Label>{t('event.departure_req')}</Label>
-              <AiField active={aiHas('startLocal')}>
-                <DateTimeInput value={leg.startLocal} onChange={(v) => patch({ startLocal: v })} onTimeMissingChange={(v) => onTimeMissing('dep', v)} />
-              </AiField>
-              <TimezoneHint tz={startTz} />
-              <FieldError issues={issues} field={vf('start')} />
-            </div>
-            <div className={`eed-minw0 ${invF('end')}`} data-vfield={vf('end')}>
-              <Label>{t('event.arrival_req')}</Label>
-              <AiField active={aiHas('endLocal')}>
-                <DateTimeInput value={leg.endLocal} onChange={(v) => patch({ endLocal: v })} onTimeMissingChange={(v) => onTimeMissing('arr', v)} />
-              </AiField>
-              <TimezoneHint tz={endTz} />
-              <FieldError issues={issues} field={vf('end')} />
-            </div>
-          </div>
-          {durMin != null && <DateSubline>{fmtDur(durMin, t)}</DateSubline>}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', marginTop: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))' }}>
-            <Toggle on={!!leg.day_change} onChange={(v) => patch({ day_change: !!v })} label={t('event.overnight_label')} />
-            <span style={{ minWidth: 0 }}>
-              <span className="t-ui" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Moon size={16} /> {t('event.overnight_label')}
-              </span>
-              <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', marginTop: 2 }}>{t('event.overnight_hint')}</span>
-            </span>
-          </div>
+        <DateRangeBlock
+          style={{ marginTop: 14 }}
+          label={t('event.dep_arr')} accent={color} issues={issues}
+          startLabel={t('event.departure_req')} startValue={leg.startLocal} onStart={(v) => patch({ startLocal: v })} onStartMissing={(v) => onTimeMissing('dep', v)} startVField={vf('start')} startTz={startTz}
+          endLabel={t('event.arrival_req')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz}
+          midText={durMin != null ? fmtDur(durMin, t) : null}
+        />
+        {/* Overnight — separate card (design) */}
+        <div className="eed-nightrow">
+          <span className="eed-nightrow__l">
+            <Moon size={16} />
+            <span className="t-ui">{t('event.overnight_label')}</span>
+          </span>
+          <Toggle on={!!leg.day_change} onChange={(v) => patch({ day_change: !!v })} label={t('event.overnight_label')} />
         </div>
 
         {/* Carrier / flight no. */}
@@ -2007,10 +1963,43 @@ const fmtDur = (m, t) => {
   if (mm || !h) parts.push(t('event.dur_m', { m: mm }));
   return parts.join(' ');
 };
-// Centered subline under a date pair (duration / nights). Same markup everywhere.
-const DateSubline = ({ children }) => (
-  <div className="muted t-meta" style={{ marginTop: 8, textAlign: 'center' }}>{children}</div>
-);
+// Date-range block (TRIP-176 design): bordered block + 3-column summary card
+// (start cell · arrow + duration/nights · end cell). Each cell is a clickable
+// DateTimeInput trigger opening the shared calendar. Reused by hotel/transfer/
+// activity so the layout stays identical across all three forms.
+function DateRangeBlock({
+  label, accent, midText, issues, style,
+  startLabel, startValue, onStart, onStartMissing, startVField, startTz,
+  endLabel, endValue, onEnd, onEndMissing, endVField, endTz,
+}) {
+  const invalid = (startVField && fieldHasError(issues, startVField))
+    || (endVField && fieldHasError(issues, endVField));
+  return (
+    <div className="eed-dateblock" style={style}>
+      <div className="eed-dateblock__lbl t-ui">{label}</div>
+      <div className={`stay-dates${invalid ? ' is-invalid' : ''}`}>
+        <div className="sd-cellwrap" data-vfield={startVField}>
+          <DateTimeInput variant="cell" cellLabel={startLabel} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} />
+        </div>
+        <div className="stay-dates__mid">
+          <ArrowRight size={14} style={{ color: accent || 'var(--muted-2)' }} />
+          {midText && <span className="t-meta">{midText}</span>}
+        </div>
+        <div className="sd-cellwrap" data-vfield={endVField}>
+          <DateTimeInput variant="cell" cellLabel={endLabel} value={endValue} onChange={onEnd} onTimeMissingChange={onEndMissing} />
+        </div>
+      </div>
+      {(startTz || endTz) && (
+        <div className="eed-drange-tz">
+          <TimezoneHint tz={startTz} />
+          <TimezoneHint tz={endTz} />
+        </div>
+      )}
+      {startVField && <FieldError issues={issues} field={startVField} />}
+      {endVField && <FieldError issues={issues} field={endVField} />}
+    </div>
+  );
+}
 
 function SegTransportGrid({ value, onChange, color }) {
   const { t } = useI18nFormat();
@@ -2171,35 +2160,12 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         />
       </div>
 
-      <div className="eed-dateblock">
-        <div className="eed-dateblock__lbl t-ui">{t('event.when')}</div>
-        <div className="fld-grid">
-          <div className={`field ${inv('start')}`} data-vfield="start">
-            <Label>{t('event.start')}</Label>
-            <DateTimeInput
-              value={form.startLocal}
-              onChange={(v) => setField('startLocal', v)}
-              onTimeMissingChange={(v) => setTime('start', v)}
-            />
-            <TimezoneHint tz={tz} />
-            <FieldError issues={issues} field="start" />
-          </div>
-          <div className={`field ${inv('end')}`} data-vfield="end">
-            <Label>{t('event.end')}</Label>
-            <DateTimeInput
-              value={form.endLocal}
-              onChange={(v) => setField('endLocal', v)}
-              onTimeMissingChange={(v) => setTime('end', v)}
-            />
-            <TimezoneHint tz={tz} />
-            <FieldError issues={issues} field="end" />
-          </div>
-        </div>
-        {(() => {
-          const m = layoverMins(form.startLocal, form.endLocal);
-          return m != null ? <DateSubline>{fmtDur(m, t)}</DateSubline> : null;
-        })()}
-      </div>
+      <DateRangeBlock
+        label={t('event.when')} accent={color} issues={issues}
+        startLabel={t('event.start')} startValue={form.startLocal} onStart={(v) => setField('startLocal', v)} onStartMissing={(v) => setTime('start', v)} startVField="start" startTz={tz}
+        endLabel={t('event.end')} endValue={form.endLocal} onEnd={(v) => setField('endLocal', v)} onEndMissing={(v) => setTime('end', v)} endVField="end" endTz={tz}
+        midText={(() => { const m = layoverMins(form.startLocal, form.endLocal); return m != null ? fmtDur(m, t) : null; })()}
+      />
 
       <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
       <div className="fld-grid">

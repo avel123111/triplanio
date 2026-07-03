@@ -4125,6 +4125,17 @@ h4,
 .stay-dates__t{ color:var(--muted);margin-top:3px;}
 .stay-dates__mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 12px;border-left:1px dashed var(--line-2);border-right:1px dashed var(--line-2);}
 .stay-dates__mid span{ color:var(--muted);white-space:nowrap;}
+/* Editable summary cell — clickable trigger inside .stay-dates (TRIP-176 date-range) */
+.sd-cellwrap{display:flex;min-width:0;}
+.sd-cell{display:flex;flex-direction:column;gap:5px;width:100%;height:100%;min-width:0;padding:11px 14px;background:transparent;border:0;cursor:pointer;text-align:left;transition:background .12s;}
+.sd-cell:hover{background:var(--surface-2);}
+.sd-cell__lbl{color:var(--muted);}
+.sd-cell__d{color:var(--ink);}
+.sd-cell__t{color:var(--muted);}
+.sd-cell.is-empty .sd-cell__d{color:var(--muted-2);}
+.stay-dates.is-invalid{border-color:var(--danger,#DC2626);}
+.eed-drange-tz{display:flex;gap:12px;margin-top:8px;}
+.eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
 .hv{display:flex;flex-direction:column;gap:16px;}
