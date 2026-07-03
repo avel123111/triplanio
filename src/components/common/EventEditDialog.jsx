@@ -1714,9 +1714,12 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
   const { t } = useI18nFormat();
   const color = TYPE_META.transfer.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
+  // Filled-field counts drive the accordion badges (mirrors HotelFields).
+  const bookingFilled = [form.carrier, form.flight_number, form.booking_url, form.booking_reference].filter(Boolean).length;
+  const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
-      {!isEdit && <LayoverToggle form={form} setForm={setForm} color={color} />}
+      {!isEdit && <LayoverToggle form={form} setForm={setForm} />}
 
       {form.hasLayovers ? (
         <SegmentsEditor form={form} setForm={setForm} fromVisit={fromVisit} toVisit={toVisit} setTime={setTime} color={color} aiSegFields={aiSegFields} setAiSegFields={setAiSegFields} issues={issues} onTouch={onTouch} />
@@ -1751,9 +1754,9 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
 
       <SectionHeader color={color}>{t('event.from_to')}</SectionHeader>
       <div className="fld-grid">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <div>
           <div className="eed-fromto" style={{ color }}>{t('event.from')}</div>
-          <div>
+          <div className="eed-accrow">
             <Label>{t('event.addr_station')}</Label>
             <AiField active={aiFields.has('from_address')}>
               <AddressAutocomplete
@@ -1768,22 +1771,10 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
               />
             </AiField>
           </div>
-          <div className={inv('start')} data-vfield="start">
-            <Label>{t('event.departure_req')}</Label>
-            <AiField active={aiFields.has('startLocal')}>
-              <DateTimeInput
-                value={form.startLocal}
-                onChange={(v) => setField('startLocal', v)}
-                onTimeMissingChange={(v) => setTime('start', v)}
-              />
-            </AiField>
-            <TimezoneHint tz={startTz} />
-            <FieldError issues={issues} field="start" />
-          </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <div>
           <div className="eed-fromto" style={{ color }}>{t('event.to')}</div>
-          <div>
+          <div className="eed-accrow">
             <Label>{t('event.addr_station')}</Label>
             <AiField active={aiFields.has('to_address')}>
               <AddressAutocomplete
@@ -1798,7 +1789,25 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
               />
             </AiField>
           </div>
-          <div className={inv('end')} data-vfield="end">
+        </div>
+      </div>
+
+      <div className="eed-dateblock">
+        <div className="eed-dateblock__lbl t-ui">{t('event.dep_arr')}</div>
+        <div className="fld-grid">
+          <div className={`eed-minw0 ${inv('start')}`} data-vfield="start">
+            <Label>{t('event.departure_req')}</Label>
+            <AiField active={aiFields.has('startLocal')}>
+              <DateTimeInput
+                value={form.startLocal}
+                onChange={(v) => setField('startLocal', v)}
+                onTimeMissingChange={(v) => setTime('start', v)}
+              />
+            </AiField>
+            <TimezoneHint tz={startTz} />
+            <FieldError issues={issues} field="start" />
+          </div>
+          <div className={`eed-minw0 ${inv('end')}`} data-vfield="end">
             <Label>{t('event.arrival_req')}</Label>
             <AiField active={aiFields.has('endLocal')}>
               <DateTimeInput
@@ -1811,50 +1820,21 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
             <FieldError issues={issues} field="end" />
           </div>
         </div>
-      </div>
-
-      {/* Overnight / day-change toggle. When on, the destination city (and every
-          city after it) shifts +1 day in the trip editor. Auto-checked when the
-          arrival date is later than the departure date. */}
-      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', marginBottom: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
-        <Checkbox checked={!!form.day_change} onCheckedChange={(v) => setField('day_change', !!v)} />
-        <span style={{ minWidth: 0 }}>
-          <span className="t-ui" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Moon size={16} /> {t('event.overnight_label')}
+        {/* Overnight / day-change toggle. When on, the destination city (and every
+            city after it) shifts +1 day in the trip editor. Auto-checked when the
+            arrival date is later than the departure date. */}
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', marginTop: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
+          <Checkbox checked={!!form.day_change} onCheckedChange={(v) => setField('day_change', !!v)} />
+          <span style={{ minWidth: 0 }}>
+            <span className="t-ui" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Moon size={16} /> {t('event.overnight_label')}
+            </span>
+            <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', marginTop: 2 }}>{t('event.overnight_hint')}</span>
           </span>
-          <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', marginTop: 2 }}>{t('event.overnight_hint')}</span>
-        </span>
-      </label>
+        </label>
+      </div>
 
-      <SectionHeader color={color}>{t('event.carrier_booking')}</SectionHeader>
-      <div className="fld-grid">
-        <div>
-          <Label>{t('event.carrier')}</Label>
-          <AiField active={aiFields.has('carrier')}>
-            <Input value={form.carrier} onChange={(e) => setField('carrier', e.target.value)} placeholder="TAP Air Portugal" />
-          </AiField>
-        </div>
-        <div>
-          <Label>{t('event.flight_train_no')}</Label>
-          <AiField active={aiFields.has('flight_number')}>
-            <Input className="t-mono" value={form.flight_number} onChange={(e) => setField('flight_number', e.target.value)} placeholder="TP 1379" /* i18n-ignore: пример формата номера рейса, не переводится */ />
-          </AiField>
-        </div>
-      </div>
-      <div className="fld-grid">
-        <BookingUrlField
-          value={form.booking_url}
-          onChange={(e) => setField('booking_url', e.target.value)}
-          aiActive={aiFields.has('booking_url')}
-          t={t}
-        />
-        <div>
-          <Label>{t('event.booking_ref')}</Label>
-          <AiField active={aiFields.has('booking_reference')}>
-            <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
-          </AiField>
-        </div>
-      </div>
+      <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
       <div className="fld-grid">
         <div>
           <Label>{t('event.price')}</Label>
@@ -1870,29 +1850,61 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         </div>
       </div>
 
+      <Accordion title={t('event.carrier_booking')} badge={bookingFilled}>
+        <div className="fld-grid">
+          <div>
+            <Label>{t('event.carrier')}</Label>
+            <AiField active={aiFields.has('carrier')}>
+              <Input value={form.carrier} onChange={(e) => setField('carrier', e.target.value)} placeholder="TAP Air Portugal" />
+            </AiField>
+          </div>
+          <div>
+            <Label>{t('event.flight_train_no')}</Label>
+            <AiField active={aiFields.has('flight_number')}>
+              <Input className="t-mono" value={form.flight_number} onChange={(e) => setField('flight_number', e.target.value)} placeholder="TP 1379" /* i18n-ignore: пример формата номера рейса, не переводится */ />
+            </AiField>
+          </div>
+        </div>
+        <div className="fld-grid eed-accrow">
+          <BookingUrlField
+            value={form.booking_url}
+            onChange={(e) => setField('booking_url', e.target.value)}
+            aiActive={aiFields.has('booking_url')}
+            t={t}
+          />
+          <div>
+            <Label>{t('event.booking_ref')}</Label>
+            <AiField active={aiFields.has('booking_reference')}>
+              <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
+            </AiField>
+          </div>
+        </div>
+      </Accordion>
+
       </>
       )}
 
-      <SectionHeader color={color}>{t('event.docs_notes')}</SectionHeader>
-      <AiField active={aiFields.has('documents')}>
-        <DocumentsField
-          value={form.documents}
-          onChange={(docs) => setField('documents', docs)}
-          onUploadingChange={setUploading}
-          tripId={tripId}
-          bare
-        />
-      </AiField>
-      <div>
-        <Label>{t('event.notes')}</Label>
-        <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
-      </div>
+      <Accordion title={t('event.docs_notes')} badge={docCount}>
+        <AiField active={aiFields.has('documents')}>
+          <DocumentsField
+            value={form.documents}
+            onChange={(docs) => setField('documents', docs)}
+            onUploadingChange={setUploading}
+            tripId={tripId}
+            bare
+          />
+        </AiField>
+        <div className="eed-accrow">
+          <Label>{t('event.notes')}</Label>
+          <Textarea rows={3} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('event.notes_ph')} />
+        </div>
+      </Accordion>
     </>
   );
 }
 
 // ── Layover (multi-segment) transfer UI ─────────────────────────────────────
-function LayoverToggle({ form, setForm, color }) {
+function LayoverToggle({ form, setForm }) {
   const { t } = useI18nFormat();
   const enable = () => setForm((prev) => {
     const seg0 = { ...makeSegment(prev.currency), transport_type: prev.transport_type, from_address: prev.from_address, startLocal: prev.startLocal, carrier: prev.carrier, flight_number: prev.flight_number, booking_reference: prev.booking_reference, price: prev.price, currency: prev.currency };
@@ -1907,22 +1919,15 @@ function LayoverToggle({ form, setForm, color }) {
   return (
     <>
       <SectionHeader>{t('trip.sidebar_route')}</SectionHeader>
-      <div style={{ padding: '10px 14px', background: 'var(--wash)', border: '1px solid var(--line-2)', borderRadius: 10, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}>
-          <span className="sw-wrap" style={{ '--brand': color }}>
-            <input type="checkbox" checked={form.hasLayovers} onChange={(e) => (e.target.checked ? enable() : disable())} />
-            <span className="sw-track" />
-            <span className="sw-knob" />
-          </span>
-          <span style={{ flex: 1 }}>
-            <span className="t-body" style={{ display: 'block' }}>{t('event.with_layovers')}</span>
-            <span className="muted t-meta">{t('event.layovers_hint')}</span>
-          </span>
-        </label>
-        {form.hasLayovers && (
-          <span className="num t-meta" style={{ color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>{t('event.seg_count', { n, c: Math.max(0, n - 1) })}</span>
-        )}
+      {/* Direct / With-layovers switch — reuses the design-system .seg (+ shared
+          .seg--fill), same primitive as the fork tabs. */}
+      <div className="seg seg--fill" role="group" aria-label={t('trip.sidebar_route')} style={{ marginBottom: form.hasLayovers ? 8 : 14 }}>
+        <button type="button" aria-pressed={!form.hasLayovers} onClick={() => { if (form.hasLayovers) disable(); }}>{t('event.route_direct')}</button>
+        <button type="button" aria-pressed={form.hasLayovers} onClick={() => { if (!form.hasLayovers) enable(); }}>{t('event.with_layovers')}</button>
       </div>
+      {form.hasLayovers && (
+        <div className="muted t-meta" style={{ marginBottom: 14 }}>{t('event.seg_count', { n, c: Math.max(0, n - 1) })}</div>
+      )}
     </>
   );
 }

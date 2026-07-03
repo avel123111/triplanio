@@ -1503,6 +1503,10 @@ h4,
   box-shadow: var(--sh-1);
 }
 .seg button:active { transform: scale(.95); }
+/* Full-width variant — segments split the row evenly (used by the fork tabs and
+   the transfer Direct/Layovers switch). Shared so neither call-site re-invents it. */
+.seg--fill { display: flex; width: 100%; }
+.seg--fill button { flex: 1; justify-content: center; }
 
 /* Misc utility */
 .row { display: flex; gap: 10px; align-items: center; }
