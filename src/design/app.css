@@ -110,6 +110,8 @@
   /* Event types (+ink +soft-2; legacy -soft-12 aliases -soft-2) */
   --ev-hotel:#5470E6; --ev-hotel-ink:#4257C9; --ev-hotel-soft:rgba(84,112,230,.11); --ev-hotel-soft-2:rgba(84,112,230,.17); --ev-hotel-soft-12:var(--ev-hotel-soft-2);
   --ev-transfer:#15A2B0; --ev-transfer-ink:#096B75; --ev-transfer-soft:rgba(21,162,176,.12); --ev-transfer-soft-2:rgba(21,162,176,.18); --ev-transfer-soft-12:var(--ev-transfer-soft-2);
+  /* overnight/night accent (indigo) — night pill + "+1" marker + overnight toggle (TRIP-176) */
+  --night:#6366F1; --night-ink:#4F46E5; --night-soft:rgba(99,102,241,.13);
   --ev-activity:#E0568F; --ev-activity-ink:#BC2F6A; --ev-activity-soft:rgba(224,86,143,.12); --ev-activity-soft-2:rgba(224,86,143,.18); --ev-activity-soft-12:var(--ev-activity-soft-2);
   --ev-car:#2FA866; --ev-car-ink:#12703E; --ev-car-soft:rgba(47,168,102,.12); --ev-car-soft-2:rgba(47,168,102,.18); --ev-car-soft-12:var(--ev-car-soft-2);
   --ev-esim:#2173C8; --ev-esim-ink:#1358A0; --ev-esim-soft:rgba(33,115,200,.11); --ev-esim-soft-2:rgba(33,115,200,.18);
@@ -251,6 +253,7 @@
   /* Event types — dark */
   --ev-hotel:#8E9CF5; --ev-hotel-ink:#8E9CF5; --ev-hotel-soft:rgba(142,156,245,.16); --ev-hotel-soft-2:rgba(142,156,245,.24);
   --ev-transfer:#38C6D4; --ev-transfer-ink:#38C6D4; --ev-transfer-soft:rgba(56,198,212,.16); --ev-transfer-soft-2:rgba(56,198,212,.24);
+  --night:#818CF8; --night-ink:#A5B4FC; --night-soft:rgba(99,102,241,.20);
   --ev-activity:#F178A8; --ev-activity-ink:#F178A8; --ev-activity-soft:rgba(241,120,168,.16); --ev-activity-soft-2:rgba(241,120,168,.24);
   --ev-car:#4ECB86; --ev-car-ink:#4ECB86; --ev-car-soft:rgba(78,203,134,.16); --ev-car-soft-2:rgba(78,203,134,.24);
   --ev-esim:#6FB2FF; --ev-esim-ink:#94C6FF; --ev-esim-soft:rgba(111,178,255,.15); --ev-esim-soft-2:rgba(111,178,255,.24);
@@ -344,7 +347,6 @@ h2,
 .acct-plan__v,
 .tc__title,
 .pro-hero__title,
-.route-block .rt,
 .sec-head h2,
 .statbar .v,
 .sfig .v,
@@ -663,9 +665,6 @@ h4,
 .doc-row .ds,
 .ev-dlg-info .sub,
 .ev-dlg-price .cur,
-.route-block .rc,
-.route-block .ra,
-.route-block .dur,
 .bk-link,
 .warn-banner span,
 .ch-row .cr-b span,
@@ -867,8 +866,7 @@ h4,
 .tl3-ev .time,
 .tl3-ev--tr .time--tr span,
 .kv .v.mono,
-.confirm__email,
-.route-block .rd { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 700; line-height: 1.25;  letter-spacing: 0; }   /* TRIP-183: .t-mono ← meta-md макета (JetBrains 700/11/1.25); был 500/12.5. Прозаичный код/email можно переносить в .t-meta канон-аудитором. */
+.confirm__email { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 700; line-height: 1.25;  letter-spacing: 0; }   /* TRIP-183: .t-mono ← meta-md макета (JetBrains 700/11/1.25); был 500/12.5. Прозаичный код/email можно переносить в .t-meta канон-аудитором. */
 /* TRIP-175: каноны-заплатки .t-nano/.t-caption СХЛОПНУТЫ (макет их не содержит).
    Их члены переехали: НЕ-капс подписи booking → .t-meta (Golos 12.5, co-selector
    в правиле t-meta выше), капс-эйбрау (.va-from/.s22-price span/.fork-partner__mid
@@ -4145,15 +4143,6 @@ h4,
 .kv .k{ color:var(--muted);}
 .kv .v{ color:var(--ink); }
 /* route block (transfer view) */
-.route-block{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:13px 14px;background:var(--surface-3);border:1px solid var(--line);border-radius:13px;}
-.route-block .rd{ color:var(--muted); }
-.route-block .rt{ color:var(--ink); }
-.route-block .rc{ color:var(--ink-2);margin-top:2px;}
-.route-block .ra{ color:var(--muted); margin-top:1px;}
-.route-block .rmid{display:flex;flex-direction:column;align-items:center;gap:3px;}
-.route-block .rmid svg{width:20px;height:20px;color:var(--ev-color,var(--ev-transfer));}
-.route-block .dur{ color:var(--muted);white-space:nowrap;}
-.route-block .end{text-align:right;}
 /* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
 .stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);overflow:hidden;}
 .stay-dates__cell{padding:11px 14px;min-width:0;}
@@ -4162,6 +4151,17 @@ h4,
 .stay-dates__t{ color:var(--muted);margin-top:3px;}
 .stay-dates__mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 12px;border-left:1px dashed var(--line-2);border-right:1px dashed var(--line-2);}
 .stay-dates__mid span{ color:var(--muted);white-space:nowrap;}
+/* Editable summary cell — clickable trigger inside .stay-dates (TRIP-176 date-range) */
+.sd-cellwrap{display:flex;min-width:0;}
+.sd-cell{display:flex;flex-direction:column;gap:5px;width:100%;height:100%;min-width:0;padding:11px 14px;background:transparent;border:0;cursor:pointer;text-align:left;transition:background .12s;}
+.sd-cell:hover{background:var(--surface-2);}
+.sd-cell__lbl{color:var(--muted);}
+.sd-cell__d{color:var(--ink);}
+.sd-cell__t{color:var(--muted);}
+.sd-cell.is-empty .sd-cell__d{color:var(--muted-2);}
+.stay-dates.is-invalid{border-color:var(--danger,#DC2626);}
+.eed-drange-tz{display:flex;gap:12px;margin-top:8px;}
+.eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
 .hv{display:flex;flex-direction:column;gap:16px;}
@@ -4213,6 +4213,37 @@ h4,
 .badge--paid{background:var(--success-soft);color:var(--success-ink);}
 .badge--partial{background:var(--warning-soft);color:var(--warning-ink);}
 .badge--on-arrival{background:var(--primary-soft);color:var(--primary);}
+/* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
+   eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
+.tv{display:flex;flex-direction:column;gap:16px;}
+.tv-card{padding:16px 17px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);}
+.tv-eyebrows{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
+.tv-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:var(--r-pill);}
+.tv-chip svg{width:12px;height:12px;flex:none;}
+.tv-chip--type{background:var(--ev-transfer-soft);color:var(--ev-transfer-ink);}
+.tv-chip--night{background:var(--night-soft);color:var(--night-ink);}
+.tv-route{display:grid;grid-template-columns:76px 16px 1fr;column-gap:12px;}
+.tv-when{text-align:right;}
+.tv-when__t{color:var(--ink);}
+.tv-when__d{color:var(--muted);margin-top:3px;white-space:nowrap;}
+.tv-arr{display:flex;align-items:baseline;justify-content:flex-end;gap:4px;}
+.tv-plus1{color:var(--night-ink);}
+.tv-nodecell{display:flex;justify-content:center;padding-top:5px;}
+.tv-node{width:9px;height:9px;flex:none;border-radius:var(--r-pill);}
+.tv-node--from{border:2.5px solid var(--ev-transfer);background:var(--bg);}
+.tv-node--to{background:var(--ev-transfer);}
+.tv-conncell{display:flex;justify-content:center;}
+.tv-conn{width:0;border-left:2px dashed color-mix(in srgb,var(--ev-transfer) 45%,transparent);min-height:34px;}
+.tv-loc{min-width:0;}
+.tv-loc--from{padding-bottom:4px;}
+.tv-loc--to{padding-top:1px;}
+.tv-loc__c{color:var(--ink);}
+.tv-loc__a{color:var(--muted);margin-top:3px;}
+.tv-durcell{display:flex;align-items:center;justify-content:flex-end;}
+.tv-dur{color:var(--ev-transfer-ink);white-space:nowrap;}
+.tv-carrier{display:flex;align-items:center;gap:8px;min-width:0;padding:6px 0;}
+.tv-carrier__av{width:26px;height:26px;flex:none;border-radius:var(--r-sm);background:var(--ev-transfer);color:#fff;display:flex;align-items:center;justify-content:center;}
+.tv-carrier__nm{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
 .f-sec{ color:var(--ev-color,var(--primary));display:flex;align-items:center;gap:8px;margin:6px 0 0;}
 .f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--primary)) 18%,transparent);}

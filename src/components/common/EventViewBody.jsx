@@ -28,7 +28,7 @@ import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import {
   Map as MapIcon, Calendar, FileText,
   BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
-  ShieldCheck, Phone, Mail, Hash, ExternalLink, Check,
+  ShieldCheck, Phone, Mail, Hash, ExternalLink, Check, Moon, ArrowRight,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
 
@@ -279,63 +279,226 @@ function HotelBody({ entity, docs = [] }) {
   );
 }
 
-function TransferBody({ entity, fromVisit, toVisit, accent }) {
+// Departure→arrival duration for the view rail (naive-time, same keys as edit fmtDur).
+function transferDur(startIso, endIso, t) {
+  const s = parseNaive(startIso), e = parseNaive(endIso);
+  if (!s || !e) return '';
+  const m = Math.max(0, Math.round(e.diff(s, 'minutes').minutes));
+  const h = Math.floor(m / 60), mm = m % 60;
+  const parts = [];
+  if (h) parts.push(t('event.dur_h', { h }));
+  if (mm || !h) parts.push(t('event.dur_m', { m: mm }));
+  return parts.join(' ');
+}
+
+// Transfer view — canonical rail (dots + dashed connector + carrier avatar) with
+// eyebrow type/night chips; cost/booking-details/docs/notes reuse the hotel .hv-*
+// cards. Renders its own docs+notes, so EventViewSections skips the shared ones.
+function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   const { t } = useI18n();
   const fromCity = fromVisit?.city_name || '';
   const toCity = toVisit?.city_name || '';
-  const ttIcon = TRANSPORT_ICONS[entity.transport_type] || Plane;
-  const Ic = ttIcon;
+  const Ic = TRANSPORT_ICONS[entity.transport_type] || Plane;
+  const night = !!entity.day_change;
+  const typeCap = t(entity.transport_type === 'plane' ? 'trip.tl_flight' : 'trip.tl_transfer');
+  const dur = transferDur(entity.start_datetime, entity.end_datetime, t);
+  const carrier = entity.carrier || '';
+  const priceText = fmtPrice(entity.price, entity.currency);
+  const hasDetails = entity.booking_reference || carrier || entity.flight_number;
+  const notes = entity.notes;
   return (
-    <>
-      <div className="route-block" style={{ '--ev-color': accent }}>
-        <div>
-          <div className="rd">{fmtDate(entity.start_datetime)}</div>
-          <div className="rt">{fmtTime(entity.start_datetime)}</div>
-          {fromCity && <div className="rc">{fromCity}</div>}
-          {entity.from_address && <div className="ra">{entity.from_address}</div>}
+    <div className="tv">
+      {/* Route rail */}
+      <div className="tv-card">
+        <div className="tv-eyebrows">
+          <span className="tv-chip tv-chip--type"><Ic /><span className="t-micro">{typeCap}</span></span>
+          {night && <span className="tv-chip tv-chip--night"><Moon /><span className="t-micro">{t('event.transfer_night_plus1')}</span></span>}
         </div>
-        <div className="rmid">
-          <Ic />
-        </div>
-        <div className="end">
-          <div className="rd">{fmtDate(entity.end_datetime)}</div>
-          <div className="rt">{fmtTime(entity.end_datetime)}</div>
-          {toCity && <div className="rc">{toCity}</div>}
-          {entity.to_address && <div className="ra">{entity.to_address}</div>}
+        <div className="tv-route">
+          <div className="tv-when">
+            <div className="tv-when__t t-strong">{fmtTime(entity.start_datetime)}</div>
+            <div className="tv-when__d t-meta">{fmtDate(entity.start_datetime)}</div>
+          </div>
+          <div className="tv-nodecell"><span className="tv-node tv-node--from" /></div>
+          <div className="tv-loc tv-loc--from">
+            {fromCity && <div className="tv-loc__c t-strong">{fromCity}</div>}
+            {entity.from_address && <div className="tv-loc__a t-meta">{entity.from_address}</div>}
+          </div>
+
+          <div className="tv-durcell">{dur && <span className="tv-dur t-meta">{dur}</span>}</div>
+          <div className="tv-conncell"><span className="tv-conn" /></div>
+          <div className="tv-carrier">
+            {carrier && (
+              <>
+                <span className="tv-carrier__av t-micro">{carrier[0].toUpperCase()}</span>
+                <span className="tv-carrier__nm t-body">{carrier}</span>
+              </>
+            )}
+          </div>
+
+          <div className="tv-when">
+            <div className="tv-arr">
+              <span className="tv-when__t t-strong">{fmtTime(entity.end_datetime)}</span>
+              {night && <span className="tv-plus1 t-meta">+1</span>}
+            </div>
+            <div className="tv-when__d t-meta">{fmtDate(entity.end_datetime)}</div>
+          </div>
+          <div className="tv-nodecell"><span className="tv-node tv-node--to" /></div>
+          <div className="tv-loc tv-loc--to">
+            {toCity && <div className="tv-loc__c t-strong">{toCity}</div>}
+            {entity.to_address && <div className="tv-loc__a t-meta">{entity.to_address}</div>}
+          </div>
         </div>
       </div>
-      <Section title={t('event.carrier_booking')} accent={accent}>
-        <div className="kv-grid">
-          <KV label={t('transfer.carrier')}>{entity.carrier}</KV>
-          <KV label={t('event.flight_number')} mono>{entity.flight_number}</KV>
-          <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
-          <KV label={t('service.car_booking_ref')} mono>{entity.booking_reference}</KV>
+
+      {/* Cost */}
+      {priceText && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('event.cost')}</div>
+          <div className="hv-card hv-cost">
+            <div className="hv-cost__main">
+              <div className="hv-price t-heading">{priceText}</div>
+              <div className="hv-pernight t-meta">{t('event.for_whole_transfer')}</div>
+            </div>
+            <PaymentBadge t={t} status={entity.payment_status} />
+          </div>
         </div>
-      </Section>
-    </>
+      )}
+
+      {/* Booking details */}
+      {hasDetails && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('event.booking_details')}</div>
+          <div className="hv-rows">
+            {entity.booking_reference && (
+              <div className="hv-row">
+                <span className="hv-row__ic"><Hash /></span>
+                <span className="hv-row__k t-meta">{t('event.booking_ref')}</span>
+                <span className="hv-row__sp" />
+                <span className="hv-row__v t-strong mono">{entity.booking_reference}</span>
+              </div>
+            )}
+            {carrier && (
+              <div className="hv-row">
+                <span className="hv-row__ic"><Ic /></span>
+                <span className="hv-row__k t-meta">{t('transfer.carrier')}</span>
+                <span className="hv-row__sp" />
+                <span className="hv-row__v t-strong">{carrier}</span>
+              </div>
+            )}
+            {entity.flight_number && (
+              <div className="hv-row">
+                <span className="hv-row__ic"><Ticket /></span>
+                <span className="hv-row__k t-meta">{t('event.flight_number')}</span>
+                <span className="hv-row__sp" />
+                <span className="hv-row__v t-strong mono">{entity.flight_number}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Documents */}
+      {docs.length > 0 && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {docs.map((d, i) => (
+              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
+                <div className="di"><FileText /></div>
+                <b>{d.file_name || t('event.file_word')}</b>
+                {d.file_size && <span className="ds">{d.file_size}</span>}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Notes */}
+      {notes && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('activity.view_notes')}</div>
+          <div className="hv-notes t-body">{notes}</div>
+        </div>
+      )}
+    </div>
   );
 }
 
-function ActivityBody({ entity, accent }) {
+// Activity view — canonical card layout (TRIP-176), consistent with hotel/transfer:
+// date summary (start · duration · end), meeting-point card, cost card, docs+notes.
+function ActivityBody({ entity, docs = [] }) {
   const { t } = useI18n();
+  const dur = transferDur(entity.start_datetime, entity.end_datetime, t);
+  const priceText = fmtPrice(entity.price, entity.currency);
+  const notes = entity.notes;
   return (
-    <>
-      {entity.location_address && (
-        <div className="addr">
-          <MapIcon style={{ width: 16, height: 16, color: accent, flexShrink: 0, marginTop: 1 }} />
-          <div>{entity.location_address}</div>
+    <div className="hv">
+      {(entity.start_datetime || entity.end_datetime) && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('event.when')}</div>
+          <div className="stay-dates">
+            <div className="stay-dates__cell">
+              <div className="stay-dates__lbl eyebrow">{t('activity.start')}</div>
+              <div className="stay-dates__v t-strong">{fmtDate(entity.start_datetime)}</div>
+              <div className="stay-dates__t t-meta">{fmtTime(entity.start_datetime)}</div>
+            </div>
+            <div className="stay-dates__mid">
+              <ArrowRight size={14} style={{ color: 'var(--muted-2)' }} />
+              {dur && <span className="t-meta">{dur}</span>}
+            </div>
+            <div className="stay-dates__cell">
+              <div className="stay-dates__lbl eyebrow">{t('event.end')}</div>
+              <div className="stay-dates__v t-strong">{fmtDate(entity.end_datetime)}</div>
+              <div className="stay-dates__t t-meta">{fmtTime(entity.end_datetime)}</div>
+            </div>
+          </div>
         </div>
       )}
-      <Section title={t('admin.notifications.when')} accent={accent}>
-        <div className="kv-grid">
-          <KV label={t('activity.start')}>{fmtDT(entity.start_datetime)}</KV>
-          <KV label={t('event.end')}>{fmtDT(entity.end_datetime)}</KV>
+
+      {entity.location_address && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('event.meeting_point')}</div>
+          <div className="hv-rows">
+            <div className="hv-row">
+              <span className="hv-row__ic"><MapIcon /></span>
+              <span className="hv-row__v t-strong" style={{ textAlign: 'left', maxWidth: 'none', whiteSpace: 'normal' }}>{entity.location_address}</span>
+            </div>
+          </div>
         </div>
-      </Section>
-      <Section title={t('activity.price')} accent={accent}>
-        <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
-      </Section>
-    </>
+      )}
+
+      {priceText && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('activity.price')}</div>
+          <div className="hv-card hv-cost">
+            <div className="hv-cost__main"><div className="hv-price t-heading">{priceText}</div></div>
+          </div>
+        </div>
+      )}
+
+      {docs.length > 0 && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {docs.map((d, i) => (
+              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
+                <div className="di"><FileText /></div>
+                <b>{d.file_name || t('event.file_word')}</b>
+                {d.file_size && <span className="ds">{d.file_size}</span>}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {notes && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('activity.view_notes')}</div>
+          <div className="hv-notes t-body">{notes}</div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -631,13 +794,13 @@ export function EventViewSections({ kind, entity, fromVisit, toVisit, accent, do
   return (
     <>
       {kind === 'hotel' && <HotelBody entity={entity} docs={docs} />}
-      {kind === 'transfer' && <TransferBody entity={entity} fromVisit={fromVisit} toVisit={toVisit} accent={accent} />}
-      {kind === 'activity' && <ActivityBody entity={entity} accent={accent} />}
+      {kind === 'transfer' && <TransferBody entity={entity} fromVisit={fromVisit} toVisit={toVisit} docs={docs} />}
+      {kind === 'activity' && <ActivityBody entity={entity} docs={docs} />}
       {kind === 'service' && <ServiceBody entity={entity} accent={accent} />}
 
       {/* Documents — view is READ-ONLY: list only, no upload zone (design).
-          Hotel renders its own docs+notes inside HotelBody (new card style). */}
-      {kind !== 'hotel' && docs.length > 0 && (
+          Hotel/transfer/activity render their own docs+notes inside their body. */}
+      {kind === 'service' && docs.length > 0 && (
         <Section title={`${t('activity.documents_label')} · ${docs.length}`} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {docs.map((d, i) => (
@@ -657,8 +820,8 @@ export function EventViewSections({ kind, entity, fromVisit, toVisit, accent, do
         </Section>
       )}
 
-      {/* Notes (hotel renders its own inside HotelBody) */}
-      {kind !== 'hotel' && (entity.notes || entity.details?.notes) && (
+      {/* Notes (hotel/transfer/activity render their own inside their body) */}
+      {kind === 'service' && (entity.notes || entity.details?.notes) && (
         <Section title={t('activity.view_notes')} accent={accent}>
           <div className="notes-block" style={{ background: 'transparent', border: 'none', padding: 0 }}>
             {entity.notes || entity.details?.notes}

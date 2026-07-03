@@ -30,6 +30,11 @@ export default function DateTimeInput({
   onTimeMissingChange,
   withTime = true,
   className,
+  // Summary-cell presentation for the date-range block (TRIP-176 design):
+  // renders an eyebrow label + big date + time as a clickable cell instead of
+  // the plain input button. Same calendar, same value contract.
+  variant,
+  cellLabel,
 }) {
   const t = useT();
   const { lang } = useI18n();
@@ -69,6 +74,11 @@ export default function DateTimeInput({
       + (withTime && time ? `, ${time}` : '')
     : t('event.pick_datetime');
 
+  // Cell variant: split date ("28 июн, вс") and time ("10:00") lines.
+  const cellDate = date
+    ? DateTime.fromISO(date, { zone: 'utc' }).setLocale(lang).toFormat('d MMM, ccc')
+    : t('event.pick_date_short');
+
   const calendar = (
     <StartCalendar
       value={date || null}
@@ -80,7 +90,17 @@ export default function DateTimeInput({
     />
   );
 
-  const trigger = (
+  const trigger = variant === 'cell' ? (
+    <button
+      type="button"
+      className={`sd-cell${date ? '' : ' is-empty'} ${className || ''}`}
+      onClick={isSheet ? () => setOpen(true) : undefined}
+    >
+      {cellLabel != null && <span className="sd-cell__lbl eyebrow">{cellLabel}</span>}
+      <span className="sd-cell__d t-strong">{cellDate}</span>
+      {withTime && <span className="sd-cell__t t-mono">{time || '—:—'}</span>}
+    </button>
+  ) : (
     <button
       type="button"
       className={`input eed-dtbtn${date ? '' : ' is-empty'} ${className || ''}`}
