@@ -99,7 +99,7 @@
 - [Triplanio: n8n JWT-авторизация](triplanio-n8n-jwt-auth.md) — исходящие вызовы в n8n требуют HS256-JWT (signN8nJwt), не сырой N8N_SECRET
 - [Triplanio: Stripe-интеграция](triplanio-stripe-integration.md) — состояние, 2 Supabase-проекта (prod/dev), webhook-URL, целевая архитектура «1 режим на проект»
 - [Triplanio: унификация валидации](triplanio-validation-unification.md) — ★инициатива: единый validateEntity + единый показ (инлайн+панель) + блок всех save-дыр; решения Pavel (out-of-bounds=error, все даты обязательны/предзаполнены, фронт-only, инлайн+панель); фазы Ф0–Ф5
-- [Triplanio: МОДЕЛЬ Pro и тарифы](triplanio-pro-model.md) — ★ИСТОЧНИК ИСТИНЫ: тарифы, что кому когда доступно, правила совместных трипов, решения сессии. ТЗ: PRO_TZ_2026-05-29.md
+- [Triplanio: МОДЕЛЬ Pro и тарифы](triplanio-pro-model.md) — ★ИСТОЧНИК ИСТИНЫ: тарифы, что кому когда доступно, правила совместных трипов, решения сессии. ТЗ: PRO_TZ_2026-05-29.md; ★TRIP-181 (2026-07-03) публичный якорь Pro $39.99/год(герой)·$6.99/мес·$8.99/трип (₽-витрина, списание USD/EUR) + граница Free/Pro (бюджет полностью Pro, алерт отмены базовый in-app во Free), value metric не per-seat, флаги: WTP RU не валидирован + Stripe не сеттлит RUB
 - [Triplanio: аудит Pro-функционала](triplanio-pro-audit.md) — уязвимости enforcement (V1–V8), расхождения визуала; отчёт PRO_AUDIT_2026-05-29.md
 - [Triplanio: порядок таймлайна](triplanio-timeline-order.md) — фикс варнингов «Нет переезда»: рендер Hero по дню прибытия, sortVisits тай-брейк по end, единый prevCity
 - [Triplanio: AI-распознавание брони → n8n](triplanio-ai-booking-parse.md) — EventAiBlock с base44 InvokeLLM на свой pipeline: edge fn parseBookingWithAi → n8n → Gemini; промпты в n8n
