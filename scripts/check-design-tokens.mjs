@@ -137,7 +137,7 @@ const color = [];
 // unification worklist to zero. Does NOT affect exit code — flip TYPO_COMP_ENFORCED
 // to true only once every component text is on a .t-* class (TRIP-165 finale).
 const TYPO_COMP_ENFORCED = true; // TRIP-165 finale: worklist reached 0 → block any text outside the 10 canons
-const TOKEN_SIZES = new Set(['9.5', '11', '12.5', '13', '14.5', '16.5', '26', '44']); // TRIP-183 плотная шкала «Экзо»
+const TOKEN_SIZES = new Set(['9.5', '11', '12.5', '13', '14.5', '16', '16.5', '26', '44']); // TRIP-183 плотная шкала «Экзо» (+16 = --fs-h4, не-канон 16px: анти-zoom/крупная кнопка)
 // Files that legitimately DEFINE typography (token/canon/base rules) — not component text.
 // AppErrorBoundary = crash screen, intentionally token/CSS-free (must render even if
 // the design system fails to load) → exempt.
