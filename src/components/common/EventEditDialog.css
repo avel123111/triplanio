@@ -38,3 +38,10 @@
 /* open link — was: text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 */
 .eed-bkopen { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); text-decoration: none; }
 .eed-bkopen:hover { color: var(--brand); }
+
+/* Stay-dates block (TRIP-176) — bordered container grouping check-in/out, mirrors
+   the "Даты проживания" block in the redesign. */
+.eed-dateblock { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin-bottom: 12px; }
+.eed-dateblock__lbl { color: var(--ink-2); margin-bottom: 8px; }   /* тип — канон .t-ui (JSX) */
+/* Second stacked row inside an accordion body — spacing between rows. */
+.eed-accrow { margin-top: 10px; }
