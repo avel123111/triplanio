@@ -280,18 +280,30 @@ body {
   font-variant-numeric: tabular-nums;   /* TRIP-165 — цифры выровнены во всём приложении */
 }
 /* TRIP-186 — мягкий фоновый градиент «Тишина» по центру-сверху канваса (обе
-   темы). Фиксированный слой ПОД контентом: сплошной --bg снизу, лёгкий glow
-   сверху; экраны со своей непрозрачной поверхностью естественно его перекрывают. */
+   темы). body::before покрывает экраны БЕЗ непрозрачной оболочки (логин, вью). */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(at 50% 0%, rgba(210,218,240,.18), transparent 64%);
+  background: radial-gradient(at 50% -5%, rgba(196,208,238,.30), transparent 60%);
 }
 :root[data-theme="dark"] body::before {
-  background: radial-gradient(at 50% 0%, rgba(120,130,180,.12), transparent 62%);
+  background: radial-gradient(at 50% -5%, rgba(120,132,190,.22), transparent 60%);
+}
+/* Оболочки экранов красят сплошной --bg/--surface инлайном (background-color),
+   перекрывая body::before. Кладём градиент в их же background-image: !important
+   в стайлшите перебивает инлайновый background-image (color из инлайна остаётся),
+   attachment:fixed пинит glow к верху экрана. */
+.app-shell, .ts-screen {
+  background-image: radial-gradient(at 50% -5%, rgba(196,208,238,.30), transparent 60%) !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+:root[data-theme="dark"] .app-shell,
+:root[data-theme="dark"] .ts-screen {
+  background-image: radial-gradient(at 50% -5%, rgba(120,132,190,.22), transparent 60%) !important;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -4157,7 +4169,8 @@ h4,
 .kv .v{ color:var(--ink); }
 /* route block (transfer view) */
 /* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
-.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);overflow:hidden;}
+/* TRIP-186: плашка дат того же цвета, что инпуты (--surface-3, как база .input). */
+.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface-3);overflow:hidden;}
 .stay-dates__cell{padding:11px 14px;min-width:0;}
 .stay-dates__lbl{color:var(--muted);}
 .stay-dates__v{ color:var(--ink);margin-top:5px;}

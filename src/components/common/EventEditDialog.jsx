@@ -16,9 +16,9 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, Toggle, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, Toggle, Btn, useToast } from '@/design/index';
 import {
-  Loader2, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
+  Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
   BedDouble, Ticket, Clock,
 } from 'lucide-react';
@@ -1228,49 +1228,35 @@ export default function EventEditDialog({
           </div>
           )}
 
-          {/* Footer — pinned to the bottom of the column in panel mode */}
+          {/* Footer — TRIP-186: единый канон с event view / city view (lp-f--ratio
+              + <Btn>): удалить (danger, схлоп на мобиле) + primary. Pinned снизу
+              в панельном режиме. */}
           <div
-            className={(isPanel ? 'lp-f' : 'ev-dlg-ft') + ' lp-f--edit'}
+            className={(isPanel ? 'lp-f' : 'ev-dlg-ft') + (confirmDel ? '' : ' lp-f--ratio')}
             style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
             {confirmDel ? (
               <>
-                <div style={{ flex: 1 }} />
-                <button className="btn btn--secondary" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>
-                  {t('common.cancel')}
-                </button>
-                <button
-                  className="btn btn--danger-solid"
-                  onClick={() => deleteMut.mutate()}
-                  disabled={deleteMut.isPending}
-                >
-                  {deleteMut.isPending && <Loader2 className="spin" size={12} style={{ marginRight: 6 }} />}
-                  <Trash2 size={14} style={{ marginRight: 6 }} />{t('common.delete')}
-                </button>
+                <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>{t('common.cancel')}</Btn>
+                <Btn variant="danger-solid" icon="trash" loading={deleteMut.isPending} disabled={deleteMut.isPending} onClick={() => deleteMut.mutate()}>{t('common.delete')}</Btn>
               </>
             ) : (
               <>
                 {isEdit && (
-                  <button
-                    className="btn btn--danger-ghost ev-del"
-                    onClick={() => setConfirmDel(true)}
-                    disabled={deleteMut.isPending}
-                    aria-label={t('common.delete')}
-                    title={t('common.delete')}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} disabled={deleteMut.isPending} ariaLabel={t('common.delete')}>
+                    <span className="btn-label-collapse">{t('common.delete')}</span>
+                  </Btn>
                 )}
-                <button
-                  className="btn btn--primary ev-save"
+                <Btn
+                  variant="primary"
+                  icon={isEdit ? 'check' : 'plus'}
                   onClick={handleSaveClick}
+                  loading={saveMut.isPending}
                   disabled={uploading || saveMut.isPending}
-                  aria-disabled={!canSave}
                   style={{ '--bg': meta.color, opacity: canSave ? 1 : 0.6 }}
                 >
-                  {saveMut.isPending && <Loader2 className="spin" size={12} style={{ marginRight: 6 }} />}
                   {isEdit ? t('common.save') : t('event.create')}
-                </button>
+                </Btn>
               </>
             )}
           </div>
