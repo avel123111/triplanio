@@ -63,5 +63,9 @@
   "stay22_retry": "Reintentar",
   "stay22_reviews": "· {n} reseñas",
   "stay22_source": "Precios en vivo de Booking, Expedia y más",
-  "stay22_title": "Alojamientos cerca"
+  "stay22_title": "Alojamientos cerca",
+  "tab_find_activity": "Buscar experiencia",
+  "tab_find_hotel": "Buscar hotel",
+  "tab_find_transfer": "Buscar traslado",
+  "tab_have_booking": "Ya tengo una reserva"
 }
