@@ -32,13 +32,14 @@
   "arrival_req": "Прибытие *",
   "booked_on": "Бронь на {platform}",
   "booking_details": "Детали брони",
-  "booking_details_hint": "номер · контакты · ссылка",
   "booking_ref": "Номер брони",
+  "booking_section": "Бронирование",
   "booking_url": "Ссылка на бронирование",
   "car_section": "Авто",
   "carrier": "Перевозчик",
   "carrier_booking": "Перевозчик и бронь",
   "carrier_ph": "Авиакомпания / перевозчик",
+  "checkin_checkout": "Заезд и выезд",
   "checkin_req": "Заезд *",
   "checkout_after_checkin": "Дата выезда должна быть после заезда",
   "checkout_req": "Выезд *",
@@ -149,7 +150,6 @@
   "type_hotel": "Отель",
   "type_transfer": "Трансфер",
   "view_booking": "Посмотреть бронирование",
-  "pick_datetime": "Выбрать дату",
   "when": "Когда",
   "with_layovers": "С пересадками"
 }

@@ -32,13 +32,14 @@
   "arrival_req": "Arrival *",
   "booked_on": "Booked on {platform}",
   "booking_details": "Booking details",
-  "booking_details_hint": "number · contacts · link",
   "booking_ref": "Booking number",
+  "booking_section": "Booking",
   "booking_url": "Booking link",
   "car_section": "Car",
   "carrier": "Carrier",
   "carrier_booking": "Carrier & booking",
   "carrier_ph": "Airline / carrier",
+  "checkin_checkout": "Check-in & check-out",
   "checkin_req": "Check-in *",
   "checkout_after_checkin": "Check-out date must be after check-in",
   "checkout_req": "Check-out *",
@@ -149,7 +150,6 @@
   "type_hotel": "Hotel",
   "type_transfer": "Transfer",
   "view_booking": "View booking",
-  "pick_datetime": "Pick a date",
   "when": "When",
   "with_layovers": "With layovers"
 }
