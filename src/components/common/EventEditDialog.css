@@ -39,9 +39,9 @@
 .eed-bkopen { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); text-decoration: none; }
 .eed-bkopen:hover { color: var(--brand); }
 
-/* Stay-dates block (TRIP-176) — bordered container grouping check-in/out, mirrors
-   the "Даты проживания" block in the redesign. */
-.eed-dateblock { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin-bottom: 12px; }
+/* Stay-dates block — label + inner .stay-dates grid. TRIP-186: внешний контейнер
+   оголён (рамка/радиус/паддинг убраны), рамкой остаётся сам .stay-dates. */
+.eed-dateblock { margin-bottom: 12px; }
 .eed-dateblock__lbl { color: var(--ink-2); margin-bottom: 8px; }   /* тип — канон .t-micro (JSX, TRIP-183) */
 /* Finance block (design "Стоимость за всё"): price+currency row + payment pills */
 .eed-finance { margin-bottom: 12px; }
@@ -50,8 +50,9 @@
 .payseg button { flex: 1; padding: 11px 10px; border-radius: var(--r-btn); border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; text-align: center; transition: background .12s, border-color .12s, color .12s; }
 .payseg button:hover { border-color: var(--line-hover); }
 .payseg button[aria-pressed="true"] { background: var(--surface-2); border-color: var(--line-hover); color: var(--ink); }
-/* Overnight — standalone card below the transfer date-range (design) */
-.eed-nightrow { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-top: 12px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); }
-.eed-nightrow__l { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; color: var(--ink); }
+/* Overnight — standalone card below the transfer date-range (design). TRIP-186:
+   порядок свитч · иконка · текст, всё прижато влево (flex:1 убран). */
+.eed-nightrow { display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 12px 14px; margin-top: 12px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); }
+.eed-nightrow__l { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink); }
 /* Second stacked row inside an accordion body — spacing between rows. */
 .eed-accrow { margin-top: 10px; }

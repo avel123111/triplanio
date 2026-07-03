@@ -75,9 +75,9 @@ export function fmtTime(iso) {
   const d = parseNaive(iso);
   return d ? d.toFormat('HH:mm') : '';
 }
-export function fmtPrice(price, cur) {
+export function fmtPrice(price, cur, opts) {
   if (price == null || price === '') return '';
-  return fmtMoneyActive(Number(price), cur || 'EUR');
+  return fmtMoneyActive(Number(price), cur || 'EUR', opts);
 }
 // Calendar nights between check-in and check-out (clock-time independent).
 // Shared by both hotel view shells (dialog EventViewBody + panel EventPanels).
@@ -144,7 +144,8 @@ function HotelBody({ entity, docs = [] }) {
   const platformName = hostnameFromUrl(bookingUrl);
   const platformLogo = faviconUrl(bookingUrl);
   const priceText = fmtPrice(entity.price, entity.currency);
-  const perNight = (priceText && nights > 0) ? fmtPrice(Number(entity.price) / nights, entity.currency) : null;
+  // TRIP-186: цена за ночь сокращается компактно, как в чипах отелей на карте.
+  const perNight = (priceText && nights > 0) ? fmtPrice(Number(entity.price) / nights, entity.currency, { compact: true }) : null;
   const notes = entity.notes;
   return (
     <div className="hv">
