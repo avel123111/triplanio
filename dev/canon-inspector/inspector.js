@@ -501,8 +501,9 @@ function applyPreview(el) {
   const props = pending ? comboApply(probed, pending.id, pending.mods) : null;
   const scss = modCssFor(el);             // поканонный модификатор (превью, из файла)
   const colKey = pendingColor.get(el) ?? null;
-  const merged = { ...(props || {}), ...(scss || {}) };
+  const merged = { ...(props || {}) };
   if (colKey) merged.color = colorByKey(colKey).css;
+  Object.assign(merged, scss || {});      // модификатор ПОВЕРХ оси цвета — иначе базовый цвет перебивал бы дельту модификатора (TRIP-183)
   for (const t of scopeTargets(el)) {
     // Capture each target's REAL canon before we mutate it, so clicking a
     // group sibling later still reports its true "Сейчас".
