@@ -156,5 +156,6 @@
   "type_transfer": "Transporte",
   "view_booking": "Ver la reserva",
   "when": "Cuándo",
-  "with_layovers": "Con escalas"
+  "with_layovers": "Con escalas",
+  "meeting_point": "Punto de encuentro"
 }

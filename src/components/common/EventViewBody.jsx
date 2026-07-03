@@ -28,7 +28,7 @@ import { ENTITY_TABLE_BY_KIND } from '@/lib/trip-entities';
 import {
   Map as MapIcon, Calendar, FileText,
   BedDouble, Plane, Train, Bus, Car as CarIcon, Ship, Footprints, Ticket,
-  ShieldCheck, Phone, Mail, Hash, ExternalLink, Check, Moon,
+  ShieldCheck, Phone, Mail, Hash, ExternalLink, Check, Moon, ArrowRight,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
 
@@ -425,26 +425,80 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   );
 }
 
-function ActivityBody({ entity, accent }) {
+// Activity view — canonical card layout (TRIP-176), consistent with hotel/transfer:
+// date summary (start · duration · end), meeting-point card, cost card, docs+notes.
+function ActivityBody({ entity, docs = [] }) {
   const { t } = useI18n();
+  const dur = transferDur(entity.start_datetime, entity.end_datetime, t);
+  const priceText = fmtPrice(entity.price, entity.currency);
+  const notes = entity.notes;
   return (
-    <>
-      {entity.location_address && (
-        <div className="addr">
-          <MapIcon style={{ width: 16, height: 16, color: accent, flexShrink: 0, marginTop: 1 }} />
-          <div>{entity.location_address}</div>
+    <div className="hv">
+      {(entity.start_datetime || entity.end_datetime) && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('event.when')}</div>
+          <div className="stay-dates">
+            <div className="stay-dates__cell">
+              <div className="stay-dates__lbl eyebrow">{t('activity.start')}</div>
+              <div className="stay-dates__v t-strong">{fmtDate(entity.start_datetime)}</div>
+              <div className="stay-dates__t t-meta">{fmtTime(entity.start_datetime)}</div>
+            </div>
+            <div className="stay-dates__mid">
+              <ArrowRight size={14} style={{ color: 'var(--muted-2)' }} />
+              {dur && <span className="t-meta">{dur}</span>}
+            </div>
+            <div className="stay-dates__cell">
+              <div className="stay-dates__lbl eyebrow">{t('event.end')}</div>
+              <div className="stay-dates__v t-strong">{fmtDate(entity.end_datetime)}</div>
+              <div className="stay-dates__t t-meta">{fmtTime(entity.end_datetime)}</div>
+            </div>
+          </div>
         </div>
       )}
-      <Section title={t('admin.notifications.when')} accent={accent}>
-        <div className="kv-grid">
-          <KV label={t('activity.start')}>{fmtDT(entity.start_datetime)}</KV>
-          <KV label={t('event.end')}>{fmtDT(entity.end_datetime)}</KV>
+
+      {entity.location_address && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('event.meeting_point')}</div>
+          <div className="hv-rows">
+            <div className="hv-row">
+              <span className="hv-row__ic"><MapIcon /></span>
+              <span className="hv-row__v t-strong" style={{ textAlign: 'left', maxWidth: 'none', whiteSpace: 'normal' }}>{entity.location_address}</span>
+            </div>
+          </div>
         </div>
-      </Section>
-      <Section title={t('activity.price')} accent={accent}>
-        <KV label={t('budget.field_amount')}>{fmtPrice(entity.price, entity.currency)}</KV>
-      </Section>
-    </>
+      )}
+
+      {priceText && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('activity.price')}</div>
+          <div className="hv-card hv-cost">
+            <div className="hv-cost__main"><div className="hv-price t-heading">{priceText}</div></div>
+          </div>
+        </div>
+      )}
+
+      {docs.length > 0 && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('activity.documents_label')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {docs.map((d, i) => (
+              <a key={`${d.file_url}-${i}`} href={d.file_url} target="_blank" rel="noreferrer" className="doc-row">
+                <div className="di"><FileText /></div>
+                <b>{d.file_name || t('event.file_word')}</b>
+                {d.file_size && <span className="ds">{d.file_size}</span>}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {notes && (
+        <div className="hv-sec">
+          <div className="hv-lbl eyebrow">{t('activity.view_notes')}</div>
+          <div className="hv-notes t-body">{notes}</div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -741,12 +795,12 @@ export function EventViewSections({ kind, entity, fromVisit, toVisit, accent, do
     <>
       {kind === 'hotel' && <HotelBody entity={entity} docs={docs} />}
       {kind === 'transfer' && <TransferBody entity={entity} fromVisit={fromVisit} toVisit={toVisit} docs={docs} />}
-      {kind === 'activity' && <ActivityBody entity={entity} accent={accent} />}
+      {kind === 'activity' && <ActivityBody entity={entity} docs={docs} />}
       {kind === 'service' && <ServiceBody entity={entity} accent={accent} />}
 
       {/* Documents — view is READ-ONLY: list only, no upload zone (design).
-          Hotel + transfer render their own docs+notes inside their body (card style). */}
-      {kind !== 'hotel' && kind !== 'transfer' && docs.length > 0 && (
+          Hotel/transfer/activity render their own docs+notes inside their body. */}
+      {kind === 'service' && docs.length > 0 && (
         <Section title={`${t('activity.documents_label')} · ${docs.length}`} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {docs.map((d, i) => (
@@ -766,8 +820,8 @@ export function EventViewSections({ kind, entity, fromVisit, toVisit, accent, do
         </Section>
       )}
 
-      {/* Notes (hotel + transfer render their own inside their body) */}
-      {kind !== 'hotel' && kind !== 'transfer' && (entity.notes || entity.details?.notes) && (
+      {/* Notes (hotel/transfer/activity render their own inside their body) */}
+      {kind === 'service' && (entity.notes || entity.details?.notes) && (
         <Section title={t('activity.view_notes')} accent={accent}>
           <div className="notes-block" style={{ background: 'transparent', border: 'none', padding: 0 }}>
             {entity.notes || entity.details?.notes}
