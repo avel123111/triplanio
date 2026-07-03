@@ -292,18 +292,14 @@ body::before {
 :root[data-theme="dark"] body::before {
   background: radial-gradient(90% 60% at 50% 16%, rgba(124,138,205,.30), transparent 60%);
 }
-/* Оболочки экранов красят сплошной --bg/--surface инлайном (background-color),
-   перекрывая body::before. Кладём градиент в их же background-image: !important
-   в стайлшите перебивает инлайновый background-image (color из инлайна остаётся),
-   attachment:fixed пинит glow к верху экрана. */
-.app-shell, .ts-screen {
-  background-image: radial-gradient(90% 60% at 50% 16%, rgba(146,164,232,.35), transparent 60%) !important;
-  background-repeat: no-repeat !important;
-  background-attachment: fixed !important;
-}
-:root[data-theme="dark"] .app-shell,
-:root[data-theme="dark"] .ts-screen {
-  background-image: radial-gradient(90% 60% at 50% 16%, rgba(124,138,205,.30), transparent 60%) !important;
+/* ЕДИНЫЙ фон на всё приложение. Градиент — на ОДНОМ фикс-слое body::before выше.
+   Проблема была в том, что каждый полноэкранный шелл красил свой непрозрачный
+   --bg/--surface и перекрывал этот слой (у списков .app-shell, у редактора
+   .ts-screen + его колонки, у трип-экранов .trip-shell — свой фон). Делаем их
+   ПРОЗРАЧНЫМИ (!important перебивает и инлайн, и CSS) — сквозь них виден один и
+   тот же канвас с градиентом. Карточки/панели поверх остаются непрозрачными. */
+.app-shell, .ts-screen, .ts-col-left, .ts-col-right, .trip-shell, .flow-page {
+  background: transparent !important;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
