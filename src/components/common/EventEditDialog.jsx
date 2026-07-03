@@ -1713,9 +1713,6 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
 function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiSegFields, fromVisit, toVisit, startTz, endTz, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.transfer.color;
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
-  // Filled-field counts drive the accordion badges (mirrors HotelFields).
-  const bookingFilled = [form.carrier, form.flight_number, form.booking_url, form.booking_reference].filter(Boolean).length;
   const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
@@ -1724,165 +1721,36 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
       {form.hasLayovers ? (
         <SegmentsEditor form={form} setForm={setForm} fromVisit={fromVisit} toVisit={toVisit} setTime={setTime} color={color} aiSegFields={aiSegFields} setAiSegFields={setAiSegFields} issues={issues} onTouch={onTouch} />
       ) : (
-      <>
-      <SectionHeader color={color}>{t('event.transport_kind')}</SectionHeader>
-      <div className="eed-typegrid">
-        {TRANSPORT_KINDS.map((k) => {
-          const active = form.transport_type === k.id;
-          const Ic = k.Icon;
-          return (
-            <button
-              key={k.id}
-              type="button"
-              className="t-meta"
-              onClick={() => setField('transport_type', k.id)}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                gap: 4, padding: '10px 6px',
-                background: active ? TYPE_META.transfer.soft : 'transparent',
-                border: '1.5px solid ' + (active ? color : 'var(--border, hsl(var(--border)))'),
-                color: active ? color : 'inherit',
-                borderRadius: 10, cursor: 'pointer',
-              }}
-            >
-              <Ic size={16} />
-              {t(k.labelKey)}
-            </button>
-          );
-        })}
-      </div>
-
-      <SectionHeader color={color}>{t('event.from_to')}</SectionHeader>
-      <div className="fld-grid">
-        <div>
-          <div className="eed-fromto" style={{ color }}>{t('event.from')}</div>
-          <div className="eed-accrow">
-            <Label>{t('event.addr_station')}</Label>
-            <AiField active={aiFields.has('from_address')}>
-              <AddressAutocomplete
-                value={form.from_address}
-                onChange={(v) => setField('from_address', v)}
-                onPlaceSelected={(p) => {
-                  setField('from_address', p.formatted_address || p.description || form.from_address);
-                  if (p.latitude != null) setField('from_latitude', p.latitude);
-                  if (p.longitude != null) setField('from_longitude', p.longitude);
-                }}
-                placeholder={t('event.addr_ph')}
-              />
-            </AiField>
-          </div>
-        </div>
-        <div>
-          <div className="eed-fromto" style={{ color }}>{t('event.to')}</div>
-          <div className="eed-accrow">
-            <Label>{t('event.addr_station')}</Label>
-            <AiField active={aiFields.has('to_address')}>
-              <AddressAutocomplete
-                value={form.to_address}
-                onChange={(v) => setField('to_address', v)}
-                onPlaceSelected={(p) => {
-                  setField('to_address', p.formatted_address || p.description || form.to_address);
-                  if (p.latitude != null) setField('to_latitude', p.latitude);
-                  if (p.longitude != null) setField('to_longitude', p.longitude);
-                }}
-                placeholder={t('event.addr_ph')}
-              />
-            </AiField>
-          </div>
-        </div>
-      </div>
-
-      <div className="eed-dateblock">
-        <div className="eed-dateblock__lbl t-ui">{t('event.dep_arr')}</div>
-        <div className="fld-grid">
-          <div className={`eed-minw0 ${inv('start')}`} data-vfield="start">
-            <Label>{t('event.departure_req')}</Label>
-            <AiField active={aiFields.has('startLocal')}>
-              <DateTimeInput
-                value={form.startLocal}
-                onChange={(v) => setField('startLocal', v)}
-                onTimeMissingChange={(v) => setTime('start', v)}
-              />
-            </AiField>
-            <TimezoneHint tz={startTz} />
-            <FieldError issues={issues} field="start" />
-          </div>
-          <div className={`eed-minw0 ${inv('end')}`} data-vfield="end">
-            <Label>{t('event.arrival_req')}</Label>
-            <AiField active={aiFields.has('endLocal')}>
-              <DateTimeInput
-                value={form.endLocal}
-                onChange={(v) => setField('endLocal', v)}
-                onTimeMissingChange={(v) => setTime('end', v)}
-              />
-            </AiField>
-            <TimezoneHint tz={endTz} />
-            <FieldError issues={issues} field="end" />
-          </div>
-        </div>
-        {/* Overnight / day-change toggle. When on, the destination city (and every
-            city after it) shifts +1 day in the trip editor. Auto-checked when the
-            arrival date is later than the departure date. */}
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', marginTop: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
-          <Checkbox checked={!!form.day_change} onCheckedChange={(v) => setField('day_change', !!v)} />
-          <span style={{ minWidth: 0 }}>
-            <span className="t-ui" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Moon size={16} /> {t('event.overnight_label')}
-            </span>
-            <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', marginTop: 2 }}>{t('event.overnight_hint')}</span>
-          </span>
-        </label>
-      </div>
-
-      <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
-      <div className="fld-grid">
-        <div>
-          <Label>{t('event.price')}</Label>
-          <AiField active={aiFields.has('price')}>
-            <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
-          </AiField>
-        </div>
-        <div>
-          <Label>{t('event.currency')}</Label>
-          <AiField active={aiFields.has('currency')}>
-            <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
-          </AiField>
-        </div>
-      </div>
-
-      <Accordion title={t('event.carrier_booking')} badge={bookingFilled}>
-        <div className="fld-grid">
-          <div>
-            <Label>{t('event.carrier')}</Label>
-            <AiField active={aiFields.has('carrier')}>
-              <Input value={form.carrier} onChange={(e) => setField('carrier', e.target.value)} placeholder="TAP Air Portugal" />
-            </AiField>
-          </div>
-          <div>
-            <Label>{t('event.flight_train_no')}</Label>
-            <AiField active={aiFields.has('flight_number')}>
-              <Input className="t-mono" value={form.flight_number} onChange={(e) => setField('flight_number', e.target.value)} placeholder="TP 1379" /* i18n-ignore: пример формата номера рейса, не переводится */ />
-            </AiField>
-          </div>
-        </div>
-        <div className="fld-grid eed-accrow">
-          <BookingUrlField
-            value={form.booking_url}
-            onChange={(e) => setField('booking_url', e.target.value)}
-            aiActive={aiFields.has('booking_url')}
-            t={t}
-          />
-          <div>
-            <Label>{t('event.booking_ref')}</Label>
-            <AiField active={aiFields.has('booking_reference')}>
-              <Input className="t-mono" value={form.booking_reference} onChange={(e) => setField('booking_reference', e.target.value)} placeholder="-" />
-            </AiField>
-          </div>
-        </div>
-      </Accordion>
-
-      </>
+        <TransferLegCard
+          leg={form}
+          patch={(p) => Object.entries(p).forEach(([k, v]) => setField(k, v))}
+          aiHas={(f) => aiFields.has(f)}
+          vf={(name) => name}
+          onTimeMissing={(which, v) => setTime(which === 'dep' ? 'start' : 'end', v)}
+          legNumber={null}
+          isMulti={false}
+          collapsible={false}
+          fromName={fromVisit?.city_name || '-'}
+          toName={toVisit?.city_name || '-'}
+          toCityEditable={false}
+          startTz={startTz}
+          endTz={endTz}
+          issues={issues}
+          color={color}
+          t={t}
+        />
       )}
+
+      {/* Booking link — shared across the whole transfer (not per leg; the mockup
+          keeps only № брони on each card). Kept so the field is not dropped. */}
+      <div style={{ marginTop: 14 }}>
+        <BookingUrlField
+          value={form.booking_url}
+          onChange={(e) => setField('booking_url', e.target.value)}
+          aiActive={aiFields.has('booking_url')}
+          t={t}
+        />
+      </div>
 
       <Accordion title={t('event.docs_notes')} badge={docCount}>
         <AiField active={aiFields.has('documents')}>
@@ -1900,6 +1768,180 @@ function TransferFields({ form, setField, setForm, aiFields, aiSegFields, setAiS
         </div>
       </Accordion>
     </>
+  );
+}
+
+// ── Unified transfer leg card (mockup) — one renderer for the direct leg AND
+// each layover segment. Works on a plain `leg` values object + a `patch(partial)`
+// callback; the two call-sites (direct = flat form, layover = segment) adapt the
+// AI-highlight check (`aiHas`), the validation field name (`vf`), and the
+// time-missing key (`onTimeMissing`). No save-path changes — purely presentational.
+function TransferLegCard({
+  leg, patch, aiHas, vf, onTimeMissing,
+  legNumber, isMulti, collapsible, open, onToggleOpen, onRemove,
+  fromName, toName, toCityEditable, layoverCityPh,
+  startTz, endTz, issues, color, t,
+}) {
+  const invF = (name) => (fieldHasError(issues, vf(name)) ? 'tv-invalid' : '');
+  const tk = TRANSPORT_OF(leg.transport_type);
+  const TIcon = tk.Icon;
+  // Within-leg duration (departure → arrival) for the date-block hint —
+  // same "minutes between two ISO locals, non-negative or null" as the layover gap.
+  const durMin = layoverMins(leg.startLocal, leg.endLocal);
+  const isOpen = collapsible ? open : true;
+  return (
+    <div style={{ border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--wash-2)', overflow: 'hidden' }}>
+      {/* Card header — icon, route, collapse chevron (multi only), remove (multi>2) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
+        <button type="button" onClick={collapsible ? onToggleOpen : undefined}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: collapsible ? 'pointer' : 'default', textAlign: 'left', padding: 0, minWidth: 0 }}>
+          <span style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: TYPE_META.transfer.soft, color, display: 'grid', placeItems: 'center' }}>
+            <TIcon size={16} />
+          </span>
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span className="eyebrow" style={{ color, display: 'block' }}>{isMulti ? `${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}` : t(tk.labelKey)}</span>
+            <span className="t-ui" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink)', marginTop: 2 }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fromName}</span>
+              <ArrowRight size={12} style={{ color: 'var(--muted)', flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{toName}</span>
+            </span>
+          </span>
+          {collapsible && <span className="muted t-meta" style={{ flexShrink: 0 }}>{isOpen ? t('event.collapse') : t('event.expand')}</span>}
+          {collapsible && <ChevronDown size={16} style={{ color: 'var(--muted)', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />}
+        </button>
+        {onRemove && (
+          <button type="button" className="btn btn--quiet btn--sm" onClick={onRemove} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
+
+      <div style={{ display: isOpen ? 'block' : 'none', padding: '4px 14px 14px', borderTop: '1px solid var(--line-2)' }}>
+        <div style={{ height: 10 }} />
+        <div className="eyebrow" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
+        <SegTransportGrid value={leg.transport_type} onChange={(k) => patch({ transport_type: k })} color={color} />
+
+        {/* From / To — city (readonly endpoint, or layover picker) + address */}
+        <div className="fld-grid" style={{ marginTop: 14 }}>
+          <div>
+            <div className="eed-fromto" style={{ color }}>{t('event.from')}</div>
+            <div className="eed-accrow">
+              <Label>{t('event.city')}</Label>
+              <input className="input" value={fromName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_from_route_title')} />
+            </div>
+            <div className="eed-accrow">
+              <Label>{t('event.addr_station')}</Label>
+              <AiField active={aiHas('from_address')}>
+                <AddressAutocomplete
+                  value={leg.from_address}
+                  onChange={(v) => patch({ from_address: v })}
+                  onPlaceSelected={(p) => patch({ from_address: p.formatted_address || p.description || leg.from_address, ...(p.latitude != null ? { from_latitude: p.latitude } : {}), ...(p.longitude != null ? { from_longitude: p.longitude } : {}) })}
+                  placeholder={t('event.addr_ph')}
+                />
+              </AiField>
+            </div>
+          </div>
+          <div>
+            <div className="eed-fromto" style={{ color }}>{t('event.to')}</div>
+            <div className={`eed-accrow ${toCityEditable ? invF('toCity') : ''}`} data-vfield={toCityEditable ? vf('toCity') : undefined}>
+              <Label>{t('event.city')}</Label>
+              {toCityEditable ? (
+                <>
+                  <AiField active={aiHas('toCity')}>
+                    <CityPicker value={leg.toCity} onPick={(c) => patch({ toCity: c })} placeholder={layoverCityPh} />
+                  </AiField>
+                  <FieldError issues={issues} field={vf('toCity')} />
+                </>
+              ) : (
+                <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_arrival_title')} />
+              )}
+            </div>
+            <div className="eed-accrow">
+              <Label>{t('event.addr_station')}</Label>
+              <AiField active={aiHas('to_address')}>
+                <AddressAutocomplete
+                  value={leg.to_address}
+                  onChange={(v) => patch({ to_address: v })}
+                  onPlaceSelected={(p) => patch({ to_address: p.formatted_address || p.description || leg.to_address, ...(p.latitude != null ? { to_latitude: p.latitude } : {}), ...(p.longitude != null ? { to_longitude: p.longitude } : {}) })}
+                  placeholder={t('event.addr_ph')}
+                />
+              </AiField>
+            </div>
+          </div>
+        </div>
+
+        {/* Departure & arrival — bordered block (dates + duration + overnight) */}
+        <div className="eed-dateblock" style={{ marginTop: 14 }}>
+          <div className="eed-dateblock__lbl t-ui">{t('event.dep_arr')}</div>
+          <div className="fld-grid">
+            <div className={`eed-minw0 ${invF('start')}`} data-vfield={vf('start')}>
+              <Label>{t('event.departure_req')}</Label>
+              <AiField active={aiHas('startLocal')}>
+                <DateTimeInput value={leg.startLocal} onChange={(v) => patch({ startLocal: v })} onTimeMissingChange={(v) => onTimeMissing('dep', v)} />
+              </AiField>
+              <TimezoneHint tz={startTz} />
+              <FieldError issues={issues} field={vf('start')} />
+            </div>
+            <div className={`eed-minw0 ${invF('end')}`} data-vfield={vf('end')}>
+              <Label>{t('event.arrival_req')}</Label>
+              <AiField active={aiHas('endLocal')}>
+                <DateTimeInput value={leg.endLocal} onChange={(v) => patch({ endLocal: v })} onTimeMissingChange={(v) => onTimeMissing('arr', v)} />
+              </AiField>
+              <TimezoneHint tz={endTz} />
+              <FieldError issues={issues} field={vf('end')} />
+            </div>
+          </div>
+          {durMin != null && <div className="muted t-meta" style={{ marginTop: 8, textAlign: 'center' }}>{fmtDur(durMin, t)}</div>}
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', marginTop: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
+            <Checkbox checked={!!leg.day_change} onCheckedChange={(v) => patch({ day_change: !!v })} />
+            <span style={{ minWidth: 0 }}>
+              <span className="t-ui" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Moon size={16} /> {t('event.overnight_label')}
+              </span>
+              <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', marginTop: 2 }}>{t('event.overnight_hint')}</span>
+            </span>
+          </label>
+        </div>
+
+        {/* Carrier / flight no. */}
+        <div className="fld-grid" style={{ marginTop: 14 }}>
+          <div>
+            <Label>{t('event.carrier')}</Label>
+            <AiField active={aiHas('carrier')}>
+              <Input value={leg.carrier} onChange={(e) => patch({ carrier: e.target.value })} placeholder={t('event.carrier_ph')} />
+            </AiField>
+          </div>
+          <div>
+            <Label>{t('event.flight_train_no')}</Label>
+            <AiField active={aiHas('flight_number')}>
+              <Input className="t-mono" value={leg.flight_number} onChange={(e) => patch({ flight_number: e.target.value })} placeholder="TP 1379" /* i18n-ignore: пример формата номера рейса, не переводится */ />
+            </AiField>
+          </div>
+        </div>
+        {/* Booking ref / price + currency */}
+        <div className="fld-grid eed-accrow">
+          <div>
+            <Label>{t('event.booking_ref')}</Label>
+            <AiField active={aiHas('booking_reference')}>
+              <Input className="t-mono" value={leg.booking_reference} onChange={(e) => patch({ booking_reference: e.target.value })} placeholder="-" />
+            </AiField>
+          </div>
+          <div>
+            <Label>{t('event.price')}</Label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <AiField active={aiHas('price')}>
+                  <Input type="number" step="0.01" value={leg.price} onChange={(e) => patch({ price: e.target.value })} placeholder="0.00" />
+                </AiField>
+              </span>
+              <span style={{ width: 104, flexShrink: 0 }}>
+                <CurrencyCombobox value={leg.currency} onChange={(v) => patch({ currency: v })} />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1973,7 +2015,6 @@ function SegTransportGrid({ value, onChange, color }) {
 
 function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiSegFields, setAiSegFields, issues, onTouch }) {
   const { t } = useI18nFormat();
-  const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   const SEG_TOKEN = { startLocal: 'start', endLocal: 'end', toCity: 'toCity' };
   const segs = form.segments || [];
   const N = segs.length;
@@ -2024,7 +2065,6 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
   };
   const toggleOpen = (seg, i) => setOpenMap((m) => ({ ...m, [seg.id]: !isOpen(seg, i) }));
 
-  const cardField = (node) => <div style={{ marginTop: 10 }}>{node}</div>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {segs.map((seg, i) => {
@@ -2032,94 +2072,34 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
         const fromName = isFirst ? (fromVisit?.city_name || '-') : (segs[i - 1].toCity?.city_name || '…');
         const toName = isLast ? (toVisit?.city_name || '-') : (seg.toCity?.city_name || '…');
         const open = isOpen(seg, i);
-        const tk = TRANSPORT_OF(seg.transport_type);
-        const TIcon = tk.Icon;
         const layCity = seg.toCity?.city_name || '…';
         const layDate = fmtLocalDate(seg.endLocal);
         const layMins = isLast ? null : layoverMins(seg.endLocal, segs[i + 1]?.startLocal);
         const layDur = layMins != null ? fmtDur(layMins, t) : '';
         return (
           <React.Fragment key={seg.id}>
-            <div style={{ border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--wash-2)', overflow: 'hidden' }}>
-              {/* Collapsible header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
-                <button type="button" onClick={() => toggleOpen(seg, i)}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0, minWidth: 0 }}>
-                  <span style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: TYPE_META.transfer.soft, color, display: 'grid', placeItems: 'center' }}>
-                    <TIcon size={16} />
-                  </span>
-                  <span style={{ minWidth: 0, flex: 1 }}>
-                    <span className="eyebrow" style={{ color, display: 'block' }}>{t('event.segment_n', { n: i + 1 })} · {t(tk.labelKey)}</span>
-                    <span className="t-ui" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink)', marginTop: 2 }}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fromName}</span>
-                      <ArrowRight size={12} style={{ color: 'var(--muted)', flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{toName}</span>
-                    </span>
-                  </span>
-                  <span className="muted t-meta" style={{ flexShrink: 0 }}>{open ? t('event.collapse') : t('event.expand')}</span>
-                  <ChevronDown size={16} style={{ color: 'var(--muted)', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
-                </button>
-                {N > 2 && (
-                  <button type="button" className="btn btn--quiet btn--sm" onClick={() => removeSegment(i)} title={t('event.remove_segment')} style={{ flexShrink: 0 }}>
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-
-              <div style={{ display: open ? 'block' : 'none', padding: '4px 14px 14px', borderTop: '1px solid var(--line-2)' }}>
-                <div style={{ height: 10 }} />
-                <div className="eyebrow" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
-                <SegTransportGrid value={seg.transport_type} onChange={(k) => patchSeg(i, { transport_type: k })} color={color} />
-
-                <div className="fld-grid" style={{ marginBottom: 14 }}>
-                  <div style={{ padding: 14, background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--line-2)' }}>
-                    <div className="eyebrow" style={{ marginBottom: 8, color }}>{t('event.from')}</div>
-                    <div>
-                      <Label>{t('event.city')}</Label>
-                      <input className="input" value={fromName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_from_route_title')} />
-                    </div>
-                    {cardField(<><Label>{t('event.addr_station')}</Label><AiField active={aiOn(seg, 'from_address')}><AddressAutocomplete value={seg.from_address} onChange={(v) => patchSeg(i, { from_address: v })} placeholder={t('event.addr_ph')} /></AiField></>)}
-                    {cardField(<div className={inv(`seg${i}.start`)} data-vfield={`seg${i}.start`}><Label>{t('event.departure_req')}</Label><AiField active={aiOn(seg, 'startLocal')}><DateTimeInput value={seg.startLocal} onChange={(v) => patchSeg(i, { startLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-dep`, v)} /></AiField><FieldError issues={issues} field={`seg${i}.start`} /></div>)}
-                  </div>
-                  <div style={{ padding: 14, background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--line-2)' }}>
-                    <div className="eyebrow" style={{ marginBottom: 8, color }}>{t('event.to')}</div>
-                    <div className={isLast ? '' : inv(`seg${i}.toCity`)} data-vfield={isLast ? undefined : `seg${i}.toCity`}>
-                      <Label>{t('event.city')}</Label>
-                      {isLast ? (
-                        <input className="input" value={toName} readOnly tabIndex={-1} style={{ background: 'var(--wash)', color: 'var(--ink-2)', cursor: 'default' }} title={t('event.city_arrival_title')} />
-                      ) : (
-                        <>
-                          <AiField active={aiOn(seg, 'toCity')}>
-                            <CityPicker value={seg.toCity} onPick={(c) => patchSeg(i, { toCity: c })} placeholder={t('event.layover_city_ph')} />
-                          </AiField>
-                          <FieldError issues={issues} field={`seg${i}.toCity`} />
-                        </>
-                      )}
-                    </div>
-                    {cardField(<><Label>{t('event.addr_station')}</Label><AiField active={aiOn(seg, 'to_address')}><AddressAutocomplete value={seg.to_address} onChange={(v) => patchSeg(i, { to_address: v })} placeholder={t('event.addr_ph')} /></AiField></>)}
-                    {cardField(<div className={inv(`seg${i}.end`)} data-vfield={`seg${i}.end`}><Label>{t('event.arrival_req')}</Label><AiField active={aiOn(seg, 'endLocal')}><DateTimeInput value={seg.endLocal} onChange={(v) => patchSeg(i, { endLocal: v })} onTimeMissingChange={(v) => setTime(`seg${i}-arr`, v)} /></AiField><FieldError issues={issues} field={`seg${i}.end`} /></div>)}
-                  </div>
-                </div>
-
-                <div className="fld-grid" style={{ marginBottom: 12 }}>
-                  <div><Label>{t('event.carrier')}</Label><AiField active={aiOn(seg, 'carrier')}><Input value={seg.carrier} onChange={(e) => patchSeg(i, { carrier: e.target.value })} placeholder={t('event.carrier_ph')} /></AiField></div>
-                  <div><Label>{t('event.flight_train_no')}</Label><AiField active={aiOn(seg, 'flight_number')}><Input className="t-mono" value={seg.flight_number} onChange={(e) => patchSeg(i, { flight_number: e.target.value })} placeholder="TP 1379" /* i18n-ignore: пример формата номера рейса, не переводится */ /></AiField></div>
-                </div>
-                <div className="fld-grid">
-                  <div><Label>{t('event.price')}</Label><AiField active={aiOn(seg, 'price')}><Input type="number" step="0.01" value={seg.price} onChange={(e) => patchSeg(i, { price: e.target.value })} placeholder="0.00" /></AiField></div>
-                  <div><Label>{t('event.currency')}</Label><CurrencyCombobox value={seg.currency} onChange={(v) => patchSeg(i, { currency: v })} /></div>
-                </div>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', marginTop: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
-                  <Checkbox checked={!!seg.day_change} onCheckedChange={(v) => patchSeg(i, { day_change: !!v })} />
-                  <span style={{ minWidth: 0 }}>
-                    <span className="t-ui" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <Moon size={16} /> {t('event.overnight_label')}
-                    </span>
-                    <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', marginTop: 2 }}>{t('event.overnight_hint')}</span>
-                  </span>
-                </label>
-              </div>
-            </div>
+            <TransferLegCard
+              leg={seg}
+              patch={(p) => patchSeg(i, p)}
+              aiHas={(f) => aiOn(seg, f)}
+              vf={(name) => `seg${i}.${name}`}
+              onTimeMissing={(which, v) => setTime(`seg${i}-${which}`, v)}
+              legNumber={i + 1}
+              isMulti
+              collapsible
+              open={open}
+              onToggleOpen={() => toggleOpen(seg, i)}
+              onRemove={N > 2 ? () => removeSegment(i) : null}
+              fromName={fromName}
+              toName={toName}
+              toCityEditable={!isLast}
+              layoverCityPh={t('event.layover_city_ph')}
+              startTz={undefined}
+              endTz={undefined}
+              issues={issues}
+              color={color}
+              t={t}
+            />
 
             {!isLast && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
