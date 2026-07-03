@@ -1,5 +1,5 @@
 // TRIP-165/183 · Canon inspector — canon registry + live detection.
-// TRIP-183: каноны «Экзо» (см. mockup-имена ниже + KNOBS); числа пробятся из app.css.
+// TRIP-183: каноны «Экзо» (см. mockup-имена + поканонные CANON_MODS ниже); числа пробятся из app.css.
 //
 // The 10 typography canons are defined ONCE, in src/design/app.css (the .t-*
 // co-selector rules). This module does NOT re-hardcode their numeric specs —
@@ -34,57 +34,79 @@ export const CANONS = [
   // Прозаичный код/email при желании переносится .t-mono → .t-meta канон-аудитором.
 ];
 
-// Дисплейные «ручки» (модификаторы) из файла типографики «Экзо» — глобальные
-// CSS-переменные в src/design/app.css (:root). Правишь тут — двигается везде.
-// Показываем дуально: наше имя ↔ имя в файле. (TRIP-183)
-export const KNOBS = [
-  { css: '--fd-w',       file: '--fd-w',       label: 'Вес заголовков (hero/h1/h2)' },
-  { css: '--fd-w3',      file: '--fd-w3',      label: 'Вес h3 (t-subheading)' },
-  { css: '--fd-k',       file: '--fd-k',       label: 'Масштаб дисплейного кегля' },
-  { css: '--track-hero', file: '--track-hero', label: 'Трекинг hero (t-display)' },
-  { css: '--track-h',    file: '--track-h',    label: 'Трекинг h1/h2/h3' },
-  { css: '--track-caps', file: '--track-caps', label: 'Трекинг капс-лейблов (t-micro)' },
-];
+// Поканонные МОДИФИКАТОРЫ из присланного файла типографики «Экзо» (TRIP-183).
+// В файле у каждого канона свой набор вариантов применения (цвет .c-*, компаньоны
+// .t-mono/.u-ell, капс/трекинг). Здесь они переключаются в инспекторе как эфемерное
+// превью на выбранном элементе (в worklist НЕ сохраняются; цвет сохраняется отдельной
+// осью «Цвет текста»). Ключ = id канона. css = дельта поверх базового канона; цвета
+// .c-* смаплены на наши токены (c-text→--ink, c-dim→--ink-2, c-mute→--muted, c-acc→--brand).
+export const CANON_MODS = {
+  1: [ // t-display ← hero
+    { label: '.c-text · заголовок страницы',      css: { color: 'var(--ink)' } },
+    { label: '.c-acc · акцент-спан в hero',        css: { color: 'var(--brand)' } },
+  ],
+  2: [ // t-title ← h1
+    { label: '.c-text · экран/drawer/модалка',     css: { color: 'var(--ink)' } },
+    { label: '#fff · на градиентной обложке',      css: { color: '#fff' } },
+  ],
+  3: [ // t-heading ← h2
+    { label: '.c-text · карточки/списки',          css: { color: 'var(--ink)' } },
+    { label: '.tph__total · цена в поиске',         css: { color: 'var(--ink)' } },
+    { label: '+ .t-mono · время рейса/метрики',     css: { color: 'var(--ink)', fontFamily: 'var(--font-mono)' } },
+  ],
+  4: [ // t-subheading ← h3
+    { label: '.c-text · строки/подзаголовки',      css: { color: 'var(--ink)' } },
+    { label: '+ .u-ell · обрезка в тесных карточках', css: { color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', maxWidth: '170px', verticalAlign: 'bottom' } },
+  ],
+  5: [ // t-label ← title (Golos)
+    { label: '.c-text · строки/поповеры',          css: { color: 'var(--ink)' } },
+    { label: '.tp-btn--primary · кнопки/вкладки',   css: { color: 'var(--brand)' } },
+    { label: '.c-acc · ссылки',                    css: { color: 'var(--brand)' } },
+    { label: '.c-dim · secondary-кнопки',          css: { color: 'var(--ink-2)' } },
+  ],
+  6: [ // t-body ← body
+    { label: '.c-mute · базовый',                  css: { color: 'var(--muted)' } },
+    { label: '.c-dim · заметки',                   css: { color: 'var(--ink-2)' } },
+    { label: '.c-text · важный абзац',             css: { color: 'var(--ink)' } },
+  ],
+  7: [ // t-ui ← body-med
+    { label: '.c-text · значения/инпуты',          css: { color: 'var(--ink)' } },
+    { label: '.c-dim · вторичное',                 css: { color: 'var(--ink-2)' } },
+    { label: '.tp-chip--active · чипы',             css: { color: 'var(--brand)' } },
+    { label: '.tp-chip--idle',                     css: { color: 'var(--muted)' } },
+  ],
+  8: [ // t-meta ← meta
+    { label: '.c-mute · базовый',                  css: { color: 'var(--muted)' } },
+    { label: '.c-dim · значения дат/времени',       css: { color: 'var(--ink-2)' } },
+  ],
+  9: [ // t-micro ← label
+    { label: 'базовый · track-2',                  css: {} },
+    { label: '--tight · track-1',                  css: { letterSpacing: '0.08em' } },
+    { label: '.tp-pill · статусы',                 css: { color: 'var(--brand)' } },
+    { label: 'микро-подписи на медиа',             css: { color: 'var(--muted)', letterSpacing: '0.08em' } },
+  ],
+  10: [ // t-mono ← meta-md
+    { label: '.c-mute · координаты/код',           css: { color: 'var(--muted)' } },
+    { label: '.tp-caption · капс track-3',          css: { textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--brand)' } },
+    { label: '.tp-caption--mute',                  css: { textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--muted)' } },
+    { label: '.c-acc · счётчики',                  css: { color: 'var(--brand)' } },
+  ],
+};
 
 // The sanctioned orthogonal modifiers (app.css Фаза 3). They layer on top of a
 // canon; the only legal place (besides canons) where font-weight / line-height
 // is set. Used for live detection (probe canon × modifier subsets).
-// Наши орто-модификаторы (наше имя ↔ имя в файле «Экзо»). Файл покрывает вес/трекинг
-// заголовков ГЛОБАЛЬНЫМИ ручками (KNOBS выше), а не per-element классами, поэтому у
-// strong/flush прямого имени в файле нет (file: '—'). (TRIP-183)
+// TRIP-183: strong/flush больше НЕ показываются в UI (их заменили поканонные
+// CANON_MODS из файла) — остаются только для ДЕТЕКЦИИ уже-применённых стилей.
 export const MODIFIERS = [
-  { key: 'strong', cls: 't-strong', label: 'strong', file: '—' },
-  { key: 'flush',  cls: 't-flush',  label: 'flush',  file: '—' },
+  { key: 'strong', cls: 't-strong', label: 'strong' },
+  { key: 'flush',  cls: 't-flush',  label: 'flush'  },
 ];
 
-// TRIP-175 · Состояния стиля — зеркалит специмен дизайн-системы (макет): у каждого
-// канона показываем ТОЛЬКО те состояния, что реально его меняют. Применимость
-// выводится из ЖИВОГО вычисленного стиля канона (a = apply-props из probeCanons),
-// поэтому список сам подстраивается под правку канона в app.css.
-//   • strong / flush — РЕАЛЬНЫЕ санкц. модификаторы (.t-strong/.t-flush): saveable,
-//     их эффект берётся из probe (comboApply), попадают в worklist.
-//   • caps / track / mono / mute — ПРЕВЬЮ-состояния (визуальный аудит, как в макете):
-//     применяются эфемерным inline-стилем, в worklist НЕ сохраняются (в проде это
-//     были бы отдельные утилиты — вводить только с одобрения Павла, правило #6).
-// applies(a): a = { fontFamily, fontSize, fontWeight, lineHeight, letterSpacing,
-//                   textTransform } — computed-стиль базового канона.
-export const STATES = [
-  { key: 'strong', label: 'Жирнее', saveable: true,
-    applies: (a) => (parseInt(a.fontWeight, 10) || 400) < 700 },            // .t-strong = 700
-  { key: 'caps',   label: 'Капс',
-    applies: (a) => a.textTransform !== 'uppercase',                        // .t-micro уже капс
-    css: { textTransform: 'uppercase', letterSpacing: '0.1em' } },
-  { key: 'track',  label: 'Трекинг', cycle: ['0.04em', '0.12em', '0.18em'],
-    applies: (a) => a.textTransform !== 'uppercase' },                      // у капс-канона трекинг зашит
-  { key: 'mono',   label: 'Моно',
-    applies: (a) => !/mono|jetbrains/i.test(a.fontFamily),                  // meta/micro/mono уже моно
-    css: { fontFamily: 'var(--font-mono)' } },
-  { key: 'flush',  label: 'Флеш', saveable: true,
-    applies: (a) => (parseFloat(a.lineHeight) / (parseFloat(a.fontSize) || 1)) >= 1.5 }, // виден на многострочном (t-body)
-  { key: 'mute',   label: 'Тише',
-    applies: () => true,
-    css: { color: 'var(--muted)' } },
-];
+// TRIP-183: старый генерик-набор состояний (strong/caps/track/mono/flush/mute)
+// УДАЛЁН — вместо него поканонные модификаторы из файла типографики (CANON_MODS
+// выше). strong/flush остаются как MODIFIERS выше — только для ДЕТЕКЦИИ (probe
+// canon × modifier), в UI не показываются.
 
 // Every subset of the modifier list, smallest-first: [], [strong], [flush], …
 function modifierSubsets() {
