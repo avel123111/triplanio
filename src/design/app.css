@@ -1108,31 +1108,11 @@ h4,
 }
 .app-side__item-badge.is-quiet { background: var(--line); color: var(--muted); }
 
-/* Collapsed rail (editor screen): icon-only 56px, expands to a 220px overlay on
-   hover. Same component/logic as the full sidebar — only the chrome differs. */
-/* Collapsed rail. Item layout (icon position) is IDENTICAL collapsed vs open —
-   only the aside width + label visibility change, so the icon never jumps.
-   Open state is driven by JS (.is-open), not :hover, so it stays open until the
-   mouse actually leaves. */
-.app-side--rail { width: 56px; height: 100%; padding: 16px 8px; overflow: visible; }
-.app-side--rail .app-side__item { justify-content: flex-start; gap: 10px; padding: 8px 8px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
-.app-side--rail .app-side__item.active { color: var(--brand); }
-.app-side--rail .app-side__label,
-.app-side--rail .app-side__item-badge,
-.app-side--rail .app-side__upgrade { display: none; }
-/* Group labels keep their BOX (visibility:hidden) collapsed — so the rows below
-   sit at the same vertical offset as in the open menu and the icons don't jump. */
-.app-side--rail .app-side__group-label { visibility: hidden; overflow: hidden; white-space: nowrap; }
-/* Open state mirrors the full app-side EXACTLY (same paddings) — it's the same
-   menu, just floating because the collapsed rail expands on hover. */
-.app-side--rail.is-open { position: absolute; top: 0; left: 0; width: 220px; height: 100%; padding: 16px 10px; background: var(--surface); border-right: 1px solid var(--line); box-shadow: var(--shadow-pop); z-index: 60; }
-.app-side--rail.is-open .app-side__item { padding: 8px 10px; white-space: normal; overflow: visible; }
-/* Labels wrap exactly like the full menu (rail base sets nowrap; undo it open). */
-.app-side--rail.is-open .app-side__label { white-space: normal; }
-.app-side--rail.is-open .app-side__group-label { visibility: visible; }
-.app-side--rail.is-open .app-side__label,
-.app-side--rail.is-open .app-side__upgrade { display: block; }
-.app-side--rail.is-open .app-side__item-badge { display: inline-flex; }
+/* Editor screen (>760px): the left trip menu is the full sidebar — identical to
+   every other screen — rendered in a static 220px column (.ts-sidecol). Neutralise
+   the base sticky/viewport-height so it just fills the editor's flex row. On phones
+   (≤760) .ts-sidecol is hidden and the burger opens the .ts-drawer variant. */
+.ts-sidecol .app-side { position: static; height: 100%; }
 
 .app-main {
   padding: 22px 24px 80px;
@@ -3095,9 +3075,8 @@ h4,
 
 @media (max-width: 760px) {
   .ts-screen .ts-drawer { display: block; }
-  /* remove the static narrow icon-rail; the burger opens a real drawer instead */
-  .ts-screen .app-side--rail { display: none; }
-  .ts-screen .ts-railwrap { display: none; }
+  /* hide the static sidebar column; the burger opens a real drawer instead */
+  .ts-screen .ts-sidecol { display: none; }
   /* drop the table header row */
   .ts-screen .te-thead { display: none !important; }
   /* drop the drag grip — on touch the whole row drags via long-press.
