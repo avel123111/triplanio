@@ -150,6 +150,7 @@
   "type_hotel": "Отель",
   "type_transfer": "Трансфер",
   "view_booking": "Посмотреть бронирование",
+  "pick_datetime": "Выбрать дату",
   "when": "Когда",
   "with_layovers": "С пересадками"
 }
