@@ -90,6 +90,7 @@
   "hotel_about": "About the hotel",
   "layover_city_ph": "Layover city",
   "layover_in": "Layover in {city}",
+  "meeting_point": "Meeting point",
   "name_req": "Name *",
   "notes": "Notes",
   "notes_ph": "Free-form notes…",

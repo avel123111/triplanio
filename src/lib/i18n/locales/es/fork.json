@@ -27,6 +27,7 @@
   "f_platform": "Plataforma",
   "f_price": "Precio / noche",
   "f_price_unit": "(USD)",
+  "f_rating_t": "Valoración desde",
   "f_reset": "Restablecer",
   "f_reset_all": "Restablecer todo",
   "f_rooms": "{n} hab.",
@@ -67,6 +68,5 @@
   "tab_find_activity": "Buscar experiencia",
   "tab_find_hotel": "Buscar hotel",
   "tab_find_transfer": "Buscar traslado",
-  "tab_have_booking": "Ya tengo una reserva",
-  "f_rating_t": "Valoración desde"
+  "tab_have_booking": "Ya tengo una reserva"
 }
