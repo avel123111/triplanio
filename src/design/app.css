@@ -892,7 +892,9 @@ h4,
    КАПС + трекинг капса + синий. ЕДИНЫЙ класс на все caption-эйбрау (реюз): «Маршрут»,
    «Мир исследован», бренд-эйбрау/«Сводка путешествий»/«мои путешествия» на /trips. */
 .t-caption { font-family: var(--font-mono); font-size: var(--fs-micro); font-weight: 700; line-height: 1.25; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--brand); }
-/* TRIP-175: каноны-заплатки .t-nano/.t-caption СХЛОПНУТЫ (макет их не содержит).
+/* TRIP-175: канон-заплатка .t-nano СХЛОПНУТА (макет её не содержит). .t-caption
+   ВОЗВРАЩЁН в TRIP-188 как caption-пресет аудитора (определение выше) — модификатор
+   ts.caption рендерит моно+синий+КАПС+трекинг, чего голый .t-mono не даёт.
    Их члены переехали: НЕ-капс подписи booking → .t-meta (Golos 12.5, co-selector
    в правиле t-meta выше), капс-эйбрау (.va-from/.s22-price span/.fork-partner__mid
    span) → .t-micro (mono+track, co-selector выше — капс/трекинг уже в каноне, свой
