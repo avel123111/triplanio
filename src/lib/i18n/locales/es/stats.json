@@ -82,6 +82,7 @@
   "type_trip": "Con viaje",
   "visits_count": "Visitas",
   "world_cap": "de {total} países del mundo",
+  "world_countries_visited": "países del mundo visitados",
   "world_explored": "Mundo explorado",
   "world_label": "mundo",
   "world_of": "{visited} de {total} países",

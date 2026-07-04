@@ -114,7 +114,7 @@ function NextTripCard({ trip, onClick, t }) {
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
       </span>
       <span className="nextcard__tx">
-        <span className="t-micro" style={{ color: 'var(--muted-2)' }}>{t('stats.next_trip_title')}</span>
+        <span className="t-mono" style={{ color: 'var(--muted-2)' }}>{t('stats.next_trip_title')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
         <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
@@ -166,7 +166,7 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
           <WorldMini
             world={world}
             title={t('stats.world_explored')}
-            caption={t('stats.world_of', { visited: world.visited, total: world.total })}
+            subCaption={t('stats.world_countries_visited')}
           />
           {nextTrip
             ? <NextTripCard trip={nextTrip} onClick={onOpenNext} t={t} />

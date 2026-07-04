@@ -287,10 +287,12 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(90% 60% at 50% 16%, rgba(146,164,232,.35), transparent 60%);
+  /* TRIP-188: центр эллипса над верхней кромкой (−8%) → плотная часть жмётся к
+     самому верху, не «плавает» серединой экрана; альфа мягче (обе темы). */
+  background: radial-gradient(130% 80% at 50% -8%, rgba(146,164,232,.24), transparent 62%);
 }
 :root[data-theme="dark"] body::before {
-  background: radial-gradient(90% 60% at 50% 16%, rgba(124,138,205,.30), transparent 60%);
+  background: radial-gradient(130% 80% at 50% -8%, rgba(124,138,205,.20), transparent 62%);
 }
 /* ЕДИНЫЙ фон на всё приложение. Градиент — на ОДНОМ фикс-слое body::before выше.
    Проблема была в том, что каждый полноэкранный шелл красил свой непрозрачный
@@ -350,9 +352,14 @@ h1, h2, h3, h4 {
      .t-mono        ← meta-md   JetBrains 700/11/1.25
    ================================================================= */
 .t-display,
+.statbar .v,   /* TRIP-188: инспектор канонов — числа статбара дашборда Heading→Display */
 .head h1,   /* TRIP-175: решение инспектора — hero-заголовок «шапки» (приветствие/титул экрана) → t-display */
 .ncal-month-lbl { font-family: var(--font-display); font-size: var(--fs-display); font-weight: var(--fd-w); line-height: 1.08; letter-spacing: var(--track-hero); }   /* TRIP-183: .t-display ← hero макета (Exo --fd-w/44/1.08/--track-hero) */
 .t-title,
+.tc__title,        /* TRIP-188: инспектор канонов — заголовок карточки трипа Heading→Title */
+.nextcard__tx b,   /* TRIP-188: инспектор канонов — название следующего трипа Label→Title */
+.cdu b,            /* TRIP-188: инспектор канонов — числа обратного отсчёта Subheading→Title */
+.lp-ti b,          /* TRIP-188: инспектор канонов — заголовки шапок панелей события/добавления Subheading→Title */
 h1,
 .plan-price__amount,
 .auth__h1,
@@ -366,10 +373,8 @@ h2,
 .acct-hero__av,
 .acct-hero__name,
 .acct-plan__v,
-.tc__title,
 .pro-hero__title,
 .sec-head h2,
-.statbar .v,
 .sfig .v,
 .bgt-donut__c .v,
 .bgt-stat__v,
@@ -379,6 +384,7 @@ h2,
 .pt-mm .n,
 .ncal-year-lbl { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: var(--fd-w); line-height: 1.2; letter-spacing: var(--track-h); }   /* TRIP-183: .t-heading ← h2 макета (Exo --fd-w/16.5/1.2/--track-h; вес 700→--fd-w) */
 .t-subheading,
+.tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
 .te-cityname,   /* TRIP-175: решение инспектора канонов — названия городов планировщика → t-subheading */
 h3,
 .app-header__brand-name,
@@ -395,9 +401,7 @@ h3,
 .sheet-h h3,
 .ev-dlg-info h2,
 .ev-dlg-price .amt,
-.lp-ti b,
 .head__av,
-.cdu b,
 .rec .v,
 .vp-h h3,
 .bgt-detail__n,
@@ -425,8 +429,6 @@ h4,
 .addon-card__title,
 .sheet .ss-search input,
 .plan-card__name,
-.wmini .ttl,
-.nextcard__tx b,
 .nonext b,
 .visit .when .yr,
 .bgt-donutcard__h b,
@@ -438,7 +440,6 @@ h4,
 .banner p,
 .va-ti b, .s22-ti b,
 .va-price b, .s22-price b,
-.ts-routehead__title,
 .cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
@@ -516,7 +517,6 @@ h4,
 .sheet-row,
 .ss-opt,
 .sheet .ss-opt,
-.tc-add b,
 .tr__title,
 .tr--add b,
 .limitcard__top b,
@@ -880,6 +880,8 @@ h4,
 .va-from, .s22-price span, .fork-partner__mid span,
 .ncal-legend-lbl { font-family: var(--font-mono);    font-size: var(--fs-nano);   font-weight: 600; line-height: 1.25;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-183: .t-micro ← label макета (JetBrains 600/9.5/caps/--track-caps .14); был 700/11 */
 .t-mono,
+.wmini .ttl,           /* TRIP-188: инспектор канонов — «Мир исследован» Label→Mono */
+.ts-routehead__title,  /* TRIP-188: инспектор канонов — «Маршрут» в планировщике Label→Mono */
 .cm-code,
 .te-dts,
 .bt span,
@@ -4565,7 +4567,7 @@ h4,
 .wring svg { transform: rotate(-90deg); display: block; }
 .ring__track { fill: none; stroke: var(--surface-2); }
 .ring__fg { fill: none; stroke: hsl(var(--primary)); stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease-out); }
-.ring__c { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); color: hsl(var(--primary)); }
+.ring__c { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); color: var(--ink); }   /* TRIP-188: инспектор канонов — «%» кольца акцент→основной (оба кольца, унификация) */
 .ring__c .l { color: var(--muted); }
 .wmini .ttl { color: var(--ink); }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
