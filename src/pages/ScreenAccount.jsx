@@ -612,7 +612,7 @@ export default function ScreenAccount() {
   const planBadge =
     planState === 'with-sub' ? <Badge variant="pro" icon="pro">{t('account.badge_pro_sub')}</Badge>
     : planState === 'annual' ? <Badge variant="pro" icon="pro">{t('account.badge_pro_yearly')}</Badge>
-    : planState === 'pro-pending' ? <Badge variant="pro" icon="pro">Pro</Badge>
+    : planState === 'pro-pending' ? <Badge variant="pro" icon="pro">PRO</Badge>
     : planState === 'cancelled' ? <Badge variant="quiet" icon="warning">{t('account.badge_pro_cancelled')}</Badge>
     : null;
 

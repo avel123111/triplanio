@@ -424,7 +424,7 @@ export default function Stay22HotelList({
         /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
            the hotel-specific body content keeps its own classes below. */
         .s22-rate { display: flex; align-items: center; gap: 8px; flex: none; }
-        .s22-stars { color: var(--pro); letter-spacing: .5px; /* design-token-exempt: разрядка глифов ★, не трекинг текста */ }
+        .s22-stars { color: var(--rating); letter-spacing: .5px; /* design-token-exempt: разрядка глифов ★, не трекинг текста */ }
         .s22-score { display: inline-flex; align-items: center; gap: 6px; }
         .s22-sc { display: inline-grid; place-items: center; min-width: 30px; height: 19px; padding: 0 5px; border-radius: 6px 6px 6px 2px; background: var(--bk); color: var(--bk-fg); font-variant-numeric: tabular-nums; }
         .s22-cnt { color: var(--muted); }

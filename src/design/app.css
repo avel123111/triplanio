@@ -81,26 +81,30 @@
   --warm-soft-2: rgba(217,102,60,.20);
   --warm-tint: var(--warm-soft-2);
 
-  /* AI */
-  --ai:        #8A6BF0;
-  --ai-2:      #D77BD0;
-  --ai-3:      #5AA0EE;
-  --ai-ink:    #5B3FE0;
-  --ai-soft:   rgba(138,107,240,.11);
-  --ai-soft-2: rgba(138,107,240,.17);
+  /* AI — фиолет→индиго→циан (TRIP-187). База --ai = #7C3AED: маркер, тень и метка-текст. */
+  --ai:        #7C3AED;
+  --ai-2:      #6366F1;
+  --ai-3:      #22D3EE;
+  --ai-ink:    #6D28D9;
+  --ai-soft:   rgba(139,92,246,.14);
+  --ai-soft-2: rgba(139,92,246,.24);
+  --ai-line:   rgba(139,92,246,.5);   /* рамка AI-контейнеров (дизайн-система TRIP-187) */
   --ai-soft-12:var(--ai-soft-2);
-  --ai-gradient:      linear-gradient(135deg,#5AA0EE 0%,#8A6BF0 52%,#D77BD0 100%);
-  --ai-gradient-soft: linear-gradient(135deg,rgba(90,160,238,.13),rgba(138,107,240,.13),rgba(215,123,208,.13));
+  --ai-gradient:      linear-gradient(135deg,#A855F7 0%,#6366F1 55%,#22D3EE 100%);
+  --ai-gradient-soft: linear-gradient(135deg,rgba(168,85,247,.13),rgba(99,102,241,.12),rgba(34,211,238,.12));
   --ai-grad:        var(--ai-gradient);
   --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
 
-  /* Pro / premium (Lumo gold) */
-  --pro:       #E6A21E;
-  --pro-soft:  rgba(230,162,30,.13);
-  --pro-soft-2:rgba(230,162,30,.22);
-  --pro-ink:   #936215;
-  --pro-fg:    #4A2D05;
-  --pro-gradient: linear-gradient(135deg,#FBD06A 0%,#EBA02E 55%,#E08A36 100%);
+  /* Pro / premium — оранж→розовый градиент монетизации (TRIP-187) */
+  --pro:       #FF2D78;
+  --pro-soft:  rgba(255,45,120,.12);
+  --pro-soft-2:rgba(255,45,120,.20);
+  --pro-ink:   #E11D6A;
+  --pro-fg:    #fff;
+  --pro-gradient: linear-gradient(135deg,#FF7A59 0%,#FF2D78 100%);
+
+  /* Рейтинг (★ отелей/активностей) — своё золото, отвязано от --pro (TRIP-187) */
+  --rating:    #E6A21E;
 
   /* Overlays / scrims */
   --scrim:            rgba(23,20,40,.45);
@@ -225,24 +229,28 @@
   --warm-soft: rgba(240,147,107,.16);
   --warm-soft-2: rgba(240,147,107,.24);
 
-  /* AI — dark */
-  --ai:        #A98BFF;
-  --ai-2:      #E08FE0;
-  --ai-3:      #6FB0FF;
+  /* AI — dark (фиолет→индиго→циан, TRIP-187) */
+  --ai:        #C084FC;
+  --ai-2:      #818CF8;
+  --ai-3:      #4FE3F0;
   --ai-ink:    #C6B5FF;
-  --ai-soft:   rgba(169,139,255,.16);
-  --ai-soft-2: rgba(169,139,255,.24);
-  --ai-gradient:      linear-gradient(135deg,#6FB0FF 0%,#A98BFF 52%,#E08FE0 100%);
-  --ai-gradient-soft: linear-gradient(135deg,rgba(111,176,255,.18),rgba(169,139,255,.18),rgba(224,143,224,.18));
+  --ai-soft:   rgba(168,85,247,.18);
+  --ai-soft-2: rgba(168,85,247,.26);
+  --ai-line:   rgba(168,85,247,.55);
+  --ai-gradient:      linear-gradient(135deg,#C084FC 0%,#818CF8 55%,#4FE3F0 100%);
+  --ai-gradient-soft: linear-gradient(135deg,rgba(192,132,252,.18),rgba(129,140,248,.16),rgba(79,227,240,.16));
   --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
 
-  /* Pro — dark */
-  --pro:       #F0B65A;
-  --pro-soft:  rgba(240,182,90,.16);
-  --pro-soft-2:rgba(240,182,90,.26);
-  --pro-ink:   #F6CD84;
-  --pro-fg:    #2A1903;
-  --pro-gradient: linear-gradient(135deg,#FBD478 0%,#F0A93C 55%,#E08A36 100%);
+  /* Pro — dark (оранж→розовый, TRIP-187) */
+  --pro:       #FF6B85;
+  --pro-soft:  rgba(255,107,133,.18);
+  --pro-soft-2:rgba(255,107,133,.28);
+  --pro-ink:   #FF9DB6;
+  --pro-fg:    #fff;
+  --pro-gradient: linear-gradient(135deg,#FF8A6B 0%,#FF4D8A 100%);
+
+  /* Рейтинг — dark золото (TRIP-187) */
+  --rating:    #F0B65A;
 
   /* Overlays / scrims — dark */
   --scrim:            rgba(0,0,0,.62);
@@ -358,6 +366,8 @@ h1,
 .auth__h1,
 .budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: var(--fd-w); line-height: 1.14;  letter-spacing: var(--track-h); }   /* TRIP-183: .t-title ← h1 макета (Exo --fd-w/26/1.14/--track-h) */
 .t-heading,
+.pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
+.limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
 h2,
 .eroute h3,
 .flow-lp-b h1,
@@ -442,6 +452,7 @@ h4,
 .cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
+.limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
 .proto__nav-item,
 .app-header .app-header__avatar,
 .avatar--lg,
@@ -476,7 +487,6 @@ h4,
 .app-header__act,
 .app-side__item,
 .input, .select, .textarea,
-.pro-up .pt,
 .tweaks__title,
 .addsheet__tx b,
 .eroute p,
@@ -519,7 +529,6 @@ h4,
 .tc-add b,
 .tr__title,
 .tr--add b,
-.limitcard__top b,
 .plan-feature,
 .plan-select-btn,
 .ai-blk-ti b,
@@ -672,8 +681,6 @@ h4,
 .tr__sub,
 .tr__date,
 .tr--add small,
-.limitcard__count,
-.limitcard__sub,
 .pro-hero-eyebrow,
 .pro-hero__note,
 .plan-save-tag,
@@ -1342,17 +1349,19 @@ h4,
 /* Pro badge — gold gradient (Lumo). Single source: recolour via --pro* tokens. */
 .badge--pro { background: var(--pro-gradient); color: var(--pro-fg); box-shadow: 0 4px 12px -4px var(--pro); }
 
-/* Pro upgrade plate — sidebar / inline gate (Lumo .pro-up, P3) */
+/* Pro upgrade plate — sidebar / inline gate. Дизайн-система TRIP-187:
+   тот же паттерн, что и плашка лимита — спокойный бренд-акцент, акцент даёт
+   PRO-пилюля (звезда), CTA — бренд-кнопка. */
 .pro-up {
-  background: var(--pro-soft);
-  border: 1px solid var(--pro-soft-2);
-  border-radius: 14px;
-  padding: 13px;
+  background: var(--brand-soft-12);
+  border: 1px solid var(--brand);
+  border-radius: var(--r-md);
+  padding: 14px;
 }
-/* .ph = icon + title row; .pi = gold icon tile; .pt = title text.
-   .pi is de-scoped from .pro-up so the same gold Pro-tile is reusable outside
-   the plate (e.g. ProUpsellModal head) — single source for the tile. */
-.pro-up .ph { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+/* .ph = ряд PRO-пилюли (bottom-margin перед заголовком в вертикальном варианте). */
+.pro-up .ph { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+/* .pi = gold icon tile — оставлен ТОЛЬКО для ProUpsellModal head (перекрашен в
+   оранж-розовый через --pro-gradient). В плашках теперь PRO-пилюля <Badge>. */
 .pi {
   width: 34px; height: 34px; border-radius: 11px;
   background: var(--pro-gradient);
@@ -1363,7 +1372,7 @@ h4,
 .pi svg { width: 18px; height: 18px; }
 .pro-up .pt {
  /* 15px, matches design */
- color: var(--pro-ink);
+ color: var(--ink);
 }
 .pro-up p {
  margin: 0 0 10px;
@@ -1382,7 +1391,7 @@ h4,
 .pro-up .lockmsg:hover { background: var(--surface-2); border-color: var(--line-strong); }
 .pro-up .lockmsg svg { width: 14px; height: 14px; flex: none; color: var(--muted); }
 /* .pro-up--inline = horizontal plate variant (Trip Settings features card):
-   [icon][title + desc][CTA] in a row on desktop, stacked full-width on mobile
+   [PRO-pill][title + desc][CTA] in a row on desktop, stacked full-width on mobile
    so the CTA never gets squeezed (TRIP-101). */
 .pro-up--inline { display: flex; align-items: center; gap: 14px; }
 .pro-up--inline .pu-body { flex: 1; min-width: 0; }
@@ -2279,7 +2288,7 @@ h4,
 .chat-bubble { padding: 9px 13px; border-radius: 16px; word-break: break-word; }
 .chat-bubble--them { background: var(--wash); color: var(--ink); border-bottom-left-radius: 5px; }
 .chat-bubble--me { background: var(--brand); color: #fff; border-bottom-right-radius: 5px; }
-.chat-bubble--ai { background: var(--ai-gradient-soft); color: var(--ink); border: 1px solid var(--ai-soft-2); border-bottom-left-radius: 5px; }
+.chat-bubble--ai { background: var(--ai-gradient-soft); color: var(--ink); border: 1px solid var(--ai-line); border-bottom-left-radius: 5px; }
 .chat-bubble--pending { opacity: .7; }
 .chat-time { color: var(--muted); margin-top: 2px; padding-right: 2px; }
 
@@ -3692,33 +3701,21 @@ h4,
 }
 
 /* ── Баннер лимита Free-тарифа ─────────────────────────────── */
+/* Free-limit plaque + Pro-upgrade plates — дизайн-система TRIP-187:
+   контейнер на бренд-акценте (спокойный), акцент даёт PRO-пилюля (звезда,
+   оранж-розовый градиент), CTA — бренд-кнопка. НЕ на Pro-градиенте. */
 .limitcard {
-  margin-top: 34px; position: relative; overflow: hidden;
-  display: flex; align-items: center; gap: 18px;
-  padding: 18px 22px 18px 24px;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--r-card); box-shadow: var(--sh-1);
+  margin: 0 0 20px;
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 20px;
+  background: var(--brand-soft-12); border: 1px solid var(--brand);
+  border-radius: var(--r-md);
   flex-wrap: wrap;
 }
-/* Pro gradient left accent bar */
-.limitcard::before {
-  content: ""; position: absolute; left: 0; top: 0; bottom: 0;
-  width: 5px; background: var(--pro-gradient);
-}
-.limitcard__ic {
-  width: 46px; height: 46px; border-radius: 14px;
-  background: var(--pro-soft); color: var(--pro-ink);
-  display: grid; place-items: center; flex: none;
-}
-.limitcard__ic svg { width: 22px; height: 22px; }
-.limitcard__body { flex: 1; min-width: 200px; }
-.limitcard__top { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; flex-wrap: wrap; }
+.limitcard__body { flex: 1; min-width: 180px; }
+.limitcard__top { display: flex; align-items: center; gap: 9px; margin-bottom: 3px; flex-wrap: wrap; }
 .limitcard__top b {
  color: var(--ink);
-}
-.limitcard__count {
- color: var(--pro-ink);
- background: var(--pro-soft); padding: 3px 9px; border-radius: var(--r-pill);
 }
 .limitcard__sub { color: var(--muted); }
 
@@ -3729,7 +3726,7 @@ h4,
   .tc__in { min-height: 220px; }
   .tc__title { font-size: var(--fs-h3); }
   .tc-add { min-height: 220px; }
-  .limitcard { padding: 16px 16px 16px 22px; gap: 12px 14px; }
+  .limitcard { padding: 16px; gap: 12px 14px; }
   /* icon + text share row 1; CTA drops to its own full-width row 2 */
   .limitcard__body { min-width: 0; flex: 1 1 140px; }
   .limitcard > .btn { flex: 1 1 100%; justify-content: center; }
@@ -4046,13 +4043,10 @@ h4,
 /* ─── AI Block (EventAiBlock — booking parser, dialog + side panel) ───────────
    Canonical AI pattern · design-system A4 (6 states). Token-only → light/dark
    and all four palettes follow automatically. */
-.ai-blk{border:1.5px solid var(--ai-soft-2);border-radius:13px;background:var(--ai-gradient-soft);overflow:hidden;margin-bottom:14px;flex:none;}
+.ai-blk{border:1px solid var(--ai-line);border-radius:13px;background:var(--ai-gradient-soft);overflow:hidden;margin-bottom:14px;flex:none;}
 .ai-blk-hd{display:flex;align-items:center;gap:10px;padding:11px 13px;}
-.ai-blk-ic{position:relative;width:30px;height:30px;border-radius:10px;background:var(--ai-gradient);display:grid;place-items:center;flex:none;}
+.ai-blk-ic{position:relative;width:30px;height:30px;border-radius:10px;background:var(--ai-gradient);display:grid;place-items:center;flex:none;box-shadow:0 4px 12px -4px var(--ai);}
 .ai-blk-ic svg{width:15px;height:15px;color:#fff;}
-/* lock micro-badge pinned to the AI icon in the locked state */
-.ai-blk-lock{position:absolute;bottom:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--ai);color:#fff;border:2px solid var(--surface);display:grid;place-items:center;}
-.ai-blk-lock svg{width:9px;height:9px;}
 .ai-blk-ti{flex:1;min-width:0;}
 .ai-blk-ti b{ color:var(--ai-ink);display:flex;align-items:center;gap:6px;}
 /* direct child only — must NOT leak onto the Pro <Badge> span nested in the title */

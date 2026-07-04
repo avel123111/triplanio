@@ -207,7 +207,7 @@ const TripCard = ({ trip, onClick }) => {
         {/* top-right badges */}
         <div className="tc__tags">
           {trip.pro && (
-            <Badge variant="pro" icon="pro">Pro</Badge>
+            <Badge variant="pro" icon="pro">PRO</Badge>
           )}
         </div>
 
@@ -288,7 +288,7 @@ const TripRow = ({ trip, onClick }) => {
         )}
         {trip.pro && (
           <span className="tr-hideS">
-            <Badge variant="pro" icon="pro">Pro</Badge>
+            <Badge variant="pro" icon="pro">PRO</Badge>
           </span>
         )}
         <span className="tr__chev"><Icon name="chev" /></span>
@@ -423,7 +423,7 @@ export default function Trips() {
 
   const isPro = isProActive(user);
   // Single source for the free-limit banner — same getActiveTrips → active_owned_trips() as the create/copy gate.
-  const { activeCount: srvActiveCount, isBlocked: limitReached } = useActiveTripsLimit(user?.id);
+  const { isBlocked: limitReached } = useActiveTripsLimit(user?.id);
   const scheme = isDark ? 'DARK' : 'LIGHT';
   const greetName = displayName(user?.email, user?.full_name);
 
@@ -672,6 +672,22 @@ export default function Trips() {
               </div>
             </div>
 
+            {/* Free-limit banner — под фильтрами, над списком (TRIP-187): спокойный
+                бренд-акцент, PRO-пилюля (звезда) даёт акцент, CTA — бренд-кнопка.
+                Shown only when owned active trips reach/exceed the free cap (1). */}
+            {filterMode === 'active' && limitReached && (
+              <div className="limitcard">
+                <Badge variant="pro" icon="pro">PRO</Badge>
+                <div className="limitcard__body">
+                  <div className="limitcard__top">
+                    <b>{t('trips.free_limit_title')}</b>
+                  </div>
+                  <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>
+                </div>
+                <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
+              </div>
+            )}
+
             {/* Trip list */}
             {isLoadingData ? (
               <TripSkeleton viewMode={viewMode} />
@@ -726,26 +742,6 @@ export default function Trips() {
                     </span>
                   </button>
                 )}
-              </div>
-            )}
-
-            {/* Free-limit banner — Pro style, not AI style.
-                Shown only when owned active trips reach/exceed the free cap (1). */}
-            {filterMode === 'active' && limitReached && (
-              <div className="limitcard">
-                <div className="limitcard__ic">
-                  <Icon name="pro" size={22} />
-                </div>
-                <div className="limitcard__body">
-                  <div className="limitcard__top">
-                    <b>{t('trips.free_limit_title')}</b>
-                    <span className="limitcard__count num">
-                      {srvActiveCount} / 1
-                    </span>
-                  </div>
-                  <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>
-                </div>
-                <Btn variant="pro" icon="crown" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
               </div>
             )}
           </>

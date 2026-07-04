@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
-import { Btn, Sheet } from '@/design/index';
+import { Badge, Btn, Sheet } from '@/design/index';
 import { LENS_ITEMS, MGMT_ITEMS, isLensVisible, EDIT_ITEM, canEditStructure } from '@/lib/tripMenu';
 import { useUnreadChatCount } from '@/lib/chat';
 
@@ -79,14 +79,12 @@ function SidebarBody({
       {showUpgrade && (
         <div className="app-side__upgrade pro-up" style={{ margin: '10px 6px 0' }}>
           <div className="ph">
-            <div className="pi">
-              <Icon name="crown" size={17} />
-            </div>
-            <div className="pt">{t('trip_menu.free_trip_title')}</div>
+            <Badge variant="pro" icon="pro">PRO</Badge>
           </div>
+          <div className="pt">{t('trip_menu.free_trip_title')}</div>
           <p>{t('trip.pro_locked_lenses')}</p>
           {isOwner ? (
-            <Btn variant="pro" size="sm" block icon="pro" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
+            <Btn variant="primary" size="sm" block iconRight="arrowR" onClick={onUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
           ) : (
             <button className="lockmsg" onClick={onProInfo}>
               <Icon name="lock" size={14} />

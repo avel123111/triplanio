@@ -76,7 +76,7 @@ function FeatureCard({ feat, on, onChange, hasPro, busy }) {
         {feat.locked
           ? <Badge variant="quiet">{t('trip.addon_coming_soon')}</Badge>
           : proLocked
-            ? <Badge variant="pro" icon="pro">Pro</Badge>
+            ? <Badge variant="pro" icon="pro">PRO</Badge>
             : (
               <div className="addon-card__status">
                 {feat.pro && hasPro && <Badge variant="success" icon="check">{t('settings.feat_available')}</Badge>}
@@ -765,13 +765,13 @@ export default function SettingsLens({ tripId, trip, members = [], myRole, isPro
       <Card>
         {proResolved && !hasPro && (
           <div className="pro-up pro-up--inline" style={{ marginBottom: 16 }}>
-            <div className="pi"><Icon name="crown" size={17} /></div>
+            <Badge variant="pro" icon="pro">PRO</Badge>
             <div className="pu-body">
               <div className="pt">{t('trip_menu.free_trip_title')}</div>
               <p style={{ margin: 0 }}>{t('trip.pro_locked_lenses')}</p>
             </div>
             {isOwner ? (
-              <Btn variant="pro" size="sm" icon="pro" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
+              <Btn variant="primary" size="sm" iconRight="arrowR" onClick={openUpgrade}>{t('trip_menu.upgrade_trip')}</Btn>
             ) : (
               <button className="lockmsg" onClick={() => setUpsell({ open: true, mode: 'info', feature: '' })}>
                 <Icon name="lock" size={14} />
