@@ -24,7 +24,7 @@ export function Greeting({ greeting, name, avatarName, photo, sub, eyebrow }) {
       <div className="head__row">
         <Avatar name={avatarName || name || '?'} photo={photo} className="head__av" />
         <div className="grow">
-          {eyebrow && <div className="t-caption" style={{ marginBottom: 6 }}>{eyebrow}</div>}
+          {eyebrow && <div className="t-mono tp-caption" style={{ marginBottom: 6 }}>{eyebrow}</div>}
           <h1>{prefix}{name && <span className="nm">{name}</span>}</h1>
           {sub && <div className="sub">{sub}</div>}
         </div>
@@ -52,21 +52,21 @@ export function StatBar({ items = [], cta = null, className = '' }) {
 // "World explored" ring + bar over the /total (195) denominator.
 // world = { visited, total, pct } from travel-stats.worldExplored().
 export function WorldMini({ world, title, subCaption }) {
-  const R = 40;
+  const R = 45;
   const C = 2 * Math.PI * R;
   const frac = world.total ? Math.min(1, world.visited / world.total) : 0;
   return (
     <div className="wmini">
       <div className="top">
-        <div className="wring" style={{ width: 96, height: 96 }}>
-          <svg viewBox="0 0 96 96" width="96" height="96">
-            <circle className="ring__track" cx="48" cy="48" r={R} strokeWidth="10" />
-            <circle className="ring__fg" cx="48" cy="48" r={R} strokeWidth="10" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }} />
+        <div className="wring" style={{ width: 108, height: 108 }}>
+          <svg viewBox="0 0 108 108" width="108" height="108">
+            <circle className="ring__track" cx="54" cy="54" r={R} strokeWidth="11" />
+            <circle className="ring__fg" cx="54" cy="54" r={R} strokeWidth="11" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }} />
           </svg>
           <div className="ring__c t-title">{world.pct}%</div>
         </div>
         <div>
-          <div className="ttl t-caption">{title}</div>
+          <div className="ttl t-mono tp-caption">{title}</div>
           {/* TRIP-188: «6 / 195» — visited в t-title (ink), /total в t-heading mute */}
           <div className="sub" style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
             <b className="t-title" style={{ color: 'var(--ink)' }}>{world.visited}</b>

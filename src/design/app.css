@@ -888,13 +888,16 @@ h4,
 .tl3-ev--tr .time--tr span,
 .kv .v.mono,
 .confirm__email { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 700; line-height: 1.25;  letter-spacing: 0; }   /* TRIP-183: .t-mono ← meta-md макета (JetBrains 700/11/1.25); был 500/12.5. Прозаичный код/email можно переносить в .t-meta канон-аудитором. */
-/* TRIP-188: caption-пресет («mono caption» аудитора ts.caption) — моно meta-md +
-   КАПС + трекинг капса + синий. ЕДИНЫЙ класс на все caption-эйбрау (реюз): «Маршрут»,
-   «Мир исследован», бренд-эйбрау/«Сводка путешествий»/«мои путешествия» на /trips. */
-.t-caption { font-family: var(--font-mono); font-size: var(--fs-micro); font-weight: 700; line-height: 1.25; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--brand); }
-/* TRIP-175: канон-заплатка .t-nano СХЛОПНУТА (макет её не содержит). .t-caption
-   ВОЗВРАЩЁН в TRIP-188 как caption-пресет аудитора (определение выше) — модификатор
-   ts.caption рендерит моно+синий+КАПС+трекинг, чего голый .t-mono не даёт.
+/* TRIP-188: caption = МОДИФИКАТОР `.tp-caption` поверх канона .t-mono (ровно как
+   пресет `.tp-caption` в canon-inspector: CAPS + letter-spacing .2em + var(--brand)).
+   Применяется как class="t-mono tp-caption" — база из канона, дельта из модификатора,
+   поэтому инспектор детектит «Mono + caption» (зелёный), а не off-canon. Значения
+   1:1 с аудитором (трекинг .2em, НЕ --track-caps .14). Все caption-эйбрау на /trips +
+   «Маршрут»/«Мир исследован». */
+.tp-caption { text-transform: uppercase; letter-spacing: 0.2em; color: var(--brand); }
+/* TRIP-175: канон-заплатки .t-nano/.t-caption СХЛОПНУТЫ. Caption вернулся в TRIP-188
+   не как канон, а как МОДИФИКАТОР .tp-caption поверх .t-mono (определение выше) —
+   1:1 с пресетом аудитора; инспектор детектит его как «Mono + caption».
    Их члены переехали: НЕ-капс подписи booking → .t-meta (Golos 12.5, co-selector
    в правиле t-meta выше), капс-эйбрау (.va-from/.s22-price span/.fork-partner__mid
    span) → .t-micro (mono+track, co-selector выше — капс/трекинг уже в каноне, свой
