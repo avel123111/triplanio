@@ -4569,10 +4569,11 @@ h4,
 .ring__fg { fill: none; stroke: hsl(var(--primary)); stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease-out); }
 .ring__c { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); color: var(--ink); }   /* TRIP-188: инспектор канонов — «%» кольца акцент→основной (оба кольца, унификация) */
 .ring__c .l { color: var(--muted); }
-/* TRIP-188: caption-пресет аудитора («Мир исследован» + «Маршрут») — канон .t-mono
-   (co-selector выше) + синий + капс. Цвет/трансформ = легальные оси поверх канона. */
-.wmini .ttl,
-.ts-routehead__title { color: var(--brand); text-transform: uppercase; }
+/* TRIP-188: caption-пресет аудитора («Мир исследован») — канон .t-mono (co-selector
+   выше) + синий + капс. Цвет/трансформ = легальные оси поверх канона.
+   («Маршрут»/.ts-routehead__title — тот же пресет, но в styled-jsx TripStructureEdit,
+   т.к. его scoped-правило специфичнее app.css.) */
+.wmini .ttl { color: var(--brand); text-transform: uppercase; }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
 
 .nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); padding: 14px; cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }

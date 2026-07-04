@@ -1141,7 +1141,9 @@ export default function TripStructureEdit() {
         /* "Маршрут" panel header (left column) + trip-start control. */
         .ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 4px; }
         .ts-routehead__tt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-        .ts-routehead__title { color: var(--ink); }
+        /* TRIP-188: caption-пресет аудитора — синий + КАПС (моно — из канона .t-mono).
+           Цвет задан здесь (styled-jsx специфичнее app.css, иначе перебивал синий). */
+        .ts-routehead__title { color: var(--brand); text-transform: uppercase; }
         .ts-routehead__sub { color: var(--muted); }
         .ts-routehead__sp { flex: 1; }
         .ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
