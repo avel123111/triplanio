@@ -55,5 +55,7 @@ postgres → отозвали anon+authenticated), `rate_limit_record`/`take_geo
 (проверено) → отзыв у anon/auth его не задевает; REVOKE делать адресно `FROM anon`/
 `authenticated`, НЕ `FROM PUBLIC` (иначе снесёт service_role). Ноль влияния на юзеров
 (легитимные вызовы = authenticated-фронт / service_role-edge / внутренние триггеры).
-Тикет TRIP-115 в Linear = отменённая тестовая задача (ссылка в описании TRIP-54 битая);
-работа сделана в ветке TRIP-54 по просьбе Pavel.
+Настоящий тикет этого слоя = **TRIP-49** («Ограничить EXECUTE для SECURITY DEFINER RPC
+от роли anon», был Todo) — PR #378 его и реализует. Ссылка «TRIP-115» в описании TRIP-54
+битая (TRIP-115 = отменённая тестовая задача). Работа сделана в ветке TRIP-54 по просьбе
+Pavel, вынесена в отдельный PR #378.
