@@ -81,26 +81,29 @@
   --warm-soft-2: rgba(217,102,60,.20);
   --warm-tint: var(--warm-soft-2);
 
-  /* AI */
-  --ai:        #8A6BF0;
-  --ai-2:      #D77BD0;
-  --ai-3:      #5AA0EE;
-  --ai-ink:    #5B3FE0;
-  --ai-soft:   rgba(138,107,240,.11);
-  --ai-soft-2: rgba(138,107,240,.17);
+  /* AI — фиолет→индиго→циан (TRIP-187). База --ai = #7C3AED: маркер, тень и метка-текст. */
+  --ai:        #7C3AED;
+  --ai-2:      #6366F1;
+  --ai-3:      #22D3EE;
+  --ai-ink:    #6D28D9;
+  --ai-soft:   rgba(139,92,246,.14);
+  --ai-soft-2: rgba(139,92,246,.24);
   --ai-soft-12:var(--ai-soft-2);
-  --ai-gradient:      linear-gradient(135deg,#5AA0EE 0%,#8A6BF0 52%,#D77BD0 100%);
-  --ai-gradient-soft: linear-gradient(135deg,rgba(90,160,238,.13),rgba(138,107,240,.13),rgba(215,123,208,.13));
+  --ai-gradient:      linear-gradient(135deg,#A855F7 0%,#6366F1 55%,#22D3EE 100%);
+  --ai-gradient-soft: linear-gradient(135deg,rgba(168,85,247,.13),rgba(99,102,241,.12),rgba(34,211,238,.12));
   --ai-grad:        var(--ai-gradient);
   --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
 
-  /* Pro / premium (Lumo gold) */
-  --pro:       #E6A21E;
-  --pro-soft:  rgba(230,162,30,.13);
-  --pro-soft-2:rgba(230,162,30,.22);
-  --pro-ink:   #936215;
-  --pro-fg:    #4A2D05;
-  --pro-gradient: linear-gradient(135deg,#FBD06A 0%,#EBA02E 55%,#E08A36 100%);
+  /* Pro / premium — оранж→розовый градиент монетизации (TRIP-187) */
+  --pro:       #FF2D78;
+  --pro-soft:  rgba(255,45,120,.12);
+  --pro-soft-2:rgba(255,45,120,.20);
+  --pro-ink:   #E11D6A;
+  --pro-fg:    #fff;
+  --pro-gradient: linear-gradient(135deg,#FF7A59 0%,#FF2D78 100%);
+
+  /* Рейтинг (★ отелей/активностей) — своё золото, отвязано от --pro (TRIP-187) */
+  --rating:    #E6A21E;
 
   /* Overlays / scrims */
   --scrim:            rgba(23,20,40,.45);
@@ -225,24 +228,27 @@
   --warm-soft: rgba(240,147,107,.16);
   --warm-soft-2: rgba(240,147,107,.24);
 
-  /* AI — dark */
-  --ai:        #A98BFF;
-  --ai-2:      #E08FE0;
-  --ai-3:      #6FB0FF;
+  /* AI — dark (фиолет→индиго→циан, TRIP-187) */
+  --ai:        #C084FC;
+  --ai-2:      #818CF8;
+  --ai-3:      #4FE3F0;
   --ai-ink:    #C6B5FF;
-  --ai-soft:   rgba(169,139,255,.16);
-  --ai-soft-2: rgba(169,139,255,.24);
-  --ai-gradient:      linear-gradient(135deg,#6FB0FF 0%,#A98BFF 52%,#E08FE0 100%);
-  --ai-gradient-soft: linear-gradient(135deg,rgba(111,176,255,.18),rgba(169,139,255,.18),rgba(224,143,224,.18));
+  --ai-soft:   rgba(168,85,247,.18);
+  --ai-soft-2: rgba(168,85,247,.26);
+  --ai-gradient:      linear-gradient(135deg,#C084FC 0%,#818CF8 55%,#4FE3F0 100%);
+  --ai-gradient-soft: linear-gradient(135deg,rgba(192,132,252,.18),rgba(129,140,248,.16),rgba(79,227,240,.16));
   --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
 
-  /* Pro — dark */
-  --pro:       #F0B65A;
-  --pro-soft:  rgba(240,182,90,.16);
-  --pro-soft-2:rgba(240,182,90,.26);
-  --pro-ink:   #F6CD84;
-  --pro-fg:    #2A1903;
-  --pro-gradient: linear-gradient(135deg,#FBD478 0%,#F0A93C 55%,#E08A36 100%);
+  /* Pro — dark (оранж→розовый, TRIP-187) */
+  --pro:       #FF6B85;
+  --pro-soft:  rgba(255,107,133,.18);
+  --pro-soft-2:rgba(255,107,133,.28);
+  --pro-ink:   #FF9DB6;
+  --pro-fg:    #fff;
+  --pro-gradient: linear-gradient(135deg,#FF8A6B 0%,#FF4D8A 100%);
+
+  /* Рейтинг — dark золото (TRIP-187) */
+  --rating:    #F0B65A;
 
   /* Overlays / scrims — dark */
   --scrim:            rgba(0,0,0,.62);
