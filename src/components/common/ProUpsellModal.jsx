@@ -49,9 +49,9 @@ export default function ProUpsellModal({
 
             {/* ── Header ── */}
             <div className="dlg__head">
-              {/* Shared gold Pro-tile — same .pi class as the upgrade plates. */}
+              {/* Shared Pro-tile (.pi) — оранж-розовый градиент, звезда-маркер. */}
               <div className="pi">
-                <Icon name="crown" size={17} />
+                <Icon name="pro" size={17} />
               </div>
               <h2>
                 {isInfo
@@ -108,7 +108,7 @@ export default function ProUpsellModal({
               ) : (
                 <>
                   <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
-                  <Btn variant="pro" icon="crown" onClick={() => { close(); onUpgrade?.(); }}>
+                  <Btn variant="pro" icon="pro" onClick={() => { close(); onUpgrade?.(); }}>
                     {t('trips.go_pro')}
                   </Btn>
                 </>

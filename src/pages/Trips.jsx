@@ -207,7 +207,7 @@ const TripCard = ({ trip, onClick }) => {
         {/* top-right badges */}
         <div className="tc__tags">
           {trip.pro && (
-            <Badge variant="pro" icon="pro">Pro</Badge>
+            <Badge variant="pro" icon="pro">PRO</Badge>
           )}
         </div>
 
@@ -288,7 +288,7 @@ const TripRow = ({ trip, onClick }) => {
         )}
         {trip.pro && (
           <span className="tr-hideS">
-            <Badge variant="pro" icon="pro">Pro</Badge>
+            <Badge variant="pro" icon="pro">PRO</Badge>
           </span>
         )}
         <span className="tr__chev"><Icon name="chev" /></span>
@@ -729,13 +729,12 @@ export default function Trips() {
               </div>
             )}
 
-            {/* Free-limit banner — Pro style, not AI style.
+            {/* Free-limit banner — дизайн-система TRIP-187: спокойный бренд-акцент,
+                PRO-пилюля (звезда) даёт акцент, CTA — бренд-кнопка.
                 Shown only when owned active trips reach/exceed the free cap (1). */}
             {filterMode === 'active' && limitReached && (
               <div className="limitcard">
-                <div className="limitcard__ic">
-                  <Icon name="pro" size={22} />
-                </div>
+                <Badge variant="pro" icon="pro">PRO</Badge>
                 <div className="limitcard__body">
                   <div className="limitcard__top">
                     <b>{t('trips.free_limit_title')}</b>
@@ -745,7 +744,7 @@ export default function Trips() {
                   </div>
                   <div className="limitcard__sub">{t('trips.free_limit_desc')}</div>
                 </div>
-                <Btn variant="pro" icon="crown" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
+                <Btn variant="primary" iconRight="arrowR" onClick={openUpgrade}>{t('trips.go_pro')}</Btn>
               </div>
             )}
           </>

@@ -170,7 +170,7 @@ export default function EventAiBlock({
   // Canonical AI pattern — design-system A4. Pro badge = the shared design-system
   // <Badge variant="pro" icon="pro"> (identical to Trip Settings / Trips list).
   // flexShrink:0 so the crown+text stay on one line in the tight header.
-  const ProBadge = () => <Badge variant="pro" icon="pro" style={{ flexShrink: 0 }}>Pro</Badge>;
+  const ProBadge = () => <Badge variant="pro" icon="pro" style={{ flexShrink: 0 }}>PRO</Badge>;
   const isImage = (name) => /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
 
   // checking — Pro/entitlement status not yet resolved. Render a non-interactive
@@ -197,10 +197,10 @@ export default function EventAiBlock({
         <div className="ai-blk-hd">
           <div className="ai-blk-ic">
             <Sparkles size={15} />
-            <span className="ai-blk-lock"><Lock size={9} /></span>
           </div>
           <div className="ai-blk-ti">
-            <b>{t('event.ai_fill_title')}<ProBadge /></b>
+            {/* Заблокировано (Free): замок вместо PRO-бейджа (дизайн-система TRIP-187) */}
+            <b>{t('event.ai_fill_title')}<Lock size={12} style={{ color: 'var(--muted)' }} /></b>
             <span>{t('event.ai_locked_hint')}</span>
           </div>
           <button type="button" className="btn btn--pro btn--sm" onClick={onUpgrade}>
