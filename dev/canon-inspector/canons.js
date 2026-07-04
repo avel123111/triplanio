@@ -103,8 +103,14 @@ export const CANON_MODS = {
 // TRIP-183: strong/flush больше НЕ показываются в UI (их заменили поканонные
 // CANON_MODS из файла) — остаются только для ДЕТЕКЦИИ уже-применённых стилей.
 export const MODIFIERS = [
-  { key: 'strong', cls: 't-strong', label: 'strong' },
-  { key: 'flush',  cls: 't-flush',  label: 'flush'  },
+  { key: 'strong',  cls: 't-strong',   label: 'strong'  },
+  { key: 'flush',   cls: 't-flush',    label: 'flush'   },
+  // TRIP-188: caption-пресет `.tp-caption` (канон 10 t-mono + CAPS + track .2em +
+  // var(--brand)) теперь ПОСТОЯННЫЙ класс в коде (эйбрау /trips, «Маршрут»,
+  // «Мир исследован»), а не только эфемерное превью. Добавлен сюда, чтобы детекция
+  // probe(canon × modifiers) распознавала t-mono+tp-caption как «Mono + caption»
+  // (зелёный), а не помечала off-canon (красный). Цвет — отдельная ось (COLORS).
+  { key: 'caption', cls: 'tp-caption', label: 'caption' },
 ];
 
 // TRIP-183: старый генерик-набор состояний (strong/caps/track/mono/flush/mute)

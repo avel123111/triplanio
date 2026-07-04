@@ -8,6 +8,7 @@ import { isProActive } from '@/lib/subscription';
 import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { pluralize } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
@@ -114,7 +115,7 @@ function NextTripCard({ trip, onClick, t }) {
         {trip.cover_image_url && <img src={trip.cover_image_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
       </span>
       <span className="nextcard__tx">
-        <span className="t-micro" style={{ color: 'var(--muted-2)' }}>{t('stats.next_trip_title')}</span>
+        <span className="t-mono" style={{ color: 'var(--muted-2)' }}>{t('stats.next_trip_title')}</span>
         <b>{trip.title}</b>
         <span className="rt">{trip.scope}</span>
         <span className="nextcard__tag"><Icon name="calendar" />{t('stats.next_start_in')}</span>
@@ -155,6 +156,7 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
   ];
   return (
     <>
+      <div className="t-mono tp-caption" style={{ margin: '36px 0 12px' }}>{t('stats.trips_summary')}</div>
       <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} className={ghost ? 'is-ghost' : ''} />
       <div className={`dash-hero${ghost ? ' is-ghost' : ''}`}>
         <div className="mapwrap">
@@ -166,7 +168,7 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
           <WorldMini
             world={world}
             title={t('stats.world_explored')}
-            caption={t('stats.world_of', { visited: world.visited, total: world.total })}
+            subCaption={t('stats.world_countries_visited')}
           />
           {nextTrip
             ? <NextTripCard trip={nextTrip} onClick={onOpenNext} t={t} />
@@ -592,8 +594,14 @@ export default function Trips() {
 
   // Visits come from the RPC (ready once stats load) or the fallback query.
   const isLoadingData = isLoading || (hasTrips && !rpcTripVisits && (!statsLoaded || loadingVisits));
+  // TRIP-188: склоняем каждое существительное отдельно (Intl.PluralRules) — «1 путешествие»,
+  // «2 страны», «5 городов» вместо застывшего множественного числа.
   const subText = hasTrips
-    ? t('stats.home_sub', { trips: home.trips, countries: home.countries, cities: home.cities })
+    ? [
+        pluralize(t, home.trips,     'stats.sum_trips',     lang, { count: home.trips }),
+        pluralize(t, home.countries, 'stats.sum_countries', lang, { count: home.countries }),
+        pluralize(t, home.cities,    'stats.sum_cities',    lang, { count: home.cities }),
+      ].join(' · ')
     : t('stats.home_sub_empty');
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -615,7 +623,7 @@ export default function Trips() {
             first-load skeleton is up). */}
         {!(isLoadingData && allTrips.length === 0) && (
           <>
-            <Greeting greeting={t('stats.greeting', { name: greetName })} name={greetName} avatarName={greetName} photo={user?.avatar_url} sub={subText} />
+            <Greeting greeting={t('stats.greeting', { name: greetName })} name={greetName} avatarName={greetName} photo={user?.avatar_url} sub={subText} eyebrow={t('trips.brand_eyebrow')} />
             <StatHero
               points={statsPoints}
               home={home}
@@ -643,10 +651,8 @@ export default function Trips() {
             {/* Section header row */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <h2 className="t-title">{t('trips.page_title')}</h2>
-                <div className="muted t-ui">
-                  {t('trips.count_summary', { active: activeTrips.length, past: pastTrips.length })}
-                </div>
+                <div className="t-mono tp-caption" style={{ marginBottom: 6 }}>{t('trips.my_trips_eyebrow')}</div>
+                <h2 className="t-title">{pluralize(t, allTrips.length, 'stats.sum_trips', lang, { count: allTrips.length })}</h2>
               </div>
             </div>
 
