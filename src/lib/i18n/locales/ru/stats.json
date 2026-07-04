@@ -82,6 +82,7 @@
   "type_trip": "С поездкой",
   "visits_count": "Посещений",
   "world_cap": "из {total} стран мира",
+  "world_countries_visited": "стран мира посещено",
   "world_explored": "Мир исследован",
   "world_label": "мира",
   "world_of": "{visited} из {total} стран",
