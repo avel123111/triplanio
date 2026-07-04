@@ -8,6 +8,7 @@ import { isProActive } from '@/lib/subscription';
 import { displayName } from '@/lib/displayName';
 import { useTheme } from '@/lib/ThemeContext';
 import { useI18n } from '@/lib/i18n/I18nContext';
+import { pluralize } from '@/lib/i18n/format';
 import { Icon } from '../design/icons';
 import { Avatar, Badge, Btn, EmptyState, Skeleton } from '../design/index';
 import { coverGradientCss } from '@/lib/trip-gradients';
@@ -155,7 +156,7 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
   ];
   return (
     <>
-      <div className="t-caption" style={{ margin: '4px 0 10px' }}>{t('stats.trips_summary')}</div>
+      <div className="t-caption" style={{ margin: '26px 0 12px' }}>{t('stats.trips_summary')}</div>
       <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} className={ghost ? 'is-ghost' : ''} />
       <div className={`dash-hero${ghost ? ' is-ghost' : ''}`}>
         <div className="mapwrap">
@@ -593,8 +594,14 @@ export default function Trips() {
 
   // Visits come from the RPC (ready once stats load) or the fallback query.
   const isLoadingData = isLoading || (hasTrips && !rpcTripVisits && (!statsLoaded || loadingVisits));
+  // TRIP-188: склоняем каждое существительное отдельно (Intl.PluralRules) — «1 путешествие»,
+  // «2 страны», «5 городов» вместо застывшего множественного числа.
   const subText = hasTrips
-    ? t('stats.home_sub', { trips: home.trips, countries: home.countries, cities: home.cities })
+    ? [
+        pluralize(t, home.trips,     'stats.sum_trips',     lang, { count: home.trips }),
+        pluralize(t, home.countries, 'stats.sum_countries', lang, { count: home.countries }),
+        pluralize(t, home.cities,    'stats.sum_cities',    lang, { count: home.cities }),
+      ].join(' · ')
     : t('stats.home_sub_empty');
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -645,7 +652,7 @@ export default function Trips() {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div className="t-caption" style={{ marginBottom: 6 }}>{t('trips.my_trips_eyebrow')}</div>
-                <h2 className="t-title">{t('trips.total_count', { count: allTrips.length })}</h2>
+                <h2 className="t-title">{pluralize(t, allTrips.length, 'stats.sum_trips', lang, { count: allTrips.length })}</h2>
               </div>
             </div>
 
