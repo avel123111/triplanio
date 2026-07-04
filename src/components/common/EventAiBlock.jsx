@@ -14,7 +14,6 @@ import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { TRIP_BUCKET, SIGNED_URL_TTL, tripStoragePath } from '@/lib/storage';
 import { removeTripFiles } from '@/lib/storageCleanup';
-import { Badge } from '@/design/index';
 import {
   Sparkles, Lock, Upload, X, FileText, Image as ImageIcon,
   RefreshCw, ChevronUp, Check,
@@ -167,10 +166,8 @@ export default function EventAiBlock({
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  // Canonical AI pattern — design-system A4. Pro badge = the shared design-system
-  // <Badge variant="pro" icon="pro"> (identical to Trip Settings / Trips list).
-  // flexShrink:0 so the crown+text stay on one line in the tight header.
-  const ProBadge = () => <Badge variant="pro" icon="pro" style={{ flexShrink: 0 }}>PRO</Badge>;
+  // Canonical AI pattern — design-system A4. Парсер НЕ несёт Pro-бейджа ни в одном
+  // состоянии: locked → иконка замка; остальные → без бейджа (TRIP-187).
   const isImage = (name) => /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
 
   // checking — Pro/entitlement status not yet resolved. Render a non-interactive
@@ -182,7 +179,7 @@ export default function EventAiBlock({
         <div className="ai-blk-hd">
           <div className="ai-blk-ic"><Sparkles size={15} /></div>
           <div className="ai-blk-ti">
-            <b>{t('event.ai_fill_title')}<ProBadge /></b>
+            <b>{t('event.ai_fill_title')}</b>
             <span>{t('event.ai_available_hint')}</span>
           </div>
           <span className="ai-spin" />
@@ -217,7 +214,7 @@ export default function EventAiBlock({
         <div className="ai-blk-hd">
           <div className="ai-blk-ic"><Sparkles size={15} /></div>
           <div className="ai-blk-ti">
-            <b>{t('event.ai_fill_title')}<ProBadge /></b>
+            <b>{t('event.ai_fill_title')}</b>
             <span>{t('event.ai_available_hint')}</span>
           </div>
         </div>
