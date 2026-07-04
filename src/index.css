@@ -175,7 +175,7 @@ img, video {
    =================================================================== */
 :root {
   /* Triplanio — Lumo (light) — values generated from Lumo hex */
-  --background: 0 0% 99%;                /* bg #fcfcfc — unified with app.css --bg */
+  --background: 220 60% 99%;             /* bg #fbfcfe — unified with app.css --bg */
   --foreground: 252 17% 17%;             /* ink #272433 */
   --card: 0 0% 100%;                     /* surface #FFFFFF */
   --card-foreground: 252 17% 17%;
@@ -214,9 +214,9 @@ img, video {
 
 .dark {
   /* Triplanio — Lumo (dark) — values generated from Lumo hex */
-  --background: 245 21% 10%;             /* bg #161520 */
+  --background: 233 40% 8%;              /* bg #0c0e1c */
   --foreground: 248 27% 94%;            /* ink #EDECF4 */
-  --card: 245 17% 15%;                  /* surface #201F2C */
+  --card: 233 21% 15%;                  /* surface #1f212f */
   --card-foreground: 248 27% 94%;
   --popover-hsl: 245 17% 15%;
   --popover-foreground: 248 27% 94%;

@@ -1099,7 +1099,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
   // safe by construction.
   if (!isPro && checkingLimit && !savedOk) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 32, height: 32, border: '3px solid var(--brand)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
       </div>
     );
@@ -1107,7 +1107,7 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
 
   if (isOverLimit && !savedOk) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg, var(--wash))' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <AppHeader
           user={user}
           isPro={isPro}

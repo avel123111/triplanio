@@ -16,9 +16,9 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, Toggle, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, Toggle, Btn, useToast } from '@/design/index';
 import {
-  Loader2, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft, X,
+  Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
   BedDouble, Ticket, Clock,
 } from 'lucide-react';
@@ -1099,15 +1099,18 @@ export default function EventEditDialog({
     <>
           {/* Header — hidden when embedded (AddBookingPanel owns the shared header). */}
           {embedded ? null : isPanel ? (
+            // TRIP-186: шапка edit унифицирована с остальными состояниями (канон
+            // PanelShell / view): eyebrow сверху, .t-title, крестик справа — без
+            // левой стрелки-назад.
             <div className="lp-h lp-h--ev">
-              <button className="lp-back" onClick={() => onOpenChange?.(false)} title={t('common.back')}>
-                <ArrowLeft style={{ width: 14, height: 14 }} />
-              </button>
               <span className="lp-ic" style={{ background: meta.color, color: '#fff' }}><meta.Icon /></span>
               <div className="lp-ti">
-                <b>{title}</b>
-                <span>{t(meta.labelKey)}</span>
+                <div className="eyebrow" style={{ color: meta.color }}>{t(meta.labelKey)}</div>
+                <div className="lp-tirow"><b className="t-title">{title}</b></div>
               </div>
+              <button className="ev-dlg-close" onClick={() => onOpenChange?.(false)} title={t('common.back')} aria-label={t('common.back')}>
+                <X style={{ width: 15, height: 15 }} />
+              </button>
             </div>
           ) : (
             <div className="ev-dlg-hd">
@@ -1225,50 +1228,35 @@ export default function EventEditDialog({
           </div>
           )}
 
-          {/* Footer — pinned to the bottom of the column in panel mode */}
+          {/* Footer — TRIP-186: единый канон с event view / city view (lp-f--ratio
+              + <Btn>): удалить (danger, схлоп на мобиле) + primary. Pinned снизу
+              в панельном режиме. */}
           <div
-            className={(isPanel ? 'lp-f' : 'ev-dlg-ft') + ' lp-f--edit'}
+            className={(isPanel ? 'lp-f' : 'ev-dlg-ft') + (confirmDel ? '' : ' lp-f--ratio')}
             style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
             {confirmDel ? (
               <>
-                <div style={{ flex: 1 }} />
-                <button className="btn btn--secondary" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>
-                  {t('common.cancel')}
-                </button>
-                <button
-                  className="btn btn--danger-solid"
-                  onClick={() => deleteMut.mutate()}
-                  disabled={deleteMut.isPending}
-                >
-                  {deleteMut.isPending && <Loader2 className="spin" size={12} style={{ marginRight: 6 }} />}
-                  <Trash2 size={14} style={{ marginRight: 6 }} />{t('common.delete')}
-                </button>
+                <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>{t('common.cancel')}</Btn>
+                <Btn variant="danger-solid" icon="trash" loading={deleteMut.isPending} disabled={deleteMut.isPending} onClick={() => deleteMut.mutate()}>{t('common.delete')}</Btn>
               </>
             ) : (
               <>
                 {isEdit && (
-                  <button
-                    className="btn btn--danger-ghost ev-del"
-                    onClick={() => setConfirmDel(true)}
-                    disabled={deleteMut.isPending}
-                    aria-label={t('common.delete')}
-                    title={t('common.delete')}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} disabled={deleteMut.isPending} ariaLabel={t('common.delete')}>
+                    <span className="btn-label-collapse">{t('common.delete')}</span>
+                  </Btn>
                 )}
-                <button className="btn btn--secondary" onClick={() => onOpenChange(false)}>{t('common.cancel')}</button>
-                <button
-                  className="btn btn--primary ev-save"
+                <Btn
+                  variant="primary"
+                  icon={isEdit ? 'check' : 'plus'}
                   onClick={handleSaveClick}
+                  loading={saveMut.isPending}
                   disabled={uploading || saveMut.isPending}
-                  aria-disabled={!canSave}
                   style={{ '--bg': meta.color, opacity: canSave ? 1 : 0.6 }}
                 >
-                  {saveMut.isPending && <Loader2 className="spin" size={12} style={{ marginRight: 6 }} />}
                   {isEdit ? t('common.save') : t('event.create')}
-                </button>
+                </Btn>
               </>
             )}
           </div>
@@ -1773,8 +1761,10 @@ function TransferLegCard({
   const durMin = layoverMins(leg.startLocal, leg.endLocal);
   const isOpen = collapsible ? open : true;
   return (
-    <div style={{ border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--wash-2)', overflow: 'hidden' }}>
-      {/* Card header — icon, route, collapse chevron (multi only), remove (multi>2) */}
+    // TRIP-186: одиночный (direct) трансфер оголён — без карточки/шапки; карточка
+    // и шапка (icon/route/collapse) только у сегментов «с пересадками» (isMulti).
+    <div style={isMulti ? { border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--wash-2)', overflow: 'hidden' } : undefined}>
+      {isMulti && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
         <button type="button" onClick={collapsible ? onToggleOpen : undefined}
           style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: collapsible ? 'pointer' : 'default', textAlign: 'left', padding: 0, minWidth: 0 }}>
@@ -1782,7 +1772,7 @@ function TransferLegCard({
             <TIcon size={16} />
           </span>
           <span style={{ minWidth: 0, flex: 1 }}>
-            <span className="eyebrow" style={{ color, display: 'block' }}>{isMulti ? `${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}` : t(tk.labelKey)}</span>
+            <span className="eyebrow" style={{ color, display: 'block' }}>{`${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}`}</span>
             <span className="t-ui" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink)', marginTop: 2 }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fromName}</span>
               <ArrowRight size={12} style={{ color: 'var(--muted)', flexShrink: 0 }} />
@@ -1798,9 +1788,10 @@ function TransferLegCard({
           </button>
         )}
       </div>
+      )}
 
-      <div style={{ display: isOpen ? 'block' : 'none', padding: '4px 14px 14px', borderTop: '1px solid var(--line-2)' }}>
-        <div style={{ height: 10 }} />
+      <div style={{ display: isOpen ? 'block' : 'none', padding: isMulti ? '4px 14px 14px' : 0, borderTop: isMulti ? '1px solid var(--line-2)' : 'none' }}>
+        {isMulti && <div style={{ height: 10 }} />}
         <div className="eyebrow" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
         <SegTransportGrid value={leg.transport_type} onChange={(k) => patch({ transport_type: k })} color={color} />
 
@@ -1861,13 +1852,14 @@ function TransferLegCard({
           endLabel={t('event.arrival_req')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz}
           midText={durMin != null ? fmtDur(durMin, t) : null}
         />
-        {/* Overnight — separate card (design) */}
+        {/* Overnight — separate card (design). TRIP-186: порядок свитч · иконка ·
+            текст, всё прижато влево. */}
         <div className="eed-nightrow">
+          <Toggle on={!!leg.day_change} onChange={(v) => patch({ day_change: !!v })} label={t('event.overnight_label')} />
           <span className="eed-nightrow__l">
             <Moon size={16} />
             <span className="t-ui">{t('event.overnight_label')}</span>
           </span>
-          <Toggle on={!!leg.day_change} onChange={(v) => patch({ day_change: !!v })} label={t('event.overnight_label')} />
         </div>
 
         {/* Carrier / flight no. */}

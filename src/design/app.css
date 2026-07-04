@@ -51,7 +51,7 @@
   --line-2: #F1F0F8;
   --line-strong: #DBD9E7;
   --line-hover: #D2D0E0;
-  --bg:      #fcfcfc;
+  --bg:      #fbfcfe;
   --surface: #FFFFFF;
   --surface-2: #EEEEF7;
   --surface-3: #FAFAFE;
@@ -203,8 +203,8 @@
   --line-2: #262533;
   --line-strong: #403E4F;
   --line-hover: #3E3C4D;
-  --bg:      #161520;
-  --surface: #201F2C;
+  --bg:      #0c0e1c;
+  --surface: #1f212f;
   --surface-2: #2A2937;
   --surface-3: #1B1A26;
   --surface-elev: #272636;
@@ -278,6 +278,28 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;   /* TRIP-165 — цифры выровнены во всём приложении */
+}
+/* TRIP-186 — мягкий фоновый градиент «Тишина» по центру-сверху канваса (обе
+   темы). body::before покрывает экраны БЕЗ непрозрачной оболочки (логин, вью). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(90% 60% at 50% 16%, rgba(146,164,232,.35), transparent 60%);
+}
+:root[data-theme="dark"] body::before {
+  background: radial-gradient(90% 60% at 50% 16%, rgba(124,138,205,.30), transparent 60%);
+}
+/* ЕДИНЫЙ фон на всё приложение. Градиент — на ОДНОМ фикс-слое body::before выше.
+   Проблема была в том, что каждый полноэкранный шелл красил свой непрозрачный
+   --bg/--surface и перекрывал этот слой (у списков .app-shell, у редактора
+   .ts-screen + его колонки, у трип-экранов .trip-shell — свой фон). Делаем их
+   ПРОЗРАЧНЫМИ (!important перебивает и инлайн, и CSS) — сквозь них виден один и
+   тот же канвас с градиентом. Карточки/панели поверх остаются непрозрачными. */
+.app-shell, .ts-screen, .ts-col-left, .ts-col-right, .trip-shell, .flow-page {
+  background: transparent !important;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -4143,7 +4165,8 @@ h4,
 .kv .v{ color:var(--ink); }
 /* route block (transfer view) */
 /* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
-.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);overflow:hidden;}
+/* TRIP-186: плашка дат того же цвета, что инпуты (--surface-3, как база .input). */
+.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface-3);overflow:hidden;}
 .stay-dates__cell{padding:11px 14px;min-width:0;}
 .stay-dates__lbl{color:var(--muted);}
 .stay-dates__v{ color:var(--ink);margin-top:5px;}
@@ -4291,6 +4314,15 @@ h4,
    the event-edit panel carries fields — city/event/fork panels have none). */
 .ev-dlg .field__label,
 .lp .field__label { color: var(--ink); }   /* TRIP-183: лейблы форм в панелях события/броней → основной цвет (канон-инспектор) */
+/* TRIP-186: инпуты в диалогах события/броней — «аккуратный» вид дизайн-системы
+   (тоньше рамка, крупнее радиус). Цвет рамки НЕ трогаем, чтобы не перебить
+   состояния той же специфичности (.field--ai / .field--error / .field--warning)
+   и hover/focus. */
+.ev-dlg .input, .ev-dlg .select, .ev-dlg .textarea,
+.lp .input, .lp .select, .lp .textarea {
+  border-width: 1px;
+  border-radius: var(--r-md);
+}
 
 /* iOS Safari auto-zooms the viewport when a focused field has font-size < 16px.
    Canonical anti-zoom guard (TRIP-92): one element-level rule forces 16px on

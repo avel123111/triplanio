@@ -941,11 +941,24 @@ export default function TripStructureEdit() {
               replaces the column. ≤640: the column keeps the cities list and the
               panel opens as a Radix bottom-sheet (rendered below). */}
           {(!isSheet && !useDrawer && leftPanelEl) || (<>
-          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'var(--surface)' }}>
+          <div className="scrollbar-thin ts-leftscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px 18px', background: 'transparent' }}>
           {/* "Маршрут" container header — scrolls WITH the list (not sticky), the
               same as on mobile. A left panel replaces this whole column. */}
           <div className="ts-routehead">
-            <span className="ts-routehead__title">{t('planner.step_cities')}</span>
+            <span className="ts-routehead__tt">
+              <span className="ts-routehead__title">{t('planner.step_cities')}</span>
+              {/* TRIP-186: сводка маршрута под заголовком — реюз уже посчитанных
+                  totalNights / cityCount / dateRange (никакой новой логики). */}
+              {(totalNights != null || cityCount > 0 || (dateRange && dateRange !== '-')) && (
+                <span className="ts-routehead__sub t-meta">
+                  {[
+                    totalNights != null ? `${totalNights} ${dayWord(totalNights, t)}` : null,
+                    cityCount > 0 ? `${cityCount} ${cityCount === 1 ? t('trip.cities_count_one') : t('trip.cities_count_many')}` : null,
+                    dateRange && dateRange !== '-' ? dateRange : null,
+                  ].filter(Boolean).join(' · ')}
+                </span>
+              )}
+            </span>
             <span className="ts-routehead__sp" />
             {startDateControl}
           </div>
@@ -1116,17 +1129,20 @@ export default function TripStructureEdit() {
         .ts-step:active:not(:disabled) { transform: scale(0.9); }
         .ts-step:disabled { opacity: .3; cursor: default; }
         .ts-in { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); }
-        /* Left container — same 14px inset + border + radius as the map box, so
-           the editor (or an open side panel) and the map read as two equal cards. */
-        .ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 14px 7px 14px 14px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface); }
-        /* An open side panel fills the box; drop its own border/radius/shadow so the
-           container is the single frame and the rounding matches exactly. */
-        .ts-leftbox .lp { border: none; border-radius: 16px; box-shadow: none; }
-        /* Route header bleeds to the container edges and scrolls with the list. */
-        .ts-leftscroll > .ts-routehead { margin: -12px -12px 12px; }
+        /* TRIP-186: левая колонка «оголена» — контейнерная рамка/радиус/фон и
+           маржины убраны, рейл и заголовок «Маршрут» лежат прямо на канвасе, а
+           список растягивается. Карта справа рамку сохраняет. */
+        .ts-leftbox { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 0; overflow: hidden; background: transparent; }
+        /* Открытая боковая панель теперь сама себе рамка (карточка на канвасе),
+           с тем же инсетом, что и карта. */
+        .ts-leftbox .lp { margin: 14px 7px 14px 14px; }
+        /* Заголовок «Маршрут» скроллится со списком, выровнен с колонками. */
+        .ts-leftscroll > .ts-routehead { margin: 0 0 8px; }
         /* "Маршрут" panel header (left column) + trip-start control. */
-        .ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
+        .ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 4px; }
+        .ts-routehead__tt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         .ts-routehead__title { color: var(--ink); }
+        .ts-routehead__sub { color: var(--muted); }
         .ts-routehead__sp { flex: 1; }
         .ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
         .ts-startctl__lbl { color: var(--muted); padding: 0 4px 0 6px; }
@@ -1172,7 +1188,7 @@ export default function TripStructureEdit() {
           .ts-screen { height: auto !important; min-height: 100vh; overflow: visible !important; }
           .ts-grid { grid-template-columns: 1fr !important; overflow: visible !important; }
           .ts-leftscroll { overflow: visible !important; }
-          .ts-leftbox { margin: 14px !important; }
+          .ts-leftbox { margin: 0 !important; }
           .ts-map { flex: 0 0 340px !important; left: 14px !important; }
           .ts-warn { flex: 0 0 auto !important; min-height: 300px; }
         }
