@@ -51,16 +51,16 @@ export function StatBar({ items = [], cta = null, className = '' }) {
 // "World explored" ring + bar over the /total (195) denominator.
 // world = { visited, total, pct } from travel-stats.worldExplored().
 export function WorldMini({ world, title, subCaption }) {
-  const R = 30;
+  const R = 35;
   const C = 2 * Math.PI * R;
   const frac = world.total ? Math.min(1, world.visited / world.total) : 0;
   return (
     <div className="wmini">
       <div className="top">
-        <div className="wring" style={{ width: 72, height: 72 }}>
-          <svg viewBox="0 0 72 72" width="72" height="72">
-            <circle className="ring__track" cx="36" cy="36" r={R} strokeWidth="9" />
-            <circle className="ring__fg" cx="36" cy="36" r={R} strokeWidth="9" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }} />
+        <div className="wring" style={{ width: 84, height: 84 }}>
+          <svg viewBox="0 0 84 84" width="84" height="84">
+            <circle className="ring__track" cx="42" cy="42" r={R} strokeWidth="9" />
+            <circle className="ring__fg" cx="42" cy="42" r={R} strokeWidth="9" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }} />
           </svg>
           <div className="ring__c t-title">{world.pct}%</div>
         </div>
@@ -74,7 +74,6 @@ export function WorldMini({ world, title, subCaption }) {
           <div className="t-meta muted" style={{ marginTop: 2 }}>{subCaption}</div>
         </div>
       </div>
-      <div className="bar"><i style={{ width: `${frac * 100}%` }} /></div>
     </div>
   );
 }

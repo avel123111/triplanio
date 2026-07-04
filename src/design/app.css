@@ -568,6 +568,8 @@ h4,
 .fork-manual__tx b,
 .cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
 .t-meta,
+.wmini .ttl,           /* TRIP-188: «Мир исследован» Label→caption (мета-ярус, куда схлопнут .t-caption в TRIP-175) */
+.ts-routehead__title,  /* TRIP-188: «Маршрут» в планировщике Label→caption (мета-ярус) */
 .field__hint,
 .proto__nav-sub,
 .proto__nav-item-num,
@@ -880,8 +882,6 @@ h4,
 .va-from, .s22-price span, .fork-partner__mid span,
 .ncal-legend-lbl { font-family: var(--font-mono);    font-size: var(--fs-nano);   font-weight: 600; line-height: 1.25;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-183: .t-micro ← label макета (JetBrains 600/9.5/caps/--track-caps .14); был 700/11 */
 .t-mono,
-.wmini .ttl,           /* TRIP-188: инспектор канонов — «Мир исследован» Label→Mono */
-.ts-routehead__title,  /* TRIP-188: инспектор канонов — «Маршрут» в планировщике Label→Mono */
 .cm-code,
 .te-dts,
 .bt span,
@@ -4571,8 +4571,6 @@ h4,
 .ring__c .l { color: var(--muted); }
 .wmini .ttl { color: var(--ink); }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
-.wmini .bar { height: 8px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; margin-top: 14px; position: relative; z-index: 1; }
-.wmini .bar i { display: block; height: 100%; width: 0; border-radius: var(--r-pill); background: var(--brand-grad); transition: width 1s var(--ease-out); }
 
 .nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); padding: 14px; cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
 @media (hover: hover) { .nextcard:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
