@@ -366,6 +366,7 @@ h1,
 .auth__h1,
 .budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: var(--fd-w); line-height: 1.14;  letter-spacing: var(--track-h); }   /* TRIP-183: .t-title ← h1 макета (Exo --fd-w/26/1.14/--track-h) */
 .t-heading,
+.pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
 h2,
 .eroute h3,
 .flow-lp-b h1,
@@ -388,6 +389,7 @@ h2,
 .ncal-year-lbl { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: var(--fd-w); line-height: 1.2; letter-spacing: var(--track-h); }   /* TRIP-183: .t-heading ← h2 макета (Exo --fd-w/16.5/1.2/--track-h; вес 700→--fd-w) */
 .t-subheading,
 .te-cityname,   /* TRIP-175: решение инспектора канонов — названия городов планировщика → t-subheading */
+.limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-subheading (h3 макета) */
 h3,
 .app-header__brand-name,
 .app-header__trip-title,
@@ -450,6 +452,7 @@ h4,
 .cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
+.limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
 .proto__nav-item,
 .app-header .app-header__avatar,
 .avatar--lg,
@@ -484,7 +487,6 @@ h4,
 .app-header__act,
 .app-side__item,
 .input, .select, .textarea,
-.pro-up .pt,
 .tweaks__title,
 .addsheet__tx b,
 .eroute p,
@@ -527,7 +529,6 @@ h4,
 .tc-add b,
 .tr__title,
 .tr--add b,
-.limitcard__top b,
 .plan-feature,
 .plan-select-btn,
 .ai-blk-ti b,
@@ -680,8 +681,6 @@ h4,
 .tr__sub,
 .tr__date,
 .tr--add small,
-.limitcard__count,
-.limitcard__sub,
 .pro-hero-eyebrow,
 .pro-hero__note,
 .plan-save-tag,
@@ -3706,7 +3705,7 @@ h4,
    контейнер на бренд-акценте (спокойный), акцент даёт PRO-пилюля (звезда,
    оранж-розовый градиент), CTA — бренд-кнопка. НЕ на Pro-градиенте. */
 .limitcard {
-  margin-top: 34px;
+  margin: 0 0 20px;
   display: flex; align-items: center; gap: 16px;
   padding: 16px 20px;
   background: var(--brand-soft-12); border: 1px solid var(--brand);
@@ -3717,10 +3716,6 @@ h4,
 .limitcard__top { display: flex; align-items: center; gap: 9px; margin-bottom: 3px; flex-wrap: wrap; }
 .limitcard__top b {
  color: var(--ink);
-}
-.limitcard__count {
- color: var(--brand);
- background: var(--brand-soft-12); padding: 3px 9px; border-radius: var(--r-pill);
 }
 .limitcard__sub { color: var(--muted); }
 
