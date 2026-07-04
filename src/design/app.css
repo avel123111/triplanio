@@ -880,8 +880,6 @@ h4,
 .va-from, .s22-price span, .fork-partner__mid span,
 .ncal-legend-lbl { font-family: var(--font-mono);    font-size: var(--fs-nano);   font-weight: 600; line-height: 1.25;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-183: .t-micro ← label макета (JetBrains 600/9.5/caps/--track-caps .14); был 700/11 */
 .t-mono,
-.wmini .ttl,           /* TRIP-188: «Мир исследован» → caption-пресет аудитора (.t-mono + синий + капс, ниже) */
-.ts-routehead__title,  /* TRIP-188: «Маршрут» → caption-пресет аудитора (.t-mono + синий + капс, ниже) */
 .cm-code,
 .te-dts,
 .bt span,
@@ -890,6 +888,10 @@ h4,
 .tl3-ev--tr .time--tr span,
 .kv .v.mono,
 .confirm__email { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 700; line-height: 1.25;  letter-spacing: 0; }   /* TRIP-183: .t-mono ← meta-md макета (JetBrains 700/11/1.25); был 500/12.5. Прозаичный код/email можно переносить в .t-meta канон-аудитором. */
+/* TRIP-188: caption-пресет («mono caption» аудитора ts.caption) — моно meta-md +
+   КАПС + трекинг капса + синий. ЕДИНЫЙ класс на все caption-эйбрау (реюз): «Маршрут»,
+   «Мир исследован», бренд-эйбрау/«Сводка путешествий»/«мои путешествия» на /trips. */
+.t-caption { font-family: var(--font-mono); font-size: var(--fs-micro); font-weight: 700; line-height: 1.25; letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--brand); }
 /* TRIP-175: каноны-заплатки .t-nano/.t-caption СХЛОПНУТЫ (макет их не содержит).
    Их члены переехали: НЕ-капс подписи booking → .t-meta (Golos 12.5, co-selector
    в правиле t-meta выше), капс-эйбрау (.va-from/.s22-price span/.fork-partner__mid
@@ -4569,11 +4571,6 @@ h4,
 .ring__fg { fill: none; stroke: hsl(var(--primary)); stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease-out); }
 .ring__c { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); color: var(--ink); }   /* TRIP-188: инспектор канонов — «%» кольца акцент→основной (оба кольца, унификация) */
 .ring__c .l { color: var(--muted); }
-/* TRIP-188: caption-пресет аудитора («Мир исследован») — канон .t-mono (co-selector
-   выше) + синий + капс. Цвет/трансформ = легальные оси поверх канона.
-   («Маршрут»/.ts-routehead__title — тот же пресет, но в styled-jsx TripStructureEdit,
-   т.к. его scoped-правило специфичнее app.css.) */
-.wmini .ttl { color: var(--brand); text-transform: uppercase; letter-spacing: var(--track-caps); }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
 
 .nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); padding: 14px; cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }

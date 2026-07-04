@@ -946,7 +946,7 @@ export default function TripStructureEdit() {
               same as on mobile. A left panel replaces this whole column. */}
           <div className="ts-routehead">
             <span className="ts-routehead__tt">
-              <span className="ts-routehead__title">{t('planner.step_cities')}</span>
+              <span className="ts-routehead__title t-caption">{t('planner.step_cities')}</span>
               {/* TRIP-186: сводка маршрута под заголовком — реюз уже посчитанных
                   totalNights / cityCount / dateRange (никакой новой логики). */}
               {(totalNights != null || cityCount > 0 || (dateRange && dateRange !== '-')) && (
@@ -1141,9 +1141,9 @@ export default function TripStructureEdit() {
         /* "Маршрут" panel header (left column) + trip-start control. */
         .ts-routehead { display: flex; align-items: center; gap: 10px; flex: none; padding: 12px 4px; }
         .ts-routehead__tt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-        /* TRIP-188: caption-пресет аудитора — синий + КАПС (моно — из канона .t-mono).
-           Цвет задан здесь (styled-jsx специфичнее app.css, иначе перебивал синий). */
-        .ts-routehead__title { color: var(--brand); text-transform: uppercase; letter-spacing: var(--track-caps); }
+        /* TRIP-188: «Маршрут» = caption-пресет через класс .t-caption (моно+синий+
+           капс+трекинг, app.css). Здесь своего правила на .ts-routehead__title нет —
+           иначе scoped-специфичность styled-jsx перебила бы .t-caption. */
         .ts-routehead__sub { color: var(--muted); }
         .ts-routehead__sp { flex: 1; }
         .ts-startctl { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }

@@ -155,6 +155,7 @@ function StatHero({ points, home, world, showMap, scheme, nextTrip, onAllStats, 
   ];
   return (
     <>
+      <div className="t-caption" style={{ margin: '4px 0 10px' }}>{t('stats.trips_summary')}</div>
       <StatBar items={items} cta={<AllStatsCta label={t('stats.all_stats')} onClick={onAllStats} />} className={ghost ? 'is-ghost' : ''} />
       <div className={`dash-hero${ghost ? ' is-ghost' : ''}`}>
         <div className="mapwrap">
@@ -615,7 +616,7 @@ export default function Trips() {
             first-load skeleton is up). */}
         {!(isLoadingData && allTrips.length === 0) && (
           <>
-            <Greeting greeting={t('stats.greeting', { name: greetName })} name={greetName} avatarName={greetName} photo={user?.avatar_url} sub={subText} />
+            <Greeting greeting={t('stats.greeting', { name: greetName })} name={greetName} avatarName={greetName} photo={user?.avatar_url} sub={subText} eyebrow={t('trips.brand_eyebrow')} />
             <StatHero
               points={statsPoints}
               home={home}
@@ -643,10 +644,8 @@ export default function Trips() {
             {/* Section header row */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, margin: '30px 0 16px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <h2 className="t-title">{t('trips.page_title')}</h2>
-                <div className="muted t-ui">
-                  {t('trips.count_summary', { active: activeTrips.length, past: pastTrips.length })}
-                </div>
+                <div className="t-caption" style={{ marginBottom: 6 }}>{t('trips.my_trips_eyebrow')}</div>
+                <h2 className="t-title">{t('trips.total_count', { count: allTrips.length })}</h2>
               </div>
             </div>
 

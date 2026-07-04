@@ -16,7 +16,7 @@ export function initialsOf(name = '') {
 
 // Greeting hero — highlights the name inside the localized greeting string
 // (every locale places {name} last, so we slice before its last occurrence).
-export function Greeting({ greeting, name, avatarName, photo, sub }) {
+export function Greeting({ greeting, name, avatarName, photo, sub, eyebrow }) {
   const at = name ? greeting.lastIndexOf(name) : -1;
   const prefix = at >= 0 ? greeting.slice(0, at) : greeting;
   return (
@@ -24,6 +24,7 @@ export function Greeting({ greeting, name, avatarName, photo, sub }) {
       <div className="head__row">
         <Avatar name={avatarName || name || '?'} photo={photo} className="head__av" />
         <div className="grow">
+          {eyebrow && <div className="t-caption" style={{ marginBottom: 6 }}>{eyebrow}</div>}
           <h1>{prefix}{name && <span className="nm">{name}</span>}</h1>
           {sub && <div className="sub">{sub}</div>}
         </div>
@@ -65,7 +66,7 @@ export function WorldMini({ world, title, subCaption }) {
           <div className="ring__c t-title">{world.pct}%</div>
         </div>
         <div>
-          <div className="ttl">{title}</div>
+          <div className="ttl t-caption">{title}</div>
           {/* TRIP-188: «6 / 195» — visited в t-title (ink), /total в t-heading mute */}
           <div className="sub" style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
             <b className="t-title" style={{ color: 'var(--ink)' }}>{world.visited}</b>

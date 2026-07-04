@@ -3,6 +3,7 @@
   "add_trip_sub": "Build manually or start with AI",
   "ai": "Start with AI",
   "ai_desc_short": "Describe it in words. Get a draft.",
+  "brand_eyebrow": "Triplanio · Travel",
   "choice_subtitle": "How do you want to start?",
   "cities_more": "· {count} more",
   "count_summary": "{active} active · {past} archived",
@@ -21,6 +22,7 @@
   "invite_show_past": "Show past trips",
   "invite_title": "Ready for a new adventure?",
   "manual_desc_short": "Pick cities, dates and hotels by hand",
+  "my_trips_eyebrow": "My trips",
   "new": "New trip",
   "no_cities": "No cities",
   "page_title": "All trips",
@@ -33,5 +35,6 @@
   "start_with_ai": "Start with AI",
   "tab_active": "Active",
   "tab_past": "Past",
+  "total_count": "{count} trips",
   "view": "View"
 }
