@@ -38,7 +38,6 @@
   --brand-ink:    #16294A;
   --brand-glow:   color-mix(in srgb, var(--brand) 32%, transparent);
   --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
-  --header-grad:  linear-gradient(105deg,#2A6FD6 0%,#2173C8 52%,#1C63BA 100%); /* unified top bar — white-text safe */
   --bk:           #003B95;  /* Booking.com brand navy — supplier/score badge */
   --bk-fg:        #fff;
 
@@ -159,6 +158,7 @@
   --surface-card-border: rgba(45,55,115,.22);
   --shadow-glass:        0 18px 50px -26px rgba(0,0,0,.5);
   --glass-blur:          16px;
+  --header-bg:           rgba(251,252,254,.78); /* матовое стекло верхней панели — light (opaque-фолбэк = --surface) */
 
   --font-display: 'Exo 2',ui-sans-serif,system-ui,sans-serif;               /* TRIP-175 — заголовочная гарнитура (текст остаётся Golos через --font-ui) */
   --font-ui:      'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 — та же семья */
@@ -211,7 +211,6 @@
   --primary-soft-2: rgba(111,178,255,.24);
   --brand-ink:    #BFD3F5;
   --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
-  --header-grad:  linear-gradient(105deg,#234F84 0%,#21588F 55%,#1B4373 100%); /* unified top bar — dark, white-text safe */
   --bk:           #1A66D9;  /* Booking navy — dark theme */
 
   /* Neutrals / surfaces — dark */
@@ -230,6 +229,7 @@
   /* Канонические поверхности — тёмная (TRIP-189): стекло поверх #0c0e1c */
   --surface-card:        rgba(255,255,255,.07);
   --surface-card-border: rgba(255,255,255,.17);
+  --header-bg:           rgba(12,14,28,.6); /* матовое стекло верхней панели — dark */
 
   /* Semantic — dark */
   --info:#5FAEEC; --info-soft:rgba(95,174,236,.16); --info-ink:#93C6F2;
@@ -1052,10 +1052,19 @@ h4,
 .app-header {
   display: flex; align-items: center; gap: 14px;
   padding: 0 18px;
-  position: sticky; top: 0; z-index: 50;
-  background: var(--header-grad);
-  color: #fff;
-  height: 60px; min-height: 60px;
+  position: sticky; top: 0; z-index: 50;   /* keep 50 — поднятие ломает стек меню (z-60) / FAB (z-70) */
+  background: var(--surface);               /* непрозрачный фолбэк без backdrop-filter */
+  color: var(--ink);
+  height: 60px; min-height: 60px;           /* фикс-высота: на неё завязаны calc(100vh - 56px) лэйауты */
+  border-bottom: 1px solid var(--surface-card-border);
+}
+/* Матовое стекло только где backdrop-filter поддержан; иначе остаётся --surface. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .app-header {
+    background: var(--header-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  }
 }
 .app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
 .app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
@@ -1064,10 +1073,10 @@ h4,
 /* Round glass buttons (back / mobile burger) */
 .app-header__gbtn {
   width: 38px; height: 38px; flex: 0 0 auto; border-radius: 50%; cursor: pointer;
-  color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26);
+  color: var(--muted); background: transparent; border: 1px solid var(--line);
   display: grid; place-items: center; transition: background .15s var(--ease-out);
 }
-.app-header__gbtn:hover { background: rgba(255,255,255,.24); }
+.app-header__gbtn:hover { background: var(--wash); color: var(--ink); }
 .app-header__menu { display: none; }                /* burger — shown on mobile only */
 
 /* Brand block — logo in a white plaque + wordmark */
@@ -1077,20 +1086,20 @@ h4,
   background: #fff; padding: 3px; box-shadow: 0 3px 10px rgba(0,0,0,.22); overflow: hidden;
 }
 .app-header__logo img { width: 32px; height: 32px; display: block; border-radius: 8px; }
-.app-header__brand-name { color: #fff; }
+.app-header__brand-name { color: var(--ink); }
 .app-header--trip .app-header__brand-name { display: none; }   /* trip screens: logo only, no wordmark */
 
 /* Vertical separators (brand ⋮ trip ⋮ utilities) */
-.app-header__vdiv { width: 1px; height: 28px; background: rgba(255,255,255,.28); flex: 0 0 auto; }
+.app-header__vdiv { width: 1px; height: 28px; background: var(--line); flex: 0 0 auto; }
 
 /* Trip context — title + meta (dates · days · cities) */
 .app-header__trip { min-width: 0; display: flex; flex-direction: column; justify-content: center; flex: 0 1 auto; }
 .app-header__trip-title {
  margin: 0;
- color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+ color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .app-header__trip-meta {
- color: rgba(255,255,255,.82); margin-top: 2px;
+ color: var(--muted); margin-top: 2px;
  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
  display: flex; gap: 6px; align-items: center;
 }
@@ -1098,20 +1107,20 @@ h4,
 /* Trip-action group (Share / Edit / …) — glass pill with inner dividers */
 .app-header__trip-actions {
   display: flex; align-items: stretch; gap: 4px; padding: 4px; border-radius: 13px;
-  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26); flex: 0 0 auto;
+  background: var(--wash); border: 1px solid var(--line); flex: 0 0 auto;
 }
 .app-header__act {
  display: inline-flex; align-items: center; gap: 8px; position: relative;
- border: 0; background: transparent; color: #fff; cursor: pointer;
+ border: 0; background: transparent; color: var(--ink); cursor: pointer;
  padding: 9px 13px; border-radius: 9px; white-space: nowrap; transition: background .15s var(--ease-out);
 }
-.app-header__act:hover { background: rgba(255,255,255,.20); }
+.app-header__act:hover { background: var(--surface); }
 .app-header__act svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .app-header__act--icon { padding: 9px 11px; }
 .app-header__act[disabled] { opacity: .5; cursor: default; }
 .app-header__act[disabled]:hover { background: transparent; }
 .app-header__act + .app-header__act::before {
-  content: ""; position: absolute; left: -4px; top: 20%; height: 60%; width: 1px; background: rgba(255,255,255,.28);
+  content: ""; position: absolute; left: -4px; top: 20%; height: 60%; width: 1px; background: var(--line);
 }
 
 /* Base neutral icon button (used OUTSIDE the header too — keeps light styling). */
@@ -1130,20 +1139,19 @@ h4,
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--warm); border: 2px solid var(--surface);
 }
-/* On-brand override — only inside the gradient header. */
+/* Header override — keep the 38px round shape; colours fall back to the neutral
+   .icon-btn base (theme-aware) now that the bar is glass, not brand-gradient. */
 .app-header .icon-btn {
-  width: 38px; height: 38px; border-radius: 50%;
-  color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26);
+  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line);
 }
-.app-header .icon-btn:hover { background: rgba(255,255,255,.24); color: #fff; }
-.app-header .icon-btn .dot { background: var(--danger); border: 1.5px solid #fff; }
+.app-header .icon-btn .dot { background: var(--danger); border: 1.5px solid var(--surface); }
 
 /* Account button + avatar ring + PRO badge */
 .app-header__account { display: flex; align-items: center; gap: 7px; background: transparent; border: 0; cursor: pointer; padding: 0 2px; }
 /* Profile avatar — same 38px diameter as the theme/notification circles, single
    solid white ring (override the base .avatar border + sm size). box-sizing is
    border-box, so the 2px ring sits inside the 38px box → equal outer diameter. */
-.app-header .app-header__avatar { width: 38px; height: 38px; border: 2px solid #fff; box-shadow: none; }
+.app-header .app-header__avatar { width: 38px; height: 38px; border: 2px solid var(--surface); box-shadow: none; }
 .app-header__pro {
  color: var(--pro-fg); background: var(--pro-gradient); padding: 6px 9px; border-radius: 8px;
  box-shadow: 0 2px 6px rgba(0,0,0,.18);
@@ -1667,7 +1675,10 @@ h4,
 
 /* Mobile app shell */
 @media (max-width: 880px) {
-  .app-header { padding: 0 12px; height: 54px; min-height: 54px; gap: 9px; }
+  /* Header is position:static on mobile (see .app-shell > .app-header) — blur has
+     nothing to composite and is a paint-jank source, so drop it and go opaque. */
+  .app-header { padding: 0 12px; height: 54px; min-height: 54px; gap: 9px;
+    background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
   /* Non-trip screens keep logo + "Triplanio" on mobile (matches the design).
      Only trip screens drop the brand block for burger + title. */
   .app-header--trip .app-header__logo,
@@ -2496,8 +2507,22 @@ h4,
 
 /* Bell popover — head / list / foot (Lumo: rounded prow rows in a padded list) */
 /* Shell overrides the .pop base: full-width-capped, clipped, larger radius, no padding. */
-.bell-dd-pop { padding: 0; width: 360px; max-width: calc(100vw - 16px); overflow: hidden; border-radius: 16px; }
-.bell-dd__head { padding: 14px 16px 11px; display: flex; align-items: center; gap: 10px; }
+.bell-dd-pop {
+  padding: 0; width: 360px; max-width: calc(100vw - 16px); overflow: hidden;
+  border-radius: var(--r-xl);
+  /* Матовое стекло, но читаемое: --surface на 90% + блюр (полностью прозрачный
+     --surface-card был бы нечитаем над лентой). Радиус/бордер/тень — канон glass. */
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid var(--surface-card-border);
+  box-shadow: var(--shadow-glass);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bell-dd-pop {
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(1.5);
+    backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(1.5);
+  }
+}
+.bell-dd__head { padding: 14px 16px 11px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-2); }
 /* Title takes the slack and truncates so the action pill always fits on one line. */
 .bell-dd__head > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bell-dd__list { max-height: 400px; overflow: auto; padding: 7px; display: flex; flex-direction: column; gap: 2px; }
