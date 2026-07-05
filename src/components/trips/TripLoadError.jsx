@@ -13,7 +13,7 @@ export default function TripLoadError({ onRetry, onBack }) {
   const nav = useNavigate();
   const goBack = onBack || (() => nav('/trips'));
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div style={{ minHeight: '100vh' }}>
       <SystemStub
         icon="warning"
         tone="warning"

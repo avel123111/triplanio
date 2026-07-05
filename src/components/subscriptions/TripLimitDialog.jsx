@@ -100,7 +100,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           {/* Hero */}
           <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', padding: '22px 24px', marginBottom: 16,
             background: 'linear-gradient(110deg, var(--brand-ink) 0%, var(--brand) 55%, color-mix(in srgb, var(--brand) 55%, white) 120%)', color: 'white' }}>
-            <Badge variant="pro" icon="pro" style={{ marginBottom: 10 }}>Pro</Badge>
+            <Badge variant="pro" icon="pro" style={{ marginBottom: 10 }}>PRO</Badge>
             <div className="t-heading" style={{ marginBottom: 6 }}>
               {t('sub.limit_hero_title')}
             </div>
@@ -149,7 +149,7 @@ export default function TripLimitDialog({ open, onOpenChange, onProceed, activeC
           {/* Footer */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
             <Btn variant="ghost" onClick={() => onOpenChange(false)}>{t('sub.not_now')}</Btn>
-            <Btn variant="pro" icon="crown" onClick={openUpgrade}>{t('sub.see_plans')}</Btn>
+            <Btn variant="pro" icon="pro" onClick={openUpgrade}>{t('sub.see_plans')}</Btn>
           </div>
         </div>
       </DialogContent>

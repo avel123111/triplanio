@@ -20,4 +20,4 @@ metadata:
 
 **Команды деплоя:** `supabase functions deploy getTripDetails --project-ref <ref>` (default = verify_jwt true) для dev `nydhzevdizkfaxdlikgc` и prod `tizscxrpuopobgcxbekf`.
 
-**TODO для аудита:** проверить тем же fail-open паттерном getPublicTrip и остальные NO_JWT-функции (syncTripExpense, triplanioAiReply). Связано с [[triplanio-pro-audit]].
+**TODO для аудита:** проверить тем же fail-open паттерном getPublicTrip и остальные NO_JWT-функции (triplanioAiReply; `syncTripExpense` удалена в TRIP-45 2026-07-04). Связано с [[triplanio-pro-audit]].

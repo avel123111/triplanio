@@ -1,4 +1,5 @@
-// TRIP-165 · Canon inspector — canon registry + live detection.
+// TRIP-165/183 · Canon inspector — canon registry + live detection.
+// TRIP-183: каноны «Экзо» (см. mockup-имена + поканонные CANON_MODS ниже); числа пробятся из app.css.
 //
 // The 10 typography canons are defined ONCE, in src/design/app.css (the .t-*
 // co-selector rules). This module does NOT re-hardcode their numeric specs —
@@ -13,61 +14,109 @@
 //
 // Only the human-facing labels/roles live here (the tool's own copy).
 
-// `mockup` — имя стиля из присланной Павлом матрицы типографики (макет
-// «Triplanio Design System»). Каноны у себя мы НЕ переименовывали (наши имена
-// = cls), но по именам макета ориентироваться удобнее — показываем их рядом.
-// t-mono в 9-канонной матрице макета отсутствует (наш доп. моно-канон) → '—'.
+// `mockup` — имя стиля из файла типографики «Экзо» (TRIP-183), присланного Павлом.
+// Каноны у себя мы НЕ переименовывали (наши имена = cls / name), но по именам файла
+// ориентироваться удобнее — показываем их рядом («макет: …»). Гарнитуры те же
+// (Exo 2 / Golos Text / JetBrains Mono); TRIP-183 переставил параметры и перевёл
+// мета-ярус (meta/label/meta-md) в моно. Числа инспектор берёт из ЖИВОГО app.css.
 export const CANONS = [
-  { id: 1,  cls: 't-display',    name: 'Display',    mockup: 'display', role: 'Герой, 1 на экран' },
-  { id: 2,  cls: 't-title',      name: 'Title',      mockup: 'h1',      role: 'Заголовок страницы' },
-  { id: 3,  cls: 't-heading',    name: 'Heading',    mockup: 'h2',      role: 'Заголовок экрана / секции' },
-  { id: 4,  cls: 't-subheading', name: 'Subheading', mockup: 'h3',      role: 'Заголовок панели / карточки' },
-  { id: 5,  cls: 't-label',      name: 'Label',      mockup: 'label',   role: 'Кнопки, крупные лейблы' },
-  { id: 6,  cls: 't-body',       name: 'Body',       mockup: 'body',    role: 'Основной текст, абзацы' },
-  { id: 7,  cls: 't-ui',         name: 'UI',         mockup: 'ui',      role: 'Плотный интерфейсный текст' },
-  { id: 8,  cls: 't-meta',       name: 'Meta',       mockup: 'meta',    role: 'Даты, вторичная инфо, НЕ-капс подписи booking (Golos)' },
-  { id: 9,  cls: 't-micro',      name: 'Micro',      mockup: 'micro',   role: 'Бейджи, капс-метки, капс-эйбрау (JetBrains Mono)' },
-  { id: 10, cls: 't-mono',       name: 'Mono',       mockup: '—',       role: 'Коды, идентификаторы, техно-метаданные' },
-  // TRIP-175: .t-nano/.t-caption СХЛОПНУТЫ (макет их не содержит) — их члены
-  // переехали в .t-meta (НЕ-капс подписи) и .t-micro (капс-эйбрау). Снова 10 канонов.
+  { id: 1,  cls: 't-display',    name: 'Display',    mockup: 'hero',     role: 'Герой, 1 на экран (Exo 2)' },
+  { id: 2,  cls: 't-title',      name: 'Title',      mockup: 'h1',       role: 'Заголовок страницы (Exo 2)' },
+  { id: 3,  cls: 't-heading',    name: 'Heading',    mockup: 'h2',       role: 'Заголовок экрана / секции (Exo 2)' },
+  { id: 4,  cls: 't-subheading', name: 'Subheading', mockup: 'h3',       role: 'Заголовок панели / карточки (Exo 2)' },
+  { id: 5,  cls: 't-label',      name: 'Label',      mockup: 'title',    role: 'Кнопки, крупные лейблы (Golos 700)' },
+  { id: 6,  cls: 't-body',       name: 'Body',       mockup: 'body',     role: 'Основной текст, абзацы (Golos 400)' },
+  { id: 7,  cls: 't-ui',         name: 'UI',         mockup: 'body-med', role: 'Плотный интерфейсный текст (Golos 600)' },
+  { id: 8,  cls: 't-meta',       name: 'Meta',       mockup: 'meta',     role: 'Даты, вторичная инфо, подписи booking (JetBrains Mono 500)' },
+  { id: 9,  cls: 't-micro',      name: 'Micro',      mockup: 'label',    role: 'Бейджи, капс-метки, капс-эйбрау (JetBrains Mono 600, UPPER)' },
+  { id: 10, cls: 't-mono',       name: 'Mono',       mockup: 'meta-md',  role: 'Рейтинги, счётчики, коды/идентификаторы (JetBrains Mono 700)' },
+  // TRIP-183: мета-ярус (t-meta/t-micro/t-mono) — на JetBrains Mono (каноны «Экзо»).
+  // Прозаичный код/email при желании переносится .t-mono → .t-meta канон-аудитором.
 ];
+
+// Поканонные МОДИФИКАТОРЫ из присланного файла типографики «Экзо» (TRIP-183).
+// В файле у каждого канона свой набор вариантов применения (цвет .c-*, компаньоны
+// .t-mono/.u-ell, капс/трекинг). Здесь они переключаются в инспекторе как эфемерное
+// превью на выбранном элементе (в worklist НЕ сохраняются; цвет сохраняется отдельной
+// осью «Цвет текста»). Ключ = id канона. css = дельта поверх базового канона; цвета
+// .c-* смаплены на наши токены (c-text→--ink, c-dim→--ink-2, c-mute→--muted, c-acc→--brand).
+const PILL_ON  = { color: 'var(--brand)', background: 'var(--brand-soft)', padding: '4px 11px', borderRadius: 'var(--r-pill)', display: 'inline-block' };
+const PILL_OFF = { color: 'var(--muted)', border: '1px dashed var(--line-strong)', padding: '4px 11px', borderRadius: 'var(--r-pill)', display: 'inline-block' };
+const CAPS     = { textTransform: 'uppercase', letterSpacing: '0.2em' };
+export const CANON_MODS = {
+  1: [ // t-display ← hero
+    { label: '.c-text · заголовок страницы',       css: { color: 'var(--ink)' } },
+    { label: '.c-acc · акцент-спан в hero',         css: { color: 'var(--brand)' } },
+  ],
+  2: [ // t-title ← h1
+    { label: '.c-text · экран/drawer/модалка',      css: { color: 'var(--ink)' } },
+    { label: '#fff · на градиентной обложке',       css: { color: '#fff', background: 'linear-gradient(135deg,#FF7A59,#FF2D78)', padding: '4px 12px', borderRadius: 'var(--r-md)', display: 'inline-block' } },
+  ],
+  3: [ // t-heading ← h2
+    { label: '.c-text · карточки/списки',           css: { color: 'var(--ink)' } },
+    { label: '.tph__total · цена (акцент)',          css: { color: 'var(--brand)' } },
+    { label: '+ .t-mono · время рейса/метрики',      css: { fontFamily: 'var(--font-mono)' } },
+  ],
+  4: [ // t-subheading ← h3
+    { label: '.c-text · строки/подзаголовки',       css: { color: 'var(--ink)' } },
+    { label: '+ .u-ell · обрезка (узкая колонка)',   css: { display: 'inline-block', maxWidth: '160px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'bottom' } },
+  ],
+  5: [ // t-label ← title (Golos)
+    { label: '.c-text · строки/поповеры',           css: { color: 'var(--ink)' } },
+    { label: '.tp-btn--primary · кнопка',            css: { color: '#fff', background: 'var(--brand)', padding: '10px 18px', borderRadius: 'var(--r-btn)', display: 'inline-block' } },
+    { label: '.c-acc · ссылки',                     css: { color: 'var(--brand)' } },
+    { label: '.c-dim · secondary-кнопки',           css: { color: 'var(--ink-2)' } },
+  ],
+  6: [ // t-body ← body
+    { label: '.c-mute · базовый',                   css: { color: 'var(--muted)' } },
+    { label: '.c-dim · заметки',                    css: { color: 'var(--ink-2)' } },
+    { label: '.c-text · важный абзац',              css: { color: 'var(--ink)' } },
+  ],
+  7: [ // t-ui ← body-med
+    { label: '.c-text · значения/инпуты',           css: { color: 'var(--ink)' } },
+    { label: '.c-dim · вторичное',                  css: { color: 'var(--ink-2)' } },
+    { label: '.tp-chip--active · активный чип',      css: PILL_ON },
+    { label: '.tp-chip--idle · чип',                css: PILL_OFF },
+  ],
+  8: [ // t-meta ← meta
+    { label: '.c-mute · базовый',                   css: { color: 'var(--muted)' } },
+    { label: '.c-dim · значения дат/времени',        css: { color: 'var(--ink-2)' } },
+    { label: '+ Golos (не моно)',                   css: { fontFamily: 'var(--font-ui)' } },
+  ],
+  9: [ // t-micro ← label
+    { label: 'базовый · track-2',                   css: { letterSpacing: '0.14em' } },
+    { label: '--tight · track-1',                   css: { letterSpacing: '0.08em' } },
+    { label: '.tp-pill · статус',                   css: { ...PILL_ON, letterSpacing: '0.08em' } },
+    { label: 'на медиа (приглушённый)',             css: { color: 'var(--muted)' } },
+  ],
+  10: [ // t-mono ← meta-md
+    { label: '.c-mute · координаты/код',            css: { color: 'var(--muted)' } },
+    { label: '.tp-caption · капс track-3',           css: { ...CAPS, color: 'var(--brand)' } },
+    { label: '.tp-caption--mute · капс',             css: { ...CAPS, color: 'var(--muted)' } },
+    { label: '.c-acc · счётчики',                   css: { color: 'var(--brand)' } },
+  ],
+};
 
 // The sanctioned orthogonal modifiers (app.css Фаза 3). They layer on top of a
 // canon; the only legal place (besides canons) where font-weight / line-height
 // is set. Used for live detection (probe canon × modifier subsets).
+// TRIP-183: strong/flush больше НЕ показываются в UI (их заменили поканонные
+// CANON_MODS из файла) — остаются только для ДЕТЕКЦИИ уже-применённых стилей.
 export const MODIFIERS = [
-  { key: 'strong', cls: 't-strong', label: 'strong' },
-  { key: 'flush',  cls: 't-flush',  label: 'flush'  },
+  { key: 'strong',  cls: 't-strong',   label: 'strong'  },
+  { key: 'flush',   cls: 't-flush',    label: 'flush'   },
+  // TRIP-188: caption-пресет `.tp-caption` (канон 10 t-mono + CAPS + track .2em +
+  // var(--brand)) теперь ПОСТОЯННЫЙ класс в коде (эйбрау /trips, «Маршрут»,
+  // «Мир исследован»), а не только эфемерное превью. Добавлен сюда, чтобы детекция
+  // probe(canon × modifiers) распознавала t-mono+tp-caption как «Mono + caption»
+  // (зелёный), а не помечала off-canon (красный). Цвет — отдельная ось (COLORS).
+  { key: 'caption', cls: 'tp-caption', label: 'caption' },
 ];
 
-// TRIP-175 · Состояния стиля — зеркалит специмен дизайн-системы (макет): у каждого
-// канона показываем ТОЛЬКО те состояния, что реально его меняют. Применимость
-// выводится из ЖИВОГО вычисленного стиля канона (a = apply-props из probeCanons),
-// поэтому список сам подстраивается под правку канона в app.css.
-//   • strong / flush — РЕАЛЬНЫЕ санкц. модификаторы (.t-strong/.t-flush): saveable,
-//     их эффект берётся из probe (comboApply), попадают в worklist.
-//   • caps / track / mono / mute — ПРЕВЬЮ-состояния (визуальный аудит, как в макете):
-//     применяются эфемерным inline-стилем, в worklist НЕ сохраняются (в проде это
-//     были бы отдельные утилиты — вводить только с одобрения Павла, правило #6).
-// applies(a): a = { fontFamily, fontSize, fontWeight, lineHeight, letterSpacing,
-//                   textTransform } — computed-стиль базового канона.
-export const STATES = [
-  { key: 'strong', label: 'Жирнее', saveable: true,
-    applies: (a) => (parseInt(a.fontWeight, 10) || 400) < 700 },            // .t-strong = 700
-  { key: 'caps',   label: 'Капс',
-    applies: (a) => a.textTransform !== 'uppercase',                        // .t-micro уже капс
-    css: { textTransform: 'uppercase', letterSpacing: '0.1em' } },
-  { key: 'track',  label: 'Трекинг', cycle: ['0.04em', '0.12em', '0.18em'],
-    applies: (a) => a.textTransform !== 'uppercase' },                      // у капс-канона трекинг зашит
-  { key: 'mono',   label: 'Моно',
-    applies: (a) => !/mono|jetbrains/i.test(a.fontFamily),                  // meta/micro/mono уже моно
-    css: { fontFamily: 'var(--font-mono)' } },
-  { key: 'flush',  label: 'Флеш', saveable: true,
-    applies: (a) => (parseFloat(a.lineHeight) / (parseFloat(a.fontSize) || 1)) >= 1.5 }, // виден на многострочном (t-body)
-  { key: 'mute',   label: 'Тише',
-    applies: () => true,
-    css: { color: 'var(--muted)' } },
-];
+// TRIP-183: старый генерик-набор состояний (strong/caps/track/mono/flush/mute)
+// УДАЛЁН — вместо него поканонные модификаторы из файла типографики (CANON_MODS
+// выше). strong/flush остаются как MODIFIERS выше — только для ДЕТЕКЦИИ (probe
+// canon × modifier), в UI не показываются.
 
 // Every subset of the modifier list, smallest-first: [], [strong], [flush], …
 function modifierSubsets() {

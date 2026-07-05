@@ -22,7 +22,7 @@ export function applyLuxonLocale(lang) {
 
 // Canonical money/date formatters for module-level (non-hook) call sites.
 // Components should prefer useI18nFormat(); these read the active language.
-export function fmtMoneyActive(amount, currency) { return formatMoney(amount, currency, _activeLang); }
+export function fmtMoneyActive(amount, currency, opts) { return formatMoney(amount, currency, _activeLang, opts); }
 
 // Format a DateTime (or ISO string + timezone) using Luxon's localized tokens.
 // Example: formatDateTime(iso, tz, 'd LLL yyyy', 'ru') → "5 авг 2026"

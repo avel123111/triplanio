@@ -27,6 +27,7 @@
   "f_platform": "Площадка",
   "f_price": "Цена за ночь",
   "f_price_unit": "(USD)",
+  "f_rating_t": "Рейтинг от",
   "f_reset": "Сбросить",
   "f_reset_all": "Сбросить всё",
   "f_rooms": "{n} ном.",
@@ -63,5 +64,9 @@
   "stay22_retry": "Повторить",
   "stay22_reviews": "· {n} отзывов",
   "stay22_source": "Актуальные цены от Booking, Expedia и других",
-  "stay22_title": "Где остановиться"
+  "stay22_title": "Где остановиться",
+  "tab_find_activity": "Найти впечатления",
+  "tab_find_hotel": "Найти отель",
+  "tab_find_transfer": "Найти трансфер",
+  "tab_have_booking": "У меня есть бронь"
 }

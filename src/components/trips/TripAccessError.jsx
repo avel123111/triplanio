@@ -18,7 +18,7 @@ export default function TripAccessError({ onBack }) {
   };
   const goBack = onBack || (() => nav('/trips'));
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div style={{ minHeight: '100vh' }}>
       <SystemStub
         icon="lock"
         tone="warm"

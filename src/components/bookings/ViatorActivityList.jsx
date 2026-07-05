@@ -60,7 +60,6 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
           <span className="va-logo"><Ticket size={15} /></span>
           <div className="va-tiwrap">
             <b>{cityName ? t('fork.activities_title', { city: cityName }) : t('fork.activities_title_generic')}</b>
-            <span className="va-sub">{t('fork.activities_reviews_source')}</span>
           </div>
         </div>
         {meta.total != null && meta.total > 0 && (
@@ -181,7 +180,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         /* Card shell (.pcard) is shared — see app.css + PartnerResultCard.jsx. Only
            the activity-specific body content keeps its own classes below. */
         .va-rate { display: flex; align-items: center; gap: 6px; flex: none; }
-        .va-star { color: var(--pro); flex: none; }
+        .va-star { color: var(--rating); flex: none; }
         .va-sc { color: var(--ink); font-variant-numeric: tabular-nums; }
         .va-cnt { color: var(--muted); }
         .va-flag { color: var(--brand); background: var(--primary-soft); padding: 1px 7px; border-radius: var(--r-pill); }

@@ -217,7 +217,9 @@ export default function ForkPartnerModal({
 
   const styleTag = (
     <style>{`
-      .fork-addzone { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--wash); padding: 11px; display: flex; flex-direction: column; gap: 11px; }
+      /* TRIP-186: блок оголён — контейнерная рамка/фон/паддинг убраны, плитки
+         партнёров и manual-CTA лежат прямо на поверхности панели. */
+      .fork-addzone { display: flex; flex-direction: column; gap: 11px; }
       .fork-manual { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface); border: 1.5px solid var(--fk); box-shadow: 0 0 0 3px var(--fk-soft); font-family: var(--font-ui); transition: transform .16s var(--ease-spring), box-shadow .18s; }
       .fork-manual:hover { transform: translateY(-1px); box-shadow: 0 0 0 3px var(--fk-soft), var(--sh-1); }
       .fork-manual:active { transform: scale(.99); }
@@ -234,7 +236,7 @@ export default function ForkPartnerModal({
       .fork-partner { display: flex; align-items: center; gap: 9px; padding: 8px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); text-decoration: none; color: inherit; cursor: pointer; min-width: 0; transition: transform .16s var(--ease-spring), border-color .16s, box-shadow .18s; }
       .fork-partner:hover { transform: translateY(-1px); border-color: var(--line-hover); box-shadow: var(--sh-1); }
       .fork-partner:active { transform: scale(.99); }
-      .fork-partner__logo { width: 24px; height: 24px; border-radius: var(--r-sm); flex: none; background: transparent; object-fit: contain; }
+      .fork-partner__logo { width: 24px; height: 24px; border-radius: 6px; flex: none; background: transparent; object-fit: contain; }
       .fork-partner__logo--ph { display: grid; place-items: center; color: var(--muted); background: var(--wash); }
       .fork-partner__mid { flex: 1; min-width: 0; }
       .fork-partner__mid b { display: block; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

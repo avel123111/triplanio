@@ -11,7 +11,7 @@
 // element that looks like it ("Все похожие", by shared class) — e.g. all the
 // sidebar menu items at once, not a single word.
 
-import { CANONS, STATES, COLORS, probeCanons, detectCanon, comboApply, probeColors, detectColor, colorByKey } from './canons.js';
+import { CANONS, CANON_MODS, COLORS, probeCanons, detectCanon, comboApply, probeColors, detectColor, colorByKey } from './canons.js';
 import { describe, groupSelector } from './describe.js';
 
 const LS_KEY = 'ci:canon-changes';
@@ -29,7 +29,7 @@ const pendingCanon = new WeakMap();// element → {id,mods}|null  (current previ
 const scopeMode = new WeakMap();   // element → 'el' | 'group'
 const queuedFor = new WeakMap();   // element → change.key (in-session dedup)
 const originalCss = new WeakMap(); // element → prior inline cssText (for reset)
-const previewStates = new WeakMap();// element → {keys:Set, track:int} — preview-only states (caps/track/mono/mute)
+const previewMod = new WeakMap();  // element → индекс выбранного поканонного модификатора (превью, из файла), или undefined
 const baseColor = new WeakMap();   // element → colour key|null (real colour, cached before preview)
 const pendingColor = new WeakMap();// element → colour key|null (current preview/queued colour choice)
 
@@ -39,7 +39,6 @@ let dragging = false;          // a panel/tray drag is in progress (suppress hov
 const offCanon = new Set();    // elements currently flagged off-canon (red highlight)
 
 // ── canon/modifier helpers ─────────────────────────────────────────────────
-const psFor = (el) => previewStates.get(el) || { keys: new Set(), track: 0 };
 const sameSet = (a, b) => a.length === b.length && [...a].sort().join(',') === [...b].sort().join(',');
 const sameCanon = (a, b) => (!a && !b) || (!!a && !!b && a.id === b.id && sameSet(a.mods, b.mods));
 function canonLabel(info) {
@@ -386,23 +385,19 @@ function render(el) {
   }
   body.appendChild(section('Канон', `${CANONS.length}`, canons));
 
-  // states — only those that change THIS canon (needs a chosen canon)
-  const baseApply = pending ? probed.canons.get(pending.id).apply : null;
-  const ps = psFor(el);
-  const stWrap = h('ci-wrap');
-  for (const st of STATES) {
-    if (baseApply && !st.applies(baseApply)) continue;
+  // modifiers — поканонные модификаторы из файла типографики «Экзо» (TRIP-183):
+  // у каждого канона свой набор; переключаются как эфемерное превью на элементе.
+  const mods = pending ? (CANON_MODS[pending.id] || []) : [];
+  const curMod = previewMod.get(el);
+  const modWrap = h('ci-wrap');
+  mods.forEach((m, i) => {
     const chip = h('ci-chip', 'button');
-    let on = false, label = st.label;
-    if (st.saveable) on = !!pending && pending.mods.includes(st.key);
-    else if (st.cycle) { on = ps.track > 0; if (on) label = `${st.label} ·${ps.track}`; }
-    else on = ps.keys.has(st.key);
-    chip.textContent = label;
-    if (on) chip.classList.add('is-on');
-    chip.onclick = () => (st.saveable ? toggleMod(el, st.key) : togglePreviewState(el, st.key));
-    stWrap.appendChild(chip);
-  }
-  body.appendChild(section('Состояния', '', pending ? stWrap : hintNode('Выбери канон, чтобы включить состояния')));
+    chip.textContent = m.label;
+    if (curMod === i) chip.classList.add('is-on');
+    chip.onclick = () => toggleModPreview(el, i);
+    modWrap.appendChild(chip);
+  });
+  body.appendChild(section('Модификаторы', pending ? `${mods.length}` : '', pending ? modWrap : hintNode('Выбери канон, чтобы увидеть его модификаторы')));
 
   // colour — sanctioned text colours (SAVED to the worklist)
   const curColor = pendingColor.get(el) ?? null;
@@ -428,8 +423,12 @@ function render(el) {
   reset.onclick = () => resetEl(el);
   foot.append(saveBtn, reset);
 
+  // Сохранить позицию скролла списка: render() пересоздаёт .ci-body целиком,
+  // иначе при выборе канона/модификатора скролл прыгает наверх (TRIP-183).
+  const prevScroll = els.panel.querySelector('.ci-body')?.scrollTop || 0;
   els.panel.innerHTML = '';
   els.panel.append(head, body, foot);
+  body.scrollTop = prevScroll;
   makeDraggable(els.panel, head, () => { panelMoved = true; });   // drag by header
 }
 
@@ -450,37 +449,26 @@ function positionPanel(el) {
 function pickCanon(el, id) {
   const cur = pendingCanon.get(el);
   pendingCanon.set(el, { id, mods: cur ? cur.mods : [] });
-  previewStates.delete(el);               // preview-states are canon-specific — reset on canon switch
+  previewMod.delete(el);                   // модификаторы поканонны — сбрасываем при смене канона
   applyPreview(el);
   render(el);
 }
-function toggleMod(el, key) {
-  const cur = pendingCanon.get(el);
-  if (!cur) return;                       // no canon chosen → modifier is meaningless
-  const mods = cur.mods.includes(key) ? cur.mods.filter((k) => k !== key) : [...cur.mods, key];
-  pendingCanon.set(el, { id: cur.id, mods });
+// Поканонный модификатор из файла (TRIP-183) — single-select эфемерное превью,
+// в worklist НЕ сохраняется. Повторный клик по активному снимает выбор.
+function toggleModPreview(el, idx) {
+  const pending = pendingCanon.get(el);
+  if (!pending) return;                    // no canon chosen → modifier is meaningless
+  const cur = previewMod.get(el);
+  if (cur === idx) previewMod.delete(el); else previewMod.set(el, idx);
   applyPreview(el);
   render(el);
 }
-// Preview-only states (caps/track/mono/mute) — ephemeral, never queued to the worklist.
-function togglePreviewState(el, key) {
-  const st = STATES.find((s) => s.key === key);
-  if (!st || !pendingCanon.get(el)) return;
-  const ps = psFor(el);
-  if (st.cycle) ps.track = (ps.track + 1) % (st.cycle.length + 1);   // 0=off, then 1..n
-  else if (ps.keys.has(key)) ps.keys.delete(key); else ps.keys.add(key);
-  previewStates.set(el, ps);
-  applyPreview(el);
-  render(el);
-}
-// Combined inline CSS of the active preview-states (layers on top of the canon).
-function stateCssFor(el) {
-  const ps = previewStates.get(el);
-  if (!ps) return null;
-  const css = {};
-  for (const st of STATES) if (!st.cycle && st.css && ps.keys.has(st.key)) Object.assign(css, st.css);
-  if (ps.track > 0) { const t = STATES.find((s) => s.cycle); css.letterSpacing = t.cycle[ps.track - 1]; }
-  return css;
+// Inline CSS активного поканонного модификатора (слой поверх канона).
+function modCssFor(el) {
+  const idx = previewMod.get(el);
+  const pending = pendingCanon.get(el);
+  if (idx == null || !pending) return null;
+  return (CANON_MODS[pending.id] || [])[idx]?.css || null;
 }
 function setScope(el, mode) {
   // restore the previous scope's preview before switching, to avoid orphaned styles
@@ -511,10 +499,11 @@ const colorLabel = (key) => {
 function applyPreview(el) {
   const pending = pendingCanon.get(el);
   const props = pending ? comboApply(probed, pending.id, pending.mods) : null;
-  const scss = stateCssFor(el);           // preview-state overlay (caps/track/mono/mute)
+  const scss = modCssFor(el);             // поканонный модификатор (превью, из файла)
   const colKey = pendingColor.get(el) ?? null;
-  const merged = { ...(props || {}), ...(scss || {}) };
+  const merged = { ...(props || {}) };
   if (colKey) merged.color = colorByKey(colKey).css;
+  Object.assign(merged, scss || {});      // модификатор ПОВЕРХ оси цвета — иначе базовый цвет перебивал бы дельту модификатора (TRIP-183)
   for (const t of scopeTargets(el)) {
     // Capture each target's REAL canon before we mutate it, so clicking a
     // group sibling later still reports its true "Сейчас".
@@ -552,7 +541,7 @@ function commit(el) {
 
 function resetEl(el) {
   restorePreview(el);
-  previewStates.delete(el);
+  previewMod.delete(el);
   pendingCanon.set(el, baseCanon.get(el));
   pendingColor.set(el, baseColor.get(el));
   if (queuedFor.has(el)) removeChange(queuedFor.get(el));

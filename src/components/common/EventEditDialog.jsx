@@ -16,11 +16,11 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, useToast } from '@/design/index';
+import { DialogRoot as Dialog, DialogContent, CurrencyCombobox, AiField, Toggle, Btn, useToast } from '@/design/index';
 import {
-  Loader2, Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, ArrowLeft, X,
+  Trash2, ExternalLink, ChevronDown, ArrowRight, Repeat, X,
   Plane, Car as CarIcon, Train, Bus, Ship, Footprints, Moon, ShieldCheck,
-  BedDouble, Ticket,
+  BedDouble, Ticket, Clock,
 } from 'lucide-react';
 import { CardSim } from '@/design/icons';
 import { DateTime } from 'luxon';
@@ -1099,15 +1099,18 @@ export default function EventEditDialog({
     <>
           {/* Header — hidden when embedded (AddBookingPanel owns the shared header). */}
           {embedded ? null : isPanel ? (
+            // TRIP-186: шапка edit унифицирована с остальными состояниями (канон
+            // PanelShell / view): eyebrow сверху, .t-title, крестик справа — без
+            // левой стрелки-назад.
             <div className="lp-h lp-h--ev">
-              <button className="lp-back" onClick={() => onOpenChange?.(false)} title={t('common.back')}>
-                <ArrowLeft style={{ width: 14, height: 14 }} />
-              </button>
               <span className="lp-ic" style={{ background: meta.color, color: '#fff' }}><meta.Icon /></span>
               <div className="lp-ti">
-                <b>{title}</b>
-                <span>{t(meta.labelKey)}</span>
+                <div className="eyebrow" style={{ color: meta.color }}>{t(meta.labelKey)}</div>
+                <div className="lp-tirow"><b className="t-title">{title}</b></div>
               </div>
+              <button className="ev-dlg-close" onClick={() => onOpenChange?.(false)} title={t('common.back')} aria-label={t('common.back')}>
+                <X style={{ width: 15, height: 15 }} />
+              </button>
             </div>
           ) : (
             <div className="ev-dlg-hd">
@@ -1225,50 +1228,35 @@ export default function EventEditDialog({
           </div>
           )}
 
-          {/* Footer — pinned to the bottom of the column in panel mode */}
+          {/* Footer — TRIP-186: единый канон с event view / city view (lp-f--ratio
+              + <Btn>): удалить (danger, схлоп на мобиле) + primary. Pinned снизу
+              в панельном режиме. */}
           <div
-            className={(isPanel ? 'lp-f' : 'ev-dlg-ft') + ' lp-f--edit'}
+            className={(isPanel ? 'lp-f' : 'ev-dlg-ft') + (confirmDel ? '' : ' lp-f--ratio')}
             style={isPanel ? { position: 'sticky', bottom: 0, zIndex: 3 } : undefined}
           >
             {confirmDel ? (
               <>
-                <div style={{ flex: 1 }} />
-                <button className="btn btn--secondary" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>
-                  {t('common.cancel')}
-                </button>
-                <button
-                  className="btn btn--danger-solid"
-                  onClick={() => deleteMut.mutate()}
-                  disabled={deleteMut.isPending}
-                >
-                  {deleteMut.isPending && <Loader2 className="spin" size={12} style={{ marginRight: 6 }} />}
-                  <Trash2 size={14} style={{ marginRight: 6 }} />{t('common.delete')}
-                </button>
+                <Btn variant="secondary" onClick={() => setConfirmDel(false)} disabled={deleteMut.isPending}>{t('common.cancel')}</Btn>
+                <Btn variant="danger-solid" icon="trash" loading={deleteMut.isPending} disabled={deleteMut.isPending} onClick={() => deleteMut.mutate()}>{t('common.delete')}</Btn>
               </>
             ) : (
               <>
                 {isEdit && (
-                  <button
-                    className="btn btn--danger-ghost ev-del"
-                    onClick={() => setConfirmDel(true)}
-                    disabled={deleteMut.isPending}
-                    aria-label={t('common.delete')}
-                    title={t('common.delete')}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <Btn variant="danger" icon="trash" onClick={() => setConfirmDel(true)} disabled={deleteMut.isPending} ariaLabel={t('common.delete')}>
+                    <span className="btn-label-collapse">{t('common.delete')}</span>
+                  </Btn>
                 )}
-                <button className="btn btn--secondary" onClick={() => onOpenChange(false)}>{t('common.cancel')}</button>
-                <button
-                  className="btn btn--primary ev-save"
+                <Btn
+                  variant="primary"
+                  icon={isEdit ? 'check' : 'plus'}
                   onClick={handleSaveClick}
+                  loading={saveMut.isPending}
                   disabled={uploading || saveMut.isPending}
-                  aria-disabled={!canSave}
                   style={{ '--bg': meta.color, opacity: canSave ? 1 : 0.6 }}
                 >
-                  {saveMut.isPending && <Loader2 className="spin" size={12} style={{ marginRight: 6 }} />}
                   {isEdit ? t('common.save') : t('event.create')}
-                </button>
+                </Btn>
               </>
             )}
           </div>
@@ -1554,7 +1542,6 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
   const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
-      <SectionHeader color={color}>{t('event.hotel_about')}</SectionHeader>
       <div className="eed-stack">
         <div data-vfield="name" className={inv('name')}>
           <Label>{t('event.name_req')}</Label>
@@ -1580,66 +1567,50 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
         </div>
       </div>
 
-      <div className="eed-dateblock">
-        <div className="eed-dateblock__lbl t-ui">{t('event.stay_dates')}</div>
-        <div className="fld-grid">
-          <div className={`eed-minw0 ${inv('checkIn')}`} data-vfield="checkIn">
-            <Label>{t('event.checkin_req')}</Label>
-            <AiField active={aiFields.has('checkInLocal')}>
-              <DateTimeInput
-                value={form.checkInLocal}
-                onChange={(v) => setField('checkInLocal', v)}
-                onTimeMissingChange={(v) => setTime('checkIn', v)}
-              />
-            </AiField>
-            <TimezoneHint tz={tz} />
-            <FieldError issues={issues} field="checkIn" />
-          </div>
-          <div className={`eed-minw0 ${inv('checkOut')}`} data-vfield="checkOut">
-            <Label>{t('event.checkout_req')}</Label>
-            <AiField active={aiFields.has('checkOutLocal')}>
-              <DateTimeInput
-                value={form.checkOutLocal}
-                onChange={(v) => setField('checkOutLocal', v)}
-                onTimeMissingChange={(v) => setTime('checkOut', v)}
-              />
-            </AiField>
-            <TimezoneHint tz={tz} />
-            <FieldError issues={issues} field="checkOut" />
-          </div>
-        </div>
-      </div>
+      {(() => {
+        const ci = DateTime.fromISO(form.checkInLocal), co = DateTime.fromISO(form.checkOutLocal);
+        const n = (ci.isValid && co.isValid) ? Math.max(0, Math.round(co.startOf('day').diff(ci.startOf('day'), 'days').days)) : 0;
+        return (
+          <DateRangeBlock
+            label={t('event.stay_dates')} accent={color} issues={issues}
+            startLabel={t('event.checkin_req')} startValue={form.checkInLocal} onStart={(v) => setField('checkInLocal', v)} onStartMissing={(v) => setTime('checkIn', v)} startVField="checkIn" startTz={tz}
+            endLabel={t('event.checkout_req')} endValue={form.checkOutLocal} onEnd={(v) => setField('checkOutLocal', v)} onEndMissing={(v) => setTime('checkOut', v)} endVField="checkOut" endTz={tz}
+            midText={n > 0 ? t('fork.stay22_nights', { count: n }) : null}
+          />
+        );
+      })()}
 
-      <SectionHeader color={color}>{t('event.finance_cancel')}</SectionHeader>
-      <div className="eed-grid3">
-        <div>
-          <Label>{t('event.price')}</Label>
+      {/* Price + currency + payment pills (design: "Стоимость за всё") */}
+      <div className="eed-finance">
+        <div className="hv-lbl eyebrow">{t('event.price_total')}</div>
+        <div className="eed-pricerow">
           <AiField active={aiFields.has('price')}>
-            <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0.00" />
+            <Input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} placeholder="0" />
           </AiField>
-        </div>
-        <div>
-          <Label>{t('event.currency')}</Label>
           <AiField active={aiFields.has('currency')}>
             <CurrencyCombobox value={form.currency} onChange={(v) => setField('currency', v)} />
           </AiField>
         </div>
-        <div>
-          <Label>{t('event.payment_status')}</Label>
-          <AiField active={aiFields.has('payment_status')}>
-            <select className="select" value={form.payment_status} onChange={(e) => setField('payment_status', e.target.value)}>
-              <option value="">-</option>
-              <option value="paid">{t('event.paid')}</option>
-              <option value="partial">{t('event.partial')}</option>
-              <option value="pay_on_arrival">{t('event.on_arrival')}</option>
-            </select>
-          </AiField>
-        </div>
+        <AiField active={aiFields.has('payment_status')}>
+          <div className="payseg" role="group" aria-label={t('event.payment_status')}>
+            {[['paid', 'event.paid'], ['partial', 'event.partial'], ['pay_on_arrival', 'event.on_arrival']].map(([v, k]) => (
+              <button
+                key={v}
+                type="button"
+                className="t-ui"
+                aria-pressed={form.payment_status === v}
+                onClick={() => setField('payment_status', form.payment_status === v ? '' : v)}
+              >
+                {t(k)}
+              </button>
+            ))}
+          </div>
+        </AiField>
       </div>
       <AiField active={aiFields.has('free_cancellation')}>
         <div className="eed-fcbox">
-          <label className="eed-fclabel">
-            <Checkbox checked={form.free_cancellation} onCheckedChange={(v) => setField('free_cancellation', !!v)} />
+          <div className="eed-fclabel">
+            <Toggle on={!!form.free_cancellation} onChange={(v) => setField('free_cancellation', !!v)} label={t('event.free_cancel_have')} />
             <div className="eed-fcbody">
               <div className="eed-fctitle">{t('event.free_cancel_have')}</div>
               <div className="eed-fchint">{t('event.free_cancel_hint')}</div>
@@ -1656,7 +1627,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
                 </div>
               )}
             </div>
-          </label>
+          </div>
         </div>
       </AiField>
 
@@ -1790,8 +1761,10 @@ function TransferLegCard({
   const durMin = layoverMins(leg.startLocal, leg.endLocal);
   const isOpen = collapsible ? open : true;
   return (
-    <div style={{ border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--wash-2)', overflow: 'hidden' }}>
-      {/* Card header — icon, route, collapse chevron (multi only), remove (multi>2) */}
+    // TRIP-186: одиночный (direct) трансфер оголён — без карточки/шапки; карточка
+    // и шапка (icon/route/collapse) только у сегментов «с пересадками» (isMulti).
+    <div style={isMulti ? { border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--wash-2)', overflow: 'hidden' } : undefined}>
+      {isMulti && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
         <button type="button" onClick={collapsible ? onToggleOpen : undefined}
           style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 11, background: 'transparent', border: 'none', cursor: collapsible ? 'pointer' : 'default', textAlign: 'left', padding: 0, minWidth: 0 }}>
@@ -1799,7 +1772,7 @@ function TransferLegCard({
             <TIcon size={16} />
           </span>
           <span style={{ minWidth: 0, flex: 1 }}>
-            <span className="eyebrow" style={{ color, display: 'block' }}>{isMulti ? `${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}` : t(tk.labelKey)}</span>
+            <span className="eyebrow" style={{ color, display: 'block' }}>{`${t('event.segment_n', { n: legNumber })} · ${t(tk.labelKey)}`}</span>
             <span className="t-ui" style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink)', marginTop: 2 }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fromName}</span>
               <ArrowRight size={12} style={{ color: 'var(--muted)', flexShrink: 0 }} />
@@ -1815,9 +1788,10 @@ function TransferLegCard({
           </button>
         )}
       </div>
+      )}
 
-      <div style={{ display: isOpen ? 'block' : 'none', padding: '4px 14px 14px', borderTop: '1px solid var(--line-2)' }}>
-        <div style={{ height: 10 }} />
+      <div style={{ display: isOpen ? 'block' : 'none', padding: isMulti ? '4px 14px 14px' : 0, borderTop: isMulti ? '1px solid var(--line-2)' : 'none' }}>
+        {isMulti && <div style={{ height: 10 }} />}
         <div className="eyebrow" style={{ margin: '2px 0 8px', color }}>{t('event.transport_kind')}</div>
         <SegTransportGrid value={leg.transport_type} onChange={(k) => patch({ transport_type: k })} color={color} />
 
@@ -1871,36 +1845,21 @@ function TransferLegCard({
         </div>
 
         {/* Departure & arrival — bordered block (dates + duration + overnight) */}
-        <div className="eed-dateblock" style={{ marginTop: 14 }}>
-          <div className="eed-dateblock__lbl t-ui">{t('event.dep_arr')}</div>
-          <div className="fld-grid">
-            <div className={`eed-minw0 ${invF('start')}`} data-vfield={vf('start')}>
-              <Label>{t('event.departure_req')}</Label>
-              <AiField active={aiHas('startLocal')}>
-                <DateTimeInput value={leg.startLocal} onChange={(v) => patch({ startLocal: v })} onTimeMissingChange={(v) => onTimeMissing('dep', v)} />
-              </AiField>
-              <TimezoneHint tz={startTz} />
-              <FieldError issues={issues} field={vf('start')} />
-            </div>
-            <div className={`eed-minw0 ${invF('end')}`} data-vfield={vf('end')}>
-              <Label>{t('event.arrival_req')}</Label>
-              <AiField active={aiHas('endLocal')}>
-                <DateTimeInput value={leg.endLocal} onChange={(v) => patch({ endLocal: v })} onTimeMissingChange={(v) => onTimeMissing('arr', v)} />
-              </AiField>
-              <TimezoneHint tz={endTz} />
-              <FieldError issues={issues} field={vf('end')} />
-            </div>
-          </div>
-          {durMin != null && <div className="muted t-meta" style={{ marginTop: 8, textAlign: 'center' }}>{fmtDur(durMin, t)}</div>}
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 12px', marginTop: 12, borderRadius: 10, border: '1px solid var(--line, hsl(var(--border)))', cursor: 'pointer' }}>
-            <Checkbox checked={!!leg.day_change} onCheckedChange={(v) => patch({ day_change: !!v })} />
-            <span style={{ minWidth: 0 }}>
-              <span className="t-ui" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Moon size={16} /> {t('event.overnight_label')}
-              </span>
-              <span className="t-meta" style={{ display: 'block', color: 'var(--muted)', marginTop: 2 }}>{t('event.overnight_hint')}</span>
-            </span>
-          </label>
+        <DateRangeBlock
+          style={{ marginTop: 14 }}
+          label={t('event.dep_arr')} accent={color} issues={issues}
+          startLabel={t('event.departure_req')} startValue={leg.startLocal} onStart={(v) => patch({ startLocal: v })} onStartMissing={(v) => onTimeMissing('dep', v)} startVField={vf('start')} startTz={startTz}
+          endLabel={t('event.arrival_req')} endValue={leg.endLocal} onEnd={(v) => patch({ endLocal: v })} onEndMissing={(v) => onTimeMissing('arr', v)} endVField={vf('end')} endTz={endTz}
+          midText={durMin != null ? fmtDur(durMin, t) : null}
+        />
+        {/* Overnight — separate card (design). TRIP-186: порядок свитч · иконка ·
+            текст, всё прижато влево. */}
+        <div className="eed-nightrow">
+          <Toggle on={!!leg.day_change} onChange={(v) => patch({ day_change: !!v })} label={t('event.overnight_label')} />
+          <span className="eed-nightrow__l">
+            <Moon size={16} />
+            <span className="t-ui">{t('event.overnight_label')}</span>
+          </span>
         </div>
 
         {/* Carrier / flight no. */}
@@ -1995,6 +1954,91 @@ const fmtDur = (m, t) => {
   if (mm || !h) parts.push(t('event.dur_m', { m: mm }));
   return parts.join(' ');
 };
+// Date-range block (TRIP-176 design): bordered block + 3-column summary card
+// (start cell · arrow + duration/nights · end cell). Each cell is a clickable
+// DateTimeInput trigger opening the shared calendar. Reused by hotel/transfer/
+// activity so the layout stays identical across all three forms.
+function DateRangeBlock({
+  label, accent, midText, issues, style,
+  startLabel, startValue, onStart, onStartMissing, startVField, startTz,
+  endLabel, endValue, onEnd, onEndMissing, endVField, endTz,
+}) {
+  const invalid = (startVField && fieldHasError(issues, startVField))
+    || (endVField && fieldHasError(issues, endVField));
+  return (
+    <div className="eed-dateblock" style={style}>
+      <div className="eed-dateblock__lbl t-micro">{label}</div>
+      <div className={`stay-dates${invalid ? ' is-invalid' : ''}`}>
+        <div className="sd-cellwrap" data-vfield={startVField}>
+          <DateTimeInput variant="cell" cellLabel={startLabel} value={startValue} onChange={onStart} onTimeMissingChange={onStartMissing} />
+        </div>
+        <div className="stay-dates__mid">
+          <ArrowRight size={14} style={{ color: accent || 'var(--muted-2)' }} />
+          {midText && <span className="t-meta">{midText}</span>}
+        </div>
+        <div className="sd-cellwrap" data-vfield={endVField}>
+          <DateTimeInput variant="cell" cellLabel={endLabel} value={endValue} onChange={onEnd} onTimeMissingChange={onEndMissing} />
+        </div>
+      </div>
+      {(startTz || endTz) && (
+        <div className="eed-drange-tz">
+          <TimezoneHint tz={startTz} />
+          <TimezoneHint tz={endTz} />
+        </div>
+      )}
+      {startVField && <FieldError issues={issues} field={startVField} />}
+      {endVField && <FieldError issues={issues} field={endVField} />}
+    </div>
+  );
+}
+
+const splitLocal = (v) => { const [d, tm = ''] = String(v || '').split('T'); return { date: d || '', time: tm.slice(0, 5) }; };
+
+// Activity "Дата и время" (design): ONE shared date + a time card (start · duration
+// · end). The model still stores full startLocal/endLocal — both share the date.
+function ActivityWhenBlock({ form, setField, setTime, tz, issues, color }) {
+  const { t } = useI18nFormat();
+  const s = splitLocal(form.startLocal);
+  const e = splitLocal(form.endLocal);
+  const date = s.date || e.date || '';
+  const durMin = layoverMins(form.startLocal, form.endLocal);
+  const invalid = fieldHasError(issues, 'start') || fieldHasError(issues, 'end');
+  const emit = (d, st, et) => {
+    setField('startLocal', d && st ? `${d}T${st}` : '');
+    setField('endLocal', d && et ? `${d}T${et}` : '');
+    setTime('start', !!d && !st);
+    setTime('end', !!d && !et);
+  };
+  return (
+    <div className="eed-dateblock">
+      <div className="eed-dateblock__lbl t-micro">{t('event.date_time')}</div>
+      <div data-vfield="start">
+        <DateTimeInput withTime={false} value={date} onChange={(d) => emit(d, s.time, e.time)} />
+      </div>
+      <div className={`stay-dates${invalid ? ' is-invalid' : ''}`} style={{ marginTop: 8 }}>
+        <div className="sd-cellwrap">
+          <div className="sd-cell sd-cell--time">
+            <span className="sd-cell__lbl eyebrow">{t('activity.start')}</span>
+            <input type="time" className="sd-timeinput t-strong" value={s.time} onChange={(ev) => emit(date, ev.target.value, e.time)} />
+          </div>
+        </div>
+        <div className="stay-dates__mid">
+          <Clock size={14} style={{ color: color || 'var(--muted-2)' }} />
+          {durMin != null && <span className="t-meta">{fmtDur(durMin, t)}</span>}
+        </div>
+        <div className="sd-cellwrap" data-vfield="end">
+          <div className="sd-cell sd-cell--time">
+            <span className="sd-cell__lbl eyebrow">{t('event.end')}</span>
+            <input type="time" className="sd-timeinput t-strong" value={e.time} onChange={(ev) => emit(date, s.time, ev.target.value)} />
+          </div>
+        </div>
+      </div>
+      {tz && <div className="eed-drange-tz"><TimezoneHint tz={tz} /></div>}
+      <FieldError issues={issues} field="start" />
+      <FieldError issues={issues} field="end" />
+    </div>
+  );
+}
 
 function SegTransportGrid({ value, onChange, color }) {
   const { t } = useI18nFormat();
@@ -2132,7 +2176,6 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
   const docCount = Array.isArray(form.documents) ? form.documents.length : 0;
   return (
     <>
-      <SectionHeader color={color}>{t('event.activity_about')}</SectionHeader>
       <div data-vfield="title" className={inv('title')}>
         <Label>{t('event.name_req')}</Label>
         <Input value={form.title} onChange={(e) => setField('title', e.target.value)} placeholder={t('event.ph_activity_example')} />
@@ -2155,31 +2198,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
         />
       </div>
 
-      <div className="eed-dateblock">
-        <div className="eed-dateblock__lbl t-ui">{t('event.when')}</div>
-        <div className="fld-grid">
-          <div className={`field ${inv('start')}`} data-vfield="start">
-            <Label>{t('event.start')}</Label>
-            <DateTimeInput
-              value={form.startLocal}
-              onChange={(v) => setField('startLocal', v)}
-              onTimeMissingChange={(v) => setTime('start', v)}
-            />
-            <TimezoneHint tz={tz} />
-            <FieldError issues={issues} field="start" />
-          </div>
-          <div className={`field ${inv('end')}`} data-vfield="end">
-            <Label>{t('event.end')}</Label>
-            <DateTimeInput
-              value={form.endLocal}
-              onChange={(v) => setField('endLocal', v)}
-              onTimeMissingChange={(v) => setTime('end', v)}
-            />
-            <TimezoneHint tz={tz} />
-            <FieldError issues={issues} field="end" />
-          </div>
-        </div>
-      </div>
+      <ActivityWhenBlock form={form} setField={setField} setTime={setTime} tz={tz} issues={issues} color={color} />
 
       <SectionHeader color={color}>{t('event.cost')}</SectionHeader>
       <div className="fld-grid">

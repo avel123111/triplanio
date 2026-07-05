@@ -38,7 +38,6 @@
   --brand-ink:    #16294A;
   --brand-glow:   color-mix(in srgb, var(--brand) 32%, transparent);
   --brand-grad:   linear-gradient(135deg,#62A6F0 0%,#2173C8 100%);
-  --header-grad:  linear-gradient(105deg,#2A6FD6 0%,#2173C8 52%,#1C63BA 100%); /* unified top bar — white-text safe */
   --bk:           #003B95;  /* Booking.com brand navy — supplier/score badge */
   --bk-fg:        #fff;
 
@@ -51,7 +50,7 @@
   --line-2: #F1F0F8;
   --line-strong: #DBD9E7;
   --line-hover: #D2D0E0;
-  --bg:      #fcfcfc;
+  --bg:      #fbfcfe;
   --surface: #FFFFFF;
   --surface-2: #EEEEF7;
   --surface-3: #FAFAFE;
@@ -81,26 +80,30 @@
   --warm-soft-2: rgba(217,102,60,.20);
   --warm-tint: var(--warm-soft-2);
 
-  /* AI */
-  --ai:        #8A6BF0;
-  --ai-2:      #D77BD0;
-  --ai-3:      #5AA0EE;
-  --ai-ink:    #5B3FE0;
-  --ai-soft:   rgba(138,107,240,.11);
-  --ai-soft-2: rgba(138,107,240,.17);
+  /* AI — фиолет→индиго→циан (TRIP-187). База --ai = #7C3AED: маркер, тень и метка-текст. */
+  --ai:        #7C3AED;
+  --ai-2:      #6366F1;
+  --ai-3:      #22D3EE;
+  --ai-ink:    #6D28D9;
+  --ai-soft:   rgba(139,92,246,.14);
+  --ai-soft-2: rgba(139,92,246,.24);
+  --ai-line:   rgba(139,92,246,.5);   /* рамка AI-контейнеров (дизайн-система TRIP-187) */
   --ai-soft-12:var(--ai-soft-2);
-  --ai-gradient:      linear-gradient(135deg,#5AA0EE 0%,#8A6BF0 52%,#D77BD0 100%);
-  --ai-gradient-soft: linear-gradient(135deg,rgba(90,160,238,.13),rgba(138,107,240,.13),rgba(215,123,208,.13));
+  --ai-gradient:      linear-gradient(135deg,#A855F7 0%,#6366F1 55%,#22D3EE 100%);
+  --ai-gradient-soft: linear-gradient(135deg,rgba(168,85,247,.13),rgba(99,102,241,.12),rgba(34,211,238,.12));
   --ai-grad:        var(--ai-gradient);
   --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
 
-  /* Pro / premium (Lumo gold) */
-  --pro:       #E6A21E;
-  --pro-soft:  rgba(230,162,30,.13);
-  --pro-soft-2:rgba(230,162,30,.22);
-  --pro-ink:   #936215;
-  --pro-fg:    #4A2D05;
-  --pro-gradient: linear-gradient(135deg,#FBD06A 0%,#EBA02E 55%,#E08A36 100%);
+  /* Pro / premium — оранж→розовый градиент монетизации (TRIP-187) */
+  --pro:       #FF2D78;
+  --pro-soft:  rgba(255,45,120,.12);
+  --pro-soft-2:rgba(255,45,120,.20);
+  --pro-ink:   #E11D6A;
+  --pro-fg:    #fff;
+  --pro-gradient: linear-gradient(135deg,#FF7A59 0%,#FF2D78 100%);
+
+  /* Рейтинг (★ отелей/активностей) — своё золото, отвязано от --pro (TRIP-187) */
+  --rating:    #E6A21E;
 
   /* Overlays / scrims */
   --scrim:            rgba(23,20,40,.45);
@@ -110,6 +113,8 @@
   /* Event types (+ink +soft-2; legacy -soft-12 aliases -soft-2) */
   --ev-hotel:#5470E6; --ev-hotel-ink:#4257C9; --ev-hotel-soft:rgba(84,112,230,.11); --ev-hotel-soft-2:rgba(84,112,230,.17); --ev-hotel-soft-12:var(--ev-hotel-soft-2);
   --ev-transfer:#15A2B0; --ev-transfer-ink:#096B75; --ev-transfer-soft:rgba(21,162,176,.12); --ev-transfer-soft-2:rgba(21,162,176,.18); --ev-transfer-soft-12:var(--ev-transfer-soft-2);
+  /* overnight/night accent (indigo) — night pill + "+1" marker + overnight toggle (TRIP-176) */
+  --night:#6366F1; --night-ink:#4F46E5; --night-soft:rgba(99,102,241,.13);
   --ev-activity:#E0568F; --ev-activity-ink:#BC2F6A; --ev-activity-soft:rgba(224,86,143,.12); --ev-activity-soft-2:rgba(224,86,143,.18); --ev-activity-soft-12:var(--ev-activity-soft-2);
   --ev-car:#2FA866; --ev-car-ink:#12703E; --ev-car-soft:rgba(47,168,102,.12); --ev-car-soft-2:rgba(47,168,102,.18); --ev-car-soft-12:var(--ev-car-soft-2);
   --ev-esim:#2173C8; --ev-esim-ink:#1358A0; --ev-esim-soft:rgba(33,115,200,.11); --ev-esim-soft-2:rgba(33,115,200,.18);
@@ -140,11 +145,35 @@
   --shadow-card: var(--sh-2);
   --shadow-pop:  var(--sh-3);
 
+  /* === Канонические поверхности (TRIP-189) — ЕДИНЫЙ источник для всех
+     карточек/панелей/виджетов. Ровно две роли:
+       .surface-glass — «плавающая» (тень + backdrop-blur): полоса Города/Страны
+         и карточки на /trips;
+       .surface-panel — «плоская» (без тени и блюра): панели на экране трипа
+         (Overview/Бюджет/Участники).
+     Обе роли делят фон/бордер/радиус; отличаются только тенью и блюром.
+     Значения фона и бордера переопределяются для тёмной темы ниже. === */
+  --r-xl: 20px;
+  --surface-card:        rgba(255,255,255,.72); /* light — слегка прозрачный, чтобы blur давал матовое стекло */
+  --surface-card-border: rgba(45,55,115,.22);
+  --shadow-glass:        0 18px 50px -26px rgba(0,0,0,.5);
+  --glass-blur:          16px;
+  --header-bg:           rgba(251,252,254,.78); /* матовое стекло верхней панели — light (opaque-фолбэк = --surface) */
+
   --font-display: 'Exo 2',ui-sans-serif,system-ui,sans-serif;               /* TRIP-175 — заголовочная гарнитура (текст остаётся Golos через --font-ui) */
   --font-ui:      'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 — та же семья */
   --font-mono:    'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace; /* TRIP-165 — коды/идентификаторы */
-  --display-tracking: -0.015em;  /* Exo 2 — чуть плотнее для крупных заголовков (TRIP-175 шкала макета) */
-  --track-caps: 0.12em;          /* TRIP-175 — трекинг капс-меток/эйбрау (канон .t-micro) */
+
+  /* Дисплейные «ручки» (модификаторы) канона «Экзо» (TRIP-183) — параметры
+     дисплейной гарнитуры в одной точке, как в файле типографики. Правишь тут —
+     двигается везде. Имена: наши ↔ из файла (--fd-w=вес заголовков, --fd-w3=вес h3,
+     --fd-k=масштаб кегля, --track-hero/--track-h=трекинг). */
+  --fd-w:  800;                  /* вес hero/h1/h2 (t-display/t-title/t-heading) */
+  --fd-w3: 700;                  /* вес h3 (t-subheading) */
+  --fd-k:  1;                    /* глобальный множитель дисплейного кегля (регулятор) */
+  --track-hero: -0.02em;         /* трекинг hero (t-display) */
+  --track-h:    -0.01em;         /* трекинг h1/h2/h3 (t-title/t-heading/t-subheading) */
+  --track-caps: 0.14em;          /* трекинг капс-лейблов (канон .t-micro ← label макета; было .12, макет .14) */
 
   /* Motion — strong custom curves (built-in easings are too weak).
      ease-out for enter/hover/press, ease-in-out for on-screen movement. */
@@ -152,18 +181,20 @@
   --ease-spring: cubic-bezier(0.34, 1.25, 0.5, 1); /* Lumo — playful overshoot */
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
-  /* Type scale — Lumo standard (names + values). The single sanctioned ladder;
-     always reach for var(--fs-*), never ad-hoc px. */
-  --fs-nano:    10px;    /* dense chips, micro-badges */
-  --fs-micro:   11px;    /* column headers, tags, micro-labels */
-  --fs-meta:    12.5px;  /* dates, secondary meta */
-  --fs-base:    14px;    /* default UI text */
-  --fs-strong:  15px;    /* row labels, emphasised body */
-  --fs-h4:      16px;    /* small headings / large labels */
-  --fs-h3:      17px;    /* panel / section titles (TRIP-175 шкала макета: 19→17) */
-  --fs-h2:      23px;    /* screen headings (TRIP-175: 26→23) */
-  --fs-h1:      32px;    /* page headings (TRIP-175: 40→32) */
-  --fs-display: 47px;    /* hero / display (TRIP-175: 54→47) */
+  /* Type scale — единственная санкционированная лесенка (var(--fs-*), не сырой px).
+     ★TRIP-183 — плотная шкала канона «Экзо» (из приложенного файла типографики).
+     Дисплейный ярус (h3/h2/h1/hero) множится на --fd-k (регулятор кегля); hero/h1
+     адаптивны через clamp. Гард не ловит эти defs (нет префикса `font-size:`). */
+  --fs-nano:    9.5px;   /* label макета → канон .t-micro (капс-лейблы); было 10 */
+  --fs-micro:   11px;    /* meta/meta-md макета → каноны .t-meta / .t-mono (моно 11) */
+  --fs-meta:    12.5px;  /* body-med макета → канон .t-ui */
+  --fs-base:    13px;    /* title/body макета → каноны .t-label / .t-body; было 14 */
+  --fs-strong:  var(--fs-base);  /* база body + эмфаз-текст (НЕ канон) — алиас на base, единый источник 13px (TRIP-183 аудит: убран дубль-литерал) */
+  --fs-h4:      16px;    /* НЕ канон и НЕ densify: анти-iOS-zoom (textarea/select/chat ≥16px), .btn--lg, хедер, statcard, глоб. h4 (TRIP-183 аудит: возврат 13→16, чинит зум моб-инпутов) */
+  --fs-h3:      calc(14.5px * var(--fd-k));               /* h3 макета → канон .t-subheading; было 17 */
+  --fs-h2:      calc(16.5px * var(--fd-k));               /* h2 макета → канон .t-heading; было 23 */
+  --fs-h1:      calc(clamp(21px, 2.6vw, 26px) * var(--fd-k)); /* h1 макета → канон .t-title; было 32 */
+  --fs-display: calc(clamp(30px, 4vw, 44px) * var(--fd-k));   /* hero макета → канон .t-display; было 47 */
 }
 
 /* Dark theme */
@@ -180,7 +211,6 @@
   --primary-soft-2: rgba(111,178,255,.24);
   --brand-ink:    #BFD3F5;
   --brand-grad:   linear-gradient(135deg,#8AC1FF 0%,#6FB2FF 100%);
-  --header-grad:  linear-gradient(105deg,#234F84 0%,#21588F 55%,#1B4373 100%); /* unified top bar — dark, white-text safe */
   --bk:           #1A66D9;  /* Booking navy — dark theme */
 
   /* Neutrals / surfaces — dark */
@@ -190,11 +220,16 @@
   --line-2: #262533;
   --line-strong: #403E4F;
   --line-hover: #3E3C4D;
-  --bg:      #161520;
-  --surface: #201F2C;
+  --bg:      #0c0e1c;
+  --surface: #1f212f;
   --surface-2: #2A2937;
   --surface-3: #1B1A26;
   --surface-elev: #272636;
+
+  /* Канонические поверхности — тёмная (TRIP-189): стекло поверх #0c0e1c */
+  --surface-card:        rgba(255,255,255,.07);
+  --surface-card-border: rgba(255,255,255,.17);
+  --header-bg:           rgba(12,14,28,.6); /* матовое стекло верхней панели — dark */
 
   /* Semantic — dark */
   --info:#5FAEEC; --info-soft:rgba(95,174,236,.16); --info-ink:#93C6F2;
@@ -212,24 +247,28 @@
   --warm-soft: rgba(240,147,107,.16);
   --warm-soft-2: rgba(240,147,107,.24);
 
-  /* AI — dark */
-  --ai:        #A98BFF;
-  --ai-2:      #E08FE0;
-  --ai-3:      #6FB0FF;
+  /* AI — dark (фиолет→индиго→циан, TRIP-187) */
+  --ai:        #C084FC;
+  --ai-2:      #818CF8;
+  --ai-3:      #4FE3F0;
   --ai-ink:    #C6B5FF;
-  --ai-soft:   rgba(169,139,255,.16);
-  --ai-soft-2: rgba(169,139,255,.24);
-  --ai-gradient:      linear-gradient(135deg,#6FB0FF 0%,#A98BFF 52%,#E08FE0 100%);
-  --ai-gradient-soft: linear-gradient(135deg,rgba(111,176,255,.18),rgba(169,139,255,.18),rgba(224,143,224,.18));
+  --ai-soft:   rgba(168,85,247,.18);
+  --ai-soft-2: rgba(168,85,247,.26);
+  --ai-line:   rgba(168,85,247,.55);
+  --ai-gradient:      linear-gradient(135deg,#C084FC 0%,#818CF8 55%,#4FE3F0 100%);
+  --ai-gradient-soft: linear-gradient(135deg,rgba(192,132,252,.18),rgba(129,140,248,.16),rgba(79,227,240,.16));
   --assistant-grad: linear-gradient(135deg, var(--brand), var(--ai));
 
-  /* Pro — dark */
-  --pro:       #F0B65A;
-  --pro-soft:  rgba(240,182,90,.16);
-  --pro-soft-2:rgba(240,182,90,.26);
-  --pro-ink:   #F6CD84;
-  --pro-fg:    #2A1903;
-  --pro-gradient: linear-gradient(135deg,#FBD478 0%,#F0A93C 55%,#E08A36 100%);
+  /* Pro — dark (оранж→розовый, TRIP-187) */
+  --pro:       #FF6B85;
+  --pro-soft:  rgba(255,107,133,.18);
+  --pro-soft-2:rgba(255,107,133,.28);
+  --pro-ink:   #FF9DB6;
+  --pro-fg:    #fff;
+  --pro-gradient: linear-gradient(135deg,#FF8A6B 0%,#FF4D8A 100%);
+
+  /* Рейтинг — dark золото (TRIP-187) */
+  --rating:    #F0B65A;
 
   /* Overlays / scrims — dark */
   --scrim:            rgba(0,0,0,.62);
@@ -239,6 +278,7 @@
   /* Event types — dark */
   --ev-hotel:#8E9CF5; --ev-hotel-ink:#8E9CF5; --ev-hotel-soft:rgba(142,156,245,.16); --ev-hotel-soft-2:rgba(142,156,245,.24);
   --ev-transfer:#38C6D4; --ev-transfer-ink:#38C6D4; --ev-transfer-soft:rgba(56,198,212,.16); --ev-transfer-soft-2:rgba(56,198,212,.24);
+  --night:#818CF8; --night-ink:#A5B4FC; --night-soft:rgba(99,102,241,.20);
   --ev-activity:#F178A8; --ev-activity-ink:#F178A8; --ev-activity-soft:rgba(241,120,168,.16); --ev-activity-soft-2:rgba(241,120,168,.24);
   --ev-car:#4ECB86; --ev-car-ink:#4ECB86; --ev-car-soft:rgba(78,203,134,.16); --ev-car-soft-2:rgba(78,203,134,.24);
   --ev-esim:#6FB2FF; --ev-esim-ink:#94C6FF; --ev-esim-soft:rgba(111,178,255,.15); --ev-esim-soft-2:rgba(111,178,255,.24);
@@ -265,6 +305,30 @@ body {
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;   /* TRIP-165 — цифры выровнены во всём приложении */
 }
+/* TRIP-186 — мягкий фоновый градиент «Тишина» по центру-сверху канваса (обе
+   темы). body::before покрывает экраны БЕЗ непрозрачной оболочки (логин, вью). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* TRIP-188: центр эллипса над верхней кромкой (−8%) → плотная часть жмётся к
+     самому верху, не «плавает» серединой экрана; альфа мягче (обе темы). */
+  background: radial-gradient(130% 80% at 50% -8%, rgba(146,164,232,.24), transparent 62%);
+}
+:root[data-theme="dark"] body::before {
+  background: radial-gradient(130% 80% at 50% -8%, rgba(124,138,205,.20), transparent 62%);
+}
+/* ЕДИНЫЙ фон на всё приложение. Градиент — на ОДНОМ фикс-слое body::before выше.
+   Проблема была в том, что каждый полноэкранный шелл красил свой непрозрачный
+   --bg/--surface и перекрывал этот слой (у списков .app-shell, у редактора
+   .ts-screen + его колонки, у трип-экранов .trip-shell — свой фон). Делаем их
+   ПРОЗРАЧНЫМИ (!important перебивает и инлайн, и CSS) — сквозь них виден один и
+   тот же канвас с градиентом. Карточки/панели поверх остаются непрозрачными. */
+.app-shell, .ts-screen, .ts-col-left, .ts-col-right, .trip-shell, .flow-page {
+  background: transparent !important;
+}
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: var(--brand); text-decoration: none; }
@@ -285,7 +349,7 @@ h1, h2, h3, h4 {
 .mono { font-family: var(--font-mono); }
 
 /* =================================================================
-   ТИПОГРАФИКА — 10 канонических текст-стилей (TRIP-165).
+   ТИПОГРАФИКА — 10 канонических текст-стилей.
    Единственный санкционированный набор на всё приложение. Каждый
    класс полностью фиксирует гарнитуру+размер+вес+интерлиньяж+трекинг.
    ЦВЕТ сюда НЕ входит — отдельная ось (цвет-токены/утилиты).
@@ -298,16 +362,37 @@ h1, h2, h3, h4 {
    и утилиту, и компонент, и все «сырые» использования разом, без переклейки
    JSX. Свой тип у такого класса удалён; в его правиле остаются только
    раскладка и цвет. (TRIP-165 Фаза 2)
+
+   ★TRIP-183 — каноны «Экзо» (из приложенного файла типографики). Наши имена
+   сохранены; ниже карта наше-имя ↔ имя-в-файле ↔ параметры (гарнитуры те же:
+   Exo 2 / Golos Text / JetBrains Mono; веса дисплея — «ручки» --fd-w/--fd-w3/--fd-k):
+     .t-display     ← hero      Exo    --fd-w /clamp→44/1.08/--track-hero
+     .t-title       ← h1        Exo    --fd-w /clamp→26/1.14/--track-h
+     .t-heading     ← h2        Exo    --fd-w /16.5/1.2/--track-h
+     .t-subheading  ← h3        Exo    --fd-w3/14.5/1.25/--track-h
+     .t-label       ← title     Golos  700/13/1.3
+     .t-body        ← body      Golos  400/13/1.55
+     .t-ui          ← body-med  Golos  600/12.5/1.4
+     .t-meta        ← meta      JetBrains 500/11/1.4       (моно-мета-ярус)
+     .t-micro       ← label     JetBrains 600/9.5/1.25/UPPER/--track-caps
+     .t-mono        ← meta-md   JetBrains 700/11/1.25
    ================================================================= */
 .t-display,
+.statbar .v,   /* TRIP-188: инспектор канонов — числа статбара дашборда Heading→Display */
 .head h1,   /* TRIP-175: решение инспектора — hero-заголовок «шапки» (приветствие/титул экрана) → t-display */
-.ncal-month-lbl { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; line-height: 1.06; letter-spacing: var(--display-tracking); }
+.ncal-month-lbl { font-family: var(--font-display); font-size: var(--fs-display); font-weight: var(--fd-w); line-height: 1.08; letter-spacing: var(--track-hero); }   /* TRIP-183: .t-display ← hero макета (Exo --fd-w/44/1.08/--track-hero) */
 .t-title,
+.tc__title,        /* TRIP-188: инспектор канонов — заголовок карточки трипа Heading→Title */
+.nextcard__tx b,   /* TRIP-188: инспектор канонов — название следующего трипа Label→Title */
+.cdu b,            /* TRIP-188: инспектор канонов — числа обратного отсчёта Subheading→Title */
+.lp-ti b,          /* TRIP-188: инспектор канонов — заголовки шапок панелей события/добавления Subheading→Title */
 h1,
 .plan-price__amount,
 .auth__h1,
-.budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: 800; line-height: 1.1;  letter-spacing: var(--display-tracking); }
+.budget__total .big { font-family: var(--font-display); font-size: var(--fs-h1);      font-weight: var(--fd-w); line-height: 1.14;  letter-spacing: var(--track-h); }   /* TRIP-183: .t-title ← h1 макета (Exo --fd-w/26/1.14/--track-h) */
 .t-heading,
+.pro-up .pt,   /* TRIP-187: инспектор канонов — заголовок плашки апгрейда → t-heading (h2 макета) */
+.limitcard__top b,   /* TRIP-187: инспектор канонов — заголовок плашки лимита → t-heading (h2 макета) */
 h2,
 .eroute h3,
 .flow-lp-b h1,
@@ -316,11 +401,8 @@ h2,
 .acct-hero__av,
 .acct-hero__name,
 .acct-plan__v,
-.tc__title,
 .pro-hero__title,
-.route-block .rt,
 .sec-head h2,
-.statbar .v,
 .sfig .v,
 .bgt-donut__c .v,
 .bgt-stat__v,
@@ -328,8 +410,9 @@ h2,
 .tcp__ph,
 .ncal-wdc-num,
 .pt-mm .n,
-.ncal-year-lbl { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; }
+.ncal-year-lbl { font-family: var(--font-display); font-size: var(--fs-h2);      font-weight: var(--fd-w); line-height: 1.2; letter-spacing: var(--track-h); }   /* TRIP-183: .t-heading ← h2 макета (Exo --fd-w/16.5/1.2/--track-h; вес 700→--fd-w) */
 .t-subheading,
+.tc-add b,   /* TRIP-188: инспектор канонов — «Добавить путешествие» UI→Subheading */
 .te-cityname,   /* TRIP-175: решение инспектора канонов — названия городов планировщика → t-subheading */
 h3,
 .app-header__brand-name,
@@ -346,9 +429,7 @@ h3,
 .sheet-h h3,
 .ev-dlg-info h2,
 .ev-dlg-price .amt,
-.lp-ti b,
 .head__av,
-.cdu b,
 .rec .v,
 .vp-h h3,
 .bgt-detail__n,
@@ -364,7 +445,7 @@ h3,
 .card h3,
 .step h3,
 .drawer li a,
-.ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: 700; line-height: 1.25; letter-spacing: 0; }
+.ncal-dn { font-family: var(--font-display); font-size: var(--fs-h3);      font-weight: var(--fd-w3); line-height: 1.25; letter-spacing: var(--track-h); }   /* TRIP-183: .t-subheading ← h3 макета (Exo --fd-w3/14.5/1.25/--track-h) */
 .t-label,
 h4,
 .choice-card__ttl,
@@ -376,8 +457,6 @@ h4,
 .addon-card__title,
 .sheet .ss-search input,
 .plan-card__name,
-.wmini .ttl,
-.nextcard__tx b,
 .nonext b,
 .visit .when .yr,
 .bgt-donutcard__h b,
@@ -389,10 +468,10 @@ h4,
 .banner p,
 .va-ti b, .s22-ti b,
 .va-price b, .s22-price b,
-.ts-routehead__title,
-.cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-175: .t-label — Golos 14/700 по шкале макета (был --fs-h4 16/600) */
+.cm-h { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 700; line-height: 1.3;  letter-spacing: 0; }   /* TRIP-183: .t-label ← title макета (Golos 700/13/1.3); --fs-base 14→13 */
 .t-body,
 .head .sub,   /* TRIP-175: решение инспектора канонов — подзаголовок приветствия (счётчики) → t-body */
+.limitcard__sub,   /* TRIP-187: инспектор канонов — подпись плашки лимита → t-body */
 .proto__nav-item,
 .app-header .app-header__avatar,
 .avatar--lg,
@@ -417,7 +496,7 @@ h4,
 .langdd__item,
 .ts-in,
 .s22f-field input,
-.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-strong);  font-weight: 400; line-height: 1.6;  letter-spacing: 0; }   /* TRIP-175: .t-body — 15px/lh1.6 по шкале макета (был --fs-base 14/lh1.5) */
+.ncal-empty { font-family: var(--font-ui);      font-size: var(--fs-base);  font-weight: 400; line-height: 1.55;  letter-spacing: 0; }   /* TRIP-183: .t-body ← body макета (Golos 400/13/1.55); был --fs-strong 15/lh1.6 */
 .t-ui,
 .trips-toolbar .seg--filter button,   /* TRIP-175: решение инспектора — фильтр-сегменты «Активные/Прошедшие» → t-ui (спецификее .seg button{font:inherit}) */
 .btn,
@@ -427,7 +506,6 @@ h4,
 .app-header__act,
 .app-side__item,
 .input, .select, .textarea,
-.pro-up .pt,
 .tweaks__title,
 .addsheet__tx b,
 .eroute p,
@@ -467,10 +545,8 @@ h4,
 .sheet-row,
 .ss-opt,
 .sheet .ss-opt,
-.tc-add b,
 .tr__title,
 .tr--add b,
-.limitcard__top b,
 .plan-feature,
 .plan-select-btn,
 .ai-blk-ti b,
@@ -517,7 +593,7 @@ h4,
 .s22f-poptx b,
 .s22f-cur,
 .fork-manual__tx b,
-.cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-base);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-175: .t-ui lh 1.3→1.4 (шкала макета) */
+.cm-h3 { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-ui ← body-med макета (Golos 600/12.5/1.4); был --fs-base 14 */
 .t-meta,
 .field__hint,
 .proto__nav-sub,
@@ -623,8 +699,6 @@ h4,
 .tr__sub,
 .tr__date,
 .tr--add small,
-.limitcard__count,
-.limitcard__sub,
 .pro-hero-eyebrow,
 .pro-hero__note,
 .plan-save-tag,
@@ -637,9 +711,6 @@ h4,
 .doc-row .ds,
 .ev-dlg-info .sub,
 .ev-dlg-price .cur,
-.route-block .rc,
-.route-block .ra,
-.route-block .dur,
 .bk-link,
 .warn-banner span,
 .ch-row .cr-b span,
@@ -774,7 +845,7 @@ h4,
 .fork-partner__mid b,
 .va-sub, .s22-sub, .va-flag,
 .fork-manual__tx span, .va-cnt, .s22-cnt, .s22-addr, .s22-stars, .s22f-poptx span, .s22f-pill, .fork-or span, .s22f-resetall,
-.ncal-leg { font-family: var(--font-ui);      font-size: var(--fs-meta);    font-weight: 600; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-175: НЕ-капс подписи booking (схлопнутые .t-nano/.t-caption) → t-meta (Golos 12.5) */
+.ncal-leg { font-family: var(--font-mono);      font-size: var(--fs-micro);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }   /* TRIP-183: .t-meta ← meta макета (JetBrains 500/11/1.4) — моно-мета-ярус, разворот TRIP-175 Ф2 (был Golos 600/12.5) */
 .t-micro,
 .badge,
 .eyebrow,
@@ -832,7 +903,7 @@ h4,
 .app-sidebar__group,
 .mbnav__lbl,
 .va-from, .s22-price span, .fork-partner__mid span,
-.ncal-legend-lbl { font-family: var(--font-mono);    font-size: var(--fs-micro);   font-weight: 700; line-height: 1.2;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-175: .t-micro на JetBrains Mono + трекинг --track-caps (техно-метки); капс-эйбрау booking переехали сюда из схлопнутого .t-nano */
+.ncal-legend-lbl { font-family: var(--font-mono);    font-size: var(--fs-nano);   font-weight: 600; line-height: 1.25;  letter-spacing: var(--track-caps); text-transform: uppercase; }   /* TRIP-183: .t-micro ← label макета (JetBrains 600/9.5/caps/--track-caps .14); был 700/11 */
 .t-mono,
 .cm-code,
 .te-dts,
@@ -841,9 +912,17 @@ h4,
 .tl3-ev .time,
 .tl3-ev--tr .time--tr span,
 .kv .v.mono,
-.confirm__email,
-.route-block .rd { font-family: var(--font-mono);    font-size: var(--fs-meta);    font-weight: 500; line-height: 1.4;  letter-spacing: 0; }
-/* TRIP-175: каноны-заплатки .t-nano/.t-caption СХЛОПНУТЫ (макет их не содержит).
+.confirm__email { font-family: var(--font-mono);    font-size: var(--fs-micro);    font-weight: 700; line-height: 1.25;  letter-spacing: 0; }   /* TRIP-183: .t-mono ← meta-md макета (JetBrains 700/11/1.25); был 500/12.5. Прозаичный код/email можно переносить в .t-meta канон-аудитором. */
+/* TRIP-188: caption = МОДИФИКАТОР `.tp-caption` поверх канона .t-mono (ровно как
+   пресет `.tp-caption` в canon-inspector: CAPS + letter-spacing .2em + var(--brand)).
+   Применяется как class="t-mono tp-caption" — база из канона, дельта из модификатора,
+   поэтому инспектор детектит «Mono + caption» (зелёный), а не off-canon. Значения
+   1:1 с аудитором (трекинг .2em, НЕ --track-caps .14). Все caption-эйбрау на /trips +
+   «Маршрут»/«Мир исследован». */
+.tp-caption { text-transform: uppercase; letter-spacing: 0.2em; color: var(--brand); }
+/* TRIP-175: канон-заплатки .t-nano/.t-caption СХЛОПНУТЫ. Caption вернулся в TRIP-188
+   не как канон, а как МОДИФИКАТОР .tp-caption поверх .t-mono (определение выше) —
+   1:1 с пресетом аудитора; инспектор детектит его как «Mono + caption».
    Их члены переехали: НЕ-капс подписи booking → .t-meta (Golos 12.5, co-selector
    в правиле t-meta выше), капс-эйбрау (.va-from/.s22-price span/.fork-partner__mid
    span) → .t-micro (mono+track, co-selector выше — капс/трекинг уже в каноне, свой
@@ -973,10 +1052,19 @@ h4,
 .app-header {
   display: flex; align-items: center; gap: 14px;
   padding: 0 18px;
-  position: sticky; top: 0; z-index: 50;
-  background: var(--header-grad);
-  color: #fff;
-  height: 60px; min-height: 60px;
+  position: sticky; top: 0; z-index: 50;   /* keep 50 — поднятие ломает стек меню (z-60) / FAB (z-70) */
+  background: var(--surface);               /* непрозрачный фолбэк без backdrop-filter */
+  color: var(--ink);
+  height: 60px; min-height: 60px;           /* фикс-высота: на неё завязаны calc(100vh - 56px) лэйауты */
+  border-bottom: 1px solid var(--surface-card-border);
+}
+/* Матовое стекло только где backdrop-filter поддержан; иначе остаётся --surface. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .app-header {
+    background: var(--header-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  }
 }
 .app-header__left  { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 auto; }
 .app-header__right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
@@ -985,10 +1073,10 @@ h4,
 /* Round glass buttons (back / mobile burger) */
 .app-header__gbtn {
   width: 38px; height: 38px; flex: 0 0 auto; border-radius: 50%; cursor: pointer;
-  color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26);
+  color: var(--muted); background: transparent; border: 1px solid var(--line);
   display: grid; place-items: center; transition: background .15s var(--ease-out);
 }
-.app-header__gbtn:hover { background: rgba(255,255,255,.24); }
+.app-header__gbtn:hover { background: var(--wash); color: var(--ink); }
 .app-header__menu { display: none; }                /* burger — shown on mobile only */
 
 /* Brand block — logo in a white plaque + wordmark */
@@ -998,20 +1086,20 @@ h4,
   background: #fff; padding: 3px; box-shadow: 0 3px 10px rgba(0,0,0,.22); overflow: hidden;
 }
 .app-header__logo img { width: 32px; height: 32px; display: block; border-radius: 8px; }
-.app-header__brand-name { color: #fff; }
+.app-header__brand-name { color: var(--ink); }
 .app-header--trip .app-header__brand-name { display: none; }   /* trip screens: logo only, no wordmark */
 
 /* Vertical separators (brand ⋮ trip ⋮ utilities) */
-.app-header__vdiv { width: 1px; height: 28px; background: rgba(255,255,255,.28); flex: 0 0 auto; }
+.app-header__vdiv { width: 1px; height: 28px; background: var(--line); flex: 0 0 auto; }
 
 /* Trip context — title + meta (dates · days · cities) */
 .app-header__trip { min-width: 0; display: flex; flex-direction: column; justify-content: center; flex: 0 1 auto; }
 .app-header__trip-title {
  margin: 0;
- color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+ color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .app-header__trip-meta {
- color: rgba(255,255,255,.82); margin-top: 2px;
+ color: var(--muted); margin-top: 2px;
  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
  display: flex; gap: 6px; align-items: center;
 }
@@ -1019,20 +1107,20 @@ h4,
 /* Trip-action group (Share / Edit / …) — glass pill with inner dividers */
 .app-header__trip-actions {
   display: flex; align-items: stretch; gap: 4px; padding: 4px; border-radius: 13px;
-  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26); flex: 0 0 auto;
+  background: var(--wash); border: 1px solid var(--line); flex: 0 0 auto;
 }
 .app-header__act {
  display: inline-flex; align-items: center; gap: 8px; position: relative;
- border: 0; background: transparent; color: #fff; cursor: pointer;
+ border: 0; background: transparent; color: var(--ink); cursor: pointer;
  padding: 9px 13px; border-radius: 9px; white-space: nowrap; transition: background .15s var(--ease-out);
 }
-.app-header__act:hover { background: rgba(255,255,255,.20); }
+.app-header__act:hover { background: var(--surface); }
 .app-header__act svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .app-header__act--icon { padding: 9px 11px; }
 .app-header__act[disabled] { opacity: .5; cursor: default; }
 .app-header__act[disabled]:hover { background: transparent; }
 .app-header__act + .app-header__act::before {
-  content: ""; position: absolute; left: -4px; top: 20%; height: 60%; width: 1px; background: rgba(255,255,255,.28);
+  content: ""; position: absolute; left: -4px; top: 20%; height: 60%; width: 1px; background: var(--line);
 }
 
 /* Base neutral icon button (used OUTSIDE the header too — keeps light styling). */
@@ -1051,20 +1139,19 @@ h4,
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--warm); border: 2px solid var(--surface);
 }
-/* On-brand override — only inside the gradient header. */
+/* Header override — keep the 38px round shape; colours fall back to the neutral
+   .icon-btn base (theme-aware) now that the bar is glass, not brand-gradient. */
 .app-header .icon-btn {
-  width: 38px; height: 38px; border-radius: 50%;
-  color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26);
+  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line);
 }
-.app-header .icon-btn:hover { background: rgba(255,255,255,.24); color: #fff; }
-.app-header .icon-btn .dot { background: var(--danger); border: 1.5px solid #fff; }
+.app-header .icon-btn .dot { background: var(--danger); border: 1.5px solid var(--surface); }
 
 /* Account button + avatar ring + PRO badge */
 .app-header__account { display: flex; align-items: center; gap: 7px; background: transparent; border: 0; cursor: pointer; padding: 0 2px; }
 /* Profile avatar — same 38px diameter as the theme/notification circles, single
    solid white ring (override the base .avatar border + sm size). box-sizing is
    border-box, so the 2px ring sits inside the 38px box → equal outer diameter. */
-.app-header .app-header__avatar { width: 38px; height: 38px; border: 2px solid #fff; box-shadow: none; }
+.app-header .app-header__avatar { width: 38px; height: 38px; border: 2px solid var(--surface); box-shadow: none; }
 .app-header__pro {
  color: var(--pro-fg); background: var(--pro-gradient); padding: 6px 9px; border-radius: 8px;
  box-shadow: 0 2px 6px rgba(0,0,0,.18);
@@ -1204,15 +1291,42 @@ h4,
 @media (hover:hover) { .btn:hover:not([disabled]):not(.is-disabled) { transform: translateY(-2px); } }
 .btn:active:not([disabled]):not(.is-disabled) { transform: scale(0.97); }
 
-.card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  padding: 18px;
-  /* Neutral #fcfcfc page bg removes the lavender hue that used to separate
-     white cards from the canvas — lift them with a soft elevation instead. */
-  box-shadow: var(--shadow-soft);
+/* Канонические роли поверхностей (TRIP-189) — ЕДИНЫЙ источник вида карточек.
+   Ровно два скина: .surface-glass (плавающая — тень + backdrop-blur) и
+   .surface-panel (плоская). Каждый примитив подключается к своей роли здесь же
+   через групповой селектор, а свою внутреннюю раскладку (падинги/хедеры/overflow)
+   доопределяет в собственном блоке ниже по файлу. Значения — только из токенов
+   --surface-card / --surface-card-border / --r-xl / --shadow-glass / --glass-blur. */
+.surface-glass,
+.statbar,                  /* /trips — полоса Города/Страны */
+.wmini,                    /* /trips — «Мир исследован» */
+.nextcard,                 /* /trips — следующий трип */
+.nonext,                   /* /trips — пусто «следующий трип» */
+.tr {                      /* /trips — строка трипа (list-view) */
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
+.surface-panel,
+.card,
+.statcard,
+.wdg,
+.panel,                    /* экран трипа/статистика — плоские панели/виджеты */
+.invite,                   /* баннер-приглашение */
+.acc,                      /* аккордеон */
+.acct-hero,                /* шапка аккаунта */
+.pl-lastcard,              /* карточка последней брони (планнер) */
+.lpanel {                  /* левая панель редактора */
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  border-radius: var(--r-xl);
+  box-shadow: none;
+}
+
+.card { padding: 18px; }
 .card--soft { background: var(--wash); border-color: transparent; box-shadow: none; }
 .card--quiet { background: var(--surface); border-color: var(--line-2); }
 .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
@@ -1228,7 +1342,8 @@ h4,
 /* Accordion (collapsible field group) — TRIP-176. Reusable primitive: header
    (title + optional subtitle + count badge + chevron) toggles the body. Text is
    on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
-.acc { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); margin-bottom: 12px; overflow: hidden; }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.acc { margin-bottom: 12px; overflow: hidden; }
 .acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: color-mix(in srgb, var(--surface-2) 30%, transparent); border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
 .acc__head:hover { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
 .acc__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -1297,17 +1412,19 @@ h4,
 /* Pro badge — gold gradient (Lumo). Single source: recolour via --pro* tokens. */
 .badge--pro { background: var(--pro-gradient); color: var(--pro-fg); box-shadow: 0 4px 12px -4px var(--pro); }
 
-/* Pro upgrade plate — sidebar / inline gate (Lumo .pro-up, P3) */
+/* Pro upgrade plate — sidebar / inline gate. Дизайн-система TRIP-187:
+   тот же паттерн, что и плашка лимита — спокойный бренд-акцент, акцент даёт
+   PRO-пилюля (звезда), CTA — бренд-кнопка. */
 .pro-up {
-  background: var(--pro-soft);
-  border: 1px solid var(--pro-soft-2);
-  border-radius: 14px;
-  padding: 13px;
+  background: var(--brand-soft-12);
+  border: 1px solid var(--brand);
+  border-radius: var(--r-md);
+  padding: 14px;
 }
-/* .ph = icon + title row; .pi = gold icon tile; .pt = title text.
-   .pi is de-scoped from .pro-up so the same gold Pro-tile is reusable outside
-   the plate (e.g. ProUpsellModal head) — single source for the tile. */
-.pro-up .ph { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+/* .ph = ряд PRO-пилюли (bottom-margin перед заголовком в вертикальном варианте). */
+.pro-up .ph { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+/* .pi = gold icon tile — оставлен ТОЛЬКО для ProUpsellModal head (перекрашен в
+   оранж-розовый через --pro-gradient). В плашках теперь PRO-пилюля <Badge>. */
 .pi {
   width: 34px; height: 34px; border-radius: 11px;
   background: var(--pro-gradient);
@@ -1318,7 +1435,7 @@ h4,
 .pi svg { width: 18px; height: 18px; }
 .pro-up .pt {
  /* 15px, matches design */
- color: var(--pro-ink);
+ color: var(--ink);
 }
 .pro-up p {
  margin: 0 0 10px;
@@ -1337,7 +1454,7 @@ h4,
 .pro-up .lockmsg:hover { background: var(--surface-2); border-color: var(--line-strong); }
 .pro-up .lockmsg svg { width: 14px; height: 14px; flex: none; color: var(--muted); }
 /* .pro-up--inline = horizontal plate variant (Trip Settings features card):
-   [icon][title + desc][CTA] in a row on desktop, stacked full-width on mobile
+   [PRO-pill][title + desc][CTA] in a row on desktop, stacked full-width on mobile
    so the CTA never gets squeezed (TRIP-101). */
 .pro-up--inline { display: flex; align-items: center; gap: 14px; }
 .pro-up--inline .pu-body { flex: 1; min-width: 0; }
@@ -1558,7 +1675,10 @@ h4,
 
 /* Mobile app shell */
 @media (max-width: 880px) {
-  .app-header { padding: 0 12px; height: 54px; min-height: 54px; gap: 9px; }
+  /* Header is position:static on mobile (see .app-shell > .app-header) — blur has
+     nothing to composite and is a paint-jank source, so drop it and go opaque. */
+  .app-header { padding: 0 12px; height: 54px; min-height: 54px; gap: 9px;
+    background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
   /* Non-trip screens keep logo + "Triplanio" on mobile (matches the design).
      Only trip screens drop the brand block for burger + title. */
   .app-header--trip .app-header__logo,
@@ -1728,7 +1848,8 @@ h4,
 
 /* Active-tab empty · "только прошлые" — past trips exist but none active.
    New element (approved 2026-06-20). Distinct from members' .invite-banner. */
-.invite { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 26px 30px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.invite { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 26px 30px; }
 .invite__ic { width: 58px; height: 58px; border-radius: 18px; flex: none; display: grid; place-items: center; background: var(--ai-soft); color: var(--ai-ink); position: relative; z-index: 1; }
 .invite__tx { flex: 1; min-width: 0; position: relative; z-index: 1; }
 .invite__tx h3 { color: var(--ink); }
@@ -1922,7 +2043,8 @@ h4,
 /* Last-city card: the .te-row sits flush inside a bordered shell whose bottom
    strip holds the final-point toggle, so the toggle reads as part of the last
    city (the finish), not a stray control. */
-.pl-lastcard { border: 1px solid var(--line); border-radius: 15px; background: var(--surface); box-shadow: var(--sh-1); overflow: hidden; }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.pl-lastcard { overflow: hidden; }
 .pl-lastcard.is-fin { border-color: var(--brand); }
 .pl-lastcard > .te-row--plan { border: none; border-radius: 0; box-shadow: none; }
 .pl-lastcard > .te-row--plan.is-dragging { box-shadow: none; }
@@ -2234,7 +2356,7 @@ h4,
 .chat-bubble { padding: 9px 13px; border-radius: 16px; word-break: break-word; }
 .chat-bubble--them { background: var(--wash); color: var(--ink); border-bottom-left-radius: 5px; }
 .chat-bubble--me { background: var(--brand); color: #fff; border-bottom-right-radius: 5px; }
-.chat-bubble--ai { background: var(--ai-gradient-soft); color: var(--ink); border: 1px solid var(--ai-soft-2); border-bottom-left-radius: 5px; }
+.chat-bubble--ai { background: var(--ai-gradient-soft); color: var(--ink); border: 1px solid var(--ai-line); border-bottom-left-radius: 5px; }
 .chat-bubble--pending { opacity: .7; }
 .chat-time { color: var(--muted); margin-top: 2px; padding-right: 2px; }
 
@@ -2385,8 +2507,22 @@ h4,
 
 /* Bell popover — head / list / foot (Lumo: rounded prow rows in a padded list) */
 /* Shell overrides the .pop base: full-width-capped, clipped, larger radius, no padding. */
-.bell-dd-pop { padding: 0; width: 360px; max-width: calc(100vw - 16px); overflow: hidden; border-radius: 16px; }
-.bell-dd__head { padding: 14px 16px 11px; display: flex; align-items: center; gap: 10px; }
+.bell-dd-pop {
+  padding: 0; width: 360px; max-width: calc(100vw - 16px); overflow: hidden;
+  border-radius: var(--r-xl);
+  /* Матовое стекло, но читаемое: --surface на 90% + блюр (полностью прозрачный
+     --surface-card был бы нечитаем над лентой). Радиус/бордер/тень — канон glass. */
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid var(--surface-card-border);
+  box-shadow: var(--shadow-glass);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bell-dd-pop {
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(1.5);
+    backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(1.5);
+  }
+}
+.bell-dd__head { padding: 14px 16px 11px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-2); }
 /* Title takes the slack and truncates so the action pill always fits on one line. */
 .bell-dd__head > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bell-dd__list { max-height: 400px; overflow: auto; padding: 7px; display: flex; flex-direction: column; gap: 2px; }
@@ -2684,7 +2820,8 @@ h4,
    LUMO EDITOR PANELS — faithful port of Lumo C5 (city / event panels).
    Used by CityPanel & EventPanels. Class names match the Lumo design.
    ================================================================= */
-.lpanel { width: 300px; flex: 0 0 300px; min-height: 340px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--sh-1); overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .2s, border-color .2s, transform .18s var(--ease-spring); }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.lpanel { width: 300px; flex: 0 0 300px; min-height: 340px; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .2s, border-color .2s, transform .18s var(--ease-spring); }
 .lpanel--wide { width: 100%; flex: 1 1 auto; min-height: 0; }
 
 /* Brand hero (city panel): one row — back · name + country chip · check-in/out.
@@ -2876,11 +3013,8 @@ h4,
 .ov-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
 /* ---- widget shell ---- */
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тень только на ховере как affordance */
 .wdg {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  box-shadow: var(--sh-1);
   overflow: hidden;
   transition: transform .16s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s var(--ease-out);
 }
@@ -2943,9 +3077,9 @@ h4,
 
 /* ---- stat row ---- */
 .statrow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
 .statcard {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 16px; padding: 16px 12px; box-shadow: var(--sh-1);
+  padding: 16px 12px;
   display: flex; flex-direction: column; align-items: center; text-align: center; gap: 9px; min-width: 0;
 }
 /* icon chip on top, centered; number + label stacked below */
@@ -3224,7 +3358,8 @@ h4,
 .acct-ic-tile svg { width: 18px; height: 18px; }
 
 /* profile hero */
-.acct-hero { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); overflow: hidden; }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.acct-hero { position: relative; overflow: hidden; }
 .acct-hero__band { height: 84px; background: var(--brand-grad); position: relative; overflow: hidden; }
 .acct-hero__band .blob { position: absolute; border-radius: 50%; background: rgba(255,255,255,.16); pointer-events: none; }
 .acct-hero__band .b1 { width: 170px; height: 170px; top: -70px; right: -30px; }
@@ -3477,7 +3612,7 @@ h4,
   gap: 18px;
 }
 .tc {
-  position: relative; display: block; border-radius: var(--r-card);
+  position: relative; display: block; border-radius: var(--r-xl);
   overflow: hidden; cursor: pointer; text-align: left; font-family: inherit;
   min-height: 256px; border: 1px solid var(--line); box-shadow: var(--sh-1);
   transition: transform .22s var(--ease-spring), box-shadow .24s var(--ease-out);
@@ -3559,12 +3694,11 @@ h4,
 
 /* ── Строка-список (list view) ─────────────────────────────── */
 .tr-list { display: flex; flex-direction: column; gap: 10px; }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
 .tr {
   display: flex; align-items: center; gap: 14px;
-  padding: 11px 14px; background: var(--surface);
-  border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 11px 14px;
   cursor: pointer; text-align: left; font-family: inherit;
-  box-shadow: var(--sh-1);
   transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s;
 }
 @media (hover: hover) { .tr:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
@@ -3647,33 +3781,21 @@ h4,
 }
 
 /* ── Баннер лимита Free-тарифа ─────────────────────────────── */
+/* Free-limit plaque + Pro-upgrade plates — дизайн-система TRIP-187:
+   контейнер на бренд-акценте (спокойный), акцент даёт PRO-пилюля (звезда,
+   оранж-розовый градиент), CTA — бренд-кнопка. НЕ на Pro-градиенте. */
 .limitcard {
-  margin-top: 34px; position: relative; overflow: hidden;
-  display: flex; align-items: center; gap: 18px;
-  padding: 18px 22px 18px 24px;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--r-card); box-shadow: var(--sh-1);
+  margin: 0 0 20px;
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 20px;
+  background: var(--brand-soft-12); border: 1px solid var(--brand);
+  border-radius: var(--r-md);
   flex-wrap: wrap;
 }
-/* Pro gradient left accent bar */
-.limitcard::before {
-  content: ""; position: absolute; left: 0; top: 0; bottom: 0;
-  width: 5px; background: var(--pro-gradient);
-}
-.limitcard__ic {
-  width: 46px; height: 46px; border-radius: 14px;
-  background: var(--pro-soft); color: var(--pro-ink);
-  display: grid; place-items: center; flex: none;
-}
-.limitcard__ic svg { width: 22px; height: 22px; }
-.limitcard__body { flex: 1; min-width: 200px; }
-.limitcard__top { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; flex-wrap: wrap; }
+.limitcard__body { flex: 1; min-width: 180px; }
+.limitcard__top { display: flex; align-items: center; gap: 9px; margin-bottom: 3px; flex-wrap: wrap; }
 .limitcard__top b {
  color: var(--ink);
-}
-.limitcard__count {
- color: var(--pro-ink);
- background: var(--pro-soft); padding: 3px 9px; border-radius: var(--r-pill);
 }
 .limitcard__sub { color: var(--muted); }
 
@@ -3684,7 +3806,7 @@ h4,
   .tc__in { min-height: 220px; }
   .tc__title { font-size: var(--fs-h3); }
   .tc-add { min-height: 220px; }
-  .limitcard { padding: 16px 16px 16px 22px; gap: 12px 14px; }
+  .limitcard { padding: 16px; gap: 12px 14px; }
   /* icon + text share row 1; CTA drops to its own full-width row 2 */
   .limitcard__body { min-width: 0; flex: 1 1 140px; }
   .limitcard > .btn { flex: 1 1 100%; justify-content: center; }
@@ -4001,13 +4123,10 @@ h4,
 /* ─── AI Block (EventAiBlock — booking parser, dialog + side panel) ───────────
    Canonical AI pattern · design-system A4 (6 states). Token-only → light/dark
    and all four palettes follow automatically. */
-.ai-blk{border:1.5px solid var(--ai-soft-2);border-radius:13px;background:var(--ai-gradient-soft);overflow:hidden;margin-bottom:14px;flex:none;}
+.ai-blk{border:1px solid var(--ai-line);border-radius:13px;background:var(--ai-gradient-soft);overflow:hidden;margin-bottom:14px;flex:none;}
 .ai-blk-hd{display:flex;align-items:center;gap:10px;padding:11px 13px;}
-.ai-blk-ic{position:relative;width:30px;height:30px;border-radius:10px;background:var(--ai-gradient);display:grid;place-items:center;flex:none;}
+.ai-blk-ic{position:relative;width:30px;height:30px;border-radius:10px;background:var(--ai-gradient);display:grid;place-items:center;flex:none;box-shadow:0 4px 12px -4px var(--ai);}
 .ai-blk-ic svg{width:15px;height:15px;color:#fff;}
-/* lock micro-badge pinned to the AI icon in the locked state */
-.ai-blk-lock{position:absolute;bottom:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--ai);color:#fff;border:2px solid var(--surface);display:grid;place-items:center;}
-.ai-blk-lock svg{width:9px;height:9px;}
 .ai-blk-ti{flex:1;min-width:0;}
 .ai-blk-ti b{ color:var(--ai-ink);display:flex;align-items:center;gap:6px;}
 /* direct child only — must NOT leak onto the Pro <Badge> span nested in the title */
@@ -4119,23 +4238,29 @@ h4,
 .kv .k{ color:var(--muted);}
 .kv .v{ color:var(--ink); }
 /* route block (transfer view) */
-.route-block{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:13px 14px;background:var(--surface-3);border:1px solid var(--line);border-radius:13px;}
-.route-block .rd{ color:var(--muted); }
-.route-block .rt{ color:var(--ink); }
-.route-block .rc{ color:var(--ink-2);margin-top:2px;}
-.route-block .ra{ color:var(--muted); margin-top:1px;}
-.route-block .rmid{display:flex;flex-direction:column;align-items:center;gap:3px;}
-.route-block .rmid svg{width:20px;height:20px;color:var(--ev-color,var(--ev-transfer));}
-.route-block .dur{ color:var(--muted);white-space:nowrap;}
-.route-block .end{text-align:right;}
 /* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
-.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);overflow:hidden;}
+/* TRIP-186: плашка дат того же цвета, что инпуты (--surface-3, как база .input). */
+.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface-3);overflow:hidden;}
 .stay-dates__cell{padding:11px 14px;min-width:0;}
 .stay-dates__lbl{color:var(--muted);}
 .stay-dates__v{ color:var(--ink);margin-top:5px;}
 .stay-dates__t{ color:var(--muted);margin-top:3px;}
 .stay-dates__mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 12px;border-left:1px dashed var(--line-2);border-right:1px dashed var(--line-2);}
 .stay-dates__mid span{ color:var(--muted);white-space:nowrap;}
+/* Editable summary cell — clickable trigger inside .stay-dates (TRIP-176 date-range) */
+.sd-cellwrap{display:flex;min-width:0;}
+.sd-cell{display:flex;flex-direction:column;gap:5px;width:100%;height:100%;min-width:0;padding:11px 14px;background:transparent;border:0;cursor:pointer;text-align:left;transition:background .12s;}
+.sd-cell:hover{background:var(--surface-2);}
+.sd-cell__lbl{color:var(--muted);}
+.sd-cell__d{color:var(--ink);}
+.sd-cell__t{color:var(--muted);}
+.sd-cell.is-empty .sd-cell__d{color:var(--muted-2);}
+.sd-cell--time{cursor:default;}
+.sd-cell--time:hover{background:transparent;}
+.sd-timeinput{border:0;background:transparent;padding:0;margin:0;width:100%;color:var(--ink);outline:0;font-variant-numeric:tabular-nums;}
+.stay-dates.is-invalid{border-color:var(--danger,#DC2626);}
+.eed-drange-tz{display:flex;gap:12px;margin-top:8px;}
+.eed-drange-tz>*{flex:1;min-width:0;}
 /* hotel view — canonical card-based layout (TRIP-176). Name card + labelled
    sections wrapping bordered surface cards; details as a list of rows. */
 .hv{display:flex;flex-direction:column;gap:16px;}
@@ -4148,7 +4273,7 @@ h4,
 .hv-plat__ic img{width:100%;height:100%;object-fit:contain;background:#fff;}
 .hv-plat__nm{ color:var(--ink-2);}
 .hv-sec{display:flex;flex-direction:column;}
-.hv-lbl{ color:var(--muted);margin-bottom:7px;}
+.hv-lbl{ color:var(--ink);margin-bottom:7px;}   /* TRIP-183: эйбрау-лейблы панели → основной цвет (канон-инспектор) */
 .hv-card{padding:13px 15px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);}
 .hv-cost{display:flex;align-items:center;gap:12px;}
 .hv-cost__main{flex:1;min-width:0;}
@@ -4187,6 +4312,37 @@ h4,
 .badge--paid{background:var(--success-soft);color:var(--success-ink);}
 .badge--partial{background:var(--warning-soft);color:var(--warning-ink);}
 .badge--on-arrival{background:var(--primary-soft);color:var(--primary);}
+/* transfer view — canonical rail (dots + dashed connector + carrier avatar) +
+   eyebrow chips (TRIP-176). Cost/details/docs/notes reuse the hotel .hv-* cards. */
+.tv{display:flex;flex-direction:column;gap:16px;}
+.tv-card{padding:16px 17px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);}
+.tv-eyebrows{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
+.tv-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:var(--r-pill);}
+.tv-chip svg{width:12px;height:12px;flex:none;}
+.tv-chip--type{background:var(--ev-transfer-soft);color:var(--ev-transfer-ink);}
+.tv-chip--night{background:var(--night-soft);color:var(--night-ink);}
+.tv-route{display:grid;grid-template-columns:76px 16px 1fr;column-gap:12px;}
+.tv-when{text-align:right;}
+.tv-when__t{color:var(--ink);}
+.tv-when__d{color:var(--muted);margin-top:3px;white-space:nowrap;}
+.tv-arr{display:flex;align-items:baseline;justify-content:flex-end;gap:4px;}
+.tv-plus1{color:var(--night-ink);}
+.tv-nodecell{display:flex;justify-content:center;padding-top:5px;}
+.tv-node{width:9px;height:9px;flex:none;border-radius:var(--r-pill);}
+.tv-node--from{border:2.5px solid var(--ev-transfer);background:var(--bg);}
+.tv-node--to{background:var(--ev-transfer);}
+.tv-conncell{display:flex;justify-content:center;}
+.tv-conn{width:0;border-left:2px dashed color-mix(in srgb,var(--ev-transfer) 45%,transparent);min-height:34px;}
+.tv-loc{min-width:0;}
+.tv-loc--from{padding-bottom:4px;}
+.tv-loc--to{padding-top:1px;}
+.tv-loc__c{color:var(--ink);}
+.tv-loc__a{color:var(--muted);margin-top:3px;}
+.tv-durcell{display:flex;align-items:center;justify-content:flex-end;}
+.tv-dur{color:var(--ev-transfer-ink);white-space:nowrap;}
+.tv-carrier{display:flex;align-items:center;gap:8px;min-width:0;padding:6px 0;}
+.tv-carrier__av{width:26px;height:26px;flex:none;border-radius:var(--r-sm);background:var(--ev-transfer);color:#fff;display:flex;align-items:center;justify-content:center;}
+.tv-carrier__nm{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* ─── EDIT form components ─────────────────────────────────────────────────── */
 .f-sec{ color:var(--ev-color,var(--primary));display:flex;align-items:center;gap:8px;margin:6px 0 0;}
 .f-sec::after{content:'';flex:1;height:1px;background:color-mix(in srgb,var(--ev-color,var(--primary)) 18%,transparent);}
@@ -4231,7 +4387,16 @@ h4,
    variant scopes under .ev-dlg; the drawer/panel variant scopes under .lp (only
    the event-edit panel carries fields — city/event/fork panels have none). */
 .ev-dlg .field__label,
-.lp .field__label { color: var(--muted); }
+.lp .field__label { color: var(--ink); }   /* TRIP-183: лейблы форм в панелях события/броней → основной цвет (канон-инспектор) */
+/* TRIP-186: инпуты в диалогах события/броней — «аккуратный» вид дизайн-системы
+   (тоньше рамка, крупнее радиус). Цвет рамки НЕ трогаем, чтобы не перебить
+   состояния той же специфичности (.field--ai / .field--error / .field--warning)
+   и hover/focus. */
+.ev-dlg .input, .ev-dlg .select, .ev-dlg .textarea,
+.lp .input, .lp .select, .lp .textarea {
+  border-width: 1px;
+  border-radius: var(--r-md);
+}
 
 /* iOS Safari auto-zooms the viewport when a focused field has font-size < 16px.
    Canonical anti-zoom guard (TRIP-92): one element-level rule forces 16px on
@@ -4439,7 +4604,8 @@ h4,
 .head__av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 @media (max-width: 640px) { .head h1 { font-size: var(--fs-h2); } .head__av { width: 48px; height: 48px; } }
 
-.statbar { display: flex; align-items: stretch; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); overflow: hidden; margin-top: 18px; position: relative; z-index: 1; }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+.statbar { display: flex; align-items: stretch; overflow: hidden; margin-top: 18px; position: relative; z-index: 1; }
 .statbar .s { flex: 1; min-width: 0; padding: 16px 20px; display: flex; align-items: center; gap: 13px; border-left: 1px solid var(--line-2); }
 .statbar .s:first-child { border-left: 0; }
 .statbar .ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--primary); }
@@ -4465,23 +4631,23 @@ h4,
 @media (max-width: 640px) { .dash-hero .mapwrap { min-height: 280px; } }
 .rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-.mapwrap { position: relative; border-radius: var(--r-card); overflow: hidden; background: var(--wash); border: 1px solid var(--line); box-shadow: var(--sh-1); }
+/* скин (glass) — тень/бордер/радиус как у .surface-glass; фон остаётся wash (под картой) (TRIP-189) */
+.mapwrap { position: relative; border-radius: var(--r-xl); overflow: hidden; background: var(--wash); border: 1px solid var(--surface-card-border); box-shadow: var(--shadow-glass); }
 .map-skel { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); gap: 8px; z-index: 1; }
 
-.wmini { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); padding: 18px 20px; position: relative; overflow: hidden; }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+.wmini { padding: 18px 20px; position: relative; overflow: hidden; }
 .wmini .top { display: flex; align-items: center; gap: 13px; position: relative; z-index: 1; }
 .wring { position: relative; flex: none; }
 .wring svg { transform: rotate(-90deg); display: block; }
 .ring__track { fill: none; stroke: var(--surface-2); }
 .ring__fg { fill: none; stroke: hsl(var(--primary)); stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease-out); }
-.ring__c { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); color: hsl(var(--primary)); }
+.ring__c { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); color: var(--ink); }   /* TRIP-188: инспектор канонов — «%» кольца акцент→основной (оба кольца, унификация) */
 .ring__c .l { color: var(--muted); }
-.wmini .ttl { color: var(--ink); }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
-.wmini .bar { height: 8px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; margin-top: 14px; position: relative; z-index: 1; }
-.wmini .bar i { display: block; height: 100%; width: 0; border-radius: var(--r-pill); background: var(--brand-grad); transition: width 1s var(--ease-out); }
 
-.nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); padding: 14px; cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+.nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; padding: 14px; cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
 @media (hover: hover) { .nextcard:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
 .nextcard:active { transform: translateY(0) scale(.995); }
 .nextcard__cover { width: 64px; height: 64px; border-radius: 15px; flex: none; position: relative; overflow: hidden; display: grid; place-items: center; color: hsl(var(--primary-foreground)); }
@@ -4497,7 +4663,8 @@ h4,
 .cdu { text-align: center; background: var(--surface-3); border: 1px solid var(--line); border-radius: 11px; padding: 7px 0; flex: 1; min-width: 0; }
 .cdu b { display: block; color: var(--ink); font-variant-numeric: tabular-nums; }
 .cdu span { color: var(--muted); }
-.nonext { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+.nonext { padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .nonext .ic { width: 46px; height: 46px; border-radius: 14px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
 .nonext .ic svg { width: 23px; height: 23px; }
 .nonext b { color: var(--ink); }
@@ -4537,7 +4704,7 @@ h4,
 /* Base white card container (V4). Was missing — so .panel / .panel.world /
    .panel.chart rendered with no background, leaving continents, the country/city
    list and the year chart sitting bare on the page. Used only by the stats blocks. */
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); }
+/* .panel — скин (panel) целиком из группового селектора .surface-panel (TRIP-189) */
 
 /* — world ring + continents — */
 .world { display: grid; grid-template-columns: 230px 1fr; gap: 24px; padding: 24px; position: relative; overflow: hidden; align-items: center; margin-top: 18px; }

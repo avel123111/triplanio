@@ -16,16 +16,15 @@ export function initialsOf(name = '') {
 
 // Greeting hero — highlights the name inside the localized greeting string
 // (every locale places {name} last, so we slice before its last occurrence).
-export function Greeting({ greeting, name, avatarName, photo, sub }) {
+export function Greeting({ greeting, name, avatarName, photo, sub, eyebrow }) {
   const at = name ? greeting.lastIndexOf(name) : -1;
   const prefix = at >= 0 ? greeting.slice(0, at) : greeting;
   return (
     <div className="head">
-      <div className="blob b1" />
-      <div className="blob b2" />
       <div className="head__row">
         <Avatar name={avatarName || name || '?'} photo={photo} className="head__av" />
         <div className="grow">
+          {eyebrow && <div className="t-mono tp-caption" style={{ marginBottom: 6 }}>{eyebrow}</div>}
           <h1>{prefix}{name && <span className="nm">{name}</span>}</h1>
           {sub && <div className="sub">{sub}</div>}
         </div>
@@ -52,27 +51,30 @@ export function StatBar({ items = [], cta = null, className = '' }) {
 
 // "World explored" ring + bar over the /total (195) denominator.
 // world = { visited, total, pct } from travel-stats.worldExplored().
-export function WorldMini({ world, title, caption }) {
-  const R = 30;
+export function WorldMini({ world, title, subCaption }) {
+  const R = 45;
   const C = 2 * Math.PI * R;
   const frac = world.total ? Math.min(1, world.visited / world.total) : 0;
   return (
     <div className="wmini">
-      <div className="blob b1" style={{ width: 160, height: 160, background: 'var(--brand-grad)', top: -90, right: -40, opacity: 0.1 }} />
       <div className="top">
-        <div className="wring" style={{ width: 72, height: 72 }}>
-          <svg viewBox="0 0 72 72" width="72" height="72">
-            <circle className="ring__track" cx="36" cy="36" r={R} strokeWidth="9" />
-            <circle className="ring__fg" cx="36" cy="36" r={R} strokeWidth="9" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }} />
+        <div className="wring" style={{ width: 108, height: 108 }}>
+          <svg viewBox="0 0 108 108" width="108" height="108">
+            <circle className="ring__track" cx="54" cy="54" r={R} strokeWidth="11" />
+            <circle className="ring__fg" cx="54" cy="54" r={R} strokeWidth="11" style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }} />
           </svg>
-          <div className="ring__c t-label">{world.pct}%</div>
+          <div className="ring__c t-title">{world.pct}%</div>
         </div>
         <div>
-          <div className="ttl">{title}</div>
-          <div className="sub">{caption}</div>
+          <div className="ttl t-mono tp-caption">{title}</div>
+          {/* TRIP-188: «6 / 195» — visited в t-title (ink), /total в t-heading mute */}
+          <div className="sub" style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+            <b className="t-title" style={{ color: 'var(--ink)' }}>{world.visited}</b>
+            <span className="t-heading muted">/{world.total}</span>
+          </div>
+          <div className="t-meta muted" style={{ marginTop: 8 }}>{subCaption}</div>
         </div>
       </div>
-      <div className="bar"><i style={{ width: `${frac * 100}%` }} /></div>
     </div>
   );
 }

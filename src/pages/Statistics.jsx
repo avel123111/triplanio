@@ -280,7 +280,6 @@ export default function Statistics() {
 
         {/* head: title + sub + year filter */}
         <div className="head">
-          <div className="blob b1" /><div className="blob b2" />
           <div className="head__row" style={{ position: 'relative', zIndex: 1 }}>
             <div className="grow">
               <h1>{t('stats.page_title')}</h1>
@@ -348,7 +347,6 @@ export default function Statistics() {
 
         {/* world ring + continents */}
         <div className="panel world">
-          <div className="blob b1" />
           <WorldRing
             world={bundle.world}
             label={t('stats.world_label')}

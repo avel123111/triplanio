@@ -80,7 +80,18 @@ const CardSim = ({ size = 24, style, className, color, strokeWidth = 2 }) => (
     <rect x="8" y="10" width="8" height="8" rx="1" />
   </svg>
 );
-export { FolderBookmark, CardSim };
+// Pro-маркер дизайн-системы (TRIP-187): залитая звезда ★, НЕ корона.
+// Наследует currentColor (белый на градиенте бейджа/кнопки, --pro-ink на soft).
+const ProStar = ({ size = 18, style, className, color }) => (
+  <svg
+    width={size} height={size} viewBox="0 0 24 24" fill="currentColor"
+    className={className} aria-hidden="true"
+    style={color ? { color, ...style } : style}
+  >
+    <path d="M12 2l2.9 6.26 6.6.74-4.9 4.6 1.3 6.4L12 17.5 6.1 20.6l1.3-6.4L2.5 9l6.6-.74z" />
+  </svg>
+);
+export { FolderBookmark, CardSim, ProStar };
 
 // ── Карта name → lucide ──────────────────────────────────────────────────────
 const LUCIDE = {
@@ -89,7 +100,7 @@ const LUCIDE = {
   cam: Camera, wallet: Wallet, trash: Trash2, external: ExternalLink, calendar: Calendar,
   bed: BedDouble, users: Users, edit: Pencil, arrowR: ArrowRight, spark: Sparkle,
   more: Ellipsis, map: Map, link: Link, flag: Flag, chat: MessageCircle, bell: Bell,
-  user: User, share: Share2, send: Send, search: Search, pro: Crown, plane: Plane,
+  user: User, share: Share2, send: Send, search: Search, pro: ProStar, plane: Plane,
   paperclip: Paperclip, moon: Moon, list: List, grid: LayoutGrid, globe: Globe,
   drag: GripVertical, crown: Crown, arrowSwap: ArrowRightLeft, arrowRight: ArrowRight,
   upload: Upload, train: TrainFront, sun: Sun, shield: Shield, refresh: RefreshCw,
