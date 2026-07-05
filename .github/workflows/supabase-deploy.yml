@@ -214,6 +214,25 @@ jobs:
           # mode gives each connection its own backend, so prepared statements work.
           supabase db push --db-url "$URL" --yes
 
+      - name: Assert security tiers (RLS/grants) match manifest
+        env:
+          DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+          DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}
+        run: |
+          set -euo pipefail
+          # Пост-деплой ассерт: живые pg_policies + relacl совпадают с манифестом
+          # ярусов (scripts/ci/security-tiers.mjs). Ловит дрейф грантов/политик от
+          # только что применённой миграции — anon-DML где угодно, authenticated-DML
+          # на ярусах B/D, ярус-A без роль-политики, новая незаклассифицированная
+          # таблица с дефолтным GRANT ALL. Модель как у verify_jwt-ассерта ниже.
+          # psql преднастроен на ubuntu-latest; DB URL = SESSION pooler (как db push).
+          case "${{ github.ref_name }}" in
+            dev)  URL="$DB_URL_DEV" ;;
+            main) URL="$DB_URL_PROD" ;;
+            *) echo "::error::Unsupported branch '${{ github.ref_name }}'"; exit 1 ;;
+          esac
+          SECURITY_TIERS_DB_URL="$URL" node scripts/ci/check-security-tiers.mjs
+
   # 2. Edge functions — after migrations succeed (or are skipped).
   deploy:
     name: Deploy functions

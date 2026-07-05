@@ -113,6 +113,9 @@ jobs:
         if: ${{ !cancelled() }}
         env: { BASE_REF: 'origin/${{ github.base_ref }}' }
         run: node scripts/ci/check-i18n.mjs
+      - name: 2e — security tiers (manifest self-consistency)
+        if: ${{ !cancelled() }}
+        run: node scripts/ci/check-security-tiers.mjs
 
   deno:
     name: Deno typecheck (edge functions)
