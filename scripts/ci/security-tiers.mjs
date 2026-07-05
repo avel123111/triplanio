@@ -109,7 +109,10 @@ export const TABLES = {
 //        ПРЕДЕЛ (осознанный): это проверка НАЛИЧИЯ ссылки (regex), а не факта, что
 //        функция гейтит правильный трип/право — тонкий случай остаётся на ревью.
 export const FUNCTIONS = {
-  publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer'],
+  // _can_access_trip_file — предикат storage-RLS приватного бакета `trips`; стал
+  // SECURITY DEFINER в гигиене TRIP-120 (чтобы его private-проверка не слепла под RLS
+  // вызывающего), исполним anon+authenticated из storage-политик TO public.
+  publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer', '_can_access_trip_file'],
   authExec: [
     '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
     'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
@@ -123,9 +126,12 @@ export const FUNCTIONS = {
   authzExempt: ['search_gazetteer'],
 };
 
+// Storage-бакеты. Ф4 (LIVE) сверяет: живой флаг `public` совпадает с манифестом
+// (ловит «приватный бакет вдруг стал публичным»), и что для бакета есть все
+// перечисленные политики `<bucket>_<cmd>` на storage.objects (ловит дроп политики).
 export const BUCKETS = {
   avatars: { public: true,  policies: ['select', 'insert', 'update', 'delete'], note: 'публичный; TRIP-117 delete-политика' },
-  trips:   { public: false, policies: ['select', 'insert', 'update', 'delete'], note: 'приватный; TRIP-118 private-файлы' },
+  trips:   { public: false, policies: ['select', 'insert', 'update', 'delete'], note: 'приватный; TRIP-118 private-файлы + _can_access_trip_file (DEFINER)' },
 };
 
 // Продуктовые решения — РЕШЕНЫ (Pavel, 2026-07-05), зафиксированы в TABLES выше:
