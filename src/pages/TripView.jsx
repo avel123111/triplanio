@@ -1228,6 +1228,7 @@ export default function TripView() {
               cityVisits={visits}
               isLoading={loadingContent}
               isPro={tripIsPro}
+              role={myRole}
               queryClient={qc}
             />
           )}
@@ -1256,6 +1257,7 @@ export default function TripView() {
               tripId={tripId}
               isLoading={loadingContent}
               members={members}
+              myRole={myRole}
             />
           )}
           {shownLens === 'settings' && (
