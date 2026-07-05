@@ -184,7 +184,7 @@ export default function MapView({
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, projection,
   // resize, marker cleanup on unmount).
   const { mapRef, ready, error } = useMapSurface(containerRef, {
-    markersRef, scheme: mapScheme, projection, active, basemapTheme,
+    markersRef, scheme: mapScheme, projection, active, basemapTheme, cooperativeGestures,
   });
 
   // Force a re-fit on (re)mount so the first draw frames the route.
@@ -481,17 +481,6 @@ export default function MapView({
     map.on('click', handler);
     return () => { map.off('click', handler); };
   }, [ready]);
-
-  // --- Cooperative-gestures guard ("use two fingers / ctrl+scroll"). The map is a
-  // singleton created WITH the guard on; a screen can lift it while it owns the map
-  // and it's restored on unmount so every other surface keeps it. ---
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready || typeof map.setCooperativeGestures !== 'function') return undefined;
-    map.setCooperativeGestures(cooperativeGestures);
-    // Restore the singleton default (on) when this surface releases the map.
-    return () => { const m = mapRef.current; if (m && typeof m.setCooperativeGestures === 'function') m.setCooperativeGestures(true); };
-  }, [ready, cooperativeGestures]);
 
   // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;

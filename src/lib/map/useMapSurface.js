@@ -21,7 +21,7 @@ import { useSharedMap } from './MapProvider';
 // projection   : 'mercator' | 'globe' (live-applied).
 // active       : false when the map is kept mounted but hidden behind a tab;
 //                flipping back to true triggers a resize().
-export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', projection = 'mercator', active = true, basemapTheme = 'default' }) {
+export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', projection = 'mercator', active = true, basemapTheme = 'default', cooperativeGestures = true }) {
   const sharedMap = useSharedMap();
   const { lang } = useI18n();
   const mapRef = useRef(null);
@@ -38,10 +38,12 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
   const projRef = useRef(projection);
   const themeRef = useRef(basemapTheme);
   const langRef = useRef(lang);
+  const coopRef = useRef(cooperativeGestures);
   useEffect(() => { schemeRef.current = scheme; }, [scheme]);
   useEffect(() => { projRef.current = projection; }, [projection]);
   useEffect(() => { themeRef.current = basemapTheme; }, [basemapTheme]);
   useEffect(() => { langRef.current = lang; }, [lang]);
+  useEffect(() => { coopRef.current = cooperativeGestures; }, [cooperativeGestures]);
 
   // Claim the singleton into this slot on mount; park it back on unmount.
   useEffect(() => {
@@ -70,6 +72,10 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     // below only fire on a later change, not on a fresh mount).
     try { map.setProjection(projRef.current); } catch { /* ignore */ }
     applyBasemapConfig(map, schemeRef.current, themeRef.current);
+    // Cooperative-gestures guard ("use two fingers / ctrl+scroll") is a property of
+    // the SHARED singleton, so it must be re-asserted per screen: whichever surface
+    // owns the map now sets its own value (default on; the Map lens turns it off).
+    try { if (typeof map.setCooperativeGestures === 'function') map.setCooperativeGestures(coopRef.current); } catch { /* ignore */ }
 
     // The singleton is re-parented into this screen's slot; Mapbox keeps the
     // canvas at its previous size until told. On a REUSED instance `ready` is
@@ -112,6 +118,10 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
     return () => {
       try { map.off('idle', applyThemeOnIdle); } catch { /* ignore */ }
       map.off('error', onErr);
+      // Hand the singleton back with the guard ON (the protected default) so a
+      // later screen that doesn't opt out isn't left ungated. Uses the local `map`
+      // (mapRef is nulled below), so it runs reliably on unmount.
+      try { if (typeof map.setCooperativeGestures === 'function') map.setCooperativeGestures(true); } catch { /* ignore */ }
       // Remove only this screen's markers; the route line layers stay on the
       // shared instance (drawRouteLinesCached replaces them only on change).
       if (markersRef?.current) {
@@ -138,6 +148,14 @@ export function useMapSurface(containerRef, { markersRef, scheme = 'LIGHT', proj
   useEffect(() => {
     if (mapRef.current && ready) { try { mapRef.current.setProjection(projection); } catch { /* ignore */ } }
   }, [projection, ready]);
+
+  // Live cooperative-gestures guard (also fires on mount, so it re-asserts this
+  // screen's value on a reused singleton even if the acquire pass missed).
+  useEffect(() => {
+    if (mapRef.current && ready && typeof mapRef.current.setCooperativeGestures === 'function') {
+      try { mapRef.current.setCooperativeGestures(cooperativeGestures); } catch { /* ignore */ }
+    }
+  }, [cooperativeGestures, ready]);
 
   // Resize when re-shown after being hidden behind another tab (Mapbox can't
   // observe a display:none→block transition).
