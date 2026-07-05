@@ -446,7 +446,7 @@ function AddCategoryDialog({ tripId, existing, onSaved, open, onOpenChange }) {
 // view we show the category chip + date. Manual rows expose inline edit/delete;
 // booking-linked rows open their source event (chevron).
 
-function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, mainCurrency, mainAmount, ok, onOpen, onEdit, onDelete }) {
+function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, mainCurrency, mainAmount, ok, onOpen, onEdit, onDelete, readOnly }) {
   const { t } = useI18n();
   const src = expense.source_kind || 'manual';
   const isManual = src === 'manual';
@@ -473,10 +473,12 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, main
           : <span title={t('budget.rate_missing')}>{money(expense.original_amount || 0, expense.original_currency || mainCurrency)} ?</span>}
       </div>
       {isManual ? (
-        <div className="bgt-exrow__acts">
-          <button className="bgt-iconbtn" aria-label={t('trip.form_save')} onClick={e => { e.stopPropagation(); onEdit?.(expense); }}><Icon name="edit" size={15} /></button>
-          <button className="bgt-iconbtn bgt-iconbtn--danger" aria-label={t('trip.delete')} onClick={e => { e.stopPropagation(); onDelete?.(expense); }}><Icon name="trash" size={15} /></button>
-        </div>
+        !readOnly && (
+          <div className="bgt-exrow__acts">
+            <button className="bgt-iconbtn" aria-label={t('trip.form_save')} onClick={e => { e.stopPropagation(); onEdit?.(expense); }}><Icon name="edit" size={15} /></button>
+            <button className="bgt-iconbtn bgt-iconbtn--danger" aria-label={t('trip.delete')} onClick={e => { e.stopPropagation(); onDelete?.(expense); }}><Icon name="trash" size={15} /></button>
+          </div>
+        )
       ) : (
         <svg className="bgt-exrow__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" /></svg>
       )}
@@ -486,9 +488,12 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, main
 
 // ─── BudgetLens ───────────────────────────────────────────────────────────────
 
-export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, queryClient }) {
+export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, role, queryClient }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
+  // Viewer = строго только чтение (серверная защита — RLS _can_edit_trip, TRIP-124).
+  // UI прячет мутации, чтобы прямые записи не падали молчаливым 403.
+  const readOnly = role === 'viewer';
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);
   const [hoveredSeg, setHoveredSeg] = useState(null);
@@ -510,21 +515,27 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const cityNames = cityVisits.map(v => v.city_name).filter(Boolean);
 
   function openAddExpense() {
+    if (readOnly) return;
     setExpenseModal({});
   }
   function openEditExpense(expense) {
+    if (readOnly) return;
     setExpenseModal({ existing: expense });
   }
   function openDeleteExpense(expense) {
+    if (readOnly) return;
     setDeleteExpense(expense);
   }
   function openAddCategory() {
+    if (readOnly) return;
     setCategoryModal({});
   }
   function openEditCategory(cat) {
+    if (readOnly) return;
     setCategoryModal({ existing: cat });
   }
   function openFxDialog() {
+    if (readOnly) return;
     setFxOpen(true);
   }
 
@@ -624,14 +635,23 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
   return (
     <div className="bgt ov-anim">
+      {readOnly && (
+        <Severity level="info" title={t('settings.readonly_banner_title')}>
+          {t('budget.readonly_banner_desc')}
+        </Severity>
+      )}
       {/* ░ HEADER: screen title + primary actions relocated from the removed
           per-screen bar. On phones the buttons hide (see BudgetLens.css): "add
           expense" becomes the FAB below and "rates" is the FX stat card. ░ */}
       <div className="bgt-head">
         <h2 className="bgt-head__title">{t('trip.sidebar_budget')}</h2>
         <span className="bgt-head__sp" />
-        <Btn variant="ghost" size="sm" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
-        <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
+        {!readOnly && (
+          <>
+            <Btn variant="ghost" size="sm" icon="arrowSwap" onClick={openFxDialog}>{t('budget.fx_button')}</Btn>
+            <Btn variant="primary" size="sm" icon="plus" onClick={openAddExpense}>{t('budget.manual_expense')}</Btn>
+          </>
+        )}
       </div>
       {/* ░ SUMMARY BAND ░ */}
       <div className="bgt-sumband">
@@ -687,7 +707,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           </div>
 
           {/* Курсы валют */}
-          <button type="button" className="card bgt-stat bgt-stat--fx" onClick={openFxDialog}>
+          <button type="button" className="card bgt-stat bgt-stat--fx" onClick={readOnly ? undefined : openFxDialog}>
             <div className="bgt-stat__ic"><Icon name="arrowSwap" size={21} /></div>
             <div className="bgt-stat__m">
               <div className="bgt-stat__l">{t('budget.fx_button')}</div>
@@ -704,7 +724,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                         : <span key={cur} className="miss">1 {cur} — {t('budget.fx_rate_unset')}</span>;
                     })}
                   </div>
-                  <div className="bgt-stat__s" style={{ marginTop: 4 }}>{t('budget.fx_tap_edit')}</div>
+                  {!readOnly && <div className="bgt-stat__s" style={{ marginTop: 4 }}>{t('budget.fx_tap_edit')}</div>}
                 </>
               )}
             </div>
@@ -715,7 +735,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
       {/* ░ MISSING-RATE WARNING ░ */}
       {missingCurrencies.length > 0 && (
         <Severity level="warning" title={t('budget.rates_missing', { currencies: missingCurrencies.join(', ') })}
-          action={<Btn variant="quiet" size="sm" onClick={openFxDialog}>{t('budget.set_rate_manual')}</Btn>}>
+          action={readOnly ? undefined : <Btn variant="quiet" size="sm" onClick={openFxDialog}>{t('budget.set_rate_manual')}</Btn>}>
           {missingCurrencies.map(cur => `${missing[cur]} ${expensesPlural(missing[cur])} · ${cur}`).join(', ')} {t('budget.not_in_total')}
         </Severity>
       )}
@@ -734,7 +754,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
             <div className="t-ui" style={{ marginBottom: 4, color: 'var(--ink)' }}>{t('budget.no_expenses')}</div>
             <div className="muted t-body">{t('budget.no_expenses_desc')}</div>
           </div>
-          <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.first_expense')}</Btn>
+          {!readOnly && <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.first_expense')}</Btn>}
         </div>
       )}
 
@@ -745,7 +765,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
           <button type="button" aria-pressed={grouping === 'city'} onClick={() => setGrouping('city')}><Icon name="pin" size={14} />{t('budget.group_by_city')}</button>
         </div>
         <div className="bgt-ctl__spacer" />
-        {grouping === 'category' && (
+        {grouping === 'category' && !readOnly && (
           <Btn variant="soft" size="sm" icon="plus" onClick={openAddCategory}>{t('budget.field_category')}</Btn>
         )}
       </div>
@@ -780,9 +800,11 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                 </button>
               );
             })}
-            <button type="button" className="bgt-glist__add" onClick={openAddCategory}>
-              <Icon name="plus" size={15} /> {t('budget.add_category')}
-            </button>
+            {!readOnly && (
+              <button type="button" className="bgt-glist__add" onClick={openAddCategory}>
+                <Icon name="plus" size={15} /> {t('budget.add_category')}
+              </button>
+            )}
           </div>
 
           {/* detail */}
@@ -804,14 +826,14 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                   <div className="l">{t('budget.spent_label')}</div>
                 </div>
               </div>
-              {activeCat.kind === 'custom' && (
+              {activeCat.kind === 'custom' && !readOnly && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
                   <Btn variant="ghost" size="sm" icon="edit" onClick={() => openEditCategory(activeCat)}>{t('visit.change')}</Btn>
                 </div>
               )}
               {activeCat.items.length === 0 ? (
                 <EmptyState icon={catIcon(activeCat)} title={t('budget.cat_empty', { name: activeCat.displayName })}
-                  action={<Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>} />
+                  action={readOnly ? undefined : <Btn variant="primary" icon="plus" onClick={openAddExpense}>{t('budget.add_first')}</Btn>} />
               ) : (
                 <div className="bgt-exlist">
                   {activeCat.items.map(exp => {
@@ -819,7 +841,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
                     return (
                       <ExpenseRow key={exp.id} expense={exp} catColor={activeCat.color} catIcon={catIcon(activeCat)}
                         mode="category" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
-                        onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} />
+                        onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} readOnly={readOnly} />
                     );
                   })}
                 </div>
@@ -829,7 +851,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         </div>
       ) : (
         <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} conv={conv} loc={loc}
-          expensesPlural={expensesPlural} onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} onAdd={openAddExpense} />
+          expensesPlural={expensesPlural} onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} onAdd={openAddExpense} readOnly={readOnly} />
       )}
 
       {/* Source event view (clicking a system expense) */}
@@ -851,7 +873,7 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
 
 // ─── CityGrouping ─────────────────────────────────────────────────────────────
 
-function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onOpen, onEdit, onDelete, onAdd }) {
+function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onOpen, onEdit, onDelete, onAdd, readOnly }) {
   const { t } = useI18n();
   const [activeCity, setActiveCity] = useState(cityGroups[0]?.city || '');
   const cur = cityGroups.find(g => g.city === activeCity) || cityGroups[0];
@@ -859,7 +881,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
   if (cityGroups.length === 0) {
     return (
       <EmptyState icon="pin" title={t('budget.cities_empty')} body={t('budget.cities_empty_desc')}
-        action={<Btn variant="primary" icon="plus" onClick={onAdd}>{t('budget.add_expense')}</Btn>} />
+        action={readOnly ? undefined : <Btn variant="primary" icon="plus" onClick={onAdd}>{t('budget.add_expense')}</Btn>} />
     );
   }
   if (!cur) return null;
@@ -903,7 +925,7 @@ function CityGrouping({ cityGroups, mainCurrency, conv, loc, expensesPlural, onO
           {cur.items.map(it => {
             const r = conv(it);
             return (
-              <ExpenseRow key={it.id} expense={it} catColor={it.catColor} catIcon={it.catIcon} catName={it.catName}
+              <ExpenseRow key={it.id} expense={it} catColor={it.catColor} catIcon={it.catIcon} catName={it.catName} readOnly={readOnly}
                 mode="city" loc={loc} mainCurrency={mainCurrency} mainAmount={r.value} ok={r.ok}
                 onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />
             );

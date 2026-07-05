@@ -1228,6 +1228,7 @@ export default function TripView() {
               cityVisits={visits}
               isLoading={loadingContent}
               isPro={tripIsPro}
+              role={myRole}
               queryClient={qc}
             />
           )}
@@ -1256,6 +1257,7 @@ export default function TripView() {
               tripId={tripId}
               isLoading={loadingContent}
               members={members}
+              myRole={myRole}
             />
           )}
           {shownLens === 'settings' && (
@@ -1285,14 +1287,9 @@ export default function TripView() {
               kept hidden) to avoid two surfaces fighting over the single map. */}
           {shownLens === 'map' && (
             <ScreenMap
-              trip={trip}
               visits={visits ?? []}
               transfers={transfers ?? []}
-              hotels={hotels ?? []}
-              activities={activities ?? []}
-              canEdit={myRole === 'owner' || myRole === 'admin'}
               active
-              openEvent={(kind, id) => setEventView({ open: true, kind, id })}
             />
           )}
             </main>

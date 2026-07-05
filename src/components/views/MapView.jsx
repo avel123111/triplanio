@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
-import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, iconForKinds } from '@/lib/map/markers';
+import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit } from '@/lib/map/camera';
 import MapControls from '@/lib/map/MapControls';
@@ -128,11 +128,31 @@ export default function MapView({
   hoveredHotelId = null,
   onHotelClick,
   onHotelHover,
+  // ── City badge (Map lens only, TRIP-33) ──────────────────────────────────
+  // A single translucent label (flag + city name + dates) pinned next to the
+  // ACTIVE city. Off (null) everywhere else so the shared surfaces are untouched.
+  // Shape: { lng, lat, countryCode, name, dates } | null.
+  cityBadge = null,
+  // Optional: notified when a city pin is hovered (Map lens badge tooltip). Gets
+  // the visits at that pin on enter, null on leave. Off elsewhere.
+  onCityHover,
+  // Camera zoom used when the parent focuses a SINGLE city via `focus` (a pulled-
+  // back reader zoom on the Map lens; the editor keeps the default city zoom).
+  focusZoom = 9.5,
+  // Optional: fired on a real click on empty map (canvas), not a drag and not a
+  // marker click (markers stop the event in their own DOM layer). Map lens uses it
+  // to clear the active city. Off elsewhere.
+  onMapClick,
+  // When false, lift the map's cooperative-gestures guard ("use two fingers /
+  // ctrl+scroll") for as long as this surface owns the singleton; restored on
+  // unmount so other screens keep it. Defaults to the singleton's setting (on).
+  cooperativeGestures = true,
   children,
 }) {
   const containerRef = useRef(null);
   const markersRef = useRef([]);
   const hotelMarkersRef = useRef([]);
+  const cityBadgePopupRef = useRef(null);
   const prevHideRouteRef = useRef(false);
   const fittedSigRef = useRef('');
   // Clustering state (TRIP-141), all imperative so move/zoom never re-renders:
@@ -164,7 +184,7 @@ export default function MapView({
   // Shared singleton lifecycle (acquire/release, ready-seed, theme, projection,
   // resize, marker cleanup on unmount).
   const { mapRef, ready, error } = useMapSurface(containerRef, {
-    markersRef, scheme: mapScheme, projection, active, basemapTheme,
+    markersRef, scheme: mapScheme, projection, active, basemapTheme, cooperativeGestures,
   });
 
   // Force a re-fit on (re)mount so the first draw frames the route.
@@ -173,6 +193,10 @@ export default function MapView({
   // Keep the latest onCityClick without forcing the draw effect to re-run.
   const onCityClickRef = useRef(onCityClick);
   useEffect(() => { onCityClickRef.current = onCityClick; }, [onCityClick]);
+  const onCityHoverRef = useRef(onCityHover);
+  useEffect(() => { onCityHoverRef.current = onCityHover; }, [onCityHover]);
+  const onMapClickRef = useRef(onMapClick);
+  useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
 
   // Same for the hotel-badge callbacks (stable across renders → badges aren't
   // rebuilt just because the parent passes a fresh closure).
@@ -426,6 +450,38 @@ export default function MapView({
   // Remove any hotel badges on unmount (useMapSurface only owns markersRef).
   useEffect(() => () => { hotelMarkersRef.current.forEach((m) => m.remove()); hotelMarkersRef.current = []; }, []);
 
+  // --- City badge (Map lens only) — one glass label at the active city, carried
+  // by a mapboxgl.Popup so it AUTO-ANCHORS: with no fixed `anchor`, Mapbox flips
+  // it to whichever side keeps it on-screen (a city near the edge opens inward),
+  // solving off-screen badges. Re-runs only when the active city (or its label)
+  // changes; suppressed while the hotel-pick overlay owns the map. ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (cityBadgePopupRef.current) { cityBadgePopupRef.current.remove(); cityBadgePopupRef.current = null; }
+    if (!map || !ready || hideRoute || !cityBadge || cityBadge.lng == null || cityBadge.lat == null) return undefined;
+    const el = createCityBadgeEl({ countryCode: cityBadge.countryCode, name: cityBadge.name, dates: cityBadge.dates });
+    cityBadgePopupRef.current = new mapboxgl.Popup({
+      closeButton: false, closeOnClick: false, focusAfterOpen: false,
+      className: 'cbadge-popup', offset: 16, maxWidth: 'none',
+    })
+      .setLngLat([cityBadge.lng, cityBadge.lat])
+      .setDOMContent(el)
+      .addTo(map);
+    return () => { if (cityBadgePopupRef.current) { cityBadgePopupRef.current.remove(); cityBadgePopupRef.current = null; } };
+  }, [ready, hideRoute, cityBadge?.lng, cityBadge?.lat, cityBadge?.name, cityBadge?.dates, cityBadge?.countryCode]);
+
+  // --- Click on empty map (Map lens) → clear the active city. Mapbox fires
+  // 'click' only for a real click on the canvas: a drag emits move events, not a
+  // click, and HTML markers swallow their own clicks in a separate DOM layer, so
+  // this never fires for pin clicks or while panning. ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return undefined;
+    const handler = (e) => { const cb = onMapClickRef.current; if (cb) cb(e); };
+    map.on('click', handler);
+    return () => { map.off('click', handler); };
+  }, [ready]);
+
   // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
   // this flies to the focused city / fits the two transfer cities, and eases
@@ -443,7 +499,7 @@ export default function MapView({
     if (focusSig) {
       hadFocusRef.current = true;
       if (focus.length === 1) {
-        calmFlyTo(map, { center: focus[0], zoom: 9.5 });
+        calmFlyTo(map, { center: focus[0], zoom: focusZoom });
       } else {
         calmFit(map, focus, { padding: 110, maxZoom: 9 });
       }
@@ -494,6 +550,7 @@ export default function MapView({
       const el = createMarkerEl(g.labels.filter((l) => l != null), {
         icon: iconForKinds(g.kinds),
         onClick: () => { const cb = onCityClickRef.current; if (cb) cb(g.data); },
+        onHover: (entering) => { const cb = onCityHoverRef.current; if (cb) cb(entering ? g.data : null); },
       });
       // Tag the element with the visit ids at this spot so the selection/hover
       // effect can toggle .is-sel / .is-hover without rebuilding the markers.

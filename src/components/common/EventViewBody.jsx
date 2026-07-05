@@ -306,7 +306,7 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
   const dur = transferDur(entity.start_datetime, entity.end_datetime, t);
   const carrier = entity.carrier || '';
   const priceText = fmtPrice(entity.price, entity.currency);
-  const hasDetails = entity.booking_reference || carrier || entity.flight_number;
+  const hasDetails = entity.booking_reference || carrier || entity.flight_number || entity.booking_url;
   const notes = entity.notes;
   return (
     <div className="tv">
@@ -395,6 +395,14 @@ function TransferBody({ entity, fromVisit, toVisit, docs = [] }) {
                 <span className="hv-row__sp" />
                 <span className="hv-row__v t-strong mono">{entity.flight_number}</span>
               </div>
+            )}
+            {/* TRIP-176: ссылка на бронь в transfer view (была только в hotel/activity) */}
+            {entity.booking_url && (
+              <a className="hv-row hv-row--link" href={entity.booking_url} target="_blank" rel="noreferrer">
+                <span className="hv-row__ic"><ExternalLink /></span>
+                <span className="hv-row__lbl t-ui">{t('event.view_booking')}</span>
+                <ExternalLink size={15} style={{ color: 'var(--muted-2)' }} />
+              </a>
             )}
           </div>
         </div>

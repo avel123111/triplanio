@@ -974,22 +974,25 @@ export default function ManualPlanner({ initialMethod = 'manual' }) {
       const trip = { id: tripId };
 
       // 1b. Persist cover (gradient or uploaded image). The RPC doesn't accept
-      // cover fields, so update the row immediately after creation.
+      // cover fields; trips is Ярус B (TRIP-190) — no direct client write — so the
+      // cover goes through the updateTripSettings edge (service_role, whitelisted cols).
       if (cover?.cover_gradient || cover?.cover_image_url) {
         // Cover was uploaded before the trip existed (draft prefix) — move it
         // under <tripId>/ and re-sign before persisting the URL.
         const finalCoverUrl = cover.cover_image_url
           ? await finalizeDraftCover(trip.id, cover.cover_image_url)
           : null;
-        const { error: coverErr } = await supabase
-          .from('trips')
-          .update({
-            cover_image_url: finalCoverUrl,
-            // Invariant: every trip keeps a built-in gradient (photo renders on
-            // top when present). Never persist null → no legacy/procedural cover.
-            cover_gradient: cover.cover_gradient || DEFAULT_GRADIENT_ID,
-          })
-          .eq('id', trip.id);
+        const { error: coverErr } = await supabase.functions.invoke('updateTripSettings', {
+          body: {
+            tripId: trip.id,
+            fields: {
+              cover_image_url: finalCoverUrl,
+              // Invariant: every trip keeps a built-in gradient (photo renders on
+              // top when present). Never persist null → no legacy/procedural cover.
+              cover_gradient: cover.cover_gradient || DEFAULT_GRADIENT_ID,
+            },
+          },
+        });
         if (coverErr) console.error('Failed to set cover:', coverErr);
       }
 

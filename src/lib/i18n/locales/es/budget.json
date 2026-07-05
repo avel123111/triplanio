@@ -87,6 +87,7 @@
   "per_person_label": "Por persona",
   "rate_missing": "Tipo de cambio no disponible",
   "rates_missing": "No hay tipos de cambio para {currencies}",
+  "readonly_banner_desc": "Tienes el rol de observador, así que el presupuesto es de solo lectura. Solo el propietario y los administradores pueden cambiarlo.",
   "section_other": "Otros",
   "see_details": "Ver detalles",
   "set_rate_manual": "Pon el tipo de cambio a mano",

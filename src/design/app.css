@@ -54,7 +54,6 @@
   --surface: #FFFFFF;
   --surface-2: #EEEEF7;
   --surface-3: #FAFAFE;
-  --surface-elev: #FFFFFF;
   --wash:   var(--surface-2);            /* legacy: subtle tinted wash */
   --wash-2: var(--surface-3);
   --input:  var(--line-strong);
@@ -224,7 +223,6 @@
   --surface: #1f212f;
   --surface-2: #2A2937;
   --surface-3: #1B1A26;
-  --surface-elev: #272636;
 
   /* Канонические поверхности — тёмная (TRIP-189): стекло поверх #0c0e1c */
   --surface-card:        rgba(255,255,255,.07);
@@ -1079,13 +1077,15 @@ h4,
 .app-header__gbtn:hover { background: var(--wash); color: var(--ink); }
 .app-header__menu { display: none; }                /* burger — shown on mobile only */
 
-/* Brand block — logo in a white plaque + wordmark */
+/* Brand block — logo tile + wordmark */
 .app-header__brand { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 0 0 auto; min-width: 0; }
+/* Лого без белой плашки-рамки: сам SVG — уже скруглённая плитка с маркой,
+   поэтому внешняя #fff-обёртка (фон/паддинг/тень) убрана — одинаково в обеих темах. */
 .app-header__logo {
   width: 38px; height: 38px; flex: 0 0 auto; border-radius: 11px; display: grid; place-items: center;
-  background: #fff; padding: 3px; box-shadow: 0 3px 10px rgba(0,0,0,.22); overflow: hidden;
+  overflow: hidden;
 }
-.app-header__logo img { width: 32px; height: 32px; display: block; border-radius: 8px; }
+.app-header__logo img { width: 38px; height: 38px; display: block; border-radius: 11px; }
 .app-header__brand-name { color: var(--ink); }
 .app-header--trip .app-header__brand-name { display: none; }   /* trip screens: logo only, no wordmark */
 
@@ -1104,10 +1104,16 @@ h4,
  display: flex; gap: 6px; align-items: center;
 }
 
-/* Trip-action group (Share / Edit / …) — glass pill with inner dividers */
+/* Trip-action group (Share / Edit / …) — матовое стекло на канон-токенах surface-glass.
+   Радиус 13px (не --r-xl): при padding:4px он ровно вкладывает внутренние кнопки (9px = 13−4). */
 .app-header__trip-actions {
-  display: flex; align-items: stretch; gap: 4px; padding: 4px; border-radius: 13px;
-  background: var(--wash); border: 1px solid var(--line); flex: 0 0 auto;
+  display: flex; align-items: stretch; gap: 4px; padding: 4px; border-radius: 13px; flex: 0 0 auto;
+  background: var(--surface-card); border: 1px solid var(--surface-card-border); box-shadow: var(--shadow-glass);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .app-header__trip-actions {
+    -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur));
+  }
 }
 .app-header__act {
  display: inline-flex; align-items: center; gap: 8px; position: relative;
@@ -1212,11 +1218,9 @@ h4,
   padding: 0;
 }
 
-/* Map lens: full-bleed map + sidebar; stack on narrow screens */
-@media (max-width: 860px) {
-  .trip-map-shell { grid-template-columns: 1fr !important; height: auto !important; }
-  .trip-map-shell > div:first-child { height: 420px; }
-}
+/* Map lens (TRIP-33): full-bleed map with a floating glass route panel. The
+   panel (.map-route) is positioned absolutely over the map; its own block and
+   the ≤640px bottom-sheet variant live in the PRIMITIVES section below. */
 
 /* =================================================================
    PRIMITIVES — buttons, fields, badges, cards
@@ -1315,6 +1319,7 @@ h4,
 .statcard,
 .wdg,
 .panel,                    /* экран трипа/статистика — плоские панели/виджеты */
+.summary,                  /* /stats — полоса из 6 стат-плиток */
 .invite,                   /* баннер-приглашение */
 .acc,                      /* аккордеон */
 .acct-hero,                /* шапка аккаунта */
@@ -1325,6 +1330,86 @@ h4,
   border-radius: var(--r-xl);
   box-shadow: none;
 }
+
+/* Map lens route panel (TRIP-33): skin = .surface-glass role (applied via the
+   class on the element); this block is layout only. Floats top-left over the
+   full-bleed map; collapses to a bottom sheet on phones (below). */
+.map-route {
+  position: absolute; z-index: 2;
+  top: 16px; left: 16px;
+  width: 300px; max-width: calc(100% - 32px);
+  max-height: calc(100% - 32px);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.map-route__head { padding: 14px 16px 10px; border-bottom: 1px solid var(--surface-card-border); }
+.map-route__empty { padding: 32px 20px; text-align: center; }
+.map-route__list { padding: 8px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.map-route__item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 8px 10px; border: none; background: transparent; border-radius: 12px;
+  cursor: pointer; text-align: left; color: var(--ink);
+  transition: background .15s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .map-route__item:hover { background: var(--wash); } /* app-wide list hover (app-side/icon-btn) */
+}
+.map-route__item.is-active { background: var(--brand-soft); }
+.map-route__marker {
+  flex: none; width: 26px; height: 26px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: var(--surface); color: var(--brand);
+  border: 2px solid var(--brand-soft-12);
+  font-variant-numeric: tabular-nums;
+}
+.map-route__marker svg { width: 13px; height: 13px; }
+.map-route__item.is-active .map-route__marker { background: var(--brand); color: #fff; border-color: var(--brand); }
+.map-route__body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.map-route__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map-route__dates { color: var(--muted); }
+.map-route .sheet-grip { display: none; } /* bottom-sheet grip — phones only (below) */
+@media (max-width: 640px) {
+  /* Always-on bottom sheet above the fixed 60px bottom nav: peek = grip + title,
+     .is-expanded reveals the scrollable list. Skin switches from glass to the
+     canonical solid .sheet look (blur over a moving map is muddy on phones). */
+  .map-route {
+    top: auto; left: 0; right: 0;
+    bottom: calc(60px + env(safe-area-inset-bottom));
+    width: auto; max-width: none;
+    background: var(--surface); border: 0;
+    border-radius: 20px 20px 0 0; box-shadow: var(--sh-3);
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    max-height: 68px; /* peek */
+    transition: max-height .3s cubic-bezier(.22, 1, .36, 1);
+  }
+  .map-route.is-expanded { max-height: 56vh; }
+  .map-route .sheet-grip { display: flex; width: 100%; background: none; border: 0; cursor: pointer; }
+  .map-route__head { padding-top: 2px; border-bottom: 0; }
+  .map-route__list { flex: 1; min-height: 0; }
+}
+
+/* City badge (TRIP-33): translucent glass label next to the active city's pin on
+   the Map lens. Same canon glass tokens as .surface-glass; a passive label so it
+   never eats pin/route clicks. Built in src/lib/map/markers.js (createCityBadgeEl). */
+.cbadge {
+  display: inline-flex; align-items: flex-start; gap: 8px;
+  padding: 6px 10px; border-radius: 12px; max-width: 240px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur));
+  pointer-events: none;
+}
+.cbadge .cflag { height: 14px; border-radius: 2px; flex: none; margin-top: 1px; } /* top-aligned with the name line */
+.cbadge__col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cbadge__name { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cbadge__dates { color: var(--muted); white-space: nowrap; }
+/* The badge rides a mapboxgl.Popup so it auto-flips to stay on-screen near map
+   edges. Strip the popup's default chrome (white bubble + tip) — the glass
+   .cbadge IS the surface; passive so it never eats a map click. */
+.cbadge-popup.mapboxgl-popup { pointer-events: none; }
+.cbadge-popup .mapboxgl-popup-content { background: transparent; padding: 0; box-shadow: none; }
+.cbadge-popup .mapboxgl-popup-tip { display: none; }
 
 .card { padding: 18px; }
 .card--soft { background: var(--wash); border-color: transparent; box-shadow: none; }
@@ -1594,11 +1679,14 @@ h4,
 /* ── Lumo segmented control (.seg) — pill shape, aria-pressed active state ── */
 .seg {
   display: inline-flex;
+  /* TRIP-176: трек — утопленный тон. Светлая=--surface-2 (#EEEEF7): --surface-3
+     в светлой почти белый и сливается с фоном. Тёмная переопределена ниже. */
   background: var(--surface-2);
   border-radius: var(--r-seg-track);
   padding: 4px;
   gap: 2px;
 }
+[data-theme="dark"] .seg { background: var(--surface-3); }  /* TRIP-176: тёмная = --surface-3 (#1B1A26), как карточки /trips */
 .seg button {
  font: inherit;
 
@@ -1615,9 +1703,13 @@ h4,
  transition: color .2s, background .2s, box-shadow .2s, transform .16s var(--ease-spring);
 }
 .seg button[aria-pressed="true"] {
-  color: var(--ink);
-  background: var(--surface);
-  box-shadow: var(--sh-1);
+  /* TRIP-176: активный сегмент = мягкая заливка. В драйверах корни задают
+     --ev-soft/--ev-ink (цвет эвента) → таб окрашивается в цвет типа события;
+     вне драйверов переменные не заданы → откат на brand (--primary-soft/--brand).
+     Тот же fallback-паттерн, что у шапки .lp-h--ev. */
+  color: var(--ev-ink, var(--brand));
+  background: var(--ev-soft, var(--primary-soft));
+  box-shadow: none;
 }
 .seg button:active { transform: scale(.95); }
 /* Full-width variant — segments split the row evenly (used by the fork tabs and
@@ -1688,6 +1780,8 @@ h4,
   .app-header__trip-meta { display: none; }
   .app-header__trip-title { font-size: var(--fs-h4); }
   .app-header__act-text { display: none; }            /* trip actions collapse to icons */
+  /* blur off on mobile — header is opaque here, so the pill's backdrop-filter is only paint jank */
+  .app-header__trip-actions { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .app-header__act { padding: 9px 10px; }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
   .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
@@ -2824,18 +2918,13 @@ h4,
 .lpanel { width: 300px; flex: 0 0 300px; min-height: 340px; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .2s, border-color .2s, transform .18s var(--ease-spring); }
 .lpanel--wide { width: 100%; flex: 1 1 auto; min-height: 0; }
 
-/* Brand hero (city panel): one row — back · name + country chip · check-in/out.
-   No photo, no emoji, no local time / weather. */
-.lp-hero { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 13px 16px; background: var(--brand); color: #fff; flex: none; }
-.lph-title { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.lph-name { color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lph-fc { align-self: flex-start; max-width: 100%; color: #fff; background: rgba(255,255,255,.18); padding: 3px 10px; border-radius: var(--r-pill); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lph-meta { margin-left: auto; display: flex; align-items: stretch; }
-.lph-meta > div { display: flex; flex-direction: column; gap: 3px; padding: 0 12px; }
-.lph-meta > div + div { border-left: 1px solid rgba(255,255,255,.2); }
-.lph-mk { color: rgba(255,255,255,.72); }
-.lph-mv { color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
-@media (max-width: 560px) { .lph-meta { margin-left: 48px; } }
+/* TRIP-176: CityPanel — шапка на каноне .lp-h с brand-градиентом (не цвет эвента).
+   3 строки в .lp-ti (тип·маршрут / название / страна) + слева .lp-ic с номером
+   города или иконкой пересадки. Старый .lp-hero/.lph-* (был только в CityPanel)
+   заменён на канон, общий с остальными драйверами. */
+.lp-ti--stack { display: flex; flex-direction: column; gap: 2px; }
+.lp-country { display: inline-flex; align-items: center; gap: .4em; color: var(--ink-2); min-width: 0; max-width: 100%; }
+.lp-country .cflag { flex: none; }
 
 .lp-h { display: flex; align-items: center; gap: 11px; padding: 14px 15px; border-bottom: 1px solid var(--line-2); }
 .lp-h .lp-ic { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; flex: none; }
@@ -2846,9 +2935,6 @@ h4,
    non-blending hover (used in every light panel header). */
 .lp-back { width: 34px; height: 34px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
 .lp-back:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
-/* back button on the brand hero — white, clear hover on the brand fill */
-.lp-hero .lp-back { width: 34px; height: 34px; border-radius: var(--r-pill); background: rgba(255,255,255,.14); border: 0; color: #fff; }
-.lp-hero .lp-back:hover { background: rgba(255,255,255,.28); color: #fff; }
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 .lp-sec { display: flex; flex-direction: column; gap: 8px; }
@@ -2891,13 +2977,18 @@ h4,
 .gt b { color: var(--muted); display: block; }
 .gt span { color: var(--muted-2); }
 
-.stepper { display: inline-flex; align-items: center; gap: 3px; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
+.stepper { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
 .stepper button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--primary); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
-.stepper button:hover { background: var(--surface); }
-.stepper button:active { transform: scale(.9); }
+.stepper button:hover:not(:disabled) { background: var(--surface); }
+.stepper button:active:not(:disabled) { transform: scale(.9); }
 .stepper button:disabled { color: var(--muted-2); cursor: default; }
-.stepper .n { min-width: 48px; text-align: center; color: var(--ink); }
-.lp-stepper { display: flex; align-items: center; justify-content: space-between; }
+.stepper .n { min-width: 40px; text-align: center; color: var(--ink); }
+/* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
+.lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); }
+.lp-stepper__ic { width: 34px; height: 34px; border-radius: 11px; background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
+.lp-stepper__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lp-stepper__tx b { color: var(--ink); }
+.lp-stepper__tx span { color: var(--muted); }
 
 .metastrip { display: flex; flex-wrap: wrap; gap: 8px; }
 .metastrip .ch { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); background: var(--secondary); padding: 6px 11px; border-radius: var(--r-pill); }
@@ -2990,6 +3081,9 @@ h4,
   }
   .trip-body.is-menu-open .trip-side-scrim { opacity: 1; pointer-events: auto; }
   .trip-screen-body { padding: 16px 16px 48px; }
+  /* Map lens stays full-bleed on mobile — the base rule above would otherwise
+     re-apply 16px side padding to the flush body (equal specificity, later source). */
+  .trip-screen-body--flush { padding: 0; }
 }
 
 /* Phones: the lens menu is shown as a bottom-sheet (TripSidebarSheet), so the
@@ -4240,7 +4334,7 @@ h4,
 /* route block (transfer view) */
 /* stay dates block (hotel view) — check-in │ nights │ check-out (TRIP-176) */
 /* TRIP-186: плашка дат того же цвета, что инпуты (--surface-3, как база .input). */
-.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface-3);overflow:hidden;}
+.stay-dates{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;border:1px solid var(--surface-card-border);border-radius:var(--r-xl);background:var(--surface-card);overflow:hidden;}
 .stay-dates__cell{padding:11px 14px;min-width:0;}
 .stay-dates__lbl{color:var(--muted);}
 .stay-dates__v{ color:var(--ink);margin-top:5px;}
@@ -4393,7 +4487,8 @@ h4,
    состояния той же специфичности (.field--ai / .field--error / .field--warning)
    и hover/focus. */
 .ev-dlg .input, .ev-dlg .select, .ev-dlg .textarea,
-.lp .input, .lp .select, .lp .textarea {
+.lp .input, .lp .select, .lp .textarea,
+.lp .s22f-search input, .lp .s22f-field {   /* TRIP-176: форк-инпуты (поиск + цена от/до) в драйвере — тот же «аккуратный» канон, что и в «У меня есть бронь» */
   border-width: 1px;
   border-radius: var(--r-md);
 }
@@ -4425,7 +4520,7 @@ h4,
    Reuses existing .lp-h / .lp-b / .lp-f / .lp-back / .lp-hero / .stepper /
    .bookrow / .gadd / .ai-blk*. Adds the design shell + tinted header + bits.
    ═══════════════════════════════════════════════════════════════════════════ */
-.lp { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); overflow: hidden; display: flex; flex-direction: column; }
+.lp { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); overflow: hidden; display: flex; flex-direction: column; }  /* TRIP-176: драйвер сливается с фоном приложения (var(--bg)), а не «приподнят» через --surface */
 .lp-ic { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; flex: none; }
 .lp-ic svg { width: 17px; height: 17px; }
 .lp-ti { min-width: 0; flex: 1; }
@@ -4684,7 +4779,8 @@ h4,
 @media (max-width: 640px) { .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line-2); padding: 12px; } }
 
 /* — summary tiles (6 soft figures over a wash shelf — NOT bordered squares) — */
-.summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; background: var(--surface-3); border: 1px solid var(--line); border-radius: var(--r-card); padding: 8px; margin-top: 18px; }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; margin-top: 18px; }
 @media (max-width: 1040px) { .summary { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
 .sfig { padding: 15px 16px; border-radius: var(--r-md); display: flex; flex-direction: column; gap: 10px; transition: background .2s, box-shadow .22s, transform .16s var(--ease-spring); }
@@ -4818,7 +4914,7 @@ h4,
 
 /* — visit panel (desktop right slide-over / mobile bottom sheet) over the app — */
 .vscrim { position: fixed; inset: 0; background: var(--scrim); z-index: 110; }
-.vpanel { position: fixed; z-index: 120; background: var(--surface); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }
+.vpanel { position: fixed; z-index: 120; background: var(--bg); box-shadow: var(--sh-3); display: flex; flex-direction: column; top: 0; right: 0; height: 100%; width: 392px; max-width: 100vw; border-left: 1px solid var(--line); animation: vpanelIn .34s var(--ease-out); }  /* TRIP-176: фон драйвера = фон приложения */
 @keyframes vpanelIn { from { transform: translateX(102%); } to { transform: translateX(0); } }
 @media (max-width: 640px) { .vpanel { top: auto; left: 0; right: 0; bottom: 0; height: auto; width: 100%; max-height: 84%; border-left: 0; border-radius: 26px 26px 0 0; animation: vpanelInM .34s var(--ease-out); } @keyframes vpanelInM { from { transform: translateY(102%); } to { transform: translateY(0); } } }
 .vp-grip { display: none; }
@@ -4854,3 +4950,60 @@ h4,
 .triplink svg { width: 14px; height: 14px; color: var(--muted); }
 @media (hover: hover) { .triplink:hover { background: var(--primary-soft); color: var(--primary); } .triplink:hover svg { color: var(--primary); } }
 .vmanual { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+
+/* ===== Fork search + filter toolbar (TRIP-176) — SHARED primitive =====
+   One home for the fork filter bar so the hotel (Stay22HotelList) and activity
+   (ViatorActivityList) panels reuse the identical toolbar instead of forking it.
+   Hotel-only fields (guests/platform steppers) live here too; each list renders
+   the subset it needs. Typography for these classes is set by the .t-* canon
+   co-selectors earlier in this file. */
+.s22f { display: flex; flex-direction: column; gap: 11px; }
+.s22f-searchrow { display: flex; gap: 10px; }
+.s22f-search { position: relative; flex: 1; min-width: 0; }
+.s22f-search__ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.s22f-search input { width: 100%; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3), как в «У меня есть бронь» */ border-radius: var(--r-control); padding: 11px 14px 11px 40px; color: var(--ink); outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }
+.s22f-search input:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+.s22f-search input::placeholder { color: var(--muted-2); }
+.s22f-fbtn { position: relative; flex: none; width: 44px; height: 44px; border-radius: var(--r-control); border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center; transition: border-color .2s var(--ease-out), color .2s, box-shadow .2s, transform .12s var(--ease-spring); }
+.s22f-fbtn:hover { border-color: var(--line-hover); }
+.s22f-fbtn:active { transform: scale(.96); }
+.s22f-fbtn--on { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+.s22f-fbtn--active { border-color: var(--brand); color: var(--brand); }
+.s22f-fbtn__n { position: absolute; top: -6px; right: -6px; border: 2px solid var(--surface); }
+
+.s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-xl); background: var(--surface-card); border: 1px solid var(--surface-card-border); }  /* TRIP-176: контейнер фильтров = канон-карточка TRIP-189 (как группы «Когда»/«Финансы» в ручной форме), а не отдельный --surface-2 */
+.s22f-grp { display: flex; flex-direction: column; gap: 8px; }
+.s22f-pmuted { color: var(--muted); }
+.s22f-pfields { display: flex; align-items: center; gap: 8px; }
+.s22f-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--surface-3); border: 1.5px solid var(--line-strong);  /* TRIP-176: канон-инпут (--surface-3) */ border-radius: var(--r-control); padding: 9px 12px; transition: border-color .2s var(--ease-out), box-shadow .2s, background .2s; }
+.s22f-field:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+.s22f-cur { color: var(--muted); flex: none; }
+.s22f-field input { border: 0; outline: 0; background: transparent; width: 100%; min-width: 0; color: var(--ink); font-variant-numeric: tabular-nums; padding: 0; }
+.s22f-field input::placeholder { color: var(--muted-2); }
+.s22f-dash { color: var(--muted-2); flex: none; }
+.s22f-selwrap { position: relative; }
+.s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 11px 40px 11px 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }  /* TRIP-176: селект = канон-инпут (--surface-3, 1px, r-md) */
+.s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
+.s22f-selchev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
+
+.s22f-guestgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px 5px 12px; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); }  /* TRIP-176: карточка «Гости и номера» = канон-инпут; степпер внутри — без своего фона (не коробка-в-коробке) */
+.s22f-gcard__l { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s22f-panelfoot { display: flex; gap: 8px; margin-top: 12px; }
+.s22f-panelfoot .btn { flex: 1; }
+.s22f-step { display: inline-flex; align-items: center; gap: 3px; flex: none; background: transparent; padding: 0; }  /* TRIP-176: степпер встроен в карточку-инпут (без вложенного фона/пилюли) */
+.s22f-step button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
+.s22f-step button:hover:not(:disabled) { background: var(--surface-2); }  /* TRIP-176: hover читается на фоне карточки-инпута (--surface-3) */
+.s22f-step button:active:not(:disabled) { transform: scale(.88); }
+.s22f-step button:disabled { color: var(--muted-2); cursor: default; }
+.s22f-val { min-width: 32px; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.s22f-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.s22f-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: var(--r-pill); background: var(--primary-soft); color: var(--brand); }
+.s22f-pill button { width: 17px; height: 17px; border-radius: 50%; border: 0; background: var(--primary-soft-2); color: var(--brand); display: grid; place-items: center; cursor: pointer; }
+.s22f-resetall { margin-left: auto; background: 0; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.s22f-resetall:hover { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .s22f-fbtn, .s22f-step button { transition: none; }
+  .s22f-fbtn:active { transform: none; }
+}

@@ -39,6 +39,7 @@
   "page_title": "Trip documents",
   "private_empty": "New document",
   "private_word": "private",
+  "readonly_banner_desc": "You have the viewer role, so documents are read-only. Only the owner and admins can add or change them.",
   "remaining": " ({n} left)",
   "remove_doc_aria": "Remove document",
   "search_ph": "Search by title…",

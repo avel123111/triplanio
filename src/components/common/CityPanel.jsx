@@ -8,6 +8,7 @@
  * bookings open the same view/create panels as the list.
  */
 import React from 'react';
+import { X } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Icon } from '@/design/icons';
 import CountryFlag from '@/components/common/CountryFlag';
@@ -78,7 +79,7 @@ function FlightLine({ transfer, dir, warn, onClick, t }) {
 }
 
 export default function CityPanel({
-  node, meta, hotels = [], acts = [], arrival, departure, prevCity, nextCity,
+  node, meta, cityNo, hotels = [], acts = [], arrival, departure, prevCity, nextCity,
   isHotelWarn, isActWarn, arrivalWarn = false, departureWarn = false, onBack, onRemove,
   onNightsMinus, onNightsPlus,
   onOpenHotel, onAddHotel, onOpenActivity, onAddActivity, onOpenTransfer, onAddArrival, onAddDeparture,
@@ -91,25 +92,29 @@ export default function CityPanel({
   const nights = isWaypoint ? 0 : (node.nights || 0);
 
   return (
-    <div className="lp lp--wide">
-      {/* brand hero — single row: back · city name + country chip · check-in/out.
-          (No photo / no emoji / no local-time / no weather.) */}
-      <div className="lp-hero">
-        <button className="lp-back" onClick={onBack} title={t('common.back')}><Icon name="back" size={17} /></button>
-        <div className="lph-title">
-          <b className="lph-name">{node.city_name}</b>
-          {meta?.country && <span className="lph-fc" style={{ display: 'inline-flex', alignItems: 'center', gap: '.35em' }}><CountryFlag code={node.country_code} />{meta.country}</span>}
+    <div className="lp lp--wide" style={{ '--ev-color': 'var(--brand)', '--ev-soft': 'var(--primary-soft)', '--ev-ink': 'var(--brand)' }}>
+      {/* Header — канон .lp-h с brand-градиентом (как остальные драйверы, но не цвет
+          эвента): слева номер города / иконка пересадки, затем 3 строки. */}
+      <div className="lp-h lp-h--ev">
+        <span className="lp-ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
+          {isWaypoint ? <Icon name="arrowSwap" size={17} /> : <b className="t-strong">{cityNo}</b>}
+        </span>
+        <div className="lp-ti lp-ti--stack">
+          <div className="eyebrow" style={{ color: 'var(--brand)' }}>{t('tse.route_city')} · {isWaypoint ? t('tse.pt_waypoint') : t('tse.node_visit')}</div>
+          <b>{node.city_name}</b>
+          {meta?.country && <span className="lp-country"><CountryFlag code={node.country_code} />{meta.country}</span>}
         </div>
-        <div className="lph-meta">
-          <div><span className="lph-mk">{t('hotel.check_in')}</span><span className="lph-mv">{fmtDate(node.start_date) || '—'}</span></div>
-          <div><span className="lph-mk">{t('hotel.check_out')}</span><span className="lph-mv">{fmtDate(node.end_date) || '—'}</span></div>
-        </div>
+        <button className="ev-dlg-close" onClick={onBack} title={t('common.back')} aria-label={t('common.back')}><X size={15} /></button>
       </div>
 
       <div className="lp-b scrollbar-thin">
-      {/* nights stepper */}
+      {/* Nights card — иконка · (заголовок + даты) · степпер (макет CityView). */}
       <div className="lp-stepper" style={{ marginBottom: 6 }}>
-        <span className="muted t-meta">{t('tse.nights_label')}</span>
+        <span className="lp-stepper__ic"><Icon name="moon" size={17} /></span>
+        <div className="lp-stepper__tx">
+          <b className="t-strong">{t('tse.nights_in_city')}</b>
+          <span className="t-meta">{rangeText(node.start_date, node.end_date) || '—'}</span>
+        </div>
         <div className="stepper" title={t('tse.nights_label')}>
           <button onClick={onNightsMinus} disabled={nights <= 0} aria-label={t('tse.nights_remove')}>−</button>
           <span className="n">{nights}</span>

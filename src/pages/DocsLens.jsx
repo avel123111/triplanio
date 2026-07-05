@@ -336,7 +336,7 @@ export function AddDocDialog({ tripId, defaultVisibility = 'shared', open, onOpe
 
 // ─── DocDetailDialog ──────────────────────────────────────────────────────────
 
-function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
+function DocDetailDialog({ doc, tripId, open, onOpenChange, readOnly }) {
   const { t }    = useI18n();
   const close    = () => onOpenChange?.(false);
   const confirm  = useConfirm();
@@ -430,9 +430,11 @@ function DocDetailDialog({ doc, tripId, open, onOpenChange }) {
 
         {/* ── Footer ── */}
         <div className="dlg__foot">
-          <Btn variant="danger" loading={deleting} icon="trash" onClick={handleDelete}>
-            {t('trip.delete')}
-          </Btn>
+          {!readOnly && (
+            <Btn variant="danger" loading={deleting} icon="trash" onClick={handleDelete}>
+              {t('trip.delete')}
+            </Btn>
+          )}
           <div style={{ flex: 1 }} />
           <Btn variant="ghost" onClick={close}>{t('common.close')}</Btn>
         </div>
@@ -535,7 +537,7 @@ function DocCard({ doc, scope, members, profiles, onOpenDetail }) {
 
 // ─── DocEmpty ─────────────────────────────────────────────────────────────────
 
-function DocEmpty({ scope, onOpenAdd }) {
+function DocEmpty({ scope, onOpenAdd, canAdd = true }) {
   const { t }    = useI18n();
   const isShared = scope !== 'personal';
   return (
@@ -545,21 +547,23 @@ function DocEmpty({ scope, onOpenAdd }) {
       </div>
       <b>{isShared ? t('doc.empty_shared') : t('doc.empty_private')}</b>
       <span>{isShared ? t('doc.empty_shared_desc') : t('doc.empty_private_desc')}</span>
-      <Btn
-        variant="soft"
-        size="sm"
-        icon="plus"
-        style={!isShared ? { background: 'var(--warm-soft)', color: 'var(--warm-ink)' } : undefined}
-        onClick={() => onOpenAdd?.()}>
-        {t('doc.add_doc')}
-      </Btn>
+      {canAdd && (
+        <Btn
+          variant="soft"
+          size="sm"
+          icon="plus"
+          style={!isShared ? { background: 'var(--warm-soft)', color: 'var(--warm-ink)' } : undefined}
+          onClick={() => onOpenAdd?.()}>
+          {t('doc.add_doc')}
+        </Btn>
+      )}
     </div>
   );
 }
 
 // ─── DocsGrid ─────────────────────────────────────────────────────────────────
 
-function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail }) {
+function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail, canAdd = true }) {
   const { t }    = useI18n();
   const isShared = scope !== 'personal';
   return (
@@ -567,23 +571,27 @@ function DocsGrid({ docs, scope, members, profiles, onOpenAdd, onOpenDetail }) {
       {docs.map(d => (
         <DocCard key={d.id} doc={d} scope={scope} members={members} profiles={profiles} onOpenDetail={onOpenDetail} />
       ))}
-      <button
-        className={`dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
-        onClick={() => onOpenAdd?.()}>
-        <span className="dl-addcard__ic">
-          <Icon name="plus" size={22} />
-        </span>
-        <b>{t('doc.add_doc')}</b>
-      </button>
+      {canAdd && (
+        <button
+          className={`dl-addcard${!isShared ? ' dl-addcard--mine' : ''}`}
+          onClick={() => onOpenAdd?.()}>
+          <span className="dl-addcard__ic">
+            <Icon name="plus" size={22} />
+          </span>
+          <b>{t('doc.add_doc')}</b>
+        </button>
+      )}
     </div>
   );
 }
 
 // ─── DocsLens (main export) ───────────────────────────────────────────────────
 
-export default function DocsLens({ tripId, isLoading: parentLoading, members = [] }) {
+export default function DocsLens({ tripId, isLoading: parentLoading, members = [], myRole }) {
   const { t }    = useI18n();
   const { user } = useAuth();
+  // Viewer = строго только чтение (серверная защита — RLS _can_edit_trip, TRIP-124).
+  const readOnly = myRole === 'viewer';
   const [addDocVis,    setAddDocVis]    = useState(null); // null | { defaultVisibility }
   const [detailDoc,    setDetailDoc]    = useState(null); // null | doc object
   const [searchQuery,  setSearchQuery]  = useState('');
@@ -657,6 +665,11 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
 
   return (
     <div className="dl-root ov-anim">
+      {readOnly && (
+        <Severity level="info" title={t('settings.readonly_banner_title')}>
+          {t('doc.readonly_banner_desc')}
+        </Severity>
+      )}
       {/* ── Toolbar: search + filter ── */}
       <div className="dl-toolbar">
         <label className="dl-search">
@@ -698,12 +711,13 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
         </div>
 
         {sharedDocs.length === 0
-          ? <DocEmpty scope="shared" onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })} />
+          ? <DocEmpty scope="shared" canAdd={!readOnly} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })} />
           : <DocsGrid
               docs={sharedDocs}
               scope="shared"
               members={members}
               profiles={profiles}
+              canAdd={!readOnly}
               onOpenAdd={() => setAddDocVis({ defaultVisibility: 'shared' })}
               onOpenDetail={setDetailDoc}
             />}
@@ -729,12 +743,13 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
         </div>
 
         {personalDocs.length === 0
-          ? <DocEmpty scope="personal" onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })} />
+          ? <DocEmpty scope="personal" canAdd={!readOnly} onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })} />
           : <DocsGrid
               docs={personalDocs}
               scope="personal"
               members={members}
               profiles={profiles}
+              canAdd={!readOnly}
               onOpenAdd={() => setAddDocVis({ defaultVisibility: 'private' })}
               onOpenDetail={setDetailDoc}
             />}
@@ -755,6 +770,7 @@ export default function DocsLens({ tripId, isLoading: parentLoading, members = [
           onOpenChange={o => { if (!o) setDetailDoc(null); }}
           doc={detailDoc}
           tripId={tripId}
+          readOnly={readOnly}
         />
       )}
     </div>

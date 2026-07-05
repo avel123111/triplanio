@@ -7,6 +7,8 @@ metadata:
   originSessionId: 7c614335-4f75-42b1-89cc-99b92f14f719
 ---
 
+★★РЕШЕНО 2026-07-05 (TRIP-124 #392 + весь трек ярусной архитектуры): все 9 контентных таблиц получили роль-осведомлённый RLS-split (`WRITE = _can_edit_trip`, drop `*_all`), anon DML снят, роут `/edit` под FE-гардом (TRIP-55 #189). viewer больше не пишет ни контент, ни бюджет/доки ни через UI, ни сырым REST. Дыра закрыта на dev; общая ярусная модель + CI-страж от дрейфа — в [[triplanio-security-tiers-architecture]]. Ниже — исторический разбор уязвимости.
+
 ★Broken access control в triplanio_new (проверено на dev `nydhzevdizkfaxdlikgc` 2026-06-11, в repo-миграциях RLS-политики НЕ отражены — дрейф имён, см. [[triplanio-migration-naming-drift]]).
 
 **Симптом:** участник с ролью `viewer` по прямой ссылке `/trip/:tripId/edit` попадает в полный редактор структуры.
