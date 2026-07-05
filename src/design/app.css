@@ -1315,6 +1315,7 @@ h4,
 .statcard,
 .wdg,
 .panel,                    /* экран трипа/статистика — плоские панели/виджеты */
+.summary,                  /* /stats — полоса из 6 стат-плиток */
 .invite,                   /* баннер-приглашение */
 .acc,                      /* аккордеон */
 .acct-hero,                /* шапка аккаунта */
@@ -4684,7 +4685,8 @@ h4,
 @media (max-width: 640px) { .statbar .cta { flex: 1 0 100%; border-left: 0; border-top: 1px solid var(--line-2); padding: 12px; } }
 
 /* — summary tiles (6 soft figures over a wash shelf — NOT bordered squares) — */
-.summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; background: var(--surface-3); border: 1px solid var(--line); border-radius: var(--r-card); padding: 8px; margin-top: 18px; }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; margin-top: 18px; }
 @media (max-width: 1040px) { .summary { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
 .sfig { padding: 15px 16px; border-radius: var(--r-md); display: flex; flex-direction: column; gap: 10px; transition: background .2s, box-shadow .22s, transform .16s var(--ease-spring); }
