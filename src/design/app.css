@@ -4880,7 +4880,7 @@ h4,
 .s22f-fbtn--active { border-color: var(--brand); color: var(--brand); }
 .s22f-fbtn__n { position: absolute; top: -6px; right: -6px; border: 2px solid var(--surface); }
 
-.s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--line); }
+.s22f-panel { display: flex; flex-direction: column; gap: 14px; padding: 15px; border-radius: var(--r-xl); background: var(--surface-card); border: 1px solid var(--surface-card-border); }  /* TRIP-176: контейнер фильтров = канон-карточка TRIP-189 (как группы «Когда»/«Финансы» в ручной форме), а не отдельный --surface-2 */
 .s22f-grp { display: flex; flex-direction: column; gap: 8px; }
 .s22f-pmuted { color: var(--muted); }
 .s22f-pfields { display: flex; align-items: center; gap: 8px; }
@@ -4891,18 +4891,18 @@ h4,
 .s22f-field input::placeholder { color: var(--muted-2); }
 .s22f-dash { color: var(--muted-2); flex: none; }
 .s22f-selwrap { position: relative; }
-.s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: var(--r-control); padding: 11px 40px 11px 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }
+.s22f-sel { appearance: none; -webkit-appearance: none; width: 100%; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 11px 40px 11px 14px; color: var(--ink); cursor: pointer; outline: 0; transition: border-color .2s var(--ease-out), box-shadow .2s; }  /* TRIP-176: селект = канон-инпут (--surface-3, 1px, r-md) */
 .s22f-sel:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--primary-ring); }
 .s22f-selchev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
 
 .s22f-guestgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-control); }
+.s22f-gcard { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px 5px 12px; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); }  /* TRIP-176: карточка «Гости и номера» = канон-инпут; степпер внутри — без своего фона (не коробка-в-коробке) */
 .s22f-gcard__l { color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .s22f-panelfoot { display: flex; gap: 8px; margin-top: 12px; }
 .s22f-panelfoot .btn { flex: 1; }
-.s22f-step { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-3); border-radius: var(--r-pill); padding: 3px; }
+.s22f-step { display: inline-flex; align-items: center; gap: 3px; flex: none; background: transparent; padding: 0; }  /* TRIP-176: степпер встроен в карточку-инпут (без вложенного фона/пилюли) */
 .s22f-step button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--brand); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
-.s22f-step button:hover:not(:disabled) { background: var(--surface); }
+.s22f-step button:hover:not(:disabled) { background: var(--surface-2); }  /* TRIP-176: hover читается на фоне карточки-инпута (--surface-3) */
 .s22f-step button:active:not(:disabled) { transform: scale(.88); }
 .s22f-step button:disabled { color: var(--muted-2); cursor: default; }
 .s22f-val { min-width: 32px; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
