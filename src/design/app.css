@@ -146,6 +146,20 @@
   --shadow-card: var(--sh-2);
   --shadow-pop:  var(--sh-3);
 
+  /* === Канонические поверхности (TRIP-189) — ЕДИНЫЙ источник для всех
+     карточек/панелей/виджетов. Ровно две роли:
+       .surface-glass — «плавающая» (тень + backdrop-blur): полоса Города/Страны
+         и карточки на /trips;
+       .surface-panel — «плоская» (без тени и блюра): панели на экране трипа
+         (Overview/Бюджет/Участники).
+     Обе роли делят фон/бордер/радиус; отличаются только тенью и блюром.
+     Значения фона и бордера переопределяются для тёмной темы ниже. === */
+  --r-xl: 20px;
+  --surface-card:        rgba(255,255,255,.72); /* light — слегка прозрачный, чтобы blur давал матовое стекло */
+  --surface-card-border: rgba(45,55,115,.22);
+  --shadow-glass:        0 18px 50px -26px rgba(0,0,0,.5);
+  --glass-blur:          16px;
+
   --font-display: 'Exo 2',ui-sans-serif,system-ui,sans-serif;               /* TRIP-175 — заголовочная гарнитура (текст остаётся Golos через --font-ui) */
   --font-ui:      'Golos Text',ui-sans-serif,system-ui,-apple-system,sans-serif; /* TRIP-165 — та же семья */
   --font-mono:    'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace; /* TRIP-165 — коды/идентификаторы */
@@ -212,6 +226,10 @@
   --surface-2: #2A2937;
   --surface-3: #1B1A26;
   --surface-elev: #272636;
+
+  /* Канонические поверхности — тёмная (TRIP-189): стекло поверх #0c0e1c */
+  --surface-card:        rgba(255,255,255,.07);
+  --surface-card-border: rgba(255,255,255,.17);
 
   /* Semantic — dark */
   --info:#5FAEEC; --info-soft:rgba(95,174,236,.16); --info-ink:#93C6F2;
@@ -1265,15 +1283,42 @@ h4,
 @media (hover:hover) { .btn:hover:not([disabled]):not(.is-disabled) { transform: translateY(-2px); } }
 .btn:active:not([disabled]):not(.is-disabled) { transform: scale(0.97); }
 
-.card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  padding: 18px;
-  /* Neutral #fcfcfc page bg removes the lavender hue that used to separate
-     white cards from the canvas — lift them with a soft elevation instead. */
-  box-shadow: var(--shadow-soft);
+/* Канонические роли поверхностей (TRIP-189) — ЕДИНЫЙ источник вида карточек.
+   Ровно два скина: .surface-glass (плавающая — тень + backdrop-blur) и
+   .surface-panel (плоская). Каждый примитив подключается к своей роли здесь же
+   через групповой селектор, а свою внутреннюю раскладку (падинги/хедеры/overflow)
+   доопределяет в собственном блоке ниже по файлу. Значения — только из токенов
+   --surface-card / --surface-card-border / --r-xl / --shadow-glass / --glass-blur. */
+.surface-glass,
+.statbar,                  /* /trips — полоса Города/Страны */
+.wmini,                    /* /trips — «Мир исследован» */
+.nextcard,                 /* /trips — следующий трип */
+.nonext,                   /* /trips — пусто «следующий трип» */
+.tr {                      /* /trips — строка трипа (list-view) */
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
+.surface-panel,
+.card,
+.statcard,
+.wdg,
+.panel,                    /* экран трипа/статистика — плоские панели/виджеты */
+.invite,                   /* баннер-приглашение */
+.acc,                      /* аккордеон */
+.acct-hero,                /* шапка аккаунта */
+.pl-lastcard,              /* карточка последней брони (планнер) */
+.lpanel {                  /* левая панель редактора */
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  border-radius: var(--r-xl);
+  box-shadow: none;
+}
+
+.card { padding: 18px; }
 .card--soft { background: var(--wash); border-color: transparent; box-shadow: none; }
 .card--quiet { background: var(--surface); border-color: var(--line-2); }
 .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
@@ -1289,7 +1334,8 @@ h4,
 /* Accordion (collapsible field group) — TRIP-176. Reusable primitive: header
    (title + optional subtitle + count badge + chevron) toggles the body. Text is
    on .t-ui/.t-meta canons (set in the JSX); here only layout/colour. */
-.acc { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); margin-bottom: 12px; overflow: hidden; }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.acc { margin-bottom: 12px; overflow: hidden; }
 .acc__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: color-mix(in srgb, var(--surface-2) 30%, transparent); border: none; cursor: pointer; text-align: left; color: var(--ink); transition: background .16s var(--ease-out); }
 .acc__head:hover { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
 .acc__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -1791,7 +1837,8 @@ h4,
 
 /* Active-tab empty · "только прошлые" — past trips exist but none active.
    New element (approved 2026-06-20). Distinct from members' .invite-banner. */
-.invite { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 26px 30px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.invite { position: relative; overflow: hidden; display: flex; align-items: center; gap: 22px; padding: 26px 30px; }
 .invite__ic { width: 58px; height: 58px; border-radius: 18px; flex: none; display: grid; place-items: center; background: var(--ai-soft); color: var(--ai-ink); position: relative; z-index: 1; }
 .invite__tx { flex: 1; min-width: 0; position: relative; z-index: 1; }
 .invite__tx h3 { color: var(--ink); }
@@ -1985,7 +2032,8 @@ h4,
 /* Last-city card: the .te-row sits flush inside a bordered shell whose bottom
    strip holds the final-point toggle, so the toggle reads as part of the last
    city (the finish), not a stray control. */
-.pl-lastcard { border: 1px solid var(--line); border-radius: 15px; background: var(--surface); box-shadow: var(--sh-1); overflow: hidden; }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.pl-lastcard { overflow: hidden; }
 .pl-lastcard.is-fin { border-color: var(--brand); }
 .pl-lastcard > .te-row--plan { border: none; border-radius: 0; box-shadow: none; }
 .pl-lastcard > .te-row--plan.is-dragging { box-shadow: none; }
@@ -2747,7 +2795,8 @@ h4,
    LUMO EDITOR PANELS — faithful port of Lumo C5 (city / event panels).
    Used by CityPanel & EventPanels. Class names match the Lumo design.
    ================================================================= */
-.lpanel { width: 300px; flex: 0 0 300px; min-height: 340px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--sh-1); overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .2s, border-color .2s, transform .18s var(--ease-spring); }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.lpanel { width: 300px; flex: 0 0 300px; min-height: 340px; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .2s, border-color .2s, transform .18s var(--ease-spring); }
 .lpanel--wide { width: 100%; flex: 1 1 auto; min-height: 0; }
 
 /* Brand hero (city panel): one row — back · name + country chip · check-in/out.
@@ -2939,11 +2988,8 @@ h4,
 .ov-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
 /* ---- widget shell ---- */
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тень только на ховере как affordance */
 .wdg {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  box-shadow: var(--sh-1);
   overflow: hidden;
   transition: transform .16s var(--ease-spring), box-shadow .22s var(--ease-out), border-color .2s var(--ease-out);
 }
@@ -3006,9 +3052,9 @@ h4,
 
 /* ---- stat row ---- */
 .statrow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
 .statcard {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 16px; padding: 16px 12px; box-shadow: var(--sh-1);
+  padding: 16px 12px;
   display: flex; flex-direction: column; align-items: center; text-align: center; gap: 9px; min-width: 0;
 }
 /* icon chip on top, centered; number + label stacked below */
@@ -3287,7 +3333,8 @@ h4,
 .acct-ic-tile svg { width: 18px; height: 18px; }
 
 /* profile hero */
-.acct-hero { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); overflow: hidden; }
+/* скин (panel) — см. групповой селектор .surface-panel (TRIP-189); тут только раскладка */
+.acct-hero { position: relative; overflow: hidden; }
 .acct-hero__band { height: 84px; background: var(--brand-grad); position: relative; overflow: hidden; }
 .acct-hero__band .blob { position: absolute; border-radius: 50%; background: rgba(255,255,255,.16); pointer-events: none; }
 .acct-hero__band .b1 { width: 170px; height: 170px; top: -70px; right: -30px; }
@@ -3540,7 +3587,7 @@ h4,
   gap: 18px;
 }
 .tc {
-  position: relative; display: block; border-radius: var(--r-card);
+  position: relative; display: block; border-radius: var(--r-xl);
   overflow: hidden; cursor: pointer; text-align: left; font-family: inherit;
   min-height: 256px; border: 1px solid var(--line); box-shadow: var(--sh-1);
   transition: transform .22s var(--ease-spring), box-shadow .24s var(--ease-out);
@@ -3622,12 +3669,11 @@ h4,
 
 /* ── Строка-список (list view) ─────────────────────────────── */
 .tr-list { display: flex; flex-direction: column; gap: 10px; }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
 .tr {
   display: flex; align-items: center; gap: 14px;
-  padding: 11px 14px; background: var(--surface);
-  border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 11px 14px;
   cursor: pointer; text-align: left; font-family: inherit;
-  box-shadow: var(--sh-1);
   transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s;
 }
 @media (hover: hover) { .tr:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
@@ -4533,7 +4579,8 @@ h4,
 .head__av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 @media (max-width: 640px) { .head h1 { font-size: var(--fs-h2); } .head__av { width: 48px; height: 48px; } }
 
-.statbar { display: flex; align-items: stretch; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); overflow: hidden; margin-top: 18px; position: relative; z-index: 1; }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+.statbar { display: flex; align-items: stretch; overflow: hidden; margin-top: 18px; position: relative; z-index: 1; }
 .statbar .s { flex: 1; min-width: 0; padding: 16px 20px; display: flex; align-items: center; gap: 13px; border-left: 1px solid var(--line-2); }
 .statbar .s:first-child { border-left: 0; }
 .statbar .ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--primary); }
@@ -4559,10 +4606,12 @@ h4,
 @media (max-width: 640px) { .dash-hero .mapwrap { min-height: 280px; } }
 .rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-.mapwrap { position: relative; border-radius: var(--r-card); overflow: hidden; background: var(--wash); border: 1px solid var(--line); box-shadow: var(--sh-1); }
+/* скин (glass) — тень/бордер/радиус как у .surface-glass; фон остаётся wash (под картой) (TRIP-189) */
+.mapwrap { position: relative; border-radius: var(--r-xl); overflow: hidden; background: var(--wash); border: 1px solid var(--surface-card-border); box-shadow: var(--shadow-glass); }
 .map-skel { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); gap: 8px; z-index: 1; }
 
-.wmini { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); padding: 18px 20px; position: relative; overflow: hidden; }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+.wmini { padding: 18px 20px; position: relative; overflow: hidden; }
 .wmini .top { display: flex; align-items: center; gap: 13px; position: relative; z-index: 1; }
 .wring { position: relative; flex: none; }
 .wring svg { transform: rotate(-90deg); display: block; }
@@ -4572,7 +4621,8 @@ h4,
 .ring__c .l { color: var(--muted); }
 .wmini .sub { color: var(--muted); margin-top: 2px; }
 
-.nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); padding: 14px; cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+.nextcard { display: flex; align-items: flex-start; gap: 15px; width: 100%; text-align: left; font-family: inherit; padding: 14px; cursor: pointer; transition: transform .16s var(--ease-spring), box-shadow .2s, border-color .2s; }
 @media (hover: hover) { .nextcard:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--line-hover); } }
 .nextcard:active { transform: translateY(0) scale(.995); }
 .nextcard__cover { width: 64px; height: 64px; border-radius: 15px; flex: none; position: relative; overflow: hidden; display: grid; place-items: center; color: hsl(var(--primary-foreground)); }
@@ -4588,7 +4638,8 @@ h4,
 .cdu { text-align: center; background: var(--surface-3); border: 1px solid var(--line); border-radius: 11px; padding: 7px 0; flex: 1; min-width: 0; }
 .cdu b { display: block; color: var(--ink); font-variant-numeric: tabular-nums; }
 .cdu span { color: var(--muted); }
-.nonext { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+/* скин (glass) — см. групповой селектор .surface-glass (TRIP-189); тут только раскладка */
+.nonext { padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .nonext .ic { width: 46px; height: 46px; border-radius: 14px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
 .nonext .ic svg { width: 23px; height: 23px; }
 .nonext b { color: var(--ink); }
@@ -4628,7 +4679,7 @@ h4,
 /* Base white card container (V4). Was missing — so .panel / .panel.world /
    .panel.chart rendered with no background, leaving continents, the country/city
    list and the year chart sitting bare on the page. Used only by the stats blocks. */
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-1); }
+/* .panel — скин (panel) целиком из группового селектора .surface-panel (TRIP-189) */
 
 /* — world ring + continents — */
 .world { display: grid; grid-template-columns: 230px 1fr; gap: 24px; padding: 24px; position: relative; overflow: hidden; align-items: center; margin-top: 18px; }
