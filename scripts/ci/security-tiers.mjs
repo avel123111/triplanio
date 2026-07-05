@@ -97,23 +97,33 @@ export const TABLES = {
   telegram_reminder_logs: { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; логи напоминаний' },
 };
 
-// SECURITY DEFINER функции — целевой EXECUTE. После TRIP-49/54 поверхность в норме.
+// SECURITY DEFINER функции — вторая «дверь» (privileged bypass RLS). Ф4 (LIVE)
+// сверяет EXECUTE-гранты с этими списками + tripwire «client-вызываемая функция
+// обязана ссылаться на авторизацию в теле». Инварианты:
+//   IF1  publicExec — anon+authenticated МОГУТ EXECUTE (read-only предикаты + поиск).
+//   IF2  authExec   — ТОЛЬКО authenticated (anon обязан быть false).
+//   IF3  всё прочее secdef → internal: anon=false И auth=false (не client-вызываема).
+//        Новая функция с дефолтным PUBLIC EXECUTE (грабля Postgres) → страж падает.
+//   IF4  client-вызываемая функция без ссылки на авторизацию в теле → страж падает
+//        (кроме authzExempt). Ловит secdef-мутатор, забывший проверить права.
+//        ПРЕДЕЛ (осознанный): это проверка НАЛИЧИЯ ссылки (regex), а не факта, что
+//        функция гейтит правильный трип/право — тонкий случай остаётся на ревью.
 export const FUNCTIONS = {
-  // Намеренно исполнимы anon (несущие предикаты RLS TO public + публичный поиск).
   publicExec: ['is_trip_participant', 'is_trip_creator', 'search_gazetteer'],
-  // Легитимно вызываются authenticated (структурные мутации + чтение).
   authExec: [
-    'add_city', 'add_layover_transfer', 'remove_city', 'reorder_cities',
-    'set_city_nights', 'set_trip_start_date', 'create_trip', '_can_edit_trip',
+    '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
+    'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
     'get_trip_owner_profiles', 'get_trip_participant_profiles', 'get_user_travel_stats',
     'link_pending_invites', 'geocode_dequeue', 'geocode_enqueue', 'geocode_serve_fair',
   ],
-  // Всё остальное secdef — internal (anon:false, auth:false): recompute_*, revoke_*,
-  // ensure_trip_budget, seed_budget_on_trip, sync_budget_expense, rate_limit_*,
-  // enforce_trip_limit, is_trip_pro, is_user_pro, anonymize_my_account, take_geocode_token,
-  // notify_booking_added, trg_recompute_transfer, count_active_owned_trips, active_owned_trips,
-  // _trip_anchor_date, auth_email_status. → Ф4 проверяет anon=false AND auth=false.
-  internalDefault: true,
+  // client-вызываемые функции, которым НЕ нужна ссылка на авторизацию в теле
+  // (tripwire их пропускает). Обоснование каждой:
+  //   search_gazetteer — публичный текстовый поиск, без per-user данных;
+  //   geocode_enqueue/dequeue/serve_fair — stateless-утилиты общей очереди геокодинга
+  //     (rate-limited), не трогают данные трипа/юзера;
+  //   link_pending_invites — ТРИГГЕР на создании юзера, скоупится по NEW.email в
+  //     триггерном контексте (обычным RPC не вызывается; EXECUTE-грант рудиментарен).
+  authzExempt: ['search_gazetteer', 'geocode_enqueue', 'geocode_dequeue', 'geocode_serve_fair', 'link_pending_invites'],
 };
 
 export const BUCKETS = {
