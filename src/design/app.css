@@ -1077,13 +1077,15 @@ h4,
 .app-header__gbtn:hover { background: var(--wash); color: var(--ink); }
 .app-header__menu { display: none; }                /* burger — shown on mobile only */
 
-/* Brand block — logo in a white plaque + wordmark */
+/* Brand block — logo tile + wordmark */
 .app-header__brand { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 0 0 auto; min-width: 0; }
+/* Лого без белой плашки-рамки: сам SVG — уже скруглённая плитка с маркой,
+   поэтому внешняя #fff-обёртка (фон/паддинг/тень) убрана — одинаково в обеих темах. */
 .app-header__logo {
   width: 38px; height: 38px; flex: 0 0 auto; border-radius: 11px; display: grid; place-items: center;
-  background: #fff; padding: 3px; box-shadow: 0 3px 10px rgba(0,0,0,.22); overflow: hidden;
+  overflow: hidden;
 }
-.app-header__logo img { width: 32px; height: 32px; display: block; border-radius: 8px; }
+.app-header__logo img { width: 38px; height: 38px; display: block; border-radius: 11px; }
 .app-header__brand-name { color: var(--ink); }
 .app-header--trip .app-header__brand-name { display: none; }   /* trip screens: logo only, no wordmark */
 
@@ -1102,10 +1104,16 @@ h4,
  display: flex; gap: 6px; align-items: center;
 }
 
-/* Trip-action group (Share / Edit / …) — glass pill with inner dividers */
+/* Trip-action group (Share / Edit / …) — матовое стекло на канон-токенах surface-glass.
+   Радиус 13px (не --r-xl): при padding:4px он ровно вкладывает внутренние кнопки (9px = 13−4). */
 .app-header__trip-actions {
-  display: flex; align-items: stretch; gap: 4px; padding: 4px; border-radius: 13px;
-  background: var(--wash); border: 1px solid var(--line); flex: 0 0 auto;
+  display: flex; align-items: stretch; gap: 4px; padding: 4px; border-radius: 13px; flex: 0 0 auto;
+  background: var(--surface-card); border: 1px solid var(--surface-card-border); box-shadow: var(--shadow-glass);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .app-header__trip-actions {
+    -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur));
+  }
 }
 .app-header__act {
  display: inline-flex; align-items: center; gap: 8px; position: relative;
@@ -1687,6 +1695,8 @@ h4,
   .app-header__trip-meta { display: none; }
   .app-header__trip-title { font-size: var(--fs-h4); }
   .app-header__act-text { display: none; }            /* trip actions collapse to icons */
+  /* blur off on mobile — header is opaque here, so the pill's backdrop-filter is only paint jank */
+  .app-header__trip-actions { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .app-header__act { padding: 9px 10px; }
   .app-header__pro { display: none; }                 /* PRO badge hidden on mobile */
   .app-header .icon-btn { display: none; }            /* theme + notifications live in the profile screen on mobile */
