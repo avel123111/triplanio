@@ -56,9 +56,11 @@ export const TABLES = {
   // ещё держит INSERT/DELETE-гранты (TRIP-62 снял только UPDATE). Все мутации идут
   // через edge (service_role) → снять INSERT/DELETE у authenticated.
   trip_members:      { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'pending', note: 'Ф3: REVOKE INSERT,DELETE ON trip_members FROM authenticated (пишет только edge)' },
-  // trips: гибрид. Владелец правит безопасные колонки напрямую (created_by=auth.uid()),
-  // колонки энтайтлмента (details, is_pro_trip) уже отозваны у authenticated (TRIP-62).
-  trips:             { tier: 'B', write: 'owner-columns + service_role', anonDml: false, authDml: true, authSelect: true, status: 'review', note: 'Ф3: зафиксировать точный список колонок, которые authenticated (owner) может UPDATE напрямую; остальное только edge' },
+  // trips: РЕШЕНО (Pavel) — полный Ярус B, никаких поколоночных исключений.
+  // Поколоночные гранты — хрупкий анти-паттерн (TRIP-62: owner включал аддоны PATCH'ем
+  // details). Все записи через edge. Единственный прямой клиентский write — обложка в
+  // ManualPlanner сразу после создания — перевести на edge/RPC в Ф3.
+  trips:             { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'pending', note: 'Ф3: REVOKE ALL DML ON trips FROM authenticated; reroute ManualPlanner cover-update через edge (updateTripSettings)' },
   // Токены/блоки — серверные, клиент не должен ни писать, ни читать токены.
   trip_invite_links: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE ALL FROM anon,authenticated (invite-токены, только edge)' },
   telegram_link_tokens: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML FROM anon,authenticated (link-токены)' },
@@ -70,10 +72,13 @@ export const TABLES = {
   notifications:      { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon (вставку делает service_role)' },
   chat_reads:         { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon' },
   partner_clicks:     { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon' },
-  trip_telegram_integrations: { tier: 'C', write: 'self+participant', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon; политика (user_id=auth.uid() AND participant) — ок' },
-  // chat_messages: insert=is_trip_participant (коллаборативно, ВКЛЮЧАЯ viewer),
-  // update/delete=self. См. DECISIONS[0] — подтвердить, что viewer пишет в чат.
-  chat_messages:      { tier: 'C', write: 'participant-insert/self-edit', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon; продуктовое решение по viewer — DECISIONS[0]' },
+  // trip_telegram_integrations: РЕШЕНО (Pavel) — viewer НЕ привязывает. UI (Settings)
+  // уже read-only для viewer, но это I5 (фронт ≠ граница) — гейтим и в БД: viewer как
+  // участник иначе привязал бы через сырой REST в обход экрана.
+  trip_telegram_integrations: { tier: 'C', write: 'self + can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: политику write → (user_id=auth.uid() AND can_edit_trip(trip_id)); REVOKE DML FROM anon' },
+  // chat_messages: РЕШЕНО (Pavel) — viewer ПИШЕТ (чат коллаборативный). insert остаётся
+  // is_trip_participant, update/delete=self. В Ф3 только снять латентный anon DML.
+  chat_messages:      { tier: 'C', write: 'participant-insert/self-edit', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon; insert=is_trip_participant (viewer пишет — решено)' },
 
   // ── Ярус D — справочник/системное (снять клиентский DML; SELECT где читаем) ───
   cities:               { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'pending', note: 'Ф3: REVOKE DML FROM anon,authenticated; клиент читает города (SELECT оставить)' },
@@ -117,9 +122,9 @@ export const BUCKETS = {
   trips:   { public: false, policies: ['select', 'insert', 'update', 'delete'], note: 'приватный; TRIP-118 private-файлы' },
 };
 
-// Продуктовые решения, нужные до Ф3 (влияют на форму политик):
+// Продуктовые решения — РЕШЕНЫ (Pavel, 2026-07-05), зафиксированы в TABLES выше:
 export const DECISIONS = [
-  'chat_messages: viewer МОЖЕТ писать в чат трипа? (дефолт: да — чат коллаборативный, insert=is_trip_participant). Если нет — insert перевести на can_edit_trip.',
-  'trips: точный список колонок, которые authenticated(owner) правит напрямую (title/cover/dates?) vs только через edge updateTripSettings.',
-  'trip_telegram_integrations: viewer может привязать свой Telegram к трипу-наблюдению? (дефолт: да — личная привязка участника).',
+  'chat_messages: viewer ПИШЕТ в чат (коллаборативно). insert=is_trip_participant. [решено: да]',
+  'trips: полный Ярус B — без поколоночных исключений, все записи через edge. [решено: Ярус B]',
+  'trip_telegram_integrations: viewer НЕ привязывает Telegram — гейт can_edit_trip в БД (I5). [решено: нет]',
 ];
