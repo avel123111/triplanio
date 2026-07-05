@@ -1287,14 +1287,9 @@ export default function TripView() {
               kept hidden) to avoid two surfaces fighting over the single map. */}
           {shownLens === 'map' && (
             <ScreenMap
-              trip={trip}
               visits={visits ?? []}
               transfers={transfers ?? []}
-              hotels={hotels ?? []}
-              activities={activities ?? []}
-              canEdit={myRole === 'owner' || myRole === 'admin'}
               active
-              openEvent={(kind, id) => setEventView({ open: true, kind, id })}
             />
           )}
             </main>
