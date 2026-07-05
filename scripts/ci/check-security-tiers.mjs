@@ -32,7 +32,7 @@
  * Модель совпадает с ассертом verify_jwt: PR-гейт статики + пост-деплой live-ассерт.
  */
 import { execFileSync } from 'node:child_process';
-import { TABLES, TIERS, FUNCTIONS } from './security-tiers.mjs';
+import { TABLES, TIERS, FUNCTIONS, BUCKETS } from './security-tiers.mjs';
 
 const VALID_TIERS = new Set(Object.keys(TIERS)); // A B C D
 const err = (m) => { console.error(`::error::${m}`); };
@@ -59,7 +59,12 @@ function checkStatic() {
   for (const x of FUNCTIONS.authzExempt || []) {
     if (!callable.has(x)) { err(`манифест FUNCTIONS.authzExempt: '${x}' не client-вызываема (нет в publicExec/authExec)`); fail = 1; }
   }
-  if (!fail) console.log(`check-security-tiers [static]: манифест согласован — ${Object.keys(TABLES).length} таблиц + ${callable.size} client-вызываемых функций, ярусы ${[...VALID_TIERS].join('/')} — OK`);
+  // BUCKETS: public — булев, policies — массив.
+  for (const [b, r] of Object.entries(BUCKETS)) {
+    if (typeof r.public !== 'boolean') { err(`манифест BUCKETS.${b}.public должен быть boolean`); fail = 1; }
+    if (!Array.isArray(r.policies)) { err(`манифест BUCKETS.${b}.policies должен быть массивом`); fail = 1; }
+  }
+  if (!fail) console.log(`check-security-tiers [static]: манифест согласован — ${Object.keys(TABLES).length} таблиц + ${callable.size} client-вызываемых функций + ${Object.keys(BUCKETS).length} бакета, ярусы ${[...VALID_TIERS].join('/')} — OK`);
   return fail;
 }
 
@@ -81,7 +86,9 @@ const LIVE_SQL = `select json_build_object(
      'anon', has_function_privilege('anon', p.oid, 'EXECUTE'),
      'auth', has_function_privilege('authenticated', p.oid, 'EXECUTE'),
      'authz', (pg_get_functiondef(p.oid) ~* '(_can_edit_trip|is_trip_participant|is_trip_creator|is_trip_owner|is_trip_pro|is_user_pro|auth\\.(uid|email|jwt|role)\\(\\))')
-   )) from pg_proc p join pg_namespace n on n.oid=p.pronamespace and n.nspname='public' where p.prosecdef), '[]'::json)
+   )) from pg_proc p join pg_namespace n on n.oid=p.pronamespace and n.nspname='public' where p.prosecdef), '[]'::json),
+  'buckets', coalesce((select json_agg(json_build_object('id', id, 'public', public)) from storage.buckets), '[]'::json),
+  'storage_policies', coalesce((select json_agg(policyname) from pg_policies where schemaname='storage' and tablename='objects'), '[]'::json)
 )`;
 
 function checkLive(dbUrl) {
@@ -137,7 +144,19 @@ function checkLive(dbUrl) {
     }
   }
 
-  if (!fail) console.log(`check-security-tiers [live]: живая БД совпадает с манифестом (${grants.length} таблиц + ${funcs.length} secdef-функций) — OK`);
+  // ── STORAGE: флаг public бакета + наличие политик storage.objects ──
+  const bucketPublic = Object.fromEntries((live.buckets || []).map((b) => [b.id, b.public]));
+  const spol = new Set(live.storage_policies || []);
+  for (const [name, r] of Object.entries(BUCKETS)) {
+    if (!(name in bucketPublic)) { err(`storage-дрейф: бакет '${name}' из манифеста не найден в storage.buckets`); fail = 1; continue; }
+    // Самый опасный дрейф: приватный бакет вдруг стал публичным (или наоборот).
+    if (bucketPublic[name] !== r.public) { err(`storage-дрейф: бакет '${name}' public=${bucketPublic[name]}, манифест ожидает ${r.public}`); fail = 1; }
+    for (const cmd of r.policies || []) {
+      if (!spol.has(`${name}_${cmd}`)) { err(`storage-дрейф: у бакета '${name}' нет политики '${name}_${cmd}' на storage.objects`); fail = 1; }
+    }
+  }
+
+  if (!fail) console.log(`check-security-tiers [live]: живая БД совпадает с манифестом (${grants.length} таблиц + ${funcs.length} secdef-функций + ${Object.keys(BUCKETS).length} бакета) — OK`);
   return fail;
 }
 

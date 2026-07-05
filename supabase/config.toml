@@ -38,9 +38,6 @@ verify_jwt = false
 [functions.triplanioAiReply]
 verify_jwt = false
 
-[functions.seedTripBudget]
-verify_jwt = false
-
 [functions.getPendingReminders]
 verify_jwt = false
 
