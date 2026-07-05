@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Icon } from '../design/icons';
 import MapView from '@/components/views/MapView';
 import { useI18n } from '@/lib/i18n/I18nContext';
@@ -95,11 +95,13 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
           focus={focus}
           focusZoom={FOCUS_ZOOM}
           cityBadge={cityBadge}
+          cooperativeGestures={false}
           onCityClick={(visitsAtPoint) => {
             const idx = route.findIndex(v => v.id === visitsAtPoint[0]?.id);
             if (idx !== -1) select(idx);
           }}
           onCityHover={(visitsAtPoint) => setHoverId(visitsAtPoint ? (visitsAtPoint[0]?.id ?? null) : null)}
+          onMapClick={() => { setActiveIdx(null); setPicked(false); }}
         />
       </div>
 
@@ -126,9 +128,20 @@ function RoutePanel({ route, activeIdx, onSelect, onHover }) {
   const [expanded, setExpanded] = useState(false);
 
   // Bottom-sheet grip — reuses the canonical .sheet-grip affordance; hidden on
-  // desktop. Tapping it toggles the sheet between peek and expanded.
+  // desktop. Swipe up expands / down collapses (pointer events cover touch +
+  // mouse); a tap without travel just toggles.
+  const dragY = useRef(null);
+  const onGripDown = (e) => { dragY.current = e.clientY; e.currentTarget.setPointerCapture?.(e.pointerId); };
+  const onGripUp = (e) => {
+    const y0 = dragY.current; dragY.current = null;
+    if (y0 == null) return;
+    const dy = e.clientY - y0;
+    if (dy < -24) setExpanded(true);
+    else if (dy > 24) setExpanded(false);
+    else setExpanded(v => !v);
+  };
   const grip = (
-    <button type="button" className="sheet-grip" onClick={() => setExpanded(v => !v)} aria-label={t('trip.sidebar_route')}><i /></button>
+    <button type="button" className="sheet-grip" onPointerDown={onGripDown} onPointerUp={onGripUp} aria-label={t('trip.sidebar_route')}><i /></button>
   );
 
   if (route.length === 0) {
