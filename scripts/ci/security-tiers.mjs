@@ -55,47 +55,46 @@ export const TABLES = {
   // trip_members: политики роль-осведомлённые (is_trip_creator), НО authenticated
   // ещё держит INSERT/DELETE-гранты (TRIP-62 снял только UPDATE). Все мутации идут
   // через edge (service_role) → снять INSERT/DELETE у authenticated.
-  trip_members:      { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'pending', note: 'Ф3: REVOKE INSERT,DELETE ON trip_members FROM authenticated (пишет только edge)' },
+  trip_members:      { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'Ф3: REVOKE INSERT,DELETE ON trip_members FROM authenticated (пишет только edge)' },
   // trips: РЕШЕНО (Pavel) — полный Ярус B, никаких поколоночных исключений.
   // Поколоночные гранты — хрупкий анти-паттерн (TRIP-62: owner включал аддоны PATCH'ем
   // details). Все записи через edge. Единственный прямой клиентский write — обложка в
   // ManualPlanner сразу после создания — перевести на edge/RPC в Ф3.
-  trips:             { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'pending', note: 'Ф3: REVOKE ALL DML ON trips FROM authenticated; reroute ManualPlanner cover-update через edge (updateTripSettings)' },
+  trips:             { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE ALL DML ON trips FROM authenticated; reroute ManualPlanner cover-update через edge (updateTripSettings)' },
   // Токены/блоки — серверные, клиент не должен ни писать, ни читать токены.
-  trip_invite_links: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE ALL FROM anon,authenticated (invite-токены, только edge)' },
-  telegram_link_tokens: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML FROM anon,authenticated (link-токены)' },
-  trip_member_blocks:   { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML FROM anon,authenticated' },
+  trip_invite_links: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE ALL FROM anon,authenticated (invite-токены, только edge)' },
+  telegram_link_tokens: { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon,authenticated (link-токены)' },
+  trip_member_blocks:   { tier: 'B', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon,authenticated' },
+  // Ярус B (уточнено в Ф3c): 0 обращений клиента из src/ — таблица edge-only,
+  // authenticated DML снят (закрывает REST-обход read-only для viewer, I5).
+  trip_telegram_integrations: { tier: 'B', write: 'service_role/edge', anonDml: false, authDml: false, authSelect: true, status: 'aligned', note: 'Ф3c: REVOKE INSERT,UPDATE,DELETE FROM authenticated + drop _write политику (всё через telegram* edge)' },
 
   // ── Ярус C — личное пользователя (политики скоупят auth.uid(); снять anon DML) ─
-  users:              { tier: 'C', write: 'self (id=auth.uid())',      anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon (колонки энтайтлмента уже отозваны — TRIP-62/платёжка)' },
-  user_custom_visits: { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon' },
-  notifications:      { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon (вставку делает service_role)' },
-  chat_reads:         { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon' },
-  partner_clicks:     { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon' },
-  // trip_telegram_integrations: РЕШЕНО (Pavel) — viewer НЕ привязывает. UI (Settings)
-  // уже read-only для viewer, но это I5 (фронт ≠ граница) — гейтим и в БД: viewer как
-  // участник иначе привязал бы через сырой REST в обход экрана.
-  trip_telegram_integrations: { tier: 'C', write: 'self + can_edit_trip', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: политику write → (user_id=auth.uid() AND can_edit_trip(trip_id)); REVOKE DML FROM anon' },
+  users:              { tier: 'C', write: 'self (id=auth.uid())',      anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (колонки энтайтлмента уже отозваны — TRIP-62/платёжка)' },
+  user_custom_visits: { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
+  notifications:      { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon (вставку делает service_role)' },
+  chat_reads:         { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
+  partner_clicks:     { tier: 'C', write: 'self (user_id=auth.uid())', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon' },
   // chat_messages: РЕШЕНО (Pavel) — viewer ПИШЕТ (чат коллаборативный). insert остаётся
   // is_trip_participant, update/delete=self. В Ф3 только снять латентный anon DML.
-  chat_messages:      { tier: 'C', write: 'participant-insert/self-edit', anonDml: false, authDml: true, authSelect: true, status: 'pending', note: 'Ф3: REVOKE DML FROM anon; insert=is_trip_participant (viewer пишет — решено)' },
+  chat_messages:      { tier: 'C', write: 'participant-insert/self-edit', anonDml: false, authDml: true, authSelect: true, status: 'aligned', note: 'Ф3: REVOKE DML FROM anon; insert=is_trip_participant (viewer пишет — решено)' },
 
   // ── Ярус D — справочник/системное (снять клиентский DML; SELECT где читаем) ───
-  cities:               { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'pending', note: 'Ф3: REVOKE DML FROM anon,authenticated; клиент читает города (SELECT оставить)' },
-  fx_rates:             { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'pending', note: 'Ф3: REVOKE DML; клиент читает курсы' },
-  chats:                { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'pending', note: 'Ф3: REVOKE DML; контейнер чата создаётся триггером, клиент читает' },
-  geo_admin1:           { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML; доступ только через search_gazetteer (secdef)' },
-  geo_alt_names:        { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML; только через RPC' },
-  geo_country:          { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML; только через RPC' },
-  geo_gazetteer:        { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML; только через RPC' },
-  geocode_cache:        { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML; серверный кэш' },
-  geocode_queue:        { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML; серверная очередь' },
-  geocode_rate_bucket:  { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML' },
-  ai_model_prices:      { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML; прайс-бук' },
-  ai_usage_events:      { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML; учёт стоимости' },
-  n8n_chat_histories:   { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML (RLS включён TRIP-46, гранты остались)' },
-  rate_limit_hits:      { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML; корзины rate-limit' },
-  telegram_reminder_logs: { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'pending', note: 'Ф3: REVOKE DML; логи напоминаний' },
+  cities:               { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'Ф3: REVOKE DML FROM anon,authenticated; клиент читает города (SELECT оставить)' },
+  fx_rates:             { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'Ф3: REVOKE DML; клиент читает курсы' },
+  chats:                { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: true,  status: 'aligned', note: 'Ф3: REVOKE DML; контейнер чата создаётся триггером, клиент читает' },
+  geo_admin1:           { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; доступ только через search_gazetteer (secdef)' },
+  geo_alt_names:        { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; только через RPC' },
+  geo_country:          { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; только через RPC' },
+  geo_gazetteer:        { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; только через RPC' },
+  geocode_cache:        { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; серверный кэш' },
+  geocode_queue:        { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; серверная очередь' },
+  geocode_rate_bucket:  { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML' },
+  ai_model_prices:      { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; прайс-бук' },
+  ai_usage_events:      { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; учёт стоимости' },
+  n8n_chat_histories:   { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML (RLS включён TRIP-46, гранты остались)' },
+  rate_limit_hits:      { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; корзины rate-limit' },
+  telegram_reminder_logs: { tier: 'D', write: 'service_role', anonDml: false, authDml: false, authSelect: false, status: 'aligned', note: 'Ф3: REVOKE DML; логи напоминаний' },
 };
 
 // SECURITY DEFINER функции — целевой EXECUTE. После TRIP-49/54 поверхность в норме.
