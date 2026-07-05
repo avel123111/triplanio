@@ -1379,17 +1379,18 @@ h4,
    the Map lens. Same canon glass tokens as .surface-glass; a passive label so it
    never eats pin/route clicks. Built in src/lib/map/markers.js (createCityBadgeEl). */
 .cbadge {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 5px 9px; border-radius: 12px;
+  display: inline-flex; align-items: flex-start; gap: 8px;
+  padding: 6px 10px; border-radius: 12px; max-width: 240px;
   background: var(--surface-card);
   border: 1px solid var(--surface-card-border);
   box-shadow: var(--shadow-glass);
   backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur));
-  white-space: nowrap; pointer-events: none;
+  pointer-events: none;
 }
-.cbadge .cflag { height: 15px; border-radius: 2px; flex: none; }
-.cbadge__name { color: var(--ink); }
-.cbadge__dates { color: var(--muted); }
+.cbadge .cflag { height: 14px; border-radius: 2px; flex: none; margin-top: 1px; } /* top-aligned with the name line */
+.cbadge__col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cbadge__name { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cbadge__dates { color: var(--muted); white-space: nowrap; }
 
 .card { padding: 18px; }
 .card--soft { background: var(--wash); border-color: transparent; box-shadow: none; }

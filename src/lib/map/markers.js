@@ -69,7 +69,7 @@ const svgGlyph = (icon) =>
 // (.is-sel / .is-hover) so hovering a list doesn't rebuild the markers.
 // Visual transforms (scale/halo) sit on the inner .tmk__core so Mapbox's own
 // inline transform on the root .tmk (positioning) is never clobbered.
-export function createMarkerEl(labels, { onClick, icon } = {}) {
+export function createMarkerEl(labels, { onClick, icon, onHover } = {}) {
   const el = document.createElement('div');
 
   const classes = ['tmk'];
@@ -98,6 +98,12 @@ export function createMarkerEl(labels, { onClick, icon } = {}) {
   el.innerHTML = `<span class="tmk__halo"></span><span class="tmk__pulse"></span><span class="tmk__core">${core}</span>`;
 
   if (onClick) el.addEventListener('click', onClick);
+  // onHover(entering:boolean) — lets a parent mirror pin hover into a list/badge
+  // (Map lens tooltip). The pin's own :hover look stays pure CSS.
+  if (onHover) {
+    el.addEventListener('mouseenter', () => onHover(true));
+    el.addEventListener('mouseleave', () => onHover(false));
+  }
   return el;
 }
 
@@ -178,7 +184,8 @@ export function createCityBadgeEl({ countryCode, name, dates } = {}) {
     : '';
   const nm = name ? `<span class="cbadge__name t-ui">${escapeHtml(name)}</span>` : '';
   const dt = dates ? `<span class="cbadge__dates t-meta">${escapeHtml(dates)}</span>` : '';
-  el.innerHTML = `${flag}${nm}${dt}`;
+  // Name over dates in a column; the flag sits beside it, top-aligned with the name.
+  el.innerHTML = `${flag}<span class="cbadge__col">${nm}${dt}</span>`;
   return el;
 }
 

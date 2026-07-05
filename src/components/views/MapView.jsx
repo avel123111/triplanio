@@ -133,6 +133,12 @@ export default function MapView({
   // ACTIVE city. Off (null) everywhere else so the shared surfaces are untouched.
   // Shape: { lng, lat, countryCode, name, dates } | null.
   cityBadge = null,
+  // Optional: notified when a city pin is hovered (Map lens badge tooltip). Gets
+  // the visits at that pin on enter, null on leave. Off elsewhere.
+  onCityHover,
+  // Camera zoom used when the parent focuses a SINGLE city via `focus` (a pulled-
+  // back reader zoom on the Map lens; the editor keeps the default city zoom).
+  focusZoom = 9.5,
   children,
 }) {
   const containerRef = useRef(null);
@@ -179,6 +185,8 @@ export default function MapView({
   // Keep the latest onCityClick without forcing the draw effect to re-run.
   const onCityClickRef = useRef(onCityClick);
   useEffect(() => { onCityClickRef.current = onCityClick; }, [onCityClick]);
+  const onCityHoverRef = useRef(onCityHover);
+  useEffect(() => { onCityHoverRef.current = onCityHover; }, [onCityHover]);
 
   // Same for the hotel-badge callbacks (stable across renders → badges aren't
   // rebuilt just because the parent passes a fresh closure).
@@ -465,7 +473,7 @@ export default function MapView({
     if (focusSig) {
       hadFocusRef.current = true;
       if (focus.length === 1) {
-        calmFlyTo(map, { center: focus[0], zoom: 9.5 });
+        calmFlyTo(map, { center: focus[0], zoom: focusZoom });
       } else {
         calmFit(map, focus, { padding: 110, maxZoom: 9 });
       }
@@ -516,6 +524,7 @@ export default function MapView({
       const el = createMarkerEl(g.labels.filter((l) => l != null), {
         icon: iconForKinds(g.kinds),
         onClick: () => { const cb = onCityClickRef.current; if (cb) cb(g.data); },
+        onHover: (entering) => { const cb = onCityHoverRef.current; if (cb) cb(entering ? g.data : null); },
       });
       // Tag the element with the visit ids at this spot so the selection/hover
       // effect can toggle .is-sel / .is-hover without rebuilding the markers.

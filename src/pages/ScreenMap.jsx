@@ -32,12 +32,17 @@ function fmtRange(a, b) {
   return s || e || '';
 }
 
+// Pulled-back reader zoom when focusing a single city (smaller than the editor's
+// city zoom — the city sits in its region rather than filling the frame).
+const FOCUS_ZOOM = 6;
+
 function ScreenMap({ visits = [], transfers = [], active = true }) {
   const [activeIdx, setActiveIdx] = useState(0);
   // The camera stays on the whole-route frame until the user picks a city; then
-  // it flies to that city (MapView's `focus`). Selecting always shows the badge.
+  // it flies to that city (MapView's `focus`). Re-picking the active city clears
+  // the focus and eases back to the whole trip.
   const [picked, setPicked] = useState(false);
-  const [hoverIdx, setHoverIdx] = useState(null); // route row hovered → highlight its map pin
+  const [hoverId, setHoverId] = useState(null); // city hovered (pin OR route row)
 
   // Real route — visits with coordinates, in trip order.
   const route = useMemo(() => sortVisits(visits).filter(v => v.latitude && v.longitude), [visits]);
@@ -49,15 +54,23 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
   const isDark = document.documentElement.dataset.theme === 'dark';
   const activeVisit = route[activeIdx] || null;
 
-  const select = (i) => { setActiveIdx(i); setPicked(true); };
+  // Re-picking the active city toggles focus off (back to the whole-trip frame);
+  // picking another city flies to it.
+  const select = (i) => {
+    if (i === activeIdx) { setPicked((p) => !p); return; }
+    setActiveIdx(i);
+    setPicked(true);
+  };
 
-  // Glass badge for the active city (flag + name + dates), drawn next to its pin.
-  const cityBadge = activeVisit ? {
-    lng: activeVisit.longitude,
-    lat: activeVisit.latitude,
-    countryCode: activeVisit.country_code,
-    name: activeVisit.city_name,
-    dates: fmtRange(activeVisit.start_date, activeVisit.end_date),
+  // The badge follows the hovered city (tooltip) and otherwise the active one.
+  const hoverVisit = hoverId != null ? route.find(v => v.id === hoverId) : null;
+  const badgeVisit = hoverVisit || activeVisit;
+  const cityBadge = badgeVisit ? {
+    lng: badgeVisit.longitude,
+    lat: badgeVisit.latitude,
+    countryCode: badgeVisit.country_code,
+    name: badgeVisit.city_name,
+    dates: fmtRange(badgeVisit.start_date, badgeVisit.end_date),
   } : null;
 
   const focus = picked && activeVisit ? [[activeVisit.longitude, activeVisit.latitude]] : null;
@@ -78,13 +91,15 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
           active={active}
           colorScheme={isDark ? 'DARK' : 'LIGHT'}
           selectedVisitId={activeVisit?.id}
-          hoveredVisitId={hoverIdx != null ? route[hoverIdx]?.id : null}
+          hoveredVisitId={hoverId}
           focus={focus}
+          focusZoom={FOCUS_ZOOM}
           cityBadge={cityBadge}
           onCityClick={(visitsAtPoint) => {
             const idx = route.findIndex(v => v.id === visitsAtPoint[0]?.id);
             if (idx !== -1) select(idx);
           }}
+          onCityHover={(visitsAtPoint) => setHoverId(visitsAtPoint ? (visitsAtPoint[0]?.id ?? null) : null)}
         />
       </div>
 
@@ -93,7 +108,7 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
         transfers={transfers}
         activeIdx={activeIdx}
         onSelect={select}
-        onHover={setHoverIdx}
+        onHover={setHoverId}
       />
     </div>
   );
@@ -133,12 +148,12 @@ function RoutePanel({ route, transfers, activeIdx, onSelect, onHover }) {
     };
   });
 
-  const hoverProps = (i) => ({ onMouseEnter: () => onHover(i), onMouseLeave: () => onHover(null) });
+  const hoverProps = (c) => ({ onMouseEnter: () => onHover(c.id), onMouseLeave: () => onHover(null) });
 
   return (
     <aside className="map-route surface-glass">
       <div className="map-route__head">
-        <span className="eyebrow">{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
+        <span className="t-mono muted-2">{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
       </div>
       <div className="map-route__list scrollbar-thin">
         {rows.map((row, i) => {
@@ -149,7 +164,7 @@ function RoutePanel({ route, transfers, activeIdx, onSelect, onHover }) {
               key={c.id}
               type="button"
               onClick={() => onSelect(i)}
-              {...hoverProps(i)}
+              {...hoverProps(c)}
               className={'map-route__item' + (activeIdx === i ? ' is-active' : '')}
             >
               <span className="map-route__marker">
