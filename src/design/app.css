@@ -1593,11 +1593,14 @@ h4,
 /* ── Lumo segmented control (.seg) — pill shape, aria-pressed active state ── */
 .seg {
   display: inline-flex;
-  background: var(--surface-3);  /* TRIP-176: трек сегмента = фон карточек /trips (--surface-3) */
+  /* TRIP-176: трек — утопленный тон. Светлая=--surface-2 (#EEEEF7): --surface-3
+     в светлой почти белый и сливается с фоном. Тёмная переопределена ниже. */
+  background: var(--surface-2);
   border-radius: var(--r-seg-track);
   padding: 4px;
   gap: 2px;
 }
+[data-theme="dark"] .seg { background: var(--surface-3); }  /* TRIP-176: тёмная = --surface-3 (#1B1A26), как карточки /trips */
 .seg button {
  font: inherit;
 
