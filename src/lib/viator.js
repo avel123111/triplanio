@@ -30,15 +30,20 @@ async function resolveViatorDestId(visit) {
   return id;
 }
 
-export const VIATOR_KEY = (visit, currency, lang, page) => [
+export const VIATOR_KEY = (visit, currency, lang) => [
   'viator',
   visit?.geonameid || null,
   (visit?.start_date || '').slice(0, 10),
   (visit?.end_date || '').slice(0, 10),
   currency || '',
   lang || '',
-  page || 1,
 ];
+
+// Bounded client pool (≤ POOL_PAGES × edge page size). We fetch a capped pool
+// ONCE and let the panel filter (name/price) + paginate on the CLIENT — the same
+// one-pool model Stay22HotelList uses — so filtering isn't limited to a single
+// server page. The cap keeps the upstream round-trips bounded per city.
+const POOL_PAGES = 5;
 
 /**
  * React Query hook for the activity fork panel.
@@ -46,31 +51,36 @@ export const VIATOR_KEY = (visit, currency, lang, page) => [
  * @param {object} args.visit    city-visit node (needs geonameid, start_date, end_date)
  * @param {string} args.currency trip currency (EUR/USD)
  * @param {string} args.lang     user locale (en/es/ru)
- * @param {number} args.page     1-based page
  * @param {boolean} args.enabled fetch only while the panel is open
  */
-export function useViatorActivities({ visit, currency, lang, page = 1, enabled = true }) {
+export function useViatorActivities({ visit, currency, lang, enabled = true }) {
   return useQuery({
-    queryKey: VIATOR_KEY(visit, currency, lang, page),
+    queryKey: VIATOR_KEY(visit, currency, lang),
     enabled: !!enabled && !!visit?.geonameid,
-    placeholderData: keepPreviousData, // keep the previous page visible while loading
+    placeholderData: keepPreviousData, // keep the previous pool visible while refetching
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const destinationId = await resolveViatorDestId(visit);
       // City not on Viator yet (no viator_dest_id) → empty, no upstream call.
-      if (!destinationId) return { activities: [], meta: { total: 0, page, hasMore: false } };
-      const body = {
+      if (!destinationId) return { activities: [], meta: { total: 0, pooled: 0 } };
+      const base = {
         destinationId,
         startDate: (visit?.start_date || '').slice(0, 10) || undefined,
         endDate: (visit?.end_date || '').slice(0, 10) || undefined,
         currency,
         lang,
-        page,
       };
-      const { data, error } = await supabase.functions.invoke('viatorActivities', { body });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data; // { activities, meta }
+      const activities = [];
+      let total = null;
+      for (let p = 1; p <= POOL_PAGES; p++) {
+        const { data, error } = await supabase.functions.invoke('viatorActivities', { body: { ...base, page: p } });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        activities.push(...(data?.activities || []));
+        if (data?.meta?.total != null) total = data.meta.total;
+        if (!data?.meta?.hasMore) break;
+      }
+      return { activities, meta: { total, pooled: activities.length } };
     },
   });
 }

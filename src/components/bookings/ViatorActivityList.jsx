@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   ChevronLeft, ChevronRight, Search, RotateCcw, Ticket, AlertTriangle, Star,
+  SlidersHorizontal, X,
 } from 'lucide-react';
 import { Skeleton } from '@/design/index';
 import { useI18nFormat } from '@/lib/i18n/I18nContext';
@@ -8,13 +9,15 @@ import { usePartnerLogger } from '@/lib/partnerTracking';
 import { useViatorActivities } from '@/lib/viator';
 import PartnerResultCard from '@/components/bookings/PartnerResultCard';
 
-// Live Viator activities for the activity fork panel — mirrors Stay22HotelList.
-// Rendered under the partner block (activity + panel only). Fetches on open via
-// the viatorActivities edge function; nothing persisted. `url` (productUrl) is the
+// Live Viator activities for the activity fork panel — mirrors Stay22HotelList,
+// down to the SHARED filter toolbar (.s22f-* in app.css). Fetches a bounded pool
+// on open (useViatorActivities), then filters (name + price от/до) and paginates
+// on the CLIENT — same one-pool model as the hotel fork. `url` (productUrl) is the
 // attributed affiliate link — opened as-is, never modified.
 
 const SKELETON_COUNT = 4;
 const PAGE_SIZE = 10;
+const BASE_PRICE = { min: '', max: '' };
 
 function pageWindow(current, totalPages) {
   if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -31,41 +34,126 @@ function pageWindow(current, totalPages) {
 export default function ViatorActivityList({ visit, currency, lang, tripId }) {
   const { t, fmtMoney } = useI18nFormat();
   const logClick = usePartnerLogger(tripId);
+
+  const { data, isLoading, isFetching, isError, refetch } = useViatorActivities({
+    visit, currency, lang, enabled: true,
+  });
+
+  // Client-side filter (name + price) + pagination over the bounded pool.
+  const [query, setQuery] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [pending, setPending] = useState(BASE_PRICE); // popover draft
+  const [applied, setApplied] = useState(BASE_PRICE);  // committed price range
   const [page, setPage] = useState(1);
   // Selection + hover are list-local here (no map for activities) but follow the
   // SAME interaction model as hotels via PartnerResultCard: click selects, a
-  // second click on the selected card opens the link. Keeps identical elements
-  // behaving identically (TRIP-140 unification).
+  // second click on the selected card opens the link (TRIP-140 unification).
   const [selectedId, setSelectedId] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
 
-  const { data, isLoading, isFetching, isError, refetch } = useViatorActivities({
-    visit, currency, lang, page, enabled: true,
-  });
+  const pool = data?.activities || [];
+  const appliedSig = `${applied.min}|${applied.max}`;
 
-  const activities = data?.activities || [];
-  const meta = data?.meta || {};
-  const totalPages = meta.total ? Math.max(1, Math.ceil(meta.total / PAGE_SIZE)) : null;
-  const pages = useMemo(() => (totalPages ? pageWindow(page, totalPages) : []), [page, totalPages]);
-  const showSkeletons = isLoading && activities.length === 0;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const min = applied.min !== '' ? Number(applied.min) : null;
+    const max = applied.max !== '' ? Number(applied.max) : null;
+    return pool.filter((a) => {
+      if (q && !(a.title || '').toLowerCase().includes(q)) return false;
+      if (min != null || max != null) {
+        if (a.fromPrice == null) return false;
+        if (min != null && a.fromPrice < min) return false;
+        if (max != null && a.fromPrice > max) return false;
+      }
+      return true;
+    });
+  }, [pool, query, applied]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const shown = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
+  const pages = useMemo(() => pageWindow(page, totalPages), [page, totalPages]);
+  // Snap back to page 1 whenever the filtered set changes (query/price/pool).
+  useEffect(() => { setPage(1); }, [query, appliedSig, pool.length]);
+
+  const showSkeletons = isLoading && pool.length === 0;
+  const appliedPrice = applied.min !== '' || applied.max !== '';
+  const activeCount = appliedPrice ? 1 : 0;
+  const cur = currency || '';
+  let priceText = `${cur} ${t('fork.f_to')} ${applied.max}`;
+  if (applied.min && applied.max) priceText = `${cur} ${applied.min}–${applied.max}`;
+  else if (applied.min) priceText = `${cur} ${t('fork.f_from')} ${applied.min}`;
+
+  const setP = (k, v) => setPending((s) => ({ ...s, [k]: v.replace(/[^\d]/g, '') }));
+  const applyFilters = () => { setApplied({ ...pending }); setFilterOpen(false); };
+  const resetFilters = () => { setPending(BASE_PRICE); setApplied(BASE_PRICE); setFilterOpen(false); };
+  const removePrice = () => { setPending(BASE_PRICE); setApplied(BASE_PRICE); };
 
   const onBook = (a) => logClick({ partner: 'viator', type: 'activity', link: a.url, provider: 'viator' });
-  const cityName = visit?.city_name || visit?.cities?.name_en || '';
 
   return (
     <div className="va">
-      {/* ===== Header ===== */}
-      <div className="va-head">
-        <div className="va-ti">
-          <span className="va-logo"><Ticket size={15} /></span>
-          <div className="va-tiwrap">
-            <b>{cityName ? t('fork.activities_title', { city: cityName }) : t('fork.activities_title_generic')}</b>
+      {/* ===== Search + filters — SHARED .s22f-* primitive (app.css) ===== */}
+      <div className="s22f">
+        <div className="s22f-searchrow">
+          <div className="s22f-search">
+            <Search size={16} className="s22f-search__ic" />
+            <input
+              type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('fork.f_search_ph_activity')} aria-label={t('fork.f_search_ph_activity')}
+            />
           </div>
+          <button
+            type="button"
+            className={`s22f-fbtn ${filterOpen ? 's22f-fbtn--on' : ''} ${activeCount ? 's22f-fbtn--active' : ''}`}
+            aria-expanded={filterOpen} aria-label={t('fork.f_filters')} title={t('fork.f_filters')}
+            onClick={() => setFilterOpen((o) => !o)}
+          >
+            <SlidersHorizontal size={17} />
+            {activeCount > 0 && <span className="badge badge--count s22f-fbtn__n">{activeCount}</span>}
+          </button>
         </div>
-        {meta.total != null && meta.total > 0 && (
-          <span className="va-count">{t('fork.activities_count', { n: meta.total })}</span>
+
+        {filterOpen && (
+          <>
+            <div className="s22f-panel">
+              <div className="s22f-grp">
+                <div className="eyebrow">{t('fork.f_price_total')}{cur ? <span className="s22f-pmuted"> ({cur})</span> : null}</div>
+                <div className="s22f-pfields">
+                  <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+                    <input type="text" inputMode="numeric" placeholder={t('fork.f_from')} value={pending.min}
+                      onChange={(e) => setP('min', e.target.value)} />
+                  </label>
+                  <span className="s22f-dash">–</span>
+                  <label className="s22f-field">{cur ? <span className="s22f-cur">{cur}</span> : null}
+                    <input type="text" inputMode="numeric" placeholder={t('fork.f_to')} value={pending.max}
+                      onChange={(e) => setP('max', e.target.value)} />
+                  </label>
+                </div>
+              </div>
+            </div>
+            {/* Actions live OUTSIDE the filter card (design, same as hotel fork) */}
+            <div className="s22f-panelfoot">
+              <button type="button" className="btn btn--quiet btn--sm" onClick={resetFilters}>
+                <RotateCcw size={14} />{t('fork.f_reset')}
+              </button>
+              <button type="button" className="btn btn--primary btn--sm" onClick={applyFilters}>
+                <Search size={14} />{t('fork.f_search')}
+              </button>
+            </div>
+          </>
+        )}
+
+        {appliedPrice && (
+          <div className="s22f-pills">
+            <span className="s22f-pill">{priceText}<button type="button" onClick={removePrice} aria-label={t('fork.f_reset')}><X size={12} /></button></span>
+            <button type="button" className="s22f-resetall" onClick={resetFilters}>{t('fork.f_reset_all')}</button>
+          </div>
         )}
       </div>
+
+      {!showSkeletons && !isError && filtered.length > 0 && (
+        <span className="va-count">{t('fork.activities_count', { n: filtered.length })}</span>
+      )}
 
       {/* ===== States ===== */}
       {showSkeletons && (
@@ -98,7 +186,7 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         </div>
       )}
 
-      {!isError && !showSkeletons && activities.length === 0 && (
+      {!isError && !showSkeletons && pool.length === 0 && (
         <div className="va-state va-state--emp">
           <span className="va-si"><Search size={20} /></span>
           <b>{t('fork.activities_empty_title')}</b>
@@ -106,10 +194,19 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
         </div>
       )}
 
-      {!isError && activities.length > 0 && (
+      {!isError && !showSkeletons && pool.length > 0 && filtered.length === 0 && (
+        <div className="va-state va-state--emp">
+          <span className="va-si"><Search size={20} /></span>
+          <b>{t('fork.activities_no_match_title')}</b>
+          <p>{t('fork.activities_no_match_body')}</p>
+          <button type="button" className="btn btn--soft btn--sm va-retry" onClick={resetFilters}><RotateCcw size={14} />{t('fork.f_reset')}</button>
+        </div>
+      )}
+
+      {!isError && filtered.length > 0 && (
         <>
           <div className="va-list" style={{ opacity: isFetching ? 0.6 : 1 }}>
-            {activities.map((a) => (
+            {shown.map((a) => (
               <PartnerResultCard
                 key={a.code}
                 id={a.code}
@@ -146,15 +243,13 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
             ))}
           </div>
 
-          {(totalPages ? totalPages > 1 : meta.hasMore || page > 1) && (
+          {totalPages > 1 && (
             <div className="va-pager">
-              <button className="va-pg" disabled={page <= 1 || isFetching} onClick={() => setPage((p) => Math.max(1, p - 1))} aria-label={t('fork.activities_prev')}><ChevronLeft size={16} /></button>
-              {totalPages
-                ? pages.map((p, i) => (p === '…'
-                    ? <span key={`g${i}`} className="va-gap">…</span>
-                    : <button key={p} className={`va-pg ${p === page ? 'va-pg--on' : ''}`} disabled={isFetching} onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))
-                : <span className="va-pg va-pg--on">{page}</span>}
-              <button className="va-pg" disabled={(totalPages ? page >= totalPages : !meta.hasMore) || isFetching} onClick={() => setPage((p) => p + 1)} aria-label={t('fork.activities_next')}><ChevronRight size={16} /></button>
+              <button className="va-pg" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} aria-label={t('fork.activities_prev')}><ChevronLeft size={16} /></button>
+              {pages.map((p, i) => (p === '…'
+                ? <span key={`g${i}`} className="va-gap">…</span>
+                : <button key={p} className={`va-pg ${p === page ? 'va-pg--on' : ''}`} onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined}>{p}</button>))}
+              <button className="va-pg" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} aria-label={t('fork.activities_next')}><ChevronRight size={16} /></button>
             </div>
           )}
         </>
@@ -162,12 +257,6 @@ export default function ViatorActivityList({ visit, currency, lang, tripId }) {
 
       <style>{`
         .va { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; container-type: inline-size; }
-        .va-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-        .va-ti { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
-        .va-tiwrap { display: flex; flex-direction: column; min-width: 0; }
-        .va-ti b { color: var(--ink); }
-        .va-sub { color: var(--muted-2); margin-top: 2px; }
-        .va-logo { width: 24px; height: 24px; border-radius: 6px; flex: none; display: grid; place-items: center; background: var(--ev-activity-soft); color: var(--ev-activity); }
         .va-count { color: var(--muted); white-space: nowrap; }
         .va-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
         .va-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px 18px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); background: var(--wash); }
