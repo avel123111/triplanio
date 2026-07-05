@@ -2894,8 +2894,6 @@ h4,
 .stepper button:hover:not(:disabled) { background: var(--surface); }
 .stepper button:active:not(:disabled) { transform: scale(.9); }
 .stepper button:disabled { color: var(--muted-2); cursor: default; }
-.stepper button:last-child:not(:disabled) { background: var(--brand); color: #fff; }  /* TRIP-176: «+» — brand-заливка (макет CityView) */
-.stepper button:last-child:hover:not(:disabled) { background: var(--primary-hover); }
 .stepper .n { min-width: 40px; text-align: center; color: var(--ink); }
 /* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
 .lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); }

@@ -96,8 +96,8 @@ export default function CityPanel({
       {/* Header — канон .lp-h с brand-градиентом (как остальные драйверы, но не цвет
           эвента): слева номер города / иконка пересадки, затем 3 строки. */}
       <div className="lp-h lp-h--ev">
-        <span className="lp-ic" style={{ background: 'var(--brand)', color: '#fff' }}>
-          {isWaypoint ? <Icon name="route" size={17} /> : <b className="t-strong">{cityNo}</b>}
+        <span className="lp-ic" style={{ background: 'var(--primary-soft)', color: 'var(--brand)' }}>
+          {isWaypoint ? <Icon name="arrowSwap" size={17} /> : <b className="t-strong">{cityNo}</b>}
         </span>
         <div className="lp-ti lp-ti--stack">
           <div className="eyebrow" style={{ color: 'var(--brand)' }}>{t('tse.route_city')} · {isWaypoint ? t('tse.pt_waypoint') : t('tse.node_visit')}</div>
