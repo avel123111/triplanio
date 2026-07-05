@@ -828,12 +828,16 @@ export function entityViewIssues(kind, entity, { visit, fromVisit, toVisit } = {
 }
 
 export function EventViewSections({ kind, entity, visit, fromVisit, toVisit, accent, docs, canEdit, uploading, uploadFiles, externalWarning = null }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  // Raw city_visit rows have no `city_name` column (dropped in Phase 6) — resolve
+  // the localized label so verdict messages read "…из Барселона", not
+  // "…из undefined", and so they dedupe against an editor-supplied externalWarning.
+  const withName = (v) => (v ? { ...v, city_name: v.city_name || cityLabel(v, lang) } : v);
   // One banner: an explicit message from the caller (editor structural conflict)
   // plus the engine verdicts on this saved row, deduped by resolved text.
   const warnings = [];
   if (externalWarning) warnings.push(externalWarning);
-  for (const i of entityViewIssues(kind, entity, { visit, fromVisit, toVisit })) {
+  for (const i of entityViewIssues(kind, entity, { visit: withName(visit), fromVisit: withName(fromVisit), toVisit: withName(toVisit) })) {
     const msg = t(`validation.${i.code}`, i.values);
     if (msg && !warnings.includes(msg)) warnings.push(msg);
   }
