@@ -49,4 +49,16 @@ metadata:
 (`.route`/`.addr`/`.notes`/`.doc-row`…), контролы (инпуты/кнопки/сегменты) и
 оверлеи (`.toast`/`.sheet`/`.chat-mention`/диалоги). Имена `.tp-glass-card`/`.tp-panel`/`--card-border`/`applyLook()` из тикета -
 из HTML-прототипа `Triplanio.dc.html`, в реальном React/Vite-репо их нет.
+★Тёмная лестница поверхностей (аудит 2026-07-05): реально рендерятся РОВНО 4
+серых - `--bg` #0c0e1c (страница), `--surface` #1f212f (карточки/панели/диалоги
+`.dlg`/`.lp`/строки/инпуты), `--surface-2` #2a2937 (чипы/hover/футеры/треки),
+`--surface-3` #1b1a26 (inset/сайдбар). Дубли `--card`/`--secondary`/`--muted`/
+`--accent` уже алиасят наши. Захардкоженного hex-дрейфа фонов нет (5 литералов -
+все `#fff` в AI/цветных контекстах). Значения вроде #232331/#2d2e3c, которые
+«ловит пипетка» на скрине, - это СМЕШАННЫЕ пиксели (бордер `--line` #33313f над
+`--surface`, backdrop-blur скрима, сжатие), НЕ отдельные поверхности; проверять
+через DevTools inspect (computed), не пипеткой по картинке. ★Мёртвый shadcn-слой
+`--*-hsl` (`--popover-hsl`=#232331, `--secondary/muted/accent/input-hsl`) и
+`--surface-elev`=#272636 удалены (Tailwind из проекта убран в TRIP-53 → 0
+потребителей; засоряли токен-аудит, совпадали с «лишними» серыми).
 Усиливает [[feedback-reuse-first-unification]] и [[triplanio-typography-canons]].
