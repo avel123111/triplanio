@@ -1352,7 +1352,7 @@ h4,
   transition: background .15s ease;
 }
 @media (hover: hover) and (pointer: fine) {
-  .map-route__item:hover { background: var(--surface-2); }
+  .map-route__item:hover { background: var(--wash); } /* app-wide list hover (app-side/icon-btn) */
 }
 .map-route__item.is-active { background: var(--brand-soft); }
 .map-route__marker {
@@ -1404,6 +1404,12 @@ h4,
 .cbadge__col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cbadge__name { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cbadge__dates { color: var(--muted); white-space: nowrap; }
+/* The badge rides a mapboxgl.Popup so it auto-flips to stay on-screen near map
+   edges. Strip the popup's default chrome (white bubble + tip) — the glass
+   .cbadge IS the surface; passive so it never eats a map click. */
+.cbadge-popup.mapboxgl-popup { pointer-events: none; }
+.cbadge-popup .mapboxgl-popup-content { background: transparent; padding: 0; box-shadow: none; }
+.cbadge-popup .mapboxgl-popup-tip { display: none; }
 
 .card { padding: 18px; }
 .card--soft { background: var(--wash); border-color: transparent; box-shadow: none; }
@@ -3075,6 +3081,9 @@ h4,
   }
   .trip-body.is-menu-open .trip-side-scrim { opacity: 1; pointer-events: auto; }
   .trip-screen-body { padding: 16px 16px 48px; }
+  /* Map lens stays full-bleed on mobile — the base rule above would otherwise
+     re-apply 16px side padding to the flush body (equal specificity, later source). */
+  .trip-screen-body--flush { padding: 0; }
 }
 
 /* Phones: the lens menu is shown as a bottom-sheet (TripSidebarSheet), so the
