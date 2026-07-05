@@ -114,16 +114,13 @@ export const FUNCTIONS = {
     '_can_edit_trip', 'add_city', 'add_layover_transfer', 'create_trip',
     'remove_city', 'reorder_cities', 'set_city_nights', 'set_trip_start_date',
     'get_trip_owner_profiles', 'get_trip_participant_profiles', 'get_user_travel_stats',
-    'link_pending_invites', 'geocode_dequeue', 'geocode_enqueue', 'geocode_serve_fair',
   ],
   // client-вызываемые функции, которым НЕ нужна ссылка на авторизацию в теле
-  // (tripwire их пропускает). Обоснование каждой:
-  //   search_gazetteer — публичный текстовый поиск, без per-user данных;
-  //   geocode_enqueue/dequeue/serve_fair — stateless-утилиты общей очереди геокодинга
-  //     (rate-limited), не трогают данные трипа/юзера;
-  //   link_pending_invites — ТРИГГЕР на создании юзера, скоупится по NEW.email в
-  //     триггерном контексте (обычным RPC не вызывается; EXECUTE-грант рудиментарен).
-  authzExempt: ['search_gazetteer', 'geocode_enqueue', 'geocode_dequeue', 'geocode_serve_fair', 'link_pending_invites'],
+  // (tripwire их пропускает): search_gazetteer — публичный текстовый поиск, без per-user
+  // данных. (geocode_*/link_pending_invites убраны из client-вызываемых в гигиене
+  // TRIP-120 — REVOKE authenticated EXECUTE, теперь internal; см. миграцию
+  // 20260705180000_trip120_hygiene_revoke_vestigial_execute.)
+  authzExempt: ['search_gazetteer'],
 };
 
 export const BUCKETS = {
