@@ -54,7 +54,6 @@
   --surface: #FFFFFF;
   --surface-2: #EEEEF7;
   --surface-3: #FAFAFE;
-  --surface-elev: #FFFFFF;
   --wash:   var(--surface-2);            /* legacy: subtle tinted wash */
   --wash-2: var(--surface-3);
   --input:  var(--line-strong);
@@ -224,7 +223,6 @@
   --surface: #1f212f;
   --surface-2: #2A2937;
   --surface-3: #1B1A26;
-  --surface-elev: #272636;
 
   /* Канонические поверхности — тёмная (TRIP-189): стекло поверх #0c0e1c */
   --surface-card:        rgba(255,255,255,.07);
