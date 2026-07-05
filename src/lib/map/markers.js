@@ -155,6 +155,33 @@ export function createClusterBubbleEl(count, { onClick, onHover, title } = {}) {
   return el;
 }
 
+// Minimal HTML-escape for values interpolated into a marker's innerHTML (city
+// names are user/DB data). Keeps markers.js dependency-free (no React here).
+const escapeHtml = (s) =>
+  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// City label badge — Map lens ONLY (TRIP-33). A translucent "glass" pill that
+// pairs the country flag with the city name + date range, shown next to the
+// ACTIVE city's pin. Gated behind MapView's `cityBadge` prop, so no other map
+// surface (Overview/Edit/public/planner) renders it. Plain DOM like every marker
+// here: the flag is an <img> from /flags (same source CountryFlag uses) and the
+// glass skin lives in `.cbadge` (src/design/app.css) on the canon surface tokens.
+// The badge is a passive label (pointer-events:none) — selection happens on the
+// pin / route list, not the badge.
+// data: { countryCode, name, dates } — dates preformatted ("1 июл – 5 июл").
+export function createCityBadgeEl({ countryCode, name, dates } = {}) {
+  const el = document.createElement('div');
+  el.className = 'cbadge';
+  const cc = typeof countryCode === 'string' && countryCode.trim().length === 2 ? countryCode.trim().toLowerCase() : '';
+  const flag = cc
+    ? `<img class="cflag" src="/flags/${cc}.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.visibility='hidden'" />`
+    : '';
+  const nm = name ? `<span class="cbadge__name t-ui">${escapeHtml(name)}</span>` : '';
+  const dt = dates ? `<span class="cbadge__dates t-meta">${escapeHtml(dates)}</span>` : '';
+  el.innerHTML = `${flag}${nm}${dt}`;
+  return el;
+}
+
 // Mini marker for the stats / home travel map — a small coloured dot (~11px),
 // deliberately NOT the trip Ring pin: these screens show an unordered set of
 // lifetime visits over a country fill, so the pins must be tiny and unobtrusive.

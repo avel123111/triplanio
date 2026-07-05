@@ -1218,11 +1218,9 @@ h4,
   padding: 0;
 }
 
-/* Map lens: full-bleed map + sidebar; stack on narrow screens */
-@media (max-width: 860px) {
-  .trip-map-shell { grid-template-columns: 1fr !important; height: auto !important; }
-  .trip-map-shell > div:first-child { height: 420px; }
-}
+/* Map lens (TRIP-33): full-bleed map with a floating glass route panel. The
+   panel (.map-route) is positioned absolutely over the map; its own block and
+   the ≤640px bottom-sheet variant live in the PRIMITIVES section below. */
 
 /* =================================================================
    PRIMITIVES — buttons, fields, badges, cards
@@ -1332,6 +1330,66 @@ h4,
   border-radius: var(--r-xl);
   box-shadow: none;
 }
+
+/* Map lens route panel (TRIP-33): skin = .surface-glass role (applied via the
+   class on the element); this block is layout only. Floats top-left over the
+   full-bleed map; collapses to a bottom sheet on phones (below). */
+.map-route {
+  position: absolute; z-index: 2;
+  top: 16px; left: 16px;
+  width: 300px; max-width: calc(100% - 32px);
+  max-height: calc(100% - 32px);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.map-route__head { padding: 14px 16px 10px; border-bottom: 1px solid var(--surface-card-border); }
+.map-route__empty { padding: 32px 20px; text-align: center; }
+.map-route__list { padding: 8px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.map-route__item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 8px 10px; border: none; background: transparent; border-radius: 12px;
+  cursor: pointer; text-align: left; color: var(--ink);
+  transition: background .15s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .map-route__item:hover { background: var(--surface-2); }
+}
+.map-route__item.is-active { background: var(--brand-soft); }
+.map-route__marker {
+  flex: none; width: 26px; height: 26px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: var(--surface); color: var(--brand);
+  border: 2px solid var(--brand-soft-12);
+  font-variant-numeric: tabular-nums;
+}
+.map-route__marker svg { width: 13px; height: 13px; }
+.map-route__item.is-active .map-route__marker { background: var(--brand); color: #fff; border-color: var(--brand); }
+.map-route__body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.map-route__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map-route__dates { color: var(--muted); }
+@media (max-width: 640px) {
+  .map-route {
+    top: auto; bottom: 0; left: 0; right: 0;
+    width: auto; max-width: none; max-height: 42%;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+  }
+}
+
+/* City badge (TRIP-33): translucent glass label next to the active city's pin on
+   the Map lens. Same canon glass tokens as .surface-glass; a passive label so it
+   never eats pin/route clicks. Built in src/lib/map/markers.js (createCityBadgeEl). */
+.cbadge {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 9px; border-radius: 12px;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur));
+  white-space: nowrap; pointer-events: none;
+}
+.cbadge .cflag { height: 15px; border-radius: 2px; flex: none; }
+.cbadge__name { color: var(--ink); }
+.cbadge__dates { color: var(--muted); }
 
 .card { padding: 18px; }
 .card--soft { background: var(--wash); border-color: transparent; box-shadow: none; }

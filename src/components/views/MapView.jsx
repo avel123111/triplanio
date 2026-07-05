@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { mapboxgl, fitToPoints } from '@/lib/mapbox';
 import { useMapSurface } from '@/lib/map/useMapSurface';
 import { drawRouteLinesCached, drawRouteReveal, legPointAt, drawRouteHighlight, clearRouteHighlight, clearRouteLines } from '@/lib/map/routeLines';
-import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, iconForKinds } from '@/lib/map/markers';
+import { groupByLocation, createMarkerEl, createHotelBadgeEl, createClusterBubbleEl, createCityBadgeEl, iconForKinds } from '@/lib/map/markers';
 import { buildClusterIndex, queryViewport, isIrreducible, expansionZoom, isolationZoom, spiderfyLayout } from '@/lib/map/cluster';
 import { calmFlyTo, calmFit } from '@/lib/map/camera';
 import MapControls from '@/lib/map/MapControls';
@@ -128,11 +128,17 @@ export default function MapView({
   hoveredHotelId = null,
   onHotelClick,
   onHotelHover,
+  // ── City badge (Map lens only, TRIP-33) ──────────────────────────────────
+  // A single translucent label (flag + city name + dates) pinned next to the
+  // ACTIVE city. Off (null) everywhere else so the shared surfaces are untouched.
+  // Shape: { lng, lat, countryCode, name, dates } | null.
+  cityBadge = null,
   children,
 }) {
   const containerRef = useRef(null);
   const markersRef = useRef([]);
   const hotelMarkersRef = useRef([]);
+  const cityBadgeMarkerRef = useRef(null);
   const prevHideRouteRef = useRef(false);
   const fittedSigRef = useRef('');
   // Clustering state (TRIP-141), all imperative so move/zoom never re-renders:
@@ -425,6 +431,22 @@ export default function MapView({
 
   // Remove any hotel badges on unmount (useMapSurface only owns markersRef).
   useEffect(() => () => { hotelMarkersRef.current.forEach((m) => m.remove()); hotelMarkersRef.current = []; }, []);
+
+  // --- City badge (Map lens only) — one glass label next to the active city.
+  // Independent of the marker-build effect: it re-runs only when the active city
+  // (or its label) changes, replacing the single badge marker. Suppressed while
+  // the hotel-pick overlay owns the map. Anchored to the LEFT of its point with a
+  // small up/right offset so it sits beside the pin, not over it. ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (cityBadgeMarkerRef.current) { cityBadgeMarkerRef.current.remove(); cityBadgeMarkerRef.current = null; }
+    if (!map || !ready || hideRoute || !cityBadge || cityBadge.lng == null || cityBadge.lat == null) return undefined;
+    const el = createCityBadgeEl({ countryCode: cityBadge.countryCode, name: cityBadge.name, dates: cityBadge.dates });
+    cityBadgeMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: 'left', offset: [16, -18] })
+      .setLngLat([cityBadge.lng, cityBadge.lat])
+      .addTo(map);
+    return () => { if (cityBadgeMarkerRef.current) { cityBadgeMarkerRef.current.remove(); cityBadgeMarkerRef.current = null; } };
+  }, [ready, hideRoute, cityBadge?.lng, cityBadge?.lat, cityBadge?.name, cityBadge?.dates, cityBadge?.countryCode]);
 
   // --- Parent-driven camera focus (panel ↔ map). Independent of the data draw
   // effect: opening a panel doesn't change `visits`, so the auto-fit won't move;
