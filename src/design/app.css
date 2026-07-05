@@ -2830,18 +2830,13 @@ h4,
 .lpanel { width: 300px; flex: 0 0 300px; min-height: 340px; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .2s, border-color .2s, transform .18s var(--ease-spring); }
 .lpanel--wide { width: 100%; flex: 1 1 auto; min-height: 0; }
 
-/* Brand hero (city panel): one row — back · name + country chip · check-in/out.
-   No photo, no emoji, no local time / weather. */
-.lp-hero { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 13px 16px; background: var(--brand); color: #fff; flex: none; }
-.lph-title { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.lph-name { color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lph-fc { align-self: flex-start; max-width: 100%; color: #fff; background: rgba(255,255,255,.18); padding: 3px 10px; border-radius: var(--r-pill); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lph-meta { margin-left: auto; display: flex; align-items: stretch; }
-.lph-meta > div { display: flex; flex-direction: column; gap: 3px; padding: 0 12px; }
-.lph-meta > div + div { border-left: 1px solid rgba(255,255,255,.2); }
-.lph-mk { color: rgba(255,255,255,.72); }
-.lph-mv { color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
-@media (max-width: 560px) { .lph-meta { margin-left: 48px; } }
+/* TRIP-176: CityPanel — шапка на каноне .lp-h с brand-градиентом (не цвет эвента).
+   3 строки в .lp-ti (тип·маршрут / название / страна) + слева .lp-ic с номером
+   города или иконкой пересадки. Старый .lp-hero/.lph-* (был только в CityPanel)
+   заменён на канон, общий с остальными драйверами. */
+.lp-ti--stack { display: flex; flex-direction: column; gap: 2px; }
+.lp-country { display: inline-flex; align-items: center; gap: .4em; color: var(--ink-2); min-width: 0; max-width: 100%; }
+.lp-country .cflag { flex: none; }
 
 .lp-h { display: flex; align-items: center; gap: 11px; padding: 14px 15px; border-bottom: 1px solid var(--line-2); }
 .lp-h .lp-ic { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; flex: none; }
@@ -2852,9 +2847,6 @@ h4,
    non-blending hover (used in every light panel header). */
 .lp-back { width: 34px; height: 34px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .14s, border-color .14s, color .14s; }
 .lp-back:hover { background: var(--wash); border-color: var(--line-hover); color: var(--ink); }
-/* back button on the brand hero — white, clear hover on the brand fill */
-.lp-hero .lp-back { width: 34px; height: 34px; border-radius: var(--r-pill); background: rgba(255,255,255,.14); border: 0; color: #fff; }
-.lp-hero .lp-back:hover { background: rgba(255,255,255,.28); color: #fff; }
 
 .lp-b { padding: 14px 15px; display: flex; flex-direction: column; gap: 13px; flex: 1; min-height: 0; overflow-y: auto; }
 .lp-sec { display: flex; flex-direction: column; gap: 8px; }
@@ -2897,13 +2889,20 @@ h4,
 .gt b { color: var(--muted); display: block; }
 .gt span { color: var(--muted-2); }
 
-.stepper { display: inline-flex; align-items: center; gap: 3px; background: transparent; padding: 0; }  /* TRIP-176: степпер встроен в карточку-инпут (.lp-stepper), без вложенной пилюли */
+.stepper { display: inline-flex; align-items: center; gap: 3px; flex: none; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
 .stepper button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--primary); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
-.stepper button:hover { background: var(--surface-2); }  /* TRIP-176: hover читается на фоне карточки-инпута (--surface-3) */
-.stepper button:active { transform: scale(.9); }
+.stepper button:hover:not(:disabled) { background: var(--surface); }
+.stepper button:active:not(:disabled) { transform: scale(.9); }
 .stepper button:disabled { color: var(--muted-2); cursor: default; }
-.stepper .n { min-width: 48px; text-align: center; color: var(--ink); }
-.lp-stepper { display: flex; align-items: center; justify-content: space-between; padding: 5px 6px 5px 12px; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); }  /* TRIP-176: строка «Ночей» = карточка-инпут со встроенным степпером (как «Гости и номера») */
+.stepper button:last-child:not(:disabled) { background: var(--brand); color: #fff; }  /* TRIP-176: «+» — brand-заливка (макет CityView) */
+.stepper button:last-child:hover:not(:disabled) { background: var(--primary-hover); }
+.stepper .n { min-width: 40px; text-align: center; color: var(--ink); }
+/* TRIP-176: карточка «Ночей в городе» = иконка · (заголовок + даты) · степпер (макет). */
+.lp-stepper { display: flex; align-items: center; gap: 11px; padding: 8px; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); }
+.lp-stepper__ic { width: 34px; height: 34px; border-radius: 11px; background: var(--primary-soft); color: var(--brand); display: grid; place-items: center; flex: none; }
+.lp-stepper__tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lp-stepper__tx b { color: var(--ink); }
+.lp-stepper__tx span { color: var(--muted); }
 
 .metastrip { display: flex; flex-wrap: wrap; gap: 8px; }
 .metastrip .ch { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); background: var(--secondary); padding: 6px 11px; border-radius: var(--r-pill); }
