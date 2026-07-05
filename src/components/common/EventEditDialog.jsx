@@ -105,6 +105,11 @@ import { invalidateTripData, optimisticContentUpdate, TRIP_CONTENT_KEY } from '@
 import { tzFromCoords } from '@/lib/timezone';
 import './EventEditDialog.css';
 
+// Codes that BLOCK the save (kept at 'error'); all other verdicts are advisory
+// (downgraded to 'warn' below). Only the logical date-ORDER family qualifies —
+// a booking whose end precedes its start is nonsense to persist.
+const BLOCKING_CODES = new Set(['HOTEL_ORDER', 'ACT_ORDER', 'TR_ORDER', 'SVC_ORDER', 'SEG_ORDER', 'SEG_BACKSTEP']);
+
 // Ensure a user-entered URL like "booking.com" opens absolutely (otherwise the
 // browser treats it as relative and prepends the current app path → /trip/.../booking.com).
 const withScheme = (u) => {
@@ -696,13 +701,16 @@ export default function EventEditDialog({
     return {};
   }, [currentKind, form, tz, startTz, endTz, entity, isEdit]);
 
-  // Every validation verdict is ADVISORY now: errors are downgraded to 'warn' so
-  // they surface (inline + summary) but never block saving — matching the trip
-  // editor (e.g. a transfer whose dates don't line up with its cities still saves).
+  // Verdict policy: only the logical-ORDER family truly BLOCKS the save (dates in
+  // the wrong order make no sense to persist). Everything else — required
+  // name/title, out-of-bounds vs city dates, transfer day mismatch — stays
+  // advisory: it surfaces (inline + summary) without blocking. Required date/time
+  // is guarded separately by `anyTimeMissing`.
   const issues = useMemo(
-    () => validateEntity(currentKind, vdraft, vctx).map((i) => ({ ...i, level: 'warn' })),
+    () => validateEntity(currentKind, vdraft, vctx).map((i) => (BLOCKING_CODES.has(i.code) ? i : { ...i, level: 'warn' })),
     [currentKind, vdraft, vctx],
   );
+  const hasBlockingError = useMemo(() => issues.some((i) => i.level === 'error'), [issues]);
 
   // Auto-mark a single transfer as overnight when its arrival calendar day is
   // after its departure day (raise-only — the user can still switch it off).
@@ -726,11 +734,11 @@ export default function EventEditDialog({
   }, [currentKind, form.hasLayovers, form.transport_type, fromVisit?.id, toVisit?.id]);
 
   // ── Save validity ──────────────────────────────────────────────────────
-  // Validation never blocks; only genuinely incomplete input does (a half-entered
-  // time that would persist as garbage) or an in-flight file upload.
+  // Blocked by: an in-flight upload, a half-entered time (date without time), or
+  // a blocking validation error (the ORDER family). Everything else is advisory.
   const canSave = useMemo(
-    () => !uploading && !anyTimeMissing,
-    [uploading, anyTimeMissing],
+    () => !uploading && !anyTimeMissing && !hasBlockingError,
+    [uploading, anyTimeMissing, hasBlockingError],
   );
 
   // Hybrid display: inline issues show for touched fields (or after a save attempt);
@@ -1171,6 +1179,7 @@ export default function EventEditDialog({
                   tz={tz}
                   setTime={setTime}
                   issues={displayIssues}
+                  onTouch={markTouched}
                   setUploading={setUploading}
                   tripId={tripId}
                 />
@@ -1204,6 +1213,7 @@ export default function EventEditDialog({
                   tz={tz}
                   setTime={setTime}
                   issues={displayIssues}
+                  onTouch={markTouched}
                   setUploading={setUploading}
                   tripId={tripId}
                 />
@@ -1216,6 +1226,7 @@ export default function EventEditDialog({
                   aiFields={aiFields}
                   setTime={setTime}
                   issues={displayIssues}
+                  onTouch={markTouched}
                   isEdit={isEdit}
                   setUploading={setUploading}
                   tripId={tripId}
@@ -1532,7 +1543,7 @@ function SectionHeader({ children }) {
 //  Field groups per kind
 // ─────────────────────────────────────────────────────────────────────────────
 
-function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploading, tripId }) {
+function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.hotel.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
@@ -1546,7 +1557,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
         <div data-vfield="name" className={inv('name')}>
           <Label>{t('event.name_req')}</Label>
           <AiField active={aiFields.has('name')}>
-            <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Memmo Alfama" />
+            <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder="Memmo Alfama" />
           </AiField>
           <FieldError issues={issues} field="name" />
         </div>
@@ -2169,7 +2180,7 @@ function SegmentsEditor({ form, setForm, fromVisit, toVisit, setTime, color, aiS
   );
 }
 
-function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues, setUploading, tripId }) {
+function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.activity.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
@@ -2178,7 +2189,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
     <>
       <div data-vfield="title" className={inv('title')}>
         <Label>{t('event.name_req')}</Label>
-        <Input value={form.title} onChange={(e) => setField('title', e.target.value)} placeholder={t('event.ph_activity_example')} />
+        <Input value={form.title} onChange={(e) => setField('title', e.target.value)} onBlur={() => onTouch?.('title')} placeholder={t('event.ph_activity_example')} />
         <FieldError issues={issues} field="title" />
       </div>
       <div>
@@ -2229,7 +2240,7 @@ function ActivityFields({ form, setField, setForm, aiFields, tz, setTime, issues
   );
 }
 
-function EsimServiceFields({ form, setField, issues, setUploading, tripId }) {
+function EsimServiceFields({ form, setField, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -2237,7 +2248,7 @@ function EsimServiceFields({ form, setField, issues, setUploading, tripId }) {
       <SectionHeader>{t('service.kind.esim')}</SectionHeader>
       <div data-vfield="name" className={inv('name')}>
         <Label>{t('service.name')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('service.name_ph')} />
+        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
         <FieldError issues={issues} field="name" />
       </div>
 
@@ -2269,7 +2280,7 @@ function EsimServiceFields({ form, setField, issues, setUploading, tripId }) {
   );
 }
 
-function InsuranceServiceFields({ form, setField, issues, setUploading, tripId }) {
+function InsuranceServiceFields({ form, setField, issues, onTouch, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
   return (
@@ -2277,7 +2288,7 @@ function InsuranceServiceFields({ form, setField, issues, setUploading, tripId }
       <SectionHeader>{t('service.kind.insurance')}</SectionHeader>
       <div data-vfield="name" className={inv('name')}>
         <Label>{t('service.name')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('service.name_ph')} />
+        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('service.name_ph')} />
         <FieldError issues={issues} field="name" />
       </div>
 
@@ -2326,14 +2337,14 @@ function InsuranceServiceFields({ form, setField, issues, setUploading, tripId }
   );
 }
 
-function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading, tripId }) {
+function ServiceFields({ form, setField, setForm, aiFields, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const svcKind = form.service_kind || 'car_rental';
-  if (svcKind === 'esim') return <EsimServiceFields form={form} setField={setField} issues={issues} setUploading={setUploading} tripId={tripId} />;
-  if (svcKind === 'insurance') return <InsuranceServiceFields form={form} setField={setField} issues={issues} setUploading={setUploading} tripId={tripId} />;
-  return <CarRentalServiceFields form={form} setField={setField} setForm={setForm} aiFields={aiFields} setTime={setTime} issues={issues} isEdit={isEdit} setUploading={setUploading} tripId={tripId} />;
+  if (svcKind === 'esim') return <EsimServiceFields form={form} setField={setField} issues={issues} onTouch={onTouch} setUploading={setUploading} tripId={tripId} />;
+  if (svcKind === 'insurance') return <InsuranceServiceFields form={form} setField={setField} issues={issues} onTouch={onTouch} setUploading={setUploading} tripId={tripId} />;
+  return <CarRentalServiceFields form={form} setField={setField} setForm={setForm} aiFields={aiFields} setTime={setTime} issues={issues} onTouch={onTouch} isEdit={isEdit} setUploading={setUploading} tripId={tripId} />;
 }
 
-function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, isEdit, setUploading, tripId }) {
+function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, issues, onTouch, isEdit, setUploading, tripId }) {
   const { t } = useI18nFormat();
   const color = TYPE_META.service.color;
   const inv = (f) => (fieldHasError(issues, f) ? 'tv-invalid' : '');
@@ -2342,7 +2353,7 @@ function CarRentalServiceFields({ form, setField, setForm, aiFields, setTime, is
       <SectionHeader color={color}>{t('event.car_section')}</SectionHeader>
       <div data-vfield="name" className={inv('name')}>
         <Label>{t('event.company_name_req')}</Label>
-        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('event.ph_car_example')} />
+        <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_car_example')} />
         <FieldError issues={issues} field="name" />
       </div>
 
