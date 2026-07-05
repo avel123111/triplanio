@@ -87,6 +87,7 @@
   "per_person_label": "Per person",
   "rate_missing": "Rate unavailable",
   "rates_missing": "Rates for {currencies} are unavailable",
+  "readonly_banner_desc": "You have the viewer role, so the budget is read-only. Only the owner and admins can change it.",
   "section_other": "Other",
   "see_details": "See details",
   "set_rate_manual": "Set the rate manually",

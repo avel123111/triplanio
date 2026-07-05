@@ -39,6 +39,7 @@
   "page_title": "Documentos del viaje",
   "private_empty": "Nuevo documento",
   "private_word": "privado",
+  "readonly_banner_desc": "Tienes el rol de observador, así que los documentos son de solo lectura. Solo el propietario y los administradores pueden añadirlos o cambiarlos.",
   "remaining": " (quedan {n})",
   "remove_doc_aria": "Eliminar documento",
   "search_ph": "Buscar por título…",
