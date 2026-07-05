@@ -262,7 +262,7 @@ a.dl-filechip__n:hover { color: var(--brand); }
 }
 .dl-search__icon svg { width: 16px; height: 16px; }
 .dl-search input {
-  color: var(--ink); background: var(--surface);
+  color: var(--ink); background: var(--surface-3);  /* TRIP-176: канон-инпут (--surface-3) */
   border: 1.5px solid var(--line-strong); border-radius: var(--r-control);
   padding: 10px 16px 10px 40px; width: 100%;
   transition: border-color .2s, box-shadow .2s;

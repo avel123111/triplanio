@@ -756,7 +756,7 @@ export default function TripStructureEdit() {
       const next = ordered.slice(idx + 1).find((n) => !isAnchor(n) || n.kind === 'end');
       leftPanelEl = (
         <CityPanel
-          node={node} meta={metaOf(node)}
+          node={node} meta={metaOf(node)} cityNo={stayNumById[node.id]}
           hotels={hotelsFor(node.id)} acts={actsFor(node.id)}
           arrival={arrivalFor(node.id)} departure={departureFor(node.id)}
           arrivalWarn={transferMismatch(arrivalFor(node.id))} departureWarn={transferMismatch(departureFor(node.id))}

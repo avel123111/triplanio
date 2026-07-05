@@ -368,7 +368,7 @@ export default function Stay22HotelList({
         .s22-list { display: flex; flex-direction: column; gap: 10px; transition: opacity .15s ease; }
 
         /* ---- empty / error states ---- */
-        .s22-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px 18px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); background: var(--wash); }
+        .s22-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 24px 18px; border: 1px dashed var(--surface-card-border); border-radius: var(--r-xl); background: var(--surface-card); }  /* TRIP-176: empty/error = канон-карточка TRIP-189 (пунктир = сигнал пустоты) */
         .s22-si { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 4px; }
         .s22-state--err .s22-si { background: var(--danger-soft); color: var(--danger-ink); }
         .s22-state--emp .s22-si { background: var(--surface-2); color: var(--muted); }
