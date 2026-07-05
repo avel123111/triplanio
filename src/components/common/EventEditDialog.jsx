@@ -1592,7 +1592,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, setUploadi
           </AiField>
         </div>
         <AiField active={aiFields.has('payment_status')}>
-          <div className="payseg" role="group" aria-label={t('event.payment_status')}>
+          <div className="seg seg--fill" role="group" aria-label={t('event.payment_status')}>
             {[['paid', 'event.paid'], ['partial', 'event.partial'], ['pay_on_arrival', 'event.on_arrival']].map(([v, k]) => (
               <button
                 key={v}

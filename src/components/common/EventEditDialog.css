@@ -46,10 +46,8 @@
 /* Finance block (design "Стоимость за всё"): price+currency row + payment pills */
 .eed-finance { margin-bottom: 12px; }
 .eed-pricerow { display: grid; grid-template-columns: 1fr 108px; gap: 8px; }
-.payseg { display: flex; gap: 7px; margin-top: 10px; }
-.payseg button { flex: 1; padding: 11px 10px; border-radius: var(--r-btn); border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; text-align: center; transition: background .12s, border-color .12s, color .12s; }
-.payseg button:hover { border-color: var(--line-hover); }
-.payseg button[aria-pressed="true"] { background: var(--surface-2); border-color: var(--line-hover); color: var(--ink); }
+/* TRIP-176: статус оплаты — канонический сегмент .seg (был самодельный .payseg) */
+.eed-finance .seg { margin-top: 10px; }
 /* Overnight — standalone card below the transfer date-range (design). TRIP-186:
    порядок свитч · иконка · текст, всё прижато влево (flex:1 убран). */
 .eed-nightrow { display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 12px 14px; margin-top: 12px; border-radius: var(--r-xl); border: 1px solid var(--surface-card-border); background: var(--surface-card); }

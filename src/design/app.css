@@ -2897,13 +2897,13 @@ h4,
 .gt b { color: var(--muted); display: block; }
 .gt span { color: var(--muted-2); }
 
-.stepper { display: inline-flex; align-items: center; gap: 3px; background: var(--surface-2); border-radius: var(--r-pill); padding: 3px; }
+.stepper { display: inline-flex; align-items: center; gap: 3px; background: transparent; padding: 0; }  /* TRIP-176: степпер встроен в карточку-инпут (.lp-stepper), без вложенной пилюли */
 .stepper button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--primary); border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .16s, transform .14s var(--ease-spring); }
-.stepper button:hover { background: var(--surface); }
+.stepper button:hover { background: var(--surface-2); }  /* TRIP-176: hover читается на фоне карточки-инпута (--surface-3) */
 .stepper button:active { transform: scale(.9); }
 .stepper button:disabled { color: var(--muted-2); cursor: default; }
 .stepper .n { min-width: 48px; text-align: center; color: var(--ink); }
-.lp-stepper { display: flex; align-items: center; justify-content: space-between; }
+.lp-stepper { display: flex; align-items: center; justify-content: space-between; padding: 5px 6px 5px 12px; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); }  /* TRIP-176: строка «Ночей» = карточка-инпут со встроенным степпером (как «Гости и номера») */
 
 .metastrip { display: flex; flex-wrap: wrap; gap: 8px; }
 .metastrip .ch { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); background: var(--secondary); padding: 6px 11px; border-radius: var(--r-pill); }
