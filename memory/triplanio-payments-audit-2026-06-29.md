@@ -11,7 +11,7 @@ metadata:
 
 **Открытые вопросы (ждут решения Pavel, код НЕ менялся):**
 - `planTripWithAi` гейтится ТОЛЬКО rate-limit (10/час/юзер), без Pro-проверки — в отличие от `callTriplanioAi`/`parseBookingWithAi` (там is_trip_pro). Вопрос: AI-планировщик = бесплатная воронка или Pro-фича? Это продуктовое решение, не баг.
-- Для разовых Trip Pro НЕТ reconcile-on-read (только для подписок) → потерянный refund-вебхук на pro_trip оставит трип Pro до ручной правки. Асимметрия, низкий риск.
+- ~~Для разовых Trip Pro НЕТ reconcile-on-read~~ **УСТАРЕЛО (сверено 2026-07-05, TRIP-61):** reconcile-on-read для pro_trip ЕСТЬ — `reconcileTripEntitlement` (`_shared/reconcileEntitlement.ts`), зовётся из `checkSubscriptionStatus` при `tripIsPro`; ходит в Stripe по purchase.provider_charge_id (=payment_intent), на полном рефанде/диспуте ставит refunded/disputed + `recompute_trip_entitlement` + `revokeLostProFeaturesForTrip` (троттл 10 мин на purchase.synced_at). Потерянный refund-вебхук по pro_trip чинится при следующем открытии трипа. Асимметрии подписка↔pro_trip больше нет.
 
 **Бэклог упрощений (безрисковые, в hygiene-PR, поведение не меняют):** дедуп `ENTITLING=['active','trialing','past_due']` (4 файла) → экспорт из catalog.ts; хелпер `billingIntervalForProduct` (тернарник ×6 в webhook+reconcile); `isStaleEvent` ordering-guard (дубль в subscription.updated/deleted); `checkSubscriptionStatus` использует свой createClient+getUser вместо общих supabaseAdmin/getRequestUser; `reconcileEntitlement`+`getUserPlan` создают `new Stripe(key)` в обход StripeAdapter; крупное — единый `buildSubRow` для 5 upsert-веток подписки (рискованнее из-за nullable provider_meta).
 
