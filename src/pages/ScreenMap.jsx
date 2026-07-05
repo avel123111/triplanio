@@ -153,7 +153,7 @@ function RoutePanel({ route, transfers, activeIdx, onSelect, onHover }) {
   return (
     <aside className="map-route surface-glass">
       <div className="map-route__head">
-        <span className="t-mono muted-2">{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
+        <span className="t-mono tp-caption">{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
       </div>
       <div className="map-route__list scrollbar-thin">
         {rows.map((row, i) => {
