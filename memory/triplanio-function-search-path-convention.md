@@ -33,11 +33,30 @@ metadata:
 
 Деплой — только через CI/CD (см. [[feedback-no-manual-deploy-cicd-only]]).
 
-## Второй слой (тот же PR #376): least-privilege EXECUTE у SECURITY DEFINER
-Миграция `20260704224000_secdef_revoke_anon_execute.sql`. Корень: Postgres/Supabase
-по умолчанию даёт `EXECUTE` роли `anon`+`authenticated`+`service_role` на КАЖДУЮ
-функцию; `SECURITY DEFINER` бежит с правами владельца в обход RLS → неавторизованный
-вызов (anon-ключ → PostgREST RPC) мог триггерить привилегированное поведение. Из 18
+## Второй слой: least-privilege EXECUTE у SECURITY DEFINER
+
+★★ВАЖНО (TRIP-49, 2026-07-05): первая попытка (`20260704224000_secdef_revoke_anon_execute.sql`,
+в PR #378) была **НЕЭФФЕКТИВНОЙ** — она делала `REVOKE ... FROM anon, authenticated`, но у
+этих функций `EXECUTE` висит на роли `PUBLIC` (ACL `=X/postgres`, Postgres-дефолт `GRANT
+EXECUTE TO PUBLIC`). `REVOKE FROM <роль>` **не снимает** грант `PUBLIC` → `anon` продолжал
+исполнять через `PUBLIC`. Проверено на dev: 13 из 15 целей после той миграции всё ещё
+`has_function_privilege('anon', …) = true` (вкл. опасные `ensure_trip_budget` = anon-запись
+бюджета и `take_geocode_token` = DoS). **Правильная цель ревока = `PUBLIC`, НЕ `anon`.**
+Прежняя запись «REVOKE делать адресно FROM anon/authenticated, НЕ FROM PUBLIC (иначе снесёт
+service_role)» была ОШИБОЧНОЙ и есть корень бага: у каждой целевой функции `service_role`
+имеет **свой явный** `EXECUTE` (`service_role=X`, проверено на dev И prod), поэтому `REVOKE
+FROM PUBLIC` его НЕ трогает. Исправление — `20260705000500_trip49_revoke_public_execute_secdef.sql`:
+tier-1 (internal/service_role/триггеры) → `REVOKE FROM public, anon, authenticated` (остаются
+только postgres+service_role); tier-2 (фронт под `authenticated`) → `REVOKE FROM public, anon`
++ `GRANT TO authenticated` (идемпотентно, одинаковый end-state на dev где PR#378 частично снёс
+явный authenticated, и на prod где PR#378 не катился вовсе). Скоуп — РОВНО 13 функций адресно
+по сигнатуре, НЕ «все secdef скопом» (иначе прибьёшь легитимно-публичные `get_ai_usage_cursor`
+(зовёт n8n), `is_trip_participant`, `search_gazetteer`). Ноль влияния: фронт=`authenticated`,
+edge=`service_role`, n8n (edge Bearer / PostgREST service-role / прямой Postgres) — все держат
+явные гранты. Пост-деплой ОБЯЗАТЕЛЬНА проверка `has_function_privilege('anon',…)=false` (PR#378
+её пропустил → «зелёный деплой» ≠ дыра закрыта).
+
+Ниже — исходный (частично неверный) разбор первого слоя, оставлен для контекста. Из 18
 anon-исполнимых secdef-функций отозвали лишний грант у 15, оставив 3 намеренно:
 - **НЕ трогать `is_trip_participant`/`is_trip_creator`** — вшиты в RLS-политики `TO
   public` 12+ таблиц; `EXECUTE` проверяется у ВЫЗЫВАЮЩЕЙ роли, поэтому и `anon`, и
