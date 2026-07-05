@@ -105,7 +105,6 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
 
       <RoutePanel
         route={route}
-        transfers={transfers}
         activeIdx={activeIdx}
         onSelect={select}
         onHover={setHoverId}
@@ -114,14 +113,28 @@ function ScreenMap({ visits = [], transfers = [], active = true }) {
   );
 }
 
-// ----- Floating glass route panel -----------------------------------------
-// Vertical list: each stop = a leading marker (transit number / interchange
-// glyph / start·finish flag), the city name and its dates. No timeline dot.
-function RoutePanel({ route, transfers, activeIdx, onSelect, onHover }) {
+// ----- Route panel --------------------------------------------------------
+// Desktop: a floating glass panel top-left over the map. Phones (≤640px): the
+// same element becomes an always-on bottom sheet above the bottom nav — peek by
+// default (grip + title), tap the grip to expand the scrollable route, and it
+// collapses again when a city is picked. Each stop = a leading marker (transit
+// number / interchange glyph / start·finish flag), the city name and its dates.
+function RoutePanel({ route, activeIdx, onSelect, onHover }) {
   const { t } = useI18n();
+  // Mobile bottom-sheet expand/collapse (no effect on desktop, where the panel
+  // always shows its list).
+  const [expanded, setExpanded] = useState(false);
+
+  // Bottom-sheet grip — reuses the canonical .sheet-grip affordance; hidden on
+  // desktop. Tapping it toggles the sheet between peek and expanded.
+  const grip = (
+    <button type="button" className="sheet-grip" onClick={() => setExpanded(v => !v)} aria-label={t('trip.sidebar_route')}><i /></button>
+  );
+
   if (route.length === 0) {
     return (
       <aside className="map-route surface-glass">
+        {grip}
         <div className="map-route__empty">
           <Icon name="pin" size={26} style={{ opacity: 0.4, marginBottom: 8 }} />
           <div className="t-body muted">{t('view.map_no_cities')}</div>
@@ -149,9 +162,12 @@ function RoutePanel({ route, transfers, activeIdx, onSelect, onHover }) {
   });
 
   const hoverProps = (c) => ({ onMouseEnter: () => onHover(c.id), onMouseLeave: () => onHover(null) });
+  // Picking a city collapses the mobile sheet (desktop ignores `expanded`).
+  const pick = (i) => { onSelect(i); setExpanded(false); };
 
   return (
-    <aside className="map-route surface-glass">
+    <aside className={'map-route surface-glass' + (expanded ? ' is-expanded' : '')}>
+      {grip}
       <div className="map-route__head">
         <span className="t-mono tp-caption">{t('trip.sidebar_route')} · {nCities} {citiesWord}</span>
       </div>
@@ -163,7 +179,7 @@ function RoutePanel({ route, transfers, activeIdx, onSelect, onHover }) {
             <button
               key={c.id}
               type="button"
-              onClick={() => onSelect(i)}
+              onClick={() => pick(i)}
               {...hoverProps(c)}
               className={'map-route__item' + (activeIdx === i ? ' is-active' : '')}
             >
