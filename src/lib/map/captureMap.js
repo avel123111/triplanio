@@ -189,7 +189,12 @@ export async function captureRouteMapBlob(o) {
 export async function captureAndUploadRouteMap(tripId, opts) {
   if (!tripId) return null;
   const blob = await captureRouteMapBlob(opts);
-  if (!blob) return null;
+  return uploadMapBlob(tripId, blob);
+}
+
+/** Upload a captured map PNG to share-maps/{tripId}/{uuid}.png; returns the path. */
+export async function uploadMapBlob(tripId, blob) {
+  if (!tripId || !blob) return null;
   const path = `${tripId}/${crypto.randomUUID()}.png`;
   const { error } = await supabase.storage.from(SHARE_MAPS_BUCKET)
     .upload(path, blob, { contentType: 'image/png', upsert: false });

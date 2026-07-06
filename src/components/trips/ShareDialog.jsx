@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, Dialog, Severity, Skeleton } from '@/design/index';
-import { captureAndUploadRouteMap } from '@/lib/map/captureMap';
+import { uploadMapBlob } from '@/lib/map/captureMap';
 import ShareMapPreview from './ShareMapPreview';
 
 // Shared trip "Share" dialog. Two parts:
@@ -48,27 +48,20 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     return () => { cancelled = true; };
   }, [trip?.id]);
 
-  // Build the card from the CURRENTLY composed map view: read the preview camera
-  // (angle/zoom/tilt/theme/projection the user set), snapshot it at card
-  // resolution, upload to share-maps, then render the card server-side. If
-  // capture/upload fails, map_path is null and the server falls back to its own
-  // map, so a card is always produced.
+  // Build the card from the CURRENTLY composed map view: snapshot the preview's
+  // live canvas AS-IS (WYSIWYG), upload it to share-maps, then render the card
+  // server-side. If capture/upload fails, map_path is null and the server falls
+  // back to its own map, so a card is always produced.
   async function buildCard() {
     if (!trip?.id) return;
     setCardLoading(true);
     setCardCode('');
     setCardUrl('');
-    const state = mapPreviewRef.current?.getState?.() || {};
-    // Capture at the map-window (slot) aspect, capped for the edge render budget.
-    const slot = overlay?.slot;
-    const capW = slot ? Math.min(600, slot.w) : 600;
-    const size = slot ? { w: Math.round(capW), h: Math.round(capW * slot.h / slot.w) } : null;
+    // Snapshot the composed preview map AS-IS (WYSIWYG) and upload it.
     let mapPath = null;
     try {
-      mapPath = await captureAndUploadRouteMap(trip.id, {
-        visits, transfers, format, lang, size,
-        scheme: state.scheme, projection: state.projection, camera: state.camera,
-      });
+      const blob = await mapPreviewRef.current?.captureBlob?.();
+      if (blob) mapPath = await uploadMapBlob(trip.id, blob);
     } catch (e) { console.error('map capture/upload failed', e); }
     try {
       const { data, error: invokeErr } = await supabase.functions.invoke(

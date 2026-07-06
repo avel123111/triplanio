@@ -11,8 +11,8 @@ import { useI18n } from '@/lib/i18n/I18nContext';
 // goes) is laid on top with pointer-events:none, so the map spins behind while
 // the frame owns all the framing (rounding/border/shape). The user composes the
 // shot with native gestures (drag/pinch/rotate/tilt) - NO movement buttons; only
-// theme (light/dark) and projection (flat/globe) toggles. The parent reads the
-// composed camera via getState() and captures the same view.
+// theme (light/dark) and projection (flat/globe) toggles. The parent snapshots
+// this exact live canvas via captureBlob() (WYSIWYG) - no camera transfer.
 //
 // slot/cardW/cardH come from the overlay render (source of truth for the hole
 // geometry); until they arrive the map fills the whole box.
@@ -39,6 +39,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
       center: ordered[0] ? [ordered[0].longitude, ordered[0].latitude] : [0, 20],
       zoom: 2,
       attributionControl: false,
+      preserveDrawingBuffer: true, // so captureBlob() can read the canvas
     });
     mapRef.current = map;
 
@@ -65,17 +66,22 @@ const ShareMapPreview = forwardRef(function ShareMapPreview(
   }, []);
 
   useImperativeHandle(ref, () => ({
-    getState() {
+    // Snapshot the map EXACTLY as composed (WYSIWYG) - captures this live canvas,
+    // no camera transfer to a second instance. Bounded to <=600px wide to keep
+    // the server resvg render under the edge limit.
+    captureBlob() {
       const m = mapRef.current;
-      if (!m) return null;
-      const c = m.getCenter();
-      return {
-        camera: { center: [c.lng, c.lat], zoom: m.getZoom(), bearing: m.getBearing(), pitch: m.getPitch() },
-        scheme,
-        projection,
-      };
+      if (!m) return Promise.resolve(null);
+      const src = m.getCanvas();
+      const w = Math.min(600, src.width);
+      const h = Math.round(src.height * (w / src.width));
+      const out = document.createElement('canvas');
+      out.width = w;
+      out.height = h;
+      out.getContext('2d').drawImage(src, 0, 0, w, h);
+      return new Promise((res) => out.toBlob((b) => res(b), 'image/png'));
     },
-  }), [scheme, projection]);
+  }), []);
 
   function toggleTheme() {
     const next = scheme === 'DARK' ? 'LIGHT' : 'DARK';
