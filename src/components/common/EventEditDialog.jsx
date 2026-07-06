@@ -583,8 +583,8 @@ export default function EventEditDialog({
   const [timeMissing, setTimeMissing] = useState({});
   const anyTimeMissing = Object.values(timeMissing).some(Boolean);
 
-  // Hybrid error display: inline error/border appears once a field is TOUCHED;
-  // the summary panel appears only after a SAVE attempt. Fresh form stays clean.
+  // Touched-field / save-attempt tracking. Drives the reveal policy below
+  // (see `revealAll`): a fresh CREATE form stays clean until touch/submit.
   const [touched, setTouched] = useState(() => new Set());
   const [submitted, setSubmitted] = useState(false);
   const markTouched = (token) => {
@@ -741,11 +741,16 @@ export default function EventEditDialog({
     [uploading, anyTimeMissing, hasBlockingError],
   );
 
-  // Hybrid display: inline issues show for touched fields (or after a save attempt);
-  // the summary panel only after a save attempt.
+  // Reveal policy (display only — blocking stays with canSave/ORDER):
+  //  • EDIT of an existing entity → surface its issues the moment the form opens;
+  //    the problem is already real, so it must be visible without touching a field
+  //    (matches the read view, which always shows it).
+  //  • fresh CREATE → stay quiet until the user touches a field or attempts to
+  //    save, so an untouched new form doesn't nag.
+  const revealAll = isEdit || submitted;
   const displayIssues = useMemo(
-    () => issues.filter((i) => submitted || (i.field && touched.has(i.field))),
-    [issues, submitted, touched],
+    () => issues.filter((i) => revealAll || (i.field && touched.has(i.field))),
+    [issues, revealAll, touched],
   );
   // Build the DB payload for the current single entity (mirrors saveMut's branches).
   const buildCurrentPayload = () => {
@@ -1233,8 +1238,8 @@ export default function EventEditDialog({
                 />
               )}
 
-              {/* Summary panel: shown only after a save attempt (hybrid). Click row -> field. */}
-              <IssuesPanel issues={[...(submitted ? issues : []), ...aiAdvisories]} style={{ marginTop: 12 }} />
+              {/* Summary panel: shown per `revealAll` (edit-open or save attempt). Click row -> field. */}
+              <IssuesPanel issues={[...(revealAll ? issues : []), ...aiAdvisories]} style={{ marginTop: 12 }} />
             </fieldset>
           </div>
           )}
