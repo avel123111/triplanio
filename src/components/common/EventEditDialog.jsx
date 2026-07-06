@@ -1562,7 +1562,7 @@ function HotelFields({ form, setField, aiFields, tz, setTime, issues, onTouch, s
         <div data-vfield="name" className={inv('name')}>
           <Label>{t('event.name_req')}</Label>
           <AiField active={aiFields.has('name')}>
-            <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder="Memmo Alfama" />
+            <Input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => onTouch?.('name')} placeholder={t('event.ph_hotel_example')} />
           </AiField>
           <FieldError issues={issues} field="name" />
         </div>
