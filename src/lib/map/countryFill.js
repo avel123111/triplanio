@@ -155,7 +155,12 @@ export function setCountrySelected(map, code) {
 // ensureCountryFill, but if a stats screen created it earlier in the session the
 // layer persists on the instance, so a consumer hides it on unmount).
 export function setCountryFillVisible(map, visible) {
-  if (!map || !map.getLayer(FILL_ID)) return;
+  // This runs from the stats-screen UNMOUNT cleanup, which can fire after the
+  // shared singleton map was torn down (map.style gone) — a bare map.getLayer()
+  // then throws "Cannot read properties of undefined (reading 'getOwnLayer')".
+  // Guard the layer read itself, not just `!map` (TRIP-195).
+  if (!map || !map.style) return;
+  try { if (!map.getLayer(FILL_ID)) return; } catch { return; }
   try { map.setLayoutProperty(FILL_ID, 'visibility', visible ? 'visible' : 'none'); } catch { /* ignore */ }
 }
 

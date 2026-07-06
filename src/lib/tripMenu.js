@@ -1,6 +1,7 @@
 // Shared trip-menu data — used by the TripView sidebar AND the trip-editor rail
 // so the two menus never drift. Pure data + the addon-visibility helper; the
 // actual <button> rendering lives in each surface (full sidebar vs icon rail).
+import { roleCanEdit } from '@/lib/members';
 
 export const LENS_ITEMS = [
   { id: 'overview', labelKey: 'trip_menu.overview', icon: 'grid' },
@@ -31,5 +32,5 @@ export function isLensVisible(trip, lensId) {
 }
 
 export function canEditStructure(myRole) {
-  return myRole === 'owner' || myRole === 'admin';
+  return roleCanEdit(myRole);
 }

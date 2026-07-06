@@ -7,9 +7,10 @@
 // Pure mapping/param helpers live in ./stay22-normalize.js so they can be
 // unit-tested without React/supabase.
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/api/supabaseClient';
+import { usePartnerLogger } from '@/lib/partnerTracking';
 import {
   normalizeStay22, buildStay22Params, STAY22_POOL_KEY,
   mergePool, POOL_PAGES,
@@ -133,4 +134,49 @@ export function useStay22Pool({ visit, currency, lang, filters, enabled = true }
     truncated: data.meta.truncated,
     refetch: () => { page1.refetch(); if (hasMore) tail.refetch(); },
   };
+}
+
+// useStay22Bundle — the whole "hotel find" list state (pool query + client
+// pagination + applied filters + hover/select) packaged as the `stay22` bundle
+// that ForkPartnerModal / AddBookingPanel expect. Extracted from the structure
+// editor so the SAME hotel-find experience works in the global add-booking drawer
+// on the timeline/calendar (TRIP-195). The editor additionally derives map pins
+// from the returned `query`; consumers without a map just pass `bundle` down.
+export function useStay22Bundle({ visit, currency = 'EUR', lang, enabled = true, tripId }) {
+  const [page, setPage] = useState(1);
+  const [applied, setApplied] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
+  // Reset the lifted state whenever the target city changes / the panel closes.
+  const visitId = visit?.id || null;
+  useEffect(() => {
+    setPage(1); setApplied(null); setHoveredId(null); setSelectedId(null);
+  }, [visitId, enabled]);
+
+  const query = useStay22Pool({ visit, currency, lang, filters: applied, enabled });
+
+  const logHotelClick = usePartnerLogger(tripId);
+  const openHotelLink = (id) => {
+    const h = (query.data?.hotels || []).find((x) => String(x.id) === String(id));
+    if (!h?.link) return;
+    logHotelClick({ partner: h.supplierKey || 'stay22', type: 'hotel', link: h.link, provider: 'stay22' });
+    window.open(h.link, '_blank', 'noopener,noreferrer');
+  };
+
+  const bundle = enabled ? {
+    data: query.data, isLoading: query.isLoading,
+    // Dim the list only on a city/filter switch (placeholder) or first load — NOT
+    // while the background tail pages stream in (the pool just grows under it).
+    isFetching: query.isPlaceholderData || query.isLoading,
+    isError: query.isError, refetch: query.refetch,
+    page, onPageChange: setPage,
+    applied,
+    // Filter changes reload the pool → drop any stale selection/hover + reset page.
+    onApply: (snap) => { setApplied(snap); setPage(1); setSelectedId(null); setHoveredId(null); },
+    onResetAll: () => { setApplied(null); setPage(1); setSelectedId(null); setHoveredId(null); },
+    hoveredId, selectedId,
+    onHover: setHoveredId, onSelect: setSelectedId,
+  } : null;
+
+  return { bundle, query, selectedId, hoveredId, setSelectedId, setHoveredId, openHotelLink };
 }
