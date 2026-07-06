@@ -49,15 +49,20 @@ export function normalizePositions(visits) {
 }
 
 // =====================================================================
-// Calendar-day helpers (per-node timezone). Shared by the unified engine below.
-// Day comparisons are done by CALENDAR DAY in each node's timezone (TZ §10.3).
+// Calendar-day helpers. Shared by the unified engine below.
+// Day comparisons are done by plain CALENDAR DAY (wall-clock date), never
+// re-interpreting a stored value through a timezone (TZ §10.3).
 // =====================================================================
-// Calendar day (YYYY-MM-DD) in a node's tz, as a plain date. Use this for
-// CROSS-node day gaps (A3): two nodes may have different timezones, and diffing
-// their tz-local startOf('day') would leak the offset and report a phantom
-// sub-day overlap. Comparing plain ISO dates parsed in one zone gives an exact
-// integer day gap.
-const calDay = (iso, tz) => (iso ? DateTime.fromISO(iso, { zone: 'utc' }).setZone(tz || 'UTC').toISODate() : null);
+// Calendar DAY (YYYY-MM-DD) of an event datetime (transfer / hotel / activity
+// start/end). These are stored as NAIVE WALL-CLOCK: localToUtc packs the local
+// wall-clock time into a +00 instant and utcToLocalInput reads it back verbatim,
+// so the UI shows e.g. "21:35, 5 Jul". The event's day is therefore just the
+// date part of that value. Running it through setZone(city tz) re-interprets the
+// naive value as a REAL UTC instant and shifts the day for cities with a large
+// offset — a 21:35 departure in Yekaterinburg (UTC+5) wrongly rolled to the NEXT
+// day, firing a false TR_DEP_DAY. Compare the plain wall-clock date, exactly like
+// cityDay + daysBetween (which already avoid tz-shift). (TRIP-195)
+const calDay = (iso) => (iso ? String(iso).slice(0, 10) : null);
 
 // Same city = same geonameid (TRIP-146); fallback to name+country_code, then
 // raw external_city_id (TZ E2). Exported so the timeline's "no transfer" warning
@@ -73,7 +78,8 @@ export const cityIdentity = (v) => {
 
 // City visit dates are DATE-ONLY (YYYY-MM-DD) — a calendar date, not an instant.
 // Compare as plain ISO date strings; never run them through setZone (that would
-// shift the boundary a day in non-UTC timezones). Events keep instant→tz day math.
+// shift the boundary a day in non-UTC timezones). Events use the same plain
+// wall-clock date math (see calDay above).
 const cityDay = (d) => (d ? String(d).slice(0, 10) : null);
 const daysBetween = (isoA, isoB) => {
   if (!isoA || !isoB) return null;
@@ -123,8 +129,7 @@ function validateHotel(d = {}, ctx = {}) {
     out.push(mk('error', 'HOTEL_ORDER', 'field', { field: 'checkOut', ...ref }));
   }
   if (visit) {
-    const tz = visit.timezone;
-    const ci = calDay(d.checkIn, tz), co = calDay(d.checkOut, tz);       // event instant → day-string in city tz
+    const ci = calDay(d.checkIn), co = calDay(d.checkOut);              // event wall-clock day
     const vs = cityDay(visit.start_date), ve = cityDay(visit.end_date); // city plain calendar date
     if (ci && vs && ci < vs) out.push(mk('error', 'HOTEL_CHECKIN_OOB', 'entity', { field: 'checkIn', ...ref }));
     if (co && ve && co > ve) out.push(mk('error', 'HOTEL_CHECKOUT_OOB', 'entity', { field: 'checkOut', ...ref }));
@@ -143,8 +148,7 @@ function validateActivity(d = {}, ctx = {}) {
     out.push(mk('error', 'ACT_ORDER', 'field', { field: 'end', ...ref }));
   }
   if (visit) {
-    const tz = visit.timezone;
-    const as = calDay(d.start, tz), ae = calDay(d.end, tz);
+    const as = calDay(d.start), ae = calDay(d.end);
     const vs = cityDay(visit.start_date), ve = cityDay(visit.end_date);
     if (as && vs && as < vs) out.push(mk('error', 'ACT_START_OOB', 'entity', { field: 'start', ...ref }));
     if (ae && ve && ae > ve) out.push(mk('error', 'ACT_END_OOB', 'entity', { field: 'end', ...ref }));
@@ -162,11 +166,11 @@ function validateTransferSingle(d = {}, ctx = {}) {
   if (d.start && d.end && _ms(d.end) <= _ms(d.start)) {
     out.push(mk('error', 'TR_ORDER', 'field', { field: 'end', ...ref }));
   }
-  const depGap = daysBetween(cityDay(from.end_date), calDay(d.start, from.timezone));
+  const depGap = daysBetween(cityDay(from.end_date), calDay(d.start));
   if (depGap != null && Math.abs(depGap) > TRANSFER_DAY_TOLERANCE) {
     out.push(mk('warning', 'TR_DEP_DAY', 'entity', { field: 'start', ...ref }));
   }
-  const arrGap = daysBetween(cityDay(to.start_date), calDay(d.end, to.timezone));
+  const arrGap = daysBetween(cityDay(to.start_date), calDay(d.end));
   if (arrGap != null && Math.abs(arrGap) > TRANSFER_DAY_TOLERANCE) {
     out.push(mk('warning', 'TR_ARR_DAY', 'entity', { field: 'end', ...ref }));
   }
@@ -195,13 +199,13 @@ function validateTransferLayover(d = {}, ctx = {}) {
   // wildly wrong dates passed the engine and could be saved.
   const first = segs[0], last = segs[segs.length - 1];
   if (from && first?.start) {
-    const depGap = daysBetween(cityDay(from.end_date), calDay(first.start, from.timezone));
+    const depGap = daysBetween(cityDay(from.end_date), calDay(first.start));
     if (depGap != null && Math.abs(depGap) > TRANSFER_DAY_TOLERANCE) {
       out.push(mk('warning', 'TR_DEP_DAY', 'entity', { field: 'seg0.start', ...ref }));
     }
   }
   if (to && last?.end) {
-    const arrGap = daysBetween(cityDay(to.start_date), calDay(last.end, to.timezone));
+    const arrGap = daysBetween(cityDay(to.start_date), calDay(last.end));
     if (arrGap != null && Math.abs(arrGap) > TRANSFER_DAY_TOLERANCE) {
       out.push(mk('warning', 'TR_ARR_DAY', 'entity', { field: `seg${segs.length - 1}.end`, ...ref }));
     }
