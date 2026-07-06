@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, Dialog, Severity, Skeleton } from '@/design/index';
-import { captureRouteMapPng } from '@/lib/map/captureMap';
+import { captureAndUploadRouteMap } from '@/lib/map/captureMap';
 
 // Shared trip "Share" dialog. Two parts:
 //   1. Public read-only link (ensureShareToken) — unchanged.
@@ -12,8 +12,6 @@ import { captureRouteMapPng } from '@/lib/map/captureMap';
 //      can Download or (on mobile) share via the native sheet.
 export default function ShareDialog({ trip, open, onOpenChange, visits = [], transfers = [] }) {
   const { t, lang } = useI18n();
-  // TEMP (TRIP-193 phase 1): capture-spike state to eyeball map snapshot quality.
-  const [capBusy, setCapBusy] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,29 +44,44 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     return () => { cancelled = true; };
   }, [trip?.id]);
 
-  const generateCard = useCallback((fmt) => {
+  // Capture the live route map → upload to share-maps → render the card with it.
+  // If capture/upload fails, map_path is null and the server falls back to its
+  // own map, so a card is always produced. `isCancelled` guards against stale
+  // results when the dialog closes or the format changes mid-flight.
+  const generateCard = useCallback((fmt, isCancelled) => {
     if (!trip?.id) return;
-    let cancelled = false;
     setCardLoading(true);
     setCardCode('');
     setCardUrl('');
-    supabase.functions.invoke('render-share-card', { body: { trip_id: trip.id, format: fmt, lang } })
-      .then(({ data, error: invokeErr }) => {
-        if (cancelled) return;
-        if (invokeErr) { console.error('render-share-card error:', invokeErr); setCardCode('error'); return; }
-        if (data?.code) { setCardCode(data.code); return; }
-        if (data?.url) { setCardUrl(data.url); return; }
-        setCardCode('error');
-      })
-      .catch((err) => { if (!cancelled) { console.error('render-share-card error:', err); setCardCode('error'); } })
-      .finally(() => { if (!cancelled) setCardLoading(false); });
-    return () => { cancelled = true; };
-  }, [trip?.id, lang]);
+    (async () => {
+      let mapPath = null;
+      try {
+        mapPath = await captureAndUploadRouteMap(trip.id, { visits, transfers, format: fmt, scheme: 'DARK', lang });
+      } catch (e) { console.error('map capture/upload failed', e); }
+      if (isCancelled?.()) return;
+      try {
+        const { data, error: invokeErr } = await supabase.functions.invoke(
+          'render-share-card', { body: { trip_id: trip.id, format: fmt, lang, map_path: mapPath } },
+        );
+        if (isCancelled?.()) return;
+        if (invokeErr) { console.error('render-share-card error:', invokeErr); setCardCode('error'); }
+        else if (data?.code) setCardCode(data.code);
+        else if (data?.url) setCardUrl(data.url);
+        else setCardCode('error');
+      } catch (err) {
+        if (!isCancelled?.()) { console.error('render-share-card error:', err); setCardCode('error'); }
+      } finally {
+        if (!isCancelled?.()) setCardLoading(false);
+      }
+    })();
+  }, [trip?.id, lang, visits, transfers]);
 
   // (Re)generate the preview when the dialog opens or the format changes.
   useEffect(() => {
-    if (!open || !trip?.id) return;
-    generateCard(format);
+    if (!open || !trip?.id) return undefined;
+    let cancelled = false;
+    generateCard(format, () => cancelled);
+    return () => { cancelled = true; };
   }, [open, trip?.id, format, generateCard]);
 
   function copyLink() {
@@ -108,27 +121,6 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     } catch (e) {
       // AbortError = user dismissed the share sheet; ignore.
       if (e?.name !== 'AbortError') console.error('share card failed', e);
-    }
-  }
-
-  // TEMP (TRIP-193 phase 1): capture the live route map at card resolution and
-  // download it, so we can judge snapshot crispness on a real device before
-  // building the full interactive capture flow.
-  async function captureTestMap() {
-    setCapBusy(true);
-    try {
-      const dataUrl = await captureRouteMapPng({ visits, transfers, format, scheme: 'DARK', lang });
-      if (!dataUrl) { console.warn('capture returned null'); return; }
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = `map-${format}.png`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (e) {
-      console.error('captureTestMap failed', e);
-    } finally {
-      setCapBusy(false);
     }
   }
 
@@ -176,8 +168,6 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
             <Btn variant="primary" icon="share" onClick={shareCard} disabled={!cardUrl || cardLoading} block>{t('share.card_share')}</Btn>
             <Btn variant="ghost" icon="download" onClick={downloadCard} disabled={!cardUrl || cardLoading} block>{t('share.card_download')}</Btn>
-            {/* TEMP (TRIP-193 phase 1): snapshot the live route map at card resolution to check crispness. */}
-            <Btn variant="ghost" icon="map" onClick={captureTestMap} loading={capBusy} block>Тест: снять карту</Btn>{/* i18n-ignore: TEMP spike button, removed in phase 2 */}
           </div>
         </div>
 
