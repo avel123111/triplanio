@@ -809,22 +809,6 @@ export default function TripView() {
     setEventView({ open: true, kind, id, warning: null });
   };
 
-  // Event-open routing split (TRIP-195): services stay on the legacy modal,
-  // hotel/transfer/activity open the global drawer.
-  const serviceViewOpen = eventView.open && eventView.kind === 'service';
-  const eventDrawerOpen = eventView.open && !!eventView.kind && eventView.kind !== 'service';
-  // The global drawer hosts EITHER a booking-create panel OR an event view/edit.
-  const drawerOpen = eventDrawerOpen || bookingCreate.open;
-  const closeBookingCreate = () => setBookingCreate((s) => ({ ...s, open: false }));
-  // Hotel "find" list bundle for the add-booking drawer (only when creating a
-  // hotel — transfer/activity "find" tabs are partner chips, no Stay22 pool).
-  const creatingHotel = bookingCreate.open && bookingCreate.kind === 'hotel';
-  const createStay22 = useStay22Bundle({
-    visit: creatingHotel ? bookingCreate.visit : null,
-    currency: trip?.details?.main_currency || 'EUR', lang,
-    enabled: creatingHotel, tripId,
-  }).bundle;
-
   // Wire window.__navigate so Screen components can navigate
   useEffect(() => {
     window.__navigate = (target) => {
@@ -881,6 +865,23 @@ export default function TripView() {
   const budget           = contentData?.budget       || null;
   const budgetCategories = contentData?.budgetCategories || [];
   const budgetExpenses   = contentData?.budgetExpenses   || [];
+
+  // Event-open routing split (TRIP-195): services stay on the legacy modal,
+  // hotel/transfer/activity open the global drawer. Declared AFTER `trip` (below)
+  // is resolved — createStay22 reads trip.details, so it must not run in the TDZ.
+  const serviceViewOpen = eventView.open && eventView.kind === 'service';
+  const eventDrawerOpen = eventView.open && !!eventView.kind && eventView.kind !== 'service';
+  // The global drawer hosts EITHER a booking-create panel OR an event view/edit.
+  const drawerOpen = eventDrawerOpen || bookingCreate.open;
+  const closeBookingCreate = () => setBookingCreate((s) => ({ ...s, open: false }));
+  // Hotel "find" list bundle for the add-booking drawer (only when creating a
+  // hotel — transfer/activity "find" tabs are partner chips, no Stay22 pool).
+  const creatingHotel = bookingCreate.open && bookingCreate.kind === 'hotel';
+  const createStay22 = useStay22Bundle({
+    visit: creatingHotel ? bookingCreate.visit : null,
+    currency: trip?.details?.main_currency || 'EUR', lang,
+    enabled: creatingHotel, tripId,
+  }).bundle;
 
   // Resolve current user's role in this trip via the shared rule: created_by is
   // the SOLE source of ownership and wins over any stray trip_members row
