@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/api/supabaseClient';
 import { useI18n } from '@/lib/i18n/I18nContext';
 import { Btn, Dialog, Severity, Skeleton } from '@/design/index';
 import { captureAndUploadRouteMap } from '@/lib/map/captureMap';
+import ShareMapPreview from './ShareMapPreview';
 
 // Shared trip "Share" dialog. Two parts:
 //   1. Public read-only link (ensureShareToken) — unchanged.
@@ -22,6 +23,8 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
   const [cardUrl, setCardUrl] = useState('');
   const [cardLoading, setCardLoading] = useState(false);
   const [cardCode, setCardCode] = useState(''); // '', 'error', 'rate_limited', 'no_transit_cities'
+  const [stage, setStage] = useState('edit'); // 'edit' (compose map) | 'card' (final)
+  const mapPreviewRef = useRef(null);
 
   useEffect(() => {
     if (!trip?.id) return;
@@ -44,45 +47,43 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
     return () => { cancelled = true; };
   }, [trip?.id]);
 
-  // Capture the live route map → upload to share-maps → render the card with it.
-  // If capture/upload fails, map_path is null and the server falls back to its
-  // own map, so a card is always produced. `isCancelled` guards against stale
-  // results when the dialog closes or the format changes mid-flight.
-  const generateCard = useCallback((fmt, isCancelled) => {
+  // Build the card from the CURRENTLY composed map view: read the preview camera
+  // (angle/zoom/tilt/theme/projection the user set), snapshot it at card
+  // resolution, upload to share-maps, then render the card server-side. If
+  // capture/upload fails, map_path is null and the server falls back to its own
+  // map, so a card is always produced.
+  async function buildCard() {
     if (!trip?.id) return;
     setCardLoading(true);
     setCardCode('');
     setCardUrl('');
-    (async () => {
-      let mapPath = null;
-      try {
-        mapPath = await captureAndUploadRouteMap(trip.id, { visits, transfers, format: fmt, scheme: 'DARK', lang });
-      } catch (e) { console.error('map capture/upload failed', e); }
-      if (isCancelled?.()) return;
-      try {
-        const { data, error: invokeErr } = await supabase.functions.invoke(
-          'render-share-card', { body: { trip_id: trip.id, format: fmt, lang, map_path: mapPath } },
-        );
-        if (isCancelled?.()) return;
-        if (invokeErr) { console.error('render-share-card error:', invokeErr); setCardCode('error'); }
-        else if (data?.code) setCardCode(data.code);
-        else if (data?.url) setCardUrl(data.url);
-        else setCardCode('error');
-      } catch (err) {
-        if (!isCancelled?.()) { console.error('render-share-card error:', err); setCardCode('error'); }
-      } finally {
-        if (!isCancelled?.()) setCardLoading(false);
-      }
-    })();
-  }, [trip?.id, lang, visits, transfers]);
+    const state = mapPreviewRef.current?.getState?.() || {};
+    let mapPath = null;
+    try {
+      mapPath = await captureAndUploadRouteMap(trip.id, {
+        visits, transfers, format, lang,
+        scheme: state.scheme, projection: state.projection, camera: state.camera,
+      });
+    } catch (e) { console.error('map capture/upload failed', e); }
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke(
+        'render-share-card', { body: { trip_id: trip.id, format, lang, map_path: mapPath } },
+      );
+      if (invokeErr) { console.error('render-share-card error:', invokeErr); setCardCode('error'); }
+      else if (data?.code) setCardCode(data.code);
+      else if (data?.url) { setCardUrl(data.url); setStage('card'); }
+      else setCardCode('error');
+    } catch (err) {
+      console.error('render-share-card error:', err); setCardCode('error');
+    } finally {
+      setCardLoading(false);
+    }
+  }
 
-  // (Re)generate the preview when the dialog opens or the format changes.
+  // Reset to the compose stage each time the dialog (re)opens.
   useEffect(() => {
-    if (!open || !trip?.id) return undefined;
-    let cancelled = false;
-    generateCard(format, () => cancelled);
-    return () => { cancelled = true; };
-  }, [open, trip?.id, format, generateCard]);
+    if (open) { setStage('edit'); setCardUrl(''); setCardCode(''); }
+  }, [open]);
 
   function copyLink() {
     if (!shareUrl) return;
@@ -152,24 +153,33 @@ export default function ShareDialog({ trip, open, onOpenChange, visits = [], tra
         <div className="t-title">{t('share.card_title')}</div>
         <div className="muted t-body" style={{ margin: '4px 0 14px' }}>{t('share.card_desc')}</div>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          <Btn variant={format === 'story' ? 'primary' : 'ghost'} onClick={() => setFormat('story')}>{t('share.card_story')}</Btn>
-          <Btn variant={format === 'post' ? 'primary' : 'ghost'} onClick={() => setFormat('post')}>{t('share.card_post')}</Btn>
-        </div>
-
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-          <div style={{ width: 200, aspectRatio: ratio, borderRadius: 14, overflow: 'hidden', background: 'var(--surface)', flex: 'none', border: '1px solid var(--line)' }}>
-            {cardLoading
-              ? <Skeleton w="100%" h="100%" r={14} />
-              : cardUrl
+        {stage === 'edit' ? (
+          <>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+              <Btn variant={format === 'story' ? 'primary' : 'ghost'} onClick={() => setFormat('story')}>{t('share.card_story')}</Btn>
+              <Btn variant={format === 'post' ? 'primary' : 'ghost'} onClick={() => setFormat('post')}>{t('share.card_post')}</Btn>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+              <div style={{ height: 'min(48vh, 420px)', aspectRatio: ratio, borderRadius: 14, overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--line)' }}>
+                <ShareMapPreview key={format} ref={mapPreviewRef} visits={visits} transfers={transfers} lang={lang} />
+              </div>
+            </div>
+            <Btn variant="primary" icon="map" loading={cardLoading} onClick={buildCard} block>{t('share.card_build')}</Btn>
+          </>
+        ) : (
+          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+            <div style={{ height: 'min(48vh, 420px)', aspectRatio: ratio, borderRadius: 14, overflow: 'hidden', background: 'var(--surface)', flex: 'none', border: '1px solid var(--line)' }}>
+              {cardUrl
                 ? <img src={cardUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : null}
+                : <Skeleton w="100%" h="100%" r={14} />}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+              <Btn variant="primary" icon="share" onClick={shareCard} disabled={!cardUrl} block>{t('share.card_share')}</Btn>
+              <Btn variant="ghost" icon="download" onClick={downloadCard} disabled={!cardUrl} block>{t('share.card_download')}</Btn>
+              <Btn variant="ghost" icon="edit" onClick={() => setStage('edit')} block>{t('share.card_back')}</Btn>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-            <Btn variant="primary" icon="share" onClick={shareCard} disabled={!cardUrl || cardLoading} block>{t('share.card_share')}</Btn>
-            <Btn variant="ghost" icon="download" onClick={downloadCard} disabled={!cardUrl || cardLoading} block>{t('share.card_download')}</Btn>
-          </div>
-        </div>
+        )}
 
         {cardErrorMsg && (
           <div style={{ marginTop: 12 }}>
