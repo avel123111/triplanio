@@ -32,7 +32,6 @@ import { getActiveLocale } from '@/lib/i18n/format';
 import { countTripMembers, roleCanEdit } from '@/lib/members';
 import { Icon } from '../design/icons';
 import { Badge, Btn, Dialog, Field, EmptyState, Skeleton, Severity, fmtDate, CurrencyCombobox } from '../design/index';
-import SourceViewLoader from '@/components/budget/SourceViewLoader';
 import { FieldError, IssuesPanel, fieldHasError, useHybridValidation } from '@/components/common/ValidationUI';
 import './BudgetLens.css';
 
@@ -488,7 +487,7 @@ function ExpenseRow({ expense, catColor, catIcon: icon, mode, catName, loc, main
 
 // ─── BudgetLens ───────────────────────────────────────────────────────────────
 
-export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, role, queryClient }) {
+export default function BudgetLens({ tripId, trip, budget, budgetCategories = [], budgetExpenses = [], members = [], cityVisits = [], isLoading, isPro, role, queryClient, onOpenSource }) {
   const { t } = useI18n();
   const loc = getActiveLocale();
   // Viewer = строго только чтение (серверная защита — RLS _can_edit_trip, TRIP-124).
@@ -497,7 +496,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
   const [grouping, setGrouping] = useState('category');
   const [activeCatId, setActiveCatId] = useState(null);
   const [hoveredSeg, setHoveredSeg] = useState(null);
-  const [sourceView, setSourceView] = useState({ open: false, kind: null, id: null });
   const [expenseModal, setExpenseModal] = useState(null); // null | { existing?: row }
   const [deleteExpense, setDeleteExpense] = useState(null); // null | expense row
   const [categoryModal, setCategoryModal] = useState(null); // null | { existing?: row }
@@ -544,7 +542,9 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
     const src = expense.source_kind || 'manual';
     if (src === 'manual') { openEditExpense(expense); return; }
     if (expense.source_id && SOURCE_ICON[src]) {
-      setSourceView({ open: true, kind: src, id: expense.source_id });
+      // Event view/edit is hosted centrally by TripView (drawer for
+      // hotel/transfer/activity, modal for services) — TRIP-195.
+      onOpenSource?.(src, expense.source_id);
     }
   }
 
@@ -853,15 +853,6 @@ export default function BudgetLens({ tripId, trip, budget, budgetCategories = []
         <CityGrouping cityGroups={cityGroups} mainCurrency={mainCurrency} conv={conv} loc={loc}
           expensesPlural={expensesPlural} onOpen={openExpense} onEdit={openEditExpense} onDelete={openDeleteExpense} onAdd={openAddExpense} readOnly={readOnly} />
       )}
-
-      {/* Source event view (clicking a system expense) */}
-      <SourceViewLoader
-        kind={sourceView.kind}
-        id={sourceView.id}
-        open={sourceView.open}
-        onOpenChange={(o) => setSourceView(s => ({ ...s, open: o }))}
-        canEdit={!readOnly}
-      />
 
       {expenseModal !== null && <AddExpenseDialog open={true} onOpenChange={(o) => { if (!o) setExpenseModal(null); }} tripId={tripId} categories={cats} mainCurrency={mainCurrency} cities={cityNames} existing={expenseModal.existing ?? null} onSaved={refresh} />}
       {deleteExpense && <DeleteExpenseDialog open={true} onOpenChange={(o) => { if (!o) setDeleteExpense(null); }} expense={deleteExpense} onSaved={refresh} />}

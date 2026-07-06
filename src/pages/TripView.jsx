@@ -26,6 +26,8 @@ import { useCreateTrip } from '@/components/create/CreateTripProvider';
 import { DateTime } from 'luxon';
 import EventEditDialog from '@/components/common/EventEditDialog';
 import SourceViewLoader from '../components/budget/SourceViewLoader';
+import EventDrawerHost from '@/components/common/EventDrawerHost';
+import EventSourcePanel from '@/components/common/EventSourcePanel';
 import ForkPartnerModal from '@/components/bookings/ForkPartnerModal';
 import OverviewLens from './OverviewLens';
 import BudgetLens, { AddExpenseDialog } from './BudgetLens';
@@ -812,6 +814,11 @@ export default function TripView() {
     setEventView({ open: true, kind, id, warning: null });
   };
 
+  // Event-open routing split (TRIP-195): services stay on the legacy modal,
+  // hotel/transfer/activity open the global drawer.
+  const serviceViewOpen = eventView.open && eventView.kind === 'service';
+  const eventDrawerOpen = eventView.open && !!eventView.kind && eventView.kind !== 'service';
+
   // Wire window.__navigate so Screen components can navigate
   useEffect(() => {
     window.__navigate = (target) => {
@@ -1149,11 +1156,13 @@ export default function TripView() {
               defaultCurrency={trip?.details?.main_currency || 'EUR'}
             />
           )}
-          {/* SourceViewLoader - opens the read/edit dialog when a timeline event is clicked */}
+          {/* Services (esim / insurance / car_rental) still open in the legacy
+              modal (TRIP-195 keeps them on modals for now). hotel/transfer/
+              activity moved to the global drawer, mounted at .trip-content below. */}
           <SourceViewLoader
             kind={eventView.kind}
             id={eventView.id}
-            open={eventView.open}
+            open={serviceViewOpen}
             onOpenChange={(o) => setEventView(s => ({ ...s, open: o }))}
             canEdit={canEditMode}
             warning={eventView.warning}
@@ -1230,6 +1239,7 @@ export default function TripView() {
               isPro={tripIsPro}
               role={myRole}
               queryClient={qc}
+              onOpenSource={(kind, id) => setEventView({ open: true, kind, id, warning: null })}
             />
           )}
           {shownLens === 'members' && (
@@ -1293,6 +1303,26 @@ export default function TripView() {
             />
           )}
             </main>
+            {/* TRIP-195: global event drawer for hotel/transfer/activity —
+                anchored to .trip-content (below header, right of menu), left 50%
+                with a scrim. Services keep the modal (above). Opened from the
+                timeline / calendar (openEventView), the overview (onOpenService
+                → service → modal) and the budget (onOpenSource, lifted here). */}
+            <EventDrawerHost
+              open={eventDrawerOpen}
+              onClose={() => setEventView(s => ({ ...s, open: false }))}
+              scrim
+            >
+              {eventDrawerOpen && (
+                <EventSourcePanel
+                  kind={eventView.kind}
+                  id={eventView.id}
+                  warning={eventView.warning}
+                  canEdit={canEditMode}
+                  onClose={() => setEventView(s => ({ ...s, open: false }))}
+                />
+              )}
+            </EventDrawerHost>
           </div>
         </div>
 
