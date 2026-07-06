@@ -2,6 +2,7 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import mapboxgl from 'mapbox-gl';
 import { MAPBOX_TOKEN, MAP_STYLE, baseConfig, applyBasemapConfig, fitToPoints } from '@/lib/mapbox';
 import { buildRoute, drawTripRoute } from '@/lib/map/captureMap';
+import { prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { Btn } from '@/design/index';
 import { useI18n } from '@/lib/i18n/I18nContext';
 
@@ -21,6 +22,7 @@ const ShareMapPreview = forwardRef(function ShareMapPreview({ visits = [], trans
   useEffect(() => {
     if (!MAPBOX_TOKEN || !holderRef.current || mapRef.current) return undefined;
     const { ordered, legs } = buildRoute(visits, transfers, showSE);
+    const pts = ordered.map((v) => [v.longitude, v.latitude]);
     const map = new mapboxgl.Map({
       container: holderRef.current,
       style: MAP_STYLE,
@@ -32,12 +34,27 @@ const ShareMapPreview = forwardRef(function ShareMapPreview({ visits = [], trans
       attributionControl: false,
     });
     mapRef.current = map;
-    map.on('load', () => {
-      if (!ordered.length) return;
-      drawTripRoute(map, ordered, legs);
-      fitToPoints(map, ordered.map((v) => [v.longitude, v.latitude]), { padding: 40, maxZoom: 9 });
-    });
-    return () => { map.remove(); mapRef.current = null; };
+
+    // Auto-fit until the user composes their own view (a resize otherwise fights
+    // their pan/zoom).
+    let userMoved = false;
+    ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach((e) => map.on(e, () => { userMoved = true; }));
+    const fit = () => { if (!userMoved && pts.length) fitToPoints(map, pts, { padding: 40, maxZoom: 9 }); };
+
+    const draw = () => {
+      if (!pts.length) return;
+      try { drawTripRoute(map, ordered, legs); } catch (err) { console.error('share preview draw failed', err); }
+      prewarmRoadGeometry(legs); // warm the shared road cache so the capture gets curves
+      fit();
+    };
+    if (map.isStyleLoaded()) draw(); else map.once('style.load', draw);
+
+    // The dialog animates open, so the container is often mis-sized when the map
+    // is created - resize + refit once it settles (until the user takes over).
+    const ro = new ResizeObserver(() => { map.resize(); fit(); });
+    ro.observe(holderRef.current);
+
+    return () => { ro.disconnect(); map.remove(); mapRef.current = null; };
     // Create once per mount; visits/transfers are stable for an open dialog.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

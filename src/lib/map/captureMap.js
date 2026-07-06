@@ -24,7 +24,7 @@
 import mapboxgl from 'mapbox-gl';
 import { supabase } from '@/api/supabaseClient';
 import { MAPBOX_TOKEN, MAP_STYLE, baseConfig, fitToPoints } from '@/lib/mapbox';
-import { drawRouteLinesCached } from '@/lib/map/routeLines';
+import { drawRouteLinesCached, prewarmRoadGeometry } from '@/lib/map/routeLines';
 import { routeColor } from '@/lib/map/mapTokens';
 import { sortVisits } from '@/lib/validation';
 
@@ -144,7 +144,13 @@ export async function captureRouteMapBlob(o) {
       fadeDuration: 0,
     });
 
-    await new Promise((res) => map.once('load', res));
+    // Resolve road geometry while the map style loads, so drawTripRoute paints
+    // roads with their final curved shape (not the straight-then-async fallback
+    // that the snapshot would otherwise capture).
+    await Promise.all([
+      new Promise((res) => map.once('load', res)),
+      prewarmRoadGeometry(legs),
+    ]);
 
     drawTripRoute(map, ordered, legs);
     if (camera && Array.isArray(camera.center)) {

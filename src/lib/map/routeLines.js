@@ -40,6 +40,16 @@ async function roadGeometry(from, to, kind) {
   return coords;
 }
 
+// Resolve (and cache) real road geometry for every road leg up front. Used by
+// the share-card capture so a snapshot draws roads with their FINAL curved
+// geometry immediately (no straight-then-async upgrade that the snapshot would
+// miss). Flights are geodesic arcs drawn synchronously, so they need no prewarm.
+export async function prewarmRoadGeometry(legs) {
+  await Promise.all((legs || [])
+    .filter((l) => l?.from?.latitude && l?.to?.latitude && isRoadTransport(l.kind))
+    .map((l) => roadGeometry(l.from, l.to, l.kind).catch(() => null)));
+}
+
 // legs: [{ from:{latitude,longitude}, to:{latitude,longitude}, kind?:string }]
 //   kind = transport type (falsy ⇒ "no transport" ⇒ dashed).
 // opts: { dashedId, solidId, dashedColor, solidColor,
